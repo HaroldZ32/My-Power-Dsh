@@ -252,20 +252,29 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       }
       // L2 (R1/AC2): the chain table is resolved PER CALL — `overlayNow` reads the live `mpdConfig`
       // on every execute, so a `modelchain.<key>` change made in-process changes the NEXT call.
-      // Precedence: the LIVE overlay first (a chain the user explicitly configured outranks even
-      // the roster's own static chain — `modelchain.<chainKey>` is a documented consumed key and
-      // must be what the next resolution answers), then the roster's chain, then the merged
-      // fallback table keyed by the INTERNAL id (`resolveRole`'s keys are ids).
-      // THE AGENT'S OWN ROUTE IS THE FIRST AND ONLY ROUTE SOURCE for a roster agent (contract
+      // THE AGENT'S OWN ROUTE IS THE FIRST AND ONLY ROUTE SOURCE for a BASE roster agent (contract
       // §2/§4): the config service's TOTAL resolution is read per call, so a saved route is what the
-      // NEXT resolve answers. An unconfigured route is reported as the typed state — a display must
-      // never throw and must never fall back to the shipped chain, which is not a route any spawn may
-      // run on. An `unrouted` answer is NOT that state: an EXTENSION role keeps its own chain.
+      // NEXT resolve answers. An unusable route is reported as the typed state — a display must never
+      // throw and must never fall back to a shipped chain, which is not a route any spawn may run on.
+      // ONLY a role an EXTENSION contributed falls through below (overlay → its declared chain → the
+      // merged table), because no `agentRoutes` entry decides an extension role at all.
       /** The typed agent-route resolution, or undefined when no service answers. */
       const agentRoute = agentRouteResolutionIn(ctx, String(spec.name)) as
         | { ok: true; agent?: unknown; route?: { provider?: unknown; model?: unknown; fallbacks?: readonly unknown[] } }
         | { ok: false; reason?: unknown; agent?: unknown; missing?: readonly unknown[]; problem?: unknown }
         | undefined
+      /**
+       * The honest `unconfigured` answer a display renders: empty provider/model and chain, the dotted
+       * leaves the entry still needs, and the recovery sentence — NEVER a shipped static route.
+       */
+      const unconfiguredAnswer = (agent: string, missing: readonly unknown[], reason: string): { provider: string; model: string; chain: Array<{ provider: string; model: string }>; status: string; missing: string[]; reason: string } => ({
+        provider: "",
+        model: "",
+        chain: [],
+        status: "unconfigured",
+        missing: missing.map(String),
+        reason,
+      })
       if (agentRoute !== undefined && agentRoute !== null && typeof agentRoute === "object" && typeof agentRoute.ok === "boolean") {
         if (agentRoute.ok) {
           /** The agent's own route, read through the same tolerant field handling as every other consumer. */
@@ -284,19 +293,33 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         if (agentRoute.reason !== "unrouted") {
           /** The agent the state belongs to, for the recovery sentence. */
           const agent = String(agentRoute.agent ?? spec.name)
-          return {
-            provider: "",
-            model: "",
-            chain: [] as Array<{ provider: string; model: string }>,
-            status: "unconfigured",
-            missing: (agentRoute.missing ?? []).map(String),
-            reason: agentRoute.reason === "invalid"
+          return unconfiguredAnswer(
+            agent,
+            agentRoute.missing ?? [],
+            agentRoute.reason === "invalid"
               ? String(agentRoute.problem ?? "agentRoutes." + agent) + " must be a string — configure it with /mpd-model"
               : "agentRoutes." + agent + " is not configured — configure it with /mpd-model",
-          }
+          )
         }
       }
-      /** The configured chain for THIS role's id, when the live config routes one. */
+      // A BASE roster agent whose route is UNRESOLVABLE — no `mpdConfig` service at all, or a service
+      // that answers nothing — has NO route source left: the shipped `roles.data.ts` chain and the
+      // shipped `DEFAULT_CHAINS` table are not a default layer (contract §1/§4). It answers the SAME
+      // typed state the spawn appliers refuse on and `mpd_roles_list` renders as null, so the two
+      // surfaces cannot disagree about whether the agent has a route. ONLY a role an EXTENSION
+      // contributed may fall through to the overlay/declared-chain block below.
+      /** True when this role was CONTRIBUTED BY AN EXTENSION — the one class that may fall through. */
+      const extensionRole = typeof spec.extension === "string" && spec.extension !== ""
+      if (!extensionRole) {
+        /** The agent name the recovery sentence names. */
+        const agent = String(spec.name)
+        return unconfiguredAnswer(
+          agent,
+          ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"],
+          "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model",
+        )
+      }
+      /** The configured chain for THIS role's id, when the live config routes one (extension roles). */
       const configured = overlayNow(ctx)[String(spec.id)]
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) }

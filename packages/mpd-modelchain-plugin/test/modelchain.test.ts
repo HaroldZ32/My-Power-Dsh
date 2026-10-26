@@ -35,7 +35,7 @@ test("resolveRole resolves kebab-case and legacy camelCase keys to the same chai
  * @param roles - the roles this double serves: internal id, display name, optional own chain.
  * @returns the service double: `list()` for the names, `get()` for one resolved role or null.
  */
-function rosterDouble(roles: Array<{ id: string; name: string; chain?: Array<{ provider: string; model: string }> }>): { list: () => Array<{ name: string }>; get: (k: string) => unknown } {
+function rosterDouble(roles: Array<{ id: string; name: string; chain?: Array<{ provider: string; model: string }>; extension?: string | null }>): { list: () => Array<{ name: string }>; get: (k: string) => unknown } {
   /** The same collapse the roster applies: case-, space-, hyphen- and underscore-insensitive. */
   const collapse = (s: string): string => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
   return {
@@ -43,7 +43,9 @@ function rosterDouble(roles: Array<{ id: string; name: string; chain?: Array<{ p
     get: (k: string) => {
       /** The role as the service resolves it: by a name spelling, else by the internal id. */
       const found = roles.find((r) => collapse(r.name) === collapse(k) || r.id === k)
-      return found ? { id: found.id, name: found.name, chain: found.chain ?? [] } : null
+      // `extension` is what separates a BASE roster agent (null, `agentRoutes`-only) from an
+      // EXTENSION-contributed role (the extension id, which is the only class allowed to fall through).
+      return found ? { id: found.id, name: found.name, chain: found.chain ?? [], extension: found.extension ?? null } : null
     }
   }
 }
@@ -51,16 +53,18 @@ function rosterDouble(roles: Array<{ id: string; name: string; chain?: Array<{ p
 test("mpd_modelchain_resolve takes a roster NAME; an internal id or an unknown role is refused", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
-  /** The roster the tool resolves against: one worker role, carrying its own chain. */
-  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
-  /** The minimal row context: a `register` sink plus a `get` that answers `mpdRoles` only. */
+  /** The roster the tool resolves against: one worker role. */
+  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer" }])
+  /** The config service routes the agent: this arm is about NAME addressing, not routing. */
+  const mpdConfig = { agentRouteResolutionOf: (member: string) => ({ ok: true, agent: member, route: { provider: "deepseek-official", model: "deepseek-v4-flash" } }) }
+  /** The minimal row context: a `register` sink plus a `get` answering both services. */
   const ctx: any = {
     tools: {
       /** Keep the definition the plugin registers, so the test can call its `execute`. */
       register(d: any): void { tools.push(d) }
     },
-    /** Answer the roster lookup with the double and every other service with undefined. */
-    get: (n: string) => (n === "mpdRoles" ? roster : undefined)
+    /** Answer the roster and the route lookups; every other service is undefined. */
+    get: (n: string) => (n === "mpdRoles" ? roster : n === "mpdConfig" ? mpdConfig : undefined)
   }
   apply(ctx, {})
   /** The route-resolver tool the plugin registered. */
@@ -82,19 +86,18 @@ test("mpd_modelchain_resolve takes a roster NAME; an internal id or an unknown r
   await expect(tool.execute({})).rejects.toThrow(/unknown role/)
 })
 
-test("modelchain.sisyphus-junior config key is resolved through the mpdConfig service", async () => {
+test("modelchain.<id> config key is resolved through the mpdConfig service for an EXTENSION role", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
-  /** The dotted-key config document the fake service resolves against. */
-  const cfg = { modelchain: { "sisyphus-junior": [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] } }
+  /** The dotted-key config document the fake service resolves against, keyed by the role's internal id. */
+  const cfg = { modelchain: { "extension:flows:Code Reviewer": [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] } }
   /** The config service double: `get` walks a dotted key, and answers the whole document when asked for none. */
   const mpdConfig = {
     get: (k?: string) => (k === undefined ? cfg : k.split(".").reduce((a: any, p: string) => (a == null ? undefined : a[p]), cfg)),
   }
-  /** The roster the tool resolves the NAME against. Its one role carries NO chain of its own, which
-   *  is the documented fallback condition: the shipped/configured table — keyed by the INTERNAL id,
-   *  which is what `resolveRole` and the `modelchain.<id>` config keys speak — is what answers. */
-  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer" }])
+  /** The roster the tool resolves the NAME against: an EXTENSION role, the only class that may fall
+   *  through to the live `modelchain.<id>` overlay (a BASE agent answers only its typed route state). */
+  const roster = rosterDouble([{ id: "extension:flows:Code Reviewer", name: "Code Reviewer", extension: "authoring-flows" }])
   /** The row context: a `register` sink plus a `get` that answers `mpdConfig` and `mpdRoles`. */
   const ctx: any = {
     tools: {
@@ -108,7 +111,7 @@ test("modelchain.sisyphus-junior config key is resolved through the mpdConfig se
   /** The route-resolver tool the plugin registered. */
   const tool = tools.find((t) => t.name === "mpd_modelchain_resolve")
   /** The route the config overlay produced for the role, addressed by its NAME. */
-  const res = await tool.execute({ role: "Junior Engineer" })
+  const res = await tool.execute({ role: "Code Reviewer" })
   expect(res.provider).toBe("deepseek-official")
   expect(res.model).toBe("deepseek-v4-pro")
 })
@@ -126,9 +129,9 @@ describe("AC2 — the overlay is re-read per call (R1)", () => {
     const mpdConfig = {
       get: (k?: string) => (k === undefined ? cfg : k.split(".").reduce((a: any, p: string) => (a == null ? undefined : a[p]), cfg)),
     }
-    /** The roster double: the role carries a chain of its own, so the case also proves the overlay
-     *  OUTRANKS the roster's static chain — otherwise a role with a chain could never be re-routed. */
-    const roster = rosterDouble([{ id: "sisyphus", name: "Senior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
+    /** The roster double: an EXTENSION role (the only class that falls through) carrying a chain of
+     *  its own, so the case also proves the overlay OUTRANKS that declared chain. */
+    const roster = rosterDouble([{ id: "sisyphus", name: "Senior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }], extension: "authoring-flows" }])
     /** The row context: a `register` sink plus a `get` that answers `mpdConfig` and `mpdRoles`. */
     const ctx: any = {
       tools: {
@@ -163,8 +166,9 @@ describe("AC2 — the overlay is re-read per call (R1)", () => {
     /** The config service, NOT mounted at apply time — rows apply concurrently, so a sibling
      *  provider that starts later was invisible to the frozen-closure code FOREVER. */
     let mpdConfig: any = undefined
-    /** The roster double whose role carries no chain, so the fallback table answers. */
-    const roster = rosterDouble([{ id: "oracle", name: "Architect" }])
+    /** The roster double: an EXTENSION role with no chain, so `resolveRole`'s table answers before
+     *  the sibling applies and the overlay answers after — the fall-through this arm tests. */
+    const roster = rosterDouble([{ id: "oracle", name: "Architect", extension: "authoring-flows" }])
     /** The row context whose `mpdConfig` lookup answers whatever the variable holds. */
     const ctx: any = {
       tools: {
@@ -247,11 +251,41 @@ test("an UNCONFIGURED agent route answers the typed state — never the stale st
   expect(String(res.reason)).toContain("agentRoutes.Junior Engineer")
 })
 
-test("a config service that REFUSES the lookup degrades to the roster's own chain, never a throw", async () => {
+test("F4: a BASE roster agent with NO config service answers the typed unconfigured state — never the shipped chain", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
-  /** The roster the tool resolves against: an EXTENSION-shaped role with its own declared chain. */
-  const roster = rosterDouble([{ id: "extension:flows:Code Reviewer", name: "Code Reviewer", chain: [{ provider: "ext-provider", model: "ext-model" }] }])
+  /** The roster the tool resolves against: a BASE agent (extension null) carrying a SHIPPED chain. */
+  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
+  /** The minimal row context: only the roster is mounted, so NO mpdConfig service answers at all. */
+  const ctx: any = {
+    tools: {
+      /** Keep the definition the plugin registers, so the test can call its `execute`. */
+      register(d: any): void { tools.push(d) },
+    },
+    /** Answer the roster lookup only; every other service is absent. */
+    get: (n: string) => (n === "mpdRoles" ? roster : undefined),
+  }
+  apply(ctx, {})
+  /** The answer the display must render: the SAME typed state the spawn appliers refuse on. */
+  const res = await tools.find((t) => t.name === "mpd_modelchain_resolve").execute({ role: "Junior Engineer" })
+  expect(res.status).toBe("unconfigured")
+  expect(res.provider).toBe("")
+  expect(res.model).toBe("")
+  expect(res.chain).toEqual([])
+  // The honest state names BOTH missing leaves and the recovery path — not a shipped static route.
+  expect(res.missing).toEqual(["agentRoutes.Junior Engineer.provider", "agentRoutes.Junior Engineer.model"])
+  expect(String(res.reason)).toContain("agentRoutes.Junior Engineer")
+  expect(String(res.reason)).toContain("/mpd-model")
+  // The shipped `roles.data.ts`/`DEFAULT_CHAINS` pair must NOT surface: `mpd_roles_list` renders null
+  // for the same agent, and the two surfaces must agree about whether it has a route.
+  expect(res.provider).not.toBe("deepseek-official")
+})
+
+test("an EXTENSION role with no config service keeps its own declared chain, never a throw", async () => {
+  /** Every tool definition the plugin registered, in registration order. */
+  const tools: any[] = []
+  /** The roster the tool resolves against: an EXTENSION-contributed role with its own declared chain. */
+  const roster = rosterDouble([{ id: "extension:flows:Code Reviewer", name: "Code Reviewer", chain: [{ provider: "ext-provider", model: "ext-model" }], extension: "authoring-flows" }])
   /** The minimal row context whose `mpdConfig` lookup THROWS, as an agent-scoped ctx can. */
   const ctx: any = {
     tools: {

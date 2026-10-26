@@ -1,0 +1,87 @@
+{
+  "round": "repair after the T7 FAIL verdict",
+  "verdict": {
+    "record": "rec-20261026T042929-3355e5",
+    "repairRecord": "rep-20261026T042929-e7fa0e",
+    "outcome": "FAIL (request changes) — the CODE passed all five behavioural focus points; the failure was the shipped docs band (focus 6)",
+    "reviewedCommit": "37581a7a"
+  },
+  "findingsAndRepairs": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "file": "packages/mpd-modelchain-plugin/README.md + README.zh-CN.md",
+      "defect": "documented mpd_modelchain_resolve as slot-first via the removed `slotResolutionIn`",
+      "repair": "rewritten in both languages: the agent's OWN agentRoutes entry is the first and only route source; unusable answers blank provider/model with chain [] and the missing leaves; only an unrouted EXTENSION role falls through; 'There is no slot' stated explicitly"
+    },
+    {
+      "id": "F2",
+      "severity": "High",
+      "file": "packages/mpd-dsh-adapter-plugin/README.md + README.zh-CN.md",
+      "defect": "four claims: resolves the member's teamModels slot itself; appliers refuse SLOT_UNCONFIGURED; twelve slot knobs; slots materialise an effort over schema defaults",
+      "repair": "all four rewritten both languages: resolves its OWN agentRoutes entry by identity precedence; appliers refuse AGENT_UNCONFIGURED; 33 leaves of the 47-knob declaration; NO schema default"
+    },
+    {
+      "id": "F3",
+      "severity": "High",
+      "file": "packages/mpd-roster-provider-plugin/README{,.zh-CN}.md + packages/mpd-tui-plugin/README.zh-CN.md",
+      "defect": "roster-provider still said 'applies the member's slot route' and quoted an inherit rule its own routeFor now throws against; the TUI zh row omitted the scope step and the confirmation, drifting from the EN twin",
+      "repair": "roster-provider sections rewritten both languages (groups are a bulk-edit grouping, never a route; a named unusable agent is REFUSED before base.start and does NOT inherit; effort has no schema default); TUI zh row brought to the EN flow"
+    },
+    {
+      "id": "F5",
+      "severity": "Medium",
+      "file": "docs/tui-parity.md + .zh-CN.md",
+      "defect": "pinned '25 knobs' while the shared declaration is 47",
+      "repair": "47 knobs stated in both languages (verified by executing SETTINGS_KNOBS: 47 = 33 + 14)"
+    },
+    {
+      "id": "F4",
+      "severity": "Medium",
+      "file": "packages/mpd-modelchain-plugin/src/index.ts",
+      "defect": "with no mpdConfig service, a BASE roster agent fell through to the shipped DEFAULT_CHAINS while mpd_roles_list reported null",
+      "repair": "base-agent guard: a base agent with no resolvable route answers the typed unconfigured state (both missing leaves, reason naming agentRoutes + /mpd-model); only a role whose roster spec carries a non-empty `extension` falls through. New test arm asserts the shipped chain never surfaces"
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "file": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts",
+      "defect": "re-freeze comment claimed a frozen entry was deleted; none was",
+      "repair": "sentence dropped; the deliberate 2-stale -> 2-changed, 46 -> 46 re-freeze stands"
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "file": "agent-references/glossary.md",
+      "defect": "amendment claimed to supersede 'every slot note ABOVE' while the verbatim former body sits BELOW",
+      "repair": "'ANYWHERE IN THIS FILE, above AND in the verbatim former §13 body below'"
+    },
+    {
+      "id": "N3",
+      "severity": "Nit",
+      "file": "docs/tui.md + docs/tui.zh-CN.md",
+      "defect": "the historical 2026-10-23 row could be read as current truth",
+      "repair": "explicit HISTORICAL RECORD pointer to the current per-agent flow in both languages"
+    }
+  ],
+  "gatesAfterRepair": {
+    "verify:gates": "PASS — 9/9 members",
+    "typecheck": "PASS — 0 diagnostics",
+    "dist": "PASS — 33/33 fresh (each rebuilt twice, byte-identical), rebuilt with the pinned bun 1.4.0 after the modelchain src change",
+    "docs": "PASS — pairs=50 failed=0 violations=0 links=453 dead=0",
+    "manual-paths": "PASS — resolved=152",
+    "comments": "PASS",
+    "test:qa": "PASS — 51/51 self-tests",
+    "bun test packages": "2490 pass / 6 skip / 5 fail — the same five pre-existing R13/R13b host-version arms (panel-visibility.test.ts, byte-identical to base 62731bac, reads the installed dsh-tui 0.17.0). Declared bound, NOT green."
+  },
+  "ciOnPr71": {
+    "staticGates": "PASS (1m15s) — https://github.com/HaroldZ32/My-Power-Dsh/actions/runs/40268527931",
+    "dockerRealMachine": "PASS (4m20s) — https://github.com/HaroldZ32/My-Power-Dsh/actions/runs/40268527891 — this closes the 'Docker not run' bound for the first commit",
+    "codeRabbit": "COMPLETED — 'Review skipped: manual review required for this OSS repository'; no inline findings to reconcile, not a pending review"
+  },
+  "bounds": [
+    "No live dsh boot or live tool call was run in this round either; the mounting evidence is preset-conformance --self-test plus the CI Docker real-machine lane.",
+    "The extension/base discrimination relies on the roster service exposing `spec.extension`; a stale roles dist would only downgrade extension-role DISPLAYS, never a spawn.",
+    "A fresh verdict from the reviewer is required for this repair round; the writer's report does not close it."
+  ]
+}

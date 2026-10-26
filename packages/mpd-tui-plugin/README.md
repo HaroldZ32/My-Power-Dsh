@@ -547,13 +547,13 @@ Every value is the raw id the settings document stores (so `deepseek-official` /
 `deepseek-v4-flash` / `max` stay the vocabulary the config layer reads). When the
 catalog is unavailable or **degraded** (`{ providers: [], degraded: true }` — also the
 shape an adapter build without the seam produces), each field falls back to the
-declared `TEAM_MODEL_FALLBACK_OPTIONS` of the shared schema: a slot field is therefore
+declared `TEAM_MODEL_FALLBACK_OPTIONS` of the shared schema: a route leaf is therefore
 never registered with an empty list and never requires typing. Because the catalog read
 is async and the host freezes the list at register time, the section registration is
 deferred by one microtask chain while the catalog is read (the host registry's own
 late-registration seam); a reader without the seam registers synchronously with the
 declared lists. The branch that produced the options is logged on every registration:
-`settings section mpd slot options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`.
+`settings section mpd route options: provider=live(N)|declared(N) model=… reasoningEffort=… catalog=live|degraded|unavailable`.
 
 The board is the TUI-native equivalent of the web-only surfaces (agent-teams
 sidebar, workmate tab). It reads state — it never writes:
@@ -782,7 +782,7 @@ only when no logger exists to `stderr`, with `debug` gated behind
 
 13. **`/mpd-model` writes a value; it does not make team creation succeed.** The menu offers what the
     live catalog lists, and a route the provider does not actually serve still FAILS team creation
-    loudly (naming the member and the slot) — that failure is the honest outcome, and this command
+    loudly (naming the member and its route) — that failure is the honest outcome, and this command
     does not pre-validate it. Neither does it clamp a choice: every panel offers ids, never labels.
 14. **`LocalCommand.descriptions` is UNREACHABLE on this host, so `/mpd-model` does not declare one.**
     `dsh-commands`' `normalizeDefinition` rebuilds every definition as

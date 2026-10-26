@@ -2050,6 +2050,14 @@ function apply(ctx, config = {}) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
       }
       const agentRoute = agentRouteResolutionIn(ctx, String(spec.name));
+      const unconfiguredAnswer = (agent, missing, reason) => ({
+        provider: "",
+        model: "",
+        chain: [],
+        status: "unconfigured",
+        missing: missing.map(String),
+        reason
+      });
       if (agentRoute !== undefined && agentRoute !== null && typeof agentRoute === "object" && typeof agentRoute.ok === "boolean") {
         if (agentRoute.ok) {
           const provider = String(agentRoute.route?.provider ?? "");
@@ -2064,15 +2072,13 @@ function apply(ctx, config = {}) {
         }
         if (agentRoute.reason !== "unrouted") {
           const agent = String(agentRoute.agent ?? spec.name);
-          return {
-            provider: "",
-            model: "",
-            chain: [],
-            status: "unconfigured",
-            missing: (agentRoute.missing ?? []).map(String),
-            reason: agentRoute.reason === "invalid" ? String(agentRoute.problem ?? "agentRoutes." + agent) + " must be a string — configure it with /mpd-model" : "agentRoutes." + agent + " is not configured — configure it with /mpd-model"
-          };
+          return unconfiguredAnswer(agent, agentRoute.missing ?? [], agentRoute.reason === "invalid" ? String(agentRoute.problem ?? "agentRoutes." + agent) + " must be a string — configure it with /mpd-model" : "agentRoutes." + agent + " is not configured — configure it with /mpd-model");
         }
+      }
+      const extensionRole = typeof spec.extension === "string" && spec.extension !== "";
+      if (!extensionRole) {
+        const agent = String(spec.name);
+        return unconfiguredAnswer(agent, ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"], "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model");
       }
       const configured = overlayNow(ctx)[String(spec.id)];
       if (isChainArray(configured)) {

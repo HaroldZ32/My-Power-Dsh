@@ -57,7 +57,7 @@ native executor's precedence above decides (an explicit `role` routes even when 
 nobody), and inheritance is the fallback for UNMATCHED members or unusable slots only. This supersedes
 the routing half of the 2026-10-23 note above.
 
-**LIVE AMENDMENT (2026-10-26, per-agent routes — THIS SUPERSEDES EVERY SLOT NOTE ABOVE):** the unit of
+**LIVE AMENDMENT (2026-10-26, per-agent routes — THIS SUPERSEDES EVERY SLOT NOTE ANYWHERE IN THIS FILE, above AND in the verbatim former §13 body below):** the unit of
 model configuration is the **AGENT**, and **there is NO persisted big slot**. The shape is
 `agentRoutes.<Agent>.{provider?: string, model?: string, reasoningEffort?: string, fallbacks?: ModelRoute[]}`
 (`ModelRoute = {provider, model, reasoningEffort?}`), keyed by the eleven display names and resolved

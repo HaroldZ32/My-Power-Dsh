@@ -99,14 +99,15 @@ registry, keeps one entry per Lead, and degrades to `[]` — never to a throw.
 `toolFilter`. That is the OFFICIAL fallback path: it passes through by identity, so only
 `mpd-roster-provider-plugin`'s official-path provider can route it, and the `spawn_teammate` TOOL that
 armed it is now REFUSED at the tool boundary (historical/fallback only). The DEFAULT native
-`TeamExecutor.spawn` resolves the member's `teamModels` slot ITSELF, by identity precedence `role` →
-the head of `description` → the whole `name`: a matched member with a usable slot runs on that slot
-(its `fallbacks` consumed once), while an UNMATCHED member, one whose slot is unconfigured, or a
-composition with no `mpdConfig` service INHERITS the staging session's route (the captain's in a
+`TeamExecutor.spawn` resolves the member's OWN `agentRoutes` entry ITSELF, by identity precedence `role`
+→ the head of `description` → the whole `name`: a matched member with a usable route runs on that route
+(its `fallbacks` consumed once), while an UNMATCHED member, one whose route is unconfigured or invalid,
+or a composition with no `mpdConfig` service INHERITS the staging session's route (the captain's in a
 top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw — `approve` raises N
-members in a loop, so a slot never leaves a team half-built. Per-member routing also applies on the
+members in a loop, so a route never leaves a team half-built. Per-agent routing also applies on the
 single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass `agentOptions`
-themselves; those appliers still REFUSE an unusable slot with `SLOT_UNCONFIGURED`. That consult
+themselves; those appliers REFUSE an unusable route with `AGENT_UNCONFIGURED` (this package exports the
+code and the one canonical sentence, mirrored from the config row). That consult
 is ONE-SHOT: on a host exposing `startActivation` the adapter disposes that exact activation once the
 report settles (best-effort; a failing teardown never changes the report), so the live child is
 released instead of accumulated; the retired `start` fallback returns only `run.result` and has no
@@ -133,9 +134,9 @@ It is also a `bun test` case, so `bun test packages/mpd-dsh-adapter-plugin` runs
 
 ## The model-catalog seam (`llmCatalog`)
 
-`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the twelve `teamModels` slot
-knobs, because the host renders `select` by cycling a deep-frozen option list (there is no
-pick-list dialog). The read is TOTAL:
+`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the thirty-three `agentRoutes` leaves
+(three per roster agent — 33 of the 47-knob shared declaration), because the host renders `select` by
+cycling a deep-frozen option list (there is no pick-list dialog). The read is TOTAL:
 
 - a missing `ctx.llm`, or one lacking ANY of the three methods, resolves to
   `{ providers: [], degraded: true }` and logs **ONE** warn-once line naming the missing
@@ -151,8 +152,9 @@ The seam is built from those three calls and nothing else — no new runtime dep
 
 ### The effort adaptation built on it (`withSupportedEffort`)
 
-The `teamModels` slots MATERIALISE an effort over their schema defaults, so a slot whose model declares
-no reasoning efforts at all would hand the provider a keyword it cannot accept, failing the call. The
+A per-agent route may state an effort and the `agentRoutes` subtree carries NO schema default, so a
+route whose model declares no reasoning efforts at all would hand the provider a keyword it cannot
+accept, failing the call. The
 exported `withSupportedEffort(dsh, route)` is the ONE place that decision is made — `modelDeclaresNoEffort`
 is the pure predicate behind it — and it reads this seam:
 

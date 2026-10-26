@@ -9,7 +9,7 @@ key/value memory.
 
 | Tool | Purpose |
 |---|---|
-| `mpd_modelchain_resolve` | Resolve the provider/model route for a roster role, addressed by its NAME (`Senior Engineer`, `Architect`, `Plan Reviewer`, … — any case or separator spelling). Precedence is the SLOT FIRST (`slotResolutionIn`): a member the `teamModels` slots route answers from its slot ALONE — the slot's primary plus its own `fallbacks`, `status: "configured"` — and a slot that is routed but UNUSABLE (a missing or malformed leaf) answers empty `provider`/`model` with `status: "unconfigured"` and a reason naming the offending `teamModels.slotN`, never a shipped route. Only an `unrouted` member (no slot carries it, e.g. an extension role) falls through to the live `modelchain.<id>` overlay, then the roster's own `chain[0]`, then the merged shipped/configured table. An internal key — the stable id, the legacy `mpd-<id>` form, a camelCase chain key — is REFUSED with a loud error listing the roster names, and an unknown or unnamed role is refused the same way instead of silently answering the generic default. |
+| `mpd_modelchain_resolve` | Resolve the provider/model route for a roster role, addressed by its NAME (`Senior Engineer`, `Architect`, `Plan Reviewer`, … — any case or separator spelling). **The agent's OWN `agentRoutes` entry is the first and only route source for a roster member**: a configured entry answers with its `provider` + `model`, its own `fallbacks` in order and `status: "configured"`; an entry that is routed but UNUSABLE (a missing or malformed leaf) answers empty `provider`/`model`, `chain: []`, `status: "unconfigured"`, the missing leaves, and a reason naming the offending `agentRoutes.<Agent>` path — never a shipped route. Only an `unrouted` member (an EXTENSION role, which `agentRoutes` does not decide) falls through to the live `modelchain.<id>` overlay, then its own declared chain, then the merged table. **There is no slot**: `TEAM_MODEL_SLOT_GROUPS` is only the `/mpd-model` grouping that edits each member's own entry. An internal key — the stable id, the legacy `mpd-<id>` form, a camelCase chain key — is REFUSED with a loud error listing the roster names, and an unknown or unnamed role is refused the same way instead of silently answering the generic default. |
 | `mpd_memory_save` | Persist a key/value note in `<workspace>/.mpd/memory.json`. |
 | `mpd_memory_recall` | Read notes by key/substring. |
 
@@ -38,8 +38,8 @@ The row keeps no other state; the chain table is re-resolved on every call (`cha
 
 ```text
 mpd_modelchain_resolve { role: "Senior Engineer" }
-#   slot configured -> { provider, model, chain: [primary, ...fallbacks], status: "configured" }
-#   slot unusable   -> { provider: "", model: "", chain: [], status: "unconfigured", missing: [...], reason }
+#   configured      -> { provider, model, chain: [primary, ...fallbacks], status: "configured" }
+#   unusable        -> { provider: "", model: "", chain: [], status: "unconfigured", missing: [...], reason }
 mpd_memory_save { key: "goal", value: "..." }
 mpd_memory_recall { key: "goal" }
 ```

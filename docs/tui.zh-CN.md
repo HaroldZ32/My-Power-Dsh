@@ -1311,7 +1311,7 @@ TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_
 |---|---|---|
 | §3.3 面板清单 | 两个侧栏页面（`team`、`workmate`） | **三个** —— `team`（`order` 10）、`workmate`（`order` 12）与 **`watchdog`**（`MPD watchdog`、图标 `⚠`、`order` 13、`minColumns` 28）。由 `src/panel-watchdog.ts` 经本行自己的 `tuiPanels` 接缝注册；它自己的行配置开关是 `watchdog`（默认开启） |
 | 看门狗可见性 | 一条状态行提示、每次附加时的一次确认对话框，以及 board/team/subagents 场景里的一行 `HELD` | **面板**（每团队暂停状态与阶段、`mpd-tui` 未读数、事件列表含种类 / 相对时间 / 团队·任务·尝试 / 原因与 `ms` / 挂起结果 / 确认状态；`a`/`r`/滚动键）、**自己的标签页徽标**（暂停 = `warning`、未读 = `info`，5 秒轮询重取）与 **`/mpd watchdog`** |
-| `/mpd-model` | 槽位 → **范围** → 提供商 → 模型 → 推理强度，含成员覆盖与清除分支（`agentRoutes`） | 槽位 → 提供商 → 模型 → 推理强度；未配置的槽位从配置服务的类型化 `slotResolutionOf` 读作 `<unconfigured>`，老组合读作 `<unavailable>`；**没有**成员分支，也**不写** `agentRoutes` |
+| `/mpd-model` | 槽位 → **范围** → 提供商 → 模型 → 推理强度，含成员覆盖与清除分支（`agentRoutes`） | 槽位 → 提供商 → 模型 → 推理强度；未配置的槽位从配置服务的类型化 `slotResolutionOf` 读作 `<unconfigured>`，老组合读作 `<unavailable>`；**没有**成员分支，也**不写** `agentRoutes` —— **历史记录（2026-10-23 波次）：本行描述的是那一波，不是当前行为。当前流程是按 agent 的 `agentRoutes`：分组 → 范围（整组，或单个 agent）→ 提供商 → 模型 → 推理强度，整组写入有确认面板，并提供清除分支；见 §3.1 与 `packages/mpd-tui-plugin/README.md`** |
 | DAG 渲染器决策 | 隐含（“就是字符网格”） | 记录在 [`tui-dag-renderer.md`](./tui-dag-renderer.zh-CN.md)（英文版 [`/tui-dag-renderer.md`](./tui-dag-renderer.md)）：notcurses **不可行**，宿主的 `ui.Image` 路径是有界、不可交互、且必须带单元格回退的位图，参考实现 `dsh-blender-plugin` 不含任何图形代码——因此本波次 DAG 仍是字符网格，自研渲染器推迟 |
 
 **诚实的边界。** 本波次的证据是本包自己的测试套件（含新增的 `test/panel-watchdog.test.ts` 各项）与仓库门禁；

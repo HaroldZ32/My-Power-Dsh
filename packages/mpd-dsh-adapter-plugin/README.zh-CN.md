@@ -88,13 +88,13 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 `spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`。
 那是**官方回退**路径：请求按原样（by identity）透传，所以只有 `mpd-roster-provider-plugin` 的
 官方通道路由能作用于它，而发起该路径的 `spawn_teammate` **工具**现已在工具边界被**拒绝**
-（仅历史/回退）。**默认**的原生 `TeamExecutor.spawn` 会**自己**解析成员的 `teamModels` 槽位，按
-身份优先级 `role` → `description` 的头部 → 整个 `name`：匹配到且槽位可用的成员跑在该槽位上
-（其 `fallbacks` 只消费一次）；匹配不到的成员、槽位未配置的成员，或没有 `mpdConfig` 服务的组合，
+（仅历史/回退）。**默认**的原生 `TeamExecutor.spawn` 会**自己**解析成员**自己的** `agentRoutes` 条目，按
+身份优先级 `role` → `description` 的头部 → 整个 `name`：匹配到且路由可用的成员跑在该路由上
+（其 `fallbacks` 只消费一次）；匹配不到的成员、路由未配置或格式错误的成员，或没有 `mpdConfig` 服务的组合，
 则**继承暂存它的会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行
-日志、**绝不抛错** —— `approve` 会循环升起 N 个成员，槽位绝不会让团队半途而废。按成员路由同样作用于
+日志、**绝不抛错** —— `approve` 会循环升起 N 个成员，路由绝不会让团队半途而废。逐 agent 路由同样作用于
 单次咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；那些
-应用方仍会用 `SLOT_UNCONFIGURED` **拒绝**不可用的槽位。该咨询是**一次性（one-shot）**的：在暴露
+应用方会用 `AGENT_UNCONFIGURED` **拒绝**不可用的路由（本包导出该错误码与那句唯一的规范句子，镜像自配置行）。该咨询是**一次性（one-shot）**的：在暴露
 `startActivation` 的宿主上，报告落定后 `spawnAgent` 会释放（dispose）**这次**激活（尽力而为；
 清理失败绝不改写报告），因此活着的子会话被释放而不是被不断堆积；旧版 `start` 回退路径只返回
 `run.result`，没有可供释放的 activation。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并
@@ -119,7 +119,7 @@ node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-t
 
 ## 模型目录接缝（`llmCatalog`）
 
-`packages/mpd-tui-plugin` 在**注册时**读取该接缝，为十二个 `teamModels` 槽位 knob 生成选项 ——
+`packages/mpd-tui-plugin` 在**注册时**读取该接缝，为三十三个 `agentRoutes` 叶子（每个名册 agent 三片叶子 —— 共享声明 47 个 knob 中的 33 个）生成选项 ——
 因为宿主渲染 `select` 的方式是循环遍历一份被深度冻结的选项列表（没有选择对话框）。该读取是
 **全量兜底**的：
 
@@ -135,7 +135,7 @@ node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-t
 
 ### 建立在该接缝上的推理强度适配（`withSupportedEffort`）
 
-`teamModels` 槽位会按 schema 默认值**物化**一个推理强度，因此若某槽位的模型完全没有推理等级，就会把
+逐 agent 的路由叶子可以声明一个推理强度，而 `agentRoutes` 子树**没有**任何 schema 默认值，因此若某条路由的模型完全没有推理等级，就会把
 provider 无法接受的关键字交给它、令调用失败。导出的 `withSupportedEffort(dsh, route)` 是做出该判断的
 **唯一**位置（其背后的纯谓词是 `modelDeclaresNoEffort`），它读取的正是该接缝：
 

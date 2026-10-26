@@ -271,8 +271,6 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // tree, so the pinned LINE TEXT now names `ROSTER_AGENT_NAMES` (the settings section renders ONE
   // row per agent, driven by the shared roster vocabulary) and no longer names
   // `TEAM_MODEL_SLOT_GROUPS`/`TEAM_MODEL_SLOTS` (those moved to the `/mpd-model` menu's own import).
-  // The separate `import type { SettingsKnob }` line is GONE with the same wave: the row type is
-  // derived locally now, so the third entry it used to occupy is deleted rather than refreshed.
   // Deliberate re-freeze, never a silent regeneration.
   "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, ROSTER_AGENT_NAMES, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
   // mpd-tui -> mpd-config AGAIN, from the model menu this time, and for the same reason the entry
