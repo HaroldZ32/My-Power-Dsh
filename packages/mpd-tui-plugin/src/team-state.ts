@@ -1003,12 +1003,18 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
  * TWO DEFENCES, because one was provably too weak. (1) THE CALLER MUST NAME ITS TEAM: this function
  * is reached only from a record-based arm, which passes the record's own `teamId`; the two
  * official-view arms do NOT call it at all, because `graph(workspace)` would answer for the workspace
- * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION,
- * NOT AN INTERSECTION: every board id must appear as a NON-GHOST node AND every non-ghost node must be
- * on the board. An intersection is satisfiable by coincidence — every team numbers its tasks from
- * `T1`, so almost any two teams share an id — while a bijection refuses a model that describes a
- * different (even merely larger) board. A model that survives both is attached; otherwise it is
- * dropped and the board is drawn alone. A throwing service costs the model, never the board.
+ * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION
+ * OVER THE ROOT FRAME (cellwork wave 4, T31): every board id must appear as a NON-GHOST node of that
+ * frame, that frame must carry no other real task, and every OTHER node in the model must be explained
+ * by the nesting — a member of a subcell (`group` names it), a subcell's own box (`visual: "group"`), or
+ * a plan-only ghost. An intersection is satisfiable by coincidence — every team numbers its tasks from
+ * `T1`, so almost any two teams share an id — while this bijection still refuses a model that describes
+ * a different board. IT IS NOT THE WHOLE NODE SET ANY MORE, and that is the fix: the host MERGES the
+ * live descendants into this model, so a nested team's model legitimately carries more nodes than the
+ * parent's board. Demanding equality refused every such model, and the live symptom was a TUI that drew
+ * a qualified sub-team reference (`team-nested-sub::C4`) — an edge from the board — with no frame
+ * around it. A model that survives both defences is attached; otherwise it is dropped and the board is
+ * drawn alone. A throwing service costs the model, never the board.
  * @param workflow - the projection to enrich.
  * @param teams - the `mpdTeams` face, when this composition has one.
  * @param workspace - the workspace this read is scoped to, resolved per call.
@@ -1028,14 +1034,19 @@ function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, wo
   if (model === undefined || !Array.isArray(model.nodes)) return workflow
   /** The task ids this projection's own board carries. */
   const boardIds = new Set(workflow.tasks.map((task) => task.id))
-  /** The model's BOARD-BACKED ids; a ghost is plan-only by definition and cannot prove a board match. */
-  const nodeIds = model.nodes.filter((node) => node.planned === false).map((node) => node.id)
+  // THE ROOT FRAME, WHICH IS THE ONLY PART THE BOARD CAN PROVE: a real task drawn inside this record's
+  // own frame (not a ghost, not a nested member, not a subcell's box).
+  /** The model's ROOT-FRAME task ids — the nodes this board must match node for node. */
+  const rootIds = model.nodes.filter((node) => node.planned === false && node.group === undefined && node.visual !== GROUP_VISUAL).map((node) => node.id)
   /** Those ids as a set, so a duplicated node cannot inflate the count. */
-  const nodeSet = new Set(nodeIds)
-  // THE BIJECTION: equal cardinality, no duplicate nodes, and the board is a subset of the nodes —
-  // which, with equal cardinality, makes the two sets EQUAL. Anything less is satisfiable by a shared
-  // `T1` alone, which is exactly how a foreign team's graph could be accepted.
-  const sameBoard = nodeSet.size === boardIds.size && nodeIds.length === nodeSet.size && [...boardIds].every((id) => nodeSet.has(id))
+  const rootSet = new Set(rootIds)
+  // EVERY EXTRA NODE MUST BE EXPLAINED by the nesting: a subcell member (`group`), a subcell's own box
+  // (`visual: "group"`), or a plan-only ghost. An unexplained extra real task is another team's row —
+  // the exact collision the bijection exists to refuse — so it costs the model.
+  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || node.group !== undefined || node.visual === GROUP_VISUAL)
+  // THE BIJECTION OVER THE ROOT FRAME: equal cardinality, no duplicate root nodes, and the board is a
+  // subset of them — which, with equal cardinality, makes the two sets EQUAL.
+  const sameBoard = rootSet.size === boardIds.size && rootIds.length === rootSet.size && [...boardIds].every((id) => rootSet.has(id)) && extrasExplained
   return sameBoard ? { ...workflow, model } : workflow
 }
 

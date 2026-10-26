@@ -12,6 +12,8 @@ import type { MpdTeamsLike } from "../src/team-state.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
+import { buildModel } from "../../mpd-graph-core/src/model.ts"
+import { dagPageOf, dagPanelLayout } from "../src/panel-dag.js"
 
 /** The frozen instant every record in this file is stamped with. */
 const NOW = "2026-09-30T09:15:00.000Z"
@@ -288,5 +290,123 @@ describe("living-graph · the served model reaches the projection only when it i
     expect(asked).toEqual([])
     expect(session.model).toBeUndefined()
     expect(workspace.model).toBeUndefined()
+  })
+})
+
+
+// ── T31: the LIVE projection must carry the MERGED model, frames included ─────────────────────────
+//
+// THE DEFECT THIS PINS (measured while producing the README screenshots). The host serves a NESTED
+// team's model with `groups` — one node per subcell member (each tagged with its innermost `group`) and
+// one box pseudo-node per subcell (`visual: "group"`) — but the TUI's live projection dropped it: the
+// attach guard demanded that the model's REAL node set equal the parent's board, which a merged model
+// never does. The picture therefore showed a qualified sub-team reference (an edge from the parent's own
+// `blockedBy`) with no frame around it, and `panel-dag` fell back to the flat drawing. D3's declared
+// bound ("the live `/state` → panel path is fixture-only until D2 lands") is retired by these arms.
+describe("nested teams · the merged model reaches the LIVE projection (T31)", () => {
+  /** The parent team's id. */
+  const PARENT = "team-20260930091500"
+  /** The nested sub-team's id. */
+  const CHILD = "team-nested-sub"
+
+  /**
+   * The pair of LIVE records: the fixture parent plus a child whose `parentTeamId` names it.
+   * @returns the two records, in the order the reader receives them.
+   */
+  function pair(): [TeamRecord, TeamRecord] {
+    /** The parent, exactly as the other arms build it. */
+    const parent = record()
+    /** The nested child: its own board, the same live phase, and the parent link the host derives. */
+    const child = record({ teamId: CHILD, name: "nested subcell", description: "the inner frame", leadSessionId: "sess-2", parentTeamId: PARENT })
+    return [parent, child]
+  }
+
+  /**
+   * The model TEAM-CORE would serve for one parent/child pair.
+   *
+   * Built by the SHARED CORE (`buildModel`), not by hand: the group node set, the qualified child ids
+   * (`<teamId>::<taskId>`) and the box pseudo-node are the core's own outputs, so an arm that hand-wrote
+   * them could agree with a wrong host.
+   * @param parent - the parent record.
+   * @param child - the nested record.
+   * @returns the merged model, frames included.
+   */
+  function mergedModel(parent: TeamRecord, child: TeamRecord): GraphModel {
+    return buildModel({
+      board: parent.tasks.map((task) => ({ id: task.id, subject: task.subject, status: task.status, blockedBy: task.blockedBy })),
+      groups: [{
+        id: child.teamId,
+        label: child.name,
+        board: child.tasks.map((task) => ({ id: child.teamId + "::" + task.id, subject: task.subject, status: task.status, blockedBy: [] })),
+      }],
+    })
+  }
+
+  test("a LIVE parent+child pair attaches the merged model and the DAG page carries the group frame", () => {
+    /** The live pair. */
+    const [parent, child] = pair()
+    /** The merged model the host serves for the parent team. */
+    const merged = mergedModel(parent, child)
+    // The fixture is what the contract describes BEFORE the projection runs: a real merged model.
+    expect(merged.groups?.map((group) => group.id)).toEqual([CHILD])
+    expect(merged.nodes.some((node) => node.visual === "group" && node.id === CHILD)).toBe(true)
+    /** A service answering the merged model for the parent team. */
+    const teams: MpdTeamsLike = { graph: () => merged }
+    /** The LIVE projection this session's read produces. */
+    const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [parent, child], views: [] })
+    // THE FIX: the model is ATTACHED, so `groups` reaches the drawing.
+    expect(workflow.model).toBeDefined()
+    expect(workflow.model?.groups?.map((group) => group.id)).toEqual([CHILD])
+    /** The DAG page the panel builds from that projection. */
+    const page = dagPageOf(workflow)
+    expect(page?.groups?.map((group) => group.id)).toEqual([CHILD])
+    // AND THE FRAME IS PAINTED: the panel's own layout runs the nested drawing at a width that fits.
+    /** The panel layout, at a width the boxes ladder accepts. */
+    const layout = dagPanelLayout(page?.tasks ?? [], 200, undefined, 30, page?.ranks, page?.groups)
+    expect(layout.mode).toBe("boxes")
+    expect(layout.view.groups?.map((group) => group.groupId)).toEqual([CHILD])
+    // THE BOX IS NOT A TASK: the pseudo-node never became a board row (it would inflate the counts and
+    // the legend), which is the other half of the same rule.
+    expect((page?.tasks ?? []).some((task) => task.id === CHILD)).toBe(false)
+  })
+
+  test("a FLAT team keeps the flat drawing: no groups on the model, the page or the view", () => {
+    /** The parent alone, with no live child. */
+    const parent = record()
+    /** The host's model for a childless team. */
+    const merged = mergedModel(parent, record({ teamId: CHILD, name: "not a child", parentTeamId: PARENT }))
+    // The flat control's model: built with NO group at all.
+    /** The childless model the host really serves (no `groups` key). */
+    const flat = buildModel({ board: parent.tasks.map((task) => ({ id: task.id, subject: task.subject, status: task.status, blockedBy: task.blockedBy })) })
+    expect(Object.keys(flat)).not.toContain("groups")
+    expect(merged.groups?.length).toBe(1)
+    /** A service answering the childless model. */
+    const teams: MpdTeamsLike = { graph: () => flat }
+    /** The projection under test. */
+    const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [parent], views: [] })
+    expect(workflow.model).toBeDefined()
+    expect(workflow.model?.groups).toBeUndefined()
+    /** Its DAG page. */
+    const page = dagPageOf(workflow)
+    expect(page?.groups).toBeUndefined()
+    /** Its panel layout. */
+    const layout = dagPanelLayout(page?.tasks ?? [], 200, undefined, 30, page?.ranks, page?.groups)
+    expect(layout.view.groups).toBeUndefined()
+  })
+
+  test("an UNEXPLAINED extra task still costs the model — the nesting does not open the guard", () => {
+    // THE NEGATIVE CONTROL for the relaxed guard: a foreign task with no `group` and no box visual is
+    // another team's row, and accepting it would mix two boards in one picture.
+    /** The parent record. */
+    const parent = record()
+    /** The host's own model, plus one real task that belongs to neither this board nor a frame. */
+    const polluted = mergedModel(parent, record({ teamId: CHILD, name: "nested subcell", parentTeamId: PARENT }))
+    polluted.nodes.push({ id: "X9", subject: "another team's row", visual: "open", dependencies: [], depth: 0, planned: false })
+    /** A service answering that model. */
+    const teams: MpdTeamsLike = { graph: () => polluted }
+    /** The projection under test. */
+    const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [parent], views: [] })
+    expect(workflow.model).toBeUndefined()
+    expect(dagPageOf(workflow)?.groups).toBeUndefined()
   })
 })
