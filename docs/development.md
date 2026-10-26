@@ -230,6 +230,13 @@ No evidence on disk for a gate = the change is not complete.
    `files`/`exports` agree with what is on disk, and the CLI's compiled validator entry is present.
 6. Merge `--no-ff` into `master` with a `release: vX.Y.Z …` message, create the annotated tag
    (`git tag -a vX.Y.Z`), and push `master` + the tag (and `dev`).
+7. Publish — a HUMAN step after the tag push: `.github/workflows/publish.yml` STAGES the release on
+   npm (`npm pack` then `npm stage publish --access public --tag latest`), so nothing is public yet;
+   `npm stage approve <stage-id>` is what publishes it and moves `latest`. The stage id comes from the
+   run's own `npm stage list` output, and the approval is a SECOND `workflow_dispatch` of that
+   workflow carrying `stage_id` — the run's OIDC token can stage but cannot approve (2FA
+   proof-of-presence). Approve in ascending version order, then verify the registry serves the
+   version before announcing.
 
 ## 7. Git model
 

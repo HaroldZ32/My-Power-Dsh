@@ -195,6 +195,12 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
    与磁盘内容相符、以及 CLI 的已编译校验器入口存在。
 6. 以 `--no-ff` 合并进 `master`，提交信息为 `release: vX.Y.Z …`，打附注标签
    （`git tag -a vX.Y.Z`），并推送 `master` + 标签（以及 `dev`）。
+7. 发布 —— 推送标签之后由**人**执行的一步：`.github/workflows/publish.yml` 会把本次发布在 npm 上
+   STAGE（`npm pack` 后执行 `npm stage publish --access public --tag latest`），此时一切尚未公开；
+   `npm stage approve <stage-id>` 才真正发布并移动 `latest`。stage id 来自该次运行自己的
+   `npm stage list` 输出，批准则是对该工作流的**第二次** `workflow_dispatch` 并携带 `stage_id` ——
+   运行的 OIDC token 能 stage 却不能 approve（2FA 存在性证明）。请按版本升序批准，然后在宣布之前
+   确认 registry 确实在提供该版本。
 
 ## 7. Git 模型
 

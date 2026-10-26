@@ -1,10 +1,11 @@
 name: publish
 
-# WHY THIS FILE EXISTS — npm LAGGED BEHIND GITHUB, SO TWO RELEASES ARE OWED.
-# `@mpd-dsh/mpd` is public on registry.npmjs.org at 0.12.0 ONLY, while GitHub shipped v0.13.0 and
-# v0.13.1 (master c6b86e03, annotated tags, Release pages). The registry is therefore behind the
-# repository, and `dsh plugin --profile web add @mpd-dsh/mpd` still resolves the old version. This
-# workflow is the ONE path that closes that gap, and the path every later release uses too.
+# WHY THIS FILE EXISTS — npm LAGGED BEHIND GITHUB WHEN THIS WORKFLOW WAS WRITTEN, SO TWO RELEASES WERE
+# OWED. At that time `@mpd-dsh/mpd` was public on registry.npmjs.org at 0.12.0 ONLY, while GitHub had
+# shipped v0.13.0 and v0.13.1 (master c6b86e03, annotated tags, Release pages): the registry was behind
+# the repository, and `dsh plugin --profile web add @mpd-dsh/mpd` still resolved the old version. This
+# workflow is the ONE path that closed that gap, and the path every later release uses too — the
+# workflow is how it gets there.
 #
 # TRUSTED PUBLISHER = OIDC, SO THERE IS NOTHING TO ROTATE. The npm credential in the local `~/.npmrc`
 # is DEAD (401 against this package), and storing a fresh `NPM_TOKEN` here would only create the next

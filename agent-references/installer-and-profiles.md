@@ -86,3 +86,34 @@ Docker lane hold this line.
   toolchain if missing. Superseded by the packed bundle for user installs.
 - Never run the installer against the real home from a QA context; that is what `--dsh-home` is for.
 
+## Publishing to npm (the staged lane)
+
+The publish path is `.github/workflows/publish.yml` and NOTHING else — never a local `npm publish`. Two
+modes, chosen only by the workflow's `stage_id` input:
+
+- **STAGE** — `on: push: tags: ["v*"]`, or a `workflow_dispatch` with `stage_id` empty. The job asserts
+  `v<package.json version> == the tag` BEFORE anything is packed or staged, runs `npm pack
+  --pack-destination /tmp/npm-pack`, then `npm stage publish --access public --tag <dist_tag>` (`latest`
+  on a tag push). What lands is a tarball that is NOT public: no installable version, no `latest` move.
+- **APPROVE** — a SECOND `workflow_dispatch` of the same workflow with the SAME `tag` and `stage_id`
+  filled in, which runs `npm stage approve <stage_id>`: that call is what makes the version public and
+  applies the dist-tag it was staged with.
+
+Why approval is a human dispatch and cannot be a CI step: `npm stage approve` carries the 2FA
+proof-of-presence, and a trusted publisher's short-lived OIDC token may drive `npm stage publish` /
+`npm publish` only — `npm stage` subcommands are refused to it. So the run that stages a release can
+never be the run that approves it.
+
+Getting the stage id: the staging run prints it (`npm stage list` shows the pending stages and their
+ids). Approve in ASCENDING VERSION ORDER — a staged release carries the dist-tag it was staged with, so
+approving an older version after a newer one moves `latest` BACKWARD; for a backfill, stage the older
+version with a non-`latest` `dist_tag` (e.g. `latest-1`). After approving, verify the registry actually
+serves the version (`npm view @mpd-dsh/mpd version`, and a fresh `dsh plugin --profile web add
+@mpd-dsh/mpd`) before announcing: approval is not the same fact as propagation.
+
+The local check an author runs is `npm pack --dry-run` (the whole tarball, nothing written, nothing
+uploaded), and `node scripts/verify-plugin-manifest.ts --pack` asserts the packlist from the other
+side. The package is bound to a TRUSTED PUBLISHER whose workflow path is exactly
+`.github/workflows/publish.yml`, so a hand-run `npm publish` has no valid credential anyway — a local
+`~/.npmrc` token is 401 and no `NPM_TOKEN` is stored.
+
