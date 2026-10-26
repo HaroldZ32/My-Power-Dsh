@@ -108,28 +108,30 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing comes from the four slots, by member identity.** The native team executor resolves a
-staged member's `teamModels.slot*` route by identity precedence — the member's `role` first, then
+**Model routing comes from each member's OWN `agentRoutes` entry, by member identity.** The native team
+executor resolves a staged member's route by identity precedence — the member's `role` first, then
 the head of its `description`, then its whole `name` (`agent_teams_plan` forwards `role`, and the
 descriptor label still carries the description; `docs/plan-0.1.7-adaptation.md` §3). The TEAM path
-never refuses: a member whose identity matches nothing, a member whose slot is unconfigured or
-invalid, and a composition without `mpdConfig` all INHERIT the staging session's model route (the
-captain's in a top-level spawn, the Lead's in a team-lead spawn), with exactly ONE log line and
-never a throw — `approve` is a batch raise of N members in a loop, so a slot must never leave a team
-half-built. Prompt text cannot change a route. On the official-executor fallback,
-`mpd-roster-provider-plugin` applies — or refuses with `SLOT_UNCONFIGURED` before it starts — the same
-slot from the description label, on its OWN path (`packages/mpd-roster-provider-plugin/README.md`).
-The same four slots also apply to the single-call appliers `mpd_role_spawn` / `mpd_workmate_spawn`,
-which pass explicit `agentOptions`; the roster section says exactly that. On the native team path
-(`approve`) the slot never refuses; ONLY those single-call appliers refuse: a slot is the ONLY route
-source (contract `.mpd/plans/slot-single-source.md`), `agentRoutes` is deleted,
-and an unconfigured or malformed slot refuses there with the structured `SLOT_UNCONFIGURED` failure
-the config row builds — naming the slot, its members, the missing leaves and both recovery paths —
-so no child is ever started on an invented route. The slot's own `fallbacks` chain is
+never refuses: a member whose identity matches nothing, a member with no usable route, and a
+composition without `mpdConfig` all INHERIT the staging session's model route (the captain's in a
+top-level spawn, the Lead's in a team-lead spawn), with exactly ONE log line and never a throw —
+`approve` is a batch raise of N members in a loop, so a route must never leave a team half-built.
+Prompt text cannot change a route. On the official-executor fallback,
+`mpd-roster-provider-plugin` applies — or refuses with `AGENT_UNCONFIGURED` before it starts — the same
+per-agent route from the description label, on its OWN path
+(`packages/mpd-roster-provider-plugin/README.md`).
+The same `agentRoutes` entries also apply to the single-call appliers `mpd_role_spawn` /
+`mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that. On the
+native team path (`approve`) the route never refuses; ONLY those single-call appliers refuse, and only
+for a BASE roster member: there is no persisted slot (the four groups are only the `/mpd-model`
+bulk-edit shortcut), and an unconfigured or malformed route refuses with the structured
+`AGENT_UNCONFIGURED` failure the config row builds — naming the agent, the missing leaves and both
+recovery paths — so no child is ever started on an invented route. An EXTENSION-contributed role is
+`unrouted` instead and still spawns on its own declared chain. The agent's own `fallbacks` chain is
 consumed once before the spawn (the first catalog-POSITIVE candidate wins), and the winning route's
 effort is passed through the adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a model
 declaring NO reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword
-the provider cannot accept — while a model that declares efforts keeps the slot's keyword.
+the provider cannot accept — while a model that declares efforts keeps the configured keyword.
 
 ### A read-only teammate is denied mechanically
 

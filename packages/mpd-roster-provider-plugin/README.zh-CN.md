@@ -3,12 +3,12 @@
 [English](./README.md) | **简体中文**
 
 为**官方 Agent Teams 回退路径**提供逐成员模型路由。本行是**历史**接线：在**默认**组合里它**不路由
-任何东西**，因为原生 `TeamExecutor` 自己解析团队成员的槽位，而抵达本包 provider 的官方
-`spawn_teammate` **工具**已在工具边界被**拒绝**。默认规则是：成员的 `teamModels` 槽位按身份优先级
-`role` → `description` 的头部 → 整个 `name` 解析；匹配不到的成员、或槽位未配置的成员，会**继承暂存
-它的会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、绝不抛错。
-本包仍是“运行官方执行器、且其**行**直接经团队服务升起队友”的组合里那条受限回退：在那里官方
-`TeamService` 只转发 `{ prompt, parent }`，所以它在队友的描述符 label 点名某位成员时施加该成员的槽位路由。
+任何东西**，因为原生 `TeamExecutor` 自己解析团队成员**自己的** `agentRoutes` 条目，而抵达本包 provider
+的官方 `spawn_teammate` **工具**已在工具边界被**拒绝**。默认规则是：成员**自己的** `agentRoutes` 条目按
+身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的成员、或没有可用路由的成员，会
+**继承暂存它的会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、绝不
+抛错。本包仍是“运行官方执行器、且其**行**直接经团队服务升起队友”的组合里那条受限回退：在那里官方
+`TeamService` 只转发 `{ prompt, parent }`，所以它在队友的描述符 label 点名某位成员时施加该成员的路由。
 
 **边界。** 五个官方**创作类**动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、
 `team_task_get`、`team_task_update` —— 在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板（入口是
@@ -16,11 +16,13 @@
 **行**直接调用团队**服务**所升起的队友（官方执行器回退路径）：那不是工具调用，**不受**这道门约束 ——
 而**默认**（原生执行器）组合根本不会走这条路径。
 
-槽位是**唯一**的路由来源（契约 `.mpd/plans/slot-single-source.md` §6）：`agentRoutes` 已删除；在**这条
-路径上**，槽位未配置或格式错误时，会用结构化的 `SLOT_UNCONFIGURED` 失败**拒绝** spawn —— 在 `base.start`
-之前抛出，因此本组合自己的 provider 根本不会被触达、也不会启动任何子会话；槽位自己的 `fallbacks` 链在
-应用路由前只消费一次（目录正面列出的第一条胜出）。label 没有点名任何名册成员的队友按原样透传（继承）。
-**默认**的原生执行器不抛错：它会继承暂存会话的路由，只记一行日志。
+agent 路由是**唯一**的路由来源（契约 `.mpd/plans/agent-routes-per-agent.md`）：不存在持久化的槽位，四个
+分组只是 `/mpd-model` 的批量编辑快捷方式，会写入每个成员自己的条目。在**这条路径上**，名册成员的路由
+未配置或格式错误时，会用结构化的 `AGENT_UNCONFIGURED` 失败**拒绝** spawn —— 在 `base.start` 之前抛出，
+因此本组合自己的 provider 根本不会被触达、也不会启动任何子会话；该 agent 自己的 `fallbacks` 链在应用
+路由前只消费一次（目录正面列出的第一条胜出）。label 没有点名任何名册成员的队友按原样透传（继承），而
+由扩展贡献的 role 属于 `unrouted` —— 它保留自己的链并照常 spawn。**默认**的原生执行器不抛错：它会继承
+暂存会话的路由，只记一行日志。
 
 ## 原理
 

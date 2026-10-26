@@ -4,14 +4,14 @@
 
 Per-member model routing for the **official Agent Teams fallback path**. This row is HISTORICAL wiring:
 in a DEFAULT composition it routes **nothing**, because the native `TeamExecutor` resolves team members'
-slots itself and the official `spawn_teammate` TOOL that reaches this package's provider is REFUSED at
-the tool boundary. The default rule: a member's `teamModels` slot is resolved by identity precedence
-`role` → the head of `description` → the whole `name`; an UNMATCHED member, or one whose slot is
-unconfigured, INHERITS the staging session's route (the captain's in a top-level spawn, the Lead's in a
-team-lead spawn) with one log line and no throw. This package remains the contained fallback for a
-composition that runs the official executor and whose ROW raises teammates through the team service:
-there the official `TeamService` forwards only `{ prompt, parent }`, so it applies a member's slot when
-the teammate's descriptor label names that member.
+own `agentRoutes` entries itself and the official `spawn_teammate` TOOL that reaches this package's
+provider is REFUSED at the tool boundary. The default rule: a member's OWN `agentRoutes` entry is
+resolved by identity precedence `role` → the head of `description` → the whole `name`; an UNMATCHED
+member, or one with no usable route, INHERITS the staging session's route (the captain's in a top-level
+spawn, the Lead's in a team-lead spawn) with one log line and no throw. This package remains the
+contained fallback for a composition that runs the official executor and whose ROW raises teammates
+through the team service: there the official `TeamService` forwards only `{ prompt, parent }`, so it
+applies a member's route when the teammate's descriptor label names that member.
 
 **Bound.** The five official AUTHORING verbs — `spawn_teammate`, `team_task_create`,
 `team_task_list`, `team_task_get`, `team_task_update` — are REFUSED at the tool boundary, and the mpd
@@ -20,13 +20,15 @@ RECORD is the only board (the door is `agent_teams_plan`, driven by `agent_teams
 SERVICE directly (the official-executor fallback): that is not a tool call and is NOT gated — and a
 DEFAULT (native-executor) composition never takes this path at all.
 
-The slot is the ONLY route source (`contract .mpd/plans/slot-single-source.md` §6): `agentRoutes` is
-deleted; on THIS path, a slot-routed member whose slot is unconfigured or malformed REFUSES the spawn
-with the structured `SLOT_UNCONFIGURED` failure — thrown before `base.start`, so the composition's own
-provider is never reached and no child is started — and the slot's own `fallbacks` chain is consumed
-once (catalog-positive first win) before the route is applied. A teammate whose label names no roster
-member is forwarded by identity (inheritance). The DEFAULT native executor does not throw: it INHERITS
-the staging session's route with one log line and no throw.
+The agent route is the ONLY route source (contract `.mpd/plans/agent-routes-per-agent.md`): there is no
+persisted slot, and the four groups are only the `/mpd-model` bulk-edit shortcut that writes every
+member's own entry. On THIS path, a roster member whose route is unconfigured or malformed REFUSES the
+spawn with the structured `AGENT_UNCONFIGURED` failure — thrown before `base.start`, so the
+composition's own provider is never reached and no child is started — and the agent's own `fallbacks`
+chain is consumed once (catalog-positive first win) before the route is applied. A teammate whose label
+names no roster member is forwarded by identity (inheritance), and a role contributed by an EXTENSION is
+`unrouted` — it keeps its own chain and still spawns. The DEFAULT native executor does not throw: it
+INHERITS the staging session's route with one log line and no throw.
 
 ## How it works
 

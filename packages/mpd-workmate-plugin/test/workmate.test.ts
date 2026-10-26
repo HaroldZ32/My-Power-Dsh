@@ -195,18 +195,21 @@ test("init → list → reflect → match lifecycle with a sandbox HOME", async 
 
 // ── C1/C2/C3: the omo alias is gone from the workmate place ─────────────────────────────────────
 
-// AC4 of the model-config-live-refresh wave, re-aimed by the slot-single-source contract: a
-// `mpd_workmate_spawn` re-resolves its route PER SPAWN from the SLOT, so a change saved between two
-// spawns is what the SECOND spawn runs on — the frozen `meta.provider/model` are provenance only
-// (contract `.mpd/plans/slot-single-source.md` §5), and an unusable slot REFUSES the spawn (§7).
+// AC4 of the model-config-live-refresh wave, re-aimed by the per-agent routes contract: a
+// `mpd_workmate_spawn` re-resolves its route PER SPAWN from the base agent's OWN `agentRoutes` entry,
+// so a change saved between two spawns is what the SECOND spawn runs on — the frozen
+// `meta.provider/model` are provenance only (contract `.mpd/plans/agent-routes-per-agent.md` §4), and
+// an unusable route REFUSES the spawn (§3).
 describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
   test("a config change between two spawns carries to the second, and meta stays provenance", async () => {
     /** The sandbox home the library lands under, never the real home. */
     sandboxHome()
     /** The route the live config serves, FLIPPED between the two spawns below. */
     let liveRoute: { provider: string; model: string; reasoningEffort?: string } = { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }
-    /** The config-service double: the precedence read the spawn path consumes, per call. */
-    const mpdConfig = { teamModelRouteOf: (member: string) => (member === "Deep Worker" ? { ...liveRoute } : undefined) }
+    /** The config-service double: the ONE total read the spawn path consumes, answered per call. */
+    const mpdConfig = {
+      agentRouteResolutionOf: (member: string) => (member === "Deep Worker" ? { ok: true, agent: member, route: { ...liveRoute } } : { ok: false, reason: "unrouted" }),
+    }
     /** Every tool descriptor the plugin registered, in registration order. */
     const tools: any[] = []
     /** The options of every spawn the case started, asserted per spawn below. */
@@ -241,7 +244,7 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     expect(spawned[0].agentOptions.provider).toBe("deepseek-official")
     expect(spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
     expect(spawned[0].agentOptions.reasoningEffort).toBe("high")
-    // The in-process config change — a `teamModels` save the config row picked up live. No
+    // The in-process config change — an `agentRoutes` save the config row picked up live. No
     // re-init, no restart: the NEXT spawn must carry the new route.
     liveRoute = { provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" }
     await byName("mpd_workmate_spawn").execute({ name: "route-probe", task: "second" }, exec)
@@ -255,23 +258,68 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     expect(meta.model).toBe("deepseek-v4-flash")
   })
 
-  test("an UNCONFIGURED slot REFUSES the spawn — the frozen meta is never a route (§5)", async () => {
+  test("TWO agents with DIFFERENT routes spawn independently — no cross-talk (§9)", async () => {
+    /** The sandbox home the library lands under, never the real home. */
+    sandboxHome()
+    /** One route per base agent: different provider AND model, so a shared read would show. */
+    const routes: Record<string, { provider: string; model: string }> = {
+      "Deep Worker": { provider: "company-api", model: "deepseek-flash" },
+      Researcher: { provider: "local-gateway", model: "deepseek-pro" },
+    }
+    /** The config-service double: each base's OWN entry, read per spawn. */
+    const mpdConfig = {
+      agentRouteResolutionOf: (member: string) => (routes[member] === undefined ? { ok: false, reason: "unrouted" } : { ok: true, agent: member, route: { ...routes[member] } }),
+    }
+    /** Every tool descriptor the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The options of every spawn, asserted per agent below. */
+    const spawned: any[] = []
+    /** The fake context: the roster double, the per-agent route service and a spawn sink. */
+    const ctx: any = {
+      get: (k: string) => (k === "mpdRoles" ? makeRoles() : k === "mpdConfig" ? mpdConfig : undefined),
+      tools: {
+        /** Records a tool registration instead of validating it — no harness sits behind this fake context. */
+        register(d: any): void { tools.push(d) }
+      },
+      subagents: {
+        /** Records the spawn options and answers a minimal structured report. */
+        start: async (_kind: string, opts: any) => {
+          spawned.push(opts)
+          return { result: { structured: { name: "alice", summary: "done" }, stopReason: "complete" } }
+        }
+      },
+      provide: () => { /* this case reads the tools, not the service */ }
+    }
+    apply(ctx)
+    /** Looks one registered tool up by its registered name. */
+    const byName = (n: string): any => tools.find((t) => t.name === n)
+    /** The minimal execution context the tools read. */
+    const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
+    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "route-a" }, exec)
+    await byName("mpd_workmate_init").execute({ base: "Researcher", name: "route-b" }, exec)
+    await byName("mpd_workmate_spawn").execute({ name: "route-a", task: "go a" }, exec)
+    await byName("mpd_workmate_spawn").execute({ name: "route-b", task: "go b" }, exec)
+    expect(spawned.length).toBe(2)
+    expect(spawned[0].agentOptions?.provider).toBe("company-api")
+    expect(spawned[0].agentOptions?.model).toBe("deepseek-flash")
+    expect(spawned[1].agentOptions?.provider).toBe("local-gateway")
+    expect(spawned[1].agentOptions?.model).toBe("deepseek-pro")
+  })
+
+  test("an UNCONFIGURED route REFUSES the spawn — the frozen meta is never a route (§3)", async () => {
     /** The sandbox home the library lands under, never the real home. */
     sandboxHome()
     /** Every tool descriptor the plugin registered, in registration order. */
     const tools: any[] = []
     /** The options of every spawn the case starts; the refusal must leave this EMPTY. */
     const spawned: any[] = []
-    /** A config double whose TOTAL resolution says the slot is unconfigured. */
+    /** A config double whose TOTAL resolution says Deep Worker's route is unconfigured. */
     const mpdConfig = {
-      slotResolutionOf: () => ({
+      agentRouteResolutionOf: (member: string) => ({
         ok: false,
-        status: "unconfigured",
-        slot: "slot3",
-        members: ["Deep Worker", "Junior Engineer"],
-        missing: ["provider", "model"],
-        code: "SLOT_UNCONFIGURED",
-        message: "SLOT_UNCONFIGURED: slot3 (Deep Worker, Junior Engineer) is not usable — missing teamModels.slot3.provider, teamModels.slot3.model; nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.slot3 in .mpd/mpd.jsonc.",
+        reason: "unconfigured",
+        agent: member,
+        missing: ["agentRoutes." + member + ".provider", "agentRoutes." + member + ".model"],
       }),
     }
     /** The fake cordis context: the roster double, the unconfigured config service and a spawn sink. */
@@ -295,15 +343,16 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     const byName = (n: string): any => tools.find((t) => t.name === n)
     /** The minimal execution context the tools read. */
     const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
-    // Init succeeds even with no slot: the library is provenance, and a route is a SPAWN-time read.
+    // Init succeeds even with no route: the library is provenance, and a route is a SPAWN-time read.
     await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "unconfigured-probe" }, exec)
     // The spawn REFUSES with the canonical sentence (and the branchable code).
     /** The refusal captured instead of thrown, so its message and code can be inspected. */
     const refusal = await byName("mpd_workmate_spawn").execute({ name: "unconfigured-probe", task: "go" }, exec).then(() => null, (e: any) => e)
     expect(refusal).not.toBeNull()
-    expect(String(refusal.message)).toContain("SLOT_UNCONFIGURED")
-    expect(String(refusal.message)).toContain("teamModels.slot3")
-    expect(refusal.code).toBe("SLOT_UNCONFIGURED")
+    expect(String(refusal.message)).toContain("AGENT_UNCONFIGURED")
+    expect(String(refusal.message)).toContain("agentRoutes.Deep Worker.provider")
+    expect(String(refusal.message)).toContain("agentRoutes.Deep Worker.model")
+    expect(refusal.code).toBe("AGENT_UNCONFIGURED")
     // NOTHING ran, and the provenance values on disk were never substituted for a route.
     expect(spawned).toEqual([])
   })

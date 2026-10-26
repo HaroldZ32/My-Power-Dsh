@@ -131,12 +131,15 @@ change was needed for the seam surface**. §11.6 records what 0.14.0 does change
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same knobs the shared schema declares — the original 13, the twelve `teamModels` slot leaves
-(rendered as dependent model + effort pickers) and the TUI surface's own switch — are editable in the
-Web GUI. The thirty-three `agentRoutes` leaves are **gone** with the per-member override layer
-(`.mpd/plans/slot-single-source.md` §3): neither the Web card nor the `/mpd-model` dialog shows a member
-override table any more, a leftover block in an existing `.mpd/mpd.jsonc` is ignored and never rewritten,
-and `/mpd-model` asks slot → provider → model → reasoning effort only, writing `teamModels.<slot>`.
+The same knobs the shared schema declares — the original 13, the thirty-three `agentRoutes` leaves (one
+row of provider/model/effort per roster agent, rendered as dependent pickers) and the TUI surface's own
+switch — are editable in the Web GUI. The per-AGENT route is the unit of model configuration and **there
+is no persisted slot**: the four groups are only the `/mpd-model` bulk-edit grouping, so both front doors
+show ONE row per agent under the four group headings (grouping is display-only), a group write
+overwrites each member's own entry after a confirmation panel that names the affected agents and their
+current routes, `/mpd-model` asks group → scope (the whole group, or one agent) → provider → model →
+reasoning effort, writes `agentRoutes.<Agent>.<leaf>`, and offers a clear branch for one agent. The
+legacy `teamModels` block is migrated once and then ignored and never rewritten.
 
 **Settings → MPD** is its own top-level section of the settings dialog — it no longer lives inside the
 Plugins tab. The section registers the way the
@@ -165,7 +168,7 @@ authenticated settings API (`web-settings-bridge.ts` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the schema's knobs (the team-model slots offer catalog-derived selections), change
+`mpd` section with the schema's knobs (each agent's route leaves offer catalog-derived selections), change
 one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
@@ -741,8 +744,9 @@ SHA-256 digest proves byte identity only — never publisher identity.
 ### 6.2 The `/settings` section IS bridged — an entry save is host-persisted with NO workspace write; the legacy namespace write-back is named and dormant here
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
-`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the twelve
-`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` leaves) as this row's config, through the
+`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the thirty-three
+`agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves, three per roster agent) as this row's
+config, through the
 harness's own form for the config ENTRY `mpd-config` (`packages/mpd-config-plugin` owns the entry; this
 package is a pure consumer and registers only a guarded fallback when no config plugin is composed).
 **TWO persistence paths exist, and only the dormant one writes your file:**
@@ -778,7 +782,7 @@ registration, and its own settings installers keep their base fixed the same way
 **not** make every saved knob wait for a restart, and the no-restart wording must not be read as
 blanket: the config service is live (it re-resolves on every settings save and on a watched edit of
 the project file), and each knob's answer depends on WHERE its consumer reads it. Read from the live
-service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `team.stateDir`,
+service per use — LIVE, no restart: `agentRoutes.*`, `modelchain.*`, `team.stateDir`,
 `team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `watchdog.*` is live too,
 but from the ROW's own read of `<workspace>/.mpd/mpd.jsonc` (it does not read the `mpd-config` entry, so
 a FORM save does not reach it — user-guide §9.1); `tui.dashboardKey` is

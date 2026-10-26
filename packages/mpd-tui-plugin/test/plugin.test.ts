@@ -23,7 +23,7 @@ import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 // constructors are untyped here; the arms below use only their runtime identity.
 // The vendored module now resolves to its .ts source, so this surface is typed from that file.
 import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index.ts"
-import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
+import { ROSTER_AGENT_NAMES, SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { PANEL_ICON } from "../src/panel"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
@@ -518,8 +518,8 @@ describe("full composition (every service injected)", () => {
     expect(outcomeOf(report, "tuiRenderers").state).toBe("requested")
 
     // tuiSettingsSections: the mpd.jsonc section, with the on-screen disclosure. The section
-    // registers one microtask behind apply: the twelve team-model slot knobs take their option
-    // lists from the live model catalog the adapter reports, and the host DEEP-FREEZES the
+    // registers one microtask behind apply: the thirty-three per-agent route leaves take their
+    // option lists from the live model catalog the adapter reports, and the host DEEP-FREEZES the
     // options at register time (it renders `select` by cycling that frozen list).
     await settle()
     expect(calls.sections).toHaveLength(1)
@@ -527,8 +527,8 @@ describe("full composition (every service injected)", () => {
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
     // THE COUNT COMES FROM THE SHARED DECLARATION, never from a literal here: the section's fields
-    // ARE `SETTINGS_KNOBS` (the original mpd knobs, the twelve team-model slot leaves and the TUI
-    // surface's own `tui.dashboardKey`, rendered through the SAME `declaredField` path). A hard-coded
+    // ARE `SETTINGS_KNOBS` (the original mpd knobs, the thirty-three per-agent route leaves and the
+    // TUI surface's own `tui.dashboardKey`, rendered through the SAME `declaredField` path). A hard-coded
     // count is what made this arm redden on an unrelated schema change — the per-field assertions
     // below are the other half of the no-drift pair and they say WHICH row drifted.
     expect(calls.sections[0].fields).toHaveLength(SETTINGS_KNOBS.length)
@@ -541,11 +541,12 @@ describe("full composition (every service injected)", () => {
     // ...and the surface states BOTH halves once, where a reader meets them before any row.
     expect(String(calls.sections[0].descriptions?.en)).toContain(BRIDGE_DISCLOSURE)
     expect(String(calls.sections[0].descriptions?.en)).toContain(BRIDGE_NOT_LOST)
-    // This double composes no `llm`, so every slot knob is on the DECLARED fallback branch —
-    // and none of them may ever carry an empty option list (a slot must never need typing).
-    const slotFields = calls.sections[0].fields.filter((field: any) => field.path[0] === "teamModels")
-    expect(slotFields).toHaveLength(12)
-    for (const field of slotFields) {
+    // This double composes no `llm`, so every per-agent route leaf is on the DECLARED fallback
+    // branch — and none of them may ever carry an empty option list (an agent must never need typing).
+    /** The thirty-three per-agent route rows: three leaves for each of the eleven agents. */
+    const routeFields = calls.sections[0].fields.filter((field: any) => field.path[0] === "agentRoutes")
+    expect(routeFields).toHaveLength(3 * ROSTER_AGENT_NAMES.length)
+    for (const field of routeFields) {
       expect(field.kind).toBe("select")
       expect(field.options.length).toBeGreaterThan(0)
       // The declared lists are a readonly literal object, so a runtime-resolved leaf needs a
@@ -678,7 +679,7 @@ async function applyWithAdapter(llmCatalog: () => Promise<unknown>): Promise<{ c
   return { calls, host }
 }
 
-describe("A4: the twelve team-model slot knobs select from the live catalog", () => {
+describe("A4: the thirty-three per-agent route knobs select from the live catalog", () => {
   /** Finds one registered field by its dotted path, failing loudly when it is absent. */
   const fieldAt = (section: any, path: string): any => {
     /** That field, or undefined when the section carries none. */
@@ -686,31 +687,31 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     if (found === undefined) throw new Error(`no field at ${path}`)
     return found
   }
-  /** The twelve team-model slot fields of a registered section. */
-  const slotFields = (section: any): any[] => section.fields.filter((field: any) => field.path[0] === "teamModels")
+  /** The thirty-three per-agent route fields of a registered section. */
+  const routeFields = (section: any): any[] => section.fields.filter((field: any) => field.path[0] === "agentRoutes")
 
   test("derives provider / model / effort options from a two-provider catalog", async () => {
     /** The call log and the host, after the catalog read settled. */
     const { calls, host } = await applyWithAdapter(async () => TWO_PROVIDER_CATALOG)
     /** The one registered section. */
     const section = calls.sections[0]
-    expect(fieldAt(section, "teamModels.slot1.provider").options).toEqual([
+    expect(fieldAt(section, "agentRoutes.Architect.provider").options).toEqual([
       { value: "deepseek-official", label: "DeepSeek Official" },
       { value: "pi-ai", label: "pi-ai" },
     ])
     // the UNION of the catalog's model ids, in catalog order, first label per id
-    expect(fieldAt(section, "teamModels.slot2.model").options).toEqual([
+    expect(fieldAt(section, "agentRoutes.Researcher.model").options).toEqual([
       { value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
       { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
     ])
     // the UNION of every model's effort ids (deduped: `high` is declared twice)
-    expect(fieldAt(section, "teamModels.slot3.reasoningEffort").options).toEqual([
+    expect(fieldAt(section, "agentRoutes.Deep Worker.reasoningEffort").options).toEqual([
       { value: "max", label: "Max" },
       { value: "high", label: "High" },
     ])
-    // all twelve: `select` with a NON-EMPTY list — no slot is ever a text input
-    expect(slotFields(section)).toHaveLength(12)
-    for (const field of slotFields(section)) {
+    // all thirty-three: `select` with a NON-EMPTY list — no agent leaf is ever a text input
+    expect(routeFields(section)).toHaveLength(3 * ROSTER_AGENT_NAMES.length)
+    for (const field of routeFields(section)) {
       expect(field.kind).toBe("select")
       expect(field.options.length).toBeGreaterThan(0)
     }
@@ -718,23 +719,23 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     expect(section.fields.slice(0, 13).map((field: any) => [field.path.join("."), field.kind, field.label]))
       .toEqual(SETTINGS_FIELDS.slice(0, 13).map((field) => [field.path.join("."), field.kind, field.label]))
     // the branch is RECORDED (A4's measurement requirement: non-empty alone is not enough)
-    const line = host.infos.find((entry) => entry.includes("slot options: provider=")) ?? ""
+    const line = host.infos.find((entry) => entry.includes("route options: provider=")) ?? ""
     expect(line).toContain("provider=live(2)")
     expect(line).toContain("model=live(2)")
     expect(line).toContain("reasoningEffort=live(2)")
     expect(line).toContain("catalog=live")
   })
 
-  test("the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh", async () => {
+  test("the Vision Analyst's three rows register as selects with non-empty options and the declared labels/zh", async () => {
     /** The call log, after the catalog read settled. */
     const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
     /** The one registered section. */
     const section = calls.sections[0]
-    /** The three slot-4 rows, i.e. the vision member's route. */
-    const vision = section.fields.filter((field: any) => field.path[0] === "teamModels" && field.path[1] === "slot4")
+    /** The Vision Analyst's three rows, i.e. the vision member's own route. */
+    const vision = section.fields.filter((field: any) => field.path[0] === "agentRoutes" && field.path[1] === "Vision Analyst")
     expect(vision).toHaveLength(3)
     /** The three shared declarations those rows must mirror. */
-    const declared = SETTINGS_KNOBS.filter((knob) => knob.path[1] === "slot4")
+    const declared = SETTINGS_KNOBS.filter((knob) => knob.path[1] === "Vision Analyst")
     for (const [index, field] of vision.entries()) {
       // element-wise against the ONE declaration — the front doors cannot drift
       expect([...(field.path as string[])]).toEqual([...declared[index].path])
@@ -744,11 +745,12 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
       expect(field.descriptions?.zh).toBe(declared[index].zh)
       expect(String(field.hint).startsWith(String(declared[index].semantics))).toBe(true)
     }
+    // The row label names the AGENT, then the leaf, then the display group (grouping is display-only).
     expect(vision.map((field: any) => field.label)).toEqual([
-      "Slot 4 provider (vision member)", "Slot 4 model (vision member)", "Slot 4 reasoning effort (vision member)",
+      "Vision Analyst provider (vision member)", "Vision Analyst model (vision member)", "Vision Analyst reasoning effort (vision member)",
     ])
     expect(vision.map((field: any) => field.descriptions?.zh)).toEqual([
-      "槽位 4 提供商（视觉成员）", "槽位 4 模型（视觉成员）", "槽位 4 推理强度（视觉成员）",
+      "Vision Analyst 提供商（视觉成员）", "Vision Analyst 模型（视觉成员）", "Vision Analyst 推理强度（视觉成员）",
     ])
   })
 
@@ -757,12 +759,12 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     const { calls, host } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
     /** The one registered section. */
     const section = calls.sections[0]
-    for (const field of slotFields(section)) {
+    for (const field of routeFields(section)) {
       expect(field.kind).toBe("select")
       expect(field.options).toEqual((TEAM_MODEL_FALLBACK_OPTIONS as Record<string, readonly string[]>)[field.path[2]].map((value) => ({ value, label: value })))
     }
     /** The A4 branch line logged for this registration. */
-    const line = host.infos.find((entry) => entry.includes("slot options: provider=")) ?? ""
+    const line = host.infos.find((entry) => entry.includes("route options: provider=")) ?? ""
     expect(line).toContain("provider=declared(1)")
     expect(line).toContain("model=declared(4)")
     expect(line).toContain("reasoningEffort=declared(4)")
@@ -778,7 +780,7 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     mod.apply(host.ctx as never, { statusIntervalMs: 0 })
     await settle()
     expect(calls.sections).toHaveLength(1)
-    expect(fieldAt(calls.sections[0], "teamModels.slot1.provider").options)
+    expect(fieldAt(calls.sections[0], "agentRoutes.Architect.provider").options)
       .toEqual(TEAM_MODEL_FALLBACK_OPTIONS.provider.map((value) => ({ value, label: value })))
   })
 
@@ -799,9 +801,9 @@ describe("A4: the twelve team-model slot knobs select from the live catalog", ()
     host.ctx.get = (name: string) => (name === "mpdDsh" ? adapter : undefined)
     mod.apply(host.ctx as never, { statusIntervalMs: 0 })
     await settle()
-    expect(fieldAt(calls.sections[0], "teamModels.slot1.model").options)
+    expect(fieldAt(calls.sections[0], "agentRoutes.Architect.model").options)
       .toEqual([{ value: "deepseek-v4-flash", label: "DeepSeek V4 Flash" }])
-    expect(fieldAt(calls.sections[0], "teamModels.slot1.reasoningEffort").options)
+    expect(fieldAt(calls.sections[0], "agentRoutes.Architect.reasoningEffort").options)
       .toEqual([{ value: "max", label: "Max" }])
   })
 
@@ -1469,20 +1471,28 @@ describe("settings section disclosure (t21)", () => {
     }
   })
 
-  test("every slot hint LEADS with the knob's human sentence, then its key", () => {
-    // The twelve team-model rows are the flat list's only rows with a human sentence: the label
-    // carries the group (`槽位 2 提供商（分析型成员）`), the hint carries what the slot IS and what
-    // configuring it DOES, and only then the mandatory key + disclosure + not-lost clause.
-    const slotFields = SETTINGS_FIELDS.filter((field) => field.path[0] === "teamModels")
-    expect(slotFields).toHaveLength(12)
-    for (const field of slotFields) {
+  test("every per-agent route hint LEADS with the knob's human sentence, then its key", () => {
+    // The thirty-three per-agent route rows are the flat list's only rows with a human sentence: the
+    // label names the AGENT and its display group (`Vision Analyst provider (vision member)`), the hint
+    // states what THAT agent's route is and what changing it does, and only then the mandatory key.
+    // The unit is the AGENT (contract §7), so no hint lists another member's route.
+    const routeFields = SETTINGS_FIELDS.filter((field) => field.path[0] === "agentRoutes")
+    expect(routeFields).toHaveLength(3 * ROSTER_AGENT_NAMES.length)
+    for (const field of routeFields) {
       /** The shared declaration this row must mirror. */
       const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
       expect(knob).toBeDefined()
+      /** The agent this row configures, as the shared declaration spells it. */
+      const agent = String(field.path[1])
+      /** The display group that renders this agent's rows (grouping is display-only). */
+      const slot = TEAM_MODEL_SLOTS.find((candidate) => TEAM_MODEL_SLOT_GROUPS[candidate].members.includes(agent))
+      expect(slot).toBeDefined()
       expect(field.label).toBe(knob!.label)
-      expect(field.label).toContain(String(TEAM_MODEL_SLOT_GROUPS[field.path[1] as "slot1"].en))
+      expect(field.label).toContain(agent)
+      // The label carries the EN group name, the zh label the zh one, so both languages are real.
+      expect(field.label).toContain(String(TEAM_MODEL_SLOT_GROUPS[slot!].en))
       expect(field.descriptions?.zh).toBe(knob?.zh)
-      expect(field.descriptions?.zh).toContain(String(TEAM_MODEL_SLOT_GROUPS[field.path[1] as "slot1"].zh))
+      expect(field.descriptions?.zh).toContain(String(TEAM_MODEL_SLOT_GROUPS[slot!].zh))
       // human sentence FIRST
       expect(field.hint!.startsWith(String(knob?.semantics))).toBe(true)
       // ...then the dotted key — and NOT the surface's disclosure (stated once, above the rows)
@@ -1490,8 +1500,8 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hint).not.toContain(BRIDGE_DISCLOSURE)
       expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
       expect(field.hint!.indexOf(`mpd.jsonc ${field.path.join(".")}`)).toBeGreaterThan(String(knob?.semantics).length - 1)
-      // the sentence names THIS slot's members, in the group's own order
-      expect(field.hint).toContain(teamModelMembers(field.path[1] as "slot1", "en"))
+      // The sentence belongs to THIS agent — it names the agent, never a group's member list.
+      expect(field.hint).toContain(agent)
       // R4, the host's OWN pattern (captain's A2): `hint` is the ENGLISH base and
       // `hintDescriptions` carries the zh translation — never an `en` twin of the base, which the
       // host's `pick(field.hint, field.hintDescriptions)` would only duplicate. The zh half must
@@ -1502,14 +1512,16 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hintDescriptions!.zh).toContain(String(knob?.semanticsZh))
       expect(field.hintDescriptions!.zh).not.toBe(field.hint)
     }
-    expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
-    expect(String(slotFields[3].hint)).not.toContain("Architect")
-    expect(String(slotFields[3].hint)).toContain("Vision Analyst")
+    // A concrete row: the Vision Analyst's provider row states ITS OWN image-input constraint, and
+    // names no other agent — the mirror image of the deleted per-slot member listing.
+    /** The Vision Analyst's provider row. */
+    const vision = routeFields.find((field) => String(field.path[1]) === "Vision Analyst" && field.path[2] === "provider")!
+    expect(String(vision.hint)).toContain("image input")
+    expect(String(vision.hint)).toContain("AGENT_UNCONFIGURED")
+    expect(String(vision.hint)).not.toContain("Architect")
     // the scalar rows carry their key alone (they have no invented copy), and — having no
     // zh sentence to translate — no `hintDescriptions` either: the host falls back to the base.
-    // The agentRoutes rows are NOT in this family: like the slot leaves they carry a declared
-    // human sentence (which member the row overrides and what setting it does).
-    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels" && candidate.path[0] !== "agentRoutes")) {
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "agentRoutes")) {
       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
       expect(field.hintDescriptions).toBeUndefined()
     }
@@ -1527,9 +1539,9 @@ describe("settings section disclosure (t21)", () => {
       expect(field.label.length).toBeGreaterThan(0)
       expect(String(field.hint).length).toBeGreaterThan(0)
     }
-    // The slot knobs' base labels carry the EN group name and their zh labels the zh one, so both
-    // languages are genuinely reachable rather than one being a copy of the other.
-    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] === "teamModels")) {
+    // The per-agent route rows' base labels carry the EN group name and their zh labels the zh one,
+    // so both languages are genuinely reachable rather than one being a copy of the other.
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] === "agentRoutes")) {
       /** The shared declaration this row mirrors. */
       const knob = SETTINGS_KNOBS.find((candidate) => [...candidate.path].join(".") === field.path.join("."))
       expect(field.label).toBe(knob!.label)
@@ -1545,12 +1557,12 @@ describe("settings section disclosure (t21)", () => {
     expect(String(SETTINGS_SECTION.descriptions!.en).startsWith(SETTINGS_SECTION.title)).toBe(true)
   })
 
-  test("R3: the registered section's description carries the EFFECTIVE model config from the mpdConfig service", async () => {
+  test("R3: the registered section's description carries the EFFECTIVE per-agent routes from the mpdConfig service", async () => {
     // The see-before-you-edit half of the TUI surface (AC5): the section's own description — the
-    // one prose surface a TUI section has — states the four effective slot routes and the configured
-    // modelchain chains, read from the LIVE service at section-request time. The per-member
-    // `agentRoutes` half is DELETED with the layer (slot-single-source §3), so the sentence must not
-    // mention it. The disclosure constants ride the same line, ahead of the summary.
+    // one prose surface a TUI section has — states how many AGENTS resolve, which distinct routes they
+    // run on, who does not resolve, and the configured modelchain chains, read from the LIVE service at
+    // section-request time. REVERSED (contract §7): the unit is the agent, so the sentence counts agents
+    // and never names a retired `teamModels.<slot>` route.
     /** The recording services and the call log. */
     const { services, calls } = allServices()
     /** A host double with every service composed. */
@@ -1560,13 +1572,19 @@ describe("settings section disclosure (t21)", () => {
         ? { llmCatalog: async () => TWO_PROVIDER_CATALOG }
         : name === "mpdConfig"
           ? {
-              /** The keyed config reads the summary projects (the raw file-derived leaves). */
+              /** The keyed config reads the summary projects (the raw per-agent route table). */
               get: (key?: string): unknown =>
-                key === "teamModels"
-                  ? { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" } }
+                key === "agentRoutes"
+                  // Reviewer carries RAW leaves the resolver rejects below: the typed read must WIN.
+                  ? { Reviewer: { provider: "raw", model: "raw-model" } }
                   : key === "modelchain"
                     ? { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] }
                     : undefined,
+              /** The typed per-agent answer: Architect and Planner resolve, everyone else does not. */
+              agentRouteResolutionOf: (member: string): unknown =>
+                member === "Architect" || member === "Planner"
+                  ? { ok: true, agent: member, route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, fallbacks: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }
+                  : { ok: false, reason: "unconfigured", agent: member, missing: [`agentRoutes.${member}.provider`, `agentRoutes.${member}.model`] },
             }
           : undefined
     mod.apply(host.ctx as never, { statusIntervalMs: 0 })
@@ -1576,37 +1594,57 @@ describe("settings section disclosure (t21)", () => {
     /** The section's EN description, which carries disclosure plus summary. */
     const en = String(section.descriptions?.en)
     expect(en).toContain(BRIDGE_DISCLOSURE)
-    expect(en).toContain("effective now — slots slot1:deepseek-official/deepseek-v4-flash/max")
+    // TWO of eleven agents resolve, on ONE distinct route; the other nine are named as unconfigured.
+    expect(en).toContain("effective now — agents 2/11 configured")
+    expect(en).toContain("routes deepseek-official / deepseek-v4-flash / max")
+    expect(en).toContain("<unconfigured>")
+    // THE TYPED READ WINS over the raw leaves: Reviewer's raw entry is complete, and still counts as
+    // unconfigured because the service's own union rejected it.
+    expect(en).toContain("Reviewer")
     expect(en).toContain("modelchain: sisyphus→deepseek-official/deepseek-v4-pro (+1)")
-    // The deleted override layer is named NOWHERE on the surface.
-    expect(en).not.toContain("agentRoutes")
+    // The retired slot block is named NOWHERE on the surface, and no slot is counted as a unit.
+    expect(en).not.toContain("teamModels")
+    expect(en).not.toContain("slot1:")
     // The zh half carries the same values under its own words.
     expect(String(section.descriptions?.zh)).toContain("当前生效")
+    expect(String(section.descriptions?.zh)).toContain("代理 2/11 已配置")
     expect(String(section.descriptions?.zh)).toContain("modelchain：sisyphus")
   })
 
-  test("R3: the effective summary shows <unconfigured> from the typed slot answer", () => {
-    // Contract AMENDMENT 1: a slot the service reports unconfigured must read as the literal token,
-    // while a slot it resolves positively shows its route (plus its fallback count). The typed read
-    // WINS over the raw leaves — a slot that is configured in the file but rejected by the resolver is
-    // not a route the user should trust.
-    /** A service whose typed read answers slot1 ok, slot2 unconfigured, slot3 invalid, slot4 absent. */
+  test("R3: the effective summary counts AGENTS from the typed answer, and the raw table only as a fallback", () => {
+    // Contract §7: the unit is the agent. A member the service resolves positively contributes its route;
+    // a member it reports `unconfigured`, `invalid` or `unrouted` contributes NO route and is named as
+    // unconfigured. The typed read WINS over raw leaves on a service that serves both, and the RAW table
+    // is read only for a member the service cannot decide at all (`unavailable`) — the older-composition
+    // fallback.
+    /** A service whose typed read answers Architect ok, Researcher unconfigured, Deep Worker invalid. */
     const service = {
-      get: (key?: string): unknown => (key === "teamModels" ? { slot1: { provider: "raw", model: "raw-model" } } : undefined),
-      slotResolutionOf: (member: string): unknown => {
-        if (member === "Architect") return { ok: true, route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, fallbacks: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }
-        if (member === "Researcher") return { ok: false, status: "unconfigured", missing: ["provider", "model"] }
-        if (member === "Deep Worker") return { ok: false, status: "invalid" }
-        return undefined
+      get: (key?: string): unknown => (key === "agentRoutes" ? { Architect: { provider: "raw", model: "raw-model" }, Explorer: { provider: "raw", model: "raw-model" } } : undefined),
+      agentRouteResolutionOf: (member: string): unknown => {
+        if (member === "Architect") return { ok: true, agent: member, route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, fallbacks: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }
+        if (member === "Researcher") return { ok: false, reason: "unconfigured", agent: member, missing: ["agentRoutes.Researcher.provider", "agentRoutes.Researcher.model"] }
+        if (member === "Deep Worker") return { ok: false, reason: "invalid", agent: member, problem: "agentRoutes.Deep Worker.model" }
+        return { ok: false, reason: "unrouted" }
       },
     }
     /** The summary over that service. */
     const summary = effectiveModelSummary(service)
-    expect(summary.en).toContain("slot1:deepseek-official / deepseek-v4-flash / max")
-    expect(summary.en).toContain("slot2:<unconfigured>")
-    expect(summary.en).toContain("slot3:<invalid>")
-    // The fourth slot answered nothing usable, so the RAW block decides: no provider/model = unconfigured.
-    expect(summary.en).toContain("slot4:<unconfigured>")
+    // The typed route WINS: Architect's raw leaves say `raw / raw-model`, and the sentence shows neither.
+    expect(summary.en).toContain("effective now — agents 2/11 configured")
+    expect(summary.en).toContain("routes deepseek-official / deepseek-v4-flash / max · raw / raw-model")
+    expect(summary.en).not.toContain("raw / raw-model · raw / raw-model")
+    // The members with no usable route are NAMED (bounded to four, then an explicit `+N more`, so the
+    // line stays inside the section description): Planner is the first, and nine agents remain.
+    expect(summary.en).toContain("<unconfigured> Planner")
+    expect(summary.en).toContain("(+5 more)")
+    // `unrouted` members resolve nothing usable, so the raw table supplies Explorer's route (counted
+    // above): the fallback is not a claim that the agent is configured.
+    // No slot vocabulary survives in the sentence.
+    expect(summary.en).not.toContain("slot")
+    /** A service with NO typed read at all: the raw table is the only source, and it still counts. */
+    const rawOnly = effectiveModelSummary({ get: (key?: string): unknown => (key === "agentRoutes" ? { Architect: { provider: "p", model: "m" } } : undefined) })
+    expect(rawOnly.en).toContain("agents 1/11 configured")
+    expect(rawOnly.en).toContain("routes p / m")
   })
 
   test("R3: the effective summary degrades honestly when no config service is composed", () => {
@@ -1617,9 +1655,11 @@ describe("settings section disclosure (t21)", () => {
     expect(absent.zh).toContain("生效值不可用")
     /** A service whose every read throws, answered the same honest way. */
     const broken = effectiveModelSummary({ get: () => { throw new Error("boom") } })
-    expect(broken.en).toContain("slots unreadable")
-    // Deleted with the layer: the summary names no per-member override table.
-    expect(broken.en).not.toContain("agentRoutes")
+    // A THROWING read is its OWN state: not "11/11 configured" (nothing was decided) and not a claim
+    // that every agent is unconfigured either — the sentence says the read failed.
+    expect(broken.en).toContain("agent routes unreadable")
+    expect(broken.zh).toContain("代理路由不可读")
+    expect(broken.en).not.toContain("11/11 configured")
     expect(broken.en).toContain("modelchain: none configured")
   })
 
@@ -1656,7 +1696,10 @@ describe("settings section disclosure (t21)", () => {
     expect(BRIDGE_DISCLOSURE).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
     expect(BRIDGE_DISCLOSURE).toContain("are read per use")
     // The named LIVE groups, so a rewrite that quietly drops one reddens here.
-    for (const live of ["teamModels.slot*", "modelchain.*", "team.stateDir", "team.gate", "captain.investigation", "delegation.gate"]) expect(BRIDGE_DISCLOSURE).toContain(live)
+    // REVERSED (contract §1): the LIVE model knob group is the per-agent `agentRoutes.*` subtree; a
+    // disclosure that still promised `teamModels.slot*` would point the reader at a block nothing reads.
+    for (const live of ["agentRoutes.*", "modelchain.*", "team.stateDir", "team.gate", "captain.investigation", "delegation.gate"]) expect(BRIDGE_DISCLOSURE).toContain(live)
+    expect(BRIDGE_DISCLOSURE).not.toContain("teamModels")
     // `watchdog.*` is NOT a live group (T20-F2): it is a scope-qualified exception, pinned as such.
     expect(BRIDGE_DISCLOSURE).not.toContain("modelchain.*, watchdog.*")
     expect(BRIDGE_DISCLOSURE).toContain("EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer")

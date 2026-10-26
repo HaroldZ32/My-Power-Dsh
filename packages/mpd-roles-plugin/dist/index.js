@@ -836,7 +836,7 @@ function rosterSectionText(members) {
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    'Create one with `agent_teams_plan` {action:"add_member"} (prompt = the persona text from `mpd_role_persona`) → {action:"create_task"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:"approve"}; drive with `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: a `teamModels` slot applies by identity — `role`, then the `description` head, then the whole `name`; the single-call `mpd_role_spawn` applies the role\'s slot directly. An UNMATCHED member inherits YOUR model route (the staging session\'s); prompt text cannot change a route. A read-only member\'s write tools are denied by the roster guard.'
+    'Create one with `agent_teams_plan` {action:"add_member"} (prompt = `mpd_role_persona`\'s text) → {action:"create_task"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:"approve"}; then `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: each agent\'s `agentRoutes` entry applies by identity — `role`, then the `description` head, then the whole `name`; `mpd_role_spawn` applies that entry directly and refuses when it is unusable. An UNMATCHED member inherits YOUR model route (the staging session\'s); prompt text cannot change a route. Read-only members\' write tools are denied by the guard.'
   ].join(`
 `);
 }
@@ -1163,13 +1163,22 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   }
   const winner = index === 0 ? primary : wellFormed[index - 1];
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`);
   }
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
+}
+var AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED";
+function agentUnconfiguredMessage(agent, detail) {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes." + agent + " in .mpd/mpd.jsonc.";
+}
+function agentUnconfiguredRefusal(agent, detail) {
+  const error = new Error(agentUnconfiguredMessage(agent, detail));
+  error.code = AGENT_UNCONFIGURED_CODE;
+  return error;
 }
 function rosterNameHead(label) {
   if (typeof label !== "string")
@@ -1196,52 +1205,49 @@ function memberIdentityCandidates(identity) {
   }
   return unique;
 }
-function resolveTeamMemberRoute(identity, slotResolutionOf) {
-  if (typeof slotResolutionOf !== "function")
+function resolveTeamMemberRoute(identity, agentRouteResolutionOf) {
+  if (typeof agentRouteResolutionOf !== "function")
     return { status: "no-config-service" };
   for (const candidate of memberIdentityCandidates(identity)) {
     let answer;
     try {
-      answer = slotResolutionOf(candidate);
+      answer = agentRouteResolutionOf(candidate);
     } catch {
       continue;
     }
     if (answer === null || typeof answer !== "object")
       continue;
-    const slotAnswer = answer;
-    if (slotAnswer.ok === true) {
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+    const routeAnswer = answer;
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate;
+    if (routeAnswer.ok === true) {
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : "";
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : "";
       if (provider === "" || model === "") {
         return {
           status: "unusable",
           member: candidate,
-          ...slot === "" ? {} : { slot },
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model")
         };
       }
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : "";
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : []
       };
     }
-    if (slotAnswer.ok === false) {
-      if (slotAnswer.status === "unrouted")
+    if (routeAnswer.ok === false) {
+      if (routeAnswer.reason === "unrouted")
         continue;
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        const detail = routeAnswer.reason === "invalid" ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string" : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0 ? routeAnswer.missing.map(String).join(", ") : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model");
         return {
           status: "unusable",
           member: candidate,
-          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
-          reason: slotAnswer.status,
-          detail
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail)
         };
       }
     }
@@ -1664,29 +1670,19 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
-  const configSlotResolver = () => {
+  const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
-    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+    if (typeof config2.agentRouteResolutionOf !== "function")
       return;
     return (member) => {
-      if (typeof config2.slotResolutionOf === "function") {
-        try {
-          const answer = config2.slotResolutionOf.call(config2, member);
-          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
-            return answer;
-        } catch {}
+      try {
+        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
+      } catch {
+        return;
       }
-      if (typeof config2.teamModelRouteOf === "function") {
-        try {
-          const route = config2.teamModelRouteOf.call(config2, member);
-          if (route !== null && typeof route === "object")
-            return { ok: true, slot: "", route, fallbacks: [] };
-        } catch {}
-        return { ok: false, status: "unrouted", slot: undefined };
-      }
-      return;
     };
   };
   function requireService(serviceName, needed) {
@@ -1893,12 +1889,12 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
           } else {
-            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
@@ -3399,7 +3395,7 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
-  const slotResolution = (member) => {
+  const agentRouteResolution = (member) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -3407,46 +3403,32 @@ function apply(ctx, config = {}) {
         return;
       }
     })();
-    if (typeof live?.slotResolutionOf === "function") {
-      const value = live.slotResolutionOf(member);
+    if (typeof live?.agentRouteResolutionOf === "function") {
+      const value = live.agentRouteResolutionOf(member);
       if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean")
         return value;
-    }
-    if (typeof live?.teamModelRouteOf === "function") {
-      const route = live.teamModelRouteOf(member);
-      if (route !== undefined && route !== null && typeof route === "object") {
-        return { ok: true, slot: "", route, fallbacks: [] };
-      }
     }
     if (ROLES.some((r) => r.name === member)) {
       return {
         ok: false,
-        status: "unconfigured",
-        slot: "",
-        members: [member],
-        missing: ["provider", "model"],
-        code: "SLOT_UNCONFIGURED",
-        message: "SLOT_UNCONFIGURED: " + member + "'s team-model slot is not configured — the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.<slot> for this member in .mpd/mpd.jsonc."
+        reason: "unconfigured",
+        agent: member,
+        missing: ["agentRoutes." + member + ".provider", "agentRoutes." + member + ".model"]
       };
     }
-    return { ok: false, status: "unrouted", slot: undefined };
+    return { ok: false, reason: "unrouted" };
   };
-  const throwSlotUnconfigured = (resolution) => {
-    if (resolution.ok)
-      throw new Error("mpd_role_spawn: internal error — a usable slot was passed to the refusal helper");
-    if (resolution.status === "unrouted")
-      throw new Error("mpd_role_spawn: internal error — an unrouted member was passed to the refusal helper");
-    const error = new Error(resolution.message);
-    error.code = resolution.code;
-    throw error;
+  const throwAgentUnconfigured = (resolution) => {
+    const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ");
+    throw agentUnconfiguredRefusal(resolution.agent, detail);
   };
   const roleSurface = (exec) => {
     const base = ROLES.map((r) => {
       const chain = r.chain.map((c) => ({ ...c }));
-      const resolution = slotResolution(r.name);
+      const resolution = agentRouteResolution(r.name);
       if (resolution.ok)
         chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model });
-      else if (resolution.status !== "unrouted")
+      else if (resolution.reason !== "unrouted")
         chain.splice(0, chain.length);
       return {
         id: r.id,
@@ -3527,7 +3509,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's `teamModels` slot, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -3545,14 +3527,14 @@ evidence:
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const resolution = slotResolution(spec.name);
-      if (!resolution.ok && resolution.status !== "unrouted")
-        throwSlotUnconfigured(resolution);
+      const resolution = agentRouteResolution(spec.name);
+      if (!resolution.ok && resolution.reason !== "unrouted")
+        throwAgentUnconfigured(resolution);
       const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
       if (primary === undefined) {
-        throw new Error("mpd_role_spawn: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster member needs its teamModels slot configured (/mpd-model)");
+        throw new Error("mpd_role_spawn: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster agent needs its agentRoutes entry configured (/mpd-model)");
       }
-      const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.fallbacks ?? [] : []);
+      const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : []);
       const provider = run.route.provider;
       const model = run.route.model;
       const prompt = persona + `

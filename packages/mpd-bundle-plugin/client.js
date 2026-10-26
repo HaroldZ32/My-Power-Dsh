@@ -4307,8 +4307,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 // top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
 //
 // WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same
-// mpd.jsonc knobs (thirteen scalar knobs and the twelve team-model slot leaves) used to ride the
-// Plugins tab's keyed per-namespace item slot; this file no longer
+// mpd.jsonc knobs (thirteen scalar knobs and the thirty-three per-agent route leaves) used to ride
+// the Plugins tab's keyed per-namespace item slot; this file no longer
 // registers anything there, so the Plugins tab shows no mpd card.
 //
 // THE PATTERN IS THE HOST'S OWN, MEASURED in the host's settings-models section
@@ -4370,7 +4370,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const SECTION_ORDER = 20
   /**
    * The bundle's server route serving the CURRENT EFFECTIVE model config from the `mpdConfig`
-   * service (R3): the four slot STATES and the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
+   * service (R3): ONE typed state per roster AGENT and the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
    * on the host's web server; this card fetches it at mount, after card saves and on
    * settings-scope updates, and degrades to the settings document alone when the route is absent
    * (a webless profile).
@@ -4385,7 +4385,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * therefore NAMES the live groups and the one-way toggle, and the mount-captured groups follow in
    * the second paragraph; neither paragraph promises the blanket behaviour.
    */
-  const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
+  const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
   /**
    * The MOUNT-CAPTURED half of the truth (byte-identical to
    * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`), rendered as the
@@ -4415,7 +4415,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
   /** One knob the card renders (the mirror of the ONE shared knob declaration in settings-schema.ts). */
                              
-                                                                                                   
+                                                                                               
                   
                              
                  
@@ -4431,7 +4431,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                         
    
 
-  /** One leaf of a team-model slot, with the option list the parity contract declares for it. */
+  /** One leaf of an agent route, with the option list the parity contract declares for it. */
                       
                                                                   
                 
@@ -4443,15 +4443,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                      
    
 
-  /** The member group one slot routes (both locales, plus the member list the sentences interpolate). */
+  /** The member group one DISPLAY group holds (both locales, plus the member list it names). */
                        
                                   
               
                                              
               
-                                                              
+                                                      
                    
-                                                              
+                                                      
                      
    
 
@@ -4626,34 +4626,41 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                                
    
 
-  /** One slot's effect as the see-before-you-edit block renders it (R3): its state and its route. */
+  /** One AGENT's effect as the see-before-you-edit block renders it (R3): its state and its route. */
                             
-                                                                                                  
-                                                     
-                                                                        
-                    
+       
+                                                                                              
+                                                                                                 
+                                                                                         
+       
                                                                      
+                                                                         
+                    
+                                                                      
                  
                                                                   
                            
-                                                                                           
+                                                                                                            
                      
-                                                                                                         
+                                                                                            
+                     
+                                                                                                              
                     
    
 
   /**
-   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): the four slot states and
-   * the configured `modelchain` entries. Read from the LIVE surfaces only — the settings form value
-   * this card already binds, plus the `/plugins/mpd/model-config` route the bundle serves from the
-   * `mpdConfig` service when a web server is composed — never a re-parse of mpd.jsonc, and never a
-   * built-in default: an unconfigured slot renders `<unconfigured>` (contract §9).
+   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): ONE state per roster
+   * AGENT (the unit of configuration, contract §1) and the configured `modelchain` entries. Read from
+   * the LIVE surfaces only — the settings form value this card already binds, plus the
+   * `/plugins/mpd/model-config` route the bundle serves from the `mpdConfig` service when a web server
+   * is composed — never a re-parse of mpd.jsonc, and never a built-in default: an unconfigured agent
+   * renders `<unconfigured>` with the leaves it is missing (contract §7).
    */
                                   
                                                                                                                             
                                   
-                                                       
-                                         
+                                                                                                
+                                          
                                                                                                
                                                                           
                                                                                   
@@ -4812,29 +4819,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    
 
   /**
-   * The twenty-six knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, the twelve team-model slot leaves and the TUI surface's own knob). The composed
-   * hint LEADS with the knob's human sentence (`semantics`/`semanticsZh`) and then states its
-   * mpd.jsonc key, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
-   * watchdog rows carry the sentence they always had). The slot leaves take their option lists from
-   * the live catalog at render time instead. The per-member `agentRoutes` rows are GONE with the
-   * table itself (contract `.mpd/plans/slot-single-source.md` §3).
+   * The forty-seven knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, the thirty-three per-agent route leaves and the TUI surface's own knob). The
+   * composed hint LEADS with the knob's human sentence (`semantics`/`semanticsZh`) and then states
+   * its mpd.jsonc key, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the
+   * two watchdog rows carry the sentence they always had). The route leaves take their option lists
+   * from the live catalog at render time instead. The retired `teamModels` slot rows are GONE with
+   * that table (contract `.mpd/plans/agent-routes-per-agent.md` §1/§7).
    */
-  /** The four team-model slots, in the order the card renders them. */
+  /** The four DISPLAY groups, in the order the card renders them (grouping is display-only). */
   const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
-  /** The three leaves every slot carries, with their declared option lists. */
+  /** The three leaves every agent route carries, with their declared option lists. */
   const SLOT_LEAVES                          = [
     { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
     { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
     { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
   ]
   /**
-   * What each slot IS — the member group it routes, in the group's own order (mirror of
-   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
-   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
-   * the parity test compares every sentence and heading below with the shared declaration's own
-   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
-   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
+   * What each DISPLAY group holds — its human name in both locales and its member list, in the
+   * group's own order (a mirror of `TEAM_MODEL_SLOT_GROUPS`). Grouping is display-only (contract
+   * §7): no write, no read and no route resolution depends on it; every member below has its OWN
+   * persisted `agentRoutes.<Agent>` entry. The parity test pins the member lists against the shared
+   * declaration, and the row labels/sentences are built from the agents themselves.
    */
   const SLOT_GROUPS                            = {
     slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
@@ -4842,75 +4848,88 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
     slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
   }
-  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
-  const SLOT_IMPACT                         = {
-    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
-    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+  /**
+   * The settings subtree the per-agent routes live in (contract §1): the ONLY model-route config.
+   * The legacy `teamModels` subtree is tolerated for boot by the config row, migrated once, then
+   * never read or written — no field below addresses it.
+   */
+  const AGENT_ROUTES = "agentRoutes"
+  /** The eleven roster agents, in the four groups' declared order — the order rows and lines render in. */
+  const AGENTS                        = SLOT_SLOTS.flatMap((slot) => SLOT_GROUPS[slot].members.split(", "))
+  /**
+   * The display group a roster agent belongs to (`slot1`…`slot4`), or "" for a name the roster does
+   * not carry. DISPLAY only (contract §7): no write, no read and no route resolution depends on it.
+   * @param agent - a roster display name.
+   * @returns the group id whose member list carries the name, or "".
+   */
+  function groupOf(agent        )         {
+    for (const slot of SLOT_SLOTS) if (SLOT_GROUPS[slot].members.split(", ").includes(agent)) return slot
+    return ""
   }
-  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
-  const SLOT_IMPACT_OVERRIDES                                         = {
-    slot4: {
-      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
-      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+  /**
+   * The per-agent route leaf templates, mirrored BYTE-FOR-BYTE from the shared declaration's
+   * `AGENT_ROUTE_LEAF_TEMPLATES` (`mpd-config-plugin/src/settings-schema.ts`). The card may not
+   * import that module (the client bytes must not carry the symbol), so the parity test compares
+   * this mirror with the declaration's own `agentRouteLeafSentence` output element by element.
+   */
+  const AGENT_SENTENCE_TEMPLATES                                = {
+    provider: {
+      en: "{agent}'s own provider. Every roster agent has its OWN persisted route, so this row belongs to {agent} and changing it touches no other agent. What changing it does: {agent}'s next spawn (a one-shot consult, a workmate consult or a team member) runs on the new route; an entry missing `provider` or `model` makes that spawn REFUSE loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves — it never silently substitutes another model.",
+      zh: "{agent} 自己的提供商。每个 roster 成员都有各自持久化的路由，本行只属于 {agent}，改它不会影响其他成员。改它的影响：{agent} 下一次被 spawn（一次性咨询、workmate 咨询或 team 成员）即走新路由；条目缺少 `provider` 或 `model` 会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`），点名该成员与缺失项，绝不静默换模型。",
+    },
+    model: {
+      en: "{agent}'s own model. Together with the provider above it decides the model {agent} runs on; other agents keep their own routes. What changing it does: {agent}'s next spawn uses the new model, and a model the provider does not offer makes that spawn fail with the agent and the offending leaf named.",
+      zh: "{agent} 自己的模型。与上面的提供商共同决定 {agent} 使用的模型，其他成员保持各自的路由。改它的影响：{agent} 下一次 spawn 使用新模型；模型与提供商不匹配、或该提供商没有这个模型时，该次 spawn 会点名成员与出错的字段失败。",
+    },
+    reasoningEffort: {
+      en: "{agent}'s own reasoning effort (off / low / high / max): how much {agent} thinks on each call. max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: {agent}'s next spawn uses it; an effort the chosen model does not support fails that spawn and names this leaf. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+      zh: "{agent} 自己的推理强度（off / low / high / max），决定 {agent} 每次调用的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：{agent} 下一次 spawn 即使用它；该模型不支持的等级会让该次 spawn 报错并点名本字段。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
     },
   }
-  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
-  const SLOT_SENTENCE_OVERRIDES                                                = {
-    slot4: {
+  /**
+   * The per-agent overrides of those templates, mirrored from the shared declaration's
+   * `AGENT_ROUTE_LEAF_OVERRIDES`: the vision member's route must accept image input.
+   */
+  const AGENT_SENTENCE_OVERRIDES                                                = {
+    "Vision Analyst": {
       provider: {
-        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+        en: "Vision Analyst's own provider — the one roster member that reads images, diagrams and screenshots. The model paired with it MUST accept image input (for example deepseek-v4-flash-vision-exp): a text-only model breaks its image analysis. What changing it does: its next spawn runs on the new route, and an unusable value REFUSES that spawn loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves.",
+        zh: "Vision Analyst 自己的提供商——它是 roster 中唯一负责看图、读图、分析截图的成员。与它配对的模型必须支持图像输入（例如 deepseek-v4-flash-vision-exp）：纯文本模型会让看图任务失败。改它的影响：它下一次 spawn 即走新路由；填成不可用会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`）并点名成员与缺失项。",
       },
       model: {
-        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
-      },
-      reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
+        en: "Vision Analyst's own model. It MUST accept image input: reading images is its whole value, and a text-only model makes its image tasks fail. What changing it does: effective at its next spawn.",
+        zh: "Vision Analyst 自己的模型。必须选支持图像输入的模型：读图是它的全部价值，纯文本模型会让读图任务直接失败。改它的影响：下次 spawn 生效。",
       },
     },
   }
-  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
-  const impactOf = (slot        , lang        )         => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
-  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
-  function slotSentence(slot        , leaf        )                {
-    /** The slot's own override table, when it has one. */
-    const override = SLOT_SENTENCE_OVERRIDES[slot]
-    if (override !== undefined) return override[leaf]
-    /** The member group this slot routes. */
-    const group = SLOT_GROUPS[slot]
-    if (leaf === "provider") {
-      return {
-        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
-        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
-      }
-    }
-    if (leaf === "model") {
-      return {
-        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
-        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
-      }
-    }
-    return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
-    }
+  /**
+   * One agent-route leaf's human sentence, with the display name interpolated exactly as the shared
+   * `agentRouteLeafSentence` does (the templates carry `{agent}` only; grouping is not part of the
+   * sentence). The Web card cannot import the shared builder, so this mirror is the pin.
+   * @param agent - the roster display name the row belongs to.
+   * @param leaf - `provider`, `model` or `reasoningEffort`.
+   * @returns the sentence pair, the agent's name substituted in both locales.
+   */
+  function agentSentence(agent        , leaf        )                {
+    /** The agent's own override when one exists, else the shared per-leaf template. */
+    const template = AGENT_SENTENCE_OVERRIDES[agent]?.[leaf] ?? AGENT_SENTENCE_TEMPLATES[leaf]
+    return { en: template.en.split("{agent}").join(agent), zh: template.zh.split("{agent}").join(agent) }
   }
-  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
-  function slotHeading(slot        , index        )                {
-    /** The member group this slot routes. */
-    const group = SLOT_GROUPS[slot]
-    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
-  }
-  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
-  const SLOT_FIELDS                    = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
-    /** The slot leaf's own human sentence, which the row's hint leads with. */
-    const sentence = slotSentence(slot, leaf)
+  /**
+   * The thirty-three per-agent route rows: every roster agent's provider/model/reasoningEffort, in
+   * group order, with the SAME labels, declared option lists and human sentences as the ONE shared
+   * declaration's `AGENT_ROUTE_KNOBS`). The row label names the agent and its
+   * display group so a row stays attributable even outside its heading context.
+   */
+  const AGENT_FIELDS                    = AGENTS.flatMap((agent) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The display group that renders this agent's rows. */
+    const group = SLOT_GROUPS[groupOf(agent)]
+    /** This leaf's human sentence, which the row's hint leads with. */
+    const sentence = agentSentence(agent, leaf)
     return {
-      path: ["teamModels", slot, leaf],
-      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
-      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      path: [AGENT_ROUTES, agent, leaf],
+      label: `${agent} ${label} (${group.en})`,
+      zh: `${agent} ${zh}（${group.zh}）`,
       kind: "select",
       options,
       semantics: sentence.en,
@@ -4918,7 +4937,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     }
   }))
 
-  /** Every knob the card renders, in the shared declaration's order (the deleted `agentRoutes` rows are gone). */
+  /** Every knob the card renders, in the shared declaration's order (the retired `teamModels` rows are gone). */
   const FIELDS                    = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -4933,14 +4952,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
     { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
-    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
-    // options come from the live catalog at render time (see optionsFor) and fall back to the
-    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
-    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
-    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
-    // exactly as the shared declaration states it (a test compares the two element-wise).
-    ...SLOT_FIELDS,
+    // The thirty-three per-agent route leaves (mirrors of the ONE knob declaration in
+    // packages/mpd-config-plugin/src/settings-schema.ts). Every leaf is a `select`: the options come
+    // from the live catalog at render time (see optionsFor) and fall back to the declared lists
+    // below, so no route value is ever typed. The DECLARED lists are the parity surface with the TUI;
+    // the LIVE lists are a different source by construction. The labels and the human sentences are
+    // built from the roster above, so an agent's copy is stated once here exactly as the shared
+    // declaration states it (a test compares the two element-wise). Grouping is DISPLAY-only
+    // (contract §7): saving a row writes `agentRoutes.<Agent>.<leaf>` and nothing else.
+    ...AGENT_FIELDS,
     // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
     // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
     // two watchdog rows above.
@@ -4984,10 +5004,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   /**
    * Project the CURRENT EFFECTIVE model config (R3) from the live surfaces only: the settings
    * document this card binds, plus the `/plugins/mpd/model-config` body when the bundle's route
-   * answered. Precedence per piece: the SERVICE value (it sees the file layers and refreshes on every
-   * save and watched edit) over the DOCUMENT value (entry config only). There is NO built-in default
-   * floor any more (contract §2): a slot neither surface configures renders `<unconfigured>`, with
-   * the required leaves it is missing named.
+   * answered. Precedence per AGENT: the SERVICE's typed resolution (it sees the file layers and
+   * refreshes on every save and watched edit) over the DOCUMENT's `agentRoutes.<Agent>` block.
+   * There is NO built-in default floor (contract §1): an agent neither surface configures renders
+   * `<unconfigured>`, with the required leaves it is missing named.
    * @param section - the settings form's namespace value (the surface the card binds).
    * @param live - the live-service read: the route body (or undefined) and why it is absent.
    * @returns the projection the card renders above its rows.
@@ -4995,15 +5015,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   function effectiveModelConfigOf(section         , live                                   )                       {
     /** The live body narrowed to the members the route serves ({} when it did not answer). */
     const body = isTable(live.body) ? live.body : {}
-    /** The four slot states. */
-    const slots                                 = {}
-    for (const slot of SLOT_SLOTS) {
-      // PER-SLOT precedence: the service's slot state (the authoritative live read), else the
-      // document's block, else nothing at all — and NOTHING is the `<unconfigured>` state.
-      /** The service's state for this slot, when the route body carries one. */
-      const fromService = isTable(body.slots) ? body.slots[slot] : undefined
-      /** The state the card renders for this slot. */
-      slots[slot] = isTable(fromService) ? slotStateOf(fromService, slot) : slotStateOf(leafOf(section, ["teamModels", slot]), slot)
+    /** One state per roster agent, in roster order. */
+    const agents                                 = {}
+    for (const agent of AGENTS) {
+      /** The service's typed resolution for this agent, when the route body carries one. */
+      const fromService = isTable(body.agents) ? body.agents[agent] : undefined
+      agents[agent] = fromService !== undefined && fromService !== null
+        ? agentResolutionStateOf(fromService, agent)
+        : agentRouteStateOf(leafOf(section, [AGENT_ROUTES, agent]), agent)
     }
     /** The configured modelchain chains, only ever from the service read (the document carries none). */
     const modelchain                                                             = {}
@@ -5017,44 +5036,110 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         if (entries.length > 0) modelchain[key] = entries
       }
     }
-    return { source: isTable(live.body) ? "service" : "document", slots, modelchain, notice: isTable(live.body) ? "" : live.notice }
+    return { source: isTable(live.body) ? "service" : "document", agents, modelchain, notice: isTable(live.body) ? "" : live.notice }
   }
 
   /**
-   * One slot's state from the raw block a surface reported: the route it states and what it lacks.
+   * One agent's state from the SERVICE's typed resolution (contract §2), narrowed and never thrown.
    *
-   * The SAME rule the config row's resolver applies (contract §7/§9), restated here because the card
-   * may not import that package: `provider` and `model` must be non-blank strings — WHITESPACE-ONLY
-   * counts as missing, exactly as the resolver trims (CodeRabbit #5) — while `reasoningEffort` is
-   * optional and a present-but-blank one states no effort. A present non-string leaf, or a slot that
-   * is not an object at all, is `invalid` with the offending path named (CodeRabbit #4).
-   * @param block - the raw slot block, of unknown shape.
-   * @param slot - the slot id the block belongs to, used only to spell an `invalid` problem path.
+   * The union is `ok:true` with `route`, or `ok:false` with `reason` = `unconfigured` (matching
+   * `missing[]`) | `invalid` (matching `problem`) | `unrouted`. `unrouted` is NOT a refusal
+   * (contract Amendment 2 §3): it means no roster key decides the member — an extension role keeps
+   * its own chain and still spawns — so it renders as `<unavailable>`, never as `<unconfigured>`.
+   * @param raw - the service's answer for one member, of unknown shape.
+   * @param agent - the roster name the answer belongs to, used to spell a problem path.
    * @returns the state the effective block renders.
    */
-  function slotStateOf(block         , slot         )                 {
-    /** The slot's provider leaf, trimmed; whitespace alone is UNSET, as the resolver treats it. */
-    const provider = routeLeaf(block, "provider").trim()
-    /** The slot's model leaf, trimmed. */
-    const model = routeLeaf(block, "model").trim()
-    /** The slot's effort leaf, trimmed. */
-    const reasoningEffort = routeLeaf(block, "reasoningEffort").trim()
-    /** The required leaves the slot does not state. */
-    const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
-    // A block that is neither absent nor an object is malformed at the SLOT level (the resolver's
-    // `teamModels.slotN must be an object` refusal, mirrored here for the display).
-    if (block !== undefined && block !== null && !isTable(block)) {
-      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + " is not an object" }
+  function agentResolutionStateOf(raw         , agent        )                 {
+    // An answer that is not even a table is a malformed SERVICE response; name the path rather than
+    // inventing a route or blanking the line.
+    if (!isTable(raw)) {
+      return { status: "invalid", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [], problem: AGENT_ROUTES + "." + agent + " returned no typed resolution" }
     }
-    /** The leaf that is PRESENT but not a string, if any — a malformed slot, not a missing one. */
+    if (raw.ok === true) {
+      /** The route the service resolved. */
+      const route = raw.route
+      /** The route's provider leaf, trimmed. */
+      const provider = routeLeaf(route, "provider").trim()
+      /** The route's model leaf, trimmed. */
+      const model = routeLeaf(route, "model").trim()
+      /** The route's effort leaf, trimmed. */
+      const reasoningEffort = routeLeaf(route, "reasoningEffort").trim()
+      /** How many fallback hops the entry declares; display only, never resolved by this card. */
+      const fallbacks = isTable(route) && Array.isArray(route.fallbacks) ? route.fallbacks.length : 0
+      /** The required leaves the resolved route still misses. */
+      const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
+      // A PRESENT-but-non-string leaf is malformed, not missing (CodeRabbit #4): the service is
+      // expected to answer `invalid` for it, but a display must not turn one into a usable route.
+      /** The leaf that is present but not a string, if any. */
+      const malformedLeaf = isTable(route)
+        ? ["provider", "model", "reasoningEffort"].find((leaf) => route[leaf] !== undefined && route[leaf] !== null && typeof route[leaf] !== "string")
+        : undefined
+      if (malformedLeaf !== undefined) {
+        return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + "." + malformedLeaf + " is not a string" }
+      }
+      if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, fallbacks, missing }
+      return { status: "configured", provider, model, reasoningEffort, fallbacks, missing: [] }
+    }
+    if (raw.reason === "unconfigured") {
+      /** The leaves the service itself names, when it names any. */
+      const named = Array.isArray(raw.missing) ? raw.missing.filter((leaf)                 => typeof leaf === "string") : []
+      return {
+        status: "unconfigured",
+        provider: routeLeaf(raw, "provider").trim(),
+        model: routeLeaf(raw, "model").trim(),
+        reasoningEffort: "",
+        fallbacks: 0,
+        // The service is the authority on what is missing; a silent answer still names both leaves.
+        missing: named.length > 0 ? named : ["provider", "model"],
+      }
+    }
+    if (raw.reason === "invalid") {
+      /** The problem the service named, or the path itself when it named none. */
+      const problem = typeof raw.problem === "string" && raw.problem.trim() !== "" ? raw.problem.trim() : AGENT_ROUTES + "." + agent + " is not a usable route"
+      return { status: "invalid", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [], problem }
+    }
+    // `unrouted` and any unknown state: no client-safe route claim is made (never a refusal verdict).
+    return { status: "unavailable", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [] }
+  }
+
+  /**
+   * One agent's state from the raw `agentRoutes.<Agent>` block a surface reported: the route it
+   * states, how many fallbacks it declares, and what it lacks.
+   *
+   * The SAME rule the config row's resolver applies (contract §2), restated here because the card
+   * may not import that package: `provider` and `model` must be non-blank strings — WHITESPACE-ONLY
+   * counts as missing, exactly as the resolver trims (CodeRabbit #5) — while `reasoningEffort` is
+   * optional and a present-but-blank one states no effort. A present non-string leaf, or an entry
+   * that is not an object at all, is `invalid` with the offending path named (CodeRabbit #4).
+   * @param block - the raw agent entry, of unknown shape.
+   * @param agent - the roster name the entry belongs to, used to spell an `invalid` problem path.
+   * @returns the state the effective block renders.
+   */
+  function agentRouteStateOf(block         , agent        )                 {
+    /** The agent's provider leaf, trimmed; whitespace alone is UNSET, as the resolver treats it. */
+    const provider = routeLeaf(block, "provider").trim()
+    /** The agent's model leaf, trimmed. */
+    const model = routeLeaf(block, "model").trim()
+    /** The agent's effort leaf, trimmed. */
+    const reasoningEffort = routeLeaf(block, "reasoningEffort").trim()
+    /** How many fallback hops the entry declares; display only, never resolved by this card. */
+    const fallbacks = isTable(block) && Array.isArray(block.fallbacks) ? block.fallbacks.length : 0
+    /** The required leaves the agent does not state. */
+    const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
+    // An entry that is neither absent nor an object is malformed at the AGENT level.
+    if (block !== undefined && block !== null && !isTable(block)) {
+      return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + " is not an object" }
+    }
+    /** The leaf that is PRESENT but not a string, if any — a malformed entry, not a missing one. */
     const malformedLeaf = isTable(block)
       ? ["provider", "model", "reasoningEffort"].find((leaf) => block[leaf] !== undefined && block[leaf] !== null && typeof block[leaf] !== "string")
       : undefined
     if (malformedLeaf !== undefined) {
-      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + "." + malformedLeaf + " is not a string" }
+      return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + "." + malformedLeaf + " is not a string" }
     }
-    if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, missing }
-    return { status: "configured", provider, model, reasoningEffort, missing: [] }
+    if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, fallbacks, missing }
+    return { status: "configured", provider, model, reasoningEffort, fallbacks, missing: [] }
   }
 
   /** Substitute the `{name}` placeholders of one dictionary sentence with language-neutral fragments. */
@@ -5071,9 +5156,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /**
-   * The see-before-you-edit lines (R3): the four effective slot STATES — each a route or the
-   * `<unconfigured>` sentence with the leaves it still needs (contract §9) — plus the configured
-   * modelchain chains. Every word is localized through the dictionary; every value a neutral id.
+   * The see-before-you-edit lines (R3): ONE line per roster AGENT — its route, the malformed text,
+   * or the `<unconfigured>` sentence with the leaves it still needs (contract §7) — plus the
+   * configured modelchain chains. Every word is localized through the dictionary; every value a
+   * neutral id. The unit is the AGENT (contract §1); no line is a persisted slot.
    * @param effective - the projection this render shows.
    * @param t - the locale resolver the component renders through.
    * @param createElement - the host's React createElement.
@@ -5082,25 +5168,31 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   function effectiveChildrenOf(effective                      , t                         , createElement                               )            {
     /** The block's lines, in render order. */
     const lines            = []
-    for (const slot of SLOT_SLOTS) {
-      /** This slot's state, defaulting to the "nothing configured" state when no surface carries it. */
-      const state = effective.slots?.[slot] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] }
-      // A DISPLAY NEVER THROWS AND NEVER INVENTS A ROUTE (contract §9): a slot that is unusable —
+    for (const agent of AGENTS) {
+      /** This agent's state, defaulting to the "nothing configured" state when no surface carries it. */
+      const state = effective.agents?.[agent] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] }
+      // A DISPLAY NEVER THROWS AND NEVER INVENTS A ROUTE (contract §7): an agent that is unusable —
       // or whose projected state is older than this renderer, which a mixed client rollout can
       // produce — renders as its OWN typed sentence, never as an empty string and never as a throw.
-      /** The leaves this line names when the slot is not configured. */
+      /** The leaves this line names when the agent is not configured. */
       const missing = Array.isArray(state.missing) ? state.missing : ["provider", "model"]
-      /** The sentence this line renders: the route, the malformed-slot text, or the unconfigured text. */
+      /** The sentence this line renders: the route (+fallbacks), the malformed text, or the typed gap. */
       const text = state.status === "configured"
-        ? interpolate(t("effective.slot." + slot), { route: routeText(state) })
-        // CodeRabbit #4: an `invalid` slot has its OWN sentence. It is NOT the `<unconfigured>` one:
+        ? interpolate(t("effective.agent." + agent), { route: routeText(state) })
+          // The fallback count is DISPLAY only (the card never resolves the chain): a route that
+          // declares backups says so, so a reader can tell it from a bare entry.
+          + (state.fallbacks > 0 ? interpolate(t("effectiveFallbacks"), { count: String(state.fallbacks) }) : "")
+        // CodeRabbit #4: an `invalid` agent has its OWN sentence. It is NOT the `<unconfigured>` one:
         // provider and model may well be present, and what is wrong is a MALFORMED leaf (named).
         : state.status === "invalid"
-          ? interpolate(t("effective.slotInvalid"), { problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : "teamModels." + slot })
-          : interpolate(t("effective.slotUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
+          ? interpolate(t("effective.agentInvalid"), { agent, problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : AGENT_ROUTES + "." + agent })
+          // `unrouted` is not a refusal (Amendment 2 §3): it says <unavailable>, never a verdict.
+          : state.status === "unavailable"
+            ? interpolate(t("effective.agentUnavailable"), { agent })
+            : interpolate(t("effective.agentUnconfigured"), { agent, leaves: missing.length === 0 ? "-" : missing.join(", ") })
       lines.push(createElement(
         "p",
-        { key: "effective.slot." + slot, style: SKIN.helpText, "data-mpd-effective-slot": slot, "data-mpd-slot-status": state.status },
+        { key: "effective.agent." + agent, style: SKIN.helpText, "data-mpd-effective-agent": agent, "data-mpd-agent-status": state.status },
         text,
       ))
     }
@@ -5132,6 +5224,30 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     return lines
   }
 
+  /**
+   * One agent's COMPACT state marker for its own row heading — the same typed state the effective
+   * block renders, at row size. Never blank, never a route the surfaces did not report: a configured
+   * agent shows its route (+fallback count), an unconfigured one the leaves it lacks, an invalid one
+   * the offending path, and an `unrouted` (extension role) one `<unavailable>` — never a refusal.
+   * @param state - the agent's projected state.
+   * @param agent - the roster name the marker belongs to, used when a problem path is unnamed.
+   * @param t - the locale resolver the component renders through.
+   * @returns the localized marker text.
+   */
+  function agentStateText(state                , agent        , t                         )         {
+    /** The leaves the marker names when the agent is not configured. */
+    const missing = Array.isArray(state.missing) ? state.missing : ["provider", "model"]
+    if (state.status === "configured") {
+      return interpolate(t("agentStateConfigured"), { route: routeText(state) })
+        + (state.fallbacks > 0 ? interpolate(t("effectiveFallbacks"), { count: String(state.fallbacks) }) : "")
+    }
+    if (state.status === "invalid") {
+      return interpolate(t("agentStateInvalid"), { problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : AGENT_ROUTES + "." + agent })
+    }
+    if (state.status === "unavailable") return interpolate(t("agentStateUnavailable"), { agent })
+    return interpolate(t("agentStateUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
+  }
+
   /** Parse the control's text into a value for this field, or undefined when it is not one. */
   function parse(kind        , text         )                                        {
     if (kind === "number") {
@@ -5153,15 +5269,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
   /** Render one settings value as the control's text (a missing value renders empty). */
   const format = (kind        , value         )         => (value === undefined || value === null ? "" : String(value))
-
-  /**
-   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
-   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
-   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
-   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
-   * QA gate pins it), and the parity test compares the mirror with the real one.
-   */
-  const TEAM_MODEL_SLOT = "teamModels"
 
   /**
    * The session the catalog binds to, read from the client's OWN list snapshot.
@@ -5299,12 +5406,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /**
-   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
-   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
-   * here — the hint is not part of the front-door parity contract (the parity pin compares the
-   * declaration), so the suffix is a render-time addition only.
+   * The short trailing marker a per-agent route row's hint carries while the catalog is in
+   * fallback: the third surface of the same state, on the rows the user is actually looking at.
+   * Live renders nothing here — the hint is not part of the front-door parity contract (the parity
+   * pin compares the declaration), so the suffix is a render-time addition only.
+   * @param info - the catalog state this render used.
+   * @returns the suffix to append to a route row's hint ("" while the catalog is live).
    */
-  function slotFallbackMarker(info                         )         {
+  function agentFallbackMarker(info                         )         {
     /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
     if (state.mode === "live") return ""
@@ -5391,7 +5500,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 
     /**
      * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
-     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
+     * the TOP of the section, which a user looking at the route pickers at the BOTTOM never
      * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
      * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
      * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
@@ -5617,9 +5726,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   }
 
   /**
-   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
-   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
-   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
+   * The options ONE field renders. Non-route knobs keep their declared list. Per-agent route leaves
+   * derive theirs from the catalog and fall back to the declared list whenever the catalog is empty
+   * or lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
    *   provider          -> the catalog's provider ids (label = the provider's display name)
    *   model             -> every provider's models, GROUPED by provider (optgroup label)
    *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
@@ -5627,10 +5736,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   function optionsFor(field                 , groups                , controls                                        )                {
     /** The knob's declared options, which every degrade path returns. */
     const declared = declaredOptions(field)
-    // The team-model slot rows pick from the live catalog; every other knob keeps its declared list.
-    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
-    /** The slot's group key (`slot1`…`slot4`). */
-    const groupKey = field.path[1]
+    // The per-agent route rows pick from the live catalog; every other knob keeps its declared list.
+    if (field.path[0] !== AGENT_ROUTES || groups.length === 0) return declared
+    /** The agent's own route key (`agentRoutes.<Agent>.<leaf>`), which the dependent lists read. */
+    const agentKey = field.path[1]
     /** The leaf this row edits. */
     const leaf = field.path[2]
     if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
@@ -5648,8 +5757,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       const control = controls ? controls[path.join(".")] : undefined
       return control ? control.text : undefined
     }
-    /** The model the provider and model controls of THIS row's group currently select. */
-    const model = findModel(groups, textOf([field.path[0], groupKey, "provider"]), textOf([field.path[0], groupKey, "model"]))
+    /** The model the provider and model controls of THIS agent's route currently select. */
+    const model = findModel(groups, textOf([field.path[0], agentKey, "provider"]), textOf([field.path[0], agentKey, "model"]))
     /** The selected model's own efforts (an absent list counts as none). */
     const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
     /** Those efforts as rendered options. */
@@ -5786,7 +5895,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         error: lastError,
         controls,
         disclosure,
-        // Which branch produced the slot option lists — LIVE (with counts) or the declared
+        // Which branch produced the route option lists — LIVE (with counts) or the declared
         // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
         // R3: the effective model config projected from the bound document plus the live-service
@@ -6000,10 +6109,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     },
     /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
     controlOff: { color: LABEL_TERTIARY, cursor: "default" },
-    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    /** A display group's heading: the label treatment, with the field rhythm's top padding. */
     groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
-    /** A slot's one-line impact: the hint treatment. */
-    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** One agent's row heading: the display name plus its live state, on one baseline. */
+    /** One agent's ROW: the row container holding its heading and its three leaf cells. */
+    agentBlock: { display: "flex", flexDirection: "column", marginTop: 12 },
+    /** One agent's row HEADING: the display name plus its live state, on one baseline. */
+    agentRow: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
     /** The row's marker line (overridden / invalid) that carries the reset link. */
     resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
     /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
@@ -6111,7 +6223,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       // is part of the rendered output (and of the data attributes) — never implicit.
       /** The catalog state this render used. */
       const catalog = state.catalog ?? FALLBACK_CATALOG
-      /** The live provider groups the slot pickers derive their options from. */
+      /** The live provider groups the route pickers derive their options from. */
       let groups                 = []
       try {
         /** The catalog probe's answer, which counts only when it is a list. */
@@ -6128,9 +6240,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const control = state.controls[key] ?? { text: "" }
         /** The row's label. */
         const label = t(key)
-        // The twelve slot rows carry the fallback marker; the scalar rows are untouched.
-        /** The row's hint, with the slot rows carrying the fallback marker. */
-        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // The thirty-three route rows carry the fallback marker; the scalar rows are untouched.
+        /** The row's hint, with the route rows carrying the fallback marker. */
+        const hint = t(key + ".hint") + (field.path[0] === AGENT_ROUTES ? agentFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
         // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
         // card. Repeating it per row is what buried every row's own sentence (measured in a real
@@ -6182,51 +6294,72 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           ),
         )
       })
-      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the rows,
+      // VISIBLE AT THE CONTROL: the per-agent route pickers sit at the BOTTOM of the rows,
       // where the section's top notice is off-screen — so the SAME sentence renders again
-      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
+      // immediately above the first route row (between the 13 scalar rows and the 33 route rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
-      /** The index of the first slot row (-1 when the field list carries no slot leaf). */
-      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
-      /** The end of the team-model slot rows: the TUI surface's own knob closes the card. */
-      const slotEndRaw = slotStart < 0 ? -1 : fields.findIndex((field, index) => index > slotStart && field.path[0] !== TEAM_MODEL_SLOT)
-      /** The first row AFTER the twelve slot rows (-1 when nothing trails them). */
-      const slotEnd = slotStart < 0 || slotEndRaw < 0 ? fields.length : slotEndRaw
+      /** The index of the first per-agent route row (-1 when the field list carries no route leaf). */
+      const agentStart = fields.findIndex((field) => field.path[0] === AGENT_ROUTES)
+      /** The end of the per-agent route rows: the TUI surface's own knob closes the card. */
+      const agentEndRaw = agentStart < 0 ? -1 : fields.findIndex((field, index) => index > agentStart && field.path[0] !== AGENT_ROUTES)
+      /** The first row AFTER the route rows (-1 when nothing trails them). */
+      const agentEnd = agentStart < 0 || agentEndRaw < 0 ? fields.length : agentEndRaw
       /** The thirteen scalar rows. */
-      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
-      /** The twelve slot rows. */
-      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart, slotEnd)
-      /** The rows that trail the slot block (the TUI surface's own knob closes the card). */
-      const tailRows = slotStart < 0 ? [] : rows.slice(slotEnd)
-      /** The catalog line rendered immediately above the first slot row. */
-      const slotLine = createElement(
+      const scalarRows = agentStart < 0 ? rows : rows.slice(0, agentStart)
+      /** The thirty-three per-agent route rows. */
+      const routeRows = agentStart < 0 ? [] : rows.slice(agentStart, agentEnd)
+      /** The rows that trail the route block (the TUI surface's own knob closes the card). */
+      const tailRows = agentStart < 0 ? [] : rows.slice(agentEnd)
+      /** The catalog line rendered immediately above the first route row. */
+      const routeLine = createElement(
         "p",
-        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "agents" },
         catalogNotice(catalog),
       )
-      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
-      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
-      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
-      /** The slot rows interleaved with one heading/impact pair per slot. */
-      const slotChildren            = []
-      for (let index = 0; index < slotRows.length; index++) {
-        /** The slot this row belongs to. */
-        const slot = String(fields[slotStart + index].path[1])
-        /** The slot of the row above ("" at the first slot row). */
-        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
-        if (slot !== previous) {
-          slotChildren.push(createElement(
+      // Above each GROUP's block: the display group's heading (contract §7 — grouping is display
+      // only). Each AGENT then renders as ONE row container holding its heading (the name plus the
+      // CURRENT EFFECTIVE state, never blank) and its three leaf cells. The leaf rows are nested
+      // INSIDE the agent row, so "one row per agent" is a structure, not a layout convention.
+      /** The group headings and one agent-row container per roster agent, in roster order. */
+      const routeChildren            = []
+      /** The cursor into `routeRows`: it advances past one AGENT's cells per loop iteration. */
+      let index = 0
+      while (index < routeRows.length) {
+        /** The agent this row container belongs to. */
+        const agent = String(fields[agentStart + index].path[1])
+        /** The display group this agent renders under. */
+        const group = groupOf(agent)
+        /** The display group of the container above ("" at the first route row). */
+        const previousGroup = index === 0 ? "" : groupOf(String(fields[agentStart + index - 1].path[1]))
+        if (group !== "" && group !== previousGroup) {
+          routeChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
-            t("teamModels." + slot + ".heading"),
-          ))
-          slotChildren.push(createElement(
-            "p",
-            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
-            t("teamModels." + slot + ".impact"),
+            { key: "group." + group, style: SKIN.groupHeading, "data-mpd-agent-group": group },
+            t("agentGroup." + group + ".heading"),
           ))
         }
-        slotChildren.push(slotRows[index])
+        // This agent's three leaf cells, collected while the path still names the SAME agent.
+        /** The agent's own leaf rows, in declaration order. */
+        const cells            = []
+        while (index < routeRows.length && String(fields[agentStart + index].path[1]) === agent) {
+          cells.push(routeRows[index])
+          index += 1
+        }
+        /** This agent's effective state, defaulting to unconfigured when no surface carries it. */
+        const agentState = state.effective.agents?.[agent] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] }
+        routeChildren.push(createElement(
+          "div",
+          { key: "agent." + agent, style: SKIN.agentBlock, "data-mpd-agent-row": agent, "data-mpd-agent-state": agentState.status },
+          createElement(
+            "div",
+            { style: SKIN.agentRow },
+            createElement("span", { style: SKIN.label }, agent),
+            // NEVER BLANK (contract §7): the row states the agent's live route, the leaves it is
+            // missing, or the malformed path — the same typed state the effective block above shows.
+            createElement("span", { style: SKIN.key, "data-mpd-agent-status-text": agent }, agentStateText(agentState, agent, t)),
+          ),
+          ...cells,
+        ))
       }
       /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
       const saveBlocked = disabled || !state.dirty || state.invalid
@@ -6266,9 +6399,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
-        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the four slot
-        // routes, the member overrides that are set and the configured modelchain chains — stated
-        // ABOVE the rows it describes, so a reader sees what a change modifies before editing.
+        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the eleven
+        // agents' own routes and the configured modelchain chains — stated ABOVE the rows it
+        // describes, so a reader sees what a change modifies before editing.
         createElement(
           "div",
           { style: SKIN.help, "data-mpd-effective": "1" },
@@ -6276,8 +6409,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           ...effectiveChildrenOf(state.effective, t, createElement),
         ),
         ...scalarRows,
-        slotLine,
-        ...slotChildren,
+        routeLine,
+        ...routeChildren,
         ...tailRows,
         createElement(
           "div",
@@ -6343,34 +6476,50 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       en[key + ".hint"] = hintOf(field, "en")
       zh[key + ".hint"] = hintOf(field, "zh")
     }
-    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
-    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
-    for (const [index, slot] of SLOT_SLOTS.entries()) {
-      /** The slot's group heading in both locales. */
-      const heading = slotHeading(slot, index + 1)
-      en["teamModels." + slot + ".heading"] = heading.en
-      zh["teamModels." + slot + ".heading"] = heading.zh
-      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
-      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
+    // The display group headings, in BOTH locales: grouping is DISPLAY-ONLY (contract §7) — every
+    // agent below has its OWN persisted route, and a heading is not a writable slot.
+    for (const slot of SLOT_SLOTS) {
+      /** The group's members in the EN separator, so the heading names who it groups. */
+      const members = SLOT_GROUPS[slot].members.split(", ").join(", ")
+      en["agentGroup." + slot + ".heading"] = `${SLOT_GROUPS[slot].en} — ${members}`
+      zh["agentGroup." + slot + ".heading"] = `${SLOT_GROUPS[slot].zh} —— ${SLOT_GROUPS[slot].membersZh}`
     }
-    // The see-before-you-edit block (R3): one composed line per effective slot state and per
-    // configured chain. The line bodies are language-neutral ids ({route}, {leaves}, {key},
-    // {chain}); every WORD is baked into these entries in the locale's own spelling, so both
-    // locales read the same routes under their own words and the render substitutes only fragments.
+    en.agentGroupingNote = "Groups are a display grouping only: every agent has its OWN persisted route, and saving a row writes only that agent's agentRoutes.<Agent> leaves — a group is never stored."
+    zh.agentGroupingNote = "分组仅用于显示：每个代理都有各自持久化的路由，保存某一行只会写入该代理的 agentRoutes.<Agent> 字段，分组本身不会被存储。"
+    // The COMPACT row marker (the agent heading's right side): never blank, never an invented route.
+    en.agentStateConfigured = "current route: {route}"
+    zh.agentStateConfigured = "当前路由：{route}"
+    en.effectiveFallbacks = " · +{count} fallback route(s)"
+    zh.effectiveFallbacks = " · 另有 {count} 条后备路由"
+    en.agentStateUnconfigured = "<unconfigured> — missing {leaves}"
+    zh.agentStateUnconfigured = "「未配置」——缺少 {leaves}"
+    en.agentStateInvalid = "<invalid> — {problem}"
+    zh.agentStateInvalid = "「无效」——{problem}"
+    en.agentStateUnavailable = "<unavailable> — {agent} has no roster route (not a refusal)"
+    zh.agentStateUnavailable = "「不可用」——{agent} 没有 roster 路由（这不是拒绝）"
+    // The see-before-you-edit block (R3): one composed line per AGENT and per configured chain. The
+    // line bodies are language-neutral ids ({agent}, {route}, {leaves}, {key}, {chain}); every WORD
+    // is baked into these entries in the locale's own spelling, so both locales read the same routes
+    // under their own words and the render substitutes only fragments.
     en.effectiveTitle = "Effective model config — what a change here modifies (read live, no restart)"
     zh.effectiveTitle = "当前生效的模型配置——改之前先看（实时读取，无需重启）"
-    for (const [index, slot] of SLOT_SLOTS.entries()) {
-      en["effective.slot." + slot] = `slot ${index + 1} · ${SLOT_GROUPS[slot].en}: {route}`
-      zh["effective.slot." + slot] = `槽位 ${index + 1} · ${SLOT_GROUPS[slot].zh}：{route}`
+    for (const agent of AGENTS) {
+      /** The display group that renders this agent's line. */
+      const group = SLOT_GROUPS[groupOf(agent)]
+      en["effective.agent." + agent] = `agent ${agent} · ${group.en}: {route}`
+      zh["effective.agent." + agent] = `代理 ${agent} · ${group.zh}：{route}`
     }
-    // The <unconfigured> sentence of a slot line (contract §9): the leaves a slot still needs are NAMED,
-    // so the state the spawn would refuse on is visible before it happens.
-    en["effective.slotUnconfigured"] = "<unconfigured> — missing {leaves}; configure them here and save, or the next spawn is refused with SLOT_UNCONFIGURED"
-    zh["effective.slotUnconfigured"] = "「未配置」——缺少 {leaves}；请在此填写并保存，否则下次生成会被 SLOT_UNCONFIGURED 拒绝"
+    // The <unconfigured> sentence of an agent line (contract §7): the leaves the agent still needs
+    // are NAMED, so the state a spawn would refuse on is visible before it happens.
+    en["effective.agentUnconfigured"] = "<unconfigured> — {agent} is missing {leaves}; save them here, or the next spawn is refused with AGENT_UNCONFIGURED"
+    zh["effective.agentUnconfigured"] = "「未配置」——{agent} 缺少 {leaves}；请在此填写并保存，否则下次 spawn 会被 AGENT_UNCONFIGURED 拒绝"
     // The MALFORMED state is its own sentence (CodeRabbit #4): provider/model may be present, so
     // calling it <unconfigured> would send the reader looking for leaves that are already set.
-    en["effective.slotInvalid"] = "<invalid> — {problem}; fix it here and save — until then the next spawn is refused with SLOT_UNCONFIGURED"
-    zh["effective.slotInvalid"] = "「无效」——{problem}；请在此修正并保存 —— 在那之前下一次 spawn 会被 SLOT_UNCONFIGURED 拒绝"
+    en["effective.agentInvalid"] = "<invalid> — {agent}: {problem}; fix it here and save — until then the next spawn is refused with AGENT_UNCONFIGURED"
+    zh["effective.agentInvalid"] = "「无效」——{agent}：{problem}；请在此修正并保存 —— 在那之前下一次 spawn 会被 AGENT_UNCONFIGURED 拒绝"
+    // `unrouted` is NOT a refusal (Amendment 2 §3): an extension role keeps its own chain and spawns.
+    en["effective.agentUnavailable"] = "<unavailable> — {agent} has no roster route; this is NOT a refusal (an extension role keeps its own chain and still spawns)"
+    zh["effective.agentUnavailable"] = "「不可用」——{agent} 没有 roster 路由；这不是拒绝（扩展角色保留自己的链并照常 spawn）"
     en.effectiveChain = "modelchain.{key} → {chain}"
     zh.effectiveChain = "modelchain.{key} → {chain}"
     en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"
@@ -8141,7 +8290,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const SECTION_ORDER = 20
   /**
    * The bundle's server route serving the CURRENT EFFECTIVE model config from the `mpdConfig`
-   * service (R3): the four slot STATES and the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
+   * service (R3): ONE typed state per roster AGENT and the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
    * on the host's web server; this card fetches it at mount, after card saves and on
    * settings-scope updates, and degrades to the settings document alone when the route is absent
    * (a webless profile).
@@ -8156,7 +8305,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * therefore NAMES the live groups and the one-way toggle, and the mount-captured groups follow in
    * the second paragraph; neither paragraph promises the blanket behaviour.
    */
-  const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
+  const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
   /**
    * The MOUNT-CAPTURED half of the truth (byte-identical to
    * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`), rendered as the
@@ -8186,7 +8335,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** One knob the card renders (the mirror of the ONE shared knob declaration in settings-schema.ts). */
                              
-                                                                                                   
+                                                                                               
                   
                              
                  
@@ -8202,7 +8351,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                         
    
 
-  /** One leaf of a team-model slot, with the option list the parity contract declares for it. */
+  /** One leaf of an agent route, with the option list the parity contract declares for it. */
                       
                                                                   
                 
@@ -8214,15 +8363,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                      
    
 
-  /** The member group one slot routes (both locales, plus the member list the sentences interpolate). */
+  /** The member group one DISPLAY group holds (both locales, plus the member list it names). */
                        
                                   
               
                                              
               
-                                                              
+                                                      
                    
-                                                              
+                                                      
                      
    
 
@@ -8397,34 +8546,41 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                
    
 
-  /** One slot's effect as the see-before-you-edit block renders it (R3): its state and its route. */
+  /** One AGENT's effect as the see-before-you-edit block renders it (R3): its state and its route. */
                             
-                                                                                                  
-                                                     
-                                                                        
-                    
+       
+                                                                                              
+                                                                                                 
+                                                                                         
+       
                                                                      
+                                                                         
+                    
+                                                                      
                  
                                                                   
                            
-                                                                                           
+                                                                                                            
                      
-                                                                                                         
+                                                                                            
+                     
+                                                                                                              
                     
    
 
   /**
-   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): the four slot states and
-   * the configured `modelchain` entries. Read from the LIVE surfaces only — the settings form value
-   * this card already binds, plus the `/plugins/mpd/model-config` route the bundle serves from the
-   * `mpdConfig` service when a web server is composed — never a re-parse of mpd.jsonc, and never a
-   * built-in default: an unconfigured slot renders `<unconfigured>` (contract §9).
+   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): ONE state per roster
+   * AGENT (the unit of configuration, contract §1) and the configured `modelchain` entries. Read from
+   * the LIVE surfaces only — the settings form value this card already binds, plus the
+   * `/plugins/mpd/model-config` route the bundle serves from the `mpdConfig` service when a web server
+   * is composed — never a re-parse of mpd.jsonc, and never a built-in default: an unconfigured agent
+   * renders `<unconfigured>` with the leaves it is missing (contract §7).
    */
                                   
                                                                                                                             
                                   
-                                                       
-                                         
+                                                                                                
+                                          
                                                                                                
                                                                           
                                                                                   
@@ -8583,29 +8739,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    
 
   /**
-   * The twenty-six knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, the twelve team-model slot leaves and the TUI surface's own knob). The composed
-   * hint LEADS with the knob's human sentence (`semantics`/`semanticsZh`) and then states its
-   * mpd.jsonc key, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
-   * watchdog rows carry the sentence they always had). The slot leaves take their option lists from
-   * the live catalog at render time instead. The per-member `agentRoutes` rows are GONE with the
-   * table itself (contract `.mpd/plans/slot-single-source.md` §3).
+   * The forty-seven knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, the thirty-three per-agent route leaves and the TUI surface's own knob). The
+   * composed hint LEADS with the knob's human sentence (`semantics`/`semanticsZh`) and then states
+   * its mpd.jsonc key, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the
+   * two watchdog rows carry the sentence they always had). The route leaves take their option lists
+   * from the live catalog at render time instead. The retired `teamModels` slot rows are GONE with
+   * that table (contract `.mpd/plans/agent-routes-per-agent.md` §1/§7).
    */
-  /** The four team-model slots, in the order the card renders them. */
+  /** The four DISPLAY groups, in the order the card renders them (grouping is display-only). */
   const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
-  /** The three leaves every slot carries, with their declared option lists. */
+  /** The three leaves every agent route carries, with their declared option lists. */
   const SLOT_LEAVES                          = [
     { leaf: "provider", label: "provider", zh: "提供商", options: ["deepseek-official"] },
     { leaf: "model", label: "model", zh: "模型", options: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"] },
     { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度", options: ["off", "low", "high", "max"] },
   ]
   /**
-   * What each slot IS — the member group it routes, in the group's own order (mirror of
-   * `TEAM_MODEL_SLOT_GROUPS`). The group name and the member list are the only inputs the twelve
-   * shared human sentences interpolate, so the card cannot drift from the declaration by accident:
-   * the parity test compares every sentence and heading below with the shared declaration's own
-   * builders. Slot 4 carries its OWN sentences/impact (an image-input constraint, not a
-   * shared-route one), mirrored from `TEAM_MODEL_SLOT_LEAF_OVERRIDES` / `…_IMPACT_OVERRIDES`.
+   * What each DISPLAY group holds — its human name in both locales and its member list, in the
+   * group's own order (a mirror of `TEAM_MODEL_SLOT_GROUPS`). Grouping is display-only (contract
+   * §7): no write, no read and no route resolution depends on it; every member below has its OWN
+   * persisted `agentRoutes.<Agent>` entry. The parity test pins the member lists against the shared
+   * declaration, and the row labels/sentences are built from the agents themselves.
    */
   const SLOT_GROUPS                            = {
     slot1: { en: "heavy members", zh: "重推理成员", members: "Architect, Planner, Reviewer, Lead, Senior Engineer", membersZh: "Architect、Planner、Reviewer、Lead、Senior Engineer" },
@@ -8613,75 +8768,88 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     slot3: { en: "execution members", zh: "执行型成员", members: "Deep Worker, Junior Engineer", membersZh: "Deep Worker、Junior Engineer" },
     slot4: { en: "vision member", zh: "视觉成员", members: "Vision Analyst", membersZh: "Vision Analyst" },
   }
-  /** The one-line impact under a slot's group heading (the shared text for slots 1-3). */
-  const SLOT_IMPACT                         = {
-    en: "When a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.",
-    zh: "建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。",
+  /**
+   * The settings subtree the per-agent routes live in (contract §1): the ONLY model-route config.
+   * The legacy `teamModels` subtree is tolerated for boot by the config row, migrated once, then
+   * never read or written — no field below addresses it.
+   */
+  const AGENT_ROUTES = "agentRoutes"
+  /** The eleven roster agents, in the four groups' declared order — the order rows and lines render in. */
+  const AGENTS                        = SLOT_SLOTS.flatMap((slot) => SLOT_GROUPS[slot].members.split(", "))
+  /**
+   * The display group a roster agent belongs to (`slot1`…`slot4`), or "" for a name the roster does
+   * not carry. DISPLAY only (contract §7): no write, no read and no route resolution depends on it.
+   * @param agent - a roster display name.
+   * @returns the group id whose member list carries the name, or "".
+   */
+  function groupOf(agent        )         {
+    for (const slot of SLOT_SLOTS) if (SLOT_GROUPS[slot].members.split(", ").includes(agent)) return slot
+    return ""
   }
-  /** The vision slot's OWN impact line (mirror of `TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4`). */
-  const SLOT_IMPACT_OVERRIDES                                         = {
-    slot4: {
-      en: "When a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.",
-      zh: "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
+  /**
+   * The per-agent route leaf templates, mirrored BYTE-FOR-BYTE from the shared declaration's
+   * `AGENT_ROUTE_LEAF_TEMPLATES` (`mpd-config-plugin/src/settings-schema.ts`). The card may not
+   * import that module (the client bytes must not carry the symbol), so the parity test compares
+   * this mirror with the declaration's own `agentRouteLeafSentence` output element by element.
+   */
+  const AGENT_SENTENCE_TEMPLATES                                = {
+    provider: {
+      en: "{agent}'s own provider. Every roster agent has its OWN persisted route, so this row belongs to {agent} and changing it touches no other agent. What changing it does: {agent}'s next spawn (a one-shot consult, a workmate consult or a team member) runs on the new route; an entry missing `provider` or `model` makes that spawn REFUSE loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves — it never silently substitutes another model.",
+      zh: "{agent} 自己的提供商。每个 roster 成员都有各自持久化的路由，本行只属于 {agent}，改它不会影响其他成员。改它的影响：{agent} 下一次被 spawn（一次性咨询、workmate 咨询或 team 成员）即走新路由；条目缺少 `provider` 或 `model` 会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`），点名该成员与缺失项，绝不静默换模型。",
+    },
+    model: {
+      en: "{agent}'s own model. Together with the provider above it decides the model {agent} runs on; other agents keep their own routes. What changing it does: {agent}'s next spawn uses the new model, and a model the provider does not offer makes that spawn fail with the agent and the offending leaf named.",
+      zh: "{agent} 自己的模型。与上面的提供商共同决定 {agent} 使用的模型，其他成员保持各自的路由。改它的影响：{agent} 下一次 spawn 使用新模型；模型与提供商不匹配、或该提供商没有这个模型时，该次 spawn 会点名成员与出错的字段失败。",
+    },
+    reasoningEffort: {
+      en: "{agent}'s own reasoning effort (off / low / high / max): how much {agent} thinks on each call. max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: {agent}'s next spawn uses it; an effort the chosen model does not support fails that spawn and names this leaf. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+      zh: "{agent} 自己的推理强度（off / low / high / max），决定 {agent} 每次调用的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：{agent} 下一次 spawn 即使用它；该模型不支持的等级会让该次 spawn 报错并点名本字段。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
     },
   }
-  /** Slot 4's OWN leaf sentences (mirror of `TEAM_MODEL_SLOT_LEAF_OVERRIDES.slot4`). */
-  const SLOT_SENTENCE_OVERRIDES                                                = {
-    slot4: {
+  /**
+   * The per-agent overrides of those templates, mirrored from the shared declaration's
+   * `AGENT_ROUTE_LEAF_OVERRIDES`: the vision member's route must accept image input.
+   */
+  const AGENT_SENTENCE_OVERRIDES                                                = {
+    "Vision Analyst": {
       provider: {
-        en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-        zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
+        en: "Vision Analyst's own provider — the one roster member that reads images, diagrams and screenshots. The model paired with it MUST accept image input (for example deepseek-v4-flash-vision-exp): a text-only model breaks its image analysis. What changing it does: its next spawn runs on the new route, and an unusable value REFUSES that spawn loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves.",
+        zh: "Vision Analyst 自己的提供商——它是 roster 中唯一负责看图、读图、分析截图的成员。与它配对的模型必须支持图像输入（例如 deepseek-v4-flash-vision-exp）：纯文本模型会让看图任务失败。改它的影响：它下一次 spawn 即走新路由；填成不可用会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`）并点名成员与缺失项。",
       },
       model: {
-        en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-        zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
-      },
-      reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
+        en: "Vision Analyst's own model. It MUST accept image input: reading images is its whole value, and a text-only model makes its image tasks fail. What changing it does: effective at its next spawn.",
+        zh: "Vision Analyst 自己的模型。必须选支持图像输入的模型：读图是它的全部价值，纯文本模型会让读图任务直接失败。改它的影响：下次 spawn 生效。",
       },
     },
   }
-  /** The impact line of ONE slot: the slot's own override, else the shared sentence. */
-  const impactOf = (slot        , lang        )         => (SLOT_IMPACT_OVERRIDES[slot] ?? SLOT_IMPACT)[lang]
-  /** The HUMAN sentence of one slot leaf in both locales: what it IS, then what configuring it DOES. */
-  function slotSentence(slot        , leaf        )                {
-    /** The slot's own override table, when it has one. */
-    const override = SLOT_SENTENCE_OVERRIDES[slot]
-    if (override !== undefined) return override[leaf]
-    /** The member group this slot routes. */
-    const group = SLOT_GROUPS[slot]
-    if (leaf === "provider") {
-      return {
-        en: `The provider half of this slot. The slots are the default model route of team members: when a team is created, the ${group.en} (${group.members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.`,
-        zh: `这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，${group.zh}（${group.membersZh}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。`,
-      }
-    }
-    if (leaf === "model") {
-      return {
-        en: `This slot's model. Together with the provider above, it decides the model the ${group.en} (${group.members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.`,
-        zh: `这一档的模型。与上面的提供商共同决定 ${group.zh}（${group.membersZh}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。`,
-      }
-    }
-    return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
-    }
+  /**
+   * One agent-route leaf's human sentence, with the display name interpolated exactly as the shared
+   * `agentRouteLeafSentence` does (the templates carry `{agent}` only; grouping is not part of the
+   * sentence). The Web card cannot import the shared builder, so this mirror is the pin.
+   * @param agent - the roster display name the row belongs to.
+   * @param leaf - `provider`, `model` or `reasoningEffort`.
+   * @returns the sentence pair, the agent's name substituted in both locales.
+   */
+  function agentSentence(agent        , leaf        )                {
+    /** The agent's own override when one exists, else the shared per-leaf template. */
+    const template = AGENT_SENTENCE_OVERRIDES[agent]?.[leaf] ?? AGENT_SENTENCE_TEMPLATES[leaf]
+    return { en: template.en.split("{agent}").join(agent), zh: template.zh.split("{agent}").join(agent) }
   }
-  /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
-  function slotHeading(slot        , index        )                {
-    /** The member group this slot routes. */
-    const group = SLOT_GROUPS[slot]
-    return { en: `Slot ${index} — ${group.en} (${group.members})`, zh: `槽位 ${index} —— ${group.zh}（${group.membersZh}）` }
-  }
-  /** The twelve slot rows: the same order, paths and DECLARED option lists as the shared declaration. */
-  const SLOT_FIELDS                    = SLOT_SLOTS.flatMap((slot, index) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
-    /** The slot leaf's own human sentence, which the row's hint leads with. */
-    const sentence = slotSentence(slot, leaf)
+  /**
+   * The thirty-three per-agent route rows: every roster agent's provider/model/reasoningEffort, in
+   * group order, with the SAME labels, declared option lists and human sentences as the ONE shared
+   * declaration's `AGENT_ROUTE_KNOBS`). The row label names the agent and its
+   * display group so a row stays attributable even outside its heading context.
+   */
+  const AGENT_FIELDS                    = AGENTS.flatMap((agent) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The display group that renders this agent's rows. */
+    const group = SLOT_GROUPS[groupOf(agent)]
+    /** This leaf's human sentence, which the row's hint leads with. */
+    const sentence = agentSentence(agent, leaf)
     return {
-      path: ["teamModels", slot, leaf],
-      label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
-      zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      path: [AGENT_ROUTES, agent, leaf],
+      label: `${agent} ${label} (${group.en})`,
+      zh: `${agent} ${zh}（${group.zh}）`,
       kind: "select",
       options,
       semantics: sentence.en,
@@ -8689,7 +8857,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }))
 
-  /** Every knob the card renders, in the shared declaration's order (the deleted `agentRoutes` rows are gone). */
+  /** Every knob the card renders, in the shared declaration's order (the retired `teamModels` rows are gone). */
   const FIELDS                    = [
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -8704,14 +8872,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
     { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-    // The four team-model slots (twelve leaves, mirrors of the ONE knob declaration in
-    // packages/mpd-config-plugin/src/settings-schema.ts). Every slot leaf is a `select`: the
-    // options come from the live catalog at render time (see optionsFor) and fall back to the
-    // declared lists below, so no slot value is ever typed. The DECLARED lists are the parity
-    // surface with the TUI; the LIVE lists are a different source by construction. The labels and
-    // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
-    // exactly as the shared declaration states it (a test compares the two element-wise).
-    ...SLOT_FIELDS,
+    // The thirty-three per-agent route leaves (mirrors of the ONE knob declaration in
+    // packages/mpd-config-plugin/src/settings-schema.ts). Every leaf is a `select`: the options come
+    // from the live catalog at render time (see optionsFor) and fall back to the declared lists
+    // below, so no route value is ever typed. The DECLARED lists are the parity surface with the TUI;
+    // the LIVE lists are a different source by construction. The labels and the human sentences are
+    // built from the roster above, so an agent's copy is stated once here exactly as the shared
+    // declaration states it (a test compares the two element-wise). Grouping is DISPLAY-only
+    // (contract §7): saving a row writes `agentRoutes.<Agent>.<leaf>` and nothing else.
+    ...AGENT_FIELDS,
     // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
     // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
     // two watchdog rows above.
@@ -8755,10 +8924,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /**
    * Project the CURRENT EFFECTIVE model config (R3) from the live surfaces only: the settings
    * document this card binds, plus the `/plugins/mpd/model-config` body when the bundle's route
-   * answered. Precedence per piece: the SERVICE value (it sees the file layers and refreshes on every
-   * save and watched edit) over the DOCUMENT value (entry config only). There is NO built-in default
-   * floor any more (contract §2): a slot neither surface configures renders `<unconfigured>`, with
-   * the required leaves it is missing named.
+   * answered. Precedence per AGENT: the SERVICE's typed resolution (it sees the file layers and
+   * refreshes on every save and watched edit) over the DOCUMENT's `agentRoutes.<Agent>` block.
+   * There is NO built-in default floor (contract §1): an agent neither surface configures renders
+   * `<unconfigured>`, with the required leaves it is missing named.
    * @param section - the settings form's namespace value (the surface the card binds).
    * @param live - the live-service read: the route body (or undefined) and why it is absent.
    * @returns the projection the card renders above its rows.
@@ -8766,15 +8935,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   function effectiveModelConfigOf(section         , live                                   )                       {
     /** The live body narrowed to the members the route serves ({} when it did not answer). */
     const body = isTable(live.body) ? live.body : {}
-    /** The four slot states. */
-    const slots                                 = {}
-    for (const slot of SLOT_SLOTS) {
-      // PER-SLOT precedence: the service's slot state (the authoritative live read), else the
-      // document's block, else nothing at all — and NOTHING is the `<unconfigured>` state.
-      /** The service's state for this slot, when the route body carries one. */
-      const fromService = isTable(body.slots) ? body.slots[slot] : undefined
-      /** The state the card renders for this slot. */
-      slots[slot] = isTable(fromService) ? slotStateOf(fromService, slot) : slotStateOf(leafOf(section, ["teamModels", slot]), slot)
+    /** One state per roster agent, in roster order. */
+    const agents                                 = {}
+    for (const agent of AGENTS) {
+      /** The service's typed resolution for this agent, when the route body carries one. */
+      const fromService = isTable(body.agents) ? body.agents[agent] : undefined
+      agents[agent] = fromService !== undefined && fromService !== null
+        ? agentResolutionStateOf(fromService, agent)
+        : agentRouteStateOf(leafOf(section, [AGENT_ROUTES, agent]), agent)
     }
     /** The configured modelchain chains, only ever from the service read (the document carries none). */
     const modelchain                                                             = {}
@@ -8788,44 +8956,110 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         if (entries.length > 0) modelchain[key] = entries
       }
     }
-    return { source: isTable(live.body) ? "service" : "document", slots, modelchain, notice: isTable(live.body) ? "" : live.notice }
+    return { source: isTable(live.body) ? "service" : "document", agents, modelchain, notice: isTable(live.body) ? "" : live.notice }
   }
 
   /**
-   * One slot's state from the raw block a surface reported: the route it states and what it lacks.
+   * One agent's state from the SERVICE's typed resolution (contract §2), narrowed and never thrown.
    *
-   * The SAME rule the config row's resolver applies (contract §7/§9), restated here because the card
-   * may not import that package: `provider` and `model` must be non-blank strings — WHITESPACE-ONLY
-   * counts as missing, exactly as the resolver trims (CodeRabbit #5) — while `reasoningEffort` is
-   * optional and a present-but-blank one states no effort. A present non-string leaf, or a slot that
-   * is not an object at all, is `invalid` with the offending path named (CodeRabbit #4).
-   * @param block - the raw slot block, of unknown shape.
-   * @param slot - the slot id the block belongs to, used only to spell an `invalid` problem path.
+   * The union is `ok:true` with `route`, or `ok:false` with `reason` = `unconfigured` (matching
+   * `missing[]`) | `invalid` (matching `problem`) | `unrouted`. `unrouted` is NOT a refusal
+   * (contract Amendment 2 §3): it means no roster key decides the member — an extension role keeps
+   * its own chain and still spawns — so it renders as `<unavailable>`, never as `<unconfigured>`.
+   * @param raw - the service's answer for one member, of unknown shape.
+   * @param agent - the roster name the answer belongs to, used to spell a problem path.
    * @returns the state the effective block renders.
    */
-  function slotStateOf(block         , slot         )                 {
-    /** The slot's provider leaf, trimmed; whitespace alone is UNSET, as the resolver treats it. */
-    const provider = routeLeaf(block, "provider").trim()
-    /** The slot's model leaf, trimmed. */
-    const model = routeLeaf(block, "model").trim()
-    /** The slot's effort leaf, trimmed. */
-    const reasoningEffort = routeLeaf(block, "reasoningEffort").trim()
-    /** The required leaves the slot does not state. */
-    const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
-    // A block that is neither absent nor an object is malformed at the SLOT level (the resolver's
-    // `teamModels.slotN must be an object` refusal, mirrored here for the display).
-    if (block !== undefined && block !== null && !isTable(block)) {
-      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + " is not an object" }
+  function agentResolutionStateOf(raw         , agent        )                 {
+    // An answer that is not even a table is a malformed SERVICE response; name the path rather than
+    // inventing a route or blanking the line.
+    if (!isTable(raw)) {
+      return { status: "invalid", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [], problem: AGENT_ROUTES + "." + agent + " returned no typed resolution" }
     }
-    /** The leaf that is PRESENT but not a string, if any — a malformed slot, not a missing one. */
+    if (raw.ok === true) {
+      /** The route the service resolved. */
+      const route = raw.route
+      /** The route's provider leaf, trimmed. */
+      const provider = routeLeaf(route, "provider").trim()
+      /** The route's model leaf, trimmed. */
+      const model = routeLeaf(route, "model").trim()
+      /** The route's effort leaf, trimmed. */
+      const reasoningEffort = routeLeaf(route, "reasoningEffort").trim()
+      /** How many fallback hops the entry declares; display only, never resolved by this card. */
+      const fallbacks = isTable(route) && Array.isArray(route.fallbacks) ? route.fallbacks.length : 0
+      /** The required leaves the resolved route still misses. */
+      const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
+      // A PRESENT-but-non-string leaf is malformed, not missing (CodeRabbit #4): the service is
+      // expected to answer `invalid` for it, but a display must not turn one into a usable route.
+      /** The leaf that is present but not a string, if any. */
+      const malformedLeaf = isTable(route)
+        ? ["provider", "model", "reasoningEffort"].find((leaf) => route[leaf] !== undefined && route[leaf] !== null && typeof route[leaf] !== "string")
+        : undefined
+      if (malformedLeaf !== undefined) {
+        return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + "." + malformedLeaf + " is not a string" }
+      }
+      if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, fallbacks, missing }
+      return { status: "configured", provider, model, reasoningEffort, fallbacks, missing: [] }
+    }
+    if (raw.reason === "unconfigured") {
+      /** The leaves the service itself names, when it names any. */
+      const named = Array.isArray(raw.missing) ? raw.missing.filter((leaf)                 => typeof leaf === "string") : []
+      return {
+        status: "unconfigured",
+        provider: routeLeaf(raw, "provider").trim(),
+        model: routeLeaf(raw, "model").trim(),
+        reasoningEffort: "",
+        fallbacks: 0,
+        // The service is the authority on what is missing; a silent answer still names both leaves.
+        missing: named.length > 0 ? named : ["provider", "model"],
+      }
+    }
+    if (raw.reason === "invalid") {
+      /** The problem the service named, or the path itself when it named none. */
+      const problem = typeof raw.problem === "string" && raw.problem.trim() !== "" ? raw.problem.trim() : AGENT_ROUTES + "." + agent + " is not a usable route"
+      return { status: "invalid", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [], problem }
+    }
+    // `unrouted` and any unknown state: no client-safe route claim is made (never a refusal verdict).
+    return { status: "unavailable", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [] }
+  }
+
+  /**
+   * One agent's state from the raw `agentRoutes.<Agent>` block a surface reported: the route it
+   * states, how many fallbacks it declares, and what it lacks.
+   *
+   * The SAME rule the config row's resolver applies (contract §2), restated here because the card
+   * may not import that package: `provider` and `model` must be non-blank strings — WHITESPACE-ONLY
+   * counts as missing, exactly as the resolver trims (CodeRabbit #5) — while `reasoningEffort` is
+   * optional and a present-but-blank one states no effort. A present non-string leaf, or an entry
+   * that is not an object at all, is `invalid` with the offending path named (CodeRabbit #4).
+   * @param block - the raw agent entry, of unknown shape.
+   * @param agent - the roster name the entry belongs to, used to spell an `invalid` problem path.
+   * @returns the state the effective block renders.
+   */
+  function agentRouteStateOf(block         , agent        )                 {
+    /** The agent's provider leaf, trimmed; whitespace alone is UNSET, as the resolver treats it. */
+    const provider = routeLeaf(block, "provider").trim()
+    /** The agent's model leaf, trimmed. */
+    const model = routeLeaf(block, "model").trim()
+    /** The agent's effort leaf, trimmed. */
+    const reasoningEffort = routeLeaf(block, "reasoningEffort").trim()
+    /** How many fallback hops the entry declares; display only, never resolved by this card. */
+    const fallbacks = isTable(block) && Array.isArray(block.fallbacks) ? block.fallbacks.length : 0
+    /** The required leaves the agent does not state. */
+    const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
+    // An entry that is neither absent nor an object is malformed at the AGENT level.
+    if (block !== undefined && block !== null && !isTable(block)) {
+      return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + " is not an object" }
+    }
+    /** The leaf that is PRESENT but not a string, if any — a malformed entry, not a missing one. */
     const malformedLeaf = isTable(block)
       ? ["provider", "model", "reasoningEffort"].find((leaf) => block[leaf] !== undefined && block[leaf] !== null && typeof block[leaf] !== "string")
       : undefined
     if (malformedLeaf !== undefined) {
-      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + "." + malformedLeaf + " is not a string" }
+      return { status: "invalid", provider, model, reasoningEffort, fallbacks, missing, problem: AGENT_ROUTES + "." + agent + "." + malformedLeaf + " is not a string" }
     }
-    if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, missing }
-    return { status: "configured", provider, model, reasoningEffort, missing: [] }
+    if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, fallbacks, missing }
+    return { status: "configured", provider, model, reasoningEffort, fallbacks, missing: [] }
   }
 
   /** Substitute the `{name}` placeholders of one dictionary sentence with language-neutral fragments. */
@@ -8842,9 +9076,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-   * The see-before-you-edit lines (R3): the four effective slot STATES — each a route or the
-   * `<unconfigured>` sentence with the leaves it still needs (contract §9) — plus the configured
-   * modelchain chains. Every word is localized through the dictionary; every value a neutral id.
+   * The see-before-you-edit lines (R3): ONE line per roster AGENT — its route, the malformed text,
+   * or the `<unconfigured>` sentence with the leaves it still needs (contract §7) — plus the
+   * configured modelchain chains. Every word is localized through the dictionary; every value a
+   * neutral id. The unit is the AGENT (contract §1); no line is a persisted slot.
    * @param effective - the projection this render shows.
    * @param t - the locale resolver the component renders through.
    * @param createElement - the host's React createElement.
@@ -8853,25 +9088,31 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   function effectiveChildrenOf(effective                      , t                         , createElement                               )            {
     /** The block's lines, in render order. */
     const lines            = []
-    for (const slot of SLOT_SLOTS) {
-      /** This slot's state, defaulting to the "nothing configured" state when no surface carries it. */
-      const state = effective.slots?.[slot] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] }
-      // A DISPLAY NEVER THROWS AND NEVER INVENTS A ROUTE (contract §9): a slot that is unusable —
+    for (const agent of AGENTS) {
+      /** This agent's state, defaulting to the "nothing configured" state when no surface carries it. */
+      const state = effective.agents?.[agent] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] }
+      // A DISPLAY NEVER THROWS AND NEVER INVENTS A ROUTE (contract §7): an agent that is unusable —
       // or whose projected state is older than this renderer, which a mixed client rollout can
       // produce — renders as its OWN typed sentence, never as an empty string and never as a throw.
-      /** The leaves this line names when the slot is not configured. */
+      /** The leaves this line names when the agent is not configured. */
       const missing = Array.isArray(state.missing) ? state.missing : ["provider", "model"]
-      /** The sentence this line renders: the route, the malformed-slot text, or the unconfigured text. */
+      /** The sentence this line renders: the route (+fallbacks), the malformed text, or the typed gap. */
       const text = state.status === "configured"
-        ? interpolate(t("effective.slot." + slot), { route: routeText(state) })
-        // CodeRabbit #4: an `invalid` slot has its OWN sentence. It is NOT the `<unconfigured>` one:
+        ? interpolate(t("effective.agent." + agent), { route: routeText(state) })
+          // The fallback count is DISPLAY only (the card never resolves the chain): a route that
+          // declares backups says so, so a reader can tell it from a bare entry.
+          + (state.fallbacks > 0 ? interpolate(t("effectiveFallbacks"), { count: String(state.fallbacks) }) : "")
+        // CodeRabbit #4: an `invalid` agent has its OWN sentence. It is NOT the `<unconfigured>` one:
         // provider and model may well be present, and what is wrong is a MALFORMED leaf (named).
         : state.status === "invalid"
-          ? interpolate(t("effective.slotInvalid"), { problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : "teamModels." + slot })
-          : interpolate(t("effective.slotUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
+          ? interpolate(t("effective.agentInvalid"), { agent, problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : AGENT_ROUTES + "." + agent })
+          // `unrouted` is not a refusal (Amendment 2 §3): it says <unavailable>, never a verdict.
+          : state.status === "unavailable"
+            ? interpolate(t("effective.agentUnavailable"), { agent })
+            : interpolate(t("effective.agentUnconfigured"), { agent, leaves: missing.length === 0 ? "-" : missing.join(", ") })
       lines.push(createElement(
         "p",
-        { key: "effective.slot." + slot, style: SKIN.helpText, "data-mpd-effective-slot": slot, "data-mpd-slot-status": state.status },
+        { key: "effective.agent." + agent, style: SKIN.helpText, "data-mpd-effective-agent": agent, "data-mpd-agent-status": state.status },
         text,
       ))
     }
@@ -8903,6 +9144,30 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     return lines
   }
 
+  /**
+   * One agent's COMPACT state marker for its own row heading — the same typed state the effective
+   * block renders, at row size. Never blank, never a route the surfaces did not report: a configured
+   * agent shows its route (+fallback count), an unconfigured one the leaves it lacks, an invalid one
+   * the offending path, and an `unrouted` (extension role) one `<unavailable>` — never a refusal.
+   * @param state - the agent's projected state.
+   * @param agent - the roster name the marker belongs to, used when a problem path is unnamed.
+   * @param t - the locale resolver the component renders through.
+   * @returns the localized marker text.
+   */
+  function agentStateText(state                , agent        , t                         )         {
+    /** The leaves the marker names when the agent is not configured. */
+    const missing = Array.isArray(state.missing) ? state.missing : ["provider", "model"]
+    if (state.status === "configured") {
+      return interpolate(t("agentStateConfigured"), { route: routeText(state) })
+        + (state.fallbacks > 0 ? interpolate(t("effectiveFallbacks"), { count: String(state.fallbacks) }) : "")
+    }
+    if (state.status === "invalid") {
+      return interpolate(t("agentStateInvalid"), { problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : AGENT_ROUTES + "." + agent })
+    }
+    if (state.status === "unavailable") return interpolate(t("agentStateUnavailable"), { agent })
+    return interpolate(t("agentStateUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
+  }
+
   /** Parse the control's text into a value for this field, or undefined when it is not one. */
   function parse(kind        , text         )                                        {
     if (kind === "number") {
@@ -8924,15 +9189,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** Render one settings value as the control's text (a missing value renders empty). */
   const format = (kind        , value         )         => (value === undefined || value === null ? "" : String(value))
-
-  /**
-   * The namespace sub-tree that renders as a DEPENDENT picker: for each slot the provider, the
-   * model (grouped by provider) and the reasoning effort (the SELECTED model's own efforts) are
-   * all selections, so no slot value is ever typed. The card MIRRORS this declaration instead of
-   * importing the TypeScript plugin's knob list: the web client must not reference that symbol (a
-   * QA gate pins it), and the parity test compares the mirror with the real one.
-   */
-  const TEAM_MODEL_SLOT = "teamModels"
 
   /**
    * The session the catalog binds to, read from the client's OWN list snapshot.
@@ -9070,12 +9326,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-   * The short trailing marker a SLOT row's hint carries while the catalog is in fallback: the third
-   * surface of the same state, on the rows the user is actually looking at. Live renders nothing
-   * here — the hint is not part of the front-door parity contract (the parity pin compares the
-   * declaration), so the suffix is a render-time addition only.
+   * The short trailing marker a per-agent route row's hint carries while the catalog is in
+   * fallback: the third surface of the same state, on the rows the user is actually looking at.
+   * Live renders nothing here — the hint is not part of the front-door parity contract (the parity
+   * pin compares the declaration), so the suffix is a render-time addition only.
+   * @param info - the catalog state this render used.
+   * @returns the suffix to append to a route row's hint ("" while the catalog is live).
    */
-  function slotFallbackMarker(info                         )         {
+  function agentFallbackMarker(info                         )         {
     /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
     if (state.mode === "live") return ""
@@ -9162,7 +9420,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
     /**
      * The CONSOLE SIGNAL: a degraded read used to be visible ONLY in the card's own paragraph at
-     * the TOP of the section, which a user looking at the three slot pickers at the BOTTOM never
+     * the TOP of the section, which a user looking at the route pickers at the BOTTOM never
      * sees — and the fallback path was console-silent, which is how a dead catalog read survived a
      * whole verification wave. Exactly ONE warning when the state BECOMES a fallback (never
      * repeated while it stays one; re-armed when it returns to live and degrades again) and ONE
@@ -9388,9 +9646,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   }
 
   /**
-   * The options ONE field renders. Non-slot knobs keep their declared list. Slot leaves derive
-   * theirs from the catalog and fall back to the declared list whenever the catalog is empty or
-   * lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
+   * The options ONE field renders. Non-route knobs keep their declared list. Per-agent route leaves
+   * derive theirs from the catalog and fall back to the declared list whenever the catalog is empty
+   * or lacks the requested entry — a missing catalog degrades the OPTIONS, never the section:
    *   provider          -> the catalog's provider ids (label = the provider's display name)
    *   model             -> every provider's models, GROUPED by provider (optgroup label)
    *   reasoningEffort   -> the SELECTED model's own efforts, so changing the model re-derives them
@@ -9398,10 +9656,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   function optionsFor(field                 , groups                , controls                                        )                {
     /** The knob's declared options, which every degrade path returns. */
     const declared = declaredOptions(field)
-    // The team-model slot rows pick from the live catalog; every other knob keeps its declared list.
-    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
-    /** The slot's group key (`slot1`…`slot4`). */
-    const groupKey = field.path[1]
+    // The per-agent route rows pick from the live catalog; every other knob keeps its declared list.
+    if (field.path[0] !== AGENT_ROUTES || groups.length === 0) return declared
+    /** The agent's own route key (`agentRoutes.<Agent>.<leaf>`), which the dependent lists read. */
+    const agentKey = field.path[1]
     /** The leaf this row edits. */
     const leaf = field.path[2]
     if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
@@ -9419,8 +9677,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       const control = controls ? controls[path.join(".")] : undefined
       return control ? control.text : undefined
     }
-    /** The model the provider and model controls of THIS row's group currently select. */
-    const model = findModel(groups, textOf([field.path[0], groupKey, "provider"]), textOf([field.path[0], groupKey, "model"]))
+    /** The model the provider and model controls of THIS agent's route currently select. */
+    const model = findModel(groups, textOf([field.path[0], agentKey, "provider"]), textOf([field.path[0], agentKey, "model"]))
     /** The selected model's own efforts (an absent list counts as none). */
     const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
     /** Those efforts as rendered options. */
@@ -9557,7 +9815,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         error: lastError,
         controls,
         disclosure,
-        // Which branch produced the slot option lists — LIVE (with counts) or the declared
+        // Which branch produced the route option lists — LIVE (with counts) or the declared
         // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
         // R3: the effective model config projected from the bound document plus the live-service
@@ -9771,10 +10029,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     },
     /** `.input:disabled`: a control the page refuses writes on greys its text and drops the cursor. */
     controlOff: { color: LABEL_TERTIARY, cursor: "default" },
-    /** A slot's group heading: the label treatment, with the field rhythm's top padding. */
+    /** A display group's heading: the label treatment, with the field rhythm's top padding. */
     groupHeading: { marginTop: 12, fontSize: 13, fontWeight: 500, lineHeight: 1.5, color: LABEL_PRIMARY },
-    /** A slot's one-line impact: the hint treatment. */
-    groupImpact: { margin: "2px 0 0", fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
+    /** One agent's row heading: the display name plus its live state, on one baseline. */
+    /** One agent's ROW: the row container holding its heading and its three leaf cells. */
+    agentBlock: { display: "flex", flexDirection: "column", marginTop: 12 },
+    /** One agent's row HEADING: the display name plus its live state, on one baseline. */
+    agentRow: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
     /** The row's marker line (overridden / invalid) that carries the reset link. */
     resetNote: { display: "flex", alignItems: "center", gap: 8, fontSize: 12, lineHeight: 1.5, color: LABEL_TERTIARY },
     /** `.reset`: a link-shaped button — no chrome, 12px/1.5, label-secondary. */
@@ -9882,7 +10143,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       // is part of the rendered output (and of the data attributes) — never implicit.
       /** The catalog state this render used. */
       const catalog = state.catalog ?? FALLBACK_CATALOG
-      /** The live provider groups the slot pickers derive their options from. */
+      /** The live provider groups the route pickers derive their options from. */
       let groups                 = []
       try {
         /** The catalog probe's answer, which counts only when it is a list. */
@@ -9899,9 +10160,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const control = state.controls[key] ?? { text: "" }
         /** The row's label. */
         const label = t(key)
-        // The twelve slot rows carry the fallback marker; the scalar rows are untouched.
-        /** The row's hint, with the slot rows carrying the fallback marker. */
-        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // The thirty-three route rows carry the fallback marker; the scalar rows are untouched.
+        /** The row's hint, with the route rows carrying the fallback marker. */
+        const hint = t(key + ".hint") + (field.path[0] === AGENT_ROUTES ? agentFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
         // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
         // card. Repeating it per row is what buried every row's own sentence (measured in a real
@@ -9953,51 +10214,72 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           ),
         )
       })
-      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the rows,
+      // VISIBLE AT THE CONTROL: the per-agent route pickers sit at the BOTTOM of the rows,
       // where the section's top notice is off-screen — so the SAME sentence renders again
-      // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
+      // immediately above the first route row (between the 13 scalar rows and the 33 route rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
-      /** The index of the first slot row (-1 when the field list carries no slot leaf). */
-      const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
-      /** The end of the team-model slot rows: the TUI surface's own knob closes the card. */
-      const slotEndRaw = slotStart < 0 ? -1 : fields.findIndex((field, index) => index > slotStart && field.path[0] !== TEAM_MODEL_SLOT)
-      /** The first row AFTER the twelve slot rows (-1 when nothing trails them). */
-      const slotEnd = slotStart < 0 || slotEndRaw < 0 ? fields.length : slotEndRaw
+      /** The index of the first per-agent route row (-1 when the field list carries no route leaf). */
+      const agentStart = fields.findIndex((field) => field.path[0] === AGENT_ROUTES)
+      /** The end of the per-agent route rows: the TUI surface's own knob closes the card. */
+      const agentEndRaw = agentStart < 0 ? -1 : fields.findIndex((field, index) => index > agentStart && field.path[0] !== AGENT_ROUTES)
+      /** The first row AFTER the route rows (-1 when nothing trails them). */
+      const agentEnd = agentStart < 0 || agentEndRaw < 0 ? fields.length : agentEndRaw
       /** The thirteen scalar rows. */
-      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
-      /** The twelve slot rows. */
-      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart, slotEnd)
-      /** The rows that trail the slot block (the TUI surface's own knob closes the card). */
-      const tailRows = slotStart < 0 ? [] : rows.slice(slotEnd)
-      /** The catalog line rendered immediately above the first slot row. */
-      const slotLine = createElement(
+      const scalarRows = agentStart < 0 ? rows : rows.slice(0, agentStart)
+      /** The thirty-three per-agent route rows. */
+      const routeRows = agentStart < 0 ? [] : rows.slice(agentStart, agentEnd)
+      /** The rows that trail the route block (the TUI surface's own knob closes the card). */
+      const tailRows = agentStart < 0 ? [] : rows.slice(agentEnd)
+      /** The catalog line rendered immediately above the first route row. */
+      const routeLine = createElement(
         "p",
-        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "slots" },
+        { style: { ...SKIN.note, margin: "12px 0 4px" }, [CATALOG_ATTR]: catalog.mode, "data-mpd-catalog-notice": "agents" },
         catalogNotice(catalog),
       )
-      // Above each slot's THREE rows: the group heading and its one-line impact, so a reader sees
-      // who the slot routes before reading a single hint. The rows stay DIRECT children of the card
-      // (the heading/impact are siblings, not a wrapper), so every existing row lookup still holds.
-      /** The slot rows interleaved with one heading/impact pair per slot. */
-      const slotChildren            = []
-      for (let index = 0; index < slotRows.length; index++) {
-        /** The slot this row belongs to. */
-        const slot = String(fields[slotStart + index].path[1])
-        /** The slot of the row above ("" at the first slot row). */
-        const previous = index === 0 ? "" : String(fields[slotStart + index - 1].path[1])
-        if (slot !== previous) {
-          slotChildren.push(createElement(
+      // Above each GROUP's block: the display group's heading (contract §7 — grouping is display
+      // only). Each AGENT then renders as ONE row container holding its heading (the name plus the
+      // CURRENT EFFECTIVE state, never blank) and its three leaf cells. The leaf rows are nested
+      // INSIDE the agent row, so "one row per agent" is a structure, not a layout convention.
+      /** The group headings and one agent-row container per roster agent, in roster order. */
+      const routeChildren            = []
+      /** The cursor into `routeRows`: it advances past one AGENT's cells per loop iteration. */
+      let index = 0
+      while (index < routeRows.length) {
+        /** The agent this row container belongs to. */
+        const agent = String(fields[agentStart + index].path[1])
+        /** The display group this agent renders under. */
+        const group = groupOf(agent)
+        /** The display group of the container above ("" at the first route row). */
+        const previousGroup = index === 0 ? "" : groupOf(String(fields[agentStart + index - 1].path[1]))
+        if (group !== "" && group !== previousGroup) {
+          routeChildren.push(createElement(
             "div",
-            { key: "group." + slot, style: SKIN.groupHeading, "data-mpd-slot-group": slot },
-            t("teamModels." + slot + ".heading"),
-          ))
-          slotChildren.push(createElement(
-            "p",
-            { key: "impact." + slot, style: SKIN.groupImpact, "data-mpd-slot-impact": slot },
-            t("teamModels." + slot + ".impact"),
+            { key: "group." + group, style: SKIN.groupHeading, "data-mpd-agent-group": group },
+            t("agentGroup." + group + ".heading"),
           ))
         }
-        slotChildren.push(slotRows[index])
+        // This agent's three leaf cells, collected while the path still names the SAME agent.
+        /** The agent's own leaf rows, in declaration order. */
+        const cells            = []
+        while (index < routeRows.length && String(fields[agentStart + index].path[1]) === agent) {
+          cells.push(routeRows[index])
+          index += 1
+        }
+        /** This agent's effective state, defaulting to unconfigured when no surface carries it. */
+        const agentState = state.effective.agents?.[agent] ?? { status: "unconfigured"         , provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] }
+        routeChildren.push(createElement(
+          "div",
+          { key: "agent." + agent, style: SKIN.agentBlock, "data-mpd-agent-row": agent, "data-mpd-agent-state": agentState.status },
+          createElement(
+            "div",
+            { style: SKIN.agentRow },
+            createElement("span", { style: SKIN.label }, agent),
+            // NEVER BLANK (contract §7): the row states the agent's live route, the leaves it is
+            // missing, or the malformed path — the same typed state the effective block above shows.
+            createElement("span", { style: SKIN.key, "data-mpd-agent-status-text": agent }, agentStateText(agentState, agent, t)),
+          ),
+          ...cells,
+        ))
       }
       /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
       const saveBlocked = disabled || !state.dirty || state.invalid
@@ -10037,9 +10319,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
-        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the four slot
-        // routes, the member overrides that are set and the configured modelchain chains — stated
-        // ABOVE the rows it describes, so a reader sees what a change modifies before editing.
+        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the eleven
+        // agents' own routes and the configured modelchain chains — stated ABOVE the rows it
+        // describes, so a reader sees what a change modifies before editing.
         createElement(
           "div",
           { style: SKIN.help, "data-mpd-effective": "1" },
@@ -10047,8 +10329,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           ...effectiveChildrenOf(state.effective, t, createElement),
         ),
         ...scalarRows,
-        slotLine,
-        ...slotChildren,
+        routeLine,
+        ...routeChildren,
         ...tailRows,
         createElement(
           "div",
@@ -10114,34 +10396,50 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       en[key + ".hint"] = hintOf(field, "en")
       zh[key + ".hint"] = hintOf(field, "zh")
     }
-    // The group heading and its one-line impact, per slot, in BOTH locales: the card renders them
-    // above each slot's three rows, so a reader learns the group without parsing a hint sentence.
-    for (const [index, slot] of SLOT_SLOTS.entries()) {
-      /** The slot's group heading in both locales. */
-      const heading = slotHeading(slot, index + 1)
-      en["teamModels." + slot + ".heading"] = heading.en
-      zh["teamModels." + slot + ".heading"] = heading.zh
-      en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
-      zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
+    // The display group headings, in BOTH locales: grouping is DISPLAY-ONLY (contract §7) — every
+    // agent below has its OWN persisted route, and a heading is not a writable slot.
+    for (const slot of SLOT_SLOTS) {
+      /** The group's members in the EN separator, so the heading names who it groups. */
+      const members = SLOT_GROUPS[slot].members.split(", ").join(", ")
+      en["agentGroup." + slot + ".heading"] = `${SLOT_GROUPS[slot].en} — ${members}`
+      zh["agentGroup." + slot + ".heading"] = `${SLOT_GROUPS[slot].zh} —— ${SLOT_GROUPS[slot].membersZh}`
     }
-    // The see-before-you-edit block (R3): one composed line per effective slot state and per
-    // configured chain. The line bodies are language-neutral ids ({route}, {leaves}, {key},
-    // {chain}); every WORD is baked into these entries in the locale's own spelling, so both
-    // locales read the same routes under their own words and the render substitutes only fragments.
+    en.agentGroupingNote = "Groups are a display grouping only: every agent has its OWN persisted route, and saving a row writes only that agent's agentRoutes.<Agent> leaves — a group is never stored."
+    zh.agentGroupingNote = "分组仅用于显示：每个代理都有各自持久化的路由，保存某一行只会写入该代理的 agentRoutes.<Agent> 字段，分组本身不会被存储。"
+    // The COMPACT row marker (the agent heading's right side): never blank, never an invented route.
+    en.agentStateConfigured = "current route: {route}"
+    zh.agentStateConfigured = "当前路由：{route}"
+    en.effectiveFallbacks = " · +{count} fallback route(s)"
+    zh.effectiveFallbacks = " · 另有 {count} 条后备路由"
+    en.agentStateUnconfigured = "<unconfigured> — missing {leaves}"
+    zh.agentStateUnconfigured = "「未配置」——缺少 {leaves}"
+    en.agentStateInvalid = "<invalid> — {problem}"
+    zh.agentStateInvalid = "「无效」——{problem}"
+    en.agentStateUnavailable = "<unavailable> — {agent} has no roster route (not a refusal)"
+    zh.agentStateUnavailable = "「不可用」——{agent} 没有 roster 路由（这不是拒绝）"
+    // The see-before-you-edit block (R3): one composed line per AGENT and per configured chain. The
+    // line bodies are language-neutral ids ({agent}, {route}, {leaves}, {key}, {chain}); every WORD
+    // is baked into these entries in the locale's own spelling, so both locales read the same routes
+    // under their own words and the render substitutes only fragments.
     en.effectiveTitle = "Effective model config — what a change here modifies (read live, no restart)"
     zh.effectiveTitle = "当前生效的模型配置——改之前先看（实时读取，无需重启）"
-    for (const [index, slot] of SLOT_SLOTS.entries()) {
-      en["effective.slot." + slot] = `slot ${index + 1} · ${SLOT_GROUPS[slot].en}: {route}`
-      zh["effective.slot." + slot] = `槽位 ${index + 1} · ${SLOT_GROUPS[slot].zh}：{route}`
+    for (const agent of AGENTS) {
+      /** The display group that renders this agent's line. */
+      const group = SLOT_GROUPS[groupOf(agent)]
+      en["effective.agent." + agent] = `agent ${agent} · ${group.en}: {route}`
+      zh["effective.agent." + agent] = `代理 ${agent} · ${group.zh}：{route}`
     }
-    // The <unconfigured> sentence of a slot line (contract §9): the leaves a slot still needs are NAMED,
-    // so the state the spawn would refuse on is visible before it happens.
-    en["effective.slotUnconfigured"] = "<unconfigured> — missing {leaves}; configure them here and save, or the next spawn is refused with SLOT_UNCONFIGURED"
-    zh["effective.slotUnconfigured"] = "「未配置」——缺少 {leaves}；请在此填写并保存，否则下次生成会被 SLOT_UNCONFIGURED 拒绝"
+    // The <unconfigured> sentence of an agent line (contract §7): the leaves the agent still needs
+    // are NAMED, so the state a spawn would refuse on is visible before it happens.
+    en["effective.agentUnconfigured"] = "<unconfigured> — {agent} is missing {leaves}; save them here, or the next spawn is refused with AGENT_UNCONFIGURED"
+    zh["effective.agentUnconfigured"] = "「未配置」——{agent} 缺少 {leaves}；请在此填写并保存，否则下次 spawn 会被 AGENT_UNCONFIGURED 拒绝"
     // The MALFORMED state is its own sentence (CodeRabbit #4): provider/model may be present, so
     // calling it <unconfigured> would send the reader looking for leaves that are already set.
-    en["effective.slotInvalid"] = "<invalid> — {problem}; fix it here and save — until then the next spawn is refused with SLOT_UNCONFIGURED"
-    zh["effective.slotInvalid"] = "「无效」——{problem}；请在此修正并保存 —— 在那之前下一次 spawn 会被 SLOT_UNCONFIGURED 拒绝"
+    en["effective.agentInvalid"] = "<invalid> — {agent}: {problem}; fix it here and save — until then the next spawn is refused with AGENT_UNCONFIGURED"
+    zh["effective.agentInvalid"] = "「无效」——{agent}：{problem}；请在此修正并保存 —— 在那之前下一次 spawn 会被 AGENT_UNCONFIGURED 拒绝"
+    // `unrouted` is NOT a refusal (Amendment 2 §3): an extension role keeps its own chain and spawns.
+    en["effective.agentUnavailable"] = "<unavailable> — {agent} has no roster route; this is NOT a refusal (an extension role keeps its own chain and still spawns)"
+    zh["effective.agentUnavailable"] = "「不可用」——{agent} 没有 roster 路由；这不是拒绝（扩展角色保留自己的链并照常 spawn）"
     en.effectiveChain = "modelchain.{key} → {chain}"
     zh.effectiveChain = "modelchain.{key} → {chain}"
     en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"

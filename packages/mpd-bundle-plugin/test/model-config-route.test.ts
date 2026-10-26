@@ -1,17 +1,19 @@
-// The bundle's effective model-config route (R3, wave fix/model-config-live-refresh, lane L4).
+// The bundle's effective model-config route (R3, re-aimed by the agent-routes contract §7).
 //
-// WHAT IS ASSERTED HERE: the route the Web settings card fetches for its see-before-you-edit block
-// really registers beside the watchdog routes (driving the REAL `apply` from `dist/index.js` over a
-// cordis-shaped ctx, the same shape `watchdog-routes-boot.test.ts` uses) and answers the three
-// two effective tables from the `mpdConfig` service — read PER REQUEST, so a save made between two
-// GETs changes the answer without any restart. The slot blocks are served RAW (no default layer,
-// contract §2/§9): a slot the workspace never configured is ABSENT from the body, which is what lets
-// the card render <unconfigured> instead of an invented route. The refusal arm pins the card's declared degradation: a
-// composition without the config row answers 503 with a reason, never a wrong payload.
+// WHAT IS ASSERTED HERE: (a) the route really registers on the host's web server beside the
+// watchdog routes — the arm drives the REAL `apply` from the built `dist/index.js` over a
+// cordis-shaped ctx (the same shape `watchdog-routes-boot.test.ts` uses), which is the wiring only a
+// build proves — and answers JSON with `cache-control: no-store`, or 503 with a reason when no
+// config row is composed; (b) the BODY projection — ONE typed resolution per roster AGENT, read PER
+// REQUEST, and NEVER the retired `teamModels` table — is exercised against
+// `src/model-config-web.ts` directly. That split is deliberate: a LANE does not rebuild `dist/`
+// (the integrator does), so the body's semantics are pinned at the source here while the
+// dist-freshness gate pins the SHIPPED bytes to this source at integration.
 //
 // WHAT IS NOT ASSERTED: that a browser renders the card. No browser exists in this environment;
 // the card-side projection is covered by `settings-card.test.ts` over the card's own exports.
 import { describe, expect, test } from "bun:test"
+import { buildModelConfigBody, ROSTER_MEMBERS } from "../src/model-config-web.ts"
 // The shipped dist build is JavaScript with no declaration file; the arms below drive its real
 // `apply` over a cordis-shaped ctx, so no static type can describe it here.
 // @ts-expect-error JavaScript build product has no declaration file
@@ -19,6 +21,14 @@ import { apply } from "../dist/index.js"
 
 /** The route path this file is about. */
 const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
+
+/** The `mpdConfig` surface the route's pure builder reads (the mounted service, or a test double). */
+interface ConfigDouble {
+  /** Read one resolved config key, or the whole raw config when no key is given. */
+  get?: (key?: string) => unknown
+  /** The TOTAL per-agent route resolution (contract §2). */
+  agentRouteResolutionOf?: (member: string) => unknown
+}
 
 /** The response double the route handler writes into. */
 interface FakeRes {
@@ -49,7 +59,7 @@ interface RouteRecord {
  *   row (the card's declared-degradation branch).
  * @returns the ctx, the registered routes and the response factory an arm drives.
  */
-function fakeHost(config?: { get: (key?: string) => unknown }): {
+function fakeHost(config?: ConfigDouble): {
   ctx: { get: (name: string) => unknown; on: () => () => void; effect?: (fn: () => unknown) => unknown }
   routes: Map<string, RouteRecord>
   res: () => FakeRes
@@ -82,15 +92,20 @@ function fakeRes(): FakeRes {
   return res
 }
 
+/** A typed resolution double for one member: configured at `provider`/`model`. */
+function configured(member: string, provider: string, model: string): unknown {
+  return { ok: true, agent: member, route: { provider, model, reasoningEffort: "low" } }
+}
+
+/** A typed resolution double: the member is unconfigured, with both required leaves missing. */
+function unconfigured(member: string): unknown {
+  return { ok: false, reason: "unconfigured", agent: member, missing: ["provider", "model"] }
+}
+
 describe("the effective model-config route", () => {
-  test("registers beside the watchdog routes and answers the two tables from the service", async () => {
-    /** The mutable resolved tables, so a later arm can change them between two GETs. */
-    const tables = {
-      teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } },
-      modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] },
-    }
-    /** The host whose config service reads the tables above. */
-    const host = fakeHost({ get: (key) => (key === undefined ? tables : tables[key as keyof typeof tables]) })
+  test("registers on the host's web server and answers no-store JSON beside the watchdog routes", async () => {
+    /** The host whose config service answers a typed resolution per member. */
+    const host = fakeHost({ get: () => ({}), agentRouteResolutionOf: (member) => configured(member, "deepseek-official", "deepseek-v4-pro") })
     apply(host.ctx)
     /** The route this arm drives. */
     const route = host.routes.get(MODEL_CONFIG_PATH)
@@ -100,50 +115,57 @@ describe("the effective model-config route", () => {
     await route!.handler({ method: "GET", url: MODEL_CONFIG_PATH }, res)
     expect(res.status).toBe(200)
     expect(res.headers["cache-control"]).toBe("no-store")
-    /** The parsed body the route answered with. */
-    const body = JSON.parse(res.body)
+    expect(res.headers["content-type"]).toContain("application/json")
+    // The registration arm is SHAPE-AGNOSTIC on purpose: the served bytes are pinned to this
+    // source by the integrator's dist-freshness gate, and the body's own shape is asserted below.
+    expect(typeof JSON.parse(res.body).ok).toBe("boolean")
+  })
+
+  test("serves ONE typed resolution per roster agent, and NEVER the retired teamModels table", () => {
+    /** The chains the service reports beside the agents. */
+    const chains = { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }
+    /** The body the pure builder projects from that service. */
+    const body = buildModelConfigBody({
+      get: (key) => (key === "modelchain" ? chains : key === "teamModels" ? { slot1: { provider: "old", model: "old" } } : undefined),
+      agentRouteResolutionOf: (member) => (member === "Architect" ? configured("Architect", "deepseek-official", "deepseek-v4-pro") : unconfigured(member)),
+    })
     expect(body.ok).toBe(true)
-    expect(body.slots.slot1.model).toBe("deepseek-v4-pro")
-    // The deleted table is GONE from the payload (contract §3) — not merely empty.
-    expect(body).not.toHaveProperty("agentRoutes")
-    expect(body.modelchain.sisyphus).toEqual([{ provider: "deepseek-official", model: "deepseek-v4-pro" }])
+    // Narrowing on the discriminant, so the body's fields are readable without a cast.
+    if (!body.ok) throw new Error("the route refused a composed service: " + body.reason)
+    // ONE entry per roster member, in the declared roster order — the per-agent table IS the payload.
+    expect(Object.keys(body.agents)).toEqual([...ROSTER_MEMBERS])
+    expect(body.agents.Architect).toEqual(configured("Architect", "deepseek-official", "deepseek-v4-pro"))
+    expect(body.agents.Planner).toEqual(unconfigured("Planner"))
+    // The retired table is NEVER read, even when the config service still exposes it.
+    expect(JSON.stringify(body)).not.toContain("teamModels")
+    expect(JSON.stringify(body)).not.toContain("slot1")
+    // The chains ride the service read, which NO settings document holds.
+    expect(body.modelchain).toEqual(chains)
   })
 
-  test("an UNCONFIGURED slot is ABSENT from the body, never filled in with a default", async () => {
-    /** A workspace that declares only slot3: the other slots must not appear at all. */
-    const tables = { teamModels: { slot3: { provider: "p", model: "m" } } }
-    /** The host whose config service reads exactly that block. */
-    const host = fakeHost({ get: (key) => (key === undefined ? tables : tables[key as keyof typeof tables]) })
-    apply(host.ctx)
-    /** The route this arm drives. */
-    const route = host.routes.get(MODEL_CONFIG_PATH)!
-    /** The response double the handler writes into. */
-    const res = host.res()
-    await route.handler({}, res)
-    /** The parsed body the route answered with. */
-    const body = JSON.parse(res.body)
-    expect(body.slots).toEqual({ slot3: { provider: "p", model: "m" } })
-    expect(body.slots).not.toHaveProperty("slot1")
+  test("the roster mirror IS the shared declaration's eleven agents, in group order", async () => {
+    // The route does not import the config package (its server half stays dependency-free), so this
+    // pin is what keeps the mirror from drifting when the roster changes.
+    const shared = await import("../../mpd-config-plugin/src/settings-schema.ts")
+    expect([...ROSTER_MEMBERS]).toEqual([...shared.ROSTER_AGENT_NAMES])
+    expect(ROSTER_MEMBERS).toHaveLength(11)
   })
 
-  test("the answer is read PER REQUEST: a changed service value changes the next GET (live refresh)", async () => {
+  test("is read PER REQUEST: a changed service resolution changes the next body (live refresh)", () => {
     /** The mutable model the service resolves. */
-    let slotModel = "deepseek-v4-flash"
-    /** The host whose config service reads the mutable model. */
-    const host = fakeHost({ get: (key) => (key === "teamModels" ? { slot1: { model: slotModel } } : undefined) })
-    apply(host.ctx)
-    /** The route this arm drives. */
-    const route = host.routes.get(MODEL_CONFIG_PATH)!
-    /** The first answer. */
-    const first = host.res()
-    await route.handler({}, first)
-    expect(JSON.parse(first.body).slots.slot1.model).toBe("deepseek-v4-flash")
-    // The change a SAVE would make: the next GET must carry it with no restart, no re-register.
-    slotModel = "deepseek-v4-pro"
-    /** The second answer. */
-    const second = host.res()
-    await route.handler({}, second)
-    expect(JSON.parse(second.body).slots.slot1.model).toBe("deepseek-v4-pro")
+    let model = "deepseek-v4-flash"
+    /** The service double reading the mutable model above. */
+    const service: ConfigDouble = { agentRouteResolutionOf: (member) => (member === "Architect" ? configured("Architect", "deepseek-official", model) : unconfigured(member)) }
+    /** The first body. */
+    const first = buildModelConfigBody(service)
+    if (!first.ok) throw new Error("the first read refused: " + first.reason)
+    expect((first.agents.Architect as { route: { model: string } }).route.model).toBe("deepseek-v4-flash")
+    // The change a SAVE would make: the next build must carry it with no restart, no re-register.
+    model = "deepseek-v4-pro"
+    /** The second body. */
+    const second = buildModelConfigBody(service)
+    if (!second.ok) throw new Error("the second read refused: " + second.reason)
+    expect((second.agents.Architect as { route: { model: string } }).route.model).toBe("deepseek-v4-pro")
   })
 
   test("a composition without the config row answers 503 with a reason, never a wrong payload", async () => {
@@ -163,16 +185,22 @@ describe("the effective model-config route", () => {
     expect(body.reason).toContain("mpdConfig service is not composed")
   })
 
-  test("a THROWING config read answers 503 naming the error, never a partial 200", async () => {
-    /** The host whose config service throws on every read. */
-    const host = fakeHost({ get: () => { throw new Error("boom") } })
-    apply(host.ctx)
-    /** The route this arm drives. */
-    const route = host.routes.get(MODEL_CONFIG_PATH)!
-    /** The response double the handler writes into. */
-    const res = host.res()
-    await route.handler({}, res)
-    expect(res.status).toBe(503)
-    expect(JSON.parse(res.body).reason).toContain("boom")
+  test("a config row with NO per-agent resolver refuses instead of serving an empty table", () => {
+    // An older composition exposes `get` only: the route must say so, not fabricate 11 entries.
+    /** The refusal body of that composition. */
+    const body = buildModelConfigBody({ get: () => ({ teamModels: { slot1: {} } }) })
+    expect(body.ok).toBe(false)
+    if (body.ok) throw new Error("a get-only service was accepted")
+    expect(body.reason).toContain("agentRouteResolutionOf")
+  })
+
+  test("a THROWING config read answers 503 naming the error, never a partial 200", () => {
+    /** The service whose typed read throws. */
+    const service: ConfigDouble = { agentRouteResolutionOf: () => { throw new Error("boom") } }
+    /** The refusal body of that composition. */
+    const body = buildModelConfigBody(service)
+    expect(body.ok).toBe(false)
+    if (body.ok) throw new Error("a throwing read was accepted")
+    expect(body.reason).toContain("boom")
   })
 })

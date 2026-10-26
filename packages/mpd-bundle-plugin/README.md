@@ -77,28 +77,29 @@ public settings seam; the PERSISTENCE belongs to the host and the entry-document
 `packages/mpd-config-plugin` (the legacy write-back lives there too, dormant). Rebuild the
 combined client (`node scripts/build-mpd-client.ts`) after touching either half.
 
-**The Web card's team-model pickers.** The card mirrors the ONE 26-row knob declaration of
-`packages/mpd-config-plugin` (the original 13 knobs, the twelve `teamModels` slot leaves and the TUI
-surface's own knob) and
-renders each slot as a **dependent, selection-only picker**: a model control whose options are
+**The Web card's per-agent route rows.** The card mirrors the ONE knob declaration of
+`packages/mpd-config-plugin` (the original 13 knobs, one three-leaf row per roster agent —
+`agentRoutes.<Agent>.{provider,model,reasoningEffort}` — and the TUI surface's own knob) and
+renders each agent's row as a **dependent, selection-only picker**: a model control whose options are
 the catalog's provider/model pairs (provider shown as a group) and an effort control whose
 options are the SELECTED model's own efforts, re-derived when the model changes. The catalog is
 reached through GUARDED probes of `ctx.get("sessions")` + `ctx.get("modelDirectories")` — the
 existing `team-page.ts` pattern, never a declared inject — and when a probe is absent, no session
 is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
-section still renders. Nothing about a slot is settable only by typing. The see-before-you-edit block shows each slot's STATE and renders
+section still renders. Nothing about a leaf is settable only by typing. The see-before-you-edit block shows each agent's STATE and renders
 `<unconfigured>` (naming the leaves it still needs) when the workspace configured none — there is no
-default floor to invent a route — while an INVALID slot (a leaf present but malformed, e.g. a
-non-string, or a slot that is not an object) renders its OWN sentence in both languages instead of
-`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`teamModels.slotN.leaf is not a
-string`, or `teamModels.slotN is not an object`), and the `missing` check TRIMS every leaf, so a
-whitespace-only leaf counts as MISSING rather than as configured — a malformed slot must never read as
-absent. The deleted per-member `agentRoutes` rows are gone from the
-card entirely (a leftover block in an old file is IGNORED, never rendered and never rewritten). A browser module cannot
+default floor to invent a route — while an INVALID entry (a leaf present but malformed, e.g. a
+non-string, or an entry that is not an object) renders its OWN sentence in both languages instead of
+`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`agentRoutes.<Agent>.leaf is not a
+string`, or `agentRoutes.<Agent> is not an object`), and the `missing` check TRIMS every leaf, so a
+whitespace-only leaf counts as MISSING rather than as configured — a malformed entry must never read as
+absent. The legacy `teamModels` block is never rendered: there is no persisted slot, the four groups
+are only the `/mpd-model` bulk-edit shortcut, and a leftover block in an old file is IGNORED and never
+rewritten. A browser module cannot
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
-label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
-group and its own human sentence: the label names the group (`Slot 2 provider (analysis members)`),
-and a group heading with a one-line impact sits above each slot's three rows. Both doors name the
+label, zh, kind, declared options, human sentences) element-wise. Each row LEADS with its
+group heading and its own human sentence, and a group heading with a one-line impact sits above each
+agent's three leaves. Both doors name the
 dotted `mpd.jsonc` key through ONE helper — the hint is `<human sentence> (mpd.jsonc <key>)`, and a
 knob with no human sentence keeps the pointer alone (`knobHint` in the TUI, `hintOf` on the card) —
 while the bridge disclosure and the not-lost clause are stated ONCE per SECTION, never per row: the

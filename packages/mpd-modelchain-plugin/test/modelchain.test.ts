@@ -186,18 +186,18 @@ describe("AC2 — the overlay is re-read per call (R1)", () => {
   })
 })
 
-// ── the SLOT is the first route source for a roster member (contract §2/§9) ──────────────────────
-// `mpd_modelchain_resolve` is a DISPLAY surface: it reports the typed state — the slot's own route
-// when there is one, `<unconfigured>` when there is not — and NEVER throws (amendment 1).
+// ── the AGENT'S OWN ROUTE is the first route source for a roster agent (contract §2/§9) ─────────
+// `mpd_modelchain_resolve` is a DISPLAY surface: it reports the typed state — the agent's own route
+// when there is one, `<unconfigured>` when there is not — and NEVER throws (contract §2/§4).
 
-test("a configured SLOT is what the tool answers, with that slot's own chain", async () => {
+test("a configured AGENT ROUTE is what the tool answers, with that route's own chain", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
   /** The roster the tool resolves against: one role with its own static chain. */
   const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
-  /** The config service double: slot3 configured with one fallback. */
+  /** The config service double: Junior Engineer's OWN entry, whose route carries one fallback. */
   const mpdConfig = {
-    slotResolutionOf: () => ({ ok: true, slot: "slot3", route: { provider: "gateway", model: "smart", reasoningEffort: "low" }, fallbacks: [{ provider: "backup", model: "spare" }] }),
+    agentRouteResolutionOf: () => ({ ok: true, agent: "Junior Engineer", route: { provider: "gateway", model: "smart", reasoningEffort: "low", fallbacks: [{ provider: "backup", model: "spare" }] } }),
   }
   /** The minimal row context: a `register` sink plus a `get` answering both services. */
   const ctx: any = {
@@ -210,21 +210,22 @@ test("a configured SLOT is what the tool answers, with that slot's own chain", a
   apply(ctx, {})
   /** The route the tool answered for the role. */
   const res = await tools.find((t) => t.name === "mpd_modelchain_resolve").execute({ role: "Junior Engineer" })
-  // The slot beats the roster's static chain, and the chain is the slot's own (primary, then fallback).
+  // The agent's own route beats the roster's static chain, and the chain is that route's own
+  // (the primary, then the entry's declared fallbacks).
   expect(res.provider).toBe("gateway")
   expect(res.model).toBe("smart")
   expect(res.status).toBe("configured")
   expect(res.chain).toEqual([{ provider: "gateway", model: "smart" }, { provider: "backup", model: "spare" }])
 })
 
-test("an UNCONFIGURED slot answers the typed state — never the stale static chain, never a throw", async () => {
+test("an UNCONFIGURED agent route answers the typed state — never the stale static chain, never a throw", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
   /** The roster the tool resolves against: the role whose own chain must NOT be reported. */
   const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
-  /** The config service double: slot3 reports the typed refusal. */
+  /** The config service double: no entry for the agent, so the typed `unconfigured` state. */
   const mpdConfig = {
-    slotResolutionOf: () => ({ ok: false, status: "unconfigured", slot: "slot3", members: ["Deep Worker", "Junior Engineer"], missing: ["provider", "model"], code: "SLOT_UNCONFIGURED", message: "SLOT_UNCONFIGURED: slot3 is not usable — missing teamModels.slot3.provider, teamModels.slot3.model" }),
+    agentRouteResolutionOf: () => ({ ok: false, reason: "unconfigured", agent: "Junior Engineer", missing: ["agentRoutes.Junior Engineer.provider", "agentRoutes.Junior Engineer.model"] }),
   }
   /** The minimal row context: a `register` sink plus a `get` answering both services. */
   const ctx: any = {
@@ -241,11 +242,12 @@ test("an UNCONFIGURED slot answers the typed state — never the stale static ch
   expect(res.provider).toBe("")
   expect(res.model).toBe("")
   expect(res.chain).toEqual([])
-  expect(res.missing).toEqual(["provider", "model"])
-  expect(String(res.reason)).toContain("teamModels.slot3")
+  // The typed state names BOTH missing leaf paths (contract §3), never an internal slot id.
+  expect(res.missing).toEqual(["agentRoutes.Junior Engineer.provider", "agentRoutes.Junior Engineer.model"])
+  expect(String(res.reason)).toContain("agentRoutes.Junior Engineer")
 })
 
-test("a slot service that REFUSES the lookup degrades to the roster's own chain, never a throw", async () => {
+test("a config service that REFUSES the lookup degrades to the roster's own chain, never a throw", async () => {
   /** Every tool definition the plugin registered, in registration order. */
   const tools: any[] = []
   /** The roster the tool resolves against: an EXTENSION-shaped role with its own declared chain. */

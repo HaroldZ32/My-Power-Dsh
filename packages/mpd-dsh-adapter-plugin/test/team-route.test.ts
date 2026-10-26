@@ -1,26 +1,28 @@
-// THE NATIVE TEAM MEMBER ROUTE: identity -> `teamModels` slot -> a child `agentOptions`.
+// THE NATIVE TEAM MEMBER ROUTE: identity -> the agent's OWN `agentRoutes` entry -> child `agentOptions`.
 //
 // WHY THIS FILE IS THE CONTRACT'S PROOF. Before this wave every member raised by the NATIVE team
 // executor inherited the STAGING session's model route: `nativeTeamExecutor().spawn` built the spec
-// from the caller's request and consulted no `teamModels` slot, so the four configured routes
-// applied to no teammate at all. The decision is now made in ONE pure place: a member's identity
-// (role, then the head of its description, then its whole name) is matched through the live
-// `mpdConfig` service, and a matched slot answers with a route the spawn turns into `agentOptions`.
+// from the caller's request and consulted no route source, so the configured per-agent routes applied
+// to no teammate at all. The decision is now made in ONE pure place: a member's identity (role, then
+// the head of its description, then its whole name) is matched through the live `mpdConfig` service,
+// and a matched agent answers with its own route, which the spawn turns into `agentOptions`.
 //
 // The arms below are the ones a regression could hide behind:
 //   * identity PRECEDENCE (role -> description head -> name), with the role losing to a description
 //     only because the role names NO member;
 //   * one shared label table proving `rosterNameHead` and `memberFromLabel` agree — including
 //     `"Architect · team-1"`, where `·` is NOT a separator (that label is the native spec's own
-//     `${name} · ${teamId}` spelling, and treating it as an identity would route a team-id suffix);
-//   * the total, never-throwing failure shapes: unmatched, unconfigured, invalid, no service.
+//     `${name} · ${teamName}` spelling, and treating it as an identity would route a name suffix);
+//   * the total, never-throwing failure shapes: unmatched, unconfigured, invalid, no service — with
+//     the canonical `AGENT_UNCONFIGURED` sentence BUILT here from the typed state (contract §3).
 import { describe, expect, test } from "bun:test"
 
 import {
+  agentUnconfiguredMessage,
   resolveTeamMemberRoute,
   rosterNameHead,
+  type DshTeamAgentRouteAnswer,
   type DshTeamMemberIdentity,
-  type DshTeamSlotAnswer,
 } from "../src/index"
 import { memberFromLabel } from "../../mpd-roster-provider-plugin/src/route"
 
@@ -39,59 +41,55 @@ const ROSTER: readonly string[] = [
   "Junior Engineer",
 ]
 
-/** The slot-1 route the table below hands out, with a fallback chain so passthrough is visible. */
-const SLOT_ONE = {
+/** The Architect route, whose OWN entry carries a fallback chain so the passthrough is visible. */
+const ARCHITECT = {
   ok: true,
-  slot: "slot1",
-  route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  fallbacks: [{ provider: "backup", model: "spare" }],
-} as const satisfies DshTeamSlotAnswer
+  agent: "Architect",
+  route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max", fallbacks: [{ provider: "backup", model: "spare" }] },
+} as const satisfies DshTeamAgentRouteAnswer
 
-/** A second usable slot, so a two-member spawn can prove the routes actually differ. */
-const SLOT_THREE = {
+/** A second usable route, so a two-member spawn can prove the routes actually differ. */
+const WORKER = {
   ok: true,
-  slot: "slot3",
+  agent: "Deep Worker",
   route: { provider: "gateway", model: "smart-worker" },
-  fallbacks: [],
-} as const satisfies DshTeamSlotAnswer
+} as const satisfies DshTeamAgentRouteAnswer
 
-/** The canonical unconfigured answer the config service builds; its MESSAGE is what gets logged. */
+/** The typed `unconfigured` state the config service reports for an agent with no entry. */
 const UNCONFIGURED = {
   ok: false,
-  status: "unconfigured",
-  slot: "slot3",
-  code: "SLOT_UNCONFIGURED",
-  message: "SLOT_UNCONFIGURED: slot3 is not usable — missing teamModels.slot3.provider, teamModels.slot3.model",
-} as const satisfies DshTeamSlotAnswer
+  reason: "unconfigured",
+  agent: "Junior Engineer",
+  missing: ["agentRoutes.Junior Engineer.provider", "agentRoutes.Junior Engineer.model"],
+} as const satisfies DshTeamAgentRouteAnswer
 
-/** The canonical malformed-leaf answer, distinct from a merely absent one. */
+/** The typed `invalid` state, distinct from a merely absent one. */
 const INVALID = {
   ok: false,
-  status: "invalid",
-  slot: "slot4",
-  code: "SLOT_UNCONFIGURED",
-  message: "SLOT_UNCONFIGURED: slot4 is not usable — teamModels.slot4.model is not a string",
-} as const satisfies DshTeamSlotAnswer
+  reason: "invalid",
+  agent: "Vision Analyst",
+  problem: "agentRoutes.Vision Analyst.model",
+} as const satisfies DshTeamAgentRouteAnswer
 
 /**
  * A resolver double over a member->answer table, mirroring the real service's TOTAL contract:
- * a member it knows answers that entry, every other name answers `unrouted`.
+ * a name it knows answers that entry, every other name answers `unrouted`.
  * @param answers - the member entries this double serves.
  * @returns the resolver a caller passes to `resolveTeamMemberRoute`.
  */
-function resolverOf(answers: Readonly<Record<string, DshTeamSlotAnswer>>): (member: string) => unknown {
+function resolverOf(answers: Readonly<Record<string, DshTeamAgentRouteAnswer>>): (member: string) => unknown {
   /** The entries keyed the way the real service normalizes them: lower-cased. */
   const byName = new Map(Object.entries(answers).map(([member, answer]) => [member.toLowerCase(), answer] as const))
-  return (member: string): unknown => byName.get(member.toLowerCase()) ?? { ok: false, status: "unrouted", slot: undefined }
+  return (member: string): unknown => byName.get(member.toLowerCase()) ?? { ok: false, reason: "unrouted" }
 }
 
 /** The answers the routing arms share, including both unusable shapes. */
-const ANSWERS: Readonly<Record<string, DshTeamSlotAnswer>> = {
-  Architect: SLOT_ONE,
-  "Senior Engineer": SLOT_ONE,
-  Reviewer: SLOT_ONE,
-  "Plan Reviewer": SLOT_ONE,
-  "Deep Worker": SLOT_THREE,
+const ANSWERS: Readonly<Record<string, DshTeamAgentRouteAnswer>> = {
+  Architect: ARCHITECT,
+  "Senior Engineer": ARCHITECT,
+  Reviewer: ARCHITECT,
+  "Plan Reviewer": ARCHITECT,
+  "Deep Worker": WORKER,
   "Vision Analyst": INVALID,
   "Junior Engineer": UNCONFIGURED,
 }
@@ -101,14 +99,14 @@ const RESOLVE = resolverOf(ANSWERS)
 
 describe("resolveTeamMemberRoute — identity precedence", () => {
   test("role routes first", () => {
-    /** The identity whose ROLE names the member and whose description names nobody. */
+    /** The identity whose ROLE names the agent and whose description names nobody. */
     const identity: DshTeamMemberIdentity = { role: "Architect", description: "does odd jobs", name: "M1" }
     expect(resolveTeamMemberRoute(identity, RESOLVE)).toEqual({
       status: "routed",
       member: "Architect",
-      slot: "slot1",
-      route: SLOT_ONE.route,
-      fallbacks: SLOT_ONE.fallbacks,
+      // The route carries its three SEND fields; the agent's own chain rides beside it.
+      route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+      fallbacks: ARCHITECT.route.fallbacks,
     })
   })
 
@@ -121,16 +119,28 @@ describe("resolveTeamMemberRoute — identity precedence", () => {
     if (outcome.status !== "routed") throw new Error("expected a routed outcome")
     expect(outcome.member).toBe("Senior Engineer")
     expect(outcome.route).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" })
+    // The fallback chain is the agent's OWN (config `AgentRoute.fallbacks`), forwarded untouched.
+    expect(outcome.fallbacks).toEqual([{ provider: "backup", model: "spare" }])
   })
 
   test("the whole NAME routes when the description names nobody", () => {
-    /** An identity whose description is prose and whose name is the roster member. */
+    /** An identity whose description is prose and whose name is the roster agent. */
     const identity: DshTeamMemberIdentity = { description: "checks the diff", name: "Reviewer" }
     /** The outcome under test. */
     const outcome = resolveTeamMemberRoute(identity, RESOLVE)
     expect(outcome.status).toBe("routed")
     if (outcome.status !== "routed") throw new Error("expected a routed outcome")
     expect(outcome.member).toBe("Reviewer")
+  })
+
+  test("TWO members with DIFFERENT routes route independently — no cross-talk (§9)", () => {
+    /** The first member's outcome. */
+    const architect = resolveTeamMemberRoute({ role: "Architect", description: "", name: "M1" }, RESOLVE)
+    /** The second member's outcome, read through the same resolver. */
+    const worker = resolveTeamMemberRoute({ role: "Deep Worker", description: "", name: "M2" }, RESOLVE)
+    if (architect.status !== "routed" || worker.status !== "routed") throw new Error("expected two routed outcomes")
+    expect(architect.route).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" })
+    expect(worker.route).toEqual({ provider: "gateway", model: "smart-worker" })
   })
 
   test("role=stranger loses to description=member: an UNROUTED role does not stop the walk", () => {
@@ -141,29 +151,38 @@ describe("resolveTeamMemberRoute — identity precedence", () => {
     expect(outcome.status).toBe("routed")
     if (outcome.status !== "routed") throw new Error("expected a routed outcome")
     expect(outcome.member).toBe("Architect")
-    expect(outcome.slot).toBe("slot1")
   })
 
-  test("an identity that names no member is UNMATCHED, not an error", () => {
+  test("an identity that names no agent is UNMATCHED, not an error", () => {
     expect(resolveTeamMemberRoute({ role: "Wizard", description: "does odd jobs", name: "helper" }, RESOLVE)).toEqual({ status: "unmatched" })
   })
 })
 
 describe("resolveTeamMemberRoute — total failure shapes (never a throw)", () => {
-  test("unconfigured -> unusable carrying the service's OWN message", () => {
-    /** The identity whose slot is a real member with no usable route. */
+  test("unconfigured -> unusable carrying the canonical AGENT_UNCONFIGURED sentence", () => {
+    /** The identity whose agent has no usable route. */
     const identity: DshTeamMemberIdentity = { description: "Junior Engineer — builds the fixture", name: "M3" }
     /** The outcome under test; the call itself is the no-throw assertion. */
     const outcome = resolveTeamMemberRoute(identity, RESOLVE)
-    expect(outcome).toEqual({ status: "unusable", member: "Junior Engineer", slot: "slot3", reason: "unconfigured", detail: UNCONFIGURED.message })
+    expect(outcome).toEqual({
+      status: "unusable",
+      member: "Junior Engineer",
+      reason: "unconfigured",
+      detail: agentUnconfiguredMessage("Junior Engineer", "missing agentRoutes.Junior Engineer.provider, agentRoutes.Junior Engineer.model"),
+    })
   })
 
-  test("invalid -> unusable with reason invalid and the service's message", () => {
-    /** The identity whose slot declares a malformed leaf. */
+  test("invalid -> unusable with reason invalid and the offending path", () => {
+    /** The identity whose route declares a malformed leaf. */
     const identity: DshTeamMemberIdentity = { description: "Vision Analyst — reads the screenshot", name: "M4" }
     /** The outcome under test. */
     const outcome = resolveTeamMemberRoute(identity, RESOLVE)
-    expect(outcome).toEqual({ status: "unusable", member: "Vision Analyst", slot: "slot4", reason: "invalid", detail: INVALID.message })
+    expect(outcome).toEqual({
+      status: "unusable",
+      member: "Vision Analyst",
+      reason: "invalid",
+      detail: agentUnconfiguredMessage("Vision Analyst", "agentRoutes.Vision Analyst.model must be a string"),
+    })
   })
 
   test("no resolver at all -> no-config-service", () => {
@@ -178,7 +197,7 @@ describe("resolveTeamMemberRoute — total failure shapes (never a throw)", () =
 })
 
 describe("rosterNameHead ≡ memberFromLabel — one rule, one shared table", () => {
-  /** One shared label row: the raw label, the head the split must yield, and the member it names. */
+  /** One shared label row: the raw label, the head the split must yield, and the agent it names. */
   interface LabelRow {
     /** The raw label the caller passes (a description, a name, or a hostile value). */
     label: unknown
@@ -198,7 +217,7 @@ describe("rosterNameHead ≡ memberFromLabel — one rule, one shared table", ()
     { label: "  Deep Worker  ", head: "Deep Worker", member: "Deep Worker" },
     { label: "architect — lowercase", head: "architect", member: "Architect" },
     // THE BOUNDARY THIS FILE PINS: the native spec's own label spelling carries `·`, which is NOT
-    // a separator — the whole string stays the head and can match no roster member.
+    // a separator — the whole string stays the head and can match no roster agent.
     { label: "Architect · team-1", head: "Architect · team-1", member: undefined },
     { label: "team-1 · Architect", head: "team-1 · Architect", member: undefined },
     { label: "helper", head: "helper", member: undefined },

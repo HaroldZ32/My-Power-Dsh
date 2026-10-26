@@ -27,7 +27,7 @@ import { callerScopedService, createHookRuntime, loadMpdClient, type CallerScope
 // The ONE shared knob declaration, imported at RUNTIME for the parity test: the card MIRRORS it
 // (it must not reference `SETTINGS_KNOBS`, which a QA gate pins against the built client), so the
 // test — not the client — compares the two declarations element by element.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SETTINGS_KNOBS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOT_IMPACT, teamModelLeafSentence, teamModelMembers, teamModelSlotHeading, teamModelSlotImpact } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, agentRouteLeafSentence, teamModelMembers, teamModelSlotOfMember } from "../../mpd-config-plugin/src/settings-schema"
 
 /** Repository root, three directories above this test file. */
 const REPO = join(import.meta.dir, "..", "..", "..")
@@ -53,8 +53,8 @@ type SlotKey = keyof typeof TEAM_MODEL_SLOT_GROUPS
 const EN = CARD.dictionaries().en
 /** The card's Chinese dictionary. */
 const ZH = CARD.dictionaries().zh
-/** The twelve slot rows of the card's mirrored declaration, in declaration order. */
-const SLOT_ROW_FIELDS = CARD.FIELDS.filter((field: CardField) => field.path[0] === "teamModels")
+/** The thirty-three per-agent route rows of the card's mirrored declaration, in declaration order. */
+const AGENT_ROW_FIELDS = CARD.FIELDS.filter((field: CardField) => field.path[0] === "agentRoutes")
 
 /** One recorded scope mutation: the ops batch and the revision fence it carried. */
 interface ScopeCall {
@@ -502,25 +502,25 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.ts"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's twenty-six fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
+  test("the card's forty-seven fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
     // Both front doors read the same knob list — the TUI imports it, the card MIRRORS it — so this
-    // compares the card against that single source at RUNTIME (the twelve team-model rows are built
-    // from slot ids and labels in the declaration, which no source-text grep can follow).
+    // compares the card against that single source at RUNTIME (the thirty-three per-agent rows are
+    // built from roster names and labels in the declaration, which no source-text grep can follow).
     // Same erasure as the module-level load above: this arm re-evaluates the source to read the
     // declaration the card exports, so it needs the transpiled text too.
     const { FIELDS } = (0, eval)("(" + CARD_JS + ")")((name: "react" | "locales") => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 26 = the shared list (13 scalar knobs + 12 slot leaves + the TUI surface's own
-    // `tui.dashboardKey`). The thirty-three `agentRoutes` rows are GONE with the table itself
-    // (contract `.mpd/plans/slot-single-source.md` §3); the element-wise loop below is what makes
-    // this a no-drift pin, not a magic number.
-    expect(FIELDS).toHaveLength(26)
-    expect(SETTINGS_KNOBS).toHaveLength(26)
+    // 47 = the shared list (13 scalar knobs + 33 per-agent route leaves + the TUI surface's own
+    // `tui.dashboardKey`). The retired twelve `teamModels` rows are GONE with that table
+    // (contract `.mpd/plans/agent-routes-per-agent.md` §1); the element-wise loop below is what
+    // makes this a no-drift pin, not a magic number.
+    expect(FIELDS).toHaveLength(47)
+    expect(SETTINGS_KNOBS).toHaveLength(47)
     expect(FIELDS.map((field: CardField) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
     for (const [index, field] of FIELDS.entries()) {
       /** The shared declaration's knob at the same index. */
       const knob = SETTINGS_KNOBS[index]
-      // A6: the FULL path array, never only its first two segments (the slot leaves are 3 deep).
+      // A6: the FULL path array, never only its first two segments (a route leaf is 3 deep).
       expect([...field.path]).toEqual([...knob.path])
       expect(field.label).toBe(knob.label)
       expect(field.zh).toBe(knob.zh)
@@ -530,9 +530,9 @@ describe("isolation and front-door parity", () => {
       // w16: a knob that carries a semantics sentence must carry the SAME one as the shared hint
       if (field.semantics !== undefined) {
         expect(knob.hint).toContain(field.semantics)
-        // ...and for the twelve slot leaves the human sentence is DECLARED on the knob in BOTH
-        // locales (the card mirrors it); the two watchdog rows keep their raw sentence AS the
-        // knob's hint, which is the shape they have always had.
+        // ...and for the thirty-three route leaves the human sentence is DECLARED on the knob in
+        // BOTH locales (the card mirrors `agentRouteLeafSentence` output); the two watchdog rows
+        // keep their raw sentence AS the knob's hint, which is the shape they have always had.
         if (knob.semantics !== undefined) {
           expect(field.semantics).toBe(knob.semantics)
           expect(field.semanticsZh).toBe(knob.semanticsZh)
@@ -541,13 +541,17 @@ describe("isolation and front-door parity", () => {
         }
       }
     }
-    /** The twelve team-model slot rows of the mirrored declaration. */
-    const slotRows = FIELDS.filter((field: CardField) => field.path[0] === "teamModels")
-    expect(slotRows).toHaveLength(12)
-    for (const row of slotRows) expect(row.kind).toBe("select")
+    /** The thirty-three per-agent route rows of the mirrored declaration. */
+    const routeRows = FIELDS.filter((field: CardField) => field.path[0] === "agentRoutes")
+    expect(routeRows).toHaveLength(33)
+    for (const row of routeRows) expect(row.kind).toBe("select")
+    // NO row addresses the retired `teamModels` table, under any spelling (contract §1).
+    expect(FIELDS.some((field: CardField) => field.path[0] === "teamModels")).toBe(false)
     // and the TUI builds its section from that list rather than restating it
     const tuiSource = readFileSync(join(REPO, "packages", "mpd-tui-plugin", "src", "settings.ts"), "utf8")
-    expect(tuiSource).toContain("SETTINGS_KNOBS.map(")
+    // The TUI consumes that ONE list rather than restating it (its row builder may be a helper, so
+    // the pin is the shared symbol plus the import edge, not one call spelling).
+    expect(tuiSource).toContain("SETTINGS_KNOBS")
     expect(tuiSource).toContain('from "../../mpd-config-plugin/src/settings-schema"')
     // the card itself must never import the declaration (the client bytes may not carry the symbol)
     expect(CARD_SOURCE).not.toContain("SETTINGS_KNOBS")
@@ -580,34 +584,30 @@ describe("isolation and front-door parity", () => {
     expect(compare(drift(last, { options: ["high"] }))[last][2]).toBe(false)
   })
 
-  test("every slot row LEADS with its group's human sentence, in BOTH locales, before its key", () => {
-    expect(SLOT_ROW_FIELDS).toHaveLength(12)
-    for (const field of SLOT_ROW_FIELDS) {
-      /** The slot segment of this row's path. */
-      const slot = field.path[1]
-      /** The leaf segment of this row's path. */
-      const leaf = field.path[2]
-      /** The slot number the label and heading interpolate. */
-      const index = Number(String(slot).slice(4))
-      /** The declared member group this slot routes. */
-      // The slot segment comes off a dynamic path, so the index needs the key union named.
-      const group = TEAM_MODEL_SLOT_GROUPS[slot as SlotKey]
-      // the label names the group in the language it is written in
-      expect(field.label).toBe(`Slot ${index} ${String(leaf).replace("reasoningEffort", "reasoning effort")} (${group.en})`)
-      expect(field.zh).toBe(`槽位 ${index} ${leaf === "reasoningEffort" ? "推理强度" : leaf === "provider" ? "提供商" : "模型"}（${group.zh}）`)
-      // the sentence is the DECLARED one for THIS slot and leaf
-      expect(field.semantics).toBe(teamModelLeafSentence(slot, leaf, "en"))
-      expect(field.semanticsZh).toBe(teamModelLeafSentence(slot, leaf, "zh"))
-      if (slot === "slot4") {
-        // slot 4 states the image-input constraint INSTEAD of the shared-route sentence; the
-        // declaration's own builders are the pin, and both locales name the member.
+  test("every per-agent route row LEADS with its agent's own human sentence, in BOTH locales, before its key", () => {
+    expect(AGENT_ROW_FIELDS).toHaveLength(33)
+    for (const field of AGENT_ROW_FIELDS) {
+      /** The roster agent this row belongs to. */
+      const agent = field.path[1]
+      /** The leaf segment of this row's path, narrowed to the three declared leaves. */
+      const leaf = field.path[2] as keyof typeof TEAM_MODEL_FALLBACK_OPTIONS
+      /** The display group that renders this agent's rows. */
+      const group = TEAM_MODEL_SLOT_GROUPS[teamModelSlotOfMember(agent)!]
+      // the label names the AGENT and its display group, in the language it is written in
+      expect(field.label).toBe(`${agent} ${leaf === "reasoningEffort" ? "reasoning effort" : leaf} (${group.en})`)
+      expect(field.zh).toBe(`${agent} ${leaf === "reasoningEffort" ? "推理强度" : leaf === "provider" ? "提供商" : "模型"}（${group.zh}）`)
+      // the sentence is the DECLARED one for THIS agent and leaf (the shared builder's own output)
+      expect(field.semantics).toBe(agentRouteLeafSentence(agent, leaf, "en"))
+      expect(field.semanticsZh).toBe(agentRouteLeafSentence(agent, leaf, "zh"))
+      if (agent === "Vision Analyst") {
+        // the vision member states the image-input constraint instead of the shared-route sentence
         expect(field.semantics).toContain("Vision Analyst")
         expect(field.semanticsZh).toContain("Vision Analyst")
         expect(String(field.semantics)).not.toContain("Architect")
       } else {
-        // slots 1-3 interpolate their group name and member list into the shared templates
-        expect(field.semantics).toContain(`the ${group.en} (${teamModelMembers(slot, "en")})`)
-        expect(field.semanticsZh).toContain(`${group.zh}（${teamModelMembers(slot, "zh")}）`)
+        // every other sentence names ITS OWN agent, so the rows cannot speak for each other
+        expect(field.semantics).toContain(`${agent}'s own`)
+        expect(field.semanticsZh).toContain(agent)
       }
       // the COMPOSED hint of each locale starts with that sentence and only then states the key
       const key = field.path.join(".")
@@ -621,14 +621,13 @@ describe("isolation and front-door parity", () => {
         expect(hint).not.toContain(BRIDGE_NOT_LOST)
       }
     }
-    // a slot's sentence is GROUP-SPECIFIC: slot 2 speaks about its own members, never slot 1's.
-    const slot2Provider = SLOT_ROW_FIELDS.find((field: CardField) => field.path.join(".") === "teamModels.slot2.provider")
-    expect(slot2Provider.semantics).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
-    expect(slot2Provider.semantics).not.toContain("Architect")
-    expect(slot2Provider.semantics).toContain("Vision Analyst") // the vision member is slot 4's
+    // an agent's sentence is AGENT-SPECIFIC: Researcher speaks about itself, never about Architect.
+    const researcher = AGENT_ROW_FIELDS.find((field: CardField) => field.path.join(".") === "agentRoutes.Researcher.provider")
+    expect(researcher.semantics).toContain("Researcher's own provider")
+    expect(researcher.semantics).not.toContain("Architect")
     // the scalar rows keep their declared shape: a row with a human sentence leads with it, and a
     // row without one keeps the disclosure-only hint it always had (no invented copy).
-    for (const field of CARD.FIELDS.filter((row: CardField) => row.path[0] !== "teamModels")) {
+    for (const field of CARD.FIELDS.filter((row: CardField) => row.path[0] !== "agentRoutes")) {
       /** The dotted key of this scalar row. */
       const key = field.path.join(".")
       /** The English hint the row renders. */
@@ -642,24 +641,22 @@ describe("isolation and front-door parity", () => {
     }
   })
 
-  test("each slot's group heading and one-line impact are DECLARED, above the slot's own rows", () => {
+  test("the four DISPLAY group headings are declared, and grouping is stated as display-only", () => {
     for (const slot of ["slot1", "slot2", "slot3", "slot4"] as SlotKey[]) {
-      /** The slot number the heading interpolates. */
-      const index = Number(slot.slice(4))
-      expect(EN[`teamModels.${slot}.heading`]).toBe(teamModelSlotHeading(slot, "en"))
-      expect(ZH[`teamModels.${slot}.heading`]).toBe(teamModelSlotHeading(slot, "zh"))
-      expect(EN[`teamModels.${slot}.heading`]).toBe(`Slot ${index} — ${TEAM_MODEL_SLOT_GROUPS[slot].en} (${teamModelMembers(slot, "en")})`)
-      expect(ZH[`teamModels.${slot}.heading`]).toBe(`槽位 ${index} —— ${TEAM_MODEL_SLOT_GROUPS[slot].zh}（${teamModelMembers(slot, "zh")}）`)
-      // slots 1-3 share the impact; slot 4 has its own (image input), so the accessor is the pin.
-      expect(EN[`teamModels.${slot}.impact`]).toBe(teamModelSlotImpact(slot, "en"))
-      expect(ZH[`teamModels.${slot}.impact`]).toBe(teamModelSlotImpact(slot, "zh"))
+      /** The member group the heading names. */
+      const group = TEAM_MODEL_SLOT_GROUPS[slot]
+      expect(EN[`agentGroup.${slot}.heading`]).toBe(`${group.en} — ${teamModelMembers(slot, "en")}`)
+      expect(ZH[`agentGroup.${slot}.heading`]).toBe(`${group.zh} —— ${teamModelMembers(slot, "zh")}`)
+      // the heading names its members, and the retired "Slot N" persisted-slot wording is GONE
+      expect(EN[`agentGroup.${slot}.heading`]).toContain(group.en)
+      expect(EN[`agentGroup.${slot}.heading`]).not.toContain("Slot ")
     }
-    // and slot 4 is NOT the shared sentence, in either locale
-    expect(EN["teamModels.slot4.impact"]).not.toBe(TEAM_MODEL_SLOT_IMPACT.en)
-    expect(EN["teamModels.slot4.impact"]).toContain("MUST accept image input")
-    expect(ZH["teamModels.slot4.impact"]).toContain("本档的模型必须支持图像输入")
-    expect(EN["teamModels.slot4.heading"]).toBe("Slot 4 — vision member (Vision Analyst)")
-    expect(ZH["teamModels.slot4.heading"]).toBe("槽位 4 —— 视觉成员（Vision Analyst）")
+    // The card states that grouping stores nothing and a save writes ONE agent's leaves (§7).
+    expect(EN.agentGroupingNote).toContain("display grouping only")
+    expect(EN.agentGroupingNote).toContain("agentRoutes.<Agent>")
+    expect(ZH.agentGroupingNote).toContain("分组仅用于显示")
+    // NO dictionary entry advertises the retired persisted table.
+    expect(Object.keys(EN).some((key) => key.startsWith("teamModels."))).toBe(false)
   })
 })
 
@@ -768,16 +765,16 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     return client.hooks.render(registration.component, { useMpdCard: (selector) => selector(registration.inject().hooks.mpdCard.getSnapshot()), t: (key) => EN[key] ?? key }).then((tree) => ({ tree, client, registration }))
   }
 
-/** The section value every slot arm starts from: one provider/model/effort triple. */
-  const SLOT_SECTION = { hashline: { maxDiffChars: 20000 }, teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
+/** The section value every route arm starts from: one agent's provider/model/effort triple. */
+  const AGENT_SECTION = { hashline: { maxDiffChars: 20000 }, agentRoutes: { Architect: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
 /** A ready scope carrying one section value. */
-  const slotScope = (section: Record<string, unknown>): ScopeDouble => fakeScope({ status: "ready", mode: "host", writable: true, revision: 7, value: section, user: section })
+  const agentScope = (section: Record<string, unknown>): ScopeDouble => fakeScope({ status: "ready", mode: "host", writable: true, revision: 7, value: section, user: section })
 
   test("the model control lists the catalog's provider/model pairs, GROUPED by provider", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     /** The model control of the first slot. */
-    const select = controlOf(tree, "teamModels.slot1.model")
+    const select = controlOf(tree, "agentRoutes.Architect.model")
     expect(select?.type).toBe("select")
     expect(optgroupLabels(select)).toEqual(["DeepSeek Official", "Other"])
     expect(optionValues(select)).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
@@ -789,9 +786,9 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
   test("the provider control lists the catalog's provider ids with their display names", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     /** The provider control of the first slot. */
-    const select = controlOf(tree, "teamModels.slot1.provider")
+    const select = controlOf(tree, "agentRoutes.Architect.provider")
     expect(optionValues(select)).toEqual(["deepseek-official", "other-provider"])
     expect(elementsOf(select, "option").map((option) => option.props.children)).toContain("Other")
     client.restore()
@@ -799,18 +796,18 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
   test("the effort control offers the SELECTED model's own efforts, and changing the model re-derives them", async () => {
     /** The render of the pro-model section, whose efforts are read. */
-    const pro = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const pro = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     /** The effort control under the pro model. */
-    const proSelect = controlOf(pro.tree, "teamModels.slot1.reasoningEffort")
+    const proSelect = controlOf(pro.tree, "agentRoutes.Architect.reasoningEffort")
     expect(optionValues(proSelect)).toEqual(["high", "max"]) // deepseek-v4-pro advertises exactly these
     pro.client.restore()
 
     /** The same section with the flash model selected. */
-    const flashSection = { ...SLOT_SECTION, teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" } } }
+    const flashSection = { ...AGENT_SECTION, agentRoutes: { Architect: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" } } }
     /** The flash render, whose efforts must differ from the pro model's. */
-    const flash = await renderedTree(slotScope(flashSection), catalogServices())
+    const flash = await renderedTree(agentScope(flashSection), catalogServices())
     /** The effort control under the flash model. */
-    const flashSelect = controlOf(flash.tree, "teamModels.slot1.reasoningEffort")
+    const flashSelect = controlOf(flash.tree, "agentRoutes.Architect.reasoningEffort")
     expect(optionValues(flashSelect)).toEqual(["off", "low", "high", "max"])
     expect(optionValues(flashSelect)).not.toEqual(optionValues(proSelect))
     flash.client.restore()
@@ -818,47 +815,46 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
   test("a model with no advertised efforts keeps the declared fallback list", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope({ ...SLOT_SECTION, teamModels: { slot1: { provider: "other-provider", model: "x-1" } } }), catalogServices())
+    const { tree, client } = await renderedTree(agentScope({ ...AGENT_SECTION, agentRoutes: { Architect: { provider: "other-provider", model: "x-1" } } }), catalogServices())
     /** The effort control, which keeps the declared list. */
-    const select = controlOf(tree, "teamModels.slot1.reasoningEffort")
+    const select = controlOf(tree, "agentRoutes.Architect.reasoningEffort")
     expect(optionValues(select)).toEqual(["off", "low", "high", "max"])
     client.restore()
   })
 
-  test("NO slot field is ever a text input (a slot value is never typed)", async () => {
+  test("NO route leaf is ever a text input (a route value is never typed)", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
-    for (const slot of ["slot1", "slot2", "slot3"]) {
-      for (const leaf of ["provider", "model", "reasoningEffort"]) {
-    /** Each slot leaf's control, which must be a select. */
-        const control = controlOf(tree, `teamModels.${slot}.${leaf}`)
-        expect(control?.type).toBe("select")
-        expect(optionValues(control).length).toBeGreaterThan(0)
-      }
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
+    // EVERY agent's three leaves render a SELECT with options — never a free-typed input.
+    for (const field of AGENT_ROW_FIELDS) {
+      /** This leaf's control, which must be a select. */
+      const control = controlOf(tree, field.path.join("."))
+      expect(control?.type).toBe("select")
+      expect(optionValues(control).length).toBeGreaterThan(0)
     }
     client.restore()
   })
 
   test("DEGRADE: no catalog services -> the declared lists, and the section still renders", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), {})
-    expect(controlOf(tree, "teamModels.slot1.model")?.type).toBe("select")
-    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
-    expect(optionValues(controlOf(tree, "teamModels.slot1.reasoningEffort"))).toEqual(["off", "low", "high", "max"])
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), {})
+    expect(controlOf(tree, "agentRoutes.Architect.model")?.type).toBe("select")
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.reasoningEffort"))).toEqual(["off", "low", "high", "max"])
     expect(textOf(tree)).toContain("persists in the HOST's settings document")
     client.restore()
   })
 
   test("DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render", async () => {
     /** The render over an unbound session list. */
-    const unbound = await renderedTree(slotScope(SLOT_SECTION), catalogServices(CATALOG, { unbound: true }))
-    expect(optionValues(controlOf(unbound.tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    const unbound = await renderedTree(agentScope(AGENT_SECTION), catalogServices(CATALOG, { unbound: true }))
+    expect(optionValues(controlOf(unbound.tree, "agentRoutes.Architect.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     unbound.client.restore()
 
     /** The render over a resolver that throws. */
-    const throwing = await renderedTree(slotScope(SLOT_SECTION), catalogServices(CATALOG, { throwing: true }))
-    expect(optionValues(controlOf(throwing.tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
-    expect(textOf(throwing.tree)).toContain("Slot 1 provider")
+    const throwing = await renderedTree(agentScope(AGENT_SECTION), catalogServices(CATALOG, { throwing: true }))
+    expect(optionValues(controlOf(throwing.tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official"])
+    expect(textOf(throwing.tree)).toContain("Architect provider")
     throwing.client.restore()
   })
 
@@ -869,48 +865,105 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const { registration } = mountedCard(fakeScope(READY, calls))
     /** The section's host-facing face. */
     const face = registration.inject()
-    face.edit("teamModels.slot1.model", "deepseek-v4-pro")
-    face.edit("teamModels.slot1.reasoningEffort", "max")
+    face.edit("agentRoutes.Architect.model", "deepseek-v4-pro")
+    face.edit("agentRoutes.Architect.reasoningEffort", "max")
     await face.save()
     expect(calls).toHaveLength(1)
     expect(calls[0].expected).toBe(7)
     expect(calls[0].ops).toEqual([
-      { op: "set", path: ["teamModels", "slot1", "model"], value: "deepseek-v4-pro" },
-      { op: "set", path: ["teamModels", "slot1", "reasoningEffort"], value: "max" },
+      { op: "set", path: ["agentRoutes", "Architect", "model"], value: "deepseek-v4-pro" },
+      { op: "set", path: ["agentRoutes", "Architect", "reasoningEffort"], value: "max" },
     ])
   })
 
-  // ── R2/R3 (lane L4): the per-member table is DELETED, and the see-before-you-edit block ──────
-  test("R2 DELETION LOCK: no agentRoutes row exists, and a leftover block is IGNORED (contract §3)", async () => {
-    // A section value that still carries a per-member table, exactly as an OLD workspace file does —
-    // the card must render NO row for it and must never write it (§3: ignored, never rewritten).
-    /** The section value this arm renders. */
-    const section = { ...SLOT_SECTION, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }
+  // ── Contract §9: two agents with DIFFERENT routes render independently (no cross-talk), which is
+  // the whole point of the per-agent table and the defect the retired slot card could not show.
+  test("§9: two agents with DIFFERENT routes render independently, and each row states its OWN route", async () => {
+    /** The section value: two agents of DIFFERENT groups, with different routes. */
+    const section = {
+      agentRoutes: {
+        Architect: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" },
+        "Deep Worker": { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "low" },
+      },
+    }
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(section), catalogServices())
-    // NO control addresses the deleted table, under either spelling the old card used.
-    expect(controlOf(tree, "agentRoutes.Deep Worker.model")).toBeUndefined()
-    /** Every rendered control's key, so the absence above is asserted over the WHOLE tree. */
-    const rendered = JSON.stringify(tree)
-    expect(rendered).not.toContain("agentRoutes")
-    // The card's own field list carries no such path either.
-    expect(CARD.FIELDS.some((field: CardField) => field.path[0] === "agentRoutes")).toBe(false)
+    const { tree, client } = await renderedTree(agentScope(section), catalogServices())
+    // Each row's own controls carry ITS OWN value — editing one can never move the other.
+    expect(controlOf(tree, "agentRoutes.Architect.model")?.props.value).toBe("deepseek-v4-pro")
+    expect(controlOf(tree, "agentRoutes.Architect.reasoningEffort")?.props.value).toBe("max")
+    expect(controlOf(tree, "agentRoutes.Deep Worker.model")?.props.value).toBe("deepseek-v4-flash")
+    expect(controlOf(tree, "agentRoutes.Deep Worker.reasoningEffort")?.props.value).toBe("low")
+    // The effective block states each agent's OWN route, in its OWN display group.
+    const text = textOf(tree)
+    expect(text).toContain("agent Architect · heavy members: deepseek-official / deepseek-v4-pro / max")
+    expect(text).toContain("agent Deep Worker · execution members: deepseek-official / deepseek-v4-flash / low")
+    // An edit staged on ONE agent writes ONLY that agent's leaf (no group write, no cross-talk).
+    /** Every mutation this arm's scope recorded. */
+    const calls: ScopeCall[] = []
+    /** The mounted section whose face stages the edit. */
+    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** The section's host-facing face. */
+    const face = registration.inject()
+    face.edit("agentRoutes.Deep Worker.model", "deepseek-v4-pro")
+    await face.save()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Deep Worker", "model"], value: "deepseek-v4-pro" }])
     client.restore()
   })
 
-  test("R3: the see-before-you-edit block renders the four slot STATES, and <unconfigured> where nothing is set", async () => {
-    /** The section value this arm renders: slot1 configured, the other three not. */
-    const section = { teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
+  // ── R2/R3 (lane L4): the per-member table is DELETED, and the see-before-you-edit block ──────
+  // ── R2 reversal (contract §7): the unit of model configuration is the AGENT. The 2026-10-23
+  // deletion-lock arm asserted NO agentRoutes row and an IGNORED leftover block; it is deliberately
+  // REVERSED here to assert the new shape — one row per agent, and a leftover teamModels block that
+  // is still ignored AND never written.
+  test("R2 REVERSAL (§7): every roster agent has its own row, and a leftover teamModels block is IGNORED and never written", async () => {
+    // A section value that still carries the RETIRED per-slot table, exactly as an OLD workspace file
+    // does. The card must render no row for it, read nothing from it, and never write it.
+    /** The section value this arm renders. */
+    const section = { ...AGENT_SECTION, teamModels: { slot1: { provider: "old-provider", model: "old-model", reasoningEffort: "max" } } }
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(section), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(section), catalogServices())
+    // ONE ROW PER AGENT: the first and last roster agent's three leaves all render a control.
+    for (const agent of ["Architect", "Vision Analyst"]) {
+      for (const leaf of ["provider", "model", "reasoningEffort"]) {
+        expect(controlOf(tree, `agentRoutes.${agent}.${leaf}`)).toBeDefined()
+      }
+    }
+    // NO control addresses the retired table, and the rendered tree names it nowhere.
+    expect(controlOf(tree, "teamModels.slot1.model")).toBeUndefined()
+    expect(JSON.stringify(tree)).not.toContain("teamModels")
+    // The card's own field list carries no retired path either.
+    expect(CARD.FIELDS.some((field: CardField) => field.path[0] === "teamModels")).toBe(false)
+    // ...and a SAVE writes only `agentRoutes.<Agent>.<leaf>` (never the legacy table).
+    /** Every mutation the scope recorded. */
+    const calls: ScopeCall[] = []
+    /** The mounted section whose face stages the edit. */
+    const { registration } = mountedCard(fakeScope(READY, calls))
+    /** The section's host-facing face. */
+    const face = registration.inject()
+    face.edit("agentRoutes.Architect.model", "deepseek-v4-pro")
+    await face.save()
+    expect(calls).toHaveLength(1)
+    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Architect", "model"], value: "deepseek-v4-pro" }])
+    client.restore()
+  })
+
+  test("R3: the see-before-you-edit block renders ONE state per agent, and <unconfigured> where nothing is set", async () => {
+    /** The section value this arm renders: Architect configured, the other ten not. */
+    const section = { agentRoutes: { Architect: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
+    /** This arm's rendered tree and client. */
+    const { tree, client } = await renderedTree(agentScope(section), catalogServices())
     /** The rendered section text, where the effective block must appear above the rows. */
     const text = textOf(tree)
     expect(text).toContain("Effective model config")
-    // slot 1 is CONFIGURED: its route renders.
-    expect(text).toContain("slot 1 · heavy members: deepseek-official / deepseek-v4-pro / max")
-    // slots 2-4 are UNCONFIGURED: NO default floor invents a route (contract §2), so each renders the
-    // <unconfigured> sentence with the leaves it still needs.
-    expect(text).toContain("<unconfigured> — missing provider, model")
+    // Architect is CONFIGURED: its own route renders, attributed to the agent (not a slot).
+    expect(text).toContain("agent Architect · heavy members: deepseek-official / deepseek-v4-pro / max")
+    // Every OTHER agent is UNCONFIGURED: NO default floor invents a route (contract §1), so each
+    // renders the <unconfigured> sentence naming ITSELF and the leaves it still needs.
+    expect(text).toContain("<unconfigured> — Planner is missing provider, model")
+    expect(text).toContain("<unconfigured> — Vision Analyst is missing provider, model")
+    expect(text).toContain("AGENT_UNCONFIGURED")
+    expect(text).not.toContain("SLOT_UNCONFIGURED")
     expect(text).not.toContain("deepseek-v4-flash / high")
     // the document branch says the chains half is not shown and why
     expect(text).toContain("no configured chains — the shipped defaults are in force")
@@ -918,31 +971,53 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     client.restore()
   })
 
-  test("R3: the SERVICE branch projects the route body over the document and carries the chains", () => {
-    // The pure half of the projection: the live route's slot blocks win over the document's, the
-    // deleted per-member table is not projected at all, and the modelchain chains — which NO
-    // settings document holds — ride the service body alone.
+  test("R3: the SERVICE branch projects one typed resolution per agent and carries the chains", () => {
+    // The pure half of the projection: each agent's SERVICE resolution wins over the document's
+    // block; an absent agent is unconfigured; a malformed one is `invalid`; `unrouted` is NOT a
+    // refusal (Amendment 2 §3). The modelchain chains — which NO settings document holds — ride the
+    // service body alone.
     /** The projection over a live route body beside a document value. */
     const effective = CARD.effectiveModelConfigOf(
-      { teamModels: { slot1: { provider: "doc-provider", model: "doc-model", reasoningEffort: "max" } }, agentRoutes: { Architect: { provider: "doc-provider" } } },
-      { body: { ok: true, slots: { slot2: { provider: "live", model: "live-model", reasoningEffort: "low" } }, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } }, modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] } }, notice: "" },
+      { agentRoutes: { Architect: { provider: "doc-provider", model: "doc-model", reasoningEffort: "max" } } },
+      {
+        body: {
+          ok: true,
+          agents: {
+            Architect: { ok: true, agent: "Architect", route: { provider: "live", model: "live-model", reasoningEffort: "low", fallbacks: [{ provider: "p", model: "m" }, { provider: "p2", model: "m2" }] } },
+            Planner: { ok: false, reason: "unconfigured", agent: "Planner", missing: ["provider", "model"] },
+            "Deep Worker": { ok: false, reason: "invalid", agent: "Deep Worker", problem: "agentRoutes.Deep Worker.model is not a string" },
+            "Vision Analyst": { ok: false, reason: "unrouted" },
+          },
+          modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] },
+        },
+        notice: "",
+      },
     )
     expect(effective.source).toBe("service")
-    // slot 2 comes from the SERVICE body: configured, its own route, no effort invented.
-    expect(effective.slots.slot2).toEqual({ status: "configured", provider: "live", model: "live-model", reasoningEffort: "low", missing: [] })
-    // slot 1 comes from the DOCUMENT (the body carries none): a usable route over the document's eyes.
-    expect(effective.slots.slot1).toEqual({ status: "configured", provider: "doc-provider", model: "doc-model", reasoningEffort: "max", missing: [] })
-    // slot 3 is configured by NEITHER surface: the typed unconfigured state, with the missing leaves.
-    expect(effective.slots.slot3).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] })
-    // The deleted table is NOT projected, even when both surfaces still carry it.
-    expect(effective).not.toHaveProperty("agentRoutes")
+    // Architect comes from the SERVICE body: its own route, its declared fallback count, no invention.
+    expect(effective.agents.Architect).toEqual({ status: "configured", provider: "live", model: "live-model", reasoningEffort: "low", fallbacks: 2, missing: [] })
+    // Planner's typed unconfigured resolution names the leaves the service itself reported.
+    expect(effective.agents.Planner).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] })
+    // A malformed entry is `invalid` with the offending path named — never <unconfigured>.
+    expect(effective.agents["Deep Worker"].status).toBe("invalid")
+    expect(effective.agents["Deep Worker"].problem).toContain("agentRoutes.Deep Worker.model is not a string")
+    // `unrouted` is NOT a refusal: it renders <unavailable>, never <unconfigured> (Amendment 2 §3).
+    expect(effective.agents["Vision Analyst"]).toEqual({ status: "unavailable", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: [] })
+    // An agent NEITHER surface carries is the typed unconfigured state — never blank.
+    expect(effective.agents.Researcher).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] })
     expect(effective.modelchain.sisyphus).toHaveLength(2)
-    // The document branch: NO default floor any more, so an unset slot stays unconfigured and the
-    // notice rides.
-    /** The projection with no route answer. */
-    const documentBranch = CARD.effectiveModelConfigOf({}, { body: undefined, notice: "no route" })
+    // The RETIRED `teamModels` table is never read, even when the document still carries it.
+    /** The document branch over a legacy table and no route answer. */
+    const legacyOnly = CARD.effectiveModelConfigOf({ teamModels: { slot1: { provider: "old-provider", model: "old-model" } } }, { body: undefined, notice: "no route" })
+    expect(legacyOnly.source).toBe("document")
+    expect(legacyOnly.agents.Architect).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", fallbacks: 0, missing: ["provider", "model"] })
+    // The document branch: an agent the file DOES declare projects its own entry (trimmed), and the
+    // notice rides; a whitespace-only leaf counts as missing exactly as the resolver trims (#5).
+    /** The projection over a two-agent document. */
+    const documentBranch = CARD.effectiveModelConfigOf({ agentRoutes: { Architect: { provider: " p ", model: "m", reasoningEffort: "" }, Planner: { provider: "  ", model: "m" } } }, { body: undefined, notice: "no route" })
     expect(documentBranch.source).toBe("document")
-    expect(documentBranch.slots.slot3).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] })
+    expect(documentBranch.agents.Architect).toEqual({ status: "configured", provider: "p", model: "m", reasoningEffort: "", fallbacks: 0, missing: [] })
+    expect(documentBranch.agents.Planner).toEqual({ status: "unconfigured", provider: "", model: "m", reasoningEffort: "", fallbacks: 0, missing: ["provider"] })
     expect(documentBranch.notice).toBe("no route")
     expect(CARD.MODEL_CONFIG_PATH).toBe("/plugins/mpd/model-config")
   })
@@ -953,17 +1028,18 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** The controller bound to a ready scope. */
     const controller = CARD.createMpdCardController(fakeScope(READY, calls).bind({ namespace: "mpd" }))
     expect(controller.store.getSnapshot().effective.source).toBe("document")
-    controller.setLiveService({ ok: true, slots: {}, agentRoutes: {}, modelchain: { sisyphus: [{ provider: "p", model: "m" }] } }, "")
+    controller.setLiveService({ ok: true, agents: { Architect: { ok: true, agent: "Architect", route: { provider: "p", model: "m" } } }, modelchain: { sisyphus: [{ provider: "p", model: "m" }] } }, "")
     /** The effective projection after the service read landed. */
     const after = controller.store.getSnapshot().effective
     expect(after.source).toBe("service")
+    expect(after.agents.Architect).toMatchObject({ status: "configured", provider: "p", model: "m" })
     expect(after.modelchain.sisyphus).toEqual([{ provider: "p", model: "m" }])
     controller.dispose()
   })
 
   test("the disclosure sentences are unchanged and still rendered with the new rows", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     /** The rendered section text, where the disclosure must appear once. */
     const text = textOf(tree)
     // The disclosure still REACHES the reader — once, at the top of the card, where the 25 rows no
@@ -978,63 +1054,78 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(text).toContain(BRIDGE_NOT_LOST)
     expect(text).toContain("if no session is live, the save stays in settings")
     // ...and the ROWS do not.
-    for (const field of SLOT_ROW_FIELDS) expect(hintOfRow(tree, field.path.join("."))).not.toContain(BRIDGE_DISCLOSURE)
+    for (const field of AGENT_ROW_FIELDS) expect(hintOfRow(tree, field.path.join("."))).not.toContain(BRIDGE_DISCLOSURE)
     client.restore()
   })
 
-  // ── The twelve slot rows sat in one undifferentiated block: nothing on screen said WHICH members a
-  // slot routes, and each row's hint opened with the boilerplate disclosure, so the one sentence a
-  // reader needs was the LAST thing in a 400-char line. Both are asserted on the rendered tree here.
-  test("G-1: each slot renders its group heading + impact ABOVE its three rows, human sentence FIRST", async () => {
+  // ── Rows are grouped for DISPLAY only (contract §7): one heading per group, one heading per
+  // AGENT carrying its live state, and that agent's three leaf rows beneath it. The retired slot
+  // block said nothing about which AGENT a row belonged to; both levels are asserted here.
+  test("G-1: each display group renders its heading, and each AGENT renders as ONE row holding its three cells", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     // The children are a list at runtime; the recursive node type cannot index it uncast.
     const children = tree.props.children as ElementNode[]
+    /** The eleven roster agents, in the four groups' declared order. */
+    const agents = (Object.keys(TEAM_MODEL_SLOT_GROUPS) as SlotKey[]).flatMap((slot) => [...TEAM_MODEL_SLOT_GROUPS[slot].members])
     for (const slot of ["slot1", "slot2", "slot3", "slot4"] as SlotKey[]) {
-      /** The slot's heading element. */
-      const heading = children.find((child) => child?.props?.["data-mpd-slot-group"] === slot)
-      /** The slot's impact line. */
-      const impact = children.find((child) => child?.props?.["data-mpd-slot-impact"] === slot)
+      /** The display group's heading element. */
+      const heading = children.find((child) => child?.props?.["data-mpd-agent-group"] === slot)
       expect(heading).toBeDefined()
-      expect(impact).toBeDefined()
-      /** Where the heading sits among the section's children. */
+      /** Where the group heading sits among the section's children. */
       const headingIndex = children.indexOf(heading!)
-      /** Where the impact line sits, which must be below the heading. */
-      const impactIndex = children.indexOf(impact!)
-      /** Where the slot's provider row sits. */
-      const firstRow = children.findIndex((child) => child?.key === `teamModels.${slot}.provider`)
-      /** Where the slot's effort row sits. */
-      const lastRow = children.findIndex((child) => child?.key === `teamModels.${slot}.reasoningEffort`)
-      // the heading is above ALL THREE rows of ITS OWN slot, with the impact line under it
-      expect(headingIndex).toBeLessThan(impactIndex)
-      expect(impactIndex).toBeLessThan(firstRow)
-      expect(impactIndex).toBeLessThan(lastRow)
-      expect(textOf(heading)).toBe(EN[`teamModels.${slot}.heading`])
-      expect(textOf(impact)).toBe(EN[`teamModels.${slot}.impact`])
+      /** The first agent of this group. */
+      const firstAgent = TEAM_MODEL_SLOT_GROUPS[slot].members[0]
+      /** Where that agent's ROW sits. */
+      const firstRow = children.findIndex((child) => child?.props?.["data-mpd-agent-row"] === firstAgent)
+      // the group heading is above the FIRST agent row of its own group, naming the group
+      expect(headingIndex).toBeLessThan(firstRow)
+      expect(textOf(heading)).toBe(EN[`agentGroup.${slot}.heading`])
       expect(textOf(heading)).toContain(TEAM_MODEL_SLOT_GROUPS[slot].en)
     }
-    // and the headings/impacts do NOT disturb the catalog-status lines (both still data-attributed)
+    for (const agent of agents) {
+      /** The agent's OWN row container. */
+      const row = elementsOf(tree, "div").find((element) => element.props?.["data-mpd-agent-row"] === agent)
+      expect(row).toBeDefined()
+      /** The row's children: the heading div first, then exactly its three leaf cells. */
+      const rowChildren = (row!.props.children as unknown[]).filter((child): child is ElementNode => child !== null && typeof child === "object")
+      // ONE row per agent: the agent's heading, then EXACTLY its own provider/model/effort cells —
+      // no other agent's leaf is inside this row.
+      expect(rowChildren).toHaveLength(4)
+      expect(textOf(rowChildren[0])).toContain(agent)
+      expect(rowChildren.slice(1).map((cell) => cell.key)).toEqual([
+        `agentRoutes.${agent}.provider`,
+        `agentRoutes.${agent}.model`,
+        `agentRoutes.${agent}.reasoningEffort`,
+      ])
+      // …in the STATED state — NEVER blank: the fixture configures Architect, every other agent
+      // reports <unconfigured> with the leaves it is missing.
+      expect(row!.props["data-mpd-agent-state"]).toBe(agent === "Architect" ? "configured" : "unconfigured")
+      if (agent === "Architect") expect(textOf(rowChildren[0])).toContain("deepseek-official / deepseek-v4-pro / max")
+      else expect(textOf(rowChildren[0])).toContain("<unconfigured> — missing provider, model")
+    }
+    // and the headings do NOT disturb the catalog-status lines (both still data-attributed)
     expect(elementsOf(tree, "p").filter((element) => element.props?.["data-mpd-catalog-state"] !== undefined)).toHaveLength(2)
     client.restore()
   })
 
   test("G-2: the human sentence renders FIRST at readable size/opacity, the disclosure dimmer beneath", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     /** The provider row of slot 2. */
-    const row = rowOf(tree, "teamModels.slot2.provider")
+    const row = rowOf(tree, "agentRoutes.Researcher.provider")
     expect(row).toBeDefined()
       /** The declared row behind that rendered row. */
-    const field = SLOT_ROW_FIELDS.find((candidate: CardField) => candidate.path.join(".") === "teamModels.slot2.provider")
+    const field = AGENT_ROW_FIELDS.find((candidate: CardField) => candidate.path.join(".") === "agentRoutes.Researcher.provider")
       /** The row's hint block, the second child. */
     const hintBlock = (row!.props.children as ElementNode[])[1]
       /** The human sentence span and the dim key pointer beneath it. */
     const [human, pointer] = hintBlock.props.children as ElementNode[]
-    expect(human.props["data-mpd-row-human"]).toBe("teamModels.slot2.provider")
-    expect(pointer.props["data-mpd-row-key"]).toBe("teamModels.slot2.provider")
+    expect(human.props["data-mpd-row-human"]).toBe("agentRoutes.Researcher.provider")
+    expect(pointer.props["data-mpd-row-key"]).toBe("agentRoutes.Researcher.provider")
     expect(textOf(human)).toBe(field.semantics)
-    expect(textOf(human)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
-    expect(textOf(pointer)).toBe("mpd.jsonc teamModels.slot2.provider")
+    expect(textOf(human)).toContain("Researcher's own provider")
+    expect(textOf(pointer)).toBe("mpd.jsonc agentRoutes.Researcher.provider")
     // the ROW no longer carries the disclosure; the CARD does, once
     expect(textOf(pointer)).not.toContain(BRIDGE_DISCLOSURE)
     expect(textOf(tree)).toContain(BRIDGE_DISCLOSURE)
@@ -1054,8 +1145,8 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const pointerOpacity = typeof pointer.props.style!.opacity === "number" ? pointer.props.style!.opacity : 1
     expect(humanOpacity).toBeGreaterThanOrEqual(pointerOpacity)
     // BOTH still reach the row's text, so the pre-existing hint assertions keep their subject
-    expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain(field.semantics)
-    expect(hintOfRow(tree, "teamModels.slot2.provider")).toContain("mpd.jsonc teamModels.slot2.provider")
+    expect(hintOfRow(tree, "agentRoutes.Researcher.provider")).toContain(field.semantics)
+    expect(hintOfRow(tree, "agentRoutes.Researcher.provider")).toContain("mpd.jsonc agentRoutes.Researcher.provider")
     // a disclosure-only scalar row keeps the SINGLE dim span it always had (no restyle, no copy)
     const scalarHint = (rowOf(tree, "hashline.maxDiffChars")!.props.children as ElementNode[])[1]
     expect(Array.isArray(scalarHint.props.children)).toBe(false)
@@ -1063,19 +1154,24 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     client.restore()
   })
 
-  test("NEGATIVE CONTROL: the heading/impact lookup is falsifiable (a wrong slot attr finds nothing)", async () => {
+  test("NEGATIVE CONTROL: the group/agent lookup is falsifiable (a wrong attribute finds nothing)", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await renderedTree(slotScope(SLOT_SECTION), catalogServices())
+    const { tree, client } = await renderedTree(agentScope(AGENT_SECTION), catalogServices())
     // The children are a list at runtime; the recursive node type cannot search it uncast.
     const children = tree.props.children as ElementNode[]
-    expect(children.find((child) => child?.props?.["data-mpd-slot-group"] === "slot5")).toBeUndefined()
-    expect(children.find((child) => child?.props?.["data-mpd-slot-impact"] === "slot3")).toBeDefined()
-    // …while slot 4 IS rendered, with the vision heading and its own impact line
-    const slot4Heading = children.find((child) => child?.props?.["data-mpd-slot-group"] === "slot4")
-      /** The slot 4 impact line. */
-    const slot4Impact = children.find((child) => child?.props?.["data-mpd-slot-impact"] === "slot4")
-    expect(textOf(slot4Heading)).toBe(EN["teamModels.slot4.heading"])
-    expect(textOf(slot4Impact)).toBe(EN["teamModels.slot4.impact"])
+    expect(children.find((child) => child?.props?.["data-mpd-agent-group"] === "slot5")).toBeUndefined()
+    expect(children.find((child) => child?.props?.["data-mpd-agent-group"] === "slot3")).toBeDefined()
+    expect(children.find((child) => child?.props?.["data-mpd-agent-row"] === "NotAnAgent")).toBeUndefined()
+    // …while the vision group IS rendered, with its display-only heading and its member's own row
+    const visionHeading = children.find((child) => child?.props?.["data-mpd-agent-group"] === "slot4")
+    expect(textOf(visionHeading)).toBe(EN["agentGroup.slot4.heading"])
+    /** The vision member's own heading. */
+    const visionRow = children.find((child) => child?.props?.["data-mpd-agent-row"] === "Vision Analyst")
+    expect(visionRow).toBeDefined()
+    expect(textOf(visionRow)).toContain("Vision Analyst")
+    // a heading is display-only: it carries NO write path and no control
+    expect(elementsOf(visionHeading!, "input")).toHaveLength(0)
+    expect(elementsOf(visionHeading!, "select")).toHaveLength(0)
     client.restore()
   })
 
@@ -1153,7 +1249,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** The mutable catalog this arm inserts into. */
     const directory = mutableDirectory(CATALOG)
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
       sessions: SESSIONS,
       ...REMOTE_SESSION,
       modelDirectories: { directoryFor: () => directory.directory },
@@ -1161,7 +1257,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // the defect's PREMISE, asserted: the probe the pre-fix card used answers undefined
     expect(client.ctx.get("modelDirectories")).toBeUndefined()
     /** The model control the catalog must feed. */
-    const select = controlOf(tree, "teamModels.slot1.model")
+    const select = controlOf(tree, "agentRoutes.Architect.model")
     expect(select?.type).toBe("select")
     expect(optionValues(select)).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
     expect(optgroupLabels(select)).toEqual(["DeepSeek Official", "Other"])
@@ -1175,12 +1271,12 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** The mutable catalog this arm inserts into. */
     const directory = mutableDirectory(CATALOG)
     /** This arm's client, registration, props and first tree. */
-    const { tree, client, registration, props } = await injectedTree(slotScope(SLOT_SECTION), {
+    const { tree, client, registration, props } = await injectedTree(agentScope(AGENT_SECTION), {
       sessions: SESSIONS,
       ...REMOTE_SESSION,
       modelDirectories: { directoryFor: () => directory.directory },
     })
-    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official", "other-provider"])
     /** The card's own hook store, which the live insert must re-project. */
     const cardStore = registration.inject().hooks.mpdCard
     expect(cardStore.getSnapshot().catalog).toMatchObject({ mode: "live", providers: 2, models: 3 })
@@ -1192,17 +1288,17 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
     // The same mounted controller re-renders the new list (act = re-render, NOT a remount).
     const next = await client.hooks.act(registration.component, props)
-    expect(optionValues(controlOf(next, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "other-provider", "third-provider"])
-    expect(optionValues(controlOf(next, "teamModels.slot1.model"))).toContain("z-9")
+    expect(optionValues(controlOf(next, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official", "other-provider", "third-provider"])
+    expect(optionValues(controlOf(next, "agentRoutes.Architect.model"))).toContain("z-9")
     expect(catalogStatus(next)["data-mpd-catalog-models"]).toBe("4")
     client.restore()
   })
 
   test("T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {})
-    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
-    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {})
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     expect(textOf(tree)).toContain("declared fallback — live catalog unavailable")
     /** The catalog-status paragraph, which must report the fallback. */
     const status = catalogStatus(tree)
@@ -1284,15 +1380,15 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** This arm's resolver counter and host services. */
     const { calls, host } = callerScopedCatalog()
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), host)
     // The chain is declared at the CALL SITE: without `remote.session` the harness throws the
     // measured error and the method body never runs.
     expect(calls.directoryFor).toBe(1)
     /** The provider control the live catalog must feed. */
-    const providerSelect = controlOf(tree, "teamModels.slot1.provider")
+    const providerSelect = controlOf(tree, "agentRoutes.Architect.provider")
     expect(optionValues(providerSelect)).toEqual(["deepseek-official", "opencode-go"])
     /** The model control the live catalog must feed. */
-    const modelSelect = controlOf(tree, "teamModels.slot1.model")
+    const modelSelect = controlOf(tree, "agentRoutes.Architect.model")
     expect(optgroupLabels(modelSelect)).toEqual(["DeepSeek Official", "opencode-go"])
     expect(optionValues(modelSelect)).toHaveLength(31)
     expect(optionValues(modelSelect)).toContain("og-model-27")
@@ -1311,10 +1407,10 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // bare fallback.
     const { calls, host } = callerScopedCatalog(LIVE_CATALOG, { reads: ["remote.session", "testing.absent.seam"] })
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), host)
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), host)
     expect(calls.directoryFor).toBe(0) // rejected before the method body, exactly like the live host
-    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official"])
-    expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toHaveLength(4)
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.model"))).toHaveLength(4)
     /** The catalog-status paragraph, which must report the fallback. */
     const status = catalogStatus(tree)
     expect(status["data-mpd-catalog-state"]).toBe("fallback")
@@ -1338,7 +1434,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** Every session id the resolver was asked for. */
     const asked: string[] = []
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
       sessions: SESSIONS,
       ...REMOTE_SESSION,
       modelDirectories: { directoryFor: (id: string) => { asked.push(id); if (id !== "s1") throw new Error("unknown session"); return directory.directory } },
@@ -1349,7 +1445,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(status["data-mpd-catalog-state"]).toBe("live")
     expect(status["data-mpd-catalog-providers"]).toBe("2")
     expect(status["data-mpd-catalog-models"]).toBe("31")
-    expect(optionValues(controlOf(tree, "teamModels.slot1.provider"))).toEqual(["deepseek-official", "opencode-go"])
+    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official", "opencode-go"])
     expect(textOf(tree)).toContain("live catalog — 2 providers · 31 models")
     client.restore()
   })
@@ -1387,7 +1483,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     /** Every session id the resolver was asked for. */
     const asked: string[] = []
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
       sessions: {
         list: { getSnapshot: () => ({ ids: ["blank-1", "s2"], byId: { "blank-1": { id: "blank-1", blank: true }, s2: { id: "s2", blank: false } }, current: undefined, phase: "ready" }) },
         scope: (id: string) => ({ id }),
@@ -1405,7 +1501,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
 
   test("T-H2: NO current session and NO resolvable listed session still NAMES the reason", async () => {
     /** This arm's rendered tree and client. */
-    const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+    const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
       sessions: {
         list: { getSnapshot: () => ({ ids: ["s1"], byId: { s1: { id: "s1" } }, current: undefined, phase: "ready" }) },
         scope: () => undefined,
@@ -1442,7 +1538,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const rec = recordConsole()
     try {
     /** This arm's rendered tree and client. */
-      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
         sessions,
         ...REMOTE_SESSION,
         modelDirectories: { directoryFor: () => { throw new Error("directoryFor must not be reached") } },
@@ -1510,7 +1606,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   }
 
 /** Every slot row key, in slot order and leaf order. */
-  const SLOT_ROW_KEYS = ["slot1", "slot2", "slot3", "slot4"].flatMap((slot) => ["provider", "model", "reasoningEffort"].map((leaf) => `teamModels.${slot}.${leaf}`))
+  const AGENT_ROW_KEYS = AGENT_ROW_FIELDS.map((field: CardField) => field.path.join("."))
 
   test("D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows", async () => {
     /** The session-list listener to notify by hand. */
@@ -1521,7 +1617,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const rec = recordConsole()
     try {
     /** This arm's rendered tree and client. */
-      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
         sessions,
         ...REMOTE_SESSION,
         modelDirectories: { directoryFor: () => { throw new Error('ui-model-selection: session "s1" resolved no scope') } },
@@ -1538,21 +1634,21 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
       notified!()
       notified!()
       expect(rec.lines.filter((line) => line.level === "warn")).toHaveLength(1)
-      // the compact line renders in the FALLBACK state, between the thirteen rows and the twelve
+      // the compact line renders in the FALLBACK state, between the thirteen scalar rows and the
       const rendered = catalogLines(tree)
       expect(rendered).toHaveLength(2)
-      /** The slot-adjacent catalog line, when the card rendered one. */
-      const slotLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "slots")
-      expect(slotLine).toBeDefined()
-      expect(textOf(slotLine)).toContain("declared fallback — live catalog unavailable")
+      /** The route-adjacent catalog line, when the card rendered one. */
+      const routeLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "agents")
+      expect(routeLine).toBeDefined()
+      expect(textOf(routeLine)).toContain("declared fallback — live catalog unavailable")
       // The children are a list at runtime; the recursive node type cannot index it uncast.
       const children = tree.props.children as ElementNode[]
-      /** Where the slot-adjacent line sits among the section's children. */
-      const slotLineIndex = children.indexOf(slotLine!)
-      expect(slotLineIndex).toBeGreaterThan(children.findIndex((child) => child?.key === "hashline.maxDiffChars"))
-      expect(slotLineIndex).toBeLessThan(children.findIndex((child) => child?.key === "teamModels.slot1.provider"))
-      // the twelve slot rows carry the marker; a scalar row is untouched
-      for (const key of SLOT_ROW_KEYS) expect(hintOfRow(tree, key)).toContain(" — declared fallback: ")
+      /** Where the route-adjacent line sits among the section's children. */
+      const routeLineIndex = children.indexOf(routeLine!)
+      expect(routeLineIndex).toBeGreaterThan(children.findIndex((child) => child?.key === "hashline.maxDiffChars"))
+      expect(routeLineIndex).toBeLessThan(children.findIndex((child) => child?.props?.["data-mpd-agent-row"] === "Architect"))
+      // the thirty-three route rows carry the marker; a scalar row is untouched
+      for (const key of AGENT_ROW_KEYS) expect(hintOfRow(tree, key)).toContain(" — declared fallback: ")
       expect(hintOfRow(tree, "hashline.maxDiffChars")).not.toContain("declared fallback")
       client.restore()
     } finally {
@@ -1567,7 +1663,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const rec = recordConsole()
     try {
     /** This arm's rendered tree and client. */
-      const { tree, client } = await injectedTree(slotScope(SLOT_SECTION), {
+      const { tree, client } = await injectedTree(agentScope(AGENT_SECTION), {
         sessions: SESSIONS,
         ...REMOTE_SESSION,
         modelDirectories: { directoryFor: () => directory.directory },
@@ -1582,9 +1678,9 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
       const rendered = catalogLines(tree)
       expect(rendered).toHaveLength(2)
     /** The slot-adjacent catalog line of this render. */
-      const slotLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "slots")
-      expect(textOf(slotLine)).toBe("live catalog — 2 providers · 3 models")
-      for (const key of SLOT_ROW_KEYS) expect(hintOfRow(tree, key)).not.toContain("declared fallback")
+      const routeLine = rendered.find((element) => element.props["data-mpd-catalog-notice"] === "agents")
+      expect(textOf(routeLine)).toBe("live catalog — 2 providers · 3 models")
+      for (const key of AGENT_ROW_KEYS) expect(hintOfRow(tree, key)).not.toContain("declared fallback")
       client.restore()
     } finally {
       rec.restore()
@@ -1609,7 +1705,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     const rec = recordConsole()
     try {
     /** This arm's client. */
-      const { client } = await injectedTree(slotScope(SLOT_SECTION), { sessions: SESSIONS, ...REMOTE_SESSION, modelDirectories: { directoryFor: () => directory } })
+      const { client } = await injectedTree(agentScope(AGENT_SECTION), { sessions: SESSIONS, ...REMOTE_SESSION, modelDirectories: { directoryFor: () => directory } })
       expect(rec.lines.map((line) => line.level)).toEqual(["info"])
       setGroups([]) // the read DEGRADES: the directory reports no provider
       expect(rec.lines.map((line) => line.level)).toEqual(["info", "warn"])
@@ -1746,7 +1842,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     const tree = await renderReady()
     /** Every knob the card declares, in declaration order. */
     const fields = CARD.FIELDS as CardField[]
-    expect(fields).toHaveLength(26)
+    expect(fields).toHaveLength(47)
     /** One rendered row per knob (a missing row is a failure, never a skip). */
     const rows = fields.map((field) => rowOf(tree, field.path.join(".")))
     expect(rows.filter((row) => row === undefined)).toEqual([])
@@ -1754,7 +1850,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // the FIRST field carries no separator; every field after it carries `.field + .field`
     expect(styleOf(rows[0]).borderTop).toBeUndefined()
     for (const row of rows.slice(1)) expect(styleOf(row).borderTop).toBe("0.5px solid var(--dsw-alias-border-l2, #0000001a)")
-    expect(rows.slice(1)).toHaveLength(25)
+    expect(rows.slice(1)).toHaveLength(46)
   })
 
   test("R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint", async () => {
@@ -1884,7 +1980,8 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     expect(sentences[0]).toContain("<workspace>/.mpd/mpd.jsonc")
     // The live half: the sentence qualifies itself instead of promising a blanket no-restart.
     expect(sentences[0]).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
-    expect(sentences[0]).toContain("teamModels.slot*")
+    expect(sentences[0]).toContain("agentRoutes.*")
+    expect(sentences[0]).not.toContain("teamModels.slot*")
     expect(sentences[0]).toContain("tui.dashboardKey is live ONE WAY")
     expect(sentences[0]).not.toContain("takes effect in the RUNNING process — no restart")
     // The exception half, through a specific mount-captured group (not just the word "restart").
@@ -1948,9 +2045,9 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
     return { promise, resolve }
   }
 
-  /** A route body whose slot1 model is the given marker, so the APPLIED answer is identifiable. */
+  /** A route body whose Architect model is the given marker, so the APPLIED answer is identifiable. */
   function serviceBody(model: string): unknown {
-    return { ok: true, slots: { slot1: { provider: "p", model, reasoningEffort: "low" } }, agentRoutes: {}, modelchain: {} }
+    return { ok: true, agents: { Architect: { ok: true, agent: "Architect", route: { provider: "p", model, reasoningEffort: "low" } } }, modelchain: {} }
   }
 
   /** The settings snapshot the card renders from; empty, because this arm observes only the service read. */
@@ -2049,16 +2146,16 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
     // The NEWER read answers first ...
     reads[1].resolve(serviceBody("newer"))
     await new Promise<void>((done) => setTimeout(done, 0))
-    expect((mount.state().effective as { slots: Record<string, { model: string }> }).slots.slot1.model).toBe("newer")
+    expect((mount.state().effective as { agents: Record<string, { model: string }> }).agents.Architect.model).toBe("newer")
     // ... then the OLDER one answers late and must be DROPPED, not applied over the newer projection.
     reads[0].resolve(serviceBody("older"))
     await new Promise<void>((done) => setTimeout(done, 0))
-    expect((mount.state().effective as { slots: Record<string, { model: string }> }).slots.slot1.model).toBe("newer")
+    expect((mount.state().effective as { agents: Record<string, { model: string }> }).agents.Architect.model).toBe("newer")
   })
 })
 
 // ── CodeRabbit #4/#5 on PR #62: an `invalid` slot is NOT `<unconfigured>`, and leaves are trimmed ──
-describe("the effective block distinguishes a MALFORMED slot from an unconfigured one (#4/#5)", () => {
+describe("the effective block distinguishes a MALFORMED agent route from an unconfigured one (#4/#5)", () => {
   /**
    * A minimal createElement for the pure render arms: the projection plus the card's OWN dictionary
    * is what the sentence is judged on, and a plain tree needs no hook runtime.
@@ -2072,51 +2169,49 @@ describe("the effective block distinguishes a MALFORMED slot from an unconfigure
   }
 
   test("#4: a non-string leaf projects as `invalid` with the offending path named", () => {
-    /** The projection over a service body whose slot4 reasoningEffort is a NUMBER. */
+    /** The projection over a service resolution whose effort is a NUMBER. */
     const effective = CARD.effectiveModelConfigOf({}, {
-      body: { ok: true, slots: { slot4: { provider: "p", model: "m", reasoningEffort: 7 } }, modelchain: {} },
+      body: { ok: true, agents: { "Vision Analyst": { ok: true, agent: "Vision Analyst", route: { provider: "p", model: "m", reasoningEffort: 7 } } }, modelchain: {} },
       notice: "",
     })
-    expect(effective.slots.slot4).toEqual({
+    expect(effective.agents["Vision Analyst"]).toEqual({
       status: "invalid",
       provider: "p",
       model: "m",
       reasoningEffort: "",
+      fallbacks: 0,
       missing: [],
-      problem: "teamModels.slot4.reasoningEffort is not a string",
+      problem: "agentRoutes.Vision Analyst.reasoningEffort is not a string",
     })
   })
 
-  test("#4: a slot that is not an OBJECT projects as `invalid` too", () => {
-    /** The projection over a slot whose value is a bare string. */
-    const effective = CARD.effectiveModelConfigOf({ teamModels: { slot2: "deepseek-v4-flash" } }, { body: undefined, notice: "" })
-    expect(effective.slots.slot2).toMatchObject({ status: "invalid", problem: "teamModels.slot2 is not an object" })
+  test("#4: an AGENT entry that is not an OBJECT projects as `invalid` too", () => {
+    /** The projection over an agent whose value is a bare string. */
+    const effective = CARD.effectiveModelConfigOf({ agentRoutes: { Planner: "deepseek-v4-flash" } }, { body: undefined, notice: "" })
+    expect(effective.agents.Planner).toMatchObject({ status: "invalid", problem: "agentRoutes.Planner is not an object" })
   })
 
   test("#4: the INVALID line renders its own sentence in BOTH locales — never `<unconfigured>`", () => {
-    /** The projection that produces one invalid slot and three unconfigured ones. */
-    const effective = CARD.effectiveModelConfigOf({}, {
-      body: { ok: true, slots: { slot1: { provider: "p", model: "m", reasoningEffort: 7 } }, modelchain: {} },
-      notice: "",
-    })
+    /** The projection that produces one invalid agent and ten unconfigured ones. */
+    const effective = CARD.effectiveModelConfigOf({ agentRoutes: { Architect: { provider: "p", model: "m", reasoningEffort: 7 } } }, { body: undefined, notice: "" })
     /** The EN block text. */
     const en = textOf(CARD.effectiveChildrenOf(effective, (key: string) => EN[key] ?? key, el) as TreeNode)
-    expect(en).toContain("<invalid> — teamModels.slot1.reasoningEffort is not a string")
+    expect(en).toContain("<invalid> — Architect: agentRoutes.Architect.reasoningEffort is not a string")
     expect(en).not.toContain("missing -")
-    // The other three slots are genuinely unconfigured and keep THAT sentence (the control).
-    expect(en).toContain("<unconfigured> — missing provider, model")
+    // The other ten agents are genuinely unconfigured and keep THAT sentence (the control).
+    expect(en).toContain("<unconfigured> — Planner is missing provider, model")
     /** The zh block text, which must carry the Chinese sentence with the same path. */
     const zh = textOf(CARD.effectiveChildrenOf(effective, (key: string) => ZH[key] ?? key, el) as TreeNode)
-    expect(zh).toContain("「无效」——teamModels.slot1.reasoningEffort is not a string")
-    expect(zh).toContain("「未配置」——缺少 provider, model")
+    expect(zh).toContain("「无效」——Architect：agentRoutes.Architect.reasoningEffort is not a string")
+    expect(zh).toContain("「未配置」——Planner 缺少 provider, model")
   })
 
   test("#5: WHITESPACE-ONLY leaves count as missing, exactly as the resolver trims them", () => {
-    /** The projection over a slot whose provider is blank spaces. */
-    const effective = CARD.effectiveModelConfigOf({ teamModels: { slot3: { provider: "   ", model: "m" } } }, { body: undefined, notice: "" })
-    expect(effective.slots.slot3).toMatchObject({ status: "unconfigured", missing: ["provider"] })
+    /** The projection over an agent whose provider is blank spaces. */
+    const effective = CARD.effectiveModelConfigOf({ agentRoutes: { "Junior Engineer": { provider: "   ", model: "m" } } }, { body: undefined, notice: "" })
+    expect(effective.agents["Junior Engineer"]).toMatchObject({ status: "unconfigured", missing: ["provider"] })
     /** The render text, which must ask for the provider leaf. */
     const en = textOf(CARD.effectiveChildrenOf(effective, (key: string) => EN[key] ?? key, el) as TreeNode)
-    expect(en).toContain("missing provider")
+    expect(en).toContain("Junior Engineer is missing provider")
   })
 })

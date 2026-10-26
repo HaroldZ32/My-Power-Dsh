@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, watch, writeFileSync } from "node:
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_GROUPS, type ModelRoute, type TeamModelSlot, type TeamModelSlotId } from "./settings-schema"
+import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, ROSTER_AGENT_NAMES, agentNameKey, rosterAgentNameOf, teamModelSlotOfMember, type AgentRouteConfig, type ModelRoute } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
 import { surgicalEdit } from "./jsonc-edit"
 import z from "../../mpd-schemastery"
@@ -185,25 +185,25 @@ function withoutMarker(section: any): any {
  */
 const ROUTING_KEYS = ["projectFile", "userFile", "writeBack", "settingsBridge"]
 /**
- * Drop the schema's EMPTY slot residue from a `teamModels` block.
+ * Drop the schema's EMPTY entry residue from an `agentRoutes` / legacy `teamModels` block.
  *
- * MEASURED (2026-10-23): the vendored schemastery gives every `object(...)` an implicit `{}`
- * default, so a row config that declares `teamModels` resolves a workspace with NO declarations to
- * `{ slot1: {}, slot2: {}, slot3: {}, slot4: {} }`. Those empty objects are NOT user data — the
- * contract's read path "must contain only what the user wrote" (slot-single-source §2) — and
- * `mpd_config_get` must report an absent block as ABSENT (§9). This prunes the residue while keeping
- * every slot the user (or a save) actually filled.
- * @param block - the resolved `teamModels` value, of unknown shape.
- * @returns the block without its empty slot objects, or undefined when nothing is left.
+ * MEASURED (2026-10-23): the vendored schemastery gives every `object(...)` an implicit `{}` default,
+ * so a row config that declares `agentRoutes` (or the tolerated legacy `teamModels`) resolves a
+ * workspace with NO declarations to `{ <agent>: {}, … }`. Those empty objects are NOT user data — the
+ * contract's read path "must contain only what the user wrote" — and `mpd_config_get` must report an
+ * absent block as ABSENT. This prunes the residue while keeping every entry the user (or a save)
+ * actually filled.
+ * @param block - the resolved block value, of unknown shape.
+ * @returns the block without its empty objects, or undefined when nothing is left.
  */
-function withoutEmptySlots(block: unknown): Record<string, unknown> | undefined {
+function withoutEmptyEntries(block: unknown): Record<string, unknown> | undefined {
   if (!isPlainObject(block)) return undefined
-  /** The block's slots that carry at least one leaf. */
+  /** The block's entries that carry at least one leaf. */
   const kept: Record<string, unknown> = {}
-  for (const [slot, value] of Object.entries(block)) {
+  for (const [entry, value] of Object.entries(block)) {
     if (isPlainObject(value) && Object.keys(value).length === 0) continue
     if (value === undefined) continue
-    kept[slot] = value
+    kept[entry] = value
   }
   return Object.keys(kept).length === 0 ? undefined : kept
 }
@@ -217,11 +217,12 @@ function rowKnobLayer(config: Config): Record<string, unknown> {
   for (const [key, value] of Object.entries(source)) {
     if (ROUTING_KEYS.includes(key)) continue
     if (value === undefined) continue
-    // `teamModels` is the ONE block whose schema fills empty slots into the row config; a layer
-    // must never carry that residue, or an absent block would read as declared.
-    if (key === "teamModels") {
+    // `agentRoutes` (and the tolerated legacy `teamModels`) are the blocks whose schema fills empty
+    // entries into the row config; a layer must never carry that residue, or an absent block would
+    // read as declared and an EMPTY entry would shadow a file's real one.
+    if (key === "agentRoutes" || key === "teamModels") {
       /** The block as the user/save actually filled it, or undefined when nothing is left. */
-      const kept = withoutEmptySlots(value)
+      const kept = withoutEmptyEntries(value)
       if (kept !== undefined) layer[key] = kept
       continue
     }
@@ -302,100 +303,102 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown, row
 export { stripJsonc, parseJsonc, deepMerge, loadConfig }
 
 /**
- * The `teamModels` slot that routes one roster member, from the slots' OWN membership declaration.
+ * The display group that renders one roster agent — re-exported from the schema, where the groups
+ * live, so a consumer of THIS module keeps one import path.
  *
- * The membership is declared ONCE (`TEAM_MODEL_SLOT_GROUPS`) and shared by both settings front doors,
- * the roster provider and this read, so the member a slot drives cannot drift between the surface that
- * shows it and the surface that routes it. Matching is case- and separator-insensitive on the member's
- * functional NAME, which is the vocabulary the roster, the tool schemas and the settings card all use.
- *
- * @param member - the roster member's functional name, as a tool argument spells it.
- * @returns the slot id that routes it, or `undefined` when the roster does not slot-route that member.
+ * Grouping is DISPLAY and BULK-EDIT only (contract §1): it decides which heading a settings row
+ * renders under and which members a `/mpd-model` group write iterates — never which route an agent
+ * runs on, which is its own `agentRoutes` entry.
  */
-export function teamModelSlotOfMember(member: string): TeamModelSlotId | undefined {
-  /** The member name collapsed to its letters and digits, the same key the settings front doors use. */
-  const key = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
-  if (key === "") return undefined
-  for (const slot of TEAM_MODEL_SLOTS) {
-    if (TEAM_MODEL_SLOT_GROUPS[slot].members.some((name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "") === key)) return slot
-  }
-  return undefined
-}
+export { teamModelSlotOfMember }
 
-/** One member's resolved `teamModels` route: the provider, the model and the optional effort keyword. */
-export interface TeamModelRoute {
-  /** Provider id the member must run on, e.g. `deepseek-official` or a gateway id. */
+/**
+ * One roster agent's resolved route: the provider, the model, the optional effort keyword and the
+ * agent's OWN sanitized fallback chain (contract §2). This is the `route` half of a successful
+ * {@link AgentRouteResolution} and the answer {@link agentRouteOf} returns.
+ */
+export interface AgentRoute {
+  /** Provider id the agent must run on, e.g. `deepseek-official` or a gateway id. */
   readonly provider: string
-  /** Model id that provider must offer for this member. */
+  /** Model id that provider must offer for this agent. */
   readonly model: string
-  /** The effort keyword the slot declares; ABSENT means the slot states none and no effort may be invented. */
+  /** The effort keyword the agent declares; ABSENT means it states none and no effort may be invented. */
   readonly reasoningEffort?: string
+  /** The agent's OWN sanitized fallback chain, consumed once before a spawn; omitted when it declares none. */
+  readonly fallbacks?: readonly ModelRoute[]
 }
 
 /** The one code every refused spawn carries, so a caller can branch on the failure instead of its prose. */
-export const SLOT_UNCONFIGURED_CODE = "SLOT_UNCONFIGURED"
+export const AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED"
 
-/** The leaves a slot may carry; the subset the resolver reports as MISSING or malformed. */
-export type SlotLeaf = "provider" | "model" | "reasoningEffort"
+/** The leaves a route may carry; the subset the resolver reports as MISSING or malformed. */
+export type AgentRouteLeaf = "provider" | "model" | "reasoningEffort"
 
-/** The resolution of a slot that IS configured and usable: its route plus its own fallback chain. */
-export interface SlotResolved {
+/** The resolution of a route that IS configured and usable: the agent it belongs to and its route. */
+export interface AgentRouteResolved {
   /** The usable marker every consumer branches on. */
   readonly ok: true
-  /** The slot id that routes the member. */
-  readonly slot: (typeof TEAM_MODEL_SLOTS)[number]
-  /** The configured primary route, trimmed exactly as the user wrote it. */
-  readonly route: TeamModelRoute
-  /** The slot's OWN sanitized fallback chain, in the user's order; `[]` when it declares none. */
-  readonly fallbacks: readonly ModelRoute[]
-  /** How many malformed fallback entries were DROPPED (contract §8: dropped, never fatal). */
-  readonly fallbacksDropped: number
+  /** The canonical roster display name this route belongs to. */
+  readonly agent: string
+  /** The configured route, trimmed exactly as the user wrote it, fallbacks included. */
+  readonly route: AgentRoute
 }
 
-/** The resolution of a slot that is routed but NOT usable — the state a spawn refuses on. */
-export interface SlotUnusable {
-  /** The failure marker, so the union narrows without inspecting `status`. */
+/** The resolution of a roster agent whose entry is half-filled — the state a spawn applier refuses on. */
+export interface AgentRouteUnconfigured {
+  /** The failure marker, so the union narrows without inspecting `reason`. */
   readonly ok: false
-  /** `unconfigured` (a required leaf is absent) or `invalid` (a leaf is present but malformed). */
-  readonly status: "unconfigured" | "invalid"
-  /** The slot id that routes the member. */
-  readonly slot: (typeof TEAM_MODEL_SLOTS)[number]
-  /** Every roster member this slot routes, in the group's own order. */
-  readonly members: readonly string[]
-  /** The leaves that are absent (`unconfigured`), in provider-before-model order. */
-  readonly missing: readonly SlotLeaf[]
-  /** The offending leaf path, for `invalid` only (e.g. `teamModels.slot1.model`). */
-  readonly problem?: string
-  /** The failure code every spawn applier attaches to its thrown error. */
-  readonly code: typeof SLOT_UNCONFIGURED_CODE
-  /** The ONE canonical sentence a spawn applier throws: slot, members, missing leaves, both recovery paths. */
-  readonly message: string
+  /** A required leaf is absent, so nothing can run.
+   */
+  readonly reason: "unconfigured"
+  /** The canonical roster display name this state belongs to. */
+  readonly agent: string
+  /** The dotted leaf paths the entry still needs (`agentRoutes.<Agent>.provider` first, then `.model`). */
+  readonly missing: readonly string[]
 }
 
-/** The resolution of a member no slot routes at all (an extension role, or a name outside the roster). */
-export interface SlotUnrouted {
-  /** The failure marker; `unrouted` is NOT an error — it means "slots do not decide this member's route". */
+/** The resolution of a roster agent whose entry carries a present-but-malformed leaf. */
+export interface AgentRouteInvalid {
+  /** The failure marker, so the union narrows without inspecting `reason`. */
   readonly ok: false
-  /** The unrouted marker a consumer branches on before refusing a spawn. */
-  readonly status: "unrouted"
-  /** Always undefined: no slot routes this member. */
-  readonly slot: undefined
+  /** A leaf is present but not a string, so nothing can run. */
+  readonly reason: "invalid"
+  /** The canonical roster display name this state belongs to. */
+  readonly agent: string
+  /** The offending dotted path, e.g. `agentRoutes.Architect.model`. */
+  readonly problem: string
 }
 
 /**
- * A TOTAL slot resolution (contract amendment 1): every consumer — a spawn applier, `/mpd-model`, the
- * settings card, `mpd_modelchain_resolve` — reads this union and never an exception.
+ * The resolution of a name NO roster entry decides — an EXTENSION-contributed role, or a non-roster
+ * name.
+ *
+ * ASYMMETRY ON PURPOSE: this arm carries NO `agent` field, because no roster agent owns it. The
+ * contract treats `unrouted` as a NON-refusal (amendment 2 §3): an extension role keeps its own
+ * model chain and its spawn PROCEEDS, exactly as the retired slot resolution did; only a BASE
+ * roster member whose route is `unconfigured` or `invalid` is refused with `AGENT_UNCONFIGURED`.
  */
-export type SlotResolution = SlotResolved | SlotUnusable | SlotUnrouted
+export interface AgentRouteUnrouted {
+  /** The failure marker; `unrouted` is NOT an error — it means "agentRoutes do not decide this name". */
+  readonly ok: false
+  /** The unrouted marker a consumer branches on BEFORE deciding whether to refuse. */
+  readonly reason: "unrouted"
+}
 
 /**
- * The required leaves a slot still needs, in the order a sentence names them: provider, then model.
- * @param declared - the slot's file value, already narrowed to a record.
+ * A TOTAL per-agent route resolution (contract §2): every consumer — a spawn applier, `/mpd-model`,
+ * the settings card, `mpd_modelchain_resolve` — reads this union and never an exception.
+ */
+export type AgentRouteResolution = AgentRouteResolved | AgentRouteUnconfigured | AgentRouteInvalid | AgentRouteUnrouted
+
+/**
+ * The required leaves a route still needs, in the order a sentence names them: provider, then model.
+ * @param declared - the agent's declared entry, already narrowed to a record.
  * @returns the absent-or-blank required leaves.
  */
-function missingLeavesOf(declared: Record<string, unknown>): SlotLeaf[] {
+function missingLeavesOf(declared: Record<string, unknown>): AgentRouteLeaf[] {
   /** The required leaves whose value is absent, null or blank. */
-  const missing: SlotLeaf[] = []
+  const missing: AgentRouteLeaf[] = []
   for (const leaf of ["provider", "model"] as const) {
     /** The leaf's raw value: any string with content counts as SET. */
     const value = declared[leaf]
@@ -405,25 +408,25 @@ function missingLeavesOf(declared: Record<string, unknown>): SlotLeaf[] {
 }
 
 /**
- * The canonical `SLOT_UNCONFIGURED` sentence ONE refused spawn reports (contract §7).
+ * The canonical `AGENT_UNCONFIGURED` sentence ONE refused spawn reports (contract §3).
  *
- * It names the slot, its members, the missing or malformed leaf paths, BOTH recovery paths
- * (`/mpd-model`, and `teamModels.slotN` in `.mpd/mpd.jsonc`) and states that nothing was written and
- * no child was started — the facts a caller needs to fix the configuration without guessing.
- * @param slot - the slot id the member is routed by.
- * @param members - every member that slot routes.
+ * It names the AGENT, the missing or malformed leaf paths (`agentRoutes.<Agent>.provider`,
+ * `agentRoutes.<Agent>.model`), BOTH recovery paths (`/mpd-model`, and `agentRoutes.<Agent>` in
+ * `.mpd/mpd.jsonc`) and states that nothing was written and no child was started — the facts a caller
+ * needs to fix the configuration without guessing.
+ * @param agent - the canonical roster display name whose route is unusable.
  * @param detail - what is wrong: the missing leaf paths, or the malformed one.
  * @returns the ONE sentence the appliers throw.
  */
-export function slotUnconfiguredMessage(slot: string, members: readonly string[], detail: string): string {
-  return SLOT_UNCONFIGURED_CODE + ": " + slot + " (" + members.join(", ") + ") is not usable — " + detail
-    + "; nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot
-    + " in .mpd/mpd.jsonc."
+export function agentUnconfiguredMessage(agent: string, detail: string): string {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail
+    + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes."
+    + agent + " in .mpd/mpd.jsonc."
 }
 
 /**
- * One malformed-fallback report: the entries to use and how many were dropped (contract §8).
- * @param raw - the slot's `fallbacks` value as the file declared it, of unknown shape.
+ * One malformed-fallback report: the entries to use and how many were dropped (contract §2).
+ * @param raw - the agent's `fallbacks` value as the file declared it, of unknown shape.
  * @returns the sanitized chain plus the number of entries dropped as malformed.
  */
 function sanitizeFallbacks(raw: unknown): { fallbacks: ModelRoute[]; dropped: number } {
@@ -449,97 +452,126 @@ function sanitizeFallbacks(raw: unknown): { fallbacks: ModelRoute[]; dropped: nu
 }
 
 /**
- * The `teamModels` slot the config DECLARES for one slot id, read raw (never materialised).
- * @param slot - the slot id to read.
- * @param config - the resolved config; callers pass the live one so the value is never cached.
- * @returns the declared value, or undefined when the workspace declares no such slot.
+ * The dotted path of one route leaf, spelled exactly as the file and the refusal message spell it.
+ * @param agent - the canonical roster display name.
+ * @param leaf - the leaf's name; omitted for the entry itself.
+ * @returns `agentRoutes.<Agent>`, or `agentRoutes.<Agent>.<leaf>`.
  */
-function slotValueOf(slot: string, config: unknown): unknown {
-  /** The `teamModels` subtree, accepted only when it is an object. */
-  const table = (config as { teamModels?: unknown } | undefined)?.teamModels
-  if (!isPlainObject(table)) return undefined
-  return table[slot]
+function agentRoutePath(agent: string, leaf?: AgentRouteLeaf): string {
+  return leaf === undefined ? "agentRoutes." + agent : "agentRoutes." + agent + "." + leaf
 }
 
 /**
- * Resolve ONE roster member's slot route as a TOTAL union — the read every consumer shares
- * (contract §1-§2, amendment 1).
+ * The RAW `agentRoutes` entry one roster name address, matched case- and separator-insensitively so
+ * every spelling of one member (`Senior Engineer`, `senior-engineer`, `senior_engineer`) finds the
+ * SAME entry — the ONE normalizer the resolver, the migration and the display paths share.
  *
- * NO DEFAULT LAYER: the answer comes only from what the workspace declares. A slot that is absent or
- * half-filled is `unconfigured` (with the missing leaves named); a slot whose leaf is present but not
- * a string is `invalid` (with the offending path); a member no slot routes is `unrouted`. This
- * function NEVER throws: a display surface renders the state, and only the three spawn appliers turn
- * `ok:false` into the throwing `SLOT_UNCONFIGURED` failure.
- *
- * @param member - the roster member's functional name.
- * @param config - the resolved config to read; the caller passes the live one so the value is never cached.
- * @returns the typed resolution: resolved route + fallbacks, or the reason it is unusable.
+ * The return is `unknown` on purpose: a malformed file value must reach the resolver, which reports it
+ * as the typed `invalid` arm instead of hiding it behind a cast.
+ * @param member - the roster member's functional name, as a caller spells it.
+ * @param config - the resolved config; callers pass the live one so the value is never cached.
+ * @returns the declared entry value, or undefined when the name is not a roster agent or no entry matches.
  */
-export function resolveTeamModelSlot(member: string, config: unknown): SlotResolution {
-  /** The slot that routes this member, or none. */
-  const slot = teamModelSlotOfMember(member)
-  if (slot === undefined) return { ok: false, status: "unrouted", slot: undefined }
-  /** Every member this slot routes, so every refusal names them. */
-  const members = TEAM_MODEL_SLOT_GROUPS[slot].members
-  /** The slot's declared value, exactly as the file/layers hold it. */
-  const declared = slotValueOf(slot, config)
-  /** What an absent slot still needs: both required leaves. */
-  const missingAll: readonly SlotLeaf[] = ["provider", "model"]
-  if (declared === undefined || declared === null) {
-    /** The absent-leaf sentence lists every leaf the slot must gain. */
-    const missingPaths = missingAll.map((leaf) => "teamModels." + slot + "." + leaf)
-    return { ok: false, status: "unconfigured", slot, members, missing: missingAll, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "missing " + missingPaths.join(", ")) }
+export function agentRouteEntryOfMember(member: string, config: unknown): unknown {
+  /** The canonical display name this spelling addresses, or none. */
+  const agent = rosterAgentNameOf(member)
+  if (agent === undefined) return undefined
+  /** The `agentRoutes` table, accepted only when it is an object. */
+  const table = (config as { agentRoutes?: unknown } | undefined)?.agentRoutes
+  if (!isPlainObject(table)) return undefined
+  /** The normalized key the table's own key must share with the canonical name. */
+  const key = agentNameKey(agent)
+  for (const [declaredKey, value] of Object.entries(table)) {
+    if (agentNameKey(declaredKey) === key) return value
   }
-  if (!isPlainObject(declared)) {
-    return { ok: false, status: "invalid", slot, members, missing: missingAll, problem: "teamModels." + slot, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "teamModels." + slot + " must be an object, but it is " + JSON.stringify(declared)) }
-  }
+  return undefined
+}
+
+/**
+ * Resolve ONE roster agent's route as a TOTAL union — the read every consumer shares (contract §2).
+ *
+ * NO DEFAULT LAYER: the answer comes only from what the workspace declares under `agentRoutes`. An
+ * entry that is absent or half-filled is `unconfigured` (with both missing leaf paths named); an entry
+ * whose leaf is present but not a string is `invalid` (with the offending path); a name no roster entry
+ * decides is `unrouted` — an EXTENSION-contributed role, whose spawn PROCEEDS on its own chain and is
+ * never refused (amendment 2 §3). This function NEVER throws: a display surface renders the state, and
+ * only the single-call spawn appliers turn `unconfigured` / `invalid` into the throwing
+ * `AGENT_UNCONFIGURED` failure.
+ *
+ * @param member - the roster member's functional name, in any spelling.
+ * @param config - the resolved config to read; the caller passes the live one so the value is never cached.
+ * @returns the typed resolution: the agent plus its route and fallbacks, or the reason it is unusable.
+ */
+export function resolveAgentRoute(member: string, config: unknown): AgentRouteResolution {
+  /** The canonical roster display name this spelling addresses, or none. */
+  const agent = rosterAgentNameOf(member)
+  if (agent === undefined) return { ok: false, reason: "unrouted" }
+  /** The entry the table declares for this agent, of unknown shape. */
+  const declared = agentRouteEntryOfMember(agent, config)
+  /** The two required leaf paths an absent entry still needs, in the order a sentence names them. */
+  const missingAll: readonly string[] = (["provider", "model"] as const).map((leaf) => agentRoutePath(agent, leaf))
+  if (declared === undefined || declared === null) return { ok: false, reason: "unconfigured", agent, missing: missingAll }
+  if (!isPlainObject(declared)) return { ok: false, reason: "invalid", agent, problem: agentRoutePath(agent) }
   // Leaf validation: a present leaf must be a string; null is the JSON spelling of "unset".
   for (const leaf of ["provider", "model", "reasoningEffort"] as const) {
     /** The leaf's raw value, undefined when the file never wrote it. */
     const value = declared[leaf]
     if (value === undefined || value === null) continue
-    if (typeof value !== "string") {
-      /** The dotted path a reader has to fix. */
-      const path = "teamModels." + slot + "." + leaf
-      return { ok: false, status: "invalid", slot, members, missing: missingLeavesOf(declared), problem: path, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, path + " must be a string, but it is " + JSON.stringify(value)) }
-    }
+    if (typeof value !== "string") return { ok: false, reason: "invalid", agent, problem: agentRoutePath(agent, leaf) }
   }
-  /** The required leaves the slot does not state yet. */
+  /** The required leaves the entry does not state yet. */
   const missing = missingLeavesOf(declared)
-  if (missing.length > 0) {
-    /** The missing-leaf paths, in the order the sentence names them. */
-    const missingPaths = missing.map((leaf) => "teamModels." + slot + "." + leaf)
-    return { ok: false, status: "unconfigured", slot, members, missing, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "missing " + missingPaths.join(", ")) }
-  }
-  /** The slot's provider id, trimmed; the guard above proved it is a non-blank string. */
+  if (missing.length > 0) return { ok: false, reason: "unconfigured", agent, missing: missing.map((leaf) => agentRoutePath(agent, leaf)) }
+  /** The provider id, trimmed; the guard above proved it is a non-blank string. */
   const provider = String(declared.provider).trim()
-  /** The slot's model id, trimmed; the guard above proved it is a non-blank string. */
+  /** The model id, trimmed; the guard above proved it is a non-blank string. */
   const model = String(declared.model).trim()
-  /** The slot's optional effort keyword, trimmed; a blank one states none. */
+  /** The optional effort keyword, trimmed; a blank one states none. */
   const effort = typeof declared.reasoningEffort === "string" ? declared.reasoningEffort.trim() : ""
-  /** The slot's own fallback chain, sanitized; malformed entries are dropped with a count. */
-  const { fallbacks, dropped } = sanitizeFallbacks(declared.fallbacks)
-  return { ok: true, slot, route: { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) }, fallbacks, fallbacksDropped: dropped }
+  /** The agent's own fallback chain, sanitized; malformed entries are dropped, never fatal. */
+  const { fallbacks } = sanitizeFallbacks(declared.fallbacks)
+  return {
+    ok: true,
+    agent,
+    route: { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }), ...(fallbacks.length === 0 ? {} : { fallbacks }) },
+  }
+}
+
+/**
+ * How many malformed fallback entries a member's declared chain dropped — the ONE number the service
+ * reports in a single log line (contract §2), derived from the same sanitizer the resolver uses.
+ * @param member - the roster member's functional name.
+ * @param config - the resolved config to read.
+ * @returns the dropped-entry count, or 0 when no chain is declared or the name is not a roster agent.
+ */
+export function droppedFallbacksOf(member: string, config: unknown): number {
+  /** The canonical display name this spelling addresses, or none. */
+  const agent = rosterAgentNameOf(member)
+  if (agent === undefined) return 0
+  /** The declared entry, of unknown shape. */
+  const declared = agentRouteEntryOfMember(agent, config)
+  if (!isPlainObject(declared)) return 0
+  return sanitizeFallbacks(declared.fallbacks).dropped
 }
 
 /**
  * The route ONE roster member is CONFIGURED to run on, or `undefined` when it has none — the TOTAL
- * read of the service (contract amendment 1: a display path must never see an exception).
+ * read of the service (contract §2: a display path must never see an exception).
  *
  * WHY THIS IS A SERVICE METHOD. Its consumers (the one-shot `mpd_role_spawn`, `mpd_roles_list`, the
  * workmate library, the roster provider and `mpd_modelchain_resolve`) live in OTHER packages, and a
  * cross-package relative import would be a NEW entry in the frozen coupling inventory
  * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
  * shrink). They already resolve the `mpdConfig` service at runtime, so the ONE authoritative read of
- * the slots belongs here, beside the declaration and the resolution it uses.
+ * the agent routes belongs here, beside the declaration and the resolution it uses.
  *
  * @param member - the roster member's functional name.
  * @param config - the resolved config to read; the caller passes the live one so the value is never cached.
  * @returns the configured route, or `undefined` for an unconfigured, invalid or unrouted member.
  */
-export function teamModelRouteOfMember(member: string, config: unknown): TeamModelRoute | undefined {
-  /** The total resolution: only a usable slot answers a route. */
-  const resolution = resolveTeamModelSlot(member, config)
+export function agentRouteOfMember(member: string, config: unknown): AgentRoute | undefined {
+  /** The total resolution: only a usable entry answers a route. */
+  const resolution = resolveAgentRoute(member, config)
   return resolution.ok ? resolution.route : undefined
 }
 
@@ -575,21 +607,36 @@ export const Config = markVolatile(z.object({
 // export alone, `settings.describe()` listed 18 harness entries and `mpd-config` was ABSENT).
 ;(apply as unknown as { Config?: unknown }).Config = Config
 
-// ── the ONE-TIME file seed (contract §10) ────────────────────────────────────────────────────────
-// "Initial config is FILE initialization, not a runtime default": a workspace whose `.mpd/mpd.jsonc`
-// declares no `teamModels` gets all four slots written ONCE, from the user's OWN configured
+// ── the ONE-TIME initialization / migration (contract §5 + amendment 2 §1) ───────────────────────
+// "Initial config is FILE initialization, not a runtime default": a workspace whose effective config
+// declares no `agentRoutes` gets all eleven entries written ONCE — MATERIALIZED from a legacy
+// `teamModels` block when one is declared in ANY layer, else SEEDED from the user's OWN configured
 // providers read through the live LLM catalog. It never runs as a fallback at read time, never
-// rewrites an existing block, and never overwrites a user edit — if the catalog is unavailable it
-// writes nothing, says so once, and the first spawn reports SLOT_UNCONFIGURED instead.
+// rewrites an existing `agentRoutes` block, and never writes `teamModels` at all.
 //
-// ONE-TIME IS DURABLE: a successful seed records `<ws>/.mpd/model-config-seed.json` (created with
-// `wx`, never overwritten), and that marker is consulted BEFORE any attempt — so a user who later
-// DELETES the block on purpose is never "helped" back into a seeded one.
+// ONE-TIME IS DURABLE AND VERSIONED: the run records `<ws>/.mpd/model-config-seed.json` carrying
+// `{"version": 2}`, and that version is consulted BEFORE any attempt. The CONTENT matters, not mere
+// presence (amendment 2 §1): v0.15.4/v0.15.5 already wrote an UNVERSIONED marker (commit 6bbf5165),
+// so a returning workspace carries one while its config still holds `teamModels.slotN` — treating
+// presence alone as "done" would strand it with eleven unconfigured agents. Initialization therefore
+// runs while the marker is absent, unparsable or below version 2, and writes version 2 afterwards; a
+// deliberately deleted `agentRoutes` block is never re-seeded once the v2 marker exists.
 
 /** The seed's preferred model id: the `deepseek-flash` family's exact member. */
 export const SEED_MODEL_ID = "deepseek-flash"
 
-/** The route the seed writes into every slot: one provider that lists the chosen model. */
+/** The marker's schema version: initialization runs while the marker declares a lower one. */
+export const SEED_MARKER_VERSION = 2
+
+/** The durable one-time-seed marker's file name inside a workspace's `.mpd/` directory. */
+export const SEED_MARKER_FILE = "model-config-seed.json"
+
+/** The marker path for ONE workspace root: `<ws>/.mpd/model-config-seed.json`. */
+export function seedMarkerFor(root: string): string {
+  return join(root, ".mpd", SEED_MARKER_FILE)
+}
+
+/** The route the initialization writes into every seeded entry: one provider that lists the chosen model. */
 export interface SeedRoute {
   /** The configured provider that positively lists the chosen model. */
   readonly provider: string
@@ -604,7 +651,7 @@ export interface SeedCatalogLike {
 }
 
 /**
- * Choose the seed route from the LIVE catalog (contract §10).
+ * Choose the seed route from the LIVE catalog (contract §5).
  *
  * Model: the `deepseek-flash` family — an EXACT `deepseek-flash` id wins, else the first id that
  * contains `flash` (case-insensitive), in catalog order. Provider: the first configured provider
@@ -631,47 +678,98 @@ export function chooseSeedRoute(catalog: SeedCatalogLike | undefined): SeedRoute
 }
 
 /**
- * Build the four-slot block the seed writes: ONE route, with `slot1` at `max` and slots 2-4 at `high`
- * (contract §10). Slots 2-4 share the route because the catalog knows one flash-family model.
+ * Build the eleven entries the CATALOG seed writes: the one chosen route for every roster agent,
+ * with the slot-1 group at `max` and every other group at `high` (contract §5).
  * @param route - the chosen provider/model pair.
- * @returns the `teamModels` value to write into the project file.
+ * @returns the `agentRoutes` value to write into the project file.
  */
-export function buildSeedBlock(route: SeedRoute): Record<string, TeamModelSlot> {
-  return {
-    slot1: { provider: route.provider, model: route.model, reasoningEffort: "max" },
-    slot2: { provider: route.provider, model: route.model, reasoningEffort: "high" },
-    slot3: { provider: route.provider, model: route.model, reasoningEffort: "high" },
-    slot4: { provider: route.provider, model: route.model, reasoningEffort: "high" },
+export function buildAgentRoutesSeedBlock(route: SeedRoute): Record<string, AgentRouteConfig> {
+  /** The entries, one per roster name in the roster's own order. */
+  const entries: Record<string, AgentRouteConfig> = {}
+  for (const agent of ROSTER_AGENT_NAMES) {
+    /** The display group whose effort split the seed honours (`slot1` is the strongest). */
+    const slot = teamModelSlotOfMember(agent)
+    entries[agent] = { provider: route.provider, model: route.model, reasoningEffort: slot === "slot1" ? "max" : "high" }
   }
+  return entries
 }
 
 /**
- * Write the seed block into ONE project file, idempotently and without touching anything else.
+ * Materialize all eleven `agentRoutes` entries from a LEGACY `teamModels` block (contract §5).
  *
- * A file whose root declares `teamModels` — even a partial or empty block — is LEFT BYTE-IDENTICAL:
- * "never rewrite an existing block, never overwrite a user edit". A missing file is created; an
- * unparsable one is refused untouched.
- * @param file - the project file to seed (`<workspace>/.mpd/mpd.jsonc` unless overridden).
- * @param route - the route the catalog chose.
+ * Each roster agent inherits its display group's declared route — `provider`, `model`,
+ * `reasoningEffort` and the group's own `fallbacks` chain — and nothing else: an empty slot yields an
+ * empty entry (still declared, still `unconfigured`, never a default), a non-string leaf is skipped
+ * rather than copied as junk, and a group the legacy block never declares contributes no leaf.
+ * @param teamModels - the EFFECTIVE `teamModels` value (any layer), of unknown shape.
+ * @returns the `agentRoutes` value the migration writes.
+ */
+export function agentRouteEntriesFromTeamModels(teamModels: unknown): Record<string, AgentRouteConfig> {
+  /** The legacy block, treated as empty when it is not an object. */
+  const legacy = isPlainObject(teamModels) ? teamModels : {}
+  /** The entries, one per roster name in the roster's own order. */
+  const entries: Record<string, AgentRouteConfig> = {}
+  for (const agent of ROSTER_AGENT_NAMES) {
+    /** The display group whose declared leaves this agent inherits. */
+    const slot = teamModelSlotOfMember(agent)
+    /** The group's legacy value, or undefined when the block does not declare it. */
+    const declared = slot === undefined ? undefined : legacy[slot]
+    /** One migrated entry; every leaf is copied only when the legacy value actually states it. */
+    const entry: { provider?: string; model?: string; reasoningEffort?: string; fallbacks?: readonly ModelRoute[] } = {}
+    if (isPlainObject(declared)) {
+      for (const leaf of ["provider", "model", "reasoningEffort"] as const) {
+        /** The leaf's legacy value: only a real string is a route leaf. */
+        const value = declared[leaf]
+        if (typeof value === "string") entry[leaf] = value
+      }
+      if (Array.isArray(declared.fallbacks)) entry.fallbacks = declared.fallbacks as ModelRoute[]
+    }
+    entries[agent] = entry
+  }
+  return entries
+}
+
+/**
+ * Whether an effective config value DECLARES a usable legacy `teamModels` block (any layer).
+ *
+ * "At least one slot" is the trigger (contract §5): the presence of one of the four slot keys is a
+ * user declaration the migration must honour, even when that slot is only partly filled.
+ * @param teamModels - the effective `teamModels` value, of unknown shape.
+ * @returns true when the block declares at least one of the four legacy slots.
+ */
+export function hasLegacyTeamModels(teamModels: unknown): boolean {
+  if (!isPlainObject(teamModels)) return false
+  return TEAM_MODEL_SLOTS.some((slot) => Object.prototype.hasOwnProperty.call(teamModels, slot))
+}
+
+/**
+ * Write the eleven `agentRoutes` entries into ONE project file, idempotently and without touching
+ * anything else.
+ *
+ * A file whose root already declares `agentRoutes` — even a partial or empty block — is LEFT
+ * BYTE-IDENTICAL: "never rewrite an existing block, never overwrite a user edit". A missing file is
+ * created; an unparsable one is refused untouched.
+ * @param file - the project file to initialize (`<workspace>/.mpd/mpd.jsonc` unless overridden).
+ * @param entries - the eleven entries to write.
  * @returns `seeded` when this call wrote, `declared` when the file already declared the block,
  *   `unreadable` when the file exists but cannot be parsed or edited.
  */
-export function seedTeamModelsFile(file: string, route: SeedRoute): { outcome: "seeded" | "declared" | "unreadable"; detail?: string } {
+export function seedAgentRoutesFile(file: string, entries: Record<string, AgentRouteConfig>): { outcome: "seeded" | "declared" | "unreadable"; detail?: string } {
   /** The file's current bytes, or undefined when it does not exist yet. */
   const raw = existsSync(file) ? readFileSync(file, "utf8") : undefined
   if (raw !== undefined) {
     /** The parse verdict for the existing file; an unparsable file is never edited. */
     const parsed = parseJsoncChecked(raw)
     if (parsed.ok !== true) return { outcome: "unreadable", detail: parsed.detail }
-    /** The parsed root, narrowed so a `teamModels` lookup is safe. */
+    /** The parsed root, narrowed so an `agentRoutes` lookup is safe. */
     const root = isPlainObject(parsed.value) ? parsed.value : {}
     // ANY declared block wins over the seed: even `{}` is a user edit this function must not rewrite.
-    if (Object.prototype.hasOwnProperty.call(root, "teamModels")) return { outcome: "declared" }
+    if (Object.prototype.hasOwnProperty.call(root, "agentRoutes")) return { outcome: "declared" }
   }
   /** The text the edit starts from: the file's own bytes, or an empty document for a new file. */
   const base = raw ?? "{}\n"
   /** The surgical insertion of the block at the root, preserving every other byte. */
-  const edited = surgicalEdit(base, ["teamModels"], buildSeedBlock(route), { insert: true })
+  const edited = surgicalEdit(base, ["agentRoutes"], entries, { insert: true })
   if (edited.ok !== true) return { outcome: "unreadable", detail: edited.reason }
   if (!edited.changed) return { outcome: "declared" }
   mkdirSync(dirname(file), { recursive: true })
@@ -679,23 +777,31 @@ export function seedTeamModelsFile(file: string, route: SeedRoute): { outcome: "
   return { outcome: "seeded" }
 }
 
-/** The durable one-time-seed marker's file name inside a workspace's `.mpd/` directory. */
-export const SEED_MARKER_FILE = "model-config-seed.json"
-
-/** The marker path for ONE workspace root: `<ws>/.mpd/model-config-seed.json`. */
-export function seedMarkerFor(root: string): string {
-  return join(root, ".mpd", SEED_MARKER_FILE)
+/**
+ * Whether a project file already DECLARES an `agentRoutes` block — the read-only guard that keeps a
+ * configured workspace from paying for a catalog read.
+ * @param file - the project file (absent is `absent`, never an error).
+ * @returns `declared` (any block, even `{}` — a user edit), `absent`, or `unreadable`.
+ */
+export function agentRoutesDeclaredIn(file: string): "declared" | "absent" | "unreadable" {
+  if (!existsSync(file)) return "absent"
+  /** The parse verdict for the existing file; an unparsable one is never edited. */
+  const parsed = parseJsoncChecked(readFileSync(file, "utf8"))
+  if (parsed.ok !== true) return "unreadable"
+  /** The parsed root, narrowed so an `agentRoutes` lookup is safe. */
+  const root = isPlainObject(parsed.value) ? parsed.value : {}
+  return Object.prototype.hasOwnProperty.call(root, "agentRoutes") ? "declared" : "absent"
 }
 
 /**
- * Whether a project file already DECLARES a `teamModels` block — the read-only first guard of the
- * seed, so a configured workspace never pays for a catalog read.
+ * Whether a project file declares a LEGACY `teamModels` block — READ ONLY, used to name the legacy
+ * source the migration log line reports (contract §5).
  * @param file - the project file (absent is `absent`, never an error).
  * @returns `declared` (any block, even `{}` — a user edit), `absent`, or `unreadable`.
  */
 export function teamModelsDeclaredIn(file: string): "declared" | "absent" | "unreadable" {
   if (!existsSync(file)) return "absent"
-  /** The parse verdict for the existing file; an unparsable one is never edited. */
+  /** The parse verdict for the existing file; an unparsable one proves nothing. */
   const parsed = parseJsoncChecked(readFileSync(file, "utf8"))
   if (parsed.ok !== true) return "unreadable"
   /** The parsed root, narrowed so a `teamModels` lookup is safe. */
@@ -703,62 +809,111 @@ export function teamModelsDeclaredIn(file: string): "declared" | "absent" | "unr
   return Object.prototype.hasOwnProperty.call(root, "teamModels") ? "declared" : "absent"
 }
 
-/** What ONE seed attempt decided, and why — the union the coordinator logs from. */
+/**
+ * The schema version a durable marker declares, or `undefined` when it is absent, unparsable or
+ * carries no usable version (every one of those means "initialization still owes a run").
+ * @param markerFile - the marker path to read ({@link seedMarkerFor}).
+ * @returns the declared version, or undefined when the marker cannot prove a version.
+ */
+export function seedMarkerVersionOf(markerFile: string): number | undefined {
+  if (!existsSync(markerFile)) return undefined
+  try {
+    /** The marker's parsed value, of unknown shape. */
+    const parsed: unknown = JSON.parse(readFileSync(markerFile, "utf8"))
+    if (!isPlainObject(parsed)) return undefined
+    /** The declared version, accepted only as a finite number. */
+    const version = parsed.version
+    return typeof version === "number" && Number.isFinite(version) ? version : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** What ONE initialization attempt decided, and why — the union the coordinator logs from. */
 export interface SeedRunOutcome {
-  /** The decision: seeded / declared / marked (already seeded once) / no-catalog / unreadable. */
-  readonly status: "seeded" | "declared" | "marked" | "no-catalog" | "unreadable"
-  /** The route written, for a `seeded` run. */
+  /** The decision: seeded / migrated / upgraded / declared / marked / no-catalog / unreadable. */
+  readonly status: "seeded" | "migrated" | "upgraded" | "declared" | "marked" | "no-catalog" | "unreadable"
+  /** The route written, for a catalog `seeded` run. */
   readonly route?: SeedRoute
+  /** How many `agentRoutes` entries the written block carries. */
+  readonly entries?: number
   /** The named refusal for `no-catalog` / `unreadable`. */
   readonly detail?: string
 }
 
+/** What the caller knows about a root's EFFECTIVE (merged, any layer) config. */
+export interface SeedInitOptions {
+  /** Whether any layer already declares `agentRoutes` — then only the marker is upgraded. */
+  readonly agentRoutesDeclared?: boolean
+  /** The effective `teamModels` value (any layer), used to materialize the eleven entries. */
+  readonly legacyTeamModels?: unknown
+}
+
 /**
- * Run the ONE-TIME seed for one workspace: the durable-marker protocol around
- * {@link seedTeamModelsFile} (contract §10, captain's F3).
+ * Record the durable version-2 marker, overwriting an older one (an unversioned v0.15.x marker IS
+ * upgraded in place — that is the whole point of the version, amendment 2 §1).
+ * @param markerFile - the marker path to write.
+ * @param payload - the diagnostic fields beside `version` (never read back as truth).
+ * @returns nothing; a write failure is reported to the caller through the thrown error.
+ */
+function writeSeedMarker(markerFile: string, payload: Record<string, unknown>): void {
+  mkdirSync(dirname(markerFile), { recursive: true })
+  writeFileSync(markerFile, JSON.stringify({ version: SEED_MARKER_VERSION, ...payload, seededAt: new Date().toISOString() }, null, 2) + "\n", "utf8")
+}
+
+/**
+ * Run the ONE-TIME initialization for one workspace: the versioned-marker protocol around
+ * {@link seedAgentRoutesFile} (contract §5 + amendment 2 §1, captain's F3).
  *
  * Order matters, and each step is a separate guard:
- *   1. the MARKER is consulted BEFORE anything else — a workspace seeded once (durably marked in
- *      `<ws>/.mpd/model-config-seed.json`) is never seeded again, even if the user later deletes the
- *      block on purpose: "never seed twice" must beat "the file looks unconfigured";
- *   2. an existing `teamModels` block wins next (a user edit is never rewritten, and no catalog read
- *      is spent on a configured workspace);
- *   3. only then is the catalog consulted; no flash-family route means nothing written and NO marker,
+ *   1. the MARKER'S VERSION is consulted BEFORE anything else — a workspace already initialized at
+ *      version 2 is never touched again, even if the user later deletes the block on purpose;
+ *   2. an `agentRoutes` block declared by ANY layer means the workspace is already configured: only
+ *      the marker is upgraded, and NOTHING is written;
+ *   3. a declared legacy `teamModels` block is MATERIALIZED into the eleven entries (no catalog read);
+ *   4. only then is the catalog consulted; no flash-family route means nothing written and NO marker,
  *      so a later attempt (process or boot) can still seed once when the catalog is available.
  *
- * The marker is created with `wx` AFTER a successful write, so two processes racing the first boot
- * cannot overwrite each other's record — the loser's `EEXIST` is a success, not a failure.
- * @param projectFile - the project file to seed (`<workspace>/.mpd/mpd.jsonc` unless overridden).
+ * @param projectFile - the project file to initialize (`<workspace>/.mpd/mpd.jsonc` unless overridden).
  * @param markerFile - the durable marker path ({@link seedMarkerFor}).
  * @param catalog - the catalog the adapter projected, or undefined when the seam was absent.
+ * @param options - what the caller proved about the root's EFFECTIVE config.
  * @returns the decision; the caller owns logging and the retry policy.
  */
-export function seedTeamModelsOnce(projectFile: string, markerFile: string, catalog: SeedCatalogLike | undefined): SeedRunOutcome {
-  // STEP 1: the durable marker. A deliberate deletion after a seed must NEVER be undone by the seed.
-  if (existsSync(markerFile)) return { status: "marked" }
-  // STEP 2: a declared block is the user's own configuration — never rewritten, never re-seeded.
-  /** The file's declaration state, read before any catalog work. */
-  const declared = teamModelsDeclaredIn(projectFile)
-  if (declared === "declared") return { status: "declared" }
-  if (declared === "unreadable") return { status: "unreadable", detail: "the project file does not parse" }
-  // STEP 3: the catalog. Nothing is written (and no marker is left) when it cannot answer.
+export function seedAgentRoutesOnce(projectFile: string, markerFile: string, catalog: SeedCatalogLike | undefined, options: SeedInitOptions = {}): SeedRunOutcome {
+  // STEP 1: the durable marker's VERSION. A deliberate deletion after a v2 run is never undone.
+  if ((seedMarkerVersionOf(markerFile) ?? 0) >= SEED_MARKER_VERSION) return { status: "marked" }
+  // STEP 2: agentRoutes already declared in any layer: the entries are the user's own configuration —
+  // upgrade the marker only, and never touch the file.
+  if (options.agentRoutesDeclared === true) {
+    writeSeedMarker(markerFile, { source: "declared" })
+    return { status: "upgraded" }
+  }
+  // STEP 3: a legacy teamModels block is materialized — one write, no catalog needed.
+  if (hasLegacyTeamModels(options.legacyTeamModels)) {
+    /** The eleven entries the legacy groups translate into. */
+    const entries = agentRouteEntriesFromTeamModels(options.legacyTeamModels)
+    /** The file write outcome; the marker follows ONLY a real or already-declared block. */
+    const written = seedAgentRoutesFile(projectFile, entries)
+    if (written.outcome === "unreadable") return { status: "unreadable", detail: written.detail }
+    writeSeedMarker(markerFile, { source: "migration" })
+    return written.outcome === "seeded"
+      ? { status: "migrated", entries: Object.keys(entries).length }
+      : { status: "declared", entries: Object.keys(entries).length }
+  }
+  // STEP 4: the catalog. Nothing is written (and no marker is left) when it cannot answer.
   /** The route the catalog offers, or undefined when no flash-family model is configured. */
   const route = chooseSeedRoute(catalog)
   if (route === undefined) return { status: "no-catalog", detail: "the catalog lists no deepseek-flash model" }
-  /** The file-write outcome; the marker follows ONLY a real write. */
-  const written = seedTeamModelsFile(projectFile, route)
+  /** The eleven entries the catalog route seeds. */
+  const entries = buildAgentRoutesSeedBlock(route)
+  /** The file-write outcome; the marker follows ONLY a real or already-declared block. */
+  const written = seedAgentRoutesFile(projectFile, entries)
   if (written.outcome === "unreadable") return { status: "unreadable", detail: written.detail }
-  if (written.outcome === "declared") return { status: "declared" }
-  // STEP 4: mark the workspace as seeded ONCE. `wx` is the exclusive create: an existing marker is
-  // never overwritten (a concurrent first boot already recorded it), and any other failure is
-  // reported rather than swallowed.
-  try {
-    mkdirSync(dirname(markerFile), { recursive: true })
-    writeFileSync(markerFile, JSON.stringify({ seededAt: new Date().toISOString(), provider: route.provider, model: route.model }, null, 2) + "\n", { flag: "wx" })
-  } catch (error) {
-    if ((error as { code?: unknown })?.code !== "EEXIST") return { status: "seeded", route, detail: "the seed wrote the file but could not record its marker: " + String((error as Error)?.message ?? error) }
-  }
-  return { status: "seeded", route }
+  writeSeedMarker(markerFile, { source: "catalog", provider: route.provider, model: route.model })
+  return written.outcome === "seeded"
+    ? { status: "seeded", route, entries: Object.keys(entries).length }
+    : { status: "declared", route, entries: Object.keys(entries).length }
 }
 
 /** The parse verdict of a `.mpd/mpd.jsonc` text, as the seed's guard consumes it. */
@@ -1402,32 +1557,45 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     get: (key?: string) => {
       // No key keeps the RAW merged file layers — the documented shape the settings namespace base
       // mirrors (and an existing wiring test pins it). A KEYED read walks the SAME raw layers: the
-      // `teamModels` subtree answers with exactly what the workspace declares, so an absent block
-      // reads as ABSENT (contract §2/§9) instead of being filled in by a default layer.
+      // `agentRoutes` subtree answers with exactly what the workspace declares, so an absent block
+      // reads as ABSENT (contract §1/§2) instead of being filled in by a default layer. The tolerated
+      // legacy `teamModels` block is answered verbatim here (the raw pass-through) and is never read
+      // for routing.
       if (key === undefined) return state.config
       return key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), state.config)
     },
     /**
-     * The TOTAL resolution of one roster member's `teamModels` slot, read PER CALL from the live
-     * state (contract amendment 1: this method never throws).
+     * The TOTAL resolution of one roster member's OWN `agentRoutes` entry, read PER CALL from the live
+     * state (contract §2: this method never throws).
      *
      * This is the read a routing consumer (the roster's one-shot spawns, the workmate library, the
      * roster provider, the model-chain resolver) and every DISPLAY surface (`/mpd-model`, the Web
-     * settings card) calls; a spawn applier converts a `status: "unconfigured" | "invalid"` answer
-     * into the throwing `SLOT_UNCONFIGURED` failure, and nobody else does.
+     * settings card) calls; a single-call spawn applier converts an `unconfigured` / `invalid` answer
+     * into the throwing `AGENT_UNCONFIGURED` failure, and nobody else does. An `unrouted` answer is
+     * NOT a refusal: it belongs to an EXTENSION-contributed role, whose spawn proceeds on its own
+     * chain (amendment 2 §3).
      * @param member - the roster member's functional name.
-     * @returns the typed resolution: a usable route plus its fallbacks, or the reason it is unusable.
+     * @returns the typed resolution: the agent plus its route and fallbacks, or the reason it is unusable.
      */
-    slotResolutionOf: (member: string): SlotResolution => resolveTeamModelSlot(member, state.config),
+    agentRouteResolutionOf: (member: string): AgentRouteResolution => {
+      /** The typed resolution this call answers with. */
+      const resolution = resolveAgentRoute(member, state.config)
+      // ONE line per resolution that actually dropped a malformed fallback entry (contract §2): the
+      // drop is tolerated, never silent. Logged here, never inside the pure resolver.
+      /** How many declared fallback entries were malformed and dropped. */
+      const dropped = droppedFallbacksOf(member, state.config)
+      if (dropped > 0) warn("[mpd-config] agentRoutes for " + (resolution.ok ? resolution.agent : member) + ": dropped " + dropped + " malformed fallback entr" + (dropped === 1 ? "y" : "ies"))
+      return resolution
+    },
     /**
      * The configured route of one roster member, or `undefined` — TOTAL by the same rule.
      *
-     * Kept beside {@link slotResolutionOf} because most callers only need the primary route and must
-     * not care WHY a slot has none; `undefined` covers unconfigured, invalid and unrouted alike.
+     * Kept beside {@link agentRouteResolutionOf} because most callers only need the primary route and
+     * must not care WHY an agent has none; `undefined` covers unconfigured, invalid and unrouted alike.
      * @param member - the roster member's functional name.
-     * @returns the configured route, or `undefined` when this member has no usable slot route.
+     * @returns the configured route, or `undefined` when this member has no usable agent route.
      */
-    teamModelRouteOf: (member: string): TeamModelRoute | undefined => teamModelRouteOfMember(member, state.config),
+    agentRouteOf: (member: string): AgentRoute | undefined => agentRouteOfMember(member, state.config),
     reload,
     states: () => ({
       files: state.files,
@@ -1453,7 +1621,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort/fallbacks.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, agentRoutes.<Agent>.provider/model/reasoningEffort/fallbacks (one route per roster agent, including an absent entry). The legacy teamModels block is answerable verbatim but is NOT a routing input.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args: any, exec: any) => {
@@ -1518,35 +1686,51 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   /**
-   * Whether any layer ABOVE the project file already declares `teamModels` (CodeRabbit #7).
+   * Where the EFFECTIVE `teamModels` block came from — the LEGACY SOURCE the ONE migration log line
+   * names (contract §5).
    *
-   * `loadConfig` applies the user file BEFORE the project file, so a user-only
-   * `$DSH_HOME/mpd.jsonc` declaration would be OVERRIDDEN by the block a seed writes into the
-   * project file. The same holds for the settings document and the row-knob layer. The seed
-   * therefore writes nothing when any merged layer declares the block: an unreadable user layer is
-   * treated as a declaration too, because "could not prove otherwise" must never overwrite.
-   * @returns true when the seed must stand down.
+   * The layers are checked in `loadConfig`'s own precedence order (row config highest, then the
+   * settings document, the project file and the user file), so the named source is the layer that
+   * actually wins for the block instead of a bare "teamModels".
+   * @param root - the workspace root whose project file the migration targets.
+   * @returns a human label naming the declaring layer.
    */
-  const declaresTeamModelsAboveTheProjectFile = (): boolean => {
-    // The user layer, resolved exactly as `loadConfig` resolves it (one helper, no drift).
-    if (teamModelsDeclaredIn(userFileFor(config)) !== "absent") return true
-    // The settings document (L3), as last read; a raw section that declares the block wins.
-    if (isPlainObject(bridge.section) && Object.prototype.hasOwnProperty.call(bridge.section, "teamModels")) return true
+  const legacyTeamModelsSourceOf = (root: string): string => {
     // The row-knob layer (L4): the entry document's saved overrides, else the apply-time row config.
     const rowKnobs = entryKnobs ?? rowKnobLayer(config)
-    if (isPlainObject(rowKnobs) && Object.prototype.hasOwnProperty.call(rowKnobs, "teamModels")) return true
-    return false
+    if (isPlainObject(rowKnobs) && Object.prototype.hasOwnProperty.call(rowKnobs, "teamModels")) return "the row config"
+    if (isPlainObject(bridge.section) && Object.prototype.hasOwnProperty.call(bridge.section, "teamModels")) return "the settings document"
+    /** The project file this root reads (the row's own override honoured). */
+    const file = projectFileFor(root)
+    if (teamModelsDeclaredIn(file) === "declared") return file
+    /** The user layer, resolved exactly as `loadConfig` resolves it (one helper, no drift). */
+    const userFile = userFileFor(config)
+    if (teamModelsDeclaredIn(userFile) === "declared") return userFile
+    return "the merged config"
   }
 
   /**
-   * Run the one-time seed for the ROOTS that still owe an attempt (per-root, CodeRabbit #6).
+   * The EFFECTIVE (merged, any layer) config of ONE root, read with the SAME `loadConfig` the service
+   * uses — user file < project file < settings document < row knobs.
    *
-   * The CHEAP guards run first, per root and WITHOUT any catalog read: a root already marked, already
-   * configured in its project file, or configured by a layer above it is decided locally and costs
-   * nothing. Only the roots that survive are attempted, with ONE shared catalog read per batch (a
-   * boot with several workspaces must not pay N reads). A root whose catalog answer is unavailable
-   * stays PENDING and says ONE line — the retry comes from `reloadAt`, and the llm registry can mount
-   * after this row.
+   * The one-time initialization reads THIS rather than the raw project file: a `teamModels` or
+   * `agentRoutes` block declared by ANY layer must trigger (or suppress) the run (contract §5,
+   * amendment 2 §1).
+   * @param root - the workspace root to resolve the layers for.
+   * @returns the merged config of that root, plus the per-layer parse errors `loadConfig` recorded.
+   */
+  const effectiveConfigFor = (root: string): { config: Record<string, unknown>; errors: string[] } => loadConfig(config, root, readSection(), entryKnobs)
+
+  /**
+   * Run the one-time initialization for the ROOTS that still owe it (per root; contract §5, amendment
+   * 2 §1).
+   *
+   * The CHEAP guards run first, per root and WITHOUT any catalog read: a root whose durable marker
+   * already declares version 2 is final; a legacy `teamModels` block is materialized immediately; an
+   * `agentRoutes` block declared by any layer only upgrades the marker. Only the roots that survive
+   * every guard need the catalog, and they share ONE read per batch (a boot with several workspaces
+   * must not pay N reads). A root whose catalog answer is unavailable stays PENDING and says ONE line
+   * — the retry comes from `reloadAt`, and the llm registry can mount after this row.
    * @param roots - the workspace roots to consider; blank/duplicate entries are ignored.
    */
   const seedRoots = (roots: readonly string[]): void => {
@@ -1564,67 +1748,95 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     /** The roots that survived every local guard and therefore need the catalog. */
     const toAttempt: string[] = []
     for (const root of pending) {
-      /** The project file this root reads and the seed writes (the row's own override honoured). */
+      /** The project file this root reads and the initialization writes (the row's own override honoured). */
       const file = projectFileFor(root)
-      // THE MARKER BEATS THE FILE STATE: a seeded-once workspace whose block was deleted on purpose
-      // must not be re-seeded (contract §10 + the captain's F3).
-      if (existsSync(seedMarkerFor(root))) { seedStateOf(root).state = "done"; continue }
-      /** The project file's declaration state, read before any catalog work. */
-      const declared = teamModelsDeclaredIn(file)
-      if (declared === "declared") { seedStateOf(root).state = "done"; continue }
+      /** The durable marker for this workspace. */
+      const marker = seedMarkerFor(root)
+      // THE VERSIONED MARKER BEATS EVERYTHING: a workspace initialized once at version 2 keeps a
+      // deliberately deleted block deleted (contract §5 + amendment 2 §1). A v0.15.x marker carries
+      // NO version, so a returning workspace still owes the run instead of being stranded.
+      if ((seedMarkerVersionOf(marker) ?? 0) >= SEED_MARKER_VERSION) { seedStateOf(root).state = "done"; continue }
+      /** Whether the project file can be read and edited at all. */
+      const declared = agentRoutesDeclaredIn(file)
       if (declared === "unreadable") {
         seedStateOf(root).state = "done"
-        warnOnceFor(root, "[mpd-config] could not seed " + file + ": the project file does not parse — nothing was written")
+        warnOnceFor(root, "[mpd-config] could not initialize agentRoutes in " + file + ": the project file does not parse — nothing was written")
         continue
       }
-      // A layer ABOVE the project file already configures the slots: writing a project block would
-      // override that lower-precedence source, so the seed stands down WITHOUT a marker (the
-      // workspace is configured by its own owner, and re-checking is cheap and correct).
-      if (declaresTeamModelsAboveTheProjectFile()) { seedStateOf(root).state = "done"; continue }
+      /** The EFFECTIVE config of this root, whose declarations decide the priority (amendment 2 §1). */
+      const effective = effectiveConfigFor(root)
+      // A layer that cannot be parsed hides whatever it declares: writing over it could destroy a
+      // declaration we could not see, so the run stands down and says so once.
+      if (effective.errors.length > 0) {
+        seedStateOf(root).state = "done"
+        warnOnceFor(root, "[mpd-config] could not initialize agentRoutes for " + root + ": a config layer does not parse (" + effective.errors.join("; ") + ") — nothing was written")
+        continue
+      }
+      // PRIORITY 1 (amendment 2 §1): `agentRoutes` already declared by ANY layer => upgrade the
+      // marker to version 2 and change NOTHING else.
+      if (declared === "declared" || Object.prototype.hasOwnProperty.call(effective.config, "agentRoutes")) {
+        seedStateOf(root).state = "done"
+        seedAgentRoutesOnce(file, marker, undefined, { agentRoutesDeclared: true })
+        continue
+      }
+      // PRIORITY 2: a legacy `teamModels` block is materialized NOW — one write, no catalog read.
+      if (hasLegacyTeamModels(effective.config.teamModels)) {
+        seedStateOf(root).state = "done"
+        /** The migration's decision, with the durable-marker protocol inside it. */
+        const migrated = seedAgentRoutesOnce(file, marker, undefined, { legacyTeamModels: effective.config.teamModels })
+        if (migrated.status === "migrated") {
+          // ONE line per root for a real write, naming the LEGACY SOURCE and the durable marker.
+          warn("[mpd-config] migrated the legacy teamModels block from " + legacyTeamModelsSourceOf(root) + " into " + (migrated.entries ?? 0) + " agentRoutes entries in " + file + " — marked once at version " + SEED_MARKER_VERSION + " in " + marker)
+          reloadAt(root)
+        } else if (migrated.status === "unreadable") {
+          warnOnceFor(root, "[mpd-config] could not migrate teamModels into " + file + ": " + (migrated.detail ?? "unreadable") + " — nothing was written")
+        }
+        continue
+      }
       toAttempt.push(root)
     }
     if (toAttempt.length === 0) return
     if (typeof dsh.llmCatalog !== "function") {
       for (const root of toAttempt) {
         seedStateOf(root).state = "done"
-        warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
+        warnOnceFor(root, "[mpd-config] agentRoutes is not configured for " + root + " and the adapter has no catalog seam — nothing was written; a spawn for a roster agent reports AGENT_UNCONFIGURED")
       }
       return
     }
-    // Fire-and-forget: the seed must never delay (or fail) the row's own activation.
+    // Fire-and-forget: the initialization must never delay (or fail) the row's own activation.
     void Promise.resolve(dsh.llmCatalog()).then((catalog: SeedCatalogLike | undefined) => {
       for (const root of toAttempt) {
         // A concurrent batch may have decided this root in the meantime (reload during boot).
         if (seedStateOf(root).state !== "pending") continue
-        /** The project file this root reads and the seed writes. */
+        /** The project file this root reads and the initialization writes. */
         const file = projectFileFor(root)
-        /** The durable one-time marker for this workspace. */
+        /** The durable marker for this workspace. */
         const marker = seedMarkerFor(root)
         /** The one attempt's decision, with the durable-marker protocol inside it. */
-        const result = seedTeamModelsOnce(file, marker, catalog)
+        const result = seedAgentRoutesOnce(file, marker, catalog)
         // A missing catalog keeps the attempt PENDING so a later reload can still seed once; the
         // line itself is said at most once per root (`warnOnceFor`).
         if (result.status === "no-catalog") {
-          warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
+          warnOnceFor(root, "[mpd-config] agentRoutes is not configured for " + root + " and the model catalog lists no deepseek-flash model — nothing was written; a spawn for a roster agent reports AGENT_UNCONFIGURED")
           continue
         }
         seedStateOf(root).state = "done"
         if (result.status === "seeded") {
           // ONE line per root for a real write, naming the file and the durable marker beside it.
-          warn("[mpd-config] seeded " + file + " with all four team-model slots (provider=" + (result.route?.provider ?? "?") + ", model=" + (result.route?.model ?? "?") + "; slot1=max, slots 2-4=high) from the configured catalog — marked once in " + marker)
+          warn("[mpd-config] seeded " + file + " with all " + (result.entries ?? 0) + " agentRoutes entries (provider=" + (result.route?.provider ?? "?") + ", model=" + (result.route?.model ?? "?") + "; slot-1 group=max, the rest=high) from the configured catalog — marked at version " + SEED_MARKER_VERSION + " in " + marker)
           // CodeRabbit #8: the write happened AFTER the mount read and, on a workspace with no
           // `.mpd` directory, after the watcher declined to arm — so the resolved state is one
           // generation behind until an explicit reload. Reload THIS root now, so the very first
-          // spawn already resolves the seeded slots instead of reporting SLOT_UNCONFIGURED.
+          // spawn already resolves the seeded entries instead of reporting AGENT_UNCONFIGURED.
           reloadAt(root)
         } else if (result.status === "unreadable") {
-          warnOnceFor(root, "[mpd-config] could not seed " + file + ": " + (result.detail ?? "unreadable") + " — nothing was written")
+          warnOnceFor(root, "[mpd-config] could not initialize " + file + ": " + (result.detail ?? "unreadable") + " — nothing was written")
         }
       }
     }).catch((error: unknown) => {
       for (const root of toAttempt) {
         // The catalog read failed: this root still owes an attempt (kept pending), and says so once.
-        warnOnceFor(root, "[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing for " + root + ": " + String((error as Error)?.message ?? error))
+        warnOnceFor(root, "[mpd-config] the model catalog read failed, so the one-time agentRoutes seed wrote nothing for " + root + ": " + String((error as Error)?.message ?? error))
       }
     })
   }

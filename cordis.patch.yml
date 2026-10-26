@@ -589,7 +589,7 @@
 # `ctx.subagents.startContinuable`, so a subagent provider cannot inject a
 # per-teammate model route, persona or tool filter for a continuable teammate.
 # That reduction is recorded in `docs/plan-0.1.7-adaptation.md` §3; the roster's
-# model slots survive on the one-shot consult path, and its read-only discipline
+# per-agent `agentRoutes` routes survive on the one-shot consult path, and its read-only discipline
 # is re-implemented as a tool guard by mpd-roles.
 #
 # The official profile bundle ALSO disables `tool-subagent`,
@@ -691,8 +691,8 @@
         maxMessageBytes: 32768
         disposalTimeoutMs: 5000
 
-    # THE ROSTER PROVIDER: registers `mpd-roster`, the subagent provider that applies an mpd
-    # teamModels slot route to a teammate. It must be mounted for the redirect below to resolve.
+    # THE ROSTER PROVIDER: registers `mpd-roster`, the subagent provider that applies a member's own
+    # `agentRoutes.<Agent>` route to a teammate. It must be mounted for the redirect below to resolve.
     - id: mpd-roster-provider
       name: '@mpd-dsh/mpd/packages/mpd-roster-provider-plugin/dist/index.js'
       config:

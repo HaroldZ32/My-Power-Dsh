@@ -14,6 +14,42 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## Unreleased — model routing returns to the per-agent unit, and the four groups become a bulk-edit shortcut
+
+A semantics **REVERSAL** of the 2026-10-23 slot-single-source wave. That wave made `teamModels.slot{1,2,3,4}`
+the single persisted unit and deleted the per-agent layer. This wave restores the AGENT as the unit of model
+configuration and demotes the groups to what they always were meant to be: a shortcut for editing several
+agents at once.
+
+**Changed — `agentRoutes.<Agent>` is the route, and no slot is persisted.** Every roster member has its OWN
+entry (`{provider?, model?, reasoningEffort?, fallbacks?}`, keys resolved case- and separator-insensitively),
+set and cleared individually, with ZERO `.default()` in the subtree (a schema default would beat the user's
+file, because the row-knob layer merges last). `TEAM_MODEL_SLOT_GROUPS` survives **ONLY** as the
+`/mpd-model` bulk-edit grouping: a group write overwrites every member's own entry after a confirmation panel
+that lists the affected agents and their current routes, and stores nothing of its own. `mpd_role_spawn`,
+`mpd_workmate_spawn`, the roster provider and the native team executor all read the member's own entry; the
+team path keeps its identity precedence (`role` → the HEAD of `description` → the whole `name`) and still
+INHERITS the staging session's route for an unmatched member with exactly one log line and no throw.
+
+**Changed — the refusal is `AGENT_UNCONFIGURED`, replacing `SLOT_UNCONFIGURED`** in code, tests, QA scripts
+and docs. The message names the agent, the missing leaves (`agentRoutes.<Agent>.provider`, `.model`) and both
+recovery paths (`/mpd-model`, or `agentRoutes.<Agent>` in `.mpd/mpd.jsonc`), and states that nothing was
+written and no child was started. `unrouted` is **NOT** a refusal: an extension-contributed role keeps its
+own chain and still spawns, so only a base roster member can be refused.
+
+**Changed — the migration marker is versioned.** The unit is migrated ONCE per workspace, then ignored:
+`<ws>/.mpd/model-config-seed.json` now records `{"version": 2}`, and initialization runs while that marker is
+absent, unparsable or below version 2 — because v0.15.4/v0.15.5 already shipped an unversioned marker, and a
+presence-only rule would strand a returning workspace with eleven unconfigured agents and every single-call
+spawn refused. `teamModels` stays DECLARED as a tolerated permissive legacy node (so an existing profile
+patch or row config still validates and boots) and is read only by that migration and by `mpd_config_get`'s
+raw pass-through — never for routing, and this bundle never writes it.
+
+**Docs.** `AGENTS.md` §13, `agent-references/glossary.md`, `docs/user-guide{,.zh-CN}.md`,
+`docs/tui{,.zh-CN}.md`, `docs/design{,.zh-CN}.md` and the `mpd-config` / `mpd-roles` / `mpd-workmate` /
+`mpd-roster-provider` / `mpd-tui` / `mpd-bundle` README pairs now state the per-agent semantics in both
+languages.
+
 ## v0.15.5 — the host pair moves to DeepSeek Harness 0.2.1-rc.3 + dsh-tui 0.17.0, and a README table says which pair each release was verified on
 
 Patch release over v0.15.4. A pin-and-documents wave: **no plugin behaviour changed**. The bundle now

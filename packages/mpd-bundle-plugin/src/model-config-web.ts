@@ -1,8 +1,10 @@
 // The effective model-config route (R3, wave fix/model-config-live-refresh, lane L4; re-aimed by
-// the slot-single-source contract): one READ-ONLY exact-path route the Web settings card fetches so
-// its see-before-you-edit block can show the CURRENT EFFECTIVE model config — the four team-model
-// slot BLOCKS exactly as the workspace declares them (no default layer) and the configured
-// `modelchain.<key>` chains. The per-member `agentRoutes` table is gone (contract §3).
+// the agent-routes contract `.mpd/plans/agent-routes-per-agent.md` §7): one READ-ONLY exact-path
+// route the Web settings card fetches so its see-before-you-edit block can show the CURRENT EFFECTIVE
+// model config — ONE typed route resolution PER AGENT (the eleven roster members' own
+// `agentRoutes.<Agent>` entries, resolved by the config service's TOTAL read) and the configured
+// `modelchain.<key>` chains. The legacy `teamModels` block is NEVER read here: it is tolerated for
+// boot, migrated once by the config row, then ignored (contract §1).
 //
 // WHY A ROUTE AT ALL: those values live in the `mpdConfig` service (node side), and the modelchain
 // half exists in NO settings document — the `mpd-modelchain` row declares no volatile Config, so
@@ -16,18 +18,46 @@
 /** The exact-path route this module owns (the path the settings card fetches). */
 export const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
-/** The `mpdConfig` service surface this route reads (the mounted double, or a test double). */
+/**
+ * The eleven roster display names, in the four groups' declared order — a MIRROR of
+ * `TEAM_MODEL_SLOT_GROUPS`'s member lists in `mpd-config-plugin/src/settings-schema.ts`.
+ *
+ * The route does not import that declaration (this package's server half stays dependency-free: the
+ * bundled `dist/index.js` would inline the whole config schema for eleven strings), so the list is
+ * mirrored here and a test pins it against the shared declaration. The four groups are DISPLAY-only
+ * (contract §7): the route neither knows nor serves any persisted slot.
+ */
+export const ROSTER_MEMBERS: readonly string[] = [
+  "Architect",
+  "Planner",
+  "Reviewer",
+  "Lead",
+  "Senior Engineer",
+  "Researcher",
+  "Explorer",
+  "Plan Reviewer",
+  "Deep Worker",
+  "Junior Engineer",
+  "Vision Analyst",
+]
+
+/** The `mpdConfig` service surface this route reads (the mounted service, or a test double). */
 export interface ConfigServiceLike {
   /** Read one resolved config key, or the whole raw config when no key is given. */
   get?: (key?: string) => unknown
+  /**
+   * The TOTAL per-agent route resolution (contract §2): a typed union that never throws, so an
+   * unconfigured agent is a VALUE the card renders, not an error that empties the block.
+   */
+  agentRouteResolutionOf?: (member: string) => unknown
 }
 
 /** The route body when the read succeeded. */
 interface ModelConfigOk {
   /** The success marker the card's projection keys on. */
   ok: true
-  /** The `teamModels` blocks exactly as declared, keyed `slot1`…`slot4` — ABSENT when unset. */
-  slots: unknown
+  /** One typed route resolution per roster member, keyed by display name — never an empty table. */
+  agents: Record<string, unknown>
   /** The configured `modelchain` chains ({} when none are). */
   modelchain: unknown
 }
@@ -45,19 +75,24 @@ interface ModelConfigUnavailable {
  * reflects the service's CURRENT state (L1's watcher and entry-config subscription refresh it —
  * a save made seconds ago is what this route serves next).
  * @param config - the `mpdConfig` service, or undefined when the row is not composed.
- * @returns the JSON body: the two effective tables, or the refusal reason.
+ * @returns the JSON body: one typed resolution per roster agent plus the chains, or the refusal reason.
  */
 export function buildModelConfigBody(config: ConfigServiceLike | undefined): ModelConfigOk | ModelConfigUnavailable {
-  if (config === undefined || config === null || typeof config.get !== "function") {
+  if (config === undefined || config === null) {
     return { ok: false, reason: "the mpdConfig service is not composed in this profile" }
   }
+  if (typeof config.agentRouteResolutionOf !== "function") {
+    return { ok: false, reason: "the mpdConfig service exposes no per-agent route resolver (agentRouteResolutionOf)" }
+  }
   try {
+    /** One typed resolution per roster member, in the declared roster order. */
+    const agents: Record<string, unknown> = {}
+    for (const member of ROSTER_MEMBERS) agents[member] = config.agentRouteResolutionOf(member)
     return {
       ok: true,
-      // The RAW declared block (contract §2/§9): a slot the workspace never configured is ABSENT
-      // here, and the card renders it as <unconfigured> — there is no default layer to materialise.
-      slots: config.get("teamModels") ?? {},
-      modelchain: config.get("modelchain") ?? {},
+      agents,
+      // The chains ride only the service read: NO settings document holds them.
+      modelchain: typeof config.get === "function" ? config.get("modelchain") ?? {} : {},
     }
   } catch (error) {
     return { ok: false, reason: `the config read threw (${String((error as { message?: unknown })?.message ?? error)})` }

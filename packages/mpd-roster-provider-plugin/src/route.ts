@@ -15,13 +15,13 @@
 // native path cannot disagree about what "the head of a description" means.
 import { rosterNameHead } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
-/** One member's resolved route, as the mpd `teamModels` slots declare it. */
-export interface SlotRoute {
-  /** Provider id the member's teammate must run on (`deepseek-official`, `gateway`, …). */
+/** One agent's resolved route, as its own `agentRoutes` entry declares it. */
+export interface AgentRoute {
+  /** Provider id the agent's teammate must run on (`deepseek-official`, `gateway`, …). */
   provider: string
-  /** Model id that provider must run for this member. */
+  /** Model id that provider must run for this agent. */
   model: string
-  /** Optional effort keyword; absent means the slot states none and the harness keeps its own resolution. */
+  /** Optional effort keyword; absent means the route states none and the harness keeps its own resolution. */
   reasoningEffort?: string
 }
 
@@ -82,7 +82,7 @@ export function memberFromLabel(label: unknown, knownNames: readonly string[]): 
  * @param route - the route to apply, or `undefined` to inherit.
  * @returns the request to dispatch.
  */
-export function applyRoute<T extends RoutableRequest>(request: T, route: SlotRoute | undefined): T {
+export function applyRoute<T extends RoutableRequest>(request: T, route: AgentRoute | undefined): T {
   if (route === undefined) return request
   /** The merged child options: the request's own, with the three route fields replaced. */
   const agentOptions: Record<string, unknown> = { ...(request.agentOptions ?? {}), provider: route.provider, model: route.model }

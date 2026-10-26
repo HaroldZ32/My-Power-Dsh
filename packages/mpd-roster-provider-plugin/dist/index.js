@@ -260,13 +260,22 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   }
   const winner = index === 0 ? primary : wellFormed[index - 1];
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`);
   }
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
+}
+var AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED";
+function agentUnconfiguredMessage(agent, detail) {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes." + agent + " in .mpd/mpd.jsonc.";
+}
+function agentUnconfiguredRefusal(agent, detail) {
+  const error = new Error(agentUnconfiguredMessage(agent, detail));
+  error.code = AGENT_UNCONFIGURED_CODE;
+  return error;
 }
 function rosterNameHead(label) {
   if (typeof label !== "string")
@@ -293,52 +302,49 @@ function memberIdentityCandidates(identity) {
   }
   return unique;
 }
-function resolveTeamMemberRoute(identity, slotResolutionOf) {
-  if (typeof slotResolutionOf !== "function")
+function resolveTeamMemberRoute(identity, agentRouteResolutionOf) {
+  if (typeof agentRouteResolutionOf !== "function")
     return { status: "no-config-service" };
   for (const candidate of memberIdentityCandidates(identity)) {
     let answer;
     try {
-      answer = slotResolutionOf(candidate);
+      answer = agentRouteResolutionOf(candidate);
     } catch {
       continue;
     }
     if (answer === null || typeof answer !== "object")
       continue;
-    const slotAnswer = answer;
-    if (slotAnswer.ok === true) {
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+    const routeAnswer = answer;
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate;
+    if (routeAnswer.ok === true) {
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : "";
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : "";
       if (provider === "" || model === "") {
         return {
           status: "unusable",
           member: candidate,
-          ...slot === "" ? {} : { slot },
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model")
         };
       }
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : "";
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : []
       };
     }
-    if (slotAnswer.ok === false) {
-      if (slotAnswer.status === "unrouted")
+    if (routeAnswer.ok === false) {
+      if (routeAnswer.reason === "unrouted")
         continue;
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        const detail = routeAnswer.reason === "invalid" ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string" : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0 ? routeAnswer.missing.map(String).join(", ") : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model");
         return {
           status: "unusable",
           member: candidate,
-          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
-          reason: slotAnswer.status,
-          detail
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail)
         };
       }
     }
@@ -705,29 +711,19 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
-  const configSlotResolver = () => {
+  const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
-    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+    if (typeof config2.agentRouteResolutionOf !== "function")
       return;
     return (member) => {
-      if (typeof config2.slotResolutionOf === "function") {
-        try {
-          const answer = config2.slotResolutionOf.call(config2, member);
-          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
-            return answer;
-        } catch {}
+      try {
+        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
+      } catch {
+        return;
       }
-      if (typeof config2.teamModelRouteOf === "function") {
-        try {
-          const route = config2.teamModelRouteOf.call(config2, member);
-          if (route !== null && typeof route === "object")
-            return { ok: true, slot: "", route, fallbacks: [] };
-        } catch {}
-        return { ok: false, status: "unrouted", slot: undefined };
-      }
-      return;
     };
   };
   function requireService(serviceName, needed) {
@@ -934,12 +930,12 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
           } else {
-            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
@@ -2845,7 +2841,7 @@ var TEAM_MODEL_FALLBACK_OPTIONS = {
   model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
   reasoningEffort: ["off", "low", "high", "max"]
 };
-function teamModelSlotSchema() {
+function agentRouteEntrySchema() {
   return Schema.object({
     provider: Schema.string().required(false),
     model: Schema.string().required(false),
@@ -2858,6 +2854,23 @@ var TEAM_MODEL_SLOT_GROUPS = {
   slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
   slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
 };
+var ROSTER_AGENT_NAMES = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members);
+var AGENT_ROUTES_SCHEMA = Schema.object(Object.fromEntries(ROSTER_AGENT_NAMES.map((agent) => [agent, agentRouteEntrySchema()])));
+function agentNameKey(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function rosterAgentNameOf(member) {
+  const key = agentNameKey(member);
+  if (key === "")
+    return;
+  return ROSTER_AGENT_NAMES.find((name) => agentNameKey(name) === key);
+}
+function teamModelSlotOfMember(member) {
+  const agent = rosterAgentNameOf(member);
+  if (agent === undefined)
+    return;
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(agent));
+}
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(false) }),
@@ -2865,12 +2878,8 @@ var SettingsSchema = Schema.object({
   memory: Schema.object({ vcs: Schema.union([Schema.const("git"), Schema.const("svn"), Schema.const("both")]).default("git") }),
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
-  teamModels: Schema.object({
-    slot1: teamModelSlotSchema(),
-    slot2: teamModelSlotSchema(),
-    slot3: teamModelSlotSchema(),
-    slot4: teamModelSlotSchema()
-  }),
+  agentRoutes: AGENT_ROUTES_SCHEMA,
+  teamModels: Schema.any(),
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -2882,7 +2891,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)";
+var BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)";
 var BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session";
 function knobHint(key, semantics) {
@@ -2890,62 +2899,55 @@ function knobHint(key, semantics) {
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_LEAF_TEMPLATES = {
+var AGENT_ROUTE_LEAF_TEMPLATES = {
   provider: {
-    en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
-    zh: "这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，{group}（{members}）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。"
+    en: "{agent}'s own provider. Every roster agent has its OWN persisted route, so this row belongs to {agent} and changing it touches no other agent. What changing it does: {agent}'s next spawn (a one-shot consult, a workmate consult or a team member) runs on the new route; an entry missing `provider` or `model` makes that spawn REFUSE loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves — it never silently substitutes another model.",
+    zh: "{agent} 自己的提供商。每个 roster 成员都有各自持久化的路由，本行只属于 {agent}，改它不会影响其他成员。改它的影响：{agent} 下一次被 spawn（一次性咨询、workmate 咨询或 team 成员）即走新路由；条目缺少 `provider` 或 `model` 会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`），点名该成员与缺失项，绝不静默换模型。"
   },
   model: {
-    en: "This slot's model. Together with the provider above, it decides the model the {group} ({members}) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.",
-    zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
+    en: "{agent}'s own model. Together with the provider above it decides the model {agent} runs on; other agents keep their own routes. What changing it does: {agent}'s next spawn uses the new model, and a model the provider does not offer makes that spawn fail with the agent and the offending leaf named.",
+    zh: "{agent} 自己的模型。与上面的提供商共同决定 {agent} 使用的模型，其他成员保持各自的路由。改它的影响：{agent} 下一次 spawn 使用新模型；模型与提供商不匹配、或该提供商没有这个模型时，该次 spawn 会点名成员与出错的字段失败。"
   },
   reasoningEffort: {
-    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
-    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
+    en: "{agent}'s own reasoning effort (off / low / high / max): how much {agent} thinks on each call. max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: {agent}'s next spawn uses it; an effort the chosen model does not support fails that spawn and names this leaf. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+    zh: "{agent} 自己的推理强度（off / low / high / max），决定 {agent} 每次调用的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：{agent} 下一次 spawn 即使用它；该模型不支持的等级会让该次 spawn 报错并点名本字段。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
   }
 };
-var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
-  slot4: {
+var AGENT_ROUTE_LEAF_OVERRIDES = {
+  "Vision Analyst": {
     provider: {
-      en: "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-      zh: "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。"
+      en: "Vision Analyst's own provider — the one roster member that reads images, diagrams and screenshots. The model paired with it MUST accept image input (for example deepseek-v4-flash-vision-exp): a text-only model breaks its image analysis. What changing it does: its next spawn runs on the new route, and an unusable value REFUSES that spawn loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves.",
+      zh: "Vision Analyst 自己的提供商——它是 roster 中唯一负责看图、读图、分析截图的成员。与它配对的模型必须支持图像输入（例如 deepseek-v4-flash-vision-exp）：纯文本模型会让看图任务失败。改它的影响：它下一次 spawn 即走新路由；填成不可用会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`）并点名成员与缺失项。"
     },
     model: {
-      en: "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-      zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
-    },
-    reasoningEffort: {
-      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
-      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
+      en: "Vision Analyst's own model. It MUST accept image input: reading images is its whole value, and a text-only model makes its image tasks fail. What changing it does: effective at its next spawn.",
+      zh: "Vision Analyst 自己的模型。必须选支持图像输入的模型：读图是它的全部价值，纯文本模型会让读图任务直接失败。改它的影响：下次 spawn 生效。"
     }
   }
 };
-function teamModelMembers(slot, lang) {
-  return TEAM_MODEL_SLOT_GROUPS[slot].members.join(lang === "zh" ? "、" : ", ");
+function agentRouteLeafSentence(agent, leaf, lang) {
+  const name = rosterAgentNameOf(agent) ?? agent;
+  const group = teamModelSlotOfMember(name);
+  const template = AGENT_ROUTE_LEAF_OVERRIDES[name]?.[leaf] ?? AGENT_ROUTE_LEAF_TEMPLATES[leaf];
+  return template[lang].split("{agent}").join(name).split("{group}").join(group === undefined ? "" : TEAM_MODEL_SLOT_GROUPS[group][lang]);
 }
-function teamModelLeafSentence(slot, leaf, lang) {
-  const override = TEAM_MODEL_SLOT_LEAF_OVERRIDES[slot]?.[leaf];
-  if (override !== undefined)
-    return override[lang];
-  return TEAM_MODEL_LEAF_TEMPLATES[leaf][lang].split("{group}").join(TEAM_MODEL_SLOT_GROUPS[slot][lang]).split("{members}").join(teamModelMembers(slot, lang));
-}
-var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
-  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1;
-  const group = TEAM_MODEL_SLOT_GROUPS[slot];
+var AGENT_ROUTE_KNOBS = ROSTER_AGENT_NAMES.flatMap((agent) => {
+  const slot = teamModelSlotOfMember(agent);
+  const group = slot === undefined ? undefined : TEAM_MODEL_SLOT_GROUPS[slot];
   const leaves = [
     { leaf: "provider", label: "provider", zh: "提供商" },
     { leaf: "model", label: "model", zh: "模型" },
     { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
   ];
   return leaves.map(({ leaf, label, zh }) => ({
-    path: ["teamModels", slot, leaf],
-    label: `Slot ${index} ${label} (${group.en})`,
-    zh: `槽位 ${index} ${zh}（${group.zh}）`,
+    path: ["agentRoutes", agent, leaf],
+    label: group === undefined ? `${agent} ${label}` : `${agent} ${label} (${group.en})`,
+    zh: group === undefined ? `${agent} ${zh}` : `${agent} ${zh}（${group.zh}）`,
     kind: "select",
     options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: teamModelLeafSentence(slot, leaf, "en"),
-    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
-    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
+    semantics: agentRouteLeafSentence(agent, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(agent, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${agent}.${leaf}`, agentRouteLeafSentence(agent, leaf, "en"))
   }));
 });
 var SETTINGS_KNOBS = [
@@ -2962,7 +2964,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS,
+  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -2998,11 +3000,9 @@ function labelOf(request) {
 var name = "mpd-roster-provider";
 var inject = dshSeamInject(DSH_SEAM_SUBAGENTS);
 var PROVIDER_NAME = "mpd-roster";
-var SLOT_OF_MEMBER = new Map(Object.entries(TEAM_MODEL_SLOT_GROUPS).flatMap(([slot, group]) => group.members.map((member) => [member.toLowerCase(), slot])));
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const disposers = [];
-  const slotOf = (member) => SLOT_OF_MEMBER.get(member.toLowerCase());
   const configService = () => {
     try {
       return typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined;
@@ -3010,35 +3010,23 @@ function apply(ctx, config = {}) {
       return;
     }
   };
-  const slotUnconfigured = (member) => {
-    const slot = slotOf(member) ?? "teamModels";
-    const error = new Error("SLOT_UNCONFIGURED: " + member + " is routed by " + slot + ", but the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot + " in .mpd/mpd.jsonc.");
-    error.code = "SLOT_UNCONFIGURED";
-    return error;
-  };
   const routeFor = (request) => {
     const member = memberFromLabel(labelOf(request), knownNames());
     if (member === undefined)
       return;
     const live = configService();
-    if (typeof live?.slotResolutionOf === "function") {
-      const resolution = live.slotResolutionOf(member);
-      if (resolution !== undefined && resolution !== null && typeof resolution === "object") {
+    if (typeof live?.agentRouteResolutionOf === "function") {
+      const resolution = live.agentRouteResolutionOf(member);
+      if (resolution !== undefined && resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
         if (resolution.ok)
-          return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] };
-        if (resolution.status === "unrouted")
+          return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] };
+        if (resolution.reason === "unrouted")
           return;
-        const error = new Error(resolution.message);
-        error.code = resolution.code;
-        throw error;
+        const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ");
+        throw agentUnconfiguredRefusal(resolution.agent, detail);
       }
     }
-    if (typeof live?.teamModelRouteOf === "function") {
-      const route = live.teamModelRouteOf(member);
-      if (route !== undefined && route !== null && typeof route === "object")
-        return { route, fallbacks: [] };
-    }
-    throw slotUnconfigured(member);
+    throw agentUnconfiguredRefusal(member, "missing agentRoutes." + member + ".provider, agentRoutes." + member + ".model");
   };
   const knownNames = () => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
   const configBaseName = typeof config.baseProvider === "string" && config.baseProvider !== "" ? config.baseProvider : "spawn";

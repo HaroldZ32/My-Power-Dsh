@@ -117,11 +117,13 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
-共享 schema 声明的同一组可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子（渲染为联动的模型 + 推理强度
-选择器），另加 TUI 界面自身的一个开关 —— 也能在 Web 界面里编辑。三十三个 `agentRoutes` 叶子已随
-按成员覆盖层一起**删除**（`.mpd/plans/slot-single-source.md` §3）：Web 卡片与 `/mpd-model` 对话框都不再
-显示成员覆盖表，既有 `.mpd/mpd.jsonc` 里遗留的块会被忽略且绝不重写，`/mpd-model` 只问
-槽位 → 提供商 → 模型 → 推理强度，并写入 `teamModels.<slot>`。
+共享 schema 声明的同一组可调项 —— 原有 13 个、三十三个 `agentRoutes` 叶子（每个名册 agent 一行：
+提供商 / 模型 / 推理强度，渲染为联动的选择器），另加 TUI 界面自身的一个开关 —— 也能在 Web 界面里编辑。
+**按 AGENT** 的路由才是模型配置的单位，**不存在持久化的槽位**：四个分组只是 `/mpd-model` 的批量编辑
+分组，因此两扇门都按四个分组标题显示**每个 agent 一行**（分组仅用于显示），分组写入经一个点名受影响
+agent 及其当前路由的确认面板后覆盖每个成员自己的条目，`/mpd-model` 依次询问 分组 → 范围（整组，或单个
+agent）→ 提供商 → 模型 → 推理强度，写入 `agentRoutes.<Agent>.<leaf>`，并为单个 agent 提供清除分支。
+遗留的 `teamModels` 块只迁移一次，之后被忽略、永不改写。
 
 **设置 → MPD** 是设置对话框中独立的一栏 —— 它不再位于「插件」标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
@@ -141,8 +143,8 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 schema 各项（团队
-模型槽位提供由目录驱动的选择）的
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 schema 各项（每个
+agent 的路由叶子提供由目录驱动的选择）的
 `mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
@@ -601,8 +603,8 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 ### 6.2 `/settings` 区块**已**打通——entry 保存由宿主持久化、**不写工作区文件**；旧命名空间回写已具名且在此休眠
 
 该区块声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及十二个
-`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` 叶子），它们是**本行 config 的入口文档**
+`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及
+`agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子 —— 每个名册 agent 一行三片叶子），它们是**本行 config 的入口文档**
 （entry `mpd-config`）里的键，经 harness **自带的**表单编辑（entry 由 `packages/mpd-config-plugin` 拥有；
 本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的兜底）。
 **存在两条持久化路径，只有那条休眠的会写你的文件：**
@@ -633,7 +635,7 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 settings 安装器同样保持 base 固定。固定 base **并不**表示每个已保存的旋钮都要等重启，而"无需重启"这句
 也**不能一概而论**：配置服务本身是实时的（每次设置保存、以及监听到项目文件被编辑时都会重新解析），每个
 旋钮的答案取决于**它的消费者在哪里读取**。由消费者每次使用时从实时服务读取 —— **实时生效、无需重启**：
-`teamModels.slot*`、`modelchain.*`、`team.stateDir`、`team.gate`、`team.sensitivity`、
+`agentRoutes.*`、`modelchain.*`、`team.stateDir`、`team.gate`、`team.sensitivity`、
 `captain.investigation`、`delegation.gate`；`watchdog.*` 同样是实时的，但来自**该行自己**读取
 `<workspace>/.mpd/mpd.jsonc`（它不读 `mpd-config` entry，因此**表单保存到不了它**——用户指南 §9.1）；
 `tui.dashboardKey` 在 `mpd-tui` **行配置**于挂载时允许
@@ -664,7 +666,7 @@ base 被冻结，**按工作区读取仍然解析各自会话自己的文件**�
   文档，配置层会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都
   写明了这一条，指的都是这条旧路径。
 - **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
-  每次调用；槽位路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
+  每次调用；agent 路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
   都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
   可强制重读）。这里有**两个不同的 `applies` 答案，不能混为一谈**：`BridgeReport.applies`
   （`packages/mpd-config-plugin/src/bridge.ts`）的类型是 `"live"`，它逐次保存地记录**已解析的值**进入了
