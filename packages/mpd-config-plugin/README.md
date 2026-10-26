@@ -13,73 +13,78 @@ commas) with prototype-pollution-safe merge.
 - `memory.vcs`: `git | svn | both` (Plan C / C6 memory engine; `both` commits to each backend).
   `both` is selectable in Settings as well: the `SettingsSchema` union and the `SETTINGS_KNOBS`
   option list both carry it.
-- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}`: the four team-model
-  slots — the ONE configured route of each member class, with an optional per-slot
-  `fallbacks` chain (see below). No default layer: an unset slot refuses its spawns.
+- `agentRoutes.<Agent>.{provider,model,reasoningEffort?,fallbacks?}`: the per-AGENT model
+  routes — the unit of model configuration, one entry per roster member, with an optional
+  per-agent `fallbacks` chain (see below). No default layer: an unset entry refuses that
+  agent's single-call spawns with `AGENT_UNCONFIGURED`.
 - `team.stateDir`, `hashline.guardEditTools/maxDiffChars/registryFile`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
   `ulw.maxRounds`.
 
-## Team-model slots (`teamModels`)
+## Agent routes (`agentRoutes`)
 
-**The ONE configured model route of every roster member**, one slot per member class.
-Four slots, twelve leaves plus each slot's own optional fallback chain:
+**The ONE configured model route of every roster member is that member's OWN entry.** The unit of model
+configuration is the AGENT; there is NO persisted slot:
 
-| Slot | Path | Member class |
-|---|---|---|
-| 1 | `teamModels.slot1.{provider,model,reasoningEffort?}` | Architect, Planner, Reviewer, Lead, Senior Engineer |
-| 2 | `teamModels.slot2.{provider,model,reasoningEffort?}` | Researcher, Explorer, Plan Reviewer |
-| 3 | `teamModels.slot3.{provider,model,reasoningEffort?}` | Deep Worker, Junior Engineer |
-| 4 | `teamModels.slot4.{provider,model,reasoningEffort?}` | Vision Analyst (the model here MUST accept image input) |
+```
+agentRoutes: {
+  "<Agent Name>": { provider?: string, model?: string, reasoningEffort?: string, fallbacks?: ModelRoute[] }
+}
+ModelRoute = { provider: string, model: string, reasoningEffort?: string }
+```
 
-- **No default layer.** There is zero `.default()` in the slot subtree, and
-  `TEAM_MODEL_SLOT_DEFAULTS` / `withTeamModelsDefaults` are DELETED: a workspace that
-  configured nothing has no route, and an absent `teamModels` block reads as ABSENT
-  (`get("teamModels")` is `undefined`, `mpd_config_get` does not invent one).
-- **No override item.** `agentRoutes` is deleted from the schema, the knobs, the
-  resolver, the TUI dialog and the Web card. A leftover `agentRoutes` block in an old
-  `.mpd/mpd.jsonc` is IGNORED and never rewritten — saving an unrelated leaf leaves it
-  byte-identical.
-- **A slot may carry its OWN fallback chain:** `fallbacks: [{provider, model,
-  reasoningEffort?}, …]`, in precedence order. It is consumed ONCE before the spawn:
-  the first candidate the live catalog POSITIVELY lists wins ("not listed" is not
-  "unavailable"; with no positive listing the primary stands), the winner then passes
-  the effort adaptation, and a malformed entry is dropped with one log line, never
-  fatally.
-- **The read is TOTAL.** `mpdConfig.slotResolutionOf(member)` returns a typed union —
-  `ok` (route + fallbacks), `unconfigured` (missing leaves named), `invalid` (the
-  offending path named) or `unrouted` (no slot carries that member) — and NEVER throws,
-  so a display surface renders `<unconfigured>` instead of crashing.
-  `teamModelRouteOf(member)` stays total too: the route when `ok`, `undefined`
-  otherwise.
-- **An unusable slot REFUSES the spawn** with ONE structured `SLOT_UNCONFIGURED` error
-  naming the slot, its members, the missing leaves and both recovery paths
-  (`/mpd-model`, and `teamModels.slotN` in `.mpd/mpd.jsonc`), stating that nothing was
-  written and no child was started. Only the three spawn appliers (`mpd_role_spawn`,
-  `mpd_workmate_spawn`, the `mpd-roster` teammate provider) throw it; an effort is
-  never clamped. ONE EXCEPTION is the model-capability adaptation: a model whose
-  catalog entry declares **no** reasoning efforts at all is sent none for that call, so
-  it still runs (the adapter's `withSupportedEffort`).
-- **Initial config is FILE initialization, not a runtime default.** A workspace whose
-  `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from the
-  configured providers via the LLM catalog: model = the `deepseek-flash` family (an
-  exact `deepseek-flash`, else a close `*flash*` id), provider = a configured provider
-  that lists it, effort `slot1=max` and `slots 2-4=high`. One log line when it writes;
-  an existing block or user edit is never rewritten; the successful seed is durably
-  marked in `<ws>/.mpd/model-config-seed.json` (created with `wx`, never overwritten,
-  consulted before ANY attempt) so a block you delete on purpose is never re-seeded;
-  with no usable catalog nothing is written and the first spawn reports
-  `SLOT_UNCONFIGURED`. The seed also stands down when a layer ABOVE the project file already
-  configures the slots (the user file, the settings document, the row knobs): the project
-  file must never shadow them.
-- **Front doors:** the twelve leaves are `select` knobs of the ONE 26-row declaration
-  (`SETTINGS_KNOBS`: the original 13 knobs, these 12, and the TUI surface's own knob)
-  in the TUI `/settings` section and in the Web GUI card, whose effective block shows
-  each slot's state (or `<unconfigured>` with the leaves it lacks). Their option lists
-  come from the live model catalog (the adapter's `llmCatalog()` server-side, the
-  host's client catalog on the Web), falling back to `TEAM_MODEL_FALLBACK_OPTIONS`
-  when that catalog is unavailable or degraded — so a slot is always a selection, never
-  free text.
+Keys are the eleven display names (lookup is case- and separator-insensitive through the ONE exported
+member-name normalizer, which lives in this package and is reused by the resolver, the migration writer
+and every display path). The four groups exist ONLY as the `/mpd-model` bulk-edit grouping: a group edit
+writes every member's own entry and stores nothing of its own.
+
+- **No default layer.** There is zero `.default()` in the `agentRoutes` subtree (a schema default would
+  beat the user's file, because the row-knob layer merges last): a workspace that configured nothing has
+  no route, and an absent `agentRoutes` block reads as ABSENT (`get("agentRoutes")` is `undefined`,
+  `mpd_config_get` does not invent one).
+- **`teamModels` is a TOLERATED LEGACY block**, declared as a permissive node rather than a typed slot
+  tree so an existing profile patch or row config still validates and boots. It is read ONLY by the
+  one-time migration (below) and by `mpd_config_get`'s raw pass-through: it is NEVER read for routing
+  and this bundle NEVER writes it.
+- **An entry may carry its OWN fallback chain:** `fallbacks: [{provider, model, reasoningEffort?}, …]`,
+  in precedence order. It is consumed ONCE before the spawn: the first candidate the live catalog
+  POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary
+  stands), the winner then passes the effort adaptation, and a malformed entry is dropped with one log
+  line, never fatally.
+- **The read is TOTAL.** `mpdConfig.agentRouteResolutionOf(member)` returns a typed union — `ok` (route
+  + fallbacks), `unconfigured` (missing leaves named), `invalid` (the offending path named) or
+  `unrouted` (an EXTENSION-contributed role; it carries no `agent` field on purpose) — and NEVER throws,
+  so a display surface renders `<unconfigured>` instead of crashing. `agentRouteOf(member)` stays total
+  too: the route when `ok`, `undefined` otherwise. The names `slotResolutionOf` / `teamModelRouteOf` are
+  REMOVED.
+- **An unusable route REFUSES the spawn** with ONE structured `AGENT_UNCONFIGURED` error naming the
+  agent, the missing leaves (`agentRoutes.<Agent>.provider`, `.model`) and both recovery paths
+  (`/mpd-model`, and `agentRoutes.<Agent>` in `.mpd/mpd.jsonc`), stating that nothing was written and no
+  child was started. Only the three spawn appliers (`mpd_role_spawn`, `mpd_workmate_spawn`, the
+  `mpd-roster` teammate provider) throw it; `unrouted` is NOT a refusal, so an extension role keeps its
+  own chain and still spawns; an effort is never clamped. ONE EXCEPTION is the model-capability
+  adaptation: a model whose catalog entry declares **no** reasoning efforts at all is sent none for that
+  call, so it still runs (the adapter's `withSupportedEffort`).
+- **Initialization is FILE initialization, not a runtime default, and the marker is VERSIONED.** On
+  mount, for each live workspace root: if `agentRoutes` is already declared in ANY layer, write the
+  marker `{"version": 2}` and change nothing else; else if the EFFECTIVE config declares `teamModels`,
+  materialize all eleven `agentRoutes` entries from their groups' routes (one log line naming the legacy
+  source) and write the v2 marker; else seed the eleven entries from the configured providers via the
+  LLM catalog — model = the `deepseek-flash` family (an exact `deepseek-flash`, else a close `*flash*`
+  id), provider = a configured provider that lists it, effort `max` for the slot-1 group and `high` for
+  the rest — then write the v2 marker. Initialization runs whenever the marker is ABSENT, unparsable or
+  below version 2 (v0.15.4/v0.15.5 shipped an unversioned marker, and a presence-only rule would strand
+  those returning workspaces), and once the v2 marker exists a block you delete on purpose is never
+  re-seeded. An existing block or user edit is never rewritten; with no usable catalog nothing is
+  written and the first spawn reports `AGENT_UNCONFIGURED`.
+- **Front doors:** the schema declares one three-leaf row per roster agent
+  (`agentRoutes.<Agent>.{provider,model,reasoningEffort}`) in the TUI `/settings` section and the Web
+  GUI card, grouped under the four group headings (grouping is DISPLAY-ONLY); an unconfigured agent
+  shows `<unconfigured>` with the leaves it lacks. Both write `agentRoutes.<Agent>.<leaf>` and neither
+  writes `teamModels`. Their option lists come from the live model catalog (the adapter's
+  `llmCatalog()` server-side, the host's client catalog on the Web), falling back to
+  `TEAM_MODEL_FALLBACK_OPTIONS` when that catalog is unavailable or degraded — so a leaf is always a
+  selection, never free text.
 - **Restart semantics:** the model routes are read PER USE, so a save (or a watched
   file edit) reaches the next spawn/resolve with no restart; `mpd_config_reload` forces
   a re-read.
@@ -87,16 +92,14 @@ Four slots, twelve leaves plus each slot's own optional fallback chain:
 ## Service / tools
 
 - Provides the `mpdConfig` service for other mpd plugins (`inject: ["mpdConfig"]`):
-  `get(key?)`, `reload()`, `states()`, `teamModelRouteOf(member)`.
-- `teamModelRouteOf(member)` is the read that makes a **saved** `teamModels` slot take
-  effect: it resolves the member's slot (membership comes from the one declaration both
-  settings front doors already share), resolves it over the materialised defaults, and
-  returns `{ provider, model, reasoningEffort? }` — `undefined` for a member the roster
-  does not slot-route, and a thrown error naming the member and the slot when a
-  slot-routed member's slot carries no provider or no model. The roster's one-shot paths
-  (`mpd_role_spawn`, `mpd_roles_list`, the workmate library and `mpd_modelchain_resolve`)
-  read it through this service, so a saved slot reaches them without a second
-  cross-package import.
+  `get(key?)`, `reload()`, `states()`, `agentRouteResolutionOf(member)`, `agentRouteOf(member)`.
+- `agentRouteResolutionOf(member)` / `agentRouteOf(member)` are the reads that make a **saved**
+  `agentRoutes` entry take effect. The first returns the typed, never-throwing union
+  (`ok` / `unconfigured` / `invalid` / `unrouted`) that display surfaces render; the second returns
+  `{ provider, model, reasoningEffort?, fallbacks? }` when `ok` and `undefined` otherwise. The roster's
+  one-shot paths (`mpd_role_spawn`, `mpd_roles_list`, the workmate library and `mpd_modelchain_resolve`)
+  read them through this service, so a saved route reaches them without a second cross-package import.
+  The removed names `slotResolutionOf` / `teamModelRouteOf` must not come back.
 - `mpd_config_get` / `mpd_config_reload` tools.
 
 ## The `/settings` bridge
@@ -118,7 +121,7 @@ layers on every call and report the new value at once, but a consumer that captu
 at `apply()` still acts on the old one. Two groups plus one special case, and this section states them
 all — never only the promising half (`docs/user-guide.md` §9.1 is the per-knob table):
 
-- **live in the running process** — the model routes (`teamModels.slot*`, `modelchain.*`),
+- **live in the running process** — the model routes (`agentRoutes.*`, `modelchain.*`),
   `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
   `captain.investigation` / `delegation.gate` (each reads the row's own `configValue` per decision);
 - **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*`, `commentChecker.*`,

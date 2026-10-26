@@ -1156,8 +1156,8 @@ export interface DshLlmCatalog {
 /**
  * The route fields one child run is described by, as an effort-carrying caller states them.
  *
- * This is the shape `mpd-roles-plugin` resolves a `teamModels` slot into and the shape
- * `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
+ * This is the shape `mpd-roles-plugin` resolves a roster agent's `agentRoutes` entry into and the
+ * shape `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
  * {@link withSupportedEffort} before the provider ever sees it.
  */
 export interface DshEffortRoute {
@@ -1193,12 +1193,13 @@ export function modelDeclaresNoEffort(catalog: DshLlmCatalog, provider: string, 
  * The route to actually SEND: the caller's own, or a copy with `reasoningEffort` removed when the
  * catalog says the model declares no reasoning efforts at all.
  *
- * WHY THIS EXISTS. A `teamModels` slot is read MATERIALISED over its schema defaults, so a workspace
- * that changed only a slot's provider/model still carries the slot's default effort (`max`/`high`).
- * Handing that keyword to a model the host lists with an EMPTY effort array fails the whole call —
- * the reported defect, on `mpd_role_spawn`, `mpd_workmate_spawn` and a slot-routed `spawn_teammate`
- * alike. Both settings front doors already DERIVE the effort list from the selected model's own
- * `efforts`; this is the runtime half of the same adaptation.
+ * WHY THIS EXISTS. A configured route may carry an effort keyword the model it names does not
+ * support — a hand-written `agentRoutes.<Agent>.reasoningEffort`, or a route migrated from the
+ * retired `teamModels` defaults (`max`/`high`). Handing that keyword to a model the host lists with
+ * an EMPTY effort array fails the whole call — a defect first measured on `mpd_role_spawn`,
+ * `mpd_workmate_spawn` and a routed `spawn_teammate` alike. Both settings front doors already DERIVE
+ * the effort list from the selected model's own `efforts`; this is the runtime half of the same
+ * adaptation.
  *
  * The rule is deliberately narrow, and it is NOT clamping:
  *   * a model listed with NO efforts loses the keyword — the run proceeds on the model's own default
@@ -1238,7 +1239,7 @@ export async function withSupportedEffort(
 }
 
 /**
- * The route a run ACTUALLY takes after its slot's fallback chain is consumed (contract §8).
+ * The route a run ACTUALLY takes after its agent route's fallback chain is consumed (contract §8).
  *
  * The chain is consumed ONCE, before the spawn: the first candidate the catalog POSITIVELY lists
  * (provider listed AND model present) wins, and the winner is then adapted by the SAME
@@ -1292,7 +1293,7 @@ function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): 
 }
 
 /**
- * Consume ONE slot's fallback chain and adapt the winner's effort — the single entry point every
+ * Consume ONE route's fallback chain and adapt the winner's effort — the single entry point every
  * spawn applier calls before a child is started (contract §8).
  *
  * Rules, in order:
@@ -1304,8 +1305,8 @@ function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): 
  * Never throws: a degraded host cannot fail a spawn here.
  *
  * @param dsh - the adapter (or a double) carrying the catalog read.
- * @param primary - the slot's own configured route.
- * @param fallbacks - the slot's fallback chain, in the user's order (unknown shapes are dropped).
+ * @param primary - the configured route the caller resolved (a roster agent's surviving primary).
+ * @param fallbacks - that route's own fallback chain, in the user's order (unknown shapes are dropped).
  * @returns the route to send plus which candidate won and how many entries were dropped.
  */
 export async function resolveRunRoute(
@@ -1352,10 +1353,10 @@ export async function resolveRunRoute(
   /** The winning candidate, before the effort adaptation. */
   const winner = index === 0 ? primary : wellFormed[index - 1]
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`)
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`)
   }
   /** The route after the effort adaptation: the same catalog read, never a second one. */
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner)
@@ -1365,9 +1366,9 @@ export async function resolveRunRoute(
 // ── THE NATIVE TEAM MEMBER'S ROUTE ──────────────────────────────────────────
 //
 // WHY THIS EXISTS. `nativeTeamExecutor().spawn` used to build the durable-child spec from the
-// caller's request and consult no `teamModels` slot, so in a default (native) composition EVERY
-// team member inherited the STAGING session's model route and the four configured routes applied
-// to no teammate. The route decision now lives here, in ONE pure function, and the spawn turns its
+// caller's request and consult no route source, so in a default (native) composition EVERY team
+// member inherited the STAGING session's model route and the configured per-agent routes applied to
+// no teammate. The route decision now lives here, in ONE pure function, and the spawn turns its
 // answer into the child's `agentOptions`.
 //
 // IDENTITY is the hard half. The native path knows a member's role, its description and its name,
@@ -1388,27 +1389,65 @@ export interface DshTeamMemberIdentity {
 }
 
 /**
- * The subset of the `mpdConfig` service's TOTAL slot resolution this module reads.
+ * The code every refused spawn carries, MIRRORED from `AGENT_UNCONFIGURED_CODE` in
+ * `packages/mpd-config-plugin/src/index.ts` (contract §3).
+ */
+export const AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED"
+
+/**
+ * The `AGENT_UNCONFIGURED` sentence ONE refused spawn reports — a MIRROR of
+ * `agentUnconfiguredMessage` in `packages/mpd-config-plugin/src/index.ts` (contract §3).
+ *
+ * WHY MIRRORED INSTEAD OF IMPORTED: the spawn appliers reach the config row as a SERVICE, and a
+ * cross-package import would be a NEW entry in the frozen coupling inventory
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+ * shrink). This module is the one surface every applier already imports, so the sentence lives here
+ * ONCE and the mirror keeps the facts identical: the agent, the missing or malformed leaf paths, both
+ * recovery paths, and that nothing was written and no child was started.
+ *
+ * @param agent - the canonical roster display name whose route is unusable.
+ * @param detail - what is wrong: the missing leaf paths, or the malformed one.
+ * @returns the ONE sentence the appliers throw and the executor quotes.
+ */
+export function agentUnconfiguredMessage(agent: string, detail: string): string {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail
+    + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes."
+    + agent + " in .mpd/mpd.jsonc."
+}
+
+/**
+ * The ONE structured failure a single-call spawn applier throws (contract §3).
+ * @param agent - the canonical roster display name whose route is unusable.
+ * @param detail - the missing leaf paths, or the malformed path.
+ * @returns the error, carrying {@link AGENT_UNCONFIGURED_CODE} so a caller branches on the code.
+ */
+export function agentUnconfiguredRefusal(agent: string, detail: string): Error {
+  /** The thrown error, carrying the canonical sentence and the branchable code. */
+  const error = new Error(agentUnconfiguredMessage(agent, detail))
+  ;(error as Error & { code?: string }).code = AGENT_UNCONFIGURED_CODE
+  return error
+}
+
+/**
+ * The subset of the `mpdConfig` service's TOTAL agent-route resolution this module reads.
  *
  * Mirrored STRUCTURALLY on purpose: a cross-package import would be a new entry in the frozen
- * coupling inventory, and this module must stay able to answer on a composition whose config-row
- * dist is older than the current union (see the version-skew fields below).
+ * coupling inventory, and a foreign service of any shape may answer — an answer without the union's
+ * markers is treated as NO answer, never as a route.
  */
-export interface DshTeamSlotAnswer {
-  /** The service's usable marker; `true` carries a route, `false` a status. */
+export interface DshTeamAgentRouteAnswer {
+  /** The service's usable marker; `true` carries a route, `false` a reason. */
   ok: boolean
-  /** The slot that routes the member (`slot1`..`slot4`), when the answer names one. */
-  slot?: string
+  /** The canonical roster display name the answer belongs to, when it names one. */
+  agent?: string
   /** Why an unusable answer is unusable; `unrouted` means the name is not a roster member. */
-  status?: "unconfigured" | "invalid" | "unrouted"
-  /** The configured primary route; every leaf is optional because an older dist may omit one. */
-  route?: { provider?: string; model?: string; reasoningEffort?: string }
-  /** The slot's OWN fallback chain, forwarded untouched to {@link resolveRunRoute}. */
-  fallbacks?: readonly unknown[]
-  /** The machine-readable refusal code the service attaches (`SLOT_UNCONFIGURED`). */
-  code?: string
-  /** The service's canonical refusal sentence; the spawn quotes it in its ONE log line. */
-  message?: string
+  reason?: "unconfigured" | "invalid" | "unrouted"
+  /** The configured route; every leaf is optional because a foreign dist may omit one. */
+  route?: { provider?: string; model?: string; reasoningEffort?: string; fallbacks?: readonly unknown[] }
+  /** The dotted leaf paths an `unconfigured` answer still needs (`agentRoutes.<Agent>.provider` first). */
+  missing?: readonly unknown[]
+  /** The offending dotted path an `invalid` answer reports, e.g. `agentRoutes.Architect.model`. */
+  problem?: string
 }
 
 /**
@@ -1418,15 +1457,13 @@ export interface DshTeamSlotAnswer {
  */
 export type DshTeamRouteOutcome =
   | {
-      /** A roster member was recognized and its slot is usable. */
+      /** A roster member was recognized and its own `agentRoutes` entry is usable. */
       status: "routed"
       /** The identity channel that matched, as it was sent to the service. */
       member: string
-      /** The slot that routes this member. */
-      slot: string
       /** The configured primary route, before {@link resolveRunRoute} consumes the chain. */
       route: DshEffortRoute
-      /** The slot's own fallback chain, in the user's order. */
+      /** The agent's own fallback chain, in the user's order. */
       fallbacks: readonly unknown[]
     }
   | {
@@ -1434,15 +1471,13 @@ export type DshTeamRouteOutcome =
       status: "unmatched"
     }
   | {
-      /** The member is routed by a slot that cannot be used; the spawn still raises it. */
+      /** The matched agent's route cannot be used; the spawn still raises it (inheritance). */
       status: "unusable"
       /** The identity channel that matched, as it was sent to the service. */
       member: string
-      /** The slot that routes the member, when the service named one. */
-      slot?: string
       /** Which unusable shape the service reported. */
       reason: "unconfigured" | "invalid"
-      /** The service's own sentence, quoted verbatim in the spawn's ONE log line. */
+      /** The canonical `AGENT_UNCONFIGURED` sentence, quoted verbatim in the spawn's ONE log line. */
       detail: string
     }
   | {
@@ -1499,79 +1534,79 @@ function memberIdentityCandidates(identity: DshTeamMemberIdentity): string[] {
 }
 
 /**
- * Resolve ONE native team member's `teamModels` route from its identity (contract: role ->
+ * Resolve ONE native team member's route from its OWN `agentRoutes` entry (contract: role ->
  * description head -> whole name -> unmatched).
  *
  * TOTAL by contract: it never throws. A service that refuses the read, an answer that does not
- * carry the union's shape, and a matched member whose slot is unusable are all REPORTED as union
+ * carry the union's shape, and a matched agent whose route is unusable are all REPORTED as union
  * states, because the spawn must degrade to today's inheritance instead of leaving a team
- * half-built.
+ * half-built. An `unrouted` answer is NOT a failure — the name simply is not a roster agent — so the
+ * identity walk continues to the next channel.
  *
  * @param identity - the member's identity channels, in the caller's own spelling.
- * @param slotResolutionOf - the live config service's total read, or `undefined` when absent.
+ * @param agentRouteResolutionOf - the live config service's total read, or `undefined` when absent.
  * @returns the routed route (plus its fallback chain), or the exact reason no route applies.
  */
 export function resolveTeamMemberRoute(
   identity: DshTeamMemberIdentity,
-  slotResolutionOf: ((member: string) => unknown) | undefined,
+  agentRouteResolutionOf: ((member: string) => unknown) | undefined,
 ): DshTeamRouteOutcome {
-  if (typeof slotResolutionOf !== "function") return { status: "no-config-service" }
+  if (typeof agentRouteResolutionOf !== "function") return { status: "no-config-service" }
   for (const candidate of memberIdentityCandidates(identity)) {
     /** The service's answer for this candidate, contained: a throwing read is "no answer". */
     let answer: unknown
     try {
-      answer = slotResolutionOf(candidate)
+      answer = agentRouteResolutionOf(candidate)
     } catch {
       continue
     }
     if (answer === null || typeof answer !== "object") continue
     /** The answer read as the service's documented union. */
-    const slotAnswer = answer as DshTeamSlotAnswer
-    if (slotAnswer.ok === true) {
+    const routeAnswer = answer as DshTeamAgentRouteAnswer
+    /** The canonical display name the answer carries, else the caller's own spelling. */
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate
+    if (routeAnswer.ok === true) {
       /** The primary route's provider, trimmed; an absent/blank one makes the answer unusable. */
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : ""
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : ""
       /** The primary route's model, trimmed; an absent/blank one makes the answer unusable. */
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : ""
-      /** The slot id the answer names, or "" for an older dist that omits it. */
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : ""
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : ""
       if (provider === "" || model === "") {
-        // `ok: true` with a route nobody can send is a CONTRADICTION, reported as an invalid slot
-        // rather than silently inheriting: the service claimed the member IS routed.
+        // `ok: true` with a route nobody can send is a CONTRADICTION, reported as invalid rather
+        // than silently inheriting: the service claimed the agent IS routed.
         return {
           status: "unusable",
           member: candidate,
-          ...(slot === "" ? {} : { slot }),
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== ""
-            ? slotAnswer.message
-            : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`,
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model"),
         }
       }
       /** The effort keyword, carried only when the service declared a non-blank one. */
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : ""
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : ""
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : [],
+        // The agent's OWN chain rides on its route (config `AgentRoute.fallbacks`), consumed once by
+        // the caller's `resolveRunRoute`.
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : [],
       }
     }
-    if (slotAnswer.ok === false) {
-      // `unrouted` is NOT a failure: the name simply is not a roster member, so the walk continues
-      // to the next identity channel. Only a real member with an unusable slot stops it.
-      if (slotAnswer.status === "unrouted") continue
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        /** The service's own sentence, which the spawn's ONE log line quotes. */
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== ""
-          ? slotAnswer.message
-          : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`
+    if (routeAnswer.ok === false) {
+      // `unrouted` is NOT a failure: the name simply is not a roster agent, so the walk continues to
+      // the next identity channel. Only a real agent with an unusable route stops it.
+      if (routeAnswer.reason === "unrouted") continue
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        /** The detail the canonical `AGENT_UNCONFIGURED` sentence names: leaves, or the bad path. */
+        const detail = routeAnswer.reason === "invalid"
+          ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string"
+          : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0
+            ? routeAnswer.missing.map(String).join(", ")
+            : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model")
         return {
           status: "unusable",
           member: candidate,
-          ...(typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {}),
-          reason: slotAnswer.status,
-          detail,
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail),
         }
       }
     }
@@ -2180,7 +2215,7 @@ export interface DshAdapter {
    * `SubagentStartRequest` carries no `agentOptions`/`persona`/`toolFilter`, so the
    * teammate runs on the route of the session that stages it: the captain's in a
    * top-level spawn, the Lead's in a team-lead spawn. `mpd-roster-provider-plugin` applies
-   * a roster member's `teamModels` slot only when the teammate DESCRIPTION names that
+   * a roster agent's own `agentRoutes` entry only when the teammate DESCRIPTION names that
    * member; prompt text cannot change a route.
    *
    * Degrade: THROWS when the service or `spawnTeammate` is absent (reported by the
@@ -3370,7 +3405,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
-   * The LIVE `mpdConfig` slot resolver, or `undefined` when the composition mounts no config row.
+   * The LIVE `mpdConfig` agent-route resolver, or `undefined` when the composition mounts no config row.
    *
    * WHY THE ADAPTER ROW CAN READ IT (measured, this wave): `mpd-config` provides `mpdConfig`
    * unconditionally in its own `apply`, the two rows are siblings in the same host patch layer,
@@ -3380,39 +3415,25 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * still seen — and a composition that has none answers `undefined`, which is exactly the
    * `no-config-service` outcome rather than a boot failure.
    *
-   * VERSION SKEW (same two-step read as `mpd-roles` and the roster provider): the typed
-   * `slotResolutionOf` is preferred; a stale config-row dist exposes only the older
-   * `teamModelRouteOf`, whose object answer is promoted to a routed slot answer and whose
-   * `undefined` reads as `unrouted` (the adapter owns no roster list, so "no route" is the only
-   * honest answer that dist can give).
-   * @returns the total slot read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
+   * THE READ IS TOTAL AND TYPED (contract §2): `agentRouteResolutionOf` is the ONE method, and an
+   * answer without the union's `ok` marker is treated as NO answer — never as a route — so a foreign
+   * or half-present service degrades to inheritance instead of moving a teammate onto a guess.
+   * @returns the total agent-route read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
    */
-  const configSlotResolver = (): ((member: string) => unknown) | undefined => {
+  const configAgentRouteResolver = (): ((member: string) => unknown) | undefined => {
     /** The live config service, read per call so a late-mounted row is still seen. */
-    const config = service("mpdConfig") as { slotResolutionOf?: unknown; teamModelRouteOf?: unknown } | undefined
+    const config = service("mpdConfig") as { agentRouteResolutionOf?: unknown } | undefined
     if (config === undefined || config === null) return undefined
-    if (typeof config.slotResolutionOf !== "function" && typeof config.teamModelRouteOf !== "function") return undefined
+    if (typeof config.agentRouteResolutionOf !== "function") return undefined
     return (member: string): unknown => {
-      if (typeof config.slotResolutionOf === "function") {
-        try {
-          /** The service's total answer, trusted only when it carries the union's `ok` marker. */
-          const answer = (config.slotResolutionOf as (m: string) => unknown).call(config, member)
-          if (answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean") return answer
-        } catch {
-          // A stale service that throws on the typed read still gets the version-skew read below.
-        }
+      try {
+        /** The service's total answer, trusted only when it carries the union's `ok` marker. */
+        const answer = (config.agentRouteResolutionOf as (m: string) => unknown).call(config, member)
+        return answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean" ? answer : undefined
+      } catch {
+        // A service that throws on the typed read answers NOTHING; the spawn inherits, never fails.
+        return undefined
       }
-      if (typeof config.teamModelRouteOf === "function") {
-        try {
-          /** The older read's route, or undefined when this member has none. */
-          const route = (config.teamModelRouteOf as (m: string) => unknown).call(config, member)
-          if (route !== null && typeof route === "object") return { ok: true, slot: "", route, fallbacks: [] }
-        } catch {
-          // A throwing older read is "no route", never a spawn failure.
-        }
-        return { ok: false, status: "unrouted", slot: undefined }
-      }
-      return undefined
     }
   }
 
@@ -3708,18 +3729,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
         /** The subagents service, or a throw naming the action that could not happen. */
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
-        /** The child's route: the caller's OWN when supplied, else the member's `teamModels` slot. */
+        /** The child's route: the caller's OWN when supplied, else the member's own `agentRoutes` entry. */
         let agentOptions: unknown = request.agentOptions
         if (agentOptions === undefined) {
           // A CALLER'S ROUTE IS NEVER SECOND-GUESSED: when `agentOptions` arrived it was already
-          // resolved by the spawner, so no slot read happens at all.
+          // resolved by the spawner, so no agent-route read happens at all.
           /** What this member's identity resolved to; the config read is per spawn, never cached. */
           const outcome = resolveTeamMemberRoute(
             { role: request.role, description: request.description, name: request.name },
-            configSlotResolver(),
+            configAgentRouteResolver(),
           )
           if (outcome.status === "routed") {
-            /** The slot's fallback chain consumed ONCE, then the winner's effort adapted. */
+            /** The agent's fallback chain consumed ONCE, then the winner's effort adapted. */
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks)
             agentOptions = resolved.route
           } else {
@@ -3728,7 +3749,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             // Omitting `agentOptions` is today's inheritance (the staging session's route).
             /** The one diagnostic sentence: every non-routed outcome names the member and why. */
             const line = outcome.status === "unusable"
-              ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}`
+              ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}`
               : outcome.status === "no-config-service"
                 ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)`
                 : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`

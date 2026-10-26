@@ -8,7 +8,7 @@
 
 | Tool | Purpose |
 |---|---|
-| `mpd_modelchain_resolve` | 为名册角色解析 provider/model 路由，按角色 NAME 寻址（`Senior Engineer`、`Architect`、`Plan Reviewer` 等，大小写与分隔符任意）。优先级是**槽位优先**（`slotResolutionIn`）：被 `teamModels` 槽位路由的成员**只**从自己的槽位作答 —— 槽位主路由加上该槽位自己的 `fallbacks`，`status: "configured"` —— 而被路由但**不可用**的槽位（叶子缺失或格式错误）返回空的 `provider`/`model`、`status: "unconfigured"`，并在 reason 里点名出问题的 `teamModels.slotN`，**绝不**回落到内置路由。只有 `unrouted` 成员（没有任何槽位承载它，例如 extension 角色）才依次落到实时的 `modelchain.<id>` overlay、名册自身的 `chain[0]`、以及合并后的内置/已配置表。内部键 —— 稳定 id、legacy 的 `mpd-<id>` 形式、camelCase 链键 —— 会被**响亮拒绝**，错误中只列出名册名称；未知角色或未给出角色同样被拒绝，而不再静默地返回通用默认链。 |
+| `mpd_modelchain_resolve` | 为名册角色解析 provider/model 路由，按角色 NAME 寻址（`Senior Engineer`、`Architect`、`Plan Reviewer` 等，大小写与分隔符任意）。**对名册成员而言，agent 自己的 `agentRoutes` 条目是唯一的路由来源**：已配置的条目以它的 `provider` + `model`、按顺序的 `fallbacks` 和 `status: "configured"` 作答；被路由但**不可用**的条目（叶子缺失或格式错误）返回空的 `provider`/`model`、`chain: []`、`status: "unconfigured"`、缺失的叶子，并在 reason 里点名出问题的 `agentRoutes.<Agent>` 路径 —— **绝不**回落到内置路由。只有 `unrouted` 成员（由扩展贡献、`agentRoutes` 不决定其路由的 role）才依次落到实时的 `modelchain.<id>` overlay、它自己声明的链、以及合并后的表。**不存在槽位**：`TEAM_MODEL_SLOT_GROUPS` 只是 `/mpd-model` 的分组，用来编辑每个成员自己的条目。内部键 —— 稳定 id、legacy 的 `mpd-<id>` 形式、camelCase 链键 —— 会被**响亮拒绝**，错误中只列出名册名称；未知角色或未给出角色同样被拒绝，而不再静默地返回通用默认链。 |
 | `mpd_memory_save` | Persist a key/value note in `<workspace>/.mpd/memory.json`. |
 | `mpd_memory_recall` | Read notes by key/substring. |
 
@@ -32,8 +32,8 @@
 
 ```text
 mpd_modelchain_resolve { role: "Senior Engineer" }
-#   槽位已配置 -> { provider, model, chain: [主路由, ...fallbacks], status: "configured" }
-#   槽位不可用 -> { provider: "", model: "", chain: [], status: "unconfigured", missing: [...], reason }
+#   已配置   -> { provider, model, chain: [主路由, ...fallbacks], status: "configured" }
+#   不可用   -> { provider: "", model: "", chain: [], status: "unconfigured", missing: [...], reason }
 mpd_memory_save { key: "goal", value: "..." }
 mpd_memory_recall { key: "goal" }
 ```

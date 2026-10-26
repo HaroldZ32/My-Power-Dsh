@@ -348,7 +348,7 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
     // once, and let the first spawn report SLOT_UNCONFIGURED"). Nothing else may be logged.
     expect(h.logs).toHaveLength(2)
     expect(h.logs[0]).toContain('registered the "mpd" namespace with the file-derived base')
-    expect(h.logs[1]).toContain("[mpd-config] team-model slots are not configured")
+    expect(h.logs[1]).toContain("[mpd-config] agentRoutes is not configured")
     expect(h.logs[1]).toContain("nothing was written")
   })
 })
@@ -708,8 +708,8 @@ describe("the file-derived base under the captain's cardinality rule (§10.1 + r
   })
 })
 
-describe("the team-model slots have NO read-path default layer (contract §2/§9)", () => {
-  test("a fully absent .mpd/mpd.jsonc resolves NO slot: an absent block is ABSENT", async () => {
+describe("the per-agent routes have NO read-path default layer (contract §1/§2)", () => {
+  test("a fully absent .mpd/mpd.jsonc resolves NO route: an absent block is ABSENT", async () => {
     // No `.mpd` directory at all: the workspace has no file for the layer to read.
     /** Bare workspace with no `.mpd` directory at all; `mkdtempSync` guarantees it exists and is empty. */
     const bare = mkdtempSync(join(tmpdir(), "mpd-wiring-bare-"))
@@ -718,60 +718,65 @@ describe("the team-model slots have NO read-path default layer (contract §2/§9
     const h = harness({ roots: [bare] })
     apply(h.ctx)
     expect(h.provided.mpdConfig.states().files).toEqual([])
-    // The deleted default layer: no provider/model/effort is invented for a workspace that wrote none.
-    expect(h.provided.mpdConfig.get("teamModels")).toBeUndefined()
-    expect(h.provided.mpdConfig.get("teamModels.slot1")).toBeUndefined()
+    // No provider/model/effort is invented for a workspace that wrote none.
+    expect(h.provided.mpdConfig.get("agentRoutes")).toBeUndefined()
+    expect(h.provided.mpdConfig.get("agentRoutes.Architect")).toBeUndefined()
     // The typed state is what a display surface renders: unconfigured, with the missing leaves named.
-    expect(h.provided.mpdConfig.slotResolutionOf("Architect")).toMatchObject({ ok: false, status: "unconfigured", slot: "slot1", missing: ["provider", "model"] })
+    expect(h.provided.mpdConfig.agentRouteResolutionOf("Architect")).toMatchObject({
+      ok: false,
+      reason: "unconfigured",
+      agent: "Architect",
+      missing: ["agentRoutes.Architect.provider", "agentRoutes.Architect.model"],
+    })
     // … and the tool consumer sees the same RAW view (no materialised block).
     /** The `mpd_config_get` tool the row registered, executed below as a consumer would. */
     const get = h.registered.find((tool: any) => tool.name === "mpd_config_get")
-    /** That tool's answer for a key-less call, which must NOT carry an invented slot block. */
+    /** That tool's answer for a key-less call, which must NOT carry an invented route block. */
     const payload = await get.execute({})
-    expect(payload.config).not.toHaveProperty("teamModels")
+    expect(payload.config).not.toHaveProperty("agentRoutes")
     await h.settle()
   })
 
-  test("NEGATIVE CONTROL: an unrelated settings-document save never injects a teamModels block into the file", async () => {
+  test("NEGATIVE CONTROL: an unrelated settings-document save never injects an agentRoutes block into the file", async () => {
     /** Sole live workspace that receives the unrelated knob's new value. */
     const { root, file } = sandbox()
     writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
-    /** Fake adapter whose save below changes a knob the slots do not depend on. */
+    /** Fake adapter whose save below changes a knob the routes do not depend on. */
     const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
     apply(h.ctx)
     // A save of an UNRELATED knob through the settings document: the bridge writes that leaf and
     // only that leaf, because its delta comes from the settings document, never from the resolved
-    // config — so no slot leaf can leak into the workspace file.
+    // config — so no route leaf can leak into the workspace file.
     h.setUser({ ulw: { maxRounds: 11 } })
     h.emit("update")
     await h.settle()
-    /** The written file, whose whole text is inspected for any trace of a slot block. */
+    /** The written file, whose whole text is inspected for any trace of a route block. */
     const text = readFileSync(file, "utf8")
     expect(text).toContain('"maxRounds": 11')
-    expect(text).not.toContain("teamModels")
+    expect(text).not.toContain("agentRoutes")
     expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 11 } })
     expect(h.provided.mpdConfig.states().writeback.writtenTo).toEqual([file])
-    // the READ path still answers NO slot, and the raw read carries none either
-    expect(h.provided.mpdConfig.get("teamModels")).toBeUndefined()
-    expect(h.provided.mpdConfig.get()).not.toHaveProperty("teamModels")
+    // the READ path still answers NO route, and the raw read carries none either
+    expect(h.provided.mpdConfig.get("agentRoutes")).toBeUndefined()
+    expect(h.provided.mpdConfig.get()).not.toHaveProperty("agentRoutes")
   })
 
-  test("a slot leaf SAVED through the settings document is what lands in the file (the slots stay editable)", async () => {
-    /** Sole live workspace that receives the saved slot leaf. */
+  test("a route leaf SAVED through the settings document is what lands in the file (the routes stay editable)", async () => {
+    /** Sole live workspace that receives the saved route leaf. */
     const { root, file } = sandbox()
     writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
-    /** Fake adapter whose save below carries one slot leaf, which the file must then hold. */
+    /** Fake adapter whose save below carries one route leaf, which the file must then hold. */
     const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 3 }, teamModels: { slot2: { model: "deepseek-v4-pro" } } })
+    h.setUser({ ulw: { maxRounds: 3 }, agentRoutes: { Architect: { model: "deepseek-v4-pro" } } })
     h.emit("update")
     await h.settle()
     expect(JSON.parse(readFileSync(file, "utf8").replace(/^\s*\/\/.*$/gm, ""))).toEqual({
       ulw: { maxRounds: 3 },
-      teamModels: { slot2: { model: "deepseek-v4-pro" } },
+      agentRoutes: { Architect: { model: "deepseek-v4-pro" } },
     })
     // The saved leaf is served VERBATIM — no sibling leaf is filled in by a default.
-    expect(h.provided.mpdConfig.get("teamModels.slot2")).toEqual({ model: "deepseek-v4-pro" })
-    expect(h.provided.mpdConfig.get("teamModels.slot1")).toBeUndefined()
+    expect(h.provided.mpdConfig.get("agentRoutes.Architect")).toEqual({ model: "deepseek-v4-pro" })
+    expect(h.provided.mpdConfig.get("agentRoutes.Planner")).toBeUndefined()
   })
 })

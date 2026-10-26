@@ -81,7 +81,7 @@ describe("D-09 — memory.vcs accepts the mode the memory row honours", () => {
 const MOUNT_CAPTURED = ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]
 
 /** The knobs READ per use, i.e. the groups that reach the running process. */
-const LIVE_GROUPS = ["teamModels.slot*", "modelchain.*", "team.stateDir", "team.gate", "team.sensitivity", "captain.investigation", "delegation.gate"]
+const LIVE_GROUPS = ["agentRoutes.*", "modelchain.*", "team.stateDir", "team.gate", "team.sensitivity", "captain.investigation", "delegation.gate"]
 
 describe("D-18 — the disclosure tells the SCOPED truth, and states BOTH halves", () => {
   test("the live half names every group that reads the config service per use", () => {

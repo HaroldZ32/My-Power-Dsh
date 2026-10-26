@@ -4,11 +4,11 @@
 // platform), four phases, NO restart between the saves and the spawns:
 //
 //   A  BASELINE — create a session; the local DeepSeek-Messages stub answers the parent's
-//      first model step with ONE `mpd_role_spawn` tool call (role "Junior Engineer", slot 3);
-//      the spawned child's own request runs on the workspace's CONFIGURED slot3 route
-//      (deepseek-v4-flash): the contract deleted the built-in slot-default layer, so the sandbox's
-//      `.mpd/mpd.jsonc` declares that route before the boot.
-//   B  SAVE — `settings/mutate(ns="mpd-config", set teamModels.slot3.model = deepseek-v4-pro)`
+//      first model step with ONE `mpd_role_spawn` tool call (role "Junior Engineer", routed from
+//      its OWN `agentRoutes` entry); the spawned child's own request runs on the workspace's
+//      CONFIGURED route for that agent (deepseek-v4-flash): there is no built-in default layer, so
+//      the sandbox's `.mpd/mpd.jsonc` declares `agentRoutes."Junior Engineer"` before the boot.
+//   B  SAVE — `settings/mutate(ns="mpd-config", set agentRoutes."Junior Engineer".model = deepseek-v4-pro)`
 //      over the host's authenticated gateway API: the SAME entry-config surface the web card
 //      (`ctx.configForms.get("mpd-config")`) and the TUI settings section write through.
 //   C  AFTER-SAVE — a SECOND session in the SAME process; another `mpd_role_spawn`; the
@@ -17,7 +17,7 @@
 //      surface R1 names, driven the same way.
 //
 // MEASURED (2026-10-13, harness 0.1.7-rc.2): the baseline legs PASS (the spawn really consults the
-// slot). The save and file-edit legs were RED while the L4 entry layer was composed from the entry
+// agent route). The save and file-edit legs were RED while the L4 entry layer was composed from the entry
 // document's stale `describe().value`: the harness accepts and PERSISTS the entry save and fires the
 // update event (the row log carries the subscription's heartbeat), but `value` keeps projecting the
 // apply-time fiber config, so the re-loaded L4 layer froze the materialised defaults above every
@@ -33,7 +33,7 @@
 //     the PARENT log's `tool/call mpd_role_spawn` + non-error `tool/result`, and the CHILD
 //     log's first `request/header` whose `data.header.config.model` is the route the spawn
 //     resolved AT THAT MOMENT;
-//   · the mutate answer's namespace descriptor (resolved teamModels.slot3.model);
+//   · the mutate answer's namespace descriptor (resolved agentRoutes.<Agent>.model);
 //   · the stub trace (the provider-side model of every LLM request it served);
 //   · `bootChild.pid` recorded at phase A and phase C — equal, because the case never stops
 //     the boot: the no-restart claim is a measured fact, not an assumption.
@@ -72,15 +72,15 @@ import { DSH_MISSING, dshCommand, type Env } from "./lib/dsh-launcher.ts"
 const SLUG = "model-config-live-refresh"
 /** The repository root, derived from this file's own URL (`<root>/skills/dsh-qa/scripts/`). */
 const REPO: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-/** The roster member this case spawns: slot 3 routes it (with Deep Worker). */
+/** The roster member this case spawns: its OWN `agentRoutes` entry routes it (Junior Engineer is in the execution group). */
 const MEMBER = "Junior Engineer"
-/** The slot leaf the save rewrites, as the settings op path spells it. */
-const SLOT_PATH: readonly string[] = ["teamModels", "slot3", "model"]
-/** The workspace's CONFIGURED slot3 model — the value the baseline spawn must carry (there is no default layer). */
+/** The agent-route leaf the save rewrites, as the settings op path spells it (contract §1). */
+const AGENT_ROUTE_PATH: readonly string[] = ["agentRoutes", MEMBER, "model"]
+/** The workspace's CONFIGURED model for {@link MEMBER} — the value the baseline spawn must carry (there is no default layer). */
 const BASELINE_MODEL = "deepseek-v4-flash"
 /** The model phase B saves and phase C's spawn must carry — a different catalog member. */
 const AFTER_MODEL: string = "deepseek-v4-pro"
-/** The provider every phase expects: the slot's configured provider, routed at the stub. */
+/** The provider every phase expects: the member's own configured provider, routed at the stub. */
 const EXPECTED_PROVIDER = "deepseek-official"
 /** The per-phase task markers, embedded in the spawn task text and searched for in the child log. */
 const MARKER_BASE = "ac6-baseline-" + process.pid
@@ -445,7 +445,7 @@ async function rpc(port: number, cookie: string, method: string, args: unknown, 
   return { status: response.status, result: envelope.result ?? null, error: envelope.error ?? null, transport: envelope.transport ?? null }
 }
 
-/** The value at a string-key path inside an arbitrary JSON record (a cast per dynamic key). @param value The JSON value to walk. @param path The leaf path, e.g. `["teamModels","slot3","model"]`. @returns The leaf, or undefined when any step is absent. */
+/** The value at a string-key path inside an arbitrary JSON record (a cast per dynamic key). @param value The JSON value to walk. @param path The leaf path, e.g. `["agentRoutes","Junior Engineer","model"]`. @returns The leaf, or undefined when any step is absent. */
 function leafOf(value: unknown, path: readonly string[]): unknown {
   // The walk accumulator, starting at the whole value and narrowing per path step.
   let acc: unknown = value
@@ -576,59 +576,63 @@ let naiveCount = -1
 function selfTest(): void {
   // Every assertion label paired with its verdict, so one run reports each break by name.
   const checks: Array<[string, boolean]> = []
-  // The shipped settings schema source, whose slot shape and declared option lists this case mirrors.
+  // The shipped settings schema source, whose agentRoutes shape and declared option lists this case mirrors.
   const schemaSrc = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
-  // The config plugin's source, whose live-refresh machinery and TOTAL slot service this case exercises.
+  // The config plugin's source, whose live-refresh machinery and TOTAL agent-route service this case exercises.
   const pluginSrc = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "index.ts"), "utf8")
   // The roster plugin's source, whose spawn tool must carry NO caller model override.
   const rolesSrc = readFileSync(join(REPO, "packages", "mpd-roles-plugin", "src", "index.ts"), "utf8")
-  // The slot builder's OWN body (brace-terminated at column 0), so a default introduced inside it is caught.
-  const slotBuilder = /function teamModelSlotSchema\(\)[^\n]*\{[\s\S]*?\n\}/.exec(schemaSrc)?.[0] ?? ""
-  // The slot resolution's OWN body, so "never throws" is asserted on the function, not on a comment.
-  const resolveSlotBody = /export function resolveTeamModelSlot\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
-  // The seed coordinator's OWN body, so the marker-first / declared-second order is asserted.
-  const seedBody = /export function seedTeamModelsOnce\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
+  // The per-agent entry builder's OWN body (brace-terminated at column 0), so a default introduced inside it is caught.
+  const entryBuilder = /function agentRouteEntrySchema\(\)[^\n]*\{[\s\S]*?\n\}/.exec(schemaSrc)?.[0] ?? ""
+  // The agent-route resolution's OWN body, so "never throws" is asserted on the function, not on a comment.
+  const resolveAgentBody = /export function resolveAgentRoute\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
+  // The one-time initialization coordinator's OWN body, so the marker-first / declared-second order is asserted.
+  const seedBody = /export function seedAgentRoutesOnce\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
   // The mpd_role_spawn parameter list, cut at `required:` so only the declared properties are scanned.
   const spawnParams = /name: "mpd_role_spawn"[\s\S]*?properties: \{([\s\S]*?)\}, required:/.exec(rolesSrc)?.[1] ?? ""
-  // The three slot leaves exactly as the new contract spells them: present-but-optional, never defaulted.
-  const slotLeaves = ["provider: z.string().required(false)", "model: z.string().required(false)", "reasoningEffort: z.string().required(false)"]
+  // The three agent-route leaves exactly as the contract spells them: present-but-optional, never defaulted.
+  const agentRouteLeaves = ["provider: z.string().required(false)", "model: z.string().required(false)", "reasoningEffort: z.string().required(false)"]
   // The declared model option list, which BASELINE_MODEL and AFTER_MODEL must both belong to.
   const modelOptions = /model: \[([^\]]*)\]/.exec(schemaSrc)?.[1] ?? ""
   // The declared provider option list, which EXPECTED_PROVIDER must belong to.
   const providerOptions = /provider: \[([^\]]*)\]/.exec(schemaSrc)?.[1] ?? ""
-  // Where the seed's durable-marker guard sits in its body — the FIRST guard of the one-time seed.
-  const markerGuardAt = seedBody.indexOf('if (existsSync(markerFile)) return { status: "marked" }')
-  // The declared-block guard's position, which must come AFTER the marker guard (a deleted block is not re-seeded).
-  const declaredGuardAt = seedBody.indexOf('if (declared === "declared")')
+  // Where the initialization's durable-marker VERSION guard sits in its body — the FIRST guard, so a v2 workspace is never touched again.
+  const markerGuardAt = seedBody.indexOf('if ((seedMarkerVersionOf(markerFile) ?? 0) >= SEED_MARKER_VERSION) return { status: "marked" }')
+  // The any-layer `agentRoutes`-declared guard's position, which must come AFTER the marker guard (a deleted block is not re-seeded).
+  const declaredGuardAt = seedBody.indexOf('if (options.agentRoutesDeclared === true)')
 
-  // ── THE NEW CONTRACT: NO BUILT-IN DEFAULT LAYER, NO PER-MEMBER ROUTE TABLE (contract §2/§3) ──
+  // ── THE NEW CONTRACT: NO BUILT-IN DEFAULT LAYER, THE AGENT IS THE UNIT (contract §1) ──
   checks.push(["the shipped schema has NO built-in slot default table (TEAM_MODEL_SLOT_DEFAULTS is gone)", !schemaSrc.includes("TEAM_MODEL_SLOT_DEFAULTS")])
-  checks.push(["the shipped sources DECLARE no per-member agentRoutes table (the doc comment naming its absence is not a declaration)", !/\bagentRoutes\s*:/.test(schemaSrc) && !/\bagentRoutes\s*:/.test(pluginSrc)])
-  checks.push(["the slot subtree's three leaves are .required(false) with NO .default()", slotBuilder !== "" && slotLeaves.every((needle) => slotBuilder.includes(needle)) && !slotBuilder.includes(".default(")])
-  checks.push(["the four slots are built by teamModelSlotSchema(), never by an inline default literal", /teamModels: z\.object\(\{[\s\S]*?slot4: teamModelSlotSchema\(\)/.test(schemaSrc) && !/slot[1-4]: *\{ *provider:/.test(schemaSrc)])
+  checks.push(["the shipped schema DECLARES the parented agentRoutes table (the per-agent unit)", /agentRoutes: AGENT_ROUTES_SCHEMA/.test(schemaSrc)])
+  checks.push(["the legacy teamModels block stays TOLERATED (a permissive node, never a typed slot tree)", /teamModels: z\.any\(\)/.test(schemaSrc) && !/teamModels: z\.object\(/.test(schemaSrc)])
+  checks.push(["the agent-route entry's three leaves are .required(false) with NO .default()", entryBuilder !== "" && agentRouteLeaves.every((needle) => entryBuilder.includes(needle)) && !entryBuilder.includes(".default(")])
+  checks.push(["the eleven agent entries are built by agentRouteEntrySchema(), never by an inline literal", schemaSrc.includes("ROSTER_AGENT_NAMES.map(") && schemaSrc.includes("agentRouteEntrySchema()") && !/slot[1-4]: *\{ *provider:/.test(schemaSrc)])
   checks.push(["BASELINE_MODEL is a declared model option", modelOptions.includes('"' + BASELINE_MODEL + '"')])
   checks.push(["AFTER_MODEL is a declared model option", modelOptions.includes('"' + AFTER_MODEL + '"')])
   checks.push(["EXPECTED_PROVIDER is a declared provider option", providerOptions.includes('"' + EXPECTED_PROVIDER + '"')])
   checks.push(["BASELINE_MODEL and AFTER_MODEL differ (the save changes the route)", BASELINE_MODEL !== AFTER_MODEL])
 
   // ── THE SERVICE IS TOTAL: a typed union and a route-or-undefined read, never an exception ──
-  checks.push(["the service exposes the per-call TOTAL slotResolutionOf (typed SlotResolution)", pluginSrc.includes("slotResolutionOf: (member: string): SlotResolution => resolveTeamModelSlot(member, state.config)")])
-  checks.push(["the resolution union is exported as ok:true | ok:false arms", pluginSrc.includes("export type SlotResolution = SlotResolved | SlotUnusable | SlotUnrouted")])
-  checks.push(["the slot resolution RETURNS every refusal — its body carries no throw", resolveSlotBody !== "" && !resolveSlotBody.includes("throw")])
-  checks.push(["the service exposes the TOTAL teamModelRouteOf read (route or undefined)", pluginSrc.includes("teamModelRouteOf: (member: string): TeamModelRoute | undefined => teamModelRouteOfMember(member, state.config)")])
-  checks.push(["the route read answers undefined for every unusable slot, never throws", pluginSrc.includes("return resolution.ok ? resolution.route : undefined")])
+  checks.push(["the service exposes the per-call TOTAL agentRouteResolutionOf (typed AgentRouteResolution)", pluginSrc.includes("agentRouteResolutionOf: (member: string): AgentRouteResolution => {")])
+  checks.push(["the resolution union is exported as ok:true | ok:false arms", pluginSrc.includes("export type AgentRouteResolution = AgentRouteResolved | AgentRouteUnconfigured | AgentRouteInvalid | AgentRouteUnrouted")])
+  checks.push(["the agent-route resolution RETURNS every refusal — its body carries no throw", resolveAgentBody !== "" && !resolveAgentBody.includes("throw")])
+  checks.push(["the service exposes the TOTAL agentRouteOf read (route or undefined)", pluginSrc.includes("agentRouteOf: (member: string): AgentRoute | undefined => agentRouteOfMember(member, state.config)")])
+  checks.push(["the route read answers undefined for every unusable agent, never throws", pluginSrc.includes("return resolution.ok ? resolution.route : undefined")])
 
-  // ── THE SPAWN HAS NO CALLER MODEL OVERRIDE: its route comes from the slot, nowhere else ──
+  // ── THE SPAWN HAS NO CALLER MODEL OVERRIDE: its route comes from the member's OWN agentRoutes entry ──
   checks.push(["mpd_role_spawn declares NO `model` parameter", spawnParams !== "" && spawnParams.includes("role:") && spawnParams.includes("task:") && !/\bmodel\s*:/.test(spawnParams)])
-  checks.push(["mpd_role_spawn's model comes from the resolved slot route", rolesSrc.includes("const model = run.route.model")])
+  checks.push(["mpd_role_spawn's model comes from the resolved agent route", rolesSrc.includes("const model = run.route.model")])
 
-  // ── THE ONE-TIME SEED: a durable marker, and a deleted block is NEVER re-seeded (contract §10) ──
-  checks.push(["the seed marker file name is model-config-seed.json", pluginSrc.includes('export const SEED_MARKER_FILE = "model-config-seed.json"')])
+  // ── THE ONE-TIME INITIALIZATION: a VERSIONED marker, migrate-once, never rewritten (contract §5) ──
+  checks.push(["the seed marker file name is STILL model-config-seed.json", pluginSrc.includes('export const SEED_MARKER_FILE = "model-config-seed.json"')])
   checks.push(["the marker path is <ws>/.mpd/model-config-seed.json", pluginSrc.includes('return join(root, ".mpd", SEED_MARKER_FILE)')])
-  checks.push(["the seed consults the MARKER first (a deleted block is never re-seeded)", markerGuardAt >= 0 && declaredGuardAt > markerGuardAt])
-  checks.push(["a declared teamModels block is the user's own and is never rewritten", seedBody.includes('return { status: "declared" }')])
+  checks.push(["the marker carries VERSION 2, so a v0.15.x marker does not strand a returning workspace", pluginSrc.includes("export const SEED_MARKER_VERSION = 2") && pluginSrc.includes("JSON.stringify({ version: SEED_MARKER_VERSION,")])
+  checks.push(["the seed consults the MARKER VERSION first (a deleted block is never re-seeded)", markerGuardAt >= 0 && declaredGuardAt > markerGuardAt])
+  checks.push(["an agentRoutes block declared by ANY layer is the user's own: only the marker is upgraded", seedBody.includes('return { status: "upgraded" }')])
+  checks.push(["a legacy teamModels block is MATERIALIZED once into the eleven entries", seedBody.includes("agentRouteEntriesFromTeamModels(options.legacyTeamModels)") && seedBody.includes('status: "migrated"')])
+  checks.push(["an unavailable catalog writes NOTHING and leaves no marker", seedBody.includes('return { status: "no-catalog"')])
 
-  // The machinery under test: the entry-config subscription and the per-call slot read.
+  // The machinery under test: the entry-config subscription and the per-call agent-route read.
   checks.push(["the plugin subscribes the ENTRY config document ('mpd-config')", pluginSrc.includes('onSettingsDocumentUpdated(ENTRY_CONFIG_ID') && pluginSrc.includes('ENTRY_CONFIG_ID = "mpd-config"')])
   checks.push(["the plugin re-loads state on the entry-config update, no restart", pluginSrc.includes("entry-config update: state re-loaded")])
 
@@ -710,13 +714,14 @@ async function runReal(argv: readonly string[]): Promise<number> {
 
   // The isolated sandbox and the two servers this case drives.
   const sandbox = makeSandbox()
-  // THE BASELINE ROUTE IS CONFIGURED, NOT DEFAULTED: the contract deleted the built-in slot-default
-  // layer (`.mpd/plans/slot-single-source.md` §2), so the read root DECLARES slot3's route before the
-  // boot. Phase A then measures the workspace's own configuration, phase B moves the model through the
-  // ENTRY config and phase D through this same file — the two live surfaces this case compares.
+  // THE BASELINE ROUTE IS CONFIGURED, NOT DEFAULTED: there is no built-in default layer (contract
+  // `.mpd/plans/agent-routes-per-agent.md` §1), so the read root DECLARES the spawned member's OWN
+  // `agentRoutes` entry before the boot. Phase A then measures the workspace's own configuration,
+  // phase B moves the model through the ENTRY config and phase D through this same file — the two
+  // live surfaces this case compares.
   const rootConfig = join(sandbox.sandbox, ".mpd", "mpd.jsonc")
   mkdirSync(dirname(rootConfig), { recursive: true })
-  writeFileSync(rootConfig, "{\n  // ac6 baseline: the configured slot3 route\n  \"teamModels\": { \"slot3\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + BASELINE_MODEL + "\" } }\n}\n")
+  writeFileSync(rootConfig, "{\n  // ac6 baseline: the spawned member's own configured route\n  \"agentRoutes\": { \"" + MEMBER + "\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + BASELINE_MODEL + "\" } }\n}\n")
   // The stub provider that answers every model step this case drives.
   const stub = makeStub()
   // The stub's ephemeral loopback port, which the provider overlay points at.
@@ -737,7 +742,7 @@ async function runReal(argv: readonly string[]): Promise<number> {
   // The result packet every phase fills and the end writes once, verdicts included.
   const packet: Record<string, unknown> = { case: SLUG, startedAt, ok: false, boot: { pid: pidAtBaseline, port, stubPort, workspace: sandbox.ws }, phases }
 
-  // PHASE A — baseline: the slot resolves the workspace's CONFIGURED route before any save.
+  // PHASE A — baseline: the member's OWN agent route resolves the workspace's CONFIGURED route before any save.
   const baseline = await drivePhase("baseline", MARKER_BASE, sandbox, port, bootHandle.cookie, stub)
   // The baseline child's model, read from its own decoded request header.
   const baselineChildModel = baseline.childConfig?.model as string | undefined
@@ -745,22 +750,22 @@ async function runReal(argv: readonly string[]): Promise<number> {
   phases.baseline = { ...baseline, childModel: baselineChildModel }
 
   // PHASE B — the save through the mpd-config ENTRY config (the front doors' own surface).
-  const saved = await rpc(port, bootHandle.cookie, "settings/mutate", { ns: "mpd-config", ops: [{ op: "set", path: [...SLOT_PATH], value: AFTER_MODEL }] })
+  const saved = await rpc(port, bootHandle.cookie, "settings/mutate", { ns: "mpd-config", ops: [{ op: "set", path: [...AGENT_ROUTE_PATH], value: AFTER_MODEL }] })
   // The mutate answer's refusal shape (result:{ok:false,error} on an HTTP 200) and its descriptor
   // for the entry, whose RESOLVED value must carry the save.
   // The mutate's refusal payload, which answers result:{ok:false,error} on an HTTP 200.
   const savedRefusal = leafOf(saved.result, ["error"])
   // The entry's descriptor inside the mutate answer, wherever the host nested it.
   const descriptor = findNamespaceDescriptor(saved.result, "mpd-config")
-  // The descriptor's RESOLVED slot leaf — the surface every front door reads back.
-  const savedResolved = descriptor === undefined ? undefined : leafOf(descriptor.value, SLOT_PATH)
+  // The descriptor's RESOLVED agent-route leaf — the surface every front door reads back.
+  const savedResolved = descriptor === undefined ? undefined : leafOf(descriptor.value, AGENT_ROUTE_PATH)
   // The SAME leaf in the descriptor's `user` half: the override a save writes, and the layer the
   // config row now composes its L4 knobs from.
-  const savedUserSlot = descriptor === undefined ? undefined : leafOf(descriptor.user, SLOT_PATH)
+  const savedUserSlot = descriptor === undefined ? undefined : leafOf(descriptor.user, AGENT_ROUTE_PATH)
   // The SAME leaf in the descriptor's `base` half: the inherited layer BELOW the override, which a
   // save never moves (recorded so the composition choice is a measured fact of the run).
-  const savedBaseSlot = descriptor === undefined ? undefined : leafOf(descriptor.base, SLOT_PATH)
-  say("[" + SLUG + "] save: status " + saved.status + " resolved slot3.model=" + JSON.stringify(savedResolved) + " user=" + JSON.stringify(savedUserSlot) + " base=" + JSON.stringify(savedBaseSlot) + (saved.error !== null || savedRefusal !== undefined && savedRefusal !== null ? " error=" + JSON.stringify(saved.error ?? savedRefusal) : ""))
+  const savedBaseSlot = descriptor === undefined ? undefined : leafOf(descriptor.base, AGENT_ROUTE_PATH)
+  say("[" + SLUG + "] save: status " + saved.status + " resolved agentRoutes." + MEMBER + ".model=" + JSON.stringify(savedResolved) + " user=" + JSON.stringify(savedUserSlot) + " base=" + JSON.stringify(savedBaseSlot) + (saved.error !== null || savedRefusal !== undefined && savedRefusal !== null ? " error=" + JSON.stringify(saved.error ?? savedRefusal) : ""))
   packet.save = { status: saved.status, error: saved.error ?? null, resolved: savedResolved ?? null, userSlot: savedUserSlot ?? null, baseSlot: savedBaseSlot ?? null, revision: (descriptor?.revision as number | undefined) ?? null }
 
   // PHASE C — after-save, SAME process: the next spawn carries the saved route.
@@ -779,10 +784,11 @@ async function runReal(argv: readonly string[]): Promise<number> {
   // file layer, so the frozen materialised defaults buried a file edit exactly as they buried the
   // entry save. With the layer composed from `describe().user` (SAVED leaves only) the file edit
   // stays visible; the boot-pid equality proves neither surface ever reached a restart.
-  // The hand edit REPLACES the file's slot3 route — provider included, so the route stays whole under
-  // the schema that no longer invents a default — with the same model phase B saved through the entry.
+  // The hand edit REPLACES the spawned member's own `agentRoutes` entry — provider included, so the
+  // route stays whole under the schema that no longer invents a default — with the same model phase B
+  // saved through the entry.
   mkdirSync(dirname(rootConfig), { recursive: true })
-  writeFileSync(rootConfig, "{\n  // ac6 phase D: the watched hand edit\n  \"teamModels\": { \"slot3\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + AFTER_MODEL + "\" } }\n}\n")
+  writeFileSync(rootConfig, "{\n  // ac6 phase D: the watched hand edit\n  \"agentRoutes\": { \"" + MEMBER + "\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + AFTER_MODEL + "\" } }\n}\n")
   // The watcher's documented quiet period is a 150 ms debounce plus the reload; settle generously.
   await sleep(2_000)
   // The boot pid read again at the file-edit phase, the last no-restart anchor.
@@ -811,14 +817,14 @@ async function runReal(argv: readonly string[]): Promise<number> {
   const verdicts: Array<[string, boolean, string]> = [
     ["baseline: the parent log carries the spawn call + non-error result", baseline.spawnCalledAndOk, "the harness must record the tool call AND its non-error result (parent log " + baseline.parentLog + ")"],
     ["baseline: the child log was found by its phase marker", baseline.childLog !== undefined, "a session log under " + sandbox.ws + " must carry the marker " + MARKER_BASE],
-    ["baseline (negative): the child ran on the workspace's CONFIGURED slot3 model before any save", baselineChildModel === BASELINE_MODEL, "decoded child request config.model=" + JSON.stringify(baselineChildModel) + ", expected " + JSON.stringify(BASELINE_MODEL)],
+    ["baseline (negative): the child ran on the spawned member's CONFIGURED agentRoutes model before any save", baselineChildModel === BASELINE_MODEL, "decoded child request config.model=" + JSON.stringify(baselineChildModel) + ", expected " + JSON.stringify(BASELINE_MODEL)],
     ["save: the entry-config mutate was accepted", saved.status === 200 && saved.error === null && (savedRefusal === undefined || savedRefusal === null), "settings/mutate(ns=mpd-config) status " + saved.status + " error " + JSON.stringify(saved.error ?? savedRefusal)],
     ["save: the descriptor's SAVED OVERRIDE (user) carries the saved model — the layer the config row composes", savedUserSlot === AFTER_MODEL, "user=" + JSON.stringify(savedUserSlot) + ", expected " + JSON.stringify(AFTER_MODEL) + " (value=" + JSON.stringify(savedResolved) + ", base=" + JSON.stringify(savedBaseSlot) + " — T-93: the descriptor's value/base stay apply-time/inherited on harness 0.1.7-rc.2, so `user` is the only half a save moves)"],
     ["no restart: the boot pid is the SAME process across baseline and after-save", pidAtBaseline === pidAtAfter, "pid at baseline " + String(pidAtBaseline) + " vs at after-save " + String(pidAtAfter)],
     ["after-save: the parent log carries the spawn call + non-error result", after.spawnCalledAndOk, "the harness must record the tool call AND its non-error result (parent log " + after.parentLog + ")"],
     ["after-save: the child log was found by its phase marker", after.childLog !== undefined, "a session log under " + sandbox.ws + " must carry the marker " + MARKER_AFTER],
     ["after-save: the child ran on the SAVED model, no restart", afterChildModel === AFTER_MODEL, "decoded child request config.model=" + JSON.stringify(afterChildModel) + ", expected " + JSON.stringify(AFTER_MODEL)],
-    ["after-save: the child's provider is the slot provider", (after.childConfig?.provider as string | undefined) === EXPECTED_PROVIDER, "decoded child request config.provider=" + JSON.stringify(after.childConfig?.provider)],
+    ["after-save: the child's provider is the agent's configured provider", (after.childConfig?.provider as string | undefined) === EXPECTED_PROVIDER, "decoded child request config.provider=" + JSON.stringify(after.childConfig?.provider)],
     ["isolation: every session-store key stayed inside the sandbox", isolation.ok, "assertSessionsSandboxed checked " + String(isolation.checked) + " key(s)"],
   ]
   // The provider-side cross-check: the stub served a request for the saved model after the save.

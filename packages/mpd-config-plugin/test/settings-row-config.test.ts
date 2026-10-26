@@ -19,8 +19,11 @@ describe("the row Config", () => {
     for (const key of ["hashline", "commentChecker", "ulw", "memory", "team", "boulder", "teamModels", "watchdog"]) {
       expect(schema.dict?.[key]?.meta?.volatile).toBe(true)
     }
-    // the nested slot leaves too: the settings form reaches them through `dict`
-    expect((schema.dict?.teamModels as any)?.dict?.slot1?.meta?.volatile).toBe(true)
+    // the nested per-agent leaves too: the settings form reaches them through `dict`
+    expect((schema.dict?.agentRoutes as any)?.dict?.Architect?.meta?.volatile).toBe(true)
+    expect((schema.dict?.agentRoutes as any)?.dict?.Architect?.dict?.provider?.meta?.volatile).toBe(true)
+    // the tolerated legacy block is a leaf node (no dict) but still marked, so the entry lists it
+    expect((schema.dict?.teamModels as any)?.meta?.volatile).toBe(true)
   })
 
   test("it is a schema the loader accepts: toJSON, and the standard-schema validator", () => {

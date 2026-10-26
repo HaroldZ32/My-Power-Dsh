@@ -6,7 +6,7 @@
 //   • the SECTION states the disclosure ONCE, above the rows — never per hint — and that disclosure
 //     is the SCOPED truth (D-18, audit wave 2026-10-25): a save writes `<workspace>/.mpd/mpd.jsonc`
 //     for the live session workspace(s); WHICH knobs reach the RUNNING process depends on how each
-//     one reads the config, so the sentence names the live groups (`teamModels.slot*`,
+//     one reads the config, so the sentence names the live groups (`agentRoutes.*`,
 //     `modelchain.*`, `watchdog.*`, `team.stateDir`, `team.gate`/`team.sensitivity`,
 //     `captain.investigation`, `delegation.gate`) and the mount-captured exception (`hashline.*`,
 //     `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`) that waits for the next

@@ -1,19 +1,20 @@
 // THE OFFICIAL-TEAMMATE PATH'S model-capability adaptation, driven through the REAL delegating `start`.
 //
 // `route.test.ts` pins the pure routing decision; this file pins what that file CANNOT: that a teammate
-// whose slot names a model with no reasoning efforts reaches the composition's provider WITHOUT the
-// keyword, while a teammate whose slot names a reasoning model still carries it. The fake mount supplies
-// the catalog read and the composition's own provider, and that provider records the request it finally
-// received — so the assertion is about the bytes on the wire, not about a helper's return value.
+// whose OWN `agentRoutes` entry names a model with no reasoning efforts reaches the composition's
+// provider WITHOUT the keyword, while a teammate whose route names a reasoning model still carries it.
+// The fake mount supplies the catalog read and the composition's own provider, and that provider
+// records the request it finally received — so the assertion is about the bytes on the wire, not about
+// a helper's return value.
 import { expect, test } from "bun:test"
 import { apply, PROVIDER_NAME } from "../src/index"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index"
 
-/** The slots the fake config service answers: slot1 is effort-less (plain), slot3 is a reasoning model. */
-const SLOTS = {
-  slot1: { provider: "gateway", model: "fast", reasoningEffort: "max" },
-  slot3: { provider: "gateway", model: "smart", reasoningEffort: "high" },
-}
+/** The per-agent routes the fake config service answers: Architect is effort-less, Deep Worker reasons. */
+const AGENT_ROUTES = {
+  Architect: { provider: "gateway", model: "fast", reasoningEffort: "max" },
+  "Deep Worker": { provider: "gateway", model: "smart", reasoningEffort: "high" },
+} as const
 
 /** The catalog the mount answers; `fast` declares no efforts, `smart` declares `high`. */
 const CATALOG: DshLlmCatalog = {
@@ -66,14 +67,14 @@ function mounted(): Mount {
     subagentProvider: (name: string) => (name === "spawn" ? base : undefined),
     registerSubagentProvider: (registered: unknown) => { provider = registered as Mount["provider"] },
   }
-  /** The member → slot table the config double answers with (the slots this file declares). */
-  const SLOT_OF: Record<string, keyof typeof SLOTS> = { Architect: "slot1", "Deep Worker": "slot3" }
-  /** The config service double: the TOTAL slot resolution the row reads, per member. */
+  /** The member → route table the config double answers with (the entries this file declares). */
+  const ROUTE_OF: Record<string, keyof typeof AGENT_ROUTES> = { Architect: "Architect", "Deep Worker": "Deep Worker" }
+  /** The config service double: the TOTAL agent-route resolution the row reads, per member. */
   const mpdConfig = {
-    slotResolutionOf: (member: string) => {
-      /** The slot id this member is routed by, or undefined when it is unrouted. */
-      const slot = SLOT_OF[member]
-      return slot === undefined ? { ok: false as const, status: "unrouted" as const } : { ok: true as const, route: { ...SLOTS[slot] }, fallbacks: [] }
+    agentRouteResolutionOf: (member: string) => {
+      /** The entry this member is routed by, or undefined when it is unrouted. */
+      const entry = ROUTE_OF[member]
+      return entry === undefined ? { ok: false as const, reason: "unrouted" as const } : { ok: true as const, agent: member, route: { ...AGENT_ROUTES[entry] } }
     },
   }
   /** The cordis-shaped ctx, resolving the adapter and the config service by name. */
@@ -92,20 +93,20 @@ test("a teammate routed onto an effort-less model reaches the base provider WITH
   expect(provider.name).toBe(PROVIDER_NAME)
   await provider.start({
     descriptor: { label: "Architect — split the module" },
-    // The Lead's OWN route carries an effort; the slot's route must REPLACE it, adapted to the model.
+    // The Lead's OWN route carries an effort; the agent's route must REPLACE it, adapted to the model.
     agentOptions: { provider: "lead-provider", model: "lead-model", reasoningEffort: "low", maxDepth: 3 },
   })
   expect(started.length).toBe(1)
-  // provider/model come from slot1, the unrelated field survives, and NO effort is sent at all.
+  // provider/model come from Architect's entry, the unrelated field survives, and NO effort is sent.
   expect(started[0].agentOptions).toEqual({ provider: "gateway", model: "fast", maxDepth: 3 })
 })
 
-test("CONTROL: a teammate routed onto a model that DECLARES efforts still carries the slot's keyword", async () => {
+test("CONTROL: a teammate routed onto a model that DECLARES efforts still carries the route's keyword", async () => {
   /** The mounted row and its recorded delegation. */
   const { provider, started } = mounted()
   await provider.start({ descriptor: { label: "Deep Worker — implement it" }, agentOptions: {} })
   expect(started.length).toBe(1)
-  // slot3 states `high` and the model declares `high`: the adaptation must leave it exactly there.
+  // Deep Worker's entry states `high` and the model declares `high`: the adaptation leaves it there.
   expect(started[0].agentOptions).toEqual({ provider: "gateway", model: "smart", reasoningEffort: "high" })
 })
 

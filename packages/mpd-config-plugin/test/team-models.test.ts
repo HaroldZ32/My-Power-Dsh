@@ -1,27 +1,41 @@
-// The four team-model slots of the `mpd` settings namespace: NO default layer in the slot subtree
-// (A1), the twelve knobs of the ONE declaration (A3) and a read path that contains only what the
-// user wrote (A2). Contract `.mpd/plans/slot-single-source.md` §1-§2, §9, amendment 1.
+// The PER-AGENT model routes of the `mpd` settings namespace: `agentRoutes.<Agent>` with NO default
+// layer (contract `.mpd/plans/agent-routes-per-agent.md` §1), the 33 knobs of the ONE declaration
+// (§7), a TOTAL resolver (§2), the tolerated legacy `teamModels` node (§1) and the file-level
+// no-data-loss lock.
+//
+// THE 2026-10-23 DELETION LOCK IS DELIBERATELY REVERSED HERE (contract §9 + amendment 2 §4): the
+// retired test asserted that `agentRoutes` was GONE and that only twelve `teamModels` slot knobs
+// existed. The unit of configuration is the AGENT again, so this file now asserts the NEW shape —
+// eleven per-agent entries, 33 `agentRoutes` knob rows, a typed resolver union and the legacy block
+// tolerated ONLY as a migration input.
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { apply, resolveTeamModelSlot, teamModelRouteOfMember, stripJsonc } from "../src/index"
+import {
+  AGENT_UNCONFIGURED_CODE,
+  agentRouteEntryOfMember,
+  agentRouteOfMember,
+  agentUnconfiguredMessage,
+  apply,
+  droppedFallbacksOf,
+  resolveAgentRoute,
+  stripJsonc,
+} from "../src/index"
 import { writeBackLeaves } from "../src/bridge"
 import * as schemaNamespace from "../src/settings-schema"
 import * as configNamespace from "../src/index"
 import {
-  BRIDGE_DISCLOSURE,
-  BRIDGE_NOT_LOST,
-  BRIDGE_RESTART_LIMIT,
-  BRIDGE_SECTION_NOTICE,
+  AGENT_ROUTE_KNOBS,
+  AGENT_ROUTES_SCHEMA,
+  ROSTER_AGENT_NAMES,
   SETTINGS_KNOBS,
   SettingsSchema,
   TEAM_MODEL_FALLBACK_OPTIONS,
-  TEAM_MODEL_SLOTS,
   TEAM_MODEL_SLOT_GROUPS,
   TEAM_MODEL_SLOT_IMPACT,
   TEAM_MODEL_SLOT_IMPACT_OVERRIDES,
-  knobHint,
+  agentRouteLeafSentence,
   teamModelLeafSentence,
   teamModelMembers,
   teamModelSlotHeading,
@@ -39,7 +53,7 @@ afterEach(() => {
 /** A sandbox workspace (`<dir>/ws`) plus an isolated user-home layer dir. */
 function sandbox(): { root: string; file: string; home: string } {
   // One unique temp parent per call, so no two tests can ever share a config file.
-  const dir = mkdtempSync(join(tmpdir(), "mpd-team-models-"))
+  const dir = mkdtempSync(join(tmpdir(), "mpd-agent-routes-"))
   temps.push(dir)
   // The workspace the config layer is pointed at through `DSH_WORKSPACE_ROOT`.
   const root = join(dir, "ws")
@@ -51,68 +65,102 @@ function sandbox(): { root: string; file: string; home: string } {
 }
 
 /** Mount the row on the same stub-ctx harness the config tests use; returns the mpdConfig service and the tools. */
-function mount(root: string, home: string): { service: any; tools: any[] } {
+function mount(root: string, home: string, logs: string[] = []): { service: any; tools: any[] } {
   process.env.DSH_HOME = home
   process.env.DSH_WORKSPACE_ROOT = root
-  // Every tool the row registers during this mount, so the real `mpd_config_get` execute can be called.
+  // Every tool the row registered during this mount, so the real `mpd_config_get` execute can be called.
   const tools: any[] = []
   // The `mpdConfig` service value, assigned by the stub ctx `provide` while `apply` runs.
   let service: any = null
-  apply({ tools: { register: (t: any) => tools.push(t) }, provide: (_n: string, v: any) => { service = v } } as any, {})
+  apply({ tools: { register: (t: any) => tools.push(t) }, provide: (_n: string, v: any) => { service = v }, logger: { warn: (line: string) => logs.push(String(line)) } } as any, {})
   return { service, tools }
 }
 
-// The three leaves of every slot, in the order the twelve declared rows must follow.
-const SLOT_LEAVES = ["provider", "model", "reasoningEffort"] as const
-// Member class per slot, as the README slot table declares it: a hint names its own members and no others.
-const KNOWN_CLASSES: Record<string, readonly string[]> = {
-  slot1: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"],
-  slot2: ["Researcher", "Explorer", "Plan Reviewer"],
-  slot3: ["Deep Worker", "Junior Engineer"],
-  slot4: ["Vision Analyst"],
-}
+// The three route leaves, in the order every declared row must follow.
+const ROUTE_LEAVES = ["provider", "model", "reasoningEffort"] as const
 
-describe("A1 — NO default layer anywhere in the slot subtree (contract §2)", () => {
-  test("the schema carries no slot default: a workspace that configured nothing resolves four EMPTY slots", () => {
-    // The resolved config of a workspace that declared nothing: four empty slot objects, never a
-    // provider/model/effort — the built-in default layer this contract deletes.
+describe("§1 — the `agentRoutes` schema: one entry per agent, ZERO defaults", () => {
+  test("the schema carries no route default: a workspace that configured nothing resolves eleven EMPTY entries", () => {
+    // The resolved config of a workspace that declared nothing: eleven empty entry objects, never a
+    // provider/model/effort — the built-in default layer this contract forbids.
+    /** The resolved config of a workspace that declared nothing. */
     const resolved: any = (SettingsSchema as any)({})
-    expect(Object.keys(resolved.teamModels)).toEqual([...TEAM_MODEL_SLOTS])
-    for (const slot of TEAM_MODEL_SLOTS) expect(resolved.teamModels[slot]).toEqual({})
-    // A partial declaration keeps ONLY the leaf the user wrote; no sibling leaf is filled in.
-    const partial: any = (SettingsSchema as any)({ teamModels: { slot2: { model: "deepseek-v4-pro" } } })
-    expect(partial.teamModels.slot2).toEqual({ model: "deepseek-v4-pro" })
+    expect(Object.keys(resolved.agentRoutes)).toEqual([...ROSTER_AGENT_NAMES])
+    for (const agent of ROSTER_AGENT_NAMES) expect(resolved.agentRoutes[agent]).toEqual({})
+    // A partial declaration keeps ONLY the leaves the user wrote; no sibling leaf is filled in.
+    const partial: any = (SettingsSchema as any)({ agentRoutes: { Architect: { model: "deepseek-v4-pro" } } })
+    expect(partial.agentRoutes.Architect).toEqual({ model: "deepseek-v4-pro" })
   })
 
-  test("the deleted layers stay deleted: no default table and no agentRoutes schema on the module", () => {
-    // The module namespace is the subject: a resurrected `TEAM_MODEL_SLOT_DEFAULTS` or
-    // `AGENT_ROUTES_SCHEMA` export reddens here instead of quietly re-entering the read path.
-    const schemaModule = schemaNamespace as Record<string, unknown>
-    expect(schemaModule.TEAM_MODEL_SLOT_DEFAULTS).toBeUndefined()
-    expect(schemaModule.AGENT_ROUTES_SCHEMA).toBeUndefined()
-    expect(schemaModule.AGENT_ROUTE_SCHEMA).toBeUndefined()
-    expect(schemaModule.AGENT_ROUTE_KNOBS).toBeUndefined()
-    expect(schemaModule.ROSTER_AGENT_NAMES).toBeUndefined()
-    expect(schemaModule.agentRouteEntryOfMember).toBeUndefined()
-    // The config module's own exports are the other half of the deletion.
-    const configModule = configNamespace as Record<string, unknown>
-    expect(configModule.withTeamModelsDefaults).toBeUndefined()
-    expect(configModule.agentRouteEntryOfMember).toBeUndefined()
+  test("ZERO `.default()` on any route leaf — the contract's real prohibition", () => {
+    // The LEAF nodes are the subject: a `.default()` there would materialize a provider/model/effort
+    // into the row config and beat the user's file. The container's implicit `{}` (the vendored
+    // schemastery's object behaviour, measured long before this wave) is the empty-entry residue,
+    // and `rowKnobLayer` strips it so an absent block stays ABSENT — asserted below and by the
+    // `mpd_config_get` arms.
+    /** The first agent entry node as the settings form reads it. */
+    /** The first agent entry node as the settings form reads it. */
+    const entry = (AGENT_ROUTES_SCHEMA as any).dict.Architect
+    expect(Object.keys(entry.dict)).toEqual(["provider", "model", "reasoningEffort"])
+    for (const leaf of ["provider", "model", "reasoningEffort"]) expect(entry.dict[leaf].meta?.default).toBeUndefined()
+    // The semantic consequence: an absent declaration resolves an EMPTY entry, never a route.
+    expect((SettingsSchema as any)({}).agentRoutes.Architect).toEqual({})
+  })
+
+  test("the legacy `teamModels` node is TOLERATED: it validates and passes through unchanged", () => {
+    // A row config / profile patch from v0.15.5 declares the slot tree; the schema must accept it so
+    // that boot succeeds, and it must keep the bytes as the migration source.
+    const legacy = { slot1: { provider: "p", model: "m", reasoningEffort: "max" }, slot4: { provider: "v", model: "vm" } }
+    /** The resolved config of a workspace whose file still declares the legacy block. */
+    const resolved: any = (SettingsSchema as any)({ teamModels: legacy })
+    expect(resolved.teamModels).toEqual(legacy)
+    // Absent is ABSENT: a permissive node with no declaration materializes nothing.
+    expect((SettingsSchema as any)({}).teamModels).toBeUndefined()
+  })
+
+  test("the eleven names come from the groups' own membership, in group order", () => {
+    expect(ROSTER_AGENT_NAMES).toEqual([
+      "Architect", "Planner", "Reviewer", "Lead", "Senior Engineer",
+      "Researcher", "Explorer", "Plan Reviewer",
+      "Deep Worker", "Junior Engineer",
+      "Vision Analyst",
+    ])
+    // The groups survive, as DISPLAY/BULK-EDIT only — the roster's own name list above is the table's.
+    expect(TEAM_MODEL_SLOT_GROUPS.slot1.members).toEqual(["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"])
+    expect(TEAM_MODEL_SLOT_GROUPS.slot4.members).toEqual(["Vision Analyst"])
   })
 })
 
-describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
-  // The twelve teamModels rows of the ONE declaration, which every A3 assertion below is about.
-  const slotKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")
+describe("the 2026-10-23 DELETION LOCK, deliberately REVERSED (§9, amendment 2 §4)", () => {
+  test("the agentRoutes layer EXISTS with the names, the schema and the knobs the retired test deleted", () => {
+    // The module namespaces are the subject: the symbols the old lock asserted ABSENT must now exist
+    // and carry the new shape, while the truly deleted default layer stays deleted.
+    const schemaModule = schemaNamespace as Record<string, unknown>
+    expect(schemaModule.TEAM_MODEL_SLOT_DEFAULTS).toBeUndefined()
+    expect(Array.isArray(schemaModule.ROSTER_AGENT_NAMES)).toBe(true)
+    expect((schemaModule.ROSTER_AGENT_NAMES as readonly string[]).length).toBe(11)
+    expect(schemaModule.AGENT_ROUTES_SCHEMA).toBeDefined()
+    expect(Array.isArray(schemaModule.AGENT_ROUTE_KNOBS)).toBe(true)
+    expect((schemaModule.AGENT_ROUTE_KNOBS as readonly unknown[]).length).toBe(33)
+    expect(typeof schemaModule.agentRouteLeafSentence).toBe("function")
+    // The config module's own half of the reversal (and the still-deleted defaulting helper).
+    const configModule = configNamespace as Record<string, unknown>
+    expect(configModule.withTeamModelsDefaults).toBeUndefined()
+    expect(typeof configModule.agentRouteEntryOfMember).toBe("function")
+    expect(typeof configModule.resolveAgentRoute).toBe("function")
+  })
+})
 
-  test("exactly twelve new rows, after the original thirteen", () => {
-    // 26 = the thirteen original knobs + the twelve slot leaves + the TUI surface's own
-    // `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file keeps its
-    // meaning). The thirty-three `agentRoutes` rows are GONE with the table itself (contract §3).
-    expect(SETTINGS_KNOBS).toHaveLength(26)
-    expect(slotKnobs).toHaveLength(12)
-    // The deleted table leaves no row behind: no knob path may address `agentRoutes`.
-    expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")).toHaveLength(0)
+describe("§7 — thirty-three per-agent rows in the ONE declaration, in group order", () => {
+  // The thirty-three agentRoutes rows of the ONE declaration, which every assertion below is about.
+  const routeKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")
+
+  test("exactly thirty-three new rows, after the original thirteen and before the TUI knob", () => {
+    // 47 = the thirteen original knobs + the eleven agents' three leaves + `tui.dashboardKey` LAST.
+    expect(SETTINGS_KNOBS).toHaveLength(47)
+    expect(routeKnobs).toHaveLength(33)
+    // The legacy slot tree leaves no row behind: no knob path may address `teamModels`.
+    expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")).toHaveLength(0)
     expect(SETTINGS_KNOBS.slice(0, 13).map((knob) => [...knob.path])).toEqual([
       ["hashline", "maxDiffChars"],
       ["commentChecker", "autoCheck"],
@@ -128,221 +176,251 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
       ["watchdog", "toolInFlightMaxMs"],
       ["watchdog", "holdTtlMs"],
     ])
-    expect(slotKnobs.map((knob) => [...knob.path])).toEqual(
-      TEAM_MODEL_SLOTS.flatMap((slot) => SLOT_LEAVES.map((leaf) => ["teamModels", slot, leaf])),
+    // Every agent, every leaf, in the roster's own order — the enumerated table, no free-typed key.
+    expect(routeKnobs.map((knob) => [...knob.path])).toEqual(
+      ROSTER_AGENT_NAMES.flatMap((agent) => ROUTE_LEAVES.map((leaf) => ["agentRoutes", agent, leaf])),
     )
+    // The TUI surface's own knob stays LAST, so every index-keyed assertion keeps its meaning.
+    expect([...SETTINGS_KNOBS[SETTINGS_KNOBS.length - 1].path]).toEqual(["tui", "dashboardKey"])
   })
 
-  test("every row is a select with the declared fallback list, and carries a label/zh pair", () => {
+  test("every row is a select with the declared fallback list and a label/zh pair", () => {
     expect([...TEAM_MODEL_FALLBACK_OPTIONS.provider]).toEqual(["deepseek-official"])
-    expect([...TEAM_MODEL_FALLBACK_OPTIONS.model]).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     expect([...TEAM_MODEL_FALLBACK_OPTIONS.reasoningEffort]).toEqual(["off", "low", "high", "max"])
-    for (const knob of slotKnobs) {
+    for (const knob of routeKnobs) {
       // The leaf this row sets, used to look up the fallback option list the row must mirror.
       const leaf = String(knob.path[2]) as keyof typeof TEAM_MODEL_FALLBACK_OPTIONS
       expect(knob.kind).toBe("select")
       expect([...(knob.options ?? [])]).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS[leaf]])
-      expect((knob.options ?? []).length).toBeGreaterThan(0)
       expect(knob.label.length).toBeGreaterThan(0)
       expect(knob.zh.length).toBeGreaterThan(0)
     }
-    // The exact labels/zh the two front doors mirror (the card's FIELDS must match these element-wise).
-    // Each label names the GROUP the slot routes, so a row says what the slot IS without a hint.
-    expect(slotKnobs.map((knob) => knob.label)).toEqual([
-      "Slot 1 provider (heavy members)", "Slot 1 model (heavy members)", "Slot 1 reasoning effort (heavy members)",
-      "Slot 2 provider (analysis members)", "Slot 2 model (analysis members)", "Slot 2 reasoning effort (analysis members)",
-      "Slot 3 provider (execution members)", "Slot 3 model (execution members)", "Slot 3 reasoning effort (execution members)",
-      "Slot 4 provider (vision member)", "Slot 4 model (vision member)", "Slot 4 reasoning effort (vision member)",
-    ])
-    expect(slotKnobs.map((knob) => knob.zh)).toEqual([
-      "槽位 1 提供商（重推理成员）", "槽位 1 模型（重推理成员）", "槽位 1 推理强度（重推理成员）",
-      "槽位 2 提供商（分析型成员）", "槽位 2 模型（分析型成员）", "槽位 2 推理强度（分析型成员）",
-      "槽位 3 提供商（执行型成员）", "槽位 3 模型（执行型成员）", "槽位 3 推理强度（执行型成员）",
-      "槽位 4 提供商（视觉成员）", "槽位 4 模型（视觉成员）", "槽位 4 推理强度（视觉成员）",
-    ])
+    // The exact first row proves the label names the AGENT (the unit) plus its display group.
+    expect(routeKnobs[0].label).toBe("Architect provider (heavy members)")
+    expect(routeKnobs[0].zh).toBe("Architect 提供商（重推理成员）")
+    expect(routeKnobs[32].label).toBe("Vision Analyst reasoning effort (vision member)")
   })
 
-  test("the slot copy states the group and its members: heading, impact and per-leaf sentences", () => {
-    // The group table is the ONE input the copy interpolates — the member list in the group's own order.
-    expect(TEAM_MODEL_SLOT_GROUPS.slot1.members).toEqual(["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"])
-    expect(TEAM_MODEL_SLOT_GROUPS.slot2.members).toEqual(["Researcher", "Explorer", "Plan Reviewer"])
-    expect(TEAM_MODEL_SLOT_GROUPS.slot3.members).toEqual(["Deep Worker", "Junior Engineer"])
-    expect(TEAM_MODEL_SLOT_GROUPS.slot4).toEqual({ zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] })
-    expect(teamModelMembers("slot2", "zh")).toBe("Researcher、Explorer、Plan Reviewer")
-    expect(teamModelMembers("slot2", "en")).toBe("Researcher, Explorer, Plan Reviewer")
-    // The heading renders above a slot's three rows; the impact line is the one-line consequence.
-    expect(teamModelSlotHeading("slot1", "en")).toBe("Slot 1 — heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer)")
-    expect(teamModelSlotHeading("slot2", "zh")).toBe("槽位 2 —— 分析型成员（Researcher、Explorer、Plan Reviewer）")
-    expect(teamModelSlotHeading("slot3", "en")).toBe("Slot 3 — execution members (Deep Worker, Junior Engineer)")
-    // Slot 4's heading/labels come from the SAME generator, so the group name is the only input.
-    expect(teamModelSlotHeading("slot4", "en")).toBe("Slot 4 — vision member (Vision Analyst)")
-    expect(teamModelSlotHeading("slot4", "zh")).toBe("槽位 4 —— 视觉成员（Vision Analyst）")
-    expect(TEAM_MODEL_SLOT_IMPACT.zh).toContain("点名成员与槽位")
-    expect(TEAM_MODEL_SLOT_IMPACT.en).toContain("fails team creation loudly")
-    // Slots 1-3 share the impact line; slot 4 has its own (it names the image-input requirement).
-    expect(teamModelSlotImpact("slot1", "en")).toBe(TEAM_MODEL_SLOT_IMPACT.en)
-    expect(teamModelSlotImpact("slot3", "zh")).toBe(TEAM_MODEL_SLOT_IMPACT.zh)
-    expect(teamModelSlotImpact("slot4", "en")).toBe(TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4!.en)
-    expect(teamModelSlotImpact("slot4", "en")).toContain("MUST accept image input")
-    expect(teamModelSlotImpact("slot4", "zh")).toBe(
-      "建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。",
-    )
-    // The nine knobs carry their OWN sentence per leaf, in both languages, and the composed hint
-    // LEADS with the English one.
-    for (const knob of slotKnobs) {
-      // Slot this row belongs to, narrowed to the four names the copy generators accept.
-      const slot = String(knob.path[1]) as "slot1" | "slot2" | "slot3" | "slot4"
-      // Leaf this row sets, narrowed to the three declared leaves for the sentence lookup.
-      const leaf = String(knob.path[2]) as "provider" | "model" | "reasoningEffort"
-      expect(knob.semantics).toBe(teamModelLeafSentence(slot, leaf, "en"))
-      expect(knob.semanticsZh).toBe(teamModelLeafSentence(slot, leaf, "zh"))
+  test("every hint names its dotted mpd.jsonc key and carries the agent's own sentence", () => {
+    for (const knob of routeKnobs) {
+      // The agent this row configures, as a display name the sentence generator accepts.
+      const agent = String(knob.path[1])
+      // The leaf this row sets.
+      const leaf = String(knob.path[2]) as keyof typeof TEAM_MODEL_FALLBACK_OPTIONS
+      expect(knob.semantics).toBe(agentRouteLeafSentence(agent, leaf, "en"))
+      expect(knob.semanticsZh).toBe(agentRouteLeafSentence(agent, leaf, "zh"))
       expect(String(knob.hint).startsWith(String(knob.semantics))).toBe(true)
-      expect(String(knob.hint).indexOf("mpd.jsonc ")).toBeGreaterThan(String(knob.semantics).length - 1)
+      expect(String(knob.hint)).toContain(`mpd.jsonc agentRoutes.${agent}.${leaf}`)
     }
-    // A slot's sentence names ITS OWN group's members, not another slot's.
-    const slot2Provider = String(slotKnobs[3].semantics)
-    expect(slot2Provider).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
-    expect(slot2Provider).not.toContain("Architect")
-    // and the zh sentence names the zh group.
-    expect(String(slotKnobs[3].semanticsZh)).toContain("分析型成员（Researcher、Explorer、Plan Reviewer）")
+    // The sentence states the UNIT and refuses to let a missing leaf pass silently.
+    expect(routeKnobs[0].semantics).toContain("Architect's own provider")
+    expect(routeKnobs[0].semantics).toContain("AGENT_UNCONFIGURED")
+    // The vision member's own rows state the image-input constraint.
+    expect(agentRouteLeafSentence("Vision Analyst", "model", "en")).toContain("MUST accept image input")
   })
 
-  test("every hint names its dotted mpd.jsonc key and its member class, and the disclosure is stated ONCE", () => {
-    // MEASURED (docker/ui, 2026-09-27): with the disclosure inlined, all 25 rows read as the same
-    // four lines and each knob's own sentence was pushed off screen. The contract is now: the ROW
-    // carries its sentence and its key; the SURFACE states the disclosure once.
-    expect(knobHint("a.b")).toBe("mpd.jsonc a.b")
-    for (const knob of slotKnobs) {
-      // The composed hint, read as text so a missing hint fails the assertion instead of the loop.
-      const hint = String(knob.hint ?? "")
-      expect(hint).toContain(`mpd.jsonc teamModels.${knob.path[1]}.${knob.path[2]}`)
-      // The row must NOT repeat the surface's disclosure.
-      expect(hint).not.toContain(BRIDGE_DISCLOSURE)
-      expect(hint).not.toContain(BRIDGE_NOT_LOST)
-      for (const member of KNOWN_CLASSES[String(knob.path[1])]) expect(hint).toContain(member)
-    }
-    // ...and the one place that DOES state it — BOTH halves of the timing truth (D-18), never just
-    // the promising one, then the not-lost clause.
-    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_DISCLOSURE)
-    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_RESTART_LIMIT)
-    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
-    // Vision Analyst is slot 4's member and the slots 1-3 sentences say which slot drives it.
-    expect(String(slotKnobs[3].hint)).toContain("Vision Analyst")
-    expect(String(slotKnobs[3].hint)).toContain("slot 4 drives it")
+  test("the group copy survives for the bulk-edit panel, and names the group's own members", () => {
+    expect(teamModelMembers("slot2", "en")).toBe("Researcher, Explorer, Plan Reviewer")
+    expect(teamModelSlotHeading("slot1", "en")).toBe("Slot 1 — heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer)")
+    expect(teamModelSlotImpact("slot4", "en")).toBe(TEAM_MODEL_SLOT_IMPACT_OVERRIDES.slot4!.en)
+    expect(teamModelSlotImpact("slot1", "en")).toBe(TEAM_MODEL_SLOT_IMPACT.en)
+    // The group templates are still declared once and interpolate the group identity.
+    expect(teamModelLeafSentence("slot2", "provider", "en")).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
   })
 })
 
-describe("A3b — the vision slot carries its own copy, verbatim, in both languages", () => {
-  // The three slot-4 rows: the vision member copy, which must match its sentences verbatim.
-  const slot4 = SETTINGS_KNOBS.filter((knob) => knob.path[1] === "slot4")
-  // The exact English sentences slot 4 must carry, in provider/model/reasoningEffort order.
-  const VISION_SENTENCES_EN = [
-    "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
-    "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-    "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
-  ]
-  // The same three sentences in Chinese; a translation drift reddens here instead of shipping silently.
-  const VISION_SENTENCES_ZH = [
-    "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
-    "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
-    "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
-  ]
+describe("§2 — `resolveAgentRoute`: pure, total, and independent per agent", () => {
+  /** A config with two DIFFERENT routes, the cross-talk subject of the first arm. */
+  const twoRoutes = {
+    agentRoutes: {
+      Architect: { provider: "p1", model: "m1", reasoningEffort: "max" },
+      "Deep Worker": { provider: "p2", model: "m2", reasoningEffort: "high", fallbacks: [{ provider: "bp", model: "bm" }] },
+    },
+  }
 
-  test("exactly three slot-4 rows, in leaf order, with the declared sentences", () => {
-    expect(slot4.map((knob) => [...knob.path])).toEqual([
-      ["teamModels", "slot4", "provider"],
-      ["teamModels", "slot4", "model"],
-      ["teamModels", "slot4", "reasoningEffort"],
-    ])
-    expect(slot4.map((knob) => knob.semantics)).toEqual(VISION_SENTENCES_EN)
-    expect(slot4.map((knob) => knob.semanticsZh)).toEqual(VISION_SENTENCES_ZH)
+  test("two agents with different routes resolve independently — no cross-talk", () => {
+    expect(resolveAgentRoute("Architect", twoRoutes)).toEqual({ ok: true, agent: "Architect", route: { provider: "p1", model: "m1", reasoningEffort: "max" } })
+    expect(resolveAgentRoute("Deep Worker", twoRoutes)).toEqual({
+      ok: true,
+      agent: "Deep Worker",
+      route: { provider: "p2", model: "m2", reasoningEffort: "high", fallbacks: [{ provider: "bp", model: "bm" }] },
+    })
+    // The untouched members stay unconfigured: configuring one agent never configures another.
+    expect(resolveAgentRoute("Planner", twoRoutes)).toMatchObject({ ok: false, reason: "unconfigured", agent: "Planner" })
   })
 
-  test("the hint is the human sentence, then the dotted key — and nothing else", () => {
-    for (const knob of slot4) {
-      expect(String(knob.hint)).toBe(`${String(knob.semantics)} (mpd.jsonc teamModels.slot4.${String(knob.path[2])})`)
+  test("lookup is case- and separator-insensitive on the member's functional NAME", () => {
+    for (const spelling of ["Architect", "architect", "ARCHITECT", " architect "]) {
+      expect(resolveAgentRoute(spelling, twoRoutes)).toMatchObject({ ok: true, agent: "Architect" })
     }
-    // The image-input constraint is stated in ALL THREE rows, in both languages.
-    for (const knob of slot4) {
-      expect(String(knob.semantics)).toContain("Vision Analyst")
-      expect(String(knob.semanticsZh)).toContain("Vision Analyst")
-    }
-    expect(String(slot4[1].semantics)).toContain("MUST accept image input")
-    expect(String(slot4[0].semantics)).toContain("text-only model breaks image analysis")
-    expect(String(slot4[0].semanticsZh)).toContain("换成纯文本模型会让看图任务失败")
+    // A hand-written KEY spelling matches too (the normalizer runs on both sides).
+    const oddKeys = { agentRoutes: { "senior_engineer": { provider: "p", model: "m" } } }
+    expect(resolveAgentRoute("Senior Engineer", oddKeys)).toEqual({ ok: true, agent: "Senior Engineer", route: { provider: "p", model: "m" } })
+    expect(agentRouteEntryOfMember("senior-engineer", oddKeys)).toEqual({ provider: "p", model: "m" })
+  })
+
+  test("an absent entry => typed `unconfigured` naming BOTH missing leaf paths", () => {
+    /** The typed resolution of an agent the workspace never configured. */
+    const absent = resolveAgentRoute("Planner", {})
+    expect(absent).toEqual({ ok: false, reason: "unconfigured", agent: "Planner", missing: ["agentRoutes.Planner.provider", "agentRoutes.Planner.model"] })
+    // A half-filled entry reports only the leaf it still needs.
+    const half = resolveAgentRoute("Planner", { agentRoutes: { Planner: { model: "m" } } })
+    expect(half).toEqual({ ok: false, reason: "unconfigured", agent: "Planner", missing: ["agentRoutes.Planner.provider"] })
+    // A non-roster name is NOT an unconfigured agent: it is unrouted (extension roles keep their chain).
+    const unrouted = resolveAgentRoute("not-a-roster-member", {})
+    expect(unrouted).toEqual({ ok: false, reason: "unrouted" })
+    // THE ASYMMETRY, asserted on purpose: the unrouted arm carries no `agent` field.
+    expect(Object.prototype.hasOwnProperty.call(unrouted, "agent")).toBe(false)
+  })
+
+  test("a malformed leaf => typed `invalid` with the offending path", () => {
+    expect(resolveAgentRoute("Vision Analyst", { agentRoutes: { "Vision Analyst": { provider: "p", model: 7 } } }))
+      .toEqual({ ok: false, reason: "invalid", agent: "Vision Analyst", problem: "agentRoutes.Vision Analyst.model" })
+    expect(resolveAgentRoute("Vision Analyst", { agentRoutes: { "Vision Analyst": { provider: "p", model: "m", reasoningEffort: 9 } } }))
+      .toEqual({ ok: false, reason: "invalid", agent: "Vision Analyst", problem: "agentRoutes.Vision Analyst.reasoningEffort" })
+    // A non-object entry is invalid at the ENTRY path, never treated as absent.
+    expect(resolveAgentRoute("Vision Analyst", { agentRoutes: { "Vision Analyst": "deepseek-v4-flash" } }))
+      .toEqual({ ok: false, reason: "invalid", agent: "Vision Analyst", problem: "agentRoutes.Vision Analyst" })
+    // `null` is the JSON spelling of "unset", not an invalid value.
+    expect(resolveAgentRoute("Vision Analyst", { agentRoutes: { "Vision Analyst": { provider: "p", model: "m", reasoningEffort: null } } }))
+      .toMatchObject({ ok: true, route: { provider: "p", model: "m" } })
+  })
+
+  test("the fallback chain is sanitized once: malformed entries are DROPPED, a non-array chain dropped whole", () => {
+    /** The resolution of an entry whose chain carries malformed members. */
+    const resolution = resolveAgentRoute("Architect", {
+      agentRoutes: {
+        Architect: {
+          provider: "p",
+          model: "m",
+          fallbacks: [{ provider: "bp1", model: "bm1", reasoningEffort: "low" }, { provider: "bp2" }, { provider: "bp3", model: "bm3", reasoningEffort: 9 }],
+        },
+      },
+    })
+    expect(resolution).toMatchObject({ ok: true, route: { fallbacks: [{ provider: "bp1", model: "bm1", reasoningEffort: "low" }] } })
+    // The dropped count is derived from the SAME sanitizer (the service reports it in one log line).
+    expect(droppedFallbacksOf("Architect", {
+      agentRoutes: {
+        Architect: {
+          provider: "p",
+          model: "m",
+          fallbacks: [{ provider: "bp1", model: "bm1", reasoningEffort: "low" }, { provider: "bp2" }, { provider: "bp3", model: "bm3", reasoningEffort: 9 }],
+        },
+      },
+    })).toBe(2)
+    expect(droppedFallbacksOf("Architect", { agentRoutes: { Architect: { provider: "p", model: "m", fallbacks: "nope" } } })).toBe(1)
+    // A valid chain with no malformed entry reports nothing and resolves no `fallbacks` key at all.
+    expect(droppedFallbacksOf("Architect", twoRoutes)).toBe(0)
+    expect(resolveAgentRoute("Architect", { agentRoutes: { Architect: { provider: "p", model: "m", fallbacks: [] } } }))
+      .toEqual({ ok: true, agent: "Architect", route: { provider: "p", model: "m" } })
+  })
+
+  test("`agentRouteOfMember` is TOTAL: it answers a route only for a usable entry", () => {
+    expect(agentRouteOfMember("Architect", twoRoutes)).toEqual({ provider: "p1", model: "m1", reasoningEffort: "max" })
+    expect(agentRouteOfMember("Planner", twoRoutes)).toBeUndefined()
+    expect(agentRouteOfMember("Vision Analyst", { agentRoutes: { "Vision Analyst": { provider: 7 } } })).toBeUndefined()
+    expect(agentRouteOfMember("not-a-roster-member", twoRoutes)).toBeUndefined()
+    // NEVER throws: every malformed shape above answered a typed state instead of an exception.
+    expect(() => resolveAgentRoute("Architect", null)).not.toThrow()
+    expect(() => resolveAgentRoute("Architect", { agentRoutes: null })).not.toThrow()
+  })
+
+  test("the AGENT_UNCONFIGURED sentence names the agent, both recovery paths and the no-write fact", () => {
+    expect(AGENT_UNCONFIGURED_CODE).toBe("AGENT_UNCONFIGURED")
+    /** The ONE sentence a spawn applier would throw for that agent. */
+    const sentence = agentUnconfiguredMessage("Planner", "missing agentRoutes.Planner.provider, agentRoutes.Planner.model")
+    expect(sentence).toStartWith("AGENT_UNCONFIGURED: Planner is not usable")
+    expect(sentence).toContain("agentRoutes.Planner.provider")
+    expect(sentence).toContain("agentRoutes.Planner.model")
+    expect(sentence).toContain("/mpd-model")
+    expect(sentence).toContain("agentRoutes.Planner in .mpd/mpd.jsonc")
+    expect(sentence).toContain("nothing was written and no child was started")
   })
 })
 
-describe("A2 — the read path contains only what the user wrote (contract §2/§9)", () => {
-  test("a fresh workspace: no teamModels key in the raw read, and a TYPED unconfigured resolution", () => {
-    // Fresh workspace + isolated home: nothing the user could have declared.
-    const { root, home } = sandbox()
-    // The mounted config service, whose reads are the subject of every assertion below.
+describe("the mounted service: the typed read and the raw pass-through", () => {
+  test("the service answers per agent from the LIVE file layers, and never throws", () => {
+    /** One sandbox workspace whose config file this case controls. */
+    const { root, file, home } = sandbox()
+    writeFileSync(file, JSON.stringify({ agentRoutes: { Architect: { provider: "gateway", model: "gpt-x" } } }))
+    /** The mounted row's `mpdConfig` service. */
     const { service } = mount(root, home)
-    expect(service.get("teamModels")).toBeUndefined()
-    expect(service.get()).not.toHaveProperty("teamModels")
-    // The TOTAL service surface (amendment 1): undefined, never an exception.
-    expect(service.teamModelRouteOf("Architect")).toBeUndefined()
-    expect(service.slotResolutionOf("Architect")).toMatchObject({ ok: false, status: "unconfigured", slot: "slot1", missing: ["provider", "model"] })
+    expect(service.agentRouteResolutionOf("Architect")).toEqual({ ok: true, agent: "Architect", route: { provider: "gateway", model: "gpt-x" } })
+    expect(service.agentRouteOf("Architect")).toEqual({ provider: "gateway", model: "gpt-x" })
+    // An absent entry and a non-roster name are typed states, not exceptions.
+    expect(service.agentRouteResolutionOf("Planner")).toMatchObject({ ok: false, reason: "unconfigured", agent: "Planner" })
+    expect(service.agentRouteResolutionOf("extension-role")).toEqual({ ok: false, reason: "unrouted" })
+    expect(service.agentRouteOf("Planner")).toBeUndefined()
+    // The retired names are GONE from the service surface, never aliased.
+    expect(service.slotResolutionOf).toBeUndefined()
+    expect(service.teamModelRouteOf).toBeUndefined()
   })
 
-  test("a file that sets only slot2.model keeps exactly that leaf — and is still unconfigured", () => {
-    // Sandbox whose project file this test writes the partial slot2 block into.
+  test("a malformed fallback entry is dropped with exactly ONE log line", () => {
+    /** One sandbox workspace whose config file this case controls. */
     const { root, file, home } = sandbox()
-    writeFileSync(file, '{ "teamModels": { "slot2": { "model": "deepseek-v4-pro" } } }')
-    // Mounted AFTER the write, so the apply-time load sees the block.
-    const { service } = mount(root, home)
-    expect(service.get("teamModels.slot2")).toEqual({ model: "deepseek-v4-pro" })
-    // Half-configured is UNCONFIGURED: the provider leaf is still missing, and it is named.
-    expect(service.slotResolutionOf("Researcher")).toMatchObject({ ok: false, status: "unconfigured", missing: ["provider"] })
+    writeFileSync(file, JSON.stringify({ agentRoutes: { Architect: { provider: "p", model: "m", fallbacks: [{ provider: "bp" }] } } }))
+    /** Every log line the row emitted during this mount and read. */
+    const logs: string[] = []
+    /** The mounted row's service, wired to the log capture above. */
+    const { service } = mount(root, home, logs)
+    /** The typed read the service answered for the configured agent. */
+    const resolution = service.agentRouteResolutionOf("Architect")
+    // The malformed entry is DROPPED: the usable route carries no `fallbacks` key at all.
+    expect(resolution).toEqual({ ok: true, agent: "Architect", route: { provider: "p", model: "m" } })
+    /** The drop line the service reported, which must appear exactly once. */
+    const dropLines = logs.filter((line) => line.includes("dropped 1 malformed fallback entry"))
+    expect(dropLines).toHaveLength(1)
+    expect(dropLines[0]).toContain("Architect")
   })
 
-  test("project .mpd/mpd.jsonc outranks the user $DSH_HOME/mpd.jsonc layer, per leaf", () => {
-    // Sandbox for the precedence case: the SAME slot1 block is declared in both file layers.
+  test("the legacy block passes through `mpd_config_get` verbatim but is never read for routing", () => {
+    /** One sandbox workspace whose config file this case controls. */
     const { root, file, home } = sandbox()
-    writeFileSync(join(home, "mpd.jsonc"), '{ "teamModels": { "slot1": { "provider": "user-provider", "model": "user-model" } } }')
-    writeFileSync(file, '{ "teamModels": { "slot1": { "model": "project-model" } } }')
-    // Mounted once both files exist; the per-leaf winner is what the reads must show.
+    writeFileSync(file, JSON.stringify({
+      teamModels: { slot1: { provider: "legacy-p", model: "legacy-m" } },
+      agentRoutes: { Architect: { provider: "new-p", model: "new-m" } },
+    }))
+    /** The mounted row's `mpdConfig` service. */
     const { service } = mount(root, home)
-    expect(service.get("teamModels.slot1")).toEqual({ provider: "user-provider", model: "project-model" })
-    expect(service.slotResolutionOf("Architect")).toMatchObject({ ok: true, route: { provider: "user-provider", model: "project-model" } })
+    // The raw pass-through: the legacy block is answerable, unchanged.
+    expect(service.get("teamModels.slot1")).toEqual({ provider: "legacy-p", model: "legacy-m" })
+    // Routing comes from the agent's OWN entry — the slot tree is not consulted.
+    expect(service.agentRouteOf("Architect")).toEqual({ provider: "new-p", model: "new-m" })
+    // A group whose legacy slot says something but whose agent entry is absent stays UNCONFIGURED.
+    expect(service.agentRouteResolutionOf("Planner")).toMatchObject({ ok: false, reason: "unconfigured" })
   })
 
-  test("a READ never seeds and never writes: the workspace file stays byte-identical", () => {
-    // Sandbox holding one raw config file, whose bytes must be unchanged when the test ends.
+  test("`mpd_config_get`'s description names agentRoutes and no longer advertises the slot table", async () => {
+    /** One sandbox workspace whose config file this case controls. */
     const { root, file, home } = sandbox()
-    // The exact bytes written to the project file, re-read at the end to prove nothing leaked to disk.
-    const original = '{ "ulw": { "maxRounds": 3 } }'
-    writeFileSync(file, original)
-    // Mounting the row runs the one-time seed; with NO catalog seam in the stub it writes nothing.
-    const { service } = mount(root, home)
-    expect(service.get("teamModels")).toBeUndefined()
-    expect(readFileSync(file, "utf8")).toBe(original)
-  })
-
-  test("the mpd_config_get payload is the RAW config: absent stays absent, declared is verbatim", async () => {
-    // Sandbox for the tool surface; the payload is read through the registered tool, not the service.
-    const { root, file, home } = sandbox()
-    // Registered tools, where the real `mpd_config_get` row is looked up by name.
-    const { tools } = mount(root, home)
-    // The registered get tool; a missing row would make every later call throw.
-    const get = tools.find((tool) => tool.name === "mpd_config_get")
-    // Key-less read on a fresh workspace: NO materialised default layer may appear (§9).
+    /** The mounted service and every tool the row registered. */
+    const { service, tools } = mount(root, home)
+    /** The config-read tool the row registered. */
+    const tool = tools.find((candidate) => candidate.name === "mpd_config_get")
+    expect(tool).toBeDefined()
+    expect(String(tool.description)).toContain("agentRoutes.<Agent>")
+    expect(String(tool.description)).not.toContain("teamModels.slot1|slot2|slot3|slot4")
+    // The read is behaviourally whole: an absent block reads as ABSENT, a declared one verbatim.
+    /** The tool's execute half, called here as a consumer would. */
+    const get = tool as { execute: (args: Record<string, unknown>) => Promise<any> }
+    /** The key-less read: an absent block must read as ABSENT. */
     const noKey = await get.execute({})
+    expect(noKey.config).not.toHaveProperty("agentRoutes")
     expect(noKey.config).not.toHaveProperty("teamModels")
     expect(JSON.parse(JSON.stringify(noKey))).toEqual(noKey) // host lossless round-trip
-    // A declared block answers VERBATIM, fallback chain included — no leaf is rewritten.
-    writeFileSync(file, '{ "teamModels": { "slot3": { "provider": "gateway", "model": "gpt-x", "fallbacks": [{ "provider": "backup", "model": "b" }] } } }')
-    /** The keyed read of the declared slot. */
-    const byKey = await get.execute({ key: "teamModels.slot3" })
+    // A declared entry answers VERBATIM, fallback chain included — no leaf is rewritten.
+    writeFileSync(file, '{ "agentRoutes": { "Architect": { "provider": "gateway", "model": "gpt-x", "fallbacks": [{ "provider": "backup", "model": "b" }] } } }')
+    service.reload({ agent: { session: { header: { cwd: root } } } })
+    /** The keyed read of the declared entry. */
+    const byKey = await get.execute({ key: "agentRoutes.Architect" })
     expect(byKey.value).toEqual({ provider: "gateway", model: "gpt-x", fallbacks: [{ provider: "backup", model: "b" }] })
-    expect(byKey.config.teamModels.slot3).toEqual({ provider: "gateway", model: "gpt-x", fallbacks: [{ provider: "backup", model: "b" }] })
   })
 })
 
-describe("the deletion lock on the FILE (contract §3): a leftover agentRoutes block survives a save", () => {
-  test("saving an unrelated leaf leaves the old block byte-identical (no data loss)", () => {
-    // A workspace file shaped like an OLD one: an unrelated knob plus a full agentRoutes table.
+describe("the FILE no-data-loss lock: a live `agentRoutes` block survives an unrelated save", () => {
+  test("saving an unrelated leaf leaves the old block byte-identical", () => {
+    // A workspace file carrying an unrelated knob plus a full route table.
     /** The exact bytes a save of `ulw.maxRounds` must leave untouched around the block. */
     const original = `{\n  "ulw": { "maxRounds": 3 },\n  "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }\n}\n`
     /** The file the writer targets (inside one sandbox workspace). */
