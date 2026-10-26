@@ -241,11 +241,17 @@ or as a member, and refuses a `parentTeamId` chain that comes back to itself, so
 (`mpdTeams.graph(workspace, teamId)`) can follow `parentTeamId` into nested groups recursively without
 risking a loop.
 
-**The delivered surface this wave is the TUI.** The panel draws those boxes in its character grid — a
+**Both delivered surfaces draw those boxes.** The TUI panel draws them in its character grid — a
 second one-cell glyph family, a frame spanning its interior's rows, ports for arriving edges versus
 crossings for passing ones, a group hit identity, and a collapse-not-half width guard
-(`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as boxes"). The web DAG's group frame is NOT
-part of this delivery; the bound in "Declared bounds" says so explicitly.
+(`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as boxes"). The web DAG draws the same
+model through the frame channel: a `.mpd-dag-group` layer between the edges and the cards, one frame
+per group with a published rect (`data-mpd-group`), an inner DAG planned RECURSIVELY inside each box at
+absolute canvas coordinates (a box is sized by its interior plus padding), a box→box or box→task edge
+terminated on the frame's border port, a per-frame overlap audit whose union is served, and a
+`data-mpd-cards` layer for the interior. The BUILT `client.js` carries the channel, and a flat board
+renders through the untouched flat path (byte-identical by construction). The three web bounds are in
+"Declared bounds".
 
 ## Cell-aware mail
 
@@ -346,11 +352,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   approval from the parent team's roster (`deriveParentTeam`); `cellwork_subteam` stamps the resulting
   parent team id on the cell record and passes no parent id at all, so there is no argument for a caller to
   get wrong — and no way to point a sub-team at a team that does not record the session as a member.
-- **The WEB nested frame is NOT delivered this wave.** The team record, the shared model and the TUI carry
-  nested groups (see "Nested DAG: subcells as group boxes"); the web DAG's group frame, its recursive
-  geometry and its client rebuild are a FOLLOW-UP with their patch plan frozen at
-  `.mpd/plans/cellwork-w4-t7-plan.md`. Nothing in this document claims the web surface renders a box, and a
-  reader must not read the TUI's vocabulary as a web capability.
+- **The web nested frame ships with three stated bounds.** (1) A cyclic dependency INSIDE one frame is
+  not routed on the web canvas: the witness is named in `nestedBackEdges` while the flat path draws it
+  on the left. (2) Nested columns are packed in rank order and top-aligned — no barycentre relaxation
+  (the flat path keeps its own relaxation). (3) The hover halo covers the ROOT frame's cards; an
+  interior card keeps its own tone. The `nestedBackEdges` witness list is wired and documented but no
+  arm populates a witness yet: the bound is DECLARED, and a cyclic-interior arm would seal it.
 - **Blindness stays prose**, exactly as this repository states it: cellwork wires the contract, the
   loop and the verdict, and does not pretend to observe what a verifier read.
 

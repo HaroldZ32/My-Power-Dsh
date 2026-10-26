@@ -200,10 +200,13 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
 代码会拒绝一个不把该 session 记作 Lead 或成员的父亲，也会拒绝一条绕回自身的 `parentTeamId` 链，所以投影
 （`mpdTeams.graph(workspace, teamId)`）可以顺着 `parentTeamId` 递归合并成嵌套分组而不担心成环。
 
-**本波次交付的表面是 TUI。** 面板在它的字符网格里画出这些盒子——第二套单格字形家族、横跨内部各行的帧框、到达边画
-端口而穿过的边画交叉、分组命中身份，以及"宁可折叠也不半画"的宽度守卫
-（`packages/mpd-tui-plugin/README.md` 的 "Nested groups: subcells as boxes"）。web DAG 的分组帧**不属于**本次交付；
-"声明边界"一节对此有明确交代。
+**本波次两个表面都画这些盒子。** 面板在它的字符网格里画出它们——第二套单格字形家族、横跨内部各行的帧框、
+到达边画端口而穿过的边画交叉、分组命中身份，以及"宁可折叠也不半画"的宽度守卫
+（`packages/mpd-tui-plugin/README.md` 的 "Nested groups: subcells as boxes"）。web DAG 通过帧通道画同一
+套模型：边与卡片之间的 `.mpd-dag-group` 层、每个分组一帧并发布矩形（`data-mpd-group`）、每个盒子内部在
+**绝对画布坐标**上递归规划自己的 DAG（盒子尺寸 = 内部 + padding）、框→框或框→任务的边终止在帧的边框端口、
+按帧的重叠审计取并集、内部卡片走 `data-mpd-cards` 层。构建后的 `client.js` 携带这条通道，平铺板仍走未改
+动的平铺路径（由构造保证字节恒等）。三条 web 边界见"声明边界"。
 
 ## 感知 cell 的邮件
 
@@ -289,10 +292,10 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 - **`parent_team_id` 是隐式推导，不是旋钮。** 子 team 的父级由团队平面在批准时从父 team 的名册推导
   （`deriveParentTeam`）；`cellwork_subteam` 把推导出来的父 team id 记在 cell 记录上，全程不传任何父级 id，因此
   没有调用方可以搞错的参数——也没有办法把子 team 指向一个不把该 session 记作成成员的 team。
-- **WEB 端的嵌套帧在本波次不交付。** team 记录、共享模型与 TUI 都带上了嵌套分组（见"嵌套 DAG：子单元画成分组
-  盒子"）；web DAG 的分组帧、它的递归几何与它的 client 重建都是**后续工作**，补丁计划冻结在
-  `.mpd/plans/cellwork-w4-t7-plan.md`。本文档没有任何一句声称 web 表面会画盒子，读者也不得把 TUI 的词汇当成 web
-  的能力。
+- **web 嵌套帧带着三条已声明的边界交付。** (1) 单帧**内部**的循环依赖在 web 画布上不路由：见证记入
+  `nestedBackEdges`，平铺路径会把它画在左侧；(2) 嵌套列按秩打包、顶部对齐，不做重心松弛（平铺路径保留
+  自己的松弛）；(3) 悬停晕覆盖**根帧**的卡片，内部卡片保留自己的色调。`nestedBackEdges` 的见证列表已接线
+  并写入文档，但暂无一条臂真正填充见证：边界是**已声明**的，补一条"循环内部"的臂即可钉死。
 - **「盲」始终是书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到验证者
   读过什么。
 

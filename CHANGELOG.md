@@ -100,8 +100,12 @@ through a `--patch` overlay with an absolute module path because this machine re
 `@mpd-dsh/mpd` (the bundle wiring itself rests on `verify:rows`/`verify:manifest`); the Wave-5 re-pack
 closed `verify-pack-closure` (622/622 files identical, 0 drift); mail wake-up and reseed are
 best-effort; checkpoints require an OBSERVED window; the parent-team link is IMPLICIT (derived at
-approval, not a knob); nested DAG groups ship for the shared model, the team projection and the TUI,
-while the WEB nested frame is a declared follow-up; no live-LLM end-to-end cell run is claimed.
+approval, not a knob); nested DAG groups ship for the shared model, the team projection, the TUI and
+the web DAG (the `.mpd-dag-group` frame channel, a recursive in-box layout at absolute coordinates,
+box→box edges terminated on the frame border, and a per-frame audit union; three declared bounds:
+intra-frame cycles are not routed and are named in `nestedBackEdges`, nested columns are rank-packed
+and top-aligned without barycentre relaxation, and the hover halo stays on the root frame's cards); no
+live-LLM end-to-end cell run is claimed.
 
 **Fixed — `mpd-team-compact` passes a real `AbortSignal` to `compactNow`.** The call passed
 `undefined`, and `compactNow`'s first statement (`signal.throwIfAborted()`, outside its own try
