@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T093726-e2b526",
+  "loopId": "loop-20261026T082258-5986d0",
+  "taskId": "T5",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "9158b3e1-3c4f-4af2-bb85-0b17340a1462",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w2-contract.md",
+        "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/package.json",
+        "bytes": 260,
+        "sha256": "5af625dd892a60e29e1e57d23d3f15f9becbcb44ee839009e0d6240d17f5b68e",
+        "mtime": "2026-10-26T08:28:58.947Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 6632,
+        "sha256": "596ec7f3bc0b81412cebc332865930e1d20f2005e1df01ab2b845b3a3201ce98",
+        "mtime": "2026-10-26T08:48:02.821Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 6678,
+        "sha256": "3cbac0ac4b92e3fdbd3262a3b47231a68a2505003ac285d1f709ed51c01f960d",
+        "mtime": "2026-10-26T08:48:02.822Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/dist/index.js",
+        "bytes": 213495,
+        "sha256": "848522691e4ad193c09c12c25b997dd7e3128fef0b4fa4bb3d0901c0cc3cb9e6",
+        "mtime": "2026-10-26T09:29:36.265Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/index.ts",
+        "bytes": 36018,
+        "sha256": "b430ded2a42d6f916ab355a720385ec20f799c4e311af0cff343ad5daab9a659",
+        "mtime": "2026-10-26T09:26:34.282Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/state.ts",
+        "bytes": 26215,
+        "sha256": "31d0c23d6a13315ecb66d9e5e0c76db0752fd3f6af310403616515b6a3659687",
+        "mtime": "2026-10-26T09:26:11.675Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/requirements.ts",
+        "bytes": 8106,
+        "sha256": "be8671b386b6b29d31bebbf8359d7571301b37b8708a43a2b9bb94fc5bc0f3b3",
+        "mtime": "2026-10-26T08:49:06.165Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/split.ts",
+        "bytes": 23292,
+        "sha256": "5b2ea8167f1bb14f7982928249ae0c0ca526f66ad2e63bc1b65c2f76b288be83",
+        "mtime": "2026-10-26T09:26:51.343Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/budget.ts",
+        "bytes": 24418,
+        "sha256": "844a9fb7378cdb695a1ac56b173254e16515fd05ecb252844dc18885020071ae",
+        "mtime": "2026-10-26T08:47:06.721Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/activate.ts",
+        "bytes": 22019,
+        "sha256": "40d03f988ada5d5e129e4f2a795d367a043b076d5c443dd2663aa9abbead366e",
+        "mtime": "2026-10-26T09:26:11.660Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/flow.ts",
+        "bytes": 41042,
+        "sha256": "2017ddb504db3cd23ad0bd1edc37ba3fd6f7a88e6319ea6078d636840106cf5e",
+        "mtime": "2026-10-26T09:26:11.661Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/recon.ts",
+        "bytes": 7356,
+        "sha256": "8e2b59a3c8fe2730546a12b29bed17d10d9781a236ba02417a3f46b4b9881f7c",
+        "mtime": "2026-10-26T08:52:11.718Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/staging.ts",
+        "bytes": 21925,
+        "sha256": "28bc5e91790e6a6936938ec2e0314c9c68de1d1af6f8410219cc85ed0d5b9503",
+        "mtime": "2026-10-26T08:52:58.861Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/dispatch.ts",
+        "bytes": 14765,
+        "sha256": "36a919528ab9d808b13009113fcd49c2f5ca04218312ed133fae18c5505ff04b",
+        "mtime": "2026-10-26T08:51:29.664Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/cellwork.test.ts",
+        "bytes": 36772,
+        "sha256": "6f47a2196455835bcc7ae98c47ac3c1f50fe150aa57ba90eb09cd306f707943b",
+        "mtime": "2026-10-26T09:27:51.939Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/budget.test.ts",
+        "bytes": 7951,
+        "sha256": "5b625f9a92edcd39506df04c192c8e372bc3cef99db479408bb9eb01c07788ba",
+        "mtime": "2026-10-26T09:29:01.272Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/flow.test.ts",
+        "bytes": 34405,
+        "sha256": "aeab4681e89cdae4d5cf20b7174d77763932eaf3d6dfd521d2bca7668fe05584",
+        "mtime": "2026-10-26T09:29:16.602Z"
+      },
+      {
+        "path": "cordis.patch.yml",
+        "bytes": 58766,
+        "sha256": "0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      },
+      {
+        "path": "scripts/pack-mpd.ts",
+        "bytes": 66097,
+        "sha256": "6927354be6f1e1cf959bd4692737d5c22708263b1ee979221deb1359b01e26d1",
+        "mtime": "2026-10-26T08:39:11.668Z"
+      },
+      {
+        "path": "scripts/install-profile.ts",
+        "bytes": 54267,
+        "sha256": "ef5f2eeb1fe105df8f2673b003385577ccf8d9f070cad9cb51790ba9f42c6a77",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "596ec7f3bc0b81412cebc332865930e1d20f2005e1df01ab2b845b3a3201ce98"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T093518-26fb03",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093518-26fb03.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T093519-f2734b",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093519-f2734b.log",
+      "logSha256": "2443df65fdf3a876eb3ea2a95d925c19d28874e5696b328d60b585b55365f392"
+    },
+    {
+      "evidenceId": "ev-20261026T093522-e1e439",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093522-e1e439.log",
+      "logSha256": "2b158d4f2fe8af5a64fa4c582f122be6d86d71f03016244d573282949c303565"
+    },
+    {
+      "evidenceId": "ev-20261026T093522-ec461a",
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093522-ec461a.log",
+      "logSha256": "ffe748774a361e5d19cccf60f7e715a466b86c966bae9d923f671e78db3b38d4"
+    },
+    {
+      "evidenceId": "ev-20261026T093528-8bb521",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093528-8bb521.log",
+      "logSha256": "17d9333561c51ef58ba5061eced77a023feb9f4190a6a28dca48881f06554603"
+    },
+    {
+      "evidenceId": "ev-20261026T093559-3b7ecc",
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093559-3b7ecc.log",
+      "logSha256": "f53665037ef82dbab671cad770966c5db7cb819e1a13dee64dd41939686182cd"
+    },
+    {
+      "evidenceId": "ev-20261026T093602-ac49c9",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T093602-ac49c9.log",
+      "logSha256": "57b6e2c6ee961e730f9de508b2bebad0522b826bf3fcd30c11cacdf7a4be662c"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T09:37:26.118Z",
+  "notes": [
+    "BOUNDS: T5 judges B4/B5/B6/B7. Blind: src/** and test/** were NOT read; no FAIL was recorded. Declared bounds from the T2 report (synthetic cellwork:<cellId> producer for mpd_verify_open, single windowOverride, planning-task completion under the caller identity, prompts.ts still naming agent_teams_dispatch until T3) are ACCEPTED as bounds and are NOT findings.",
+    "HASH SANDWICH HELD: start 2026-10-26T09:35:00Z / end 2026-10-26T09:36:56Z, HEAD 6fe9e27e both sides; package digest 17e10205c825c287ea77ffa99ba57c892684feff08c76f3f924f023f5e7e92b7 identical at both reads (21 files); cordis.patch.yml 0ef73e7d…, scripts/install-profile.ts ef5f2eeb…, scripts/pack-mpd.ts 6927354b…, package.json 53704a4a…, bun.lock eeea08e3… unchanged.",
+    "UNIT EVIDENCE (my own run): bun test packages/mpd-cellwork-plugin = 31 pass / 0 fail / 397 expect / 3 files. Arms by name: INJECTED window 123456 -> budget 30864; a large window accepts a normal task and enforces the whole-window condition; an uncertified route is refused with NO guessed window; the window reader takes the catalog window then the operator override then refuses; a declared 2 MiB input is refused with its real bytes and a bytes->tokens breakdown; CJK priced punitively and an unreadable or outside path is a refusal; cellwork_start stages TWO members and TWO tasks with personas, roles and a blocked split task; requirements incomplete refused / complete finalized / changed finalize refused / update bumps and marks stale; split graph refusals name the rule (cycle, self-review, overlap, unknown role, no answer) plus the revision mismatch; an accepted graph is measured against the INJECTED window and a 2 MiB input is refused with its bytes; recon planner-only with label exactly Explorer, explicit absolute maxDepth, persona in the prompt; activate contracts -> members -> tasks -> verify loop BEFORE dispatch, owner-only, never a second activation; a STALE split refused unless its revision is passed explicitly; owner-only dispatch reports a busy or absent owner and never substitutes another member.",
+    "GATES (evidence ids): typecheck ev-26fb03 exit 0; comments ev-f2734b exit 0; docs ev-e1e439 PASS pairs=51 dead=0; rows ev-ec461a 37 ids incl mpd-cellwork; tests ev-8bb521 (full repo suite green, 30 cellwork lines in the log); manifest ev-3b7ecc PASS; dist ev-ac49c9 34/34 fresh under pinned bun 1.4.0.",
+    "TABLE-EXTERNAL GATES: verify-no-host-override exit 0 (0 of 0 collide with 214 host ids); install-profile --dry-run exit 0 with the mpd-cellwork row present; forbidden-literal scan (1_000_000 / 262144) = 0 hits. verify-pack-closure exit 1 (PACKED-MISSING [mpd-cellwork-plugin]) — per the captain's ruling an INTEGRATION item (Wave-5 re-pack + --require-packed + the T-91 expected-after-pack list), NOT a T2 finding.",
+    "F1 (reported, MEDIUM, documentation — not a code defect, not a FAIL of T2): contract B5 requires the README to DECLARE the prose-only bound for a composition without the child-persona seam. The package README pair is unchanged since T4 (mtime 16:48, before T2's 17:26 work) and still defers the whole flow lane ('The rest of the mode ... lands on the SAME record and guard documented here'), so B4's relay protocol, B6's measured-budget rule and B7's dispatch rule are also undocumented. The plan assigns the bilingual README to W3-T3; either land the B5 bound now or record the deferral in the contract so it cannot be read as a silent claim of mechanical read-only.",
+    "F2 (reported, LOW, evidence gap): three required B4/B5 prose behaviours have NO observable arm in the 31-arm suite and no README statement — (a) Amendment 3's 'the SAME split task is reopened/re-dispatched after a requirements update', (b) the Socratic relay path planner -> mail -> captain -> ask_user_question -> mail back with the captain authoring nothing, (c) B5's 'the report is journaled' (and the stopped-cell refusal). The contract's own required-arm list does not name them, so they are recorded UNPROVEN, not refuted. Direction: name them as arms in the next slice, or state them in the README as protocol prose.",
+    "BOUND (mount): the mounted-boot gate still has no artifact. The two newer .qa-reloc/bundle-lifecycle-* runs (09:26:45Z, 09:30:02Z) are EMPTY directories that died at the install step, and no 'mpd-cellwork] mounted:' line exists anywhere on disk, so there is no context artifact to cite either. 'The row applies' remains UNPROVEN in this environment and this PASS does not certify it."
+  ]
+}

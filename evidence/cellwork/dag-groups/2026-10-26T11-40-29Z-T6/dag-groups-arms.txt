@@ -1,0 +1,18 @@
+(pass) D3 · the group frame's glyph family > every glyph is exactly ONE CELL, and the family is DISJOINT from the node family 
+(pass) D3 · the group frame's glyph family > the frame is DOUBLE-LINED while the node box stays the rounded single-line set
+(pass) D3 · the group frame's glyph family > the two edge roles are DIFFERENT glyphs, and each is the box-drawing character for its role
+(pass) D3 · a nested model draws its frame > the frame is drawn around its interior, and it spans EVERY interior row 
+(pass) D3 · a nested model draws its frame > the frame's interior is the subcell's OWN DAG: its tasks and its arrows are inside the box 
+(pass) D3 · a nested model draws its frame > a NESTED frame stands strictly INSIDE its parent, and the two never exchange a cell 
+(pass) D3 · a nested model draws its frame > a group the tree cannot place is COLLAPSED and reported, never drawn as a half box 
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > an outside dependency TERMINATES on the box: the port glyph, and the arrow above it 
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > a dependency LEAVING the box PASSES THROUGH its side: the crossing glyph, not a port 
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > a board with NO groups draws exactly the flat picture, byte for byte 
+(pass) D3 · the group hit identity > a cell on or inside a frame resolves to the INNERMOST group that holds it 
+(pass) D3 · the group hit identity > outside every frame it resolves to nothing, and a task still outranks its frame 
+(pass) D3 · the group hit identity > the panel's click handler names the group when the pointer lands on a frame 
+(pass) D3 · never half a GROUP > a frame the window would CUT loses its own cells and keeps the interior's text 
+(pass) D3 · never half a GROUP > a frame WHOLLY inside the window, or wholly outside it, is left alone 
+(pass) D3 · the width guard degrades by COLLAPSING the group > a narrow panel falls back to the rail/list and NAMES every group collapsed 
+(pass) D3 · the width guard degrades by COLLAPSING the group > a panel with room draws the BOXES, and reports no collapse 
+(pass) D3 · the width guard degrades by COLLAPSING the group > a board with NO groups keeps the pre-group fallback exactly 

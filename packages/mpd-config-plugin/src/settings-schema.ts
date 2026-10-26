@@ -4,10 +4,16 @@
 // §10.1 places the REGISTRATION in this package (it is the only module that can supply the
 // file-derived `base`); the TUI package keeps a guarded fallback for compositions without this
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
-// cannot drift and the twenty-six knobs (thirteen mpd knobs + twelve team-model slot leaves + the
-// TUI surface's own knob) stay
-// one declaration. The per-member `agentRoutes` table is GONE (contract
-// `.mpd/plans/slot-single-source.md` §3): a member's route comes from its slot and nowhere else.
+// cannot drift and the forty-seven knobs (thirteen mpd knobs + the eleven roster agents' three
+// leaves each + the TUI surface's own knob) stay ONE declaration.
+//
+// THE UNIT OF MODEL CONFIGURATION IS THE AGENT (contract `.mpd/plans/agent-routes-per-agent.md`
+// §1): `agentRoutes.<Agent>` holds one persisted route per roster member and the subtree carries
+// NO default anywhere. The four `TEAM_MODEL_SLOT_GROUPS` survive ONLY as the display grouping and
+// the `/mpd-model` bulk-edit shortcut — a group write writes every member's own entry and stores
+// nothing of its own. `teamModels` is a TOLERATED LEGACY node: it keeps a pre-existing profile
+// patch or row config validating and booting, is read ONLY by the one-time migration, and is
+// never read for routing and never written by this bundle.
 import z from "../../mpd-schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
@@ -27,22 +33,30 @@ export interface ModelRoute {
 }
 
 /**
- * One team-model slot as the FILE may declare it: ONE configured route plus that slot's own
- * optional fallback chain. Every leaf is optional because there is NO default layer any more
- * (contract §2) — a workspace that never configured a slot has an EMPTY slot, and a spawn for a
- * member it routes is REFUSED with `SLOT_UNCONFIGURED` (`resolveTeamModelSlot`), never run on a
- * built-in route.
+ * One roster agent's route as the FILE may declare it: ONE configured route plus that agent's own
+ * optional fallback chain. Every leaf is optional because there is NO default layer (contract §1) —
+ * a workspace that never configured an agent has an EMPTY entry, and a spawn for it is REFUSED with
+ * `AGENT_UNCONFIGURED` (`resolveAgentRoute`), never run on a built-in route.
  */
-export interface TeamModelSlot {
-  /** Provider half of the slot's configured route; absent means "not configured". */
+export interface AgentRouteConfig {
+  /** Provider half of this agent's configured route; absent means "not configured". */
   readonly provider?: string
-  /** Model half of the slot's configured route; absent means "not configured". */
+  /** Model half of this agent's configured route; absent means "not configured". */
   readonly model?: string
-  /** The slot's own effort keyword (`off` / `low` / `high` / `max`) when it states one. */
+  /** The agent's own effort keyword (`off` / `low` / `high` / `max`) when it states one. */
   readonly reasoningEffort?: string
-  /** The slot's OWN fallback chain, consumed once before a spawn (contract §8); order is precedence. */
+  /** The agent's OWN fallback chain, consumed once before a spawn (contract §2); order is precedence. */
   readonly fallbacks?: readonly ModelRoute[]
 }
+
+/**
+ * The LEGACY `teamModels` slot shape, kept for the one-time migration only (contract §5).
+ *
+ * The block is tolerated at boot and read ONCE, never for routing and never rewritten: every roster
+ * agent inherits its group's declared leaves once, and the marker then keeps the workspace from
+ * ever migrating or seeding again.
+ */
+export type TeamModelSlot = AgentRouteConfig
 
 /**
  * The DECLARED fallback option lists: what a front door offers for a slot leaf when its LIVE
@@ -57,7 +71,7 @@ export const TEAM_MODEL_FALLBACK_OPTIONS = {
 } as const
 
 /**
- * One slot's three leaves as a schema block with NO default anywhere (contract §2).
+ * One roster agent's route as a schema block with NO default anywhere (contract §1).
  *
  * WHY `.required(false)` AND NOT A DEFAULT: the loader materialises this schema into the ROW config,
  * `rowKnobLayer` copies the row knobs LAST, and a default here would therefore WIN over what the
@@ -69,9 +83,9 @@ export const TEAM_MODEL_FALLBACK_OPTIONS = {
  * an implicit `[]` default (MEASURED: `z.array(...)` resolves an absent leaf to `[]`, so the row
  * config would then replace a file-declared chain with an empty one). The vendored `object`
  * resolver merges unknown keys THROUGH, so a file's `fallbacks` survives a load without being
- * declared — which is the behaviour the contract's additive fallback chain needs.
+ * declared — which is the behaviour the contract's fallback chain needs.
  */
-function teamModelSlotSchema(): Schemastery<TeamModelSlot> {
+function agentRouteEntrySchema(): Schemastery<AgentRouteConfig> {
   return z.object({
     provider: z.string().required(false),
     model: z.string().required(false),
@@ -111,6 +125,66 @@ export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[n
 export type TeamModelSlotId = (typeof TEAM_MODEL_SLOTS)[number]
 
 /**
+ * The eleven roster agent NAMES, in group order — the ONLY keys `agentRoutes` may carry.
+ *
+ * Derived from the groups' own membership so the settings table, the display grouping and the
+ * migration cannot drift: one name list, one source. The display names are the vocabulary the
+ * roster, the tool schemas, the file and both front doors already use; a stable internal id is
+ * never exposed.
+ */
+export const ROSTER_AGENT_NAMES: readonly string[] = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members)
+
+/**
+ * The whole `agentRoutes` table: one typed entry per roster agent, keyed by the DISPLAY NAME the
+ * roster, the tool schemas and both front doors use. Enumerated from the groups' own membership, so
+ * an unknown agent name is unrepresentable in the settings form.
+ */
+export const AGENT_ROUTES_SCHEMA: Schemastery = z.object(
+  Object.fromEntries(ROSTER_AGENT_NAMES.map((agent): [string, Schemastery] => [agent, agentRouteEntrySchema()])),
+)
+
+/**
+ * The comparison key for a roster name: lowercase with every non-alphanumeric run removed.
+ *
+ * Headings, tool arguments, settings paths and hand-written file keys spell the same member
+ * differently (`Senior Engineer`, `senior engineer`, `SeniorEngineer`), and every one of them must
+ * address the SAME agent; this is the one normalizer they all go through.
+ * @param value - any spelling of a roster member name.
+ * @returns the separator-insensitive key two spellings share when they name the same member.
+ */
+export function agentNameKey(value: string): string {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "")
+}
+
+/**
+ * The canonical roster agent name a spelling addresses, or undefined for a non-roster name.
+ * @param member - the member's functional name as a caller spells it.
+ * @returns the display name from {@link ROSTER_AGENT_NAMES}, or undefined when no roster member matches.
+ */
+export function rosterAgentNameOf(member: string): string | undefined {
+  /** The normalized key the caller's spelling must match. */
+  const key = agentNameKey(member)
+  if (key === "") return undefined
+  return ROSTER_AGENT_NAMES.find((name) => agentNameKey(name) === key)
+}
+
+/**
+ * The display GROUP that renders one roster agent, or undefined for a non-roster name.
+ *
+ * Grouping is DISPLAY and BULK-EDIT only (contract §1): it decides which heading a settings row
+ * renders under and which slot a `/mpd-model` group write iterates — never which route an agent
+ * runs on, which is its own `agentRoutes` entry.
+ * @param member - the member's functional name as a caller spells it.
+ * @returns the grouping slot id, or undefined when no group lists this member.
+ */
+export function teamModelSlotOfMember(member: string): TeamModelSlotId | undefined {
+  /** The canonical display name, so every spelling of one member lands in the same group. */
+  const agent = rosterAgentNameOf(member)
+  if (agent === undefined) return undefined
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(agent))
+}
+
+/**
  * The mpd.jsonc knob schema (mirrors the keys `packages/mpd-config-plugin` consumes). The
  * defaults here are the design's L0 layer; the file-derived values arrive as the namespace `base`.
  */
@@ -142,17 +216,19 @@ export const SettingsSchema = z.object({
   // leaf's whole point is that it has NO default, and `.default('')` would have materialised an
   // empty string that the consumers' guards would then read as a REAL root.
   boulder: z.object({ dir: z.string().required(false) }),
-  // The four team-model slots (contract `.mpd/plans/slot-single-source.md` §1-§2): each slot is
-  // ONE configured route plus its own optional fallback chain, and the subtree carries NO DEFAULT
-  // anywhere. The row-knob layer merges LAST, so a schema default here would be an override that
-  // wins over the user's file — the exact layer this contract deletes. An unconfigured slot stays
-  // ABSENT and every spawn it would route is refused with `SLOT_UNCONFIGURED`.
-  teamModels: z.object({
-    slot1: teamModelSlotSchema(),
-    slot2: teamModelSlotSchema(),
-    slot3: teamModelSlotSchema(),
-    slot4: teamModelSlotSchema(),
-  }),
+  // The per-agent routes (contract `.mpd/plans/agent-routes-per-agent.md` §1): each of the eleven
+  // roster agents has its OWN entry — one configured route plus its own optional fallback chain —
+  // and the subtree carries NO DEFAULT anywhere. The row-knob layer merges LAST, so a schema
+  // default here would be an override that wins over the user's file. An agent the file never
+  // configured stays ABSENT and every spawn that would route it is refused with
+  // `AGENT_UNCONFIGURED`.
+  agentRoutes: AGENT_ROUTES_SCHEMA,
+  // THE LEGACY BLOCK, TOLERATED AND NEVER READ FOR ROUTING (contract §1): `z.any()` is the
+  // permissive node, so an existing profile patch or row config that still declares
+  // `teamModels.slot1..4` VALIDATES AND BOOTS — a typed slot tree here would reject it and fail the
+  // boot of every profile not yet re-pinned. The block is read ONLY by the one-time migration
+  // (§5), reaches `mpd_config_get` verbatim, and this bundle never writes it.
+  teamModels: z.any(),
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
   // `mpd-team-watchdog` row config in `cordis.patch.yml` — those are the three
@@ -196,8 +272,8 @@ export const SettingsSchema = z.object({
  * process — no restart", which holds only for a knob that READS the config service per use. An
  * independent read of the CONSUMERS (not of this string) split the knobs in two, and both halves are
  * named here so no reader has to guess:
- *   · LIVE (read per use): `teamModels.slot*` (the spawn resolver reads the service per spawn, in
- *     `createDshAdapter`'s slot resolver), `modelchain.*`, `team.stateDir` (read per call in
+ *   · LIVE (read per use): `agentRoutes.*` (the spawn resolver reads the service per spawn, in
+ *     `createDshAdapter`'s agent-route resolver), `modelchain.*`, `team.stateDir` (read per call in
  *     mpd-bundle), `team.gate`/`team.sensitivity` (`complexity-gate.ts`), `captain.investigation`
  *     (`captain-investigation.ts`) and `delegation.gate` (`delegation-gate.ts`) — the gates' own docs
  *     say the value is "picked up LIVE, T-18";
@@ -212,7 +288,7 @@ export const SettingsSchema = z.object({
  * The MOUNT-CAPTURED half lives in {@link BRIDGE_RESTART_LIMIT}, because the two sentences must be
  * read together; {@link BRIDGE_SECTION_NOTICE} renders both plus the not-lost clause.
  */
-export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
+export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
 
 /**
  * The MOUNT-CAPTURED half of the same truth: the knobs whose plugins read the config ONCE inside
@@ -404,6 +480,65 @@ export function teamModelLeafSentence(
     .join(teamModelMembers(slot, lang))
 }
 
+/**
+ * The HUMAN sentence of one AGENT-ROUTE leaf, as a template: `{agent}` is the roster display name
+ * and `{group}` the display group that renders the row.
+ *
+ * These are the sentences of the per-agent rows both front doors render (contract §7); the group
+ * templates above stay the bulk-edit panel's copy. The sentence states that the entry belongs to
+ * ONE agent — the unit of configuration — and what an unusable value does to THAT agent's spawn.
+ */
+const AGENT_ROUTE_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>> = {
+  provider: {
+    en: "{agent}'s own provider. Every roster agent has its OWN persisted route, so this row belongs to {agent} and changing it touches no other agent. What changing it does: {agent}'s next spawn (a one-shot consult, a workmate consult or a team member) runs on the new route; an entry missing `provider` or `model` makes that spawn REFUSE loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves — it never silently substitutes another model.",
+    zh: "{agent} 自己的提供商。每个 roster 成员都有各自持久化的路由，本行只属于 {agent}，改它不会影响其他成员。改它的影响：{agent} 下一次被 spawn（一次性咨询、workmate 咨询或 team 成员）即走新路由；条目缺少 `provider` 或 `model` 会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`），点名该成员与缺失项，绝不静默换模型。",
+  },
+  model: {
+    en: "{agent}'s own model. Together with the provider above it decides the model {agent} runs on; other agents keep their own routes. What changing it does: {agent}'s next spawn uses the new model, and a model the provider does not offer makes that spawn fail with the agent and the offending leaf named.",
+    zh: "{agent} 自己的模型。与上面的提供商共同决定 {agent} 使用的模型，其他成员保持各自的路由。改它的影响：{agent} 下一次 spawn 使用新模型；模型与提供商不匹配、或该提供商没有这个模型时，该次 spawn 会点名成员与出错的字段失败。",
+  },
+  reasoningEffort: {
+    en: "{agent}'s own reasoning effort (off / low / high / max): how much {agent} thinks on each call. max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: {agent}'s next spawn uses it; an effort the chosen model does not support fails that spawn and names this leaf. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+    zh: "{agent} 自己的推理强度（off / low / high / max），决定 {agent} 每次调用的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：{agent} 下一次 spawn 即使用它；该模型不支持的等级会让该次 spawn 报错并点名本字段。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
+  },
+}
+
+/** The per-agent overrides of those templates: the vision member's route must accept image input. */
+const AGENT_ROUTE_LEAF_OVERRIDES: Readonly<Record<string, Partial<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>>>> = {
+  "Vision Analyst": {
+    provider: {
+      en: "Vision Analyst's own provider — the one roster member that reads images, diagrams and screenshots. The model paired with it MUST accept image input (for example deepseek-v4-flash-vision-exp): a text-only model breaks its image analysis. What changing it does: its next spawn runs on the new route, and an unusable value REFUSES that spawn loudly with `AGENT_UNCONFIGURED`, naming the agent and the missing leaves.",
+      zh: "Vision Analyst 自己的提供商——它是 roster 中唯一负责看图、读图、分析截图的成员。与它配对的模型必须支持图像输入（例如 deepseek-v4-flash-vision-exp）：纯文本模型会让看图任务失败。改它的影响：它下一次 spawn 即走新路由；填成不可用会让该次 spawn 直接失败（`AGENT_UNCONFIGURED`）并点名成员与缺失项。",
+    },
+    model: {
+      en: "Vision Analyst's own model. It MUST accept image input: reading images is its whole value, and a text-only model makes its image tasks fail. What changing it does: effective at its next spawn.",
+      zh: "Vision Analyst 自己的模型。必须选支持图像输入的模型：读图是它的全部价值，纯文本模型会让读图任务直接失败。改它的影响：下次 spawn 生效。",
+    },
+  },
+}
+
+/**
+ * One agent-route leaf's HUMAN sentence in `lang` — what a per-agent settings row renders BEFORE the
+ * disclosure half of its hint.
+ * @param agent - the roster display name (or any spelling that addresses it).
+ * @param leaf - which of the three route leaves the sentence describes.
+ * @param lang - the locale to render.
+ * @returns the sentence, with this agent's name (and its display group) interpolated.
+ */
+export function agentRouteLeafSentence(agent: string, leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, lang: "en" | "zh"): string {
+  /** The canonical display name, so a caller's spelling renders the file's own name. */
+  const name = rosterAgentNameOf(agent) ?? agent
+  /** The display group that renders this agent's rows, when one groups it. */
+  const group = teamModelSlotOfMember(name)
+  /** The agent's own override when it states one, else the shared per-leaf template. */
+  const template = AGENT_ROUTE_LEAF_OVERRIDES[name]?.[leaf] ?? AGENT_ROUTE_LEAF_TEMPLATES[leaf]
+  return template[lang]
+    .split("{agent}")
+    .join(name)
+    .split("{group}")
+    .join(group === undefined ? "" : TEAM_MODEL_SLOT_GROUPS[group][lang])
+}
+
 /** The group heading a front door renders ABOVE a slot's three rows, e.g. `Slot 2 — analysis members (…)`. */
 export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], lang: "en" | "zh"): string {
   // 1-based slot number: the heading names `Slot 1` … `Slot 4`, never the internal `slot1` id.
@@ -415,27 +550,27 @@ export function teamModelSlotHeading(slot: (typeof TEAM_MODEL_SLOTS)[number], la
     : `Slot ${index} — ${group.en} (${teamModelMembers(slot, "en")})`
 }
 
-/** The twelve team-model knobs: every slot leaf, in slot order, each a `select` with a declared fallback list. */
-const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) => {
-  // 1-based slot number, so the knob labels below name the slot a user sees in the heading.
-  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
-  // The slot's group name, appended to each leaf label so a row is attributable without its heading.
-  const group = TEAM_MODEL_SLOT_GROUPS[slot]
-  // The slot's three leaves, in the fixed order both front doors render them.
+/** The thirty-three agent-route knobs: every roster agent's three leaves, in group order. */
+export const AGENT_ROUTE_KNOBS: readonly SettingsKnob[] = ROSTER_AGENT_NAMES.flatMap((agent) => {
+  // The display group that renders this agent's rows; grouping is display-only, never routing.
+  const slot = teamModelSlotOfMember(agent)
+  // The group's human name, appended so a row stays attributable even out of its heading context.
+  const group = slot === undefined ? undefined : TEAM_MODEL_SLOT_GROUPS[slot]
+  // The agent's three leaves, in the fixed order both front doors render them.
   const leaves: readonly { leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS; label: string; zh: string }[] = [
     { leaf: "provider", label: "provider", zh: "提供商" },
     { leaf: "model", label: "model", zh: "模型" },
     { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" },
   ]
   return leaves.map(({ leaf, label, zh }) => ({
-    path: ["teamModels", slot, leaf] as const,
-    label: `Slot ${index} ${label} (${group.en})`,
-    zh: `槽位 ${index} ${zh}（${group.zh}）`,
+    path: ["agentRoutes", agent, leaf] as const,
+    label: group === undefined ? `${agent} ${label}` : `${agent} ${label} (${group.en})`,
+    zh: group === undefined ? `${agent} ${zh}` : `${agent} ${zh}（${group.zh}）`,
     kind: "select" as const,
     options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: teamModelLeafSentence(slot, leaf, "en"),
-    semanticsZh: teamModelLeafSentence(slot, leaf, "zh"),
-    hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en")),
+    semantics: agentRouteLeafSentence(agent, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(agent, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${agent}.${leaf}`, agentRouteLeafSentence(agent, leaf, "en")),
   }))
 })
 
@@ -467,7 +602,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The twenty-six knobs, in display order: the original thirteen, the twelve team-model slot leaves, then the TUI surface's own knob. */
+/** The forty-seven knobs, in display order: the original thirteen, the thirty-three per-agent route leaves, then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -484,12 +619,9 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
-  ...TEAM_MODEL_KNOBS,
-  // The per-member route-table rows (R2's front door, L4): enumerated from the slots' own
-  // membership — the eleven roster NAMES, never a free-typed key — so an unknown name is
-  // unrepresentable in the UI and the loud server-side validation stays the only reject path.
+  ...AGENT_ROUTE_KNOBS,
   // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
-  // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
+  // the per-agent route leaves keeps its meaning. Its `hint` is the semantics sentence only — the
   // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" },
 ]

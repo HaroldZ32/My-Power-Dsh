@@ -265,13 +265,17 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   }
   const winner = index === 0 ? primary : wellFormed[index - 1];
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`);
   }
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
+}
+var AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED";
+function agentUnconfiguredMessage(agent, detail) {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes." + agent + " in .mpd/mpd.jsonc.";
 }
 function rosterNameHead(label) {
   if (typeof label !== "string")
@@ -298,52 +302,49 @@ function memberIdentityCandidates(identity) {
   }
   return unique;
 }
-function resolveTeamMemberRoute(identity, slotResolutionOf) {
-  if (typeof slotResolutionOf !== "function")
+function resolveTeamMemberRoute(identity, agentRouteResolutionOf) {
+  if (typeof agentRouteResolutionOf !== "function")
     return { status: "no-config-service" };
   for (const candidate of memberIdentityCandidates(identity)) {
     let answer;
     try {
-      answer = slotResolutionOf(candidate);
+      answer = agentRouteResolutionOf(candidate);
     } catch {
       continue;
     }
     if (answer === null || typeof answer !== "object")
       continue;
-    const slotAnswer = answer;
-    if (slotAnswer.ok === true) {
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+    const routeAnswer = answer;
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate;
+    if (routeAnswer.ok === true) {
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : "";
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : "";
       if (provider === "" || model === "") {
         return {
           status: "unusable",
           member: candidate,
-          ...slot === "" ? {} : { slot },
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model")
         };
       }
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : "";
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : []
       };
     }
-    if (slotAnswer.ok === false) {
-      if (slotAnswer.status === "unrouted")
+    if (routeAnswer.ok === false) {
+      if (routeAnswer.reason === "unrouted")
         continue;
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        const detail = routeAnswer.reason === "invalid" ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string" : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0 ? routeAnswer.missing.map(String).join(", ") : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model");
         return {
           status: "unusable",
           member: candidate,
-          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
-          reason: slotAnswer.status,
-          detail
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail)
         };
       }
     }
@@ -660,7 +661,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -710,29 +711,19 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
-  const configSlotResolver = () => {
+  const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
-    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+    if (typeof config2.agentRouteResolutionOf !== "function")
       return;
     return (member) => {
-      if (typeof config2.slotResolutionOf === "function") {
-        try {
-          const answer = config2.slotResolutionOf.call(config2, member);
-          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
-            return answer;
-        } catch {}
+      try {
+        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
+      } catch {
+        return;
       }
-      if (typeof config2.teamModelRouteOf === "function") {
-        try {
-          const route = config2.teamModelRouteOf.call(config2, member);
-          if (route !== null && typeof route === "object")
-            return { ok: true, slot: "", route, fallbacks: [] };
-        } catch {}
-        return { ok: false, status: "unrouted", slot: undefined };
-      }
-      return;
     };
   };
   function requireService(serviceName, needed) {
@@ -801,6 +792,67 @@ function createDshAdapter(ctx, config = {}) {
       return;
     engineCache.set(agent, engine);
     return engine;
+  }
+  function contextPressureSession(target) {
+    if (typeof target === "string") {
+      const id = target.trim();
+      if (id === "")
+        return;
+      const sessions = service("sessions");
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          const found = sessions.get(id);
+          if (found !== undefined && found !== null)
+            return found;
+        } catch {}
+      }
+      return liveAgent(id)?.session;
+    }
+    if (target === undefined || target === null || typeof target !== "object")
+      return;
+    const session = target.session;
+    if (session !== undefined && session !== null)
+      return session;
+    return target;
+  }
+  function finiteNumberOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function contextPressure(target) {
+    const session = contextPressureSession(target);
+    if (session === undefined)
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    const projections = service("sessionProjections");
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    let state;
+    try {
+      state = projections.stateOf(session, "contextPressure");
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    const stateFields = state;
+    let snapshot;
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined;
+    } catch {
+      snapshot = undefined;
+    }
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object" ? snapshot.values : undefined;
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object" ? snapshotValues.contextPressure : undefined;
+    const viewFields = view !== undefined && view !== null && typeof view === "object" ? view : undefined;
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens);
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens);
+    const usedTokens = projectedTokens ?? pressureTokens;
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow);
+    if (windowTokens === null)
+      return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" };
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null;
+    return { usedTokens, windowTokens, ratio, provenance: "observed" };
   }
   function onEvent(event, handler) {
     if (typeof ctx?.on !== "function")
@@ -887,12 +939,16 @@ function createDshAdapter(ctx, config = {}) {
             });
           }
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow);
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens);
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
             ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
             efforts,
-            ...defaultEffort === undefined ? {} : { defaultEffort }
+            ...defaultEffort === undefined ? {} : { defaultEffort },
+            contextWindow,
+            maxOutputTokens
           });
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
@@ -939,12 +995,12 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
           } else {
-            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
@@ -954,14 +1010,17 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...agentOptions === undefined ? {} : { agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions },
+            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
           signal: request.signal ?? neverAborted()
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -1194,6 +1253,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -1456,7 +1516,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2421,6 +2481,7 @@ function createTeam(workspace, input, now) {
     description: input.description,
     leadSessionId: sessionKey(input.leadSessionId),
     ...input.planId === undefined || input.planId === "" ? {} : { planId: input.planId },
+    ...input.parentTeamId === undefined || input.parentTeamId === "" ? {} : { parentTeamId: input.parentTeamId },
     phase: "staged",
     createdAt: now.toISOString(),
     members: [],
@@ -2675,6 +2736,10 @@ function updateTeamMember(record, key, patch) {
     };
   });
   return touched ? { ...record, members } : record;
+}
+function removeTeamMember(record, key) {
+  const members = record.members.filter((member) => member.id !== key && member.name !== key);
+  return members.length === record.members.length ? record : { ...record, members };
 }
 function settleMember(record, sessionId, now) {
   const member = record.members.find((candidate) => candidate.executorRef === sessionId);
@@ -3165,7 +3230,7 @@ function buildWorkspaceTeams(teams, activeId) {
         completed: team.tasks.filter((task) => task.status === "completed").length,
         failed: team.tasks.filter((task) => task.status === "failed").length
       },
-      members: team.members.length,
+      members: team.members.filter((member) => member.status !== "failed").length,
       active: team.teamId === activeId
     })),
     ...activeId === undefined ? {} : { activeId }
@@ -3245,7 +3310,7 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
       failed: summary.failed,
       releasedByFailure: summary.releasedByFailure
     },
-    members: record.members.map((member) => {
+    members: record.members.filter((member) => member.status !== "failed").map((member) => {
       const progress = memberProgress(record, member.name);
       return {
         id: member.id,
@@ -3840,6 +3905,7 @@ function parsePlanMarkdown(text) {
 }
 // packages/mpd-graph-core/src/model.ts
 var BOARD_VISUALS = new Set(["completed", "running", "failed", "blocked", "open", "cancelled"]);
+var GROUP_VISUAL = "group";
 function visualOf(task) {
   if (task.visual !== undefined && BOARD_VISUALS.has(task.visual))
     return task.visual;
@@ -3865,15 +3931,69 @@ function statusVisual(status) {
 function uniqueSorted(values) {
   return [...new Set(values)].sort((left, right) => ID_ORDER.compare(left, right));
 }
-function buildModel(input) {
+function sortedIds(ids) {
+  return [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
+}
+function pairKey(from, to) {
+  return `${from}\x00${to}`;
+}
+function byNodeId(left, right) {
+  return ID_ORDER.compare(left.id, right.id);
+}
+function byFrameId(left, right) {
+  return ID_ORDER.compare(left.id ?? "", right.id ?? "");
+}
+function byFrameDepthThenId(left, right) {
+  return left.depth - right.depth || ID_ORDER.compare(left.id, right.id);
+}
+function isGroupFrame(frame) {
+  return frame.id !== null && frame.label !== null;
+}
+function frameName(frame) {
+  return frame.id === null ? "the root frame" : `group "${frame.id}"`;
+}
+function refuseDuplicate(id, first, second) {
+  throw new Error(`mpd-graph-core: the grouping input carries id "${id}" in ${frameName(first)} and ${frameName(second)}; ids must be unique across the whole tree`);
+}
+function claimId(frameOf, id, frame) {
+  const held = frameOf.get(id);
+  if (held !== undefined)
+    refuseDuplicate(id, held, frame);
+  frameOf.set(id, frame);
+}
+function collectFrame(group, parent) {
+  const frame = {
+    id: group.id,
+    label: group.label,
+    parent,
+    depth: parent.depth + 1,
+    board: group.board ?? [],
+    children: [],
+    ...group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId },
+    ...group.plan === undefined ? {} : { plan: group.plan }
+  };
+  frame.children = (group.groups ?? []).map((child) => collectFrame(child, frame)).sort(byFrameId);
+  return frame;
+}
+function flattenFrames(root) {
+  const frames = [];
+  const walk = (frame) => {
+    frames.push(frame);
+    for (const child of frame.children)
+      walk(child);
+  };
+  walk(root);
+  return frames;
+}
+function mergeFrame(frame) {
   const boardById = new Map;
-  for (const task of input.board ?? [])
+  for (const task of frame.board)
     boardById.set(task.id, task);
   const planById = new Map;
-  for (const task of input.plan?.tasks ?? [])
+  for (const task of frame.plan?.tasks ?? [])
     planById.set(task.id, task);
   const ids = [...new Set([...boardById.keys(), ...planById.keys()])].sort((left, right) => ID_ORDER.compare(left, right));
-  const drafts = [];
+  const nodes = [];
   for (const id of ids) {
     const board = boardById.get(id);
     const planned = planById.get(id);
@@ -3881,7 +4001,7 @@ function buildModel(input) {
     const assignee = board?.owner ?? planned?.owner;
     const title = planned?.title;
     const status = board?.status;
-    drafts.push({
+    nodes.push({
       id,
       subject: board?.subject ?? planned?.title ?? id,
       visual: board === undefined ? "planned" : visualOf(board),
@@ -3891,46 +4011,216 @@ function buildModel(input) {
       ...kind === undefined ? {} : { kind },
       ...assignee === undefined ? {} : { assignee },
       ...title === undefined ? {} : { title },
-      ...status === undefined ? {} : { status }
+      ...status === undefined ? {} : { status },
+      ...frame.id === null ? {} : { group: frame.id }
     });
   }
   const declared = new Map;
-  const keyOf = (from, to) => `${from}\x00${to}`;
   for (const task of boardById.values()) {
     for (const from of task.blockedBy ?? []) {
-      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      const entry = declared.get(pairKey(from, task.id)) ?? { from, to: task.id, board: false, plan: false, derived: false };
       entry.board = true;
-      declared.set(keyOf(from, task.id), entry);
+      declared.set(pairKey(from, task.id), entry);
     }
   }
   for (const task of planById.values()) {
     for (const from of task.blockedBy) {
-      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      const entry = declared.get(pairKey(from, task.id)) ?? { from, to: task.id, board: false, plan: false, derived: false };
       entry.plan = true;
-      declared.set(keyOf(from, task.id), entry);
+      declared.set(pairKey(from, task.id), entry);
     }
   }
-  const nodeIds = new Set(ids);
-  const edges = [];
-  for (const entry of declared.values()) {
-    if (!nodeIds.has(entry.from) || !nodeIds.has(entry.to))
+  return {
+    frame,
+    nodes,
+    declared: [...declared.values()],
+    boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
+    planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id))
+  };
+}
+function lowestCommonFrame(left, right) {
+  const ancestors = new Set;
+  for (let frame = right;frame !== null; frame = frame.parent)
+    ancestors.add(frame);
+  for (let frame = left;frame !== null; frame = frame.parent)
+    if (ancestors.has(frame))
+      return frame;
+  return left;
+}
+function anchorAt(frame, home, id) {
+  if (frame === home)
+    return id;
+  let current = frame;
+  while (current.parent !== home) {
+    if (current.parent === null)
+      return id;
+    current = current.parent;
+  }
+  return current.id ?? id;
+}
+function edgeSource(entry) {
+  if (entry.board && entry.plan)
+    return "both";
+  if (entry.plan)
+    return "plan";
+  if (entry.board)
+    return "board";
+  return "derived";
+}
+function placeEdge(edgeMaps, frameOf, entry) {
+  const fromFrame = frameOf.get(entry.from);
+  const toFrame = frameOf.get(entry.to);
+  if (fromFrame === undefined || toFrame === undefined)
+    return;
+  const home = lowestCommonFrame(fromFrame, toFrame);
+  const from = anchorAt(fromFrame, home, entry.from);
+  const to = anchorAt(toFrame, home, entry.to);
+  if (entry.derived && from === to)
+    return;
+  const held = edgeMaps.get(home);
+  if (held === undefined)
+    return;
+  const merged = held.get(pairKey(from, to)) ?? { from, to, board: false, plan: false, derived: false };
+  merged.board = merged.board || entry.board;
+  merged.plan = merged.plan || entry.plan;
+  merged.derived = merged.derived || entry.derived;
+  held.set(pairKey(from, to), merged);
+}
+function buildModel(input) {
+  const root = {
+    id: null,
+    label: null,
+    parent: null,
+    depth: -1,
+    board: input.board ?? [],
+    children: [],
+    ...input.plan === undefined ? {} : { plan: input.plan }
+  };
+  root.children = (input.groups ?? []).map((group) => collectFrame(group, root)).sort(byFrameId);
+  const frames = flattenFrames(root);
+  const merges = frames.map((frame) => mergeFrame(frame));
+  const frameOf = new Map;
+  for (const merge of merges)
+    for (const node of merge.nodes)
+      claimId(frameOf, node.id, merge.frame);
+  const level = new Map;
+  for (const merge of merges)
+    level.set(merge.frame, [...merge.nodes].sort(byNodeId));
+  const pseudos = [];
+  for (const frame of frames) {
+    if (!isGroupFrame(frame) || frame.parent === null)
       continue;
-    edges.push({ from: entry.from, to: entry.to, source: entry.board && entry.plan ? "both" : entry.plan ? "plan" : "board" });
+    const parent = frame.parent;
+    const pseudo = {
+      id: frame.id,
+      subject: frame.label,
+      visual: GROUP_VISUAL,
+      dependencies: [],
+      depth: 0,
+      planned: false,
+      ...parent.id === null ? {} : { group: parent.id }
+    };
+    claimId(frameOf, frame.id, parent);
+    pseudos.push(pseudo);
+    level.get(parent)?.push(pseudo);
+  }
+  const edgeMaps = new Map;
+  for (const frame of frames)
+    edgeMaps.set(frame, new Map);
+  for (const merge of merges)
+    for (const entry of merge.declared)
+      placeEdge(edgeMaps, frameOf, entry);
+  for (const frame of frames) {
+    if (!isGroupFrame(frame) || frame.originTaskId === undefined)
+      continue;
+    if (!frameOf.has(frame.originTaskId))
+      continue;
+    placeEdge(edgeMaps, frameOf, { from: frame.originTaskId, to: frame.id, board: false, plan: false, derived: true });
+  }
+  const drawnDeps = new Map;
+  for (const frame of frames) {
+    const blockers = new Map;
+    const held = edgeMaps.get(frame);
+    if (held !== undefined) {
+      for (const entry of held.values()) {
+        const list = blockers.get(entry.to);
+        if (list === undefined)
+          blockers.set(entry.to, [entry.from]);
+        else
+          list.push(entry.from);
+      }
+    }
+    drawnDeps.set(frame, blockers);
+  }
+  for (const pseudo of pseudos) {
+    const parent = frameOf.get(pseudo.id);
+    if (parent === undefined)
+      continue;
+    pseudo.dependencies = uniqueSorted(drawnDeps.get(parent)?.get(pseudo.id) ?? []);
+  }
+  const layouts = new Map;
+  let rootLayout;
+  const drawingNodes = new Map;
+  for (const frame of frames) {
+    const nodes2 = level.get(frame) ?? [];
+    const drawn = nodes2.map((node) => ({ ...node, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node.id) ?? []) }));
+    drawingNodes.set(frame, drawn);
+    const layout = rankPlan(drawn);
+    layouts.set(frame, layout);
+    if (frame === root)
+      rootLayout = layout;
+    for (const node of nodes2)
+      node.depth = layout.rankOf.get(node.id) ?? node.depth;
+  }
+  const edges = [];
+  for (const frame of frames) {
+    const held = edgeMaps.get(frame);
+    if (held === undefined)
+      continue;
+    for (const entry of held.values())
+      edges.push({ from: entry.from, to: entry.to, source: edgeSource(entry) });
   }
   edges.sort((left, right) => ID_ORDER.compare(left.from, right.from) || ID_ORDER.compare(left.to, right.to));
-  const layout = rankPlan(drafts);
-  const nodes = drafts.map((node) => ({ ...node, depth: layout.rankOf.get(node.id) ?? node.depth }));
-  const ranks = layout.ranks.map((rank) => rank.map((task) => task.id));
+  const nodes = [...merges.flatMap((merge) => merge.nodes), ...pseudos].sort(byNodeId);
+  const ranks = (rootLayout?.ranks ?? []).map((rank) => rank.map((task) => task.id));
+  const cyclic = new Set;
+  for (const frame of frames)
+    for (const id of cycleIds2(drawingNodes.get(frame) ?? []))
+      cyclic.add(id);
+  const refs = new Set;
+  for (const merge of merges)
+    for (const node of merge.nodes)
+      for (const ref of node.dependencies)
+        refs.add(ref);
+  for (const frame of frames)
+    if (frame.originTaskId !== undefined)
+      refs.add(frame.originTaskId);
+  const unresolved = [...refs].filter((ref) => !frameOf.has(ref)).sort();
   const report = {
-    boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
-    planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id)),
+    boardOnly: sortedIds(merges.flatMap((merge) => merge.boardOnly)),
+    planOnly: sortedIds(merges.flatMap((merge) => merge.planOnly)),
     edgePlanOnly: edges.filter((edge) => edge.source === "plan"),
     edgeBoardOnly: edges.filter((edge) => edge.source === "board"),
-    planProblems: [...input.plan?.problems ?? []],
-    unresolved: [...layout.unresolved],
-    ranksDerived: layout.derived
+    planProblems: frames.flatMap((frame) => [...frame.plan?.problems ?? []]),
+    unresolved,
+    ranksDerived: rootLayout?.derived ?? true
   };
-  return { nodes, edges, ranks, cycles: cycleIds2(nodes), report };
+  const groups = groupRecords(frames, level);
+  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+}
+function groupRecords(frames, level) {
+  const groups = [];
+  for (const frame of frames.filter(isGroupFrame).sort(byFrameDepthThenId)) {
+    groups.push({
+      id: frame.id,
+      label: frame.label,
+      parentId: frame.parent === null ? null : frame.parent.id,
+      memberIds: sortedIds((level.get(frame) ?? []).map((node) => node.id)),
+      depth: frame.depth,
+      ...frame.originTaskId === undefined ? {} : { originTaskId: frame.originTaskId }
+    });
+  }
+  return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
 import { readFileSync as readFileSync4, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
@@ -4291,6 +4581,75 @@ function watchGraph(targets, options = {}) {
     }
   };
 }
+// packages/mpd-team-core-plugin/src/team-lifecycle.ts
+import { readFileSync as readFileSync5, readdirSync as readdirSync5 } from "node:fs";
+import { join as join7 } from "node:path";
+var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
+function isLiveTeamPhase(phase) {
+  return LIVE_TEAM_PHASES.includes(phase);
+}
+function readArchivedPlanIndex(workspace) {
+  const approved = new Set;
+  const unapproved = new Set;
+  let entries = [];
+  try {
+    entries = readdirSync5(join7(teamRoot(workspace), "archive"));
+  } catch {
+    return { approved, unapproved };
+  }
+  for (const entry of entries) {
+    try {
+      const raw = readFileSync5(join7(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
+      const plan = JSON.parse(raw);
+      const key = String(plan.planId ?? "");
+      if (key === "")
+        continue;
+      (plan.approvedAt === undefined ? unapproved : approved).add(key);
+    } catch {}
+  }
+  return { approved, unapproved };
+}
+function isLiveTeam(record, index) {
+  if (record.endedAt !== undefined)
+    return false;
+  if (!isLiveTeamPhase(record.phase))
+    return false;
+  const key = String(record.planId ?? "");
+  if (key === "")
+    return true;
+  return !(index.unapproved.has(key) && !index.approved.has(key));
+}
+function resolveTeamRecord(input) {
+  const spellings = [input.sessionId, ...input.alsoSessions ?? []].filter((value) => value !== "");
+  if (input.bound !== undefined && isLiveTeam(input.bound, input.index))
+    return { record: input.bound };
+  const live = input.teams.filter((record) => isLiveTeam(record, input.index));
+  const leading = live.find((record) => recordNamesLead(record, spellings));
+  if (leading !== undefined)
+    return { record: leading };
+  const memberOf = live.filter((record) => recordNamesMember(record, spellings));
+  if (memberOf.length === 1)
+    return { record: memberOf[0] };
+  if (memberOf.length > 1) {
+    return { refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry` };
+  }
+  return {};
+}
+function reapReapedTeams(workspace, now) {
+  const index = readArchivedPlanIndex(workspace);
+  const reaped = [];
+  for (const record of listTeams(workspace)) {
+    if (isLiveTeam(record, index))
+      continue;
+    if (record.endedAt !== undefined)
+      continue;
+    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`;
+    writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason });
+    reaped.push(record.teamId);
+  }
+  return reaped;
+}
+
 // packages/mpd-team-core-plugin/src/graph-model.ts
 function boardOf(record) {
   const summary = summariseTeam(record);
@@ -4308,6 +4667,56 @@ function boardOf(record) {
 }
 function messageOf(error) {
   return String(error?.message ?? error);
+}
+function framedBoardOf(record) {
+  const own = new Set(record.tasks.map((task) => task.id));
+  return boardOf(record).map((row) => ({
+    ...row,
+    id: `${record.teamId}::${row.id}`,
+    blockedBy: (row.blockedBy ?? []).map((reference) => own.has(reference) ? `${record.teamId}::${reference}` : reference)
+  }));
+}
+function groupInputsOf(children, parentTeamId, archive, warn, seen) {
+  const own = children.get(parentTeamId) ?? [];
+  const inputs = [];
+  for (const child of own) {
+    if (seen.has(child.teamId)) {
+      warn?.(`[mpd-team-core] team ${child.teamId} is nested inside ${parentTeamId}, which is already on its own parent chain — the record was edited by hand; the projection skips the repeat`);
+      continue;
+    }
+    if (!isLiveTeam(child, archive))
+      continue;
+    seen.add(child.teamId);
+    const nested = groupInputsOf(children, child.teamId, archive, warn, seen);
+    inputs.push({
+      id: child.teamId,
+      label: child.name,
+      board: framedBoardOf(child),
+      ...nested.length === 0 ? {} : { groups: nested }
+    });
+  }
+  return inputs;
+}
+function groupsOf(workspace, record, warn, list) {
+  const index = childrenByParent(list(workspace));
+  const groups = groupInputsOf(index, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]));
+  return groups.length === 0 ? {} : { groups };
+}
+function childrenByParent(records) {
+  const index = new Map;
+  for (const record of records) {
+    const parent = record.parentTeamId;
+    if (parent === undefined || parent === "")
+      continue;
+    const held = index.get(parent);
+    if (held === undefined)
+      index.set(parent, [record]);
+    else
+      held.push(record);
+  }
+  for (const children of index.values())
+    children.sort((left, right) => left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0);
+  return index;
 }
 
 class GraphModels {
@@ -4329,7 +4738,11 @@ class GraphModels {
       const cached = this.cache.get(key);
       if (cached !== undefined && cached.revision === revision && cached.planPath === planPath)
         return cached.model;
-      const model = buildModel({ board: boardOf(record), plan: readPlanFile(planPath) });
+      const model = buildModel({
+        board: boardOf(record),
+        plan: readPlanFile(planPath),
+        ...groupsOf(workspace, record, this.deps.warn, this.deps.listTeams ?? listTeams)
+      });
       this.cache.set(key, { revision, planPath, model });
       return model;
     } catch (error) {
@@ -4554,75 +4967,6 @@ class ChangeFeed {
   }
 }
 
-// packages/mpd-team-core-plugin/src/team-lifecycle.ts
-import { readFileSync as readFileSync5, readdirSync as readdirSync5 } from "node:fs";
-import { join as join7 } from "node:path";
-var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
-function isLiveTeamPhase(phase) {
-  return LIVE_TEAM_PHASES.includes(phase);
-}
-function readArchivedPlanIndex(workspace) {
-  const approved = new Set;
-  const unapproved = new Set;
-  let entries = [];
-  try {
-    entries = readdirSync5(join7(teamRoot(workspace), "archive"));
-  } catch {
-    return { approved, unapproved };
-  }
-  for (const entry of entries) {
-    try {
-      const raw = readFileSync5(join7(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
-      const plan = JSON.parse(raw);
-      const key = String(plan.planId ?? "");
-      if (key === "")
-        continue;
-      (plan.approvedAt === undefined ? unapproved : approved).add(key);
-    } catch {}
-  }
-  return { approved, unapproved };
-}
-function isLiveTeam(record, index) {
-  if (record.endedAt !== undefined)
-    return false;
-  if (!isLiveTeamPhase(record.phase))
-    return false;
-  const key = String(record.planId ?? "");
-  if (key === "")
-    return true;
-  return !(index.unapproved.has(key) && !index.approved.has(key));
-}
-function resolveTeamRecord(input) {
-  const spellings = [input.sessionId, ...input.alsoSessions ?? []].filter((value) => value !== "");
-  if (input.bound !== undefined && isLiveTeam(input.bound, input.index))
-    return { record: input.bound };
-  const live = input.teams.filter((record) => isLiveTeam(record, input.index));
-  const leading = live.find((record) => recordNamesLead(record, spellings));
-  if (leading !== undefined)
-    return { record: leading };
-  const memberOf = live.filter((record) => recordNamesMember(record, spellings));
-  if (memberOf.length === 1)
-    return { record: memberOf[0] };
-  if (memberOf.length > 1) {
-    return { refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry` };
-  }
-  return {};
-}
-function reapReapedTeams(workspace, now) {
-  const index = readArchivedPlanIndex(workspace);
-  const reaped = [];
-  for (const record of listTeams(workspace)) {
-    if (isLiveTeam(record, index))
-      continue;
-    if (record.endedAt !== undefined)
-      continue;
-    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`;
-    writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason });
-    reaped.push(record.teamId);
-  }
-  return reaped;
-}
-
 // packages/mpd-team-core-plugin/src/index.ts
 var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
@@ -4796,6 +5140,33 @@ function assertPlanGraph(plan) {
     throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency SELF-EDGE ${label(defect.id)} -> ${label(defect.id)} — the task is its own blocker, so it could never become ready, and no verb can remove the edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} without that task's own id or subject in its blocked_by — blocked_by: [] for a genuine root, or name the task that must close first — then approve again.`);
   }
   throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency CYCLE ${defect.path.map(label).join(" -> ")} — every task on it waits for itself, so none could ever be claimed or dispatched, and no verb can remove an edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} and drop one edge of the loop — give one task on that path blocked_by: [] (or a blocker outside the loop) — then approve again.`);
+}
+function assertParentChainAcyclic(workspace, parent) {
+  const at = new Map;
+  const path = [];
+  let cursor = parent;
+  while (cursor !== undefined) {
+    const seenAt = at.get(cursor.teamId);
+    if (seenAt !== undefined) {
+      throw new Error(`agent_teams_plan approve REFUSED: the parent chain of ${parent.teamId} comes back to ${cursor.teamId} — it carries a CYCLE ${[...path.slice(seenAt), cursor.teamId].join(" -> ")}, and a graph projection would never terminate on it. Nothing was created. This chain cannot be written by any tool (the link is stamped ONCE, at approval), so the record was edited by hand: fix the \`parentTeamId\` field of ${cursor.teamId} under .mpd/team/teams/ and approve again.`);
+    }
+    at.set(cursor.teamId, path.length);
+    path.push(cursor.teamId);
+    cursor = cursor.parentTeamId === undefined || cursor.parentTeamId === "" ? undefined : readTeam(workspace, cursor.parentTeamId);
+  }
+}
+function deriveParentTeam(workspace, sessionId, lineage) {
+  const caller = [sessionId, ...lineage].filter((value) => value !== "");
+  const archive = readArchivedPlanIndex(workspace);
+  const candidates = listTeams(workspace).filter((record) => recordNamesMember(record, caller) && !recordNamesLead(record, caller) && isLiveTeam(record, archive));
+  const [parent, ...rest] = candidates;
+  if (parent === undefined)
+    return;
+  if (rest.length > 0) {
+    throw new Error(`agent_teams_plan approve REFUSED: this session is on the roster of ${candidates.length} live teams (${candidates.map((record) => record.teamId).join(", ")}), so a sub-team nested under one of them would be a guess — and a box in the wrong team is a picture the records do not state. Nothing was created. Fix: approve from a session that belongs to ONE team (each team's own roster is on agent_teams_plan {action:"status"}), or wait for all but the parent team to end.`);
+  }
+  assertParentChainAcyclic(workspace, parent);
+  return parent;
 }
 function assertClaimReady(board, task) {
   const { blocking } = blockingDependencies(board, task.blockedBy);
@@ -5143,7 +5514,7 @@ function apply(ctx) {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), [])
@@ -5202,9 +5573,9 @@ function apply(ctx) {
           writeTeam(workspace, withDerivedPhase(running));
           return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` };
         } catch (error) {
-          const failed = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { status: "failed" });
-          writeTeam(workspace, withDerivedPhase(failed));
-          return { team: failed, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) appended to the live team ${failed.teamId}, but the raise FAILED` };
+          const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id);
+          writeTeam(workspace, withDerivedPhase(released));
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` };
         }
       }
       if (action === "create_task") {
@@ -5314,10 +5685,17 @@ function apply(ctx) {
         }
         assertPlanGraph(plan);
         assertScopesOrdered(plan);
+        const parent = deriveParentTeam(workspace, sessionId, lineage);
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
         }
-        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId, planId: plan.planId }, now());
+        let record = createTeam(workspace, {
+          name: plan.name,
+          description: plan.description,
+          leadSessionId: sessionId,
+          planId: plan.planId,
+          ...parent === undefined ? {} : { parentTeamId: parent.teamId }
+        }, now());
         for (const member of plan.members) {
           record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, now());
         }
@@ -5371,7 +5749,7 @@ function apply(ctx) {
             created.members.push({ name: member.name, id: spawned.handle });
             record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
           } catch (error) {
-            record = updateTeamMember(record, member.id, { status: "failed" });
+            record = removeTeamMember(record, member.id);
             stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
             break;
           }

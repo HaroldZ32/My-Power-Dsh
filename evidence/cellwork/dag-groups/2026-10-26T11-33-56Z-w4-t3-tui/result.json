@@ -1,0 +1,58 @@
+{
+  "task": "W4-T3 / D3 — TUI glyph group frames (frozen contract .mpd/plans/cellwork-w4-contract.md D3)",
+  "owner": "render-engineer",
+  "frozenAt": "2026-10-26T11:34:00Z",
+  "scope": {
+    "written": [
+      "packages/mpd-tui-plugin/src/dag-theme.ts",
+      "packages/mpd-tui-plugin/src/dag-groups.ts (new)",
+      "packages/mpd-tui-plugin/src/graph.ts",
+      "packages/mpd-tui-plugin/src/panel-dag.ts",
+      "packages/mpd-tui-plugin/src/team-state.ts",
+      "packages/mpd-tui-plugin/src/scenes.ts",
+      "packages/mpd-tui-plugin/src/subagent-scene.ts",
+      "packages/mpd-tui-plugin/test/dag-groups.test.ts (new)",
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-tui-plugin/dist/index.js (rebuilt with the pinned toolchain)"
+    ],
+    "untouched": ["packages/mpd-graph-core/**", "packages/mpd-bundle-plugin/**", "docs/**", "scripts/**", "row/preset files"]
+  },
+  "symbols": {
+    "dag-theme.ts": ["DAG_GROUP_CHARS (17 glyphs: double-line border, 2 crossings, 4 ports)", "DAG_GROUP_CHARS_ONE_CELL"],
+    "dag-groups.ts": ["GroupedTask", "FrameChild", "FrameNode", "FrameTree", "buildFrameTree", "FrameEdge", "FrameEdges", "frameEdges", "FrameRanks", "rankFrame", "FrameSize", "ChildSize", "measureFrame", "drawnColumns", "sameFrame", "GROUP_COLUMN_GAP", "GROUP_BAND_ROWS", "GROUP_BORDER"],
+    "graph.ts": ["CellCanvas", "createCellCanvas", "GraphTask.group", "GraphGroupHit", "GraphView.groups", "GraphView.collapsedGroups", "TASK_BOX_ROWS", "BoxRect", "boxCentre", "drawGroupedBoxes", "hitTestGroup", "layoutBoxesNatural(groups)", "layoutGraphNatural(groups)"],
+    "panel-dag.ts": ["DagPage.groups", "dagPageOf group projection", "dagPanelLayout(groups)", "DagRowClick.groupId", "dagRowClick group arm", "halfGroupCells", "blankCells", "cutFrameCells render wiring"],
+    "team-state.ts": ["GROUP_VISUAL", "TeamTaskRow.group", "modelRows skips group pseudo-nodes, carries group", "ghostRow carries group"],
+    "scenes.ts/subagent-scene.ts": ["group frames forwarded to layoutGraphNatural"]
+  },
+  "acceptance": {
+    "second single-cell glyph family": "DAG_GROUP_CHARS is one cell per glyph (asserted by recomputation AND by DAG_GROUP_CHARS_ONE_CELL), disjoint from DAG_CHARS (asserted), corners spelled as code points in the test",
+    "group frame spanning its interior's rows": "drawGroupedBoxes draws ╔═ title ═╗ / ║ sides on every interior row / ╚═╝; asserted row by row on a synthetic nested fixture",
+    "crossing vs terminating": "PORT ╧ on a box's top side when an outside dependency terminates there; CROSSING ╫ on a box's bottom side when a run passes out of it; both asserted on the shallow fixture, distinct glyphs asserted",
+    "group hit identity": "hitTestGroup returns the innermost frame; dagRowClick reports groupId when no task resolves; a task still outranks its frame",
+    "never half a GROUP": "halfGroupCells blanks a cut frame's own cells (rules on a border row, sides on an interior row) and keeps the interior text; wholly-inside and wholly-outside windows blank nothing",
+    "width degradation with the group COLLAPSED": "at 8 columns dagPanelLayout returns rail/list with collapsedGroups [teamB] and no frame glyph in the lines; at 60 columns boxes with groups and no collapse report"
+  },
+  "gates": {
+    "bun test packages/mpd-tui-plugin": "609 pass / 1 skip (pre-existing skip) / 0 fail, 610 tests across 24 files",
+    "bun run typecheck": "no diagnostics in packages/mpd-tui-plugin (repo-wide run also reports unrelated lanes in flight: mpd-team-core-plugin)",
+    "node scripts/verify-comment-coverage.ts": "PASS — every declaration in the family carries a precise comment and a full signature",
+    "bun run verify:docs": "PASS — pairs=52 failed=0 violations=0 links=465 dead=0",
+    "node scripts/verify-dist-fresh.ts": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical); tui sha 684fa6f777a2…",
+    "build": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+    "built artifact carries the group code": "grep: ╔=1, collapsedGroups=3, DAG_GROUP_CHARS=13"
+  },
+  "declaredBounds": [
+    "The drawing stays a character grid; no host ui.Box is used per group (contract's own bound).",
+    "An arrival port that lands on a frame's title keeps the cell and drops that one title character; the rest of the title reads around it. Asserted as a subsequence, not as the exact name.",
+    "The horizontal port pair (╞ ╡) and the horizontal crossing (╪) are declared and one-cell but unread by the drawing: every route enters or leaves a box vertically.",
+    "An edge whose real endpoint is deeper than the box a frame draws is ANCHORED to that box (port) rather than continued inside it; the interior's own arrows are its dependencies.",
+    "The rail/list modes name the collapsed groups (collapsedGroups) instead of drawing them; no frame glyph reaches a non-boxed rendering.",
+    "The full-screen scene and the subagent scene now FORWARD the model's groups, but they show the model's own collapsed report only where the panel does; a scene rail fallback does not re-report collapse."
+  ],
+  "unproven": [
+    "No PTY capture of the panel at 28/80/120 columns was taken for this wave; the arms are pure layout assertions (mode, glyphs, rectangles) plus the pre-existing PTY evidence for the grid.",
+    "The real model path (team-core /state -> panel) is exercised only by fixtures here; the live-board arm depends on D2 (mpd-team-core-plugin) publishing groups, which is another lane's row."
+  ]
+}

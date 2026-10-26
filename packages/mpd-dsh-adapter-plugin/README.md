@@ -19,7 +19,7 @@ instead of across every plugin.
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | string prompt → content blocks, flat `provider`/`model` or `agentOptions`, `run.result` awaited whether it is a promise or an object, normalized `{output, structured, stopReason}` |
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`, `listSkills`, `loadSkill` | disposer pass-through, default options |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | normalized `{id, path, trust, broken}` |
-| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | the host's live model catalog projected as `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` — the reasoning block FLATTENED onto the model, `efforts` always an array; read-only and never throwing |
+| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | the host's live model catalog projected as `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort?, contextWindow: number | null, maxOutputTokens: number | null }] }], degraded }` — the reasoning block FLATTENED onto the model, `efforts` always an array; read-only and never throwing |
 | `ctx.tools.register` (VERBATIM) | `registerHostTool(def)` | forwards an ALREADY harness-shaped definition unchanged — the same object reference reaches `tools.register` (`Object.is` holds end-to-end) and the disposer is passed through. `registerTool` normalizes (and would drop `finalizeContent`/`presentCall`/`presentResult`/`isConcurrencySafe`); this one deliberately does not. THROW when the seam is absent |
 | `ctx.subagents` (the runtime object) | `subagentRuntime()` | identity-preserving runtime (`startContinuable`/`interrupt`/`getProvider`/`list`); `undefined` when absent |
 | `ctx.subagents.getProvider` | `subagentProvider(name)` | thin forwarder; `undefined` when absent (the caller's own check throws the same message) |
@@ -44,6 +44,7 @@ instead of across every plugin.
 | the live-team fold | `teamLiveTeams()` | one entry per live **Lead** agent (`{teamId, leadName, leadSessionId, members, tasks}`); `[]` when the service or the agent registry is absent, and a failing per-agent read yields `[]` for that entry instead of taking the fold down |
 | `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | the adapter owns `next()`; the listener receives `(payload, downstream)` and may return an AMENDED decision (that is how an advisory notice is injected) or `undefined` to pass through; a throwing listener is contained; no event bus → no-op |
 | a live agent's own scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | the section is forwarded VERBATIM to THAT agent's scope (receiver-bound, disposer passed back), so a contribution reaches one preset's sessions instead of every session this process serves; THROW at the call when the agent scope exposes no section |
+| `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | ONE live session's occupied context, normalized to `{usedTokens, windowTokens, ratio, provenance}`: `usedTokens = projectedTokens ?? pressureTokens`, `windowTokens` is the model-reported `contextWindow` (NEVER defaulted), `ratio` only when both numbers are greater than 0, provenance `observed \| no-window \| unavailable`; synchronous and never throwing; accepts a live Agent, a Session object or a session id |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
 
 The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
@@ -65,6 +66,36 @@ The team-plane rows below them report their OWN four flags —
 existing one. The two AGENT-scoped rows (`onAgentPreStep`, `agentPromptSection`) report
 `agentPreStep` (the event bus) and `agentPromptSection` (a LIVE probe: a live agent whose own
 scope carries `systemPrompt.section`).
+
+### Context pressure for one live session (`contextPressure`)
+
+`contextPressure(target)` reads the harness token meter's `sessionProjections` unit
+`contextPressure` — the SAME projection the host's own status display uses — for ONE session. The
+STATE read (`stateOf`) carries the observed window (`contextWindow`, recorded from the provider's
+`request/context`) and the provider-reported `pressureTokens`; the CLIENT VIEW read (`snapshot`)
+carries the forward-looking `projectedTokens` that the state does not. It returns
+
+```ts
+{ usedTokens: number | null, windowTokens: number | null, ratio: number | null,
+  provenance: "observed" | "no-window" | "unavailable" }
+```
+
+with these rules, none of which may be relaxed:
+
+- `usedTokens = projectedTokens ?? pressureTokens` — the projection's forward-looking figure is
+  preferred, and a projected `0` is a real observation, not a miss;
+- `windowTokens` is READ from what the model reported at runtime and is NEVER defaulted: no
+  `1_000_000`, no `262_144`, no configuration value. `no-window` is the honest answer before the
+  first `request/context` event;
+- `ratio = usedTokens / windowTokens` only when BOTH are numbers greater than 0; otherwise `null`;
+- `provenance` is machine-readable: `observed` (projection present with a window), `no-window`
+  (projection present, window absent), `unavailable` (no registry, no session, or no state);
+- the read is SYNCHRONOUS and NEVER throws — a missing `sessionProjections` service, an
+  unresolvable session, an unmaterialized projection and a throwing read all answer `unavailable`.
+
+`target` may be a live Agent (its own `session` is used), a Session object, or a session id
+(resolved through the harness `sessions` store, falling back to the live-agent registry). Nothing is
+cached: every call re-reads the projection, so a checkpoint decision never runs on a stale figure.
 
 ## The official Agent Teams plane
 
@@ -99,14 +130,15 @@ registry, keeps one entry per Lead, and degrades to `[]` — never to a throw.
 `toolFilter`. That is the OFFICIAL fallback path: it passes through by identity, so only
 `mpd-roster-provider-plugin`'s official-path provider can route it, and the `spawn_teammate` TOOL that
 armed it is now REFUSED at the tool boundary (historical/fallback only). The DEFAULT native
-`TeamExecutor.spawn` resolves the member's `teamModels` slot ITSELF, by identity precedence `role` →
-the head of `description` → the whole `name`: a matched member with a usable slot runs on that slot
-(its `fallbacks` consumed once), while an UNMATCHED member, one whose slot is unconfigured, or a
-composition with no `mpdConfig` service INHERITS the staging session's route (the captain's in a
+`TeamExecutor.spawn` resolves the member's OWN `agentRoutes` entry ITSELF, by identity precedence `role`
+→ the head of `description` → the whole `name`: a matched member with a usable route runs on that route
+(its `fallbacks` consumed once), while an UNMATCHED member, one whose route is unconfigured or invalid,
+or a composition with no `mpdConfig` service INHERITS the staging session's route (the captain's in a
 top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw — `approve` raises N
-members in a loop, so a slot never leaves a team half-built. Per-member routing also applies on the
+members in a loop, so a route never leaves a team half-built. Per-agent routing also applies on the
 single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass `agentOptions`
-themselves; those appliers still REFUSE an unusable slot with `SLOT_UNCONFIGURED`. That consult
+themselves; those appliers REFUSE an unusable route with `AGENT_UNCONFIGURED` (this package exports the
+code and the one canonical sentence, mirrored from the config row). That consult
 is ONE-SHOT: on a host exposing `startActivation` the adapter disposes that exact activation once the
 report settles (best-effort; a failing teardown never changes the report), so the live child is
 released instead of accumulated; the retired `start` fallback returns only `run.result` and has no
@@ -116,6 +148,20 @@ activation only, and the child catalog is append-only — the finished child may
 means a new consult (or a workmate for durable continuity), never a `send_message` into the finished
 child. Team members are unaffected — the team path keeps the separate durable seam
 (`startContinuableAgent`).
+
+### The team executor's depth cap (`maxDepth`)
+
+`DshTeamSpawnRequest` accepts an optional `maxDepth` — the ABSOLUTE delegation-depth cap for the
+member's own activation (the harness `startActivation` request's `maxDepth`, validated as a
+non-negative safe integer). It is the ONLY route by which cellwork can raise a depth-2+ subcaptain
+(capability fact F1), because the `subagent` tool's own service default never rises above 1.
+
+- NATIVE backend: the value is forwarded as `request.maxDepth` **exactly when the caller supplied
+  it**. An absent cap stays ABSENT — the key is omitted, never written as `undefined` — so the
+  harness applies its own default rather than a converted or guessed value.
+- OFFICIAL backend: `maxDepth` is IGNORED without throwing. The official service owns its roster and
+  exposes no per-call depth channel, so a composition running that backend must not expect the cap
+  to take effect.
 
 ### The D6 gate (`test/no-direct-team-access.test.ts`)
 
@@ -133,9 +179,9 @@ It is also a `bun test` case, so `bun test packages/mpd-dsh-adapter-plugin` runs
 
 ## The model-catalog seam (`llmCatalog`)
 
-`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the twelve `teamModels` slot
-knobs, because the host renders `select` by cycling a deep-frozen option list (there is no
-pick-list dialog). The read is TOTAL:
+`packages/mpd-tui-plugin` reads this seam AT REGISTRATION for the thirty-three `agentRoutes` leaves
+(three per roster agent — 33 of the 47-knob shared declaration), because the host renders `select` by
+cycling a deep-frozen option list (there is no pick-list dialog). The read is TOTAL:
 
 - a missing `ctx.llm`, or one lacking ANY of the three methods, resolves to
   `{ providers: [], degraded: true }` and logs **ONE** warn-once line naming the missing
@@ -144,6 +190,12 @@ pick-list dialog). The read is TOTAL:
   **skipped** (the catalog survives, `degraded: true`);
 - a model whose resolved info carries no reasoning block still appears, with
   `efforts: []` and no `defaultEffort`;
+- every model carries the window the HARNESS itself resolved — `contextWindow` from
+  `resolveModelInfo().context.contextWindow` and `maxOutputTokens` from `.defaultMaxTokens` — as
+  `number | null`. BOTH keys are ALWAYS written: `null` means "the harness resolved nothing", never
+  a fallback constant, and it is the split-time budget's only honest input;
+- both fields are OPTIONAL at the TYPE level, for catalog doubles that predate them: `undefined`
+  means "this producer did not report the field", `null` means "the harness resolved nothing";
 - `capabilities().llmCatalog` reports the seam (true only when all three methods exist),
   which is the flag a caller branches on.
 
@@ -151,8 +203,9 @@ The seam is built from those three calls and nothing else — no new runtime dep
 
 ### The effort adaptation built on it (`withSupportedEffort`)
 
-The `teamModels` slots MATERIALISE an effort over their schema defaults, so a slot whose model declares
-no reasoning efforts at all would hand the provider a keyword it cannot accept, failing the call. The
+A per-agent route may state an effort and the `agentRoutes` subtree carries NO schema default, so a
+route whose model declares no reasoning efforts at all would hand the provider a keyword it cannot
+accept, failing the call. The
 exported `withSupportedEffort(dsh, route)` is the ONE place that decision is made — `modelDeclaresNoEffort`
 is the pure predicate behind it — and it reads this seam:
 

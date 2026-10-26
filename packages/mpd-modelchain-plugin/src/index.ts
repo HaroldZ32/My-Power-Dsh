@@ -190,23 +190,23 @@ export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ prov
 }
 
 /**
- * The TOTAL slot resolution of one roster member, when the config row exposes it (contract
- * `.mpd/plans/slot-single-source.md` §9 + amendment 1).
+ * The TOTAL agent-route resolution of one roster agent, when the config row exposes it (contract
+ * `.mpd/plans/agent-routes-per-agent.md` §2 + §4).
  *
  * A DISPLAY NEVER THROWS: the service's method is total by contract, and a service that REFUSES the
  * lookup (an agent-scoped ctx without the inject) reads as "no answer" — never as a failure of this
  * tool. The union is mirrored structurally because a cross-package import would be a new entry in the
  * frozen coupling inventory.
  * @param ctx - the row context, for the per-call service lookup.
- * @param member - the roster member's functional name.
+ * @param member - the roster agent's functional name.
  * @returns the typed resolution, or undefined when no service answers.
  */
-function slotResolutionIn(ctx: Ctx, member: string): unknown {
+function agentRouteResolutionIn(ctx: Ctx, member: string): unknown {
   try {
     /** The runtime config service, when the composition mounts one. */
-    const service = ctx.get?.("mpdConfig") as { slotResolutionOf?: (m: string) => unknown } | undefined
-    if (typeof service?.slotResolutionOf !== "function") return undefined
-    return service.slotResolutionOf(member)
+    const service = ctx.get?.("mpdConfig") as { agentRouteResolutionOf?: (m: string) => unknown } | undefined
+    if (typeof service?.agentRouteResolutionOf !== "function") return undefined
+    return service.agentRouteResolutionOf(member)
   } catch {
     // A service that refuses the lookup answers NOTHING; it never fails this tool.
     return undefined
@@ -226,12 +226,12 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster member resolves from its `teamModels` slot (the ONE configured route, plus that slot's own fallback chain) and reports `<unconfigured>` honestly when the slot is not configured; an extension role keeps its own declared chain.",
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster agent resolves from its OWN `agentRoutes` entry (the ONE configured route, plus that entry's own fallback chain) and reports `<unconfigured>` honestly when the route is not configured; an extension role keeps its own declared chain.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
       render: (_args: any, value: any) => [{ type: "text", text: value.status === "unconfigured"
-        ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "teamModels") + "; " + String(value.reason ?? "") + ")"
+        ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")"
         : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
     execute: async (args: any) => {
@@ -252,45 +252,74 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       }
       // L2 (R1/AC2): the chain table is resolved PER CALL — `overlayNow` reads the live `mpdConfig`
       // on every execute, so a `modelchain.<key>` change made in-process changes the NEXT call.
-      // Precedence: the LIVE overlay first (a chain the user explicitly configured outranks even
-      // the roster's own static chain — `modelchain.<chainKey>` is a documented consumed key and
-      // must be what the next resolution answers), then the roster's chain, then the merged
-      // fallback table keyed by the INTERNAL id (`resolveRole`'s keys are ids).
-      // THE SLOT IS THE FIRST AND ONLY ROUTE SOURCE for a member it routes (contract §2/§9): the
-      // config service's TOTAL resolution is read per call, so a saved slot is what the NEXT resolve
-      // answers. An unconfigured slot is reported as the typed state — a display must never throw and
-      // must never fall back to the shipped chain, which is not a route any spawn may run on.
-      /** The typed slot resolution, or undefined when no service answers. */
-      const slot = slotResolutionIn(ctx, String(spec.name)) as
-        | { ok: true; route?: { provider?: unknown; model?: unknown }; fallbacks?: readonly unknown[] }
-        | { ok: false; status?: unknown; missing?: readonly unknown[]; message?: unknown; slot?: unknown }
+      // THE AGENT'S OWN ROUTE IS THE FIRST AND ONLY ROUTE SOURCE for a BASE roster agent (contract
+      // §2/§4): the config service's TOTAL resolution is read per call, so a saved route is what the
+      // NEXT resolve answers. An unusable route is reported as the typed state — a display must never
+      // throw and must never fall back to a shipped chain, which is not a route any spawn may run on.
+      // ONLY a role an EXTENSION contributed falls through below (overlay → its declared chain → the
+      // merged table), because no `agentRoutes` entry decides an extension role at all.
+      /** The typed agent-route resolution, or undefined when no service answers. */
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name)) as
+        | { ok: true; agent?: unknown; route?: { provider?: unknown; model?: unknown; fallbacks?: readonly unknown[] } }
+        | { ok: false; reason?: unknown; agent?: unknown; missing?: readonly unknown[]; problem?: unknown }
         | undefined
-      if (slot !== undefined && slot !== null && typeof slot === "object" && typeof slot.ok === "boolean") {
-        if (slot.ok) {
-          /** The slot's own route, read through the same tolerant field handling as every other consumer. */
-          const provider = String(slot.route?.provider ?? "")
-          /** The slot's model id. */
-          const model = String(slot.route?.model ?? "")
-          // The chain is the slot's own: its primary, then its declared fallbacks (in order).
+      /**
+       * The honest `unconfigured` answer a display renders: empty provider/model and chain, the dotted
+       * leaves the entry still needs, and the recovery sentence — NEVER a shipped static route.
+       */
+      const unconfiguredAnswer = (agent: string, missing: readonly unknown[], reason: string): { provider: string; model: string; chain: Array<{ provider: string; model: string }>; status: string; missing: string[]; reason: string } => ({
+        provider: "",
+        model: "",
+        chain: [],
+        status: "unconfigured",
+        missing: missing.map(String),
+        reason,
+      })
+      if (agentRoute !== undefined && agentRoute !== null && typeof agentRoute === "object" && typeof agentRoute.ok === "boolean") {
+        if (agentRoute.ok) {
+          /** The agent's own route, read through the same tolerant field handling as every other consumer. */
+          const provider = String(agentRoute.route?.provider ?? "")
+          /** The agent's model id. */
+          const model = String(agentRoute.route?.model ?? "")
+          // The chain is the agent's own: its primary, then its declared fallbacks (in order).
+          const fallbacks = Array.isArray(agentRoute.route?.fallbacks) ? agentRoute.route.fallbacks : []
           return {
             provider,
             model,
-            chain: [{ provider, model }, ...(slot.fallbacks ?? []).filter((hop): hop is { provider: string; model: string } => isChainArray([hop]))],
+            chain: [{ provider, model }, ...fallbacks.filter((hop): hop is { provider: string; model: string } => isChainArray([hop]))],
             status: "configured",
           }
         }
-        if (slot.status !== "unrouted") {
-          return {
-            provider: "",
-            model: "",
-            chain: [] as Array<{ provider: string; model: string }>,
-            status: "unconfigured",
-            missing: (slot.missing ?? []).map(String),
-            reason: slot.slot === undefined || slot.slot === "" ? String(slot.message ?? "") : "teamModels." + String(slot.slot) + " is not configured — configure it with /mpd-model",
-          }
+        if (agentRoute.reason !== "unrouted") {
+          /** The agent the state belongs to, for the recovery sentence. */
+          const agent = String(agentRoute.agent ?? spec.name)
+          return unconfiguredAnswer(
+            agent,
+            agentRoute.missing ?? [],
+            agentRoute.reason === "invalid"
+              ? String(agentRoute.problem ?? "agentRoutes." + agent) + " must be a string — configure it with /mpd-model"
+              : "agentRoutes." + agent + " is not configured — configure it with /mpd-model",
+          )
         }
       }
-      /** The configured chain for THIS role's id, when the live config routes one. */
+      // A BASE roster agent whose route is UNRESOLVABLE — no `mpdConfig` service at all, or a service
+      // that answers nothing — has NO route source left: the shipped `roles.data.ts` chain and the
+      // shipped `DEFAULT_CHAINS` table are not a default layer (contract §1/§4). It answers the SAME
+      // typed state the spawn appliers refuse on and `mpd_roles_list` renders as null, so the two
+      // surfaces cannot disagree about whether the agent has a route. ONLY a role an EXTENSION
+      // contributed may fall through to the overlay/declared-chain block below.
+      /** True when this role was CONTRIBUTED BY AN EXTENSION — the one class that may fall through. */
+      const extensionRole = typeof spec.extension === "string" && spec.extension !== ""
+      if (!extensionRole) {
+        /** The agent name the recovery sentence names. */
+        const agent = String(spec.name)
+        return unconfiguredAnswer(
+          agent,
+          ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"],
+          "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model",
+        )
+      }
+      /** The configured chain for THIS role's id, when the live config routes one (extension roles). */
       const configured = overlayNow(ctx)[String(spec.id)]
       if (isChainArray(configured)) {
         return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) }

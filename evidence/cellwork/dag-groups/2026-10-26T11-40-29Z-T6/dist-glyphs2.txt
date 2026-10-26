@@ -1,0 +1,28 @@
+group family entries: 17
+   cornerDownRight '╔' codepoints ['0x2554'] len 1
+   cornerDownLeft '╗' codepoints ['0x2557'] len 1
+   cornerUpRight '╚' codepoints ['0x255a'] len 1
+   cornerUpLeft '╝' codepoints ['0x255d'] len 1
+   vertical '║' codepoints ['0x2551'] len 1
+   horizontal '═' codepoints ['0x2550'] len 1
+   teeRight '╠' codepoints ['0x2560'] len 1
+   teeLeft '╣' codepoints ['0x2563'] len 1
+   teeUp '╩' codepoints ['0x2569'] len 1
+   teeDown '╦' codepoints ['0x2566'] len 1
+   cross '╬' codepoints ['0x256c'] len 1
+   crossVertical '╫' codepoints ['0x256b'] len 1
+   crossHorizontal '╪' codepoints ['0x256a'] len 1
+   portDown '╤' codepoints ['0x2564'] len 1
+   portUp '╧' codepoints ['0x2567'] len 1
+   portRight '╞' codepoints ['0x255e'] len 1
+   portLeft '╡' codepoints ['0x2561'] len 1
+node family entries: 16
+node family glyphs: ╭╮╰╯│─├┤┴┬┼▼▸▶└─├─
+shared glyphs: []
+every group glyph single code point: True
+all in Box Drawing block U+2500..U+257F: True
+DAG_GROUP_CHARS_ONE_CELL present: True
+DAG_CHARS_ONE_CELL present: True
+frame title clamp present: True
+collapsedGroups assignments: 3
+visual === "group" filters: []

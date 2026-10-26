@@ -77,28 +77,29 @@ public settings seam; the PERSISTENCE belongs to the host and the entry-document
 `packages/mpd-config-plugin` (the legacy write-back lives there too, dormant). Rebuild the
 combined client (`node scripts/build-mpd-client.ts`) after touching either half.
 
-**The Web card's team-model pickers.** The card mirrors the ONE 26-row knob declaration of
-`packages/mpd-config-plugin` (the original 13 knobs, the twelve `teamModels` slot leaves and the TUI
-surface's own knob) and
-renders each slot as a **dependent, selection-only picker**: a model control whose options are
+**The Web card's per-agent route rows.** The card mirrors the ONE knob declaration of
+`packages/mpd-config-plugin` (the original 13 knobs, one three-leaf row per roster agent —
+`agentRoutes.<Agent>.{provider,model,reasoningEffort}` — and the TUI surface's own knob) and
+renders each agent's row as a **dependent, selection-only picker**: a model control whose options are
 the catalog's provider/model pairs (provider shown as a group) and an effort control whose
 options are the SELECTED model's own efforts, re-derived when the model changes. The catalog is
 reached through GUARDED probes of `ctx.get("sessions")` + `ctx.get("modelDirectories")` — the
 existing `team-page.ts` pattern, never a declared inject — and when a probe is absent, no session
 is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
-section still renders. Nothing about a slot is settable only by typing. The see-before-you-edit block shows each slot's STATE and renders
+section still renders. Nothing about a leaf is settable only by typing. The see-before-you-edit block shows each agent's STATE and renders
 `<unconfigured>` (naming the leaves it still needs) when the workspace configured none — there is no
-default floor to invent a route — while an INVALID slot (a leaf present but malformed, e.g. a
-non-string, or a slot that is not an object) renders its OWN sentence in both languages instead of
-`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`teamModels.slotN.leaf is not a
-string`, or `teamModels.slotN is not an object`), and the `missing` check TRIMS every leaf, so a
-whitespace-only leaf counts as MISSING rather than as configured — a malformed slot must never read as
-absent. The deleted per-member `agentRoutes` rows are gone from the
-card entirely (a leftover block in an old file is IGNORED, never rendered and never rewritten). A browser module cannot
+default floor to invent a route — while an INVALID entry (a leaf present but malformed, e.g. a
+non-string, or an entry that is not an object) renders its OWN sentence in both languages instead of
+`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`agentRoutes.<Agent>.leaf is not a
+string`, or `agentRoutes.<Agent> is not an object`), and the `missing` check TRIMS every leaf, so a
+whitespace-only leaf counts as MISSING rather than as configured — a malformed entry must never read as
+absent. The legacy `teamModels` block is never rendered: there is no persisted slot, the four groups
+are only the `/mpd-model` bulk-edit shortcut, and a leftover block in an old file is IGNORED and never
+rewritten. A browser module cannot
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
-label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
-group and its own human sentence: the label names the group (`Slot 2 provider (analysis members)`),
-and a group heading with a one-line impact sits above each slot's three rows. Both doors name the
+label, zh, kind, declared options, human sentences) element-wise. Each row LEADS with its
+group heading and its own human sentence, and a group heading with a one-line impact sits above each
+agent's three leaves. Both doors name the
 dotted `mpd.jsonc` key through ONE helper — the hint is `<human sentence> (mpd.jsonc <key>)`, and a
 knob with no human sentence keeps the pointer alone (`knobHint` in the TUI, `hintOf` on the card) —
 while the bridge disclosure and the not-lost clause are stated ONCE per SECTION, never per row: the
@@ -108,6 +109,36 @@ one**: the LIVE half (the knobs whose behaviour a save changes in the running pr
 mount-captured exception (the knobs that need the next `dsh` boot) — the card's block carries the
 scoped statement, and its copy in `settings-card.ts` stays byte-identical to the TUI's, so a reader
 of either front door learns that the EFFECT is per knob (`docs/user-guide.md` §9.1).
+
+## Nested groups: a subcell is a frame
+
+The TEAM view paints a subcell as a frame instead of as one more task card. The host serves the box as a
+node of the PARENT frame (`visual: "group"`) together with the model's `groups` list, and the drawing turns
+each of those items into a `.mpd-dag-group` rectangle in a layer of its own — so the painted order is
+`svg` edges, then the frames, then the task cards, and no `data-mpd-node` ever carries a group's id.
+
+- **A box is its INTERIOR, laid out recursively.** Each frame's own items are placed by the same rules a
+  flat drawing uses — columns by the served column, stacked in id order, a crossing band reserved above the
+  boxes for the rank-skipping edges — and the box is then sized to that interior plus the frame's own
+  padding, so the rectangle it publishes (`data-mpd-group="<id>,<left>,<top>,<width>,<height>"`) encloses
+  the cards and the nested boxes it holds. Nesting repeats: a subcell inside a subcell gets its own frame,
+  strictly inside its parent's rectangle.
+- **The router needs no group-aware code.** An edge whose endpoint is the box is anchored on the group's id
+  by the host, which makes it an ordinary drawn edge that terminates on the frame's border — the arrow's tip
+  x IS the box's left border. `overlaps` is audited PER FRAME and the union is what the geometry serves, so
+  the no-two-runs-share-a-pixel promise extends to every interior unchanged.
+- **One canvas, absolute coordinates.** The nested branch emits every card, run and frame in the canvas's
+  own pixels (`nodes[].left/top/width/height`, `groups[].left/top/…`) and the DOM positions the cards
+  absolutely instead of inside rank columns; a box's interior is re-planned at the origin its box was
+  placed at, so the painted path and the polyline a test proves containment with are one curve.
+- **A flat team is untouched.** With no `groups` in the model the geometry carries no `groups` key, no
+  `nested` flag and the render emits no frames layer at all, so a flat picture's bytes and DOM are what
+  they were before subcells existed.
+- **DECLARED BOUNDS.** A cyclic dependency INSIDE one frame is not routed by this build (the flat path
+  draws it on the left); the geometry lists its witness in `nestedBackEdges` so the omission is visible
+  rather than silent. Columns are packed in rank order and stacked top-aligned — no barycentre relaxation,
+  unlike the flat path — and the hover halo covers the root frame's cards (an interior card keeps its own
+  tone).
 
 ## Config
 

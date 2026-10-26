@@ -315,17 +315,22 @@ interrupt_agent { agent_id }                                              # 仅 
   `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为团队的 spawn 接缝不接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
-- **槽位是名册成员唯一的路由来源 —— 而且不再有内置默认层。** 一切路由都来自该成员的
-  `teamModels.slot{N}`：配置好的 `provider` + `model`、可选的 `reasoningEffort`，以及该槽位**自己**的
-  可选 `fallbacks` 链。`agentRoutes` 已**删除**：旧文件里残留的块会被忽略，且永远不会被改写。未配置
-  （或叶子格式错误）的槽位会用一个结构化的 `SLOT_UNCONFIGURED` 错误**拒绝单次 spawn**，点名槽位、它路由的
-  成员、缺失的叶子与两条修复路径 —— 不写入任何内容，也不启动任何子会话。回退链在 spawn 之前**只消费
-  一次**：模型目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」），胜出者再经过推理强度适配。
-  **四个槽位**同时作用于这些单次咨询**和团队成员**：团队执行器按身份优先级 **`role` → `description`
-  的头部 → 整个 `name`** 解析成员的槽位。匹配不到的成员、或槽位未配置的成员，会**继承暂存它的那个
-  会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、**绝不抛错**——
-  槽位绝不会让团队半途而废。`mpd-roster-provider` 只服务于官方 `spawn_teammate` 通道，而该通道被
-  团队门禁拒绝，所以在默认组合里它不路由任何东西。
+- **模型配置的单位是 AGENT —— 不再有持久化的槽位。** 名册的十一个成员各自拥有一条路由，
+  `agentRoutes.<Agent>`：自己的 `provider` + `model`、可选的 `reasoningEffort`，以及**自己**的可选
+  `fallbacks` 链。路由可以逐个设置、逐个清除，而且**没有默认层** —— 工作区从未配置的 agent **没有**路由。
+  四个分组只保留为**批量编辑的快捷方式**：`/mpd-model` 允许你选一个分组、一次写入组内所有成员，写入前会有
+  一个确认面板列出受影响的 agent 及其当前路由；这个便捷入口**自身不存储任何东西** —— 它只是写入各成员
+  自己的条目。未配置或格式错误的 agent 路由会用一个结构化的 `AGENT_UNCONFIGURED` 错误**拒绝单次 spawn**
+  （`mpd_role_spawn` / `mpd_workmate_spawn`），点名该 agent、缺失的叶子和两条修复路径（`/mpd-model`，或
+  `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）—— 不写入任何内容，也不启动任何子会话。扩展贡献的 role
+  属于 `unrouted`、**不是**拒绝：它保留自己的链并照常 spawn，只有基础名册 agent 会被拒绝。回退链在 spawn 之前
+  **只消费一次**：模型目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」），胜出者再经过推理
+  强度适配。这些 agent 路由同时作用于单次咨询**和团队成员**：团队执行器按身份优先级 **`role` →
+  `description` 的头部 → 整个 `name`** 解析成员的路由。匹配不到的成员、或没有可用路由的成员，会**继承暂存
+  它的那个会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、**绝不抛错**
+  —— 路由绝不会让团队半途而废。遗留的 `teamModels` 块只做**一次**迁移，之后被忽略、永不改写（见 §9）。
+  `mpd-roster-provider` 只服务于官方 `spawn_teammate` 通道，而该通道被团队门禁拒绝，所以在默认组合里它
+  不路由任何东西。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
   的人设自动带进队友：先初始化或挑出该 workmate（`mpd_workmate_init` / `mpd_workmate_match`），
   读出它应当携带的内容，再把那段文本放进 `agent_teams_plan {action:"add_member"}` 的提示词；事后用
@@ -355,6 +360,9 @@ interrupt_agent { "agent_id": "senior-1" }     # 仅 Lead：停下当前轮次�
 
 §13.1 是可照抄的完整走法 —— 创建成员与任务、操作任务板、改派、收尾一波。
 `session-watchdog-*` 是另一套独立的内层停滞检测实现（见 §12 与 [`tui.md`](tui.md)）。
+
+对于超大规模的工作，[`cellwork.md`](cellwork.zh-CN.md) 记录了由命令触发的 **cell-work 模式**：
+规划器与你把需求谈定，切分器按执行模型自己的窗口逐任务计价，队长只负责调度、转达与记录。
 
 ## 7. DSH-TUI 版本（终端界面）
 
@@ -408,9 +416,9 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 26 个（原有 13 个、十二个 `teamModels` 槽位叶子，再加
-TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来自实时模型目录，回退到声明列表），
-其中包括 `hashline.maxDiffChars`、
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 原有 13 个、按名册 agent 各一行三片叶子
+（三十三个 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子；每片叶子是只可选择字段，选项
+来自实时模型目录，回退到声明列表）、再加 TUI 界面自身的一个旋钮，其中包括 `hashline.maxDiffChars`、
 `commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
 harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
 同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
@@ -423,7 +431,7 @@ harness **自带的**表单编辑这一行的 config entry（`configForms.get("m
 
 - **保存即在运行中的进程里生效。** 配置服务在每次设置保存时、以及监听到
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
-  `teamModels.slot*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
+  `agentRoutes.*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
   `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
   其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。
 - **旧命名空间回写路径有两个具名跳过场景（在本 harness 上已休眠）。** 这条路径本身不携带工作区身份，
@@ -529,7 +537,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-dsh-adapter（原生团队执行器）/ mpd-roster-provider（官方回退）（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次单次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。团队成员的槽位按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**（§6），只记一行日志、绝不抛错；`mpd-roster-provider` 只在官方执行器回退通道上路由，而该通道在默认组合里被团队门禁拒绝。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
+| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员）、mpd-roster-provider（仅官方执行器回退）（经 mpd-config） | **按 AGENT** 的模型路由 —— 模型配置的唯一单位：名册十一个成员（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）各自拥有 `{provider?, model?, reasoningEffort?, fallbacks?: [{provider, model, reasoningEffort?}, …]}`，每个叶子都可选。**没有持久化的槽位，也没有内置默认层**：工作区从未配置的 agent **没有**路由，它要路由的每一次单次 spawn 都会被**拒绝**，并给出一个结构化的 `AGENT_UNCONFIGURED` 错误，点名该 agent、缺失的叶子（`agentRoutes.<Agent>.provider`、`.model`）与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）—— 不写入任何内容，也不启动子会话。四个分组**只是** `/mpd-model` 的批量编辑快捷方式：分组写入会覆盖每个成员自己的条目，写入前有确认面板列出受影响的 agent 及其当前路由。agent **自己**的回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。团队成员的路由按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**遗留的 `teamModels` 块只迁移一次，之后被忽略、永不改写**（`<ws>/.mpd/model-config-seed.json` 必须记录 `{"version": 2}`；旧标记或无法解析的标记也会触发初始化，因此 v0.15.x 工作区只迁移一次而不会被搁浅；没有声明 `teamModels` 时，十一条条目会从已配置的提供商一次性播种 —— `deepseek-flash` 家族，slot-1 分组用 `max`、其余用 `high`），而 v2 标记意味着被删除的 `agentRoutes` 块永不重新播种。可在 **设置 → MPD** 与 TUI `/settings` 区块编辑，它们按四个分组标题显示**每个 agent 一行**（分组仅用于显示），写入 `agentRoutes.<Agent>.<leaf>` |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -546,7 +554,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 有三件事不必等这次重启，而且都很有用：
 
 - **模型配置旋钮在进程内实时刷新。** 配置服务在每次设置保存时、以及监听到
-  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`teamModels.slot*`）
+  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`agentRoutes.*`）
   是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次单次咨询
   spawn / workmate spawn / 队友启动都会携带新路由，无需重启。`mpd_config_reload` 仍是需要强制重读时的
   手动兜底。
@@ -571,7 +579,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因槽位失败；该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的槽位按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错 |
+| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个 **AGENT** 只有一条路由、没有默认层：未配置或格式错误的 agent 路由会用 `AGENT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因路由失败；该 agent 自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的路由按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错。四个分组只是批量编辑快捷方式：分组写入会改动每个成员自己的条目，且需先确认 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick —— 该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效 —— 无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -687,7 +695,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **CodeGraph 工具什么都不返回** → 运行 `/mpd-codegraph` 生成 `.codegraph/codegraph.db`，并安装
   `@colbymchenry/codegraph` 或设置 `MPD_DSH_CODEGRAPH_BIN`（它的主拼写 `MPD_CODEGRAPH_BIN`
   会先被读取）。
-- **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`teamModels.slot*`）是 live-refreshed 的：
+- **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`agentRoutes.*`）是 live-refreshed 的：
   用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或用 `mpd_config_reload` 强制重读。
   其余旋钮在挂载时捕获配置，需重启会话 —— 而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
   按它行动（§9.1 说明了哪些旋钮是实时生效的）。
@@ -697,9 +705,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的七条命令**
 （`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
-`/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`），以及本 bundle 只是
+`/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`，`mpd-cellwork` 注册
+`/cellwork`），以及本 bundle 只是
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
 `/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
 `/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问）。
@@ -708,10 +717,11 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 |---|---|---|
 | `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
 | `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
+| `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交 —— 模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
 | `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
-| `/mpd-model` | 打开宿主的选项列表式模型菜单：依次选择槽位 → 提供商 → 模型 → 推理强度，并把 `teamModels.<slot>.<leaf>` 写入 `/settings` 编辑的同一个配置条目；在任一面板取消都不写入，而没有对话框接缝的组合会说明这一点、不打开菜单 | **仅 TUI** |
+| `/mpd-model` | 打开宿主的选项列表式模型菜单：依次选择分组 → 范围（整组，或单个 agent）→ 提供商 → 模型 → 推理强度，并把 `agentRoutes.<Agent>.<leaf>` 写入 `/settings` 编辑的同一个配置条目；整组写入会先显示确认面板，点名每个受影响的 agent 及其当前路由，单个 agent 的写入会标明目标，清除分支只删除一个条目，在任一面板取消都不写入；没有对话框接缝的组合会说明这一点、不打开菜单 | **仅 TUI** |
 | `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
 | `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
 

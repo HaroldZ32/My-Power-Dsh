@@ -1,0 +1,11 @@
+packages/mpd-tui-plugin/src/dag-groups.ts: OK
+packages/mpd-tui-plugin/src/dag-theme.ts: OK
+packages/mpd-tui-plugin/src/graph.ts: OK
+packages/mpd-tui-plugin/src/panel-dag.ts: OK
+packages/mpd-tui-plugin/src/team-state.ts: OK
+packages/mpd-tui-plugin/src/scenes.ts: OK
+packages/mpd-tui-plugin/src/subagent-scene.ts: OK
+packages/mpd-tui-plugin/test/dag-groups.test.ts: OK
+packages/mpd-tui-plugin/dist/index.js: OK
+packages/mpd-tui-plugin/README.md: OK
+packages/mpd-tui-plugin/README.zh-CN.md: OK

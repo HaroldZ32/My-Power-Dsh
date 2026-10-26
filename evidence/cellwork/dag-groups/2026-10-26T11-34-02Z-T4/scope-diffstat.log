@@ -1,0 +1,8 @@
+ packages/mpd-graph-core/README.md       |  71 +++-
+ packages/mpd-graph-core/README.zh-CN.md |  62 ++-
+ packages/mpd-graph-core/dist/index.js   | 259 ++++++++++--
+ packages/mpd-graph-core/src/index.ts    |   2 +
+ packages/mpd-graph-core/src/model.ts    | 502 +++++++++++++++++++---
+ packages/mpd-graph-core/src/types.ts    | 107 ++++-
+ scripts/verify-graph-model.ts           | 712 +++++++++++++++++++++++++++++++-
+ 7 files changed, 1621 insertions(+), 94 deletions(-)

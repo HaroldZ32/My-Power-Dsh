@@ -43,11 +43,13 @@ silently:
 The shapes (all plain JSON — no `Map`, no `Set`, no class instance, no function):
 
 ```
-GraphModel  = { nodes, edges, ranks, cycles, report }
-GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status? }
-GraphEdge   = { from, to, source: "board" | "plan" | "both" }
+GraphModel  = { nodes, edges, ranks, cycles, report, groups? }
+GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status?, group? }
+GraphEdge   = { from, to, source: "board" | "plan" | "both" | "derived" }
 GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
                 planProblems, unresolved, ranksDerived }
+GraphGroup  = { id, label, parentId, memberIds, depth, originTaskId? }
+GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups? }
 ```
 
 `depth` on a node is the RESOLVED column (derived from the blocker graph, or the served-depth
@@ -64,6 +66,61 @@ unchanged: an absent optional field is an absent key, never an `undefined` value
 **Cycles and flat boards are rendered honestly.** A dependency cycle keeps every rank finite and is
 listed in `cycles`; a board whose every `blockedBy` is `[]` draws flat, with one rank and no edges —
 that is a true picture, not a defect.
+
+## Groups (nested subcells)
+
+A subcell is a **group**: a box whose interior is that subcell's own dependency graph. `buildModel` takes
+the grouping input as a TREE and returns one model whose boxes and tasks are all reachable from it:
+
+```ts
+buildModel({
+  board, plan,                        // the ROOT frame: the caller's own tasks
+  groups: [{
+    id: "teamB", label: "Subcell B",
+    originTaskId: "T2",               // the task that spawned it, when known
+    board, plan,                      // teamB's OWN interior input
+    groups: [ /* … recursive … */ ],
+  }],
+})
+```
+
+**The attachment rule (binding).** An edge with one endpoint inside group G and the other outside is
+**re-anchored to G's frame**, where G is the innermost group containing the inside endpoint; an edge fully
+inside one group keeps its two tasks as written; an edge between two groups becomes group→group; and a
+group's spawn edge from `originTaskId` is **derived** by the model (`source: "derived"`), never authored by
+the caller. Two declarations that re-anchor onto the same pair draw ONE port, not two.
+
+**The box is a node.** Each group is drawn as a pseudo-node of its parent frame: `id` = the group id,
+`subject` = its label, `visual` = `"group"`, and `dependencies` = the blockers the re-anchoring attached to
+its border. `ranks` still buckets the ROOT frame only (its own tasks plus the top-level boxes), while every
+node's `depth` is its column **inside its own frame** — that is what lets a renderer recurse.
+
+**Ranking.** The outer model ranks the GROUP PSEUDO-NODES, so external columns stay correct, and each
+group's interior is ranked as its own model: an interior's reference to a task outside its frame does not
+resolve inside it, which is exactly where the dependency attaches to the border.
+
+**Which field is authoritative — for what.** `edges` is the DRAWN structure, and it is the ONLY input to
+`ranks`, each node's `depth` and `cycles`: a reference that crosses a frame border is drawn as a line to (or
+from) a box there, so the columns and the cycle scan follow that line. A node's `dependencies` is the
+AUTHORED text, kept verbatim (out-of-frame and unresolved references included) so a reader can see what the
+caller actually wrote — never derive structure from it. A box is the one node whose `dependencies` are
+already the drawn ones, because a box has no authored text of its own.
+
+**Plain JSON and determinism.** `groups` is ordered by (`depth`, then `id`) so parents precede children;
+`memberIds` by the id collator; a `JSON.parse(JSON.stringify(model))` round-trip deep-equals the model.
+
+**Backward guarantee.** With NO group supplied the result is **byte-identical** to the flat model this
+package produced before groups existed: no `groups` key, no `group` on any node, the same ranks and the same
+serialized bytes. The package test pins the exact JSON, and the `verify-graph-model` gate re-checks that a
+flat model carries no `groups` key at all.
+
+**Ids are unique across the WHOLE tree.** The id is the join key both planes draw by, so a grouping input
+that reuses one id in two frames — or a group id equal to a task id — is REFUSED with an `Error` naming both
+frames, because silently keeping one of the two would draw a tree nobody declared. A caller whose teams
+reuse their own `T<n>` space qualifies the inner ids before building (the team plane's own spelling is
+`<teamId>::<taskId>`). An `originTaskId` that names no node is reported in `report.unresolved`; one that
+names a task inside the subcell it spawned derives nothing, because a box cannot be blocked by its own
+interior.
 
 ## The plan-markdown subset
 
@@ -208,7 +265,7 @@ resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 
 // model.ts — the one model
-buildModel({ board?, plan? }): GraphModel
+buildModel({ board?, plan?, groups? }): GraphModel
 
 // watch.ts — one watcher
 watchGraph(targets, options?): GraphWatcher
@@ -236,6 +293,19 @@ toolchain the freshness gate rebuilds with:
   --target node --format esm --outfile packages/mpd-graph-core/dist/index.js
 bun test packages/mpd-graph-core
 ```
+
+The independent picture-vs-input gate lives at the repository root and is the one command that proves the
+model against the CONTRACT rather than against itself:
+
+```
+node scripts/verify-graph-model.ts              # the flat fixture, byte-for-byte as before groups existed
+node scripts/verify-graph-model.ts --grouped    # the GROUP arm: the built-in nested fixture
+node scripts/verify-graph-model.ts --self-test  # both directions, the grouped arms and the path forms
+```
+
+`--seed-wrong-edge` (flat) and `--seed-wrong-anchor` (grouped) are the seeded negative controls: each must
+exit non-zero with a FAIL line that NAMES the edge it broke, and `--self-test` asserts exactly that, so a
+green run means the gate discriminates instead of merely running.
 
 The package ships `src/index.ts` (the barrel), this README pair, and `dist/index.js` built by the
 command above. It declares no dependency of any kind.

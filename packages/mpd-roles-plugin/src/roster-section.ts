@@ -8,11 +8,11 @@
 //
 // The text is deliberately compact — a model pays for it every turn — and it states the
 // MEASURED bound of the teammate path (plan §3): a teammate cannot take a persona/tool-filter
-// argument, and the native team executor resolves a staged member's `teamModels` slot by
-// identity precedence — `role`, then the head of the description, then the whole name — while
-// a member it cannot match inherits the route of the session that staged it. Only the
-// single-call `mpd_role_spawn` applies a slot directly, and the section says all of this
-// rather than promising a route the harness cannot deliver.
+// argument, and the native team executor resolves a staged member's route from its OWN
+// `agentRoutes` entry by identity precedence — `role`, then the head of the description, then the
+// whole name — while a member it cannot match inherits the route of the session that staged it.
+// Only the single-call `mpd_role_spawn` applies an agent route directly, and the section says all
+// of this rather than promising a route the harness cannot deliver.
 import type { DshAdapter, DshPromptSection } from "../../mpd-dsh-adapter-plugin/src/index"
 import { sessionQualifies } from "./complexity-gate.ts"
 
@@ -54,7 +54,7 @@ export function rosterSectionText(members: readonly SectionRosterMember[]): stri
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    "Create one with `agent_teams_plan` {action:\"add_member\"} (prompt = the persona text from `mpd_role_persona`) → {action:\"create_task\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:\"approve\"}; drive with `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: a `teamModels` slot applies by identity — `role`, then the `description` head, then the whole `name`; the single-call `mpd_role_spawn` applies the role's slot directly. An UNMATCHED member inherits YOUR model route (the staging session's); prompt text cannot change a route. A read-only member's write tools are denied by the roster guard.",
+    "Create one with `agent_teams_plan` {action:\"add_member\"} (prompt = `mpd_role_persona`'s text) → {action:\"create_task\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:\"approve\"}; then `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: each agent's `agentRoutes` entry applies by identity — `role`, then the `description` head, then the whole `name`; `mpd_role_spawn` applies that entry directly and refuses when it is unusable. An UNMATCHED member inherits YOUR model route (the staging session's); prompt text cannot change a route. Read-only members' write tools are denied by the guard.",
   ].join("\n")
 }
 

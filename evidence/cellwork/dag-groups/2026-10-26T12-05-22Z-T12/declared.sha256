@@ -1,0 +1,8 @@
+a931c54bd057e751410767c0dca88696a0da703b945e8e458ed82c22b95a4d6e  packages/mpd-graph-core/src/types.ts
+aec6635985077f7f434d88bb33818c8903be5ed000fdc381799d3ad458987f8c  packages/mpd-graph-core/src/model.ts
+f990feef7d1830bd5d4b189169d0bb390b246ca1e7e901d2815bc06d9939f9f0  packages/mpd-graph-core/src/index.ts
+b706f9f235cec46e963ba73b37beb55a39ed35043eee36958139438db9a14f13  packages/mpd-graph-core/test/model-groups.test.ts
+80cdb3d7b1c40b5852b122f26024ed46f6d8043c629e96197bf88ab8ff6084dd  packages/mpd-graph-core/README.md
+8ace034b6b4e27d1d82b3503109502e20dbc3fd822b728df3a1625b8664a42fe  packages/mpd-graph-core/README.zh-CN.md
+7978afbeaf16d68dac1f7d3db67a5fa42d10465d4a7a92dd0340af436479f3cd  packages/mpd-graph-core/dist/index.js
+92573a09982cda099f2902b0af1557b9c5179099b1ffd44531af5ca73424ca46  scripts/verify-graph-model.ts

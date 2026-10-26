@@ -77,7 +77,7 @@ its functional name.
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
-| `mpd_workmate_spawn` | ONE-SHOT single-call consult: one bounded delegation with the workmate's persona+memory+note, on the base's **team-model slot** route (see *Model routing*; an unconfigured/malformed slot REFUSES with `SLOT_UNCONFIGURED`, and `meta.provider/model` never decides it; readonly bases deny write tools); on a host exposing `startActivation` the activation is disposed once the report settles (the retired `start` fallback has none to dispose), and durable continuity lives in the workmate record, not the child session |
+| `mpd_workmate_spawn` | ONE-SHOT single-call consult: one bounded delegation with the workmate's persona+memory+note, on the base's **own `agentRoutes` entry** (see *Model routing*; an unconfigured/malformed route REFUSES with `AGENT_UNCONFIGURED`, an EXTENSION base is `unrouted` and still spawns, and `meta.provider/model` never decides it; readonly bases deny write tools); on a host exposing `startActivation` the activation is disposed once the report settles (the retired `start` fallback has none to dispose), and durable continuity lives in the workmate record, not the child session |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |
 | `mpd_workmate_match` | rank notes against a task; below threshold → suggest a new init |
 | `mpd_workmate_rename { name, new_name }` | rename the instance: moves directory key + metadata + index key + note self-reference (see below) |
@@ -91,27 +91,29 @@ never used to resolve a name, so a later call with the OLD key fails with
 `no workmate named "<oldKey>"` and zero side effects instead of silently resurrecting the
 old directory.
 
-## Model routing (the slot is the only source)
+## Model routing (the agent's own route is the only source)
 
-A spawn's route comes from the base's **team-model slot** and nowhere else
-(contract `.mpd/plans/slot-single-source.md` §5):
+A spawn's route comes from the base's **own `agentRoutes` entry** and nowhere else
+(contract `.mpd/plans/agent-routes-per-agent.md`): there is no persisted slot, and the four
+`/mpd-model` groups are only a bulk-edit shortcut that writes every member's own entry.
 
-- `mpd_workmate_spawn` reads `mpdConfig.slotResolutionOf(baseName)` per spawn, so a
+- `mpd_workmate_spawn` reads `mpdConfig.agentRouteOf(baseName)` per spawn, so a
   change saved between two spawns is what the SECOND spawn runs on. The route is the
-  slot's `provider` + `model` (+ its optional `reasoningEffort`), and the slot's own
+  entry's `provider` + `model` (+ its optional `reasoningEffort`), and the entry's own
   `fallbacks` chain is consumed once before the spawn (the first catalog-positive
   candidate wins), after which the winner's effort passes the model-capability
   adaptation.
 - **`meta.provider` / `meta.model` are PROVENANCE ONLY.** They record the route the
   instance was born with; they never decide a spawn. There is no default layer either:
   `roles.data.ts`'s shipped chain is not a route any spawn may run on.
-- **An unconfigured or malformed slot REFUSES the spawn** with ONE structured
-  `SLOT_UNCONFIGURED` failure naming the slot, its members, the missing leaves and both
-  recovery paths (`/mpd-model`, and `teamModels.slotN` in `.mpd/mpd.jsonc`) — nothing
-  is written and no child is started (`spawnAgent` is never reached).
-- **An EXTENSION base** (a role contributed by an extension, which no slot routes) uses
-  its OWN declared route — the provider/model its extension declared — and fails with
-  `no route configured for <base>` when it declared none. `mpd_workmate_init` records
+- **An unconfigured or malformed route REFUSES the spawn** with ONE structured
+  `AGENT_UNCONFIGURED` failure naming the agent, the missing leaves
+  (`agentRoutes.<Agent>.provider`, `.model`) and both recovery paths (`/mpd-model`, and
+  `agentRoutes.<Agent>` in `.mpd/mpd.jsonc`) — nothing is written and no child is started
+  (`spawnAgent` is never reached).
+- **An EXTENSION base** (a role contributed by an extension) is `unrouted`, NOT refused:
+  it uses its OWN declared route — the provider/model its extension declared — and fails
+  with `no route configured for <base>` when it declared none. `mpd_workmate_init` records
   that route as provenance.
 
 ## Rename and delete

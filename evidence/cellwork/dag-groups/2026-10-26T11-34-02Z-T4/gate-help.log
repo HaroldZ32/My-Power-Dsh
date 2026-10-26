@@ -1,0 +1,9 @@
+usage: node scripts/verify-graph-model.ts [--grouped] [--fixture <dir> | --board <path> --plan <path>]
+
+  (no argument)       check the flat fixture (the six-case table), as before groups existed
+  --grouped           check the built-in nested (group) fixture
+  --emit              print the serialized model snapshot of the fixture being checked
+  --seed-wrong-edge   flip one edge (the negative control) and expect a non-zero exit
+  --seed-wrong-anchor un-anchor one box edge (the grouped negative control)
+  --self-test         run both directions, the grouped arms and the path forms
+  --help              print this text

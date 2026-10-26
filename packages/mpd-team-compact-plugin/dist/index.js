@@ -264,13 +264,17 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   }
   const winner = index === 0 ? primary : wellFormed[index - 1];
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`);
   }
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
+}
+var AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED";
+function agentUnconfiguredMessage(agent, detail) {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes." + agent + " in .mpd/mpd.jsonc.";
 }
 function rosterNameHead(label) {
   if (typeof label !== "string")
@@ -297,52 +301,49 @@ function memberIdentityCandidates(identity) {
   }
   return unique;
 }
-function resolveTeamMemberRoute(identity, slotResolutionOf) {
-  if (typeof slotResolutionOf !== "function")
+function resolveTeamMemberRoute(identity, agentRouteResolutionOf) {
+  if (typeof agentRouteResolutionOf !== "function")
     return { status: "no-config-service" };
   for (const candidate of memberIdentityCandidates(identity)) {
     let answer;
     try {
-      answer = slotResolutionOf(candidate);
+      answer = agentRouteResolutionOf(candidate);
     } catch {
       continue;
     }
     if (answer === null || typeof answer !== "object")
       continue;
-    const slotAnswer = answer;
-    if (slotAnswer.ok === true) {
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+    const routeAnswer = answer;
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate;
+    if (routeAnswer.ok === true) {
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : "";
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : "";
       if (provider === "" || model === "") {
         return {
           status: "unusable",
           member: candidate,
-          ...slot === "" ? {} : { slot },
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model")
         };
       }
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : "";
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : []
       };
     }
-    if (slotAnswer.ok === false) {
-      if (slotAnswer.status === "unrouted")
+    if (routeAnswer.ok === false) {
+      if (routeAnswer.reason === "unrouted")
         continue;
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        const detail = routeAnswer.reason === "invalid" ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string" : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0 ? routeAnswer.missing.map(String).join(", ") : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model");
         return {
           status: "unusable",
           member: candidate,
-          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
-          reason: slotAnswer.status,
-          detail
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail)
         };
       }
     }
@@ -659,7 +660,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -709,29 +710,19 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
-  const configSlotResolver = () => {
+  const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
-    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+    if (typeof config2.agentRouteResolutionOf !== "function")
       return;
     return (member) => {
-      if (typeof config2.slotResolutionOf === "function") {
-        try {
-          const answer = config2.slotResolutionOf.call(config2, member);
-          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
-            return answer;
-        } catch {}
+      try {
+        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
+      } catch {
+        return;
       }
-      if (typeof config2.teamModelRouteOf === "function") {
-        try {
-          const route = config2.teamModelRouteOf.call(config2, member);
-          if (route !== null && typeof route === "object")
-            return { ok: true, slot: "", route, fallbacks: [] };
-        } catch {}
-        return { ok: false, status: "unrouted", slot: undefined };
-      }
-      return;
     };
   };
   function requireService(serviceName, needed) {
@@ -800,6 +791,67 @@ function createDshAdapter(ctx, config = {}) {
       return;
     engineCache.set(agent, engine);
     return engine;
+  }
+  function contextPressureSession(target) {
+    if (typeof target === "string") {
+      const id = target.trim();
+      if (id === "")
+        return;
+      const sessions = service("sessions");
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          const found = sessions.get(id);
+          if (found !== undefined && found !== null)
+            return found;
+        } catch {}
+      }
+      return liveAgent(id)?.session;
+    }
+    if (target === undefined || target === null || typeof target !== "object")
+      return;
+    const session = target.session;
+    if (session !== undefined && session !== null)
+      return session;
+    return target;
+  }
+  function finiteNumberOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function contextPressure(target) {
+    const session = contextPressureSession(target);
+    if (session === undefined)
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    const projections = service("sessionProjections");
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    let state;
+    try {
+      state = projections.stateOf(session, "contextPressure");
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    const stateFields = state;
+    let snapshot;
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined;
+    } catch {
+      snapshot = undefined;
+    }
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object" ? snapshot.values : undefined;
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object" ? snapshotValues.contextPressure : undefined;
+    const viewFields = view !== undefined && view !== null && typeof view === "object" ? view : undefined;
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens);
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens);
+    const usedTokens = projectedTokens ?? pressureTokens;
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow);
+    if (windowTokens === null)
+      return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" };
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null;
+    return { usedTokens, windowTokens, ratio, provenance: "observed" };
   }
   function onEvent(event, handler) {
     if (typeof ctx?.on !== "function")
@@ -886,12 +938,16 @@ function createDshAdapter(ctx, config = {}) {
             });
           }
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow);
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens);
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
             ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
             efforts,
-            ...defaultEffort === undefined ? {} : { defaultEffort }
+            ...defaultEffort === undefined ? {} : { defaultEffort },
+            contextWindow,
+            maxOutputTokens
           });
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
@@ -938,12 +994,12 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
           } else {
-            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
@@ -953,14 +1009,17 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...agentOptions === undefined ? {} : { agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions },
+            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
           signal: request.signal ?? neverAborted()
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -1193,6 +1252,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -1455,7 +1515,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2083,8 +2143,16 @@ function readAudits(workspace, teamId) {
     return [];
   }
 }
-function classifyCompactionError(error) {
+function isAbortRejection(error) {
+  if (error === null || typeof error !== "object")
+    return false;
+  const shaped = error;
+  return shaped.name === "AbortError" || shaped.code === "ABORT_ERR" || shaped.code === 20;
+}
+function classifyCompactionError(error, signal) {
   const text = error instanceof Error ? error.message : String(error);
+  if (signal?.aborted === true || isAbortRejection(error))
+    return { outcome: "failed", failureCode: "cancelled", error: text };
   const code = error?.code;
   const named = typeof code === "string" && COMPACTION_FAILURE_CODES.includes(code) ? code : COMPACTION_FAILURE_CODES.find((candidate) => new RegExp(`\\b${candidate}\\b`, "i").test(text));
   if (named !== undefined && named !== "busy")
@@ -2151,11 +2219,39 @@ async function compactTeamPass(dsh, team, options) {
   }
   const idleWaitMs = options.idleWaitMs ?? DEFAULT_IDLE_WAIT_MS;
   const idlePollMs = options.idlePollMs ?? DEFAULT_IDLE_POLL_MS;
+  const passSignal = options.signal;
   const deadline = now() + idleWaitMs;
+  const waitOnePoll = (ms) => {
+    if (passSignal === undefined)
+      return sleep(ms);
+    if (passSignal.aborted)
+      return Promise.resolve();
+    return new Promise((resolve3) => {
+      const finish = () => {
+        passSignal.removeEventListener("abort", finish);
+        resolve3();
+      };
+      passSignal.addEventListener("abort", finish, { once: true });
+      sleep(ms).then(finish, finish);
+    });
+  };
   let allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)));
-  while (!allIdle && now() < deadline) {
-    await sleep(idlePollMs);
+  while (!allIdle && now() < deadline && passSignal?.aborted !== true) {
+    await waitOnePoll(idlePollMs);
     allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)));
+  }
+  if (passSignal?.aborted === true) {
+    const stillBusy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name);
+    return {
+      ...base,
+      outcome: "cancelled",
+      refusedReason: `the pass was cancelled while waiting for every member to be idle${stillBusy.length === 0 ? "" : `; still busy: ${stillBusy.join(", ")}`}`,
+      members: resolved.map((entry) => ({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        ...entry.staged ? { outcome: "skipped-staged", reason: "member has no session id yet (not spawned)" } : entry.agent === undefined ? { outcome: "skipped-not-live", reason: "no live Agent for this session id" } : { outcome: "failed", failureCode: "cancelled", error: "the pass was cancelled during the idle barrier; nothing was compacted for this member" }
+      }))
+    };
   }
   if (!allIdle) {
     const busy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name);
@@ -2186,8 +2282,10 @@ async function compactTeamPass(dsh, team, options) {
       records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "the member's scoped context exposes no compaction engine" });
       continue;
     }
+    const controller = new AbortController;
+    const signal = options.signal === undefined ? controller.signal : AbortSignal.any([options.signal, controller.signal]);
     try {
-      const result = await engine.compactNow(entry.agent, undefined);
+      const result = await engine.compactNow(entry.agent, signal);
       if (result === null || result === undefined) {
         records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "no-safe-range" });
       } else {
@@ -2200,7 +2298,7 @@ async function compactTeamPass(dsh, team, options) {
         });
       }
     } catch (error) {
-      const classified = classifyCompactionError(error);
+      const classified = classifyCompactionError(error, signal);
       records.push({
         member: entry.member.name,
         sessionId: entry.member.id,

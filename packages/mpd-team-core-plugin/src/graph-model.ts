@@ -21,9 +21,18 @@
 // plan watcher ONCE per workspace and funnels its batches into `feed.notify`, which is what makes a
 // plan-only edit invalidate the model through the SAME one notification path (no second channel for a
 // TUI surface to learn about).
+//
+// NESTED TEAMS (`cellwork` wave 4). A team whose record carries `parentTeamId` is a SUBCELL of that
+// team, and the model the parent serves draws it as a BOX: its board is the box's interior, merged and
+// ranked on its own by the shared core. This module's whole contribution is the INPUT — it walks the
+// records (never the rendered model), turns every live descendant into a group input and lets the core
+// apply the attachment rule. A team with no live child supplies no groups at all, which is what keeps a
+// flat tree's model byte-identical to the one this package served before nested teams existed.
 import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from "../../mpd-graph-core/src/index.ts"
 import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "../../mpd-graph-core/src/index.ts"
-import { summariseTeam, taskVisual } from "./team-store"
+import { isLiveTeam, readArchivedPlanIndex } from "./team-lifecycle"
+import type { ArchivedPlanIndex } from "./team-lifecycle"
+import { listTeams, summariseTeam, taskVisual } from "./team-store"
 import type { TeamRecord } from "./team-store"
 
 /**
@@ -41,6 +50,13 @@ export interface GraphModelDeps {
   warn?: (line: string) => void
   /** The watcher factory, injected so an arm can drive batches without a filesystem. */
   watch?: (targets: GraphWatchTargets, options: GraphWatchOptions) => GraphWatcher
+  /**
+   * The team-list reader, injected so an arm can COUNT the reads.
+   *
+   * The nesting walk needs every record once; reading the list inside each recursion level would cost
+   * one directory scan plus one parse of every record per level of the tree, for every model build.
+   */
+  listTeams?: (workspace: string) => TeamRecord[]
 }
 
 /** One team's cached model, the workspace revision it was built at, and the plan it was built from. */
@@ -98,6 +114,156 @@ function messageOf(error: unknown): string {
 }
 
 /**
+ * The board rows of ONE NESTED team, with every id qualified by that team — the join key made unique.
+ *
+ * WHY THIS EXISTS (contract Amendment 7). Every team mints its tasks from the same `T1..Tn` space, and
+ * the model's node id is the key BOTH renderers draw by — so two teams' `T1` would be one node in the
+ * merged model, and `buildModel` refuses a duplicate outright. The team plane therefore qualifies a
+ * nested team's ids with its own id (`<teamId>::<taskId>`, the spelling `dispatch.ts#ledgerKey` already
+ * uses), and the ROOT frame keeps BARE ids: a caller asking for `/state` or a rank by id sees exactly
+ * the ids the outer team's board carries, unchanged.
+ *
+ * A BLOCKER THAT NAMES A TASK OF THIS FRAME is this frame's node, so it wears the same qualified
+ * spelling. Anything else was authored as a CROSS-FRAME reference and is kept VERBATIM: the parent's
+ * bare `T3` and a sibling subcell's `teamB::T2` are exactly how the attachment rule finds the frame
+ * border to anchor on.
+ * @param record - the nested team whose board is being framed.
+ * @returns the rows, id-qualified, in board order.
+ */
+function framedBoardOf(record: TeamRecord): BoardTask[] {
+  /** This team's own task ids, so a reference that names one of them is qualified with it. */
+  const own = new Set(record.tasks.map((task) => task.id))
+  return boardOf(record).map((row) => ({
+    ...row,
+    id: `${record.teamId}::${row.id}`,
+    blockedBy: (row.blockedBy ?? []).map((reference) => own.has(reference) ? `${record.teamId}::${reference}` : reference),
+  }))
+}
+
+/**
+ * One group handed to the shared core, declared STRUCTURALLY rather than imported.
+ *
+ * WHY NOT THE CORE'S OWN `GraphGroupInput`: this file's cross-package import into `mpd-graph-core` is a
+ * FROZEN inventory entry matched by its exact statement (the independence gate in
+ * `packages/mpd-dsh-adapter-plugin/test/`), so naming one more type on it would force an inventory
+ * change for a shape this module only CONSTRUCTS. The repository's own convention for that situation is
+ * this one: declare the slice, and let assignability keep it honest — the value is passed straight to
+ * `buildModel`, so a drift in the real type reddens the full-program typecheck instead of drifting.
+ */
+interface GroupInput {
+  /** The frame's id: the child team's own id, which is also its pseudo-node id in the parent frame. */
+  id: string
+  /** The frame's display title, drawn on the box border: the child team's name. */
+  label: string
+  /** The child's own board rows, id-qualified by {@link framedBoardOf}. */
+  board: readonly BoardTask[]
+  /** The child's own live children, recursively. */
+  groups?: readonly GroupInput[]
+}
+
+/**
+ * The nesting input of one team's model: every LIVE descendant team as a frame, recursively.
+ *
+ * THE RECORD IS THE SOURCE OF TRUTH, the model is derived: a team nests where its own `parentTeamId`
+ * points, so this walks the records and hands the shared core the grouped BOARD ROWS of each child —
+ * the core then merges, ranks and re-anchors every edge on its own (see `GraphGroup` in
+ * `mpd-graph-core/src/types.ts` for the rule). Two deliberate reads:
+ *
+ *   - LIVENESS. A child whose phase is terminal, or whose plan was archived without approval, is not
+ *     drawn: a finished subcell is history, and a box inside a live team that nobody can act on would
+ *     be a picture of work that no longer exists. The archive index is read ONCE per build and reused
+ *     for every child, which is why the cache is keyed by the feed revision (a team write, an archive
+ *     write and an ending all bump it).
+ *   - NO CYCLE. The chain is walked from `parentTeamId` upward by construction, so a hand-edited record
+ *     that loops would be walked forever. The `seen` set makes the projection terminate and REPORTS the
+ *     corruption once instead of throwing into a render — a tool refuses such a link long before it can
+ *     be written (`agent_teams_plan` validates at create, at edit and at approve).
+ *
+ * A child's interior gets NO plan: the plan markdown is a WORKSPACE document (the newest one resolved
+ * for this workspace), and merging it into a subcell's box would draw the parent's plan-only ghosts
+ * inside a child that never declared them.
+ * @param children - every record INDEXED BY PARENT, read once for the whole build.
+ * @param parentTeamId - the team whose children are collected.
+ * @param archive - the archive index, read once by the caller for liveness.
+ * @param warn - the row's bounded diagnostic sink, when one was injected.
+ * @param seen - the ids already walked, so a corrupt chain terminates.
+ * @returns one input per live child, ordered by team id (the core sorts again; this keeps the walk stable).
+ */
+function groupInputsOf(
+  children: ReadonlyMap<string, readonly TeamRecord[]>,
+  parentTeamId: string,
+  archive: ArchivedPlanIndex,
+  warn: ((line: string) => void) | undefined,
+  seen: Set<string>,
+): GroupInput[] {
+  /** The live children of this team, already in a stated order rather than the directory's. */
+  const own = children.get(parentTeamId) ?? []
+  /** The frames collected so far. */
+  const inputs: GroupInput[] = []
+  for (const child of own) {
+    if (seen.has(child.teamId)) {
+      warn?.(`[mpd-team-core] team ${child.teamId} is nested inside ${parentTeamId}, which is already on its own parent chain — the record was edited by hand; the projection skips the repeat`)
+      continue
+    }
+    if (!isLiveTeam(child, archive)) continue
+    seen.add(child.teamId)
+    /** This child's own frames, collected before it is returned so the recursion is honest. */
+    const nested = groupInputsOf(children, child.teamId, archive, warn, seen)
+    inputs.push({
+      id: child.teamId,
+      label: child.name,
+      // THE CHILD'S OWN ROWS, id-qualified: see {@link framedBoardOf} for why the child cannot keep the
+      // bare `T1..Tn` this team's board also uses.
+      board: framedBoardOf(child),
+      ...(nested.length === 0 ? {} : { groups: nested }),
+    })
+  }
+  return inputs
+}
+
+/**
+ * The `groups` half of a {@link buildModel} input, or NO KEY AT ALL when the team has no live child.
+ *
+ * The absence is the backward guarantee: `mpd-graph-core` omits `GraphModel.groups` when it was given
+ * none, so a flat team's model is the exact value (and the exact bytes) both planes already draw. The
+ * archive index is read here, once per build, because liveness is a property of the CHILD's plan
+ * archive rather than of the parent's board.
+ * @param workspace - the workspace the records live in.
+ * @param record - the team whose model is being built (its own id roots the walk).
+ * @param warn - the row's bounded diagnostic sink, when one was injected.
+ * @param list - the team-list reader; the row's own seam, defaulted to the store.
+ * @returns an object spread into the build input: `{}` for a childless team, `{ groups }` otherwise.
+ */
+function groupsOf(workspace: string, record: TeamRecord, warn: ((line: string) => void) | undefined, list: (workspace: string) => TeamRecord[]): { groups?: readonly GroupInput[] } {
+  /** EVERY record, read ONCE: the recursion below walks this index instead of re-listing per level. */
+  const index = childrenByParent(list(workspace))
+  /** Every live descendant of this team, nested as deep as the records go. */
+  const groups = groupInputsOf(index, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]))
+  return groups.length === 0 ? {} : { groups }
+}
+
+/**
+ * Index team records by the parent they name, so one read serves every recursion level.
+ * @param records - every team record in the workspace.
+ * @returns the children of each parent id, each list ordered by team id.
+ */
+function childrenByParent(records: readonly TeamRecord[]): Map<string, TeamRecord[]> {
+  /** The index under construction. */
+  const index = new Map<string, TeamRecord[]>()
+  for (const record of records) {
+    /** The parent this record names, when it names one at all (a root team names none). */
+    const parent = record.parentTeamId
+    if (parent === undefined || parent === "") continue
+    /** The children already listed under that parent. */
+    const held = index.get(parent)
+    if (held === undefined) index.set(parent, [record])
+    else held.push(record)
+  }
+  for (const children of index.values()) children.sort((left, right) => (left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0))
+  return index
+}
+
+/**
  * ONE model per (workspace, team), built on demand and invalidated by the change feed.
  *
  * Every member is synchronous and non-throwing: `get` is called from a tool/render path and from a web
@@ -150,7 +316,14 @@ export class GraphModels {
       // newest-plan swap that fired no team event at all.
       if (cached !== undefined && cached.revision === revision && cached.planPath === planPath) return cached.model
       /** The freshly merged model: the board is authoritative, the plan is intent. */
-      const model = buildModel({ board: boardOf(record), plan: readPlanFile(planPath) })
+      const model = buildModel({
+        board: boardOf(record),
+        plan: readPlanFile(planPath),
+        // THE NESTING INPUT, OMITTED WHEN THE TEAM HAS NO LIVE CHILD: a flat tree's model therefore
+        // carries no `groups` key at all and stays byte-identical to the one this row served before
+        // nested teams existed (the backward guarantee is a test, not an intention).
+        ...groupsOf(workspace, record, this.deps.warn, this.deps.listTeams ?? listTeams),
+      })
       this.cache.set(key, { revision, planPath, model })
       return model
     } catch (error) {

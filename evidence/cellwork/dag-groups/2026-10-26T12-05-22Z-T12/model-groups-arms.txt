@@ -1,0 +1,22 @@
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > the serialized model equals the bytes the pre-group model produced 
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > no group key leaks into the model or into any node 
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > an EMPTY groups array is the same model as no groups at all 
+(pass) plain JSON and determinism > a grouped model round-trips through JSON unchanged 
+(pass) plain JSON and determinism > the same grouped input builds the same model whatever order it arrives in 
+(pass) the attachment rule > one endpoint inside a group and the other outside: the edge is re-anchored to the box 
+(pass) the attachment rule > an edge fully inside one group keeps its two inner tasks 
+(pass) the attachment rule > an edge between two groups becomes group→group in the frame that draws both boxes 
+(pass) the attachment rule > two inner tasks blocked by the same outer task draw ONE box port, not two 
+(pass) ranking and cycles follow the DRAWN edges, never the authored text > an outer task blocked by a task INSIDE a subcell ranks behind the box, keeping the authored ref 
+(pass) ranking and cycles follow the DRAWN edges, never the authored text > two frames that block each other across their borders are reported as a CYCLE 
+(pass) the derived spawn edge > the origin task blocks the box with source 'derived', named by neither disagreement list 
+(pass) the derived spawn edge > an origin naming no node is reported as unresolved and derives no edge 
+(pass) the derived spawn edge > an origin inside the subcell it spawned draws nothing at all 
+(pass) nesting > the groups are flat, shallow-first, with parentId, depth and direct memberIds 
+(pass) nesting > a nested edge is lifted to the frame that draws both of its ends 
+(pass) nesting > each frame ranks its own interior, so depth is the column INSIDE that frame 
+(pass) nesting > ranks bucket the ROOT frame only, with the top-level box ranked by its incoming edges 
+(pass) the box is a node > the pseudo-node carries the label, the group visual and the column of its parent frame 
+(pass) the box is a node > an interior ghost keeps the frame it was planned in 
+(pass) the two refusals > one id in two frames is refused, naming both frames 
+(pass) the two refusals > a group id that collides with a task id is refused 

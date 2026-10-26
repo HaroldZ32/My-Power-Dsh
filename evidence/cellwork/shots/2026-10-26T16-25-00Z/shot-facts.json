@@ -1,0 +1,99 @@
+{
+  "case": "cellwork-w4-nested-dag-shots",
+  "task": "T29 + T33 (README nested-DAG captures)",
+  "servedModel": {
+    "source": "mpdTeams.graph(workspace, team-nested-parent) via GraphModels, asserted by nested-fixture.ts --verify",
+    "groups": 1,
+    "groupIds": [
+      "team-nested-sub"
+    ],
+    "groupMemberIds": [
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "nodes": 11,
+    "boxNode": {
+      "id": "team-nested-sub",
+      "visual": "group",
+      "depth": 3,
+      "blockers": [
+        "T4"
+      ]
+    },
+    "edgesAnchored": [
+      "T4 -> team-nested-sub",
+      "team-nested-sub -> T5"
+    ]
+  },
+  "web": {
+    "surface": "dsh web, Team view (mpd-bundle-plugin client.js)",
+    "bundle": "the CURRENT checkout's mpd-team-core-plugin/dist + mpd-bundle-plugin/{dist,client.js} patched into the profile (the image ships 0.15.1, which has no groupInputsOf/layoutNested)",
+    "frames": 1,
+    "groupRects": [
+      "team-nested-sub,510,0,384,114"
+    ],
+    "cards": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "boxes": [
+      "0,0,144,42",
+      "170,0,144,42",
+      "170,52,144,42",
+      "340,0,144,42",
+      "920,0,144,42",
+      "1090,0,144,42",
+      "520,10,104,42",
+      "650,10,104,42",
+      "650,62,104,42",
+      "780,10,104,42"
+    ],
+    "viewport": "2300x1500 @ deviceScaleFactor 2, graph scrolled right"
+  },
+  "tui": {
+    "surface": "DSH-TUI 0.17.0 DAG page, full screen (the page's own fullscreen control), 160x62 PTY",
+    "renderer": "docker/ui/tui-render.py (TRACKED; sha256 81c968312f3c...) --scale 2",
+    "frameGlyphsPresent": [
+      "╔",
+      "╗",
+      "╚",
+      "╝",
+      "║",
+      "═",
+      "╧",
+      "╫"
+    ],
+    "frameClosed": true,
+    "interiorCards": [
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "topBorder": "╔ subcell-auth ════════════╧══════════════════════════╗",
+    "bottomBorder": "╚══════════════════════════╫══════════════════════════╝"
+  },
+  "assets": {
+    "docs/assets/images/web-team-dag-groups.png": "2068x1169 — EN web, four interior cards",
+    "docs/assets/images/tui-team-dag-groups.png": "3160x2107 — EN TUI, CLOSED frame",
+    "docs/assets/images/zh-CN/web-team-dag-groups.png": "2068x1169 — zh-CN web (its own run, Chinese UI)",
+    "docs/assets/images/zh-CN/tui-team-dag-groups.png": "WITHDRAWN — see bounds"
+  },
+  "bounds": [
+    "The zh-CN images are their OWN runs, not renamed copies: the WEB twin renders in the app's Chinese locale (browser context locale zh-CN, body text verified Chinese), and the TUI twin is a separate PTY capture. MEASURED: the TUI DAG page's chrome is English in BOTH locales (DSH_TUI_LANG=zh-CN left the pane byte-identical), which matches the established zh-CN set policy that 'the TUI scene bodies stay English by design'; the zh-CN TUI file is therefore the same scene from its own run, not a Chinese-chrome image.",
+    "The zh-CN TUI twin was WITHDRAWN after measurement: DSH_TUI_LANG=en / zh / zh-CN all produce a byte-identical DAG pane (the page's chrome is English in every locale, matching the established 'TUI scene bodies stay English by design' policy), so a zh-CN copy would be a byte-identical duplicate. The zh README + zh docs row cite the SHARED English-body TUI capture and say so in the caption; the three panes are kept here as the measurement.",
+    "The TUI capture requires the page's FULLSCREEN control: at the narrow sidebar width the group is collapsed by D3's declared bound, not half-drawn.",
+    "The web crop keeps the panel header + roster + the whole task graph; the empty space below the graph is dropped, not painted over.",
+    "The frame is CLOSED: the bottom border carries a crossing glyph (U+256B) where the outgoing edge leaves the box, and all four interior cards sit inside it."
+  ]
+}

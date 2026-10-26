@@ -1,0 +1,6 @@
+960ae872b06b5df50a835d5a4a6112562391323da1e75faeee60073f228ed4e9  packages/mpd-graph-core/dist/index.js
+91245b94893ffd75dd83ba11a7faa189914f6761301c4db26172b3ce1d9c2275  packages/mpd-team-core-plugin/dist/index.js
+a4ad8e29bd083c9bba5aae0b4050b93766dc157a4842c5311f49e3ddb4bb9884  packages/mpd-tui-plugin/dist/index.js
+f84ad95b9a3eb6a3ba0f0e809903a2cbcd39d6c6baa831dd7df60ed72b2364c6  packages/mpd-bundle-plugin/dist/index.js
+3531dc81fbc55dc5c1d7226c91686e64da1dd708ae52db724f117ae14ca83353  packages/mpd-bundle-plugin/client.js
+b1b20d34abd8457ee5c45ef39366151b96b9b7907c7333eca8b9be67981992dc  packages/mpd-cellwork-plugin/dist/index.js

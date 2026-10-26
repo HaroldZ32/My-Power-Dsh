@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T120805-1047b7",
+  "loopId": "loop-20261026T105128-98c855",
+  "taskId": "T12",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "graph-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/probe-t12.log",
+        "bytes": 841,
+        "sha256": "9ea4c77aecd160397b7e8f3e4c576b4182e24661bdc39a39f79b0a7359182154",
+        "mtime": "2026-10-26T12:06:12.549Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/grouped-frame-edges.txt",
+        "bytes": 669,
+        "sha256": "25cc4b7b71b00e81b855b5a566f2a89875999ff0a0f96c87e9759e1aefdb84fc",
+        "mtime": "2026-10-26T12:06:12.664Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/gate-selftest.log",
+        "bytes": 2104,
+        "sha256": "99bf62bbc2e07e00f7187789f9aadeb85610c4244a99271dd421f71b3d70efc6",
+        "mtime": "2026-10-26T12:06:13.199Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-real.jsononly",
+        "bytes": 2951,
+        "sha256": "dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf",
+        "mtime": "2026-10-26T12:06:15.062Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-synthetic.jsononly",
+        "bytes": 2935,
+        "sha256": "2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b",
+        "mtime": "2026-10-26T12:06:15.063Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/scope-start.sha256",
+        "bytes": 1891,
+        "sha256": "c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a",
+        "mtime": "2026-10-26T12:05:22.517Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/scope-end.sha256",
+        "bytes": 1891,
+        "sha256": "c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a",
+        "mtime": "2026-10-26T12:06:49.624Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "389ecf7d965428f5624c6331efda1172da852f54be815fcdc6e017d0abeee4be"
+    },
+    {
+      "path": "packages/mpd-graph-core/README.md",
+      "sha256": "80cdb3d7b1c40b5852b122f26024ed46f6d8043c629e96197bf88ab8ff6084dd"
+    },
+    {
+      "path": "packages/mpd-graph-core/README.zh-CN.md",
+      "sha256": "8ace034b6b4e27d1d82b3503109502e20dbc3fd822b728df3a1625b8664a42fe"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T120704-619562",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T120704-619562.log",
+      "logSha256": "f460499b392e5ef646f64cc1b27f82e3a5621ba5bebd556951856ab0b629cdb3"
+    },
+    {
+      "evidenceId": "ev-20261026T120735-4df141",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T120735-4df141.log",
+      "logSha256": "38f5db3db286039a238aef140d8e9dfbb4fcfe792755cbaae3c59d82c412c505"
+    },
+    {
+      "evidenceId": "ev-20261026T120744-909bcd",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T120744-909bcd.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T120745-9a677c",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T120745-9a677c.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T12:08:05.276Z",
+  "notes": [
+    "SUBJECT: Amendment 8 R1 (anchored per-frame ranking + cross-frame cycle) and R2 (the BUILT-IN gate fixture must demonstrate group->group). Both judged by MY OWN reproduction — the same assertion probe that FAILED on the pre-repair build at 11:44 now passes on the frozen build, so this is a falsification-pair verdict, not an acceptance of the writer's prose.",
+    "SETTLED TREE: packages/mpd-graph-core + scripts/verify-graph-model.ts, sha256 sandwich over 17 files — start == end (c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a) around a 50 s settle window; all 8 hashes the writer declared at 2026-10-26T11:59:04Z verified OK. Evidence: evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/.",
+    "R1 — MY PROBE, pre-repair vs frozen build, same assertions: (a) an OUTER task blocked by an INNER one — was `depth(T2)=0` with ranks [[T1,T2],[teamB]] and the edge teamB->T2 pointing BACKWARDS; now `depth(T2)=2`, ranks [[T1],[teamB],[T2]], so the box a line leaves from is always in an earlier column than the node it enters; (b) a cross-frame mutual block — was two opposite edges with `cycles: []` so the panel's cycle warning could never fire; now `cycles: [\"G1\",\"T1\"]` naming BOTH members; (c) the mirror case (inner blocked by outer) is unchanged and still anchors on the box; (d) group->group still resolves GA->GB. Determinism and the plain-JSON round-trip pass on the repaired model. Package arms grew 20 -> 22 with the two new ones named for exactly these rules ('an outer task blocked by a task INSIDE a subcell ranks behind the box, keeping the authored ref' / 'two frames that block each other across their borders are reported as a CYCLE').",
+    "R2 — the built-in fixture now demonstrates the branch: `--grouped --emit` yields THREE groups (teamB, teamC, teamB1) and EIGHT edges including `teamB->teamC[board]`, i.e. a frame joins two declared boxes; the grouped oracle reports 'grouped nodes (11), edges (8), groups (3) ... equal the declared tree' and the gate keeps its 13 self-test arms with `--seed-wrong-anchor` still exiting non-zero (`FAIL edge B1->teamB1: missing`). So the branch is now covered by the DURABLE gate, not only by a package arm.",
+    "BACKWARD PIN, unchanged by the repair: my two independent pre-wave captures are still byte-identical (real W3 board+plan `dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf`, synthetic ghost/cycle board `2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b`), no `groups` key in either (count 0/0), and three consecutive emits are identical. graph-core suite 94 pass / 0 fail (was 92 for T4's freeze — the two new arms).",
+    "GATES: full suite 2620 pass / 6 skip / 0 fail (2626 across 156 files); root tsgo --noEmit clean; verify:comments PASS; verify:docs 52 pairs / 0 failed; graph-core dist FRESH (--only run, 1/1).",
+    "BOUNDS: (a) the repo-WIDE `dist` evidence call exits 1 on ONE target — `packages/mpd-team-core-plugin/dist/index.js` — because graph-core's repair is inlined into team-core and the captain's fan-out rebuild is the integration step; graph-core's OWN dist measured FRESH, and I cite the per-package run plus the four green repo-wide gates rather than a fan-out green I did not observe. (b) D4 (the web frame) is DEFERRED by the captain and I did not judge it; T7/T8 are outside this record. (c) I did not re-read the implementation after the record; the probe plus the gate plus the suite are the basis.",
+    "DECLINED TO JUDGE: whether the ranking fix should ALSO re-anchor the `dependencies` field it keeps as authored text — Amendment 8 R1 explicitly requires keeping the authored refs, and the new arm name states that contract ('keeping the authored ref'), so the two-representation question is settled by the frozen text rather than open."
+  ]
+}

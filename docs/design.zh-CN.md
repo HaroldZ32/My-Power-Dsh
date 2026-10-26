@@ -228,7 +228,7 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | `~/.mpd/workmate/` 下的持久化可演化代理库（变更操作 rename/delete，删除默认先归档） | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`；服务 `mpdWorkmate`（`list`/`get`/`read`/`rename`/`delete`）；web 路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | 官方运行时之外的**团队记录 + 工作流**：plan 平面（`agent_teams_plan` 暂存一份"在任何人存在之前"用户就能读到并批准的 plan，批准即经由 `TeamExecutor` 接缝**执行**它）、任务契约 + 单调 `attempt`、持久点对点邮箱、hold 与归档；保存在 `<workspace>/.mpd/team/`，并以 `mpdTeams` 与 `/plugins/mpd-team/state` 提供 | `agent_teams_plan`、`agent_teams_task`、`agent_teams_dispatch`、`agent_teams_mail`、`agent_teams_control`；服务 `mpdTeams` | — |
-| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方执行器的**历史/回退**路由：注册 `mpd-tool-agent-team` 行指向的 `mpd-roster` subagent provider，使**团队服务**升起、且描述符 label 点名名册成员的队友由该成员的 `teamModels` 槽位路由。在**默认**（原生执行器）组合里它**不路由任何东西** —— 发起该路径的官方 `spawn_teammate` **工具**已在工具边界被**拒绝**（§5）—— 四个槽位改由原生 `TeamExecutor` 抵达团队成员：身份优先级 `role` → `description` 的头部 → 整个 `name`；匹配不到的成员、或槽位未配置的成员，会**继承暂存会话的路由**，只记一行日志、绝不抛错 | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方执行器的**历史/回退**路由：注册 `mpd-tool-agent-team` 行指向的 `mpd-roster` subagent provider，使**团队服务**升起、且描述符 label 点名名册成员的队友由该成员**自己的** `agentRoutes` 条目路由。在**默认**（原生执行器）组合里它**不路由任何东西** —— 发起该路径的官方 `spawn_teammate` **工具**已在工具边界被**拒绝**（§5）—— 逐 agent 的路由改由原生 `TeamExecutor` 抵达团队成员：身份优先级 `role` → `description` 的头部 → 整个 `name`；匹配不到的成员、或没有可用路由的成员，会**继承暂存会话的路由**，只记一行日志、绝不抛错。不存在持久化的槽位：四个分组只是 `/mpd-model` 的批量编辑快捷方式 | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | 对**已结束**的团队做成员压缩（所有任务终态且所有成员 idle），经由每个成员**自己的**作用域上下文执行；captain 交由人类 `/compact` 处理；审计落在 `<workspace>/.mpd/team-compact/`，该行从不写 `.mpd/team` | `mpd_team_compact_run`、`mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | 与 DSH-TUI 平面的**唯一**接触面：每个 `ctx.tui*` 接缝、harness 的 `commands` registry 与 `settings` provider 都经由这一个包触达 mpd 插件（接缝 id 表为 `TUI_SEAMS`：**十五个** `tui*` 服务 —— 0.12.0 起暴露的十四个，加上 0.13.0 新增的 `tuiPanels` registry），binder = 每个接缝一次延迟 `ctx.inject([id], …)`，probe = `ctx.get(id, false)`，永不绑定的接缝降级为 `absent` 而不是让启动失败；R5 文件日志汇聚点也由它拥有 | 服务 `mpdTui` | — |
@@ -303,9 +303,9 @@ key**。
   `team_task_get`、`team_task_update` —— 对**每个**智能体都在工具边界被**拒绝**；`send_message`、
   `list_agents`、`wait_agent`、`interrupt_agent` 保留，用于智能体间通信。边界：这道门是
   施加在**工具调用**上的 `tools.guard`，因此直接调用团队**服务**的行（官方执行器回退路径）不是
-  工具调用，**不受**这道门约束。两条实测边界是设计的一部分，不是遗漏：团队成员的 `teamModels` 槽位由
-  **原生**执行器按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的成员、或槽位
-  未配置的成员，会**继承暂存会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），
+  工具调用，**不受**这道门约束。两条实测边界是设计的一部分，不是遗漏：团队成员**自己的** `agentRoutes` 条目
+  由**原生**执行器按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的成员、或没有
+  可用路由的成员，会**继承暂存会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），
   只记一行日志、绝不抛错。`mpd-roster-provider` 行只服务于官方**服务**级回退路径，其
   `spawn_teammate` **工具**已在工具边界被拒绝；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的
   守卫拒绝，因为官方 `spawn_teammate` 工具（现已在工具边界被**拒绝**）无法接受按队友的工具过滤器。
@@ -611,7 +611,7 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
 - **事实基线以哈希锚定，因而会过期。** 它是在本文档改写期间测量的，所以其行号指向的是改写前的字节——但
   它所报告的问题（§4 表缺少 `mpd-team-watchdog`、`mpd-team-compact` 与 `mpd-tui`；把名册界面说成一个
   在 bundle 中毫无注册的斜杠命令；8 与 6 的 MCP 计数）在本文档中均已修复。
-- **设置项数量有意不在本文档复述。** 基线度量已审计过它（`25 = 13 个非 slot 键 + 12 个 teamModels
-  叶`，与 schema 声明一致），并且在本文件与其前身中都未发现过期副本；该计数属于 README / 用户指南 /
-  schema 注释。给该计数的读者：那 13 是 6 个单键小节 + 7 个 `watchdog.*` 字段（不是 13 个小节），而
-  `teamModels` 权威地是**四**个槽（不是三个）。
+- **设置项数量有意不在本文档复述。** 基线度量审计的是**旧**形态（`25 = 13 个非 slot 键 + 12 个 teamModels
+  叶`），并且在本文件与其前身中都未发现过期副本；该计数属于 README / 用户指南 / schema 注释。形态此后
+  已改为逐 agent 路由（`agentRoutes.<Agent>`：每个名册 agent 一行三片叶子）；遗留的 `teamModels` 块是一个
+  只迁移一次、之后不再参与路由的宽松节点，而且不存在持久化的槽位 —— 因此任何写在这里的叶子总数都会再次过期。

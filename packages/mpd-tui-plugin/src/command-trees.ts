@@ -58,10 +58,17 @@ export const COMMAND_ROOT_DESCRIPTIONS: { readonly zh: string; readonly en: stri
   en: "MPD surfaces: the board, the team workflow and the status line",
 }
 
-/** The `/mpd-model` description pair (the root of the pick-list command's own tree). */
+/**
+ * The `/mpd-model` description pair (the root of the pick-list command's own tree).
+ *
+ * CONTRACT §6: the chain is group → scope (the WHOLE group as a bulk edit, or ONE agent) → provider →
+ * model → reasoning effort. A whole-group write overwrites every member's own `agentRoutes` entry, so it
+ * asks for confirmation first; the four groups store nothing of their own. The description names both
+ * halves because it is the only place a reader sees the flow before opening the menu.
+ */
 export const MODEL_COMMAND_DESCRIPTIONS: { readonly zh: string; readonly en: string } = {
-  zh: "选择式模型设置：槽位 → 提供商 → 模型 → 推理强度",
-  en: "Pick-list model settings: slot → provider → model → reasoning effort",
+  zh: "选择式模型设置：分组 → 整组或单个代理 → 提供商 → 模型 → 推理强度（整组写入需确认）",
+  en: "Pick-list model settings: group → whole group or one agent → provider → model → reasoning effort (a group write asks for confirmation)",
 }
 
 /** The ENGLISH fallback description of `/mpd-model`, as the harness command registry stores it. */

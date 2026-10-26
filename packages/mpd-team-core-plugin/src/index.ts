@@ -109,6 +109,7 @@ import {
   rememberLead,
   summariseTeam,
   taskDepths,
+  removeTeamMember,
   taskVisual,
   unbindActiveTeam,
   updateTeamMember,
@@ -122,6 +123,7 @@ import {
   type TeamTaskRecord,
 } from "./team-store"
 import {
+  isLiveTeam,
   readArchivedPlanIndex,
   reapReapedTeams,
   resolveTeamRecord,
@@ -615,6 +617,78 @@ function assertPlanGraph(plan: StagedPlan): void {
     throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency SELF-EDGE ${label(defect.id)} -> ${label(defect.id)} — the task is its own blocker, so it could never become ready, and no verb can remove the edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} without that task's own id or subject in its blocked_by — blocked_by: [] for a genuine root, or name the task that must close first — then approve again.`)
   }
   throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency CYCLE ${defect.path.map(label).join(" -> ")} — every task on it waits for itself, so none could ever be claimed or dispatched, and no verb can remove an edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} and drop one edge of the loop — give one task on that path blocked_by: [] (or a blocker outside the loop) — then approve again.`)
+}
+
+/**
+ * Refuse a parent chain that revisits an id, naming the loop.
+ *
+ * The chain is walked from the derived parent upward through the records. A cycle can only reach disk
+ * through a hand-edited record — the link is written once, at approval, and no verb rewrites it — which
+ * is exactly why the walk must terminate on data it did not write: the projection in `graph-model.ts`
+ * follows the same field, and an unbounded walk there would hang a render instead of refusing a write.
+ * @param workspace - the workspace holding the records.
+ * @param parent - the derived parent, already read.
+ * @throws when following `parentTeamId` from the parent revisits an id.
+ */
+function assertParentChainAcyclic(workspace: string, parent: TeamRecord): void {
+  /** The ids already walked, mapped to their position in the path, so the loop can be quoted. */
+  const at = new Map<string, number>()
+  /** The chain walked so far, oldest first. */
+  const path: string[] = []
+  /** The record being walked; `undefined` once the chain reaches a root team. */
+  let cursor: TeamRecord | undefined = parent
+  while (cursor !== undefined) {
+    /** The position this id already occupies, when it was walked before — the cycle. */
+    const seenAt = at.get(cursor.teamId)
+    if (seenAt !== undefined) {
+      throw new Error(`agent_teams_plan approve REFUSED: the parent chain of ${parent.teamId} comes back to ${cursor.teamId} — it carries a CYCLE ${[...path.slice(seenAt), cursor.teamId].join(" -> ")}, and a graph projection would never terminate on it. Nothing was created. This chain cannot be written by any tool (the link is stamped ONCE, at approval), so the record was edited by hand: fix the \`parentTeamId\` field of ${cursor.teamId} under .mpd/team/teams/ and approve again.`)
+    }
+    at.set(cursor.teamId, path.length)
+    path.push(cursor.teamId)
+    cursor = cursor.parentTeamId === undefined || cursor.parentTeamId === "" ? undefined : readTeam(workspace, cursor.parentTeamId)
+  }
+}
+
+/**
+ * The team an approval NESTS the new team under, DERIVED from the records instead of from an argument.
+ *
+ * THE SEAM (`cellwork` wave 4, contract D2 option b). A subcell's subcaptain is a MEMBER of the parent
+ * team's roster — the executor recorded its handle there when the parent raised it — so the parent link
+ * is a fact the workspace already holds, not a value a caller must restate. Deriving it here means the
+ * tool surface spends no context on a new argument, a plan carries nothing a model can mistype, and no
+ * caller can file its team inside a box that was never granted to it.
+ *
+ * THREE DELIBERATE NEGATIVES, each with a consequence a test can observe:
+ *   - NOTHING RESOLVES when the session is on no live roster (or on a team that ENDED, or whose staged
+ *     plan was archived without approval — {@link isLiveTeam} is the filter): the new team is a ROOT
+ *     team. A sub-team is therefore never born inside a finished parent.
+ *   - A LEAD NEVER NESTS UNDER ITS OWN TEAM: a captain that stages a second wave in the same session is
+ *     still that team's Lead, so its new team is a SIBLING, not a child. Without this rule every later
+ *     wave would silently become a subcell of the previous one.
+ *   - TWO ROSTERS REFUSE, they never guess: a session recorded on more than one live roster makes the
+ *     box ambiguous, and an approval that guessed would draw a nesting the records do not state.
+ * @param workspace - the workspace the records live in.
+ * @param sessionId - the approving session.
+ * @param lineage - the ancestors the harness recorded for this caller (a forked or resumed session).
+ * @returns the single live team this session is a MEMBER of, or undefined for a root team.
+ * @throws when the caller is on more than one live roster, or the derived chain carries a cycle.
+ */
+function deriveParentTeam(workspace: string, sessionId: string, lineage: readonly string[]): TeamRecord | undefined {
+  /** Every spelling that identifies this caller, the same set the board verbs resolve by. */
+  const caller = [sessionId, ...lineage].filter((value) => value !== "")
+  /** The archive index, read once for the liveness test every candidate passes. */
+  const archive = readArchivedPlanIndex(workspace)
+  /** The LIVE teams whose ROSTER records this caller, a team it merely leads excluded. */
+  const candidates = listTeams(workspace).filter((record) =>
+    recordNamesMember(record, caller) && !recordNamesLead(record, caller) && isLiveTeam(record, archive))
+  /** The single parent this session belongs to, if exactly one. */
+  const [parent, ...rest] = candidates
+  if (parent === undefined) return undefined
+  if (rest.length > 0) {
+    throw new Error(`agent_teams_plan approve REFUSED: this session is on the roster of ${candidates.length} live teams (${candidates.map((record) => record.teamId).join(", ")}), so a sub-team nested under one of them would be a guess — and a box in the wrong team is a picture the records do not state. Nothing was created. Fix: approve from a session that belongs to ONE team (each team's own roster is on agent_teams_plan {action:"status"}), or wait for all but the parent team to end.`)
+  }
+  assertParentChainAcyclic(workspace, parent)
+  return parent
 }
 
 /**
@@ -1377,7 +1451,10 @@ export function apply(ctx: any): void {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          // A `failed` row is a raise that never happened: the live append and the approval REMOVE it, and
+          // a legacy record may still carry one — rendering it as a live roster row is exactly the defect
+          // this contract closes, so the status answer names only the members the team actually has.
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           // The summary crosses a TOOL boundary, so it is projected to lossless JSON here: the store's
           // own `depths` is a Map and a Map cannot survive the harness's snapshot (defect 1).
@@ -1392,6 +1469,9 @@ export function apply(ctx: any): void {
         if (existing?.approvedAt !== undefined && args?.replace !== true) {
           throw new Error(`plan ${existing.planId} is already approved; pass replace:true to stage a different team`)
         }
+        // NO NESTING ARGUMENT IS STAGED HERE, deliberately (cellwork wave 4): the parent team is derived
+        // at APPROVAL from the record's own roster (see `deriveParentTeam`), so a plan carries no value a
+        // model could mistype and this tool surface spends no context on one.
         return { plan: stagePlan(workspace, sessionId, {
           name: String(args?.name ?? "team"),
           description: String(args?.description ?? ""),
@@ -1465,10 +1545,15 @@ export function apply(ctx: any): void {
           writeTeam(workspace, withDerivedPhase(running))
           return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` }
         } catch (error) {
-          /** The record with the member marked failed, so the roster never shows a member that is not there. */
-          const failed = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { status: "failed" })
-          writeTeam(workspace, withDerivedPhase(failed))
-          return { team: failed, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) appended to the live team ${failed.teamId}, but the raise FAILED` }
+          // A FAILED RAISE LEAVES NO ZOMBIE (contract `.mpd/plans/agent-slot-hygiene.md`). The row this
+          // append wrote is REMOVED, not marked `failed`: a member the harness never raised is counted by
+          // the active-child capacity and rendered by every roster consumer, and five such rows exhausted
+          // the harness's pool in the cellwork wave. The failure is reported in the ANSWER (`stoppedAt`
+          // and `appended`), and whatever slot the executor took is released by the executor itself.
+          /** The record with the never-raised row dropped, so the roster and the capacity agree. */
+          const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id)
+          writeTeam(workspace, withDerivedPhase(released))
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` }
         }
       }
 
@@ -1678,6 +1763,13 @@ export function apply(ctx: any): void {
         // THE CHECK SITS ABOVE `dry_run` for the same reason the empty-plan check does: a preview of a
         // call that CANNOT succeed reads as a successful dry run and invites exactly that approval.
         assertScopesOrdered(plan)
+        // ── THE NESTING SEAM, AT THE MOMENT THE RECORD IS BORN (cellwork wave 4) ──
+        // The parent is DERIVED from the records (contract D2 option b): a promoted subcaptain is on
+        // the parent team's roster, so approving its sub-team nests it without any argument. Derived
+        // BEFORE `dry_run` like every other approval-time guard, because a preview of an approval that
+        // cannot succeed reads as a successful dry run and invites it.
+        /** The team this approval nests under, or undefined for a root team. */
+        const parent = deriveParentTeam(workspace, sessionId, lineage)
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } }
         }
@@ -1688,7 +1780,15 @@ export function apply(ctx: any): void {
         // naming exactly what was attempted instead of nothing at all, and why an executor swap
         // (W2) changes no id any surface has already shown.
         /** The mpd record this approval builds; persisted at the end, and on failure too. */
-        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId, planId: plan.planId }, now())
+        let record = createTeam(workspace, {
+          name: plan.name,
+          description: plan.description,
+          leadSessionId: sessionId,
+          planId: plan.planId,
+          // THE SEAM MADE DURABLE: the derived parent becomes the record's `parentTeamId`, and a root
+          // team writes no key at all (so its record carries the exact field set it always had).
+          ...(parent === undefined ? {} : { parentTeamId: parent.teamId }),
+        }, now())
         for (const member of plan.members) {
           record = addTeamMember(record, { name: member.name, description: member.description, ...(member.role === undefined ? {} : { role: member.role }) }, now())
         }
@@ -1777,7 +1877,11 @@ export function apply(ctx: any): void {
             created.members.push({ name: member.name, id: spawned.handle })
             record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" })
           } catch (error) {
-            record = updateTeamMember(record, member.id, { status: "failed" })
+            // THE SAME RULE AS THE LIVE APPEND (contract `.mpd/plans/agent-slot-hygiene.md`): a member
+            // the harness never raised is DROPPED rather than kept as a `failed` row, because a partial
+            // approval would otherwise hand the roster — and the capacity — a teammate that does not
+            // exist, and a repaired approval could never reuse the name.
+            record = removeTeamMember(record, member.id)
             stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
             break
           }

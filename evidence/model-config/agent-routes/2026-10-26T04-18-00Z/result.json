@@ -1,0 +1,129 @@
+{
+  "wave": "agentRoutes — the agent is the model-config unit; the four groups are a /mpd-model bulk-edit shortcut",
+  "contract": ".mpd/plans/agent-routes-per-agent.md (frozen by the captain; Amendments 1-2 included)",
+  "branch": "feature/agent-routes",
+  "baseCommit": "62731bac",
+  "measuredAt": "2026-10-26T04:18:00Z",
+  "userDecision": "Per-agent routes are the unit; NO persisted big slot; a group edit OVERWRITES members' own entries after a confirmation panel listing the affected agents; only one entry per agent is stored.",
+  "gates": [
+    {
+      "id": "gates",
+      "command": "bun run verify:gates",
+      "exit": 0,
+      "observed": "PASS - 9/9 member gate(s) green (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows)",
+      "evidenceId": "ev-20261026T041659-993fde"
+    },
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit: no diagnostics (repo-wide, src + test)",
+      "evidenceId": "ev-20261026T041740-31794d"
+    },
+    {
+      "id": "dist",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 33/33 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (packages/mpd-mcp-codegraph/dist/serve.js, sha-pinned prebuilt, no local src)",
+      "evidenceId": "ev-20261026T041755-df3ef6"
+    },
+    {
+      "id": "docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=453 dead=0 — PASS",
+      "evidenceId": "ev-20261026T041756-aa4d96"
+    },
+    {
+      "id": "vendor",
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "observed": "PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked; skills treeSha re-pinned once for this wave (4a7e6ed2 -> efa5600f) and client.js sha256 aligned after its legitimate deterministic rebuild (398e1972 -> 3531dc81)",
+      "evidenceId": "ev-20261026T041756-c1acce"
+    },
+    {
+      "id": "comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "scanned 444 TypeScript files; inspected 40020 declarations; VERDICT: PASS",
+      "evidenceId": "ev-20261026T041759-d39c6e"
+    },
+    {
+      "id": "rows",
+      "command": "bun run verify:rows",
+      "exit": 0,
+      "observed": "ok: 36 row ids match the 2-file bundle patch layer",
+      "evidenceId": "ev-20261026T041801-dfa4a3"
+    },
+    {
+      "id": "manifest",
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 28 row module paths resolve, 25 files-allowlist patterns admit every runtime path, 1044 files in npm pack --dry-run, evidence/ excluded",
+      "evidenceId": "ev-20261026T041801-696f49"
+    },
+    {
+      "id": "tests",
+      "command": "bun test packages",
+      "exit": 1,
+      "observed": "2489 pass, 6 skip, 5 fail (2500 tests across 148 files). All 5 failures are the pre-existing host-version arms R13/R13b in packages/mpd-tui-plugin/test/panel-visibility.test.ts: TypeError: prefs.parseSidePanelIds is not a function, and the INSTALLED host's PANELS_PATH source no longer carries enablePanelIdInStore. That test file is unmodified by this wave and reads the installed @deepseek-harness-tui/dsh-tui 0.17.0, so the failure is independent of this diff. DECLARED BOUND — NOT a pass.",
+      "evidenceId": "ev-20261026T041709-7711bb"
+    },
+    {
+      "id": "test-qa",
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed (51/51 cases, including the disclosure byte-equality arm and preset-conformance's 4 negative controls)",
+      "evidenceId": "inline: /tmp (re-run not persisted by the fixed table)"
+    },
+    {
+      "id": "preset-conformance-self-test",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit": 0,
+      "observed": "ok: 32 harness rows conform against the installed schemas, persona prefix=true, mpd preset 29 child rows, row parity 27/27, negative controls 4/4 reddened",
+      "evidenceId": "inline"
+    },
+    {
+      "id": "no-host-override",
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "observed": "PASS: every id-target is bundle-owned (0 of 0 collide with the 214 host-declared row ids)",
+      "evidenceId": "inline"
+    },
+    {
+      "id": "manual-paths",
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS resolved=152 over-report=73 under-report=83 declared=2",
+      "evidenceId": "inline"
+    }
+  ],
+  "laneTests": {
+    "mpd-config-plugin": "155 pass / 0 fail (10 files)",
+    "mpd-roles-plugin": "174 pass / 0 fail (the F1 dist-freshness arm went green after the integration rebuild)",
+    "mpd-workmate-plugin": "53 pass / 0 fail",
+    "mpd-roster-provider-plugin": "19 pass / 0 fail",
+    "mpd-dsh-adapter-plugin": "270 pass / 0 fail (cross-package coupling inventory PASS, 46->46 entries, 2 stale -> 2 changed TUI lines)",
+    "mpd-modelchain-plugin": "9 pass / 0 fail",
+    "mpd-tui-plugin": "586 pass / 1 skip / 5 fail (the declared host-version bound above)",
+    "mpd-bundle-plugin": "220 pass / 0 fail"
+  },
+  "bounds": [
+    "The five R13/R13b host-version failures are pre-existing and unrelated to this diff (the test file is byte-identical to the base commit and reads the installed dsh-tui 0.17.0); they are NOT claimed as a pass.",
+    "No live dsh boot or live tool call was run in this wave: preset-conformance --self-test and bundle-lifecycle-style mounts are the strongest gate evidence here, and the dist-driven arms were run against rebuilt dist. The Docker real-machine lane was NOT run (not a release sweep and no install/mount-path change: the bundle patch change is a persona TEXT paragraph, and preset-conformance pins the row composition).",
+    "No browser-render proof exists in this environment for the WEB card; its render evidence is the offline hook runtime over the rebuilt client.js.",
+    "The coupling inventory was re-frozen deliberately (2 stale -> 2 changed TUI import lines, count 46->46, no new file edge); the 3-symbol delta is agentNameKey/teamModelMembers added and the `import type { SettingsKnob }` entry removed by deriving the row type locally.",
+    "A `grep teamModels packages/mpd-config-plugin/src` still hits 5 times; every hit is a DECLARED legacy reference (tolerated schema node, one-time migration read, boot tolerance), never a live routing read."
+  ],
+  "evidenceIds": [
+    "ev-20261026T041659-993fde",
+    "ev-20261026T041740-31794d",
+    "ev-20261026T041755-df3ef6",
+    "ev-20261026T041756-aa4d96",
+    "ev-20261026T041756-c1acce",
+    "ev-20261026T041759-d39c6e",
+    "ev-20261026T041801-dfa4a3",
+    "ev-20261026T041801-696f49",
+    "ev-20261026T041709-7711bb"
+  ]
+}

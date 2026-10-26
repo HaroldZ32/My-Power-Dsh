@@ -266,13 +266,23 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // render the mount-captured half of the disclosure as well as the live half. No coupling was ADDED
   // (the entry count is unchanged); the pinned LINE TEXT was refreshed, which is why this is a
   // deliberate re-freeze rather than a new edge.
-  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
+  // RE-FROZEN 2026-10-26 (per-agent routes wave, `.mpd/plans/agent-routes-per-agent.md`): the SAME
+  // file edge — no new package coupling, entry count unchanged. The wave replaced the persisted slot
+  // tree, so the pinned LINE TEXT now names `ROSTER_AGENT_NAMES` (the settings section renders ONE
+  // row per agent, driven by the shared roster vocabulary) and no longer names
+  // `TEAM_MODEL_SLOT_GROUPS`/`TEAM_MODEL_SLOTS` (those moved to the `/mpd-model` menu's own import).
+  // Deliberate re-freeze, never a silent regeneration.
+  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, ROSTER_AGENT_NAMES, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
   // mpd-tui -> mpd-config AGAIN, from the model menu this time, and for the same reason the entry
   // above is allowed: the four slots and their member groups have ONE declaration, and the /mpd-model
   // pick-list has to offer exactly the slots the settings rows expose. Restating them in
   // `model-menu.ts` would be the drift this inventory exists to catch, so the import is recorded
   // rather than removed.
-  "packages/mpd-tui-plugin/src/model-menu.ts :: import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS } from \"../../mpd-config-plugin/src/settings-schema\"",
+  // RE-FROZEN 2026-10-26 (per-agent routes wave, same file edge as above): the menu now names
+  // `agentNameKey` (member spelling resolves through the ONE normalizer) and `teamModelMembers` (a
+  // group's members are read from the shared declaration, never restated) beside the two slot tables
+  // it already imported. Same file, same package edge, entry count unchanged — a deliberate re-freeze.
+  "packages/mpd-tui-plugin/src/model-menu.ts :: import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, agentNameKey, teamModelMembers } from \"../../mpd-config-plugin/src/settings-schema\"",
   "packages/mpd-tui-plugin/src/state.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/status.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { TeamRecord, TeamTaskRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
@@ -313,6 +323,12 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+  // A GROUP FRAME IS RANKED BY THE SAME CORE FUNCTION THE FLAT DRAWING USES (cellwork wave 4):
+  // `dag-groups.ts` derives a frame own columns through `rankPlan` when no served column arrived, which
+  // is the repo rule against a second derivation - a private copy was the only alternative. This is the
+  // ONLY edge the group work adds: the type references that would have doubled it are now STRUCTURAL
+  // mirrors (GroupedGroup), so they cost the inventory nothing.
+  "packages/mpd-tui-plugin/src/dag-groups.ts :: import { rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
   "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
   "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",

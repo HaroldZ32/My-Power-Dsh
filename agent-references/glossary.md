@@ -57,6 +57,66 @@ native executor's precedence above decides (an explicit `role` routes even when 
 nobody), and inheritance is the fallback for UNMATCHED members or unusable slots only. This supersedes
 the routing half of the 2026-10-23 note above.
 
+**LIVE AMENDMENT (2026-10-26, per-agent routes — THIS SUPERSEDES EVERY SLOT NOTE ANYWHERE IN THIS FILE, above AND in the verbatim former §13 body below):** the unit of
+model configuration is the **AGENT**, and **there is NO persisted big slot**. The shape is
+`agentRoutes.<Agent>.{provider?: string, model?: string, reasoningEffort?: string, fallbacks?: ModelRoute[]}`
+(`ModelRoute = {provider, model, reasoningEffort?}`), keyed by the eleven display names and resolved
+case- and separator-insensitively, with **ZERO `.default()` anywhere in the subtree** — a schema default
+would beat the user's file, because the row-knob layer merges last. The four `TEAM_MODEL_SLOT_GROUPS`
+survive **ONLY as the `/mpd-model` bulk-edit grouping**: a group edit WRITES every member's own entry,
+after a confirmation panel that lists the affected agents and their current routes, and **stores nothing
+of its own**; a cancel at any panel writes nothing, and the menu never writes `teamModels`. The ONE read
+every consumer shares is `resolveAgentRoute(member, config): AgentRouteResolution` — pure, TOTAL, never
+throwing, returning `{ok:true,agent,route}` | `{ok:false,reason:"unconfigured",agent,missing[]}` |
+`{ok:false,reason:"invalid",agent,problem}` | `{ok:false,reason:"unrouted"}` — surfaced on the config
+service as the total `agentRouteResolutionOf(member)` and `agentRouteOf(member)`; the names
+`slotResolutionOf` and `teamModelRouteOf` are **REMOVED**. ONLY the spawn appliers turn `ok:false` into a
+thrown failure; display surfaces render the typed state and never throw. **`unrouted` is NOT a
+refusal**: it exists for EXTENSION-contributed roles, which keep their own chain and whose spawn
+PROCEEDS; only a BASE roster member whose route is `unconfigured` or `invalid` is refused — and that
+asymmetry is deliberate (`unrouted` carries no `agent` field). The error code is
+**`AGENT_UNCONFIGURED`** (it replaces `SLOT_UNCONFIGURED` in code, tests, QA scripts and docs) and its
+message names the agent, the missing leaf paths (`agentRoutes.<Agent>.provider`,
+`agentRoutes.<Agent>.model`), BOTH recovery paths (`/mpd-model`, or `agentRoutes.<Agent>` in
+`.mpd/mpd.jsonc`), and states that nothing was written and no child was started. `mpd_role_spawn`,
+`mpd_workmate_spawn`, the roster provider and the native executor route a member from its OWN entry;
+`mpd_roles_list` reports provider/model from `agentRoutes` (`null` when unconfigured) and
+`mpd_modelchain_resolve` blanks the chain when the agent route is not ok. Team identity precedence is
+UNCHANGED — `role` → the HEAD of its `description` → its whole `name` — and so is the executor's
+non-failing path: an UNMATCHED member, or one with no usable route, **INHERITS** the staging session's
+route with exactly one log line and no throw, while the single-call appliers REFUSE. `fallbacks` keep
+their semantics: sanitized, consumed ONCE before the spawn (first catalog-POSITIVE route wins; "not
+listed" is not "unavailable"), the winner passes the existing effort adaptation, a malformed entry is
+dropped with one log line, never clamped, never retried. The top-level session (the captain) is OUT of
+scope: it follows the harness's own model configuration. INITIALIZATION AND MIGRATION run ONCE per
+workspace and are governed by the marker's CONTENT, not its presence: `<ws>/.mpd/model-config-seed.json`
+must declare `{"version": 2}` (plus whatever diagnostic fields the writer wants), and initialization runs
+whenever the marker is ABSENT, unparsable, or declares a version BELOW 2 — because v0.15.4/v0.15.5
+already shipped an unversioned marker (`6bbf5165`), and a presence-only rule would strand exactly those
+returning workspaces with eleven unconfigured agents and every single-call spawn refused. The three arms:
+if `agentRoutes` is already declared in ANY layer, write the v2 marker and change nothing else; else if
+`teamModels` is present in the effective config, materialize all eleven entries from their groups' routes
+into `<ws>/.mpd/mpd.jsonc` through the existing surgical editor, then write the v2 marker; else seed the
+eleven entries from the live catalog (the `deepseek-flash` family, exact id first else a `*flash*` id;
+`reasoningEffort` `max` for the slot-1 group and `high` for the rest), then write the v2 marker. Once the
+v2 marker exists, a deliberately deleted `agentRoutes` block is never re-seeded. An unparsable file or an
+unavailable catalog writes NOTHING, logs once, and leaves agents unconfigured (the first spawn reports
+`AGENT_UNCONFIGURED`). The member-name normalizer has exactly ONE home, inside `mpd-config-plugin` (it is
+exported and reused by the resolver, the migration writer and every display path); `mpd-config-plugin`
+must NOT import it from `mpd-roles-plugin`, which already imports config, and outer consumers reach it
+through the `mpdConfig` service rather than re-implementing it. `teamModels` itself stays
+**DECLARED** in the settings schema as a TOLERATED LEGACY block (a permissive node, not a typed slot
+tree) so an existing profile patch or row config still validates and boots; it is read ONLY by the
+one-time migration and by `mpd_config_get`'s raw pass-through — **NEVER for routing, and this bundle
+NEVER writes it**. `/mpd-model` keeps the scope panel — group → whole group (N agents) or one agent →
+provider → model → reasoning effort — plus a clear branch that removes exactly one entry and states that
+spawns for that agent will then be refused; the TUI settings section and the WEB settings card show ONE
+ROW PER AGENT under the four group headings (**grouping is DISPLAY-ONLY**), and both write
+`agentRoutes.<Agent>.<leaf>` and never `teamModels`. `mpd-roster-provider-plugin` remains wired ONLY to
+the official `spawn_teammate` path, which the team-door guard REFUSES, so in a default composition it
+routes nothing. The frozen long form is `.mpd/plans/agent-routes-per-agent.md`; `AGENTS.md` §13 carries
+the BINDING wording.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary

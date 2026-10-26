@@ -354,21 +354,28 @@ interrupt_agent { agent_id }                                              # Lead
   on the team path through a tool guard in `mpd-roles-plugin` keyed on team membership, because the
   team's spawn seam takes no per-teammate tool filter. Workers (Senior Engineer, Junior
   Engineer, Deep Worker, Lead, Reviewer) implement and verify.
-- **A slot is the ONE route of a roster member — and there is no built-in default.** Every route comes
-  from that member's `teamModels.slot{N}`: its configured `provider` + `model`, its optional
-  `reasoningEffort`, plus the slot's OWN optional `fallbacks` chain. `agentRoutes` is DELETED: a
-  leftover block in an old file is ignored and never rewritten. A slot that is not configured (or whose
-  leaf is malformed) REFUSES a SINGLE-CALL spawn (`mpd_role_spawn` / `mpd_workmate_spawn`) with ONE
-  structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves and both
-  recovery paths — nothing is written and no child is started.
-  The chain is consumed ONCE before the spawn: the first route the model catalog POSITIVELY lists wins
-  (a route nobody listed is not thereby unavailable), and the winner's effort is adapted. The FOUR
-  slots apply to those single-call consults AND to team members: the team executor resolves a member's
-  slot by identity precedence **`role` → the HEAD of `description` → the whole `name`**. A member it
-  cannot match, or one whose slot is unconfigured, INHERITS the staging session's route (the captain's
-  in a top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw — a slot never
-  leaves a team half-built. `mpd-roster-provider` serves only the official `spawn_teammate` path, which
-  the team-door guard refuses, so it routes nothing in a default composition.
+- **The unit of model configuration is the AGENT — there is no persisted slot.** Each of the eleven
+  roster members has its own route, `agentRoutes.<Agent>`: its `provider` + `model`, an optional
+  `reasoningEffort`, and an optional `fallbacks` chain of its own. Routes are set and cleared
+  individually, and **no default layer exists** — an agent the workspace never configured has NO route.
+  The four groups survive only as a **bulk-edit shortcut**: `/mpd-model` lets you pick a group and write
+  every member in it at once, after a confirmation panel that lists the affected agents and their
+  current routes, and that convenience stores nothing of its own — it just writes the members' own
+  entries. An unconfigured or malformed agent route REFUSES a SINGLE-CALL spawn (`mpd_role_spawn` /
+  `mpd_workmate_spawn`) with ONE structured `AGENT_UNCONFIGURED` error naming the agent, the missing
+  leaves and both recovery paths (`/mpd-model`, or `agentRoutes.<Agent>` in `.mpd/mpd.jsonc`) — nothing
+  is written and no child is started. An EXTENSION-contributed role is `unrouted` instead and still
+  spawns, keeping its own chain; only a base roster agent is refused. The chain is consumed ONCE before
+  the spawn: the first route the
+  model catalog POSITIVELY lists wins (a route nobody listed is not thereby unavailable), and the
+  winner's effort is adapted. The agent routes apply to those single-call consults AND to team members:
+  the team executor resolves a member's route by identity precedence **`role` → the HEAD of
+  `description` → the whole `name`**. A member it cannot match, or one with no usable route, INHERITS
+  the staging session's route (the captain's in a top-level spawn, the Lead's in a team-lead spawn) with
+  ONE log line and NO throw — a route never leaves a team half-built. The legacy `teamModels` block is
+  migrated ONCE, then ignored and never rewritten (see §9). `mpd-roster-provider` serves only the
+  official `spawn_teammate` path, which the team-door guard refuses, so it routes nothing in a default
+  composition.
 - **Workmate-backed members are a prompt, not an injection.** Nothing carries a workmate's persona
   into a teammate automatically any more: initialize or pick the workmate
   (`mpd_workmate_init` / `mpd_workmate_match`), read what it should carry, and put that text into the
@@ -400,6 +407,10 @@ interrupt_agent { "agent_id": "senior-1" }     # Lead only: stop the turn, keep 
 §13.1 is the literal walkthrough — creating members and tasks, driving the board, reassigning,
 finishing a wave. The `session-watchdog-*` tools are a separate, internal stall-detection layer (see
 §12 and [`tui.md`](tui.md)).
+
+For very large work, [`cellwork.md`](cellwork.md) documents the command-triggered **cell-work mode**:
+a planner settles the requirements with you, a splitter prices every task against the executing
+model's own window, and the captain only dispatches, relays and records.
 
 ## 7. DSH-TUI edition (the terminal UI)
 
@@ -461,9 +472,10 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs — 26 in all (the original 13, the twelve `teamModels`
-slot leaves and the TUI surface's own knob; the slot leaves are selection-only fields whose options come
-from the live model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
+`/settings` edits the real `mpd.jsonc` knobs — the original 13, one three-leaf row per roster agent
+(the thirty-three `agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves; each leaf is a
+selection-only field whose options come from the live model catalog, with the declared lists as
+fallback) and the TUI surface's own knob — among them `hashline.maxDiffChars`,
 `commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — through
 the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
 uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
@@ -476,7 +488,7 @@ Two things to know before you rely on it:
 
 - **A save lands in the running process.** The config service re-resolves on every settings save and on
   a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model-config knobs (`modelchain.*`,
-  `teamModels.slot*`) are resolved per use, so a saved change reaches the next `mpd_config_get`,
+  `agentRoutes.*`) are resolved per use, so a saved change reaches the next `mpd_config_get`,
   `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob.
 - **The legacy namespace write-back has two named skip cases (dormant on this harness).** That path
   carries no workspace identity, so its write target is the live session workspaces at the moment of
@@ -605,7 +617,7 @@ rather than by a graph-layout library.
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-dsh-adapter (native team executor) / mpd-roster-provider (official fallback) (via mpd-config) | the four **team-model slots**: ONE configured route per slot — `{provider, model, reasoningEffort?}` plus the slot's OWN optional `fallbacks: [{provider, model, reasoningEffort?}, …]`, in precedence order. **There is no built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS` is gone): a slot the workspace never configured has NO route, and every single-call spawn it would route is REFUSED with ONE structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves, and both recovery paths (`/mpd-model`, or `teamModels.slotN` in `.mpd/mpd.jsonc`) — nothing is written and no child is started. The fallback chain is consumed ONCE before the spawn: the first route the live catalog POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary stands), the winner then passes the reasoning-effort adaptation, and a malformed entry is dropped with one log line — never fatal. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A team member's slot is resolved by identity precedence `role` → the HEAD of its `description` → its whole `name`; a member it cannot match, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw (§6), and `mpd-roster-provider` routes only on the official-executor fallback path, which the team-door guard refuses in a default composition. An effort is never silently clamped; the ONE exception is a model whose catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs. **Initial config is FILE initialization, not a runtime default:** a workspace whose `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from your configured providers via the LLM catalog (model = the `deepseek-flash` family; slot1 `max`, slots 2-4 `high`), and an existing block or user edit is never rewritten; a successful seed is durably marked in `<workspace>/.mpd/model-config-seed.json` (created once, never overwritten, consulted before any attempt), so a block you delete on purpose is NEVER re-seeded — if the catalog is unavailable nothing is written and the first spawn reports `SLOT_UNCONFIGURED`. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section (an unconfigured slot renders `<unconfigured>` with the leaves it lacks); a saved change is re-read in the running process, no restart (`mpd_config_reload` forces it). |
+| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), mpd-roster-provider (official-executor fallback only) (via mpd-config) | the per-AGENT model routes — the unit of model configuration: each of the eleven roster members (`Architect`, `Researcher`, `Planner`, `Deep Worker`, `Senior Engineer`, `Lead`, `Explorer`, `Reviewer`, `Plan Reviewer`, `Vision Analyst`, `Junior Engineer`) has its own `{provider?, model?, reasoningEffort?, fallbacks?: [{provider, model, reasoningEffort?}, …]}`, and every leaf is optional. **There is no persisted slot and no built-in default layer**: an agent the workspace never configured has NO route, and every single-call spawn it would route is REFUSED with ONE structured `AGENT_UNCONFIGURED` error naming the agent, the missing leaves (`agentRoutes.<Agent>.provider`, `.model`), and both recovery paths (`/mpd-model`, or `agentRoutes.<Agent>` in `.mpd/mpd.jsonc`) — nothing is written and no child is started. The four groups are ONLY the `/mpd-model` bulk-edit shortcut: a group write overwrites every member's own entry, after a confirmation panel listing the affected agents and their current routes. The agent's own fallback chain is consumed ONCE before the spawn: the first route the live catalog POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary stands), the winner then passes the reasoning-effort adaptation, and a malformed entry is dropped with one log line — never fatal. A team member's route is resolved by identity precedence `role` → the HEAD of its `description` → its whole `name`; a member it cannot match, or one with no usable route, INHERITS the staging session's route with one log line and no throw (§6). An effort is never silently clamped; the ONE exception is a model whose catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs. **The legacy `teamModels` block is migrated ONCE, then IGNORED and never rewritten** (`<ws>/.mpd/model-config-seed.json` must record `{"version": 2}`; initialization also runs when an older or unparsable marker is present, so a v0.15.x workspace is migrated once instead of stranded; with no declared `teamModels` the eleven entries are seeded once from the configured providers — the `deepseek-flash` family, `max` for the slot-1 group and `high` for the rest), and a v2 marker means a deleted `agentRoutes` block is never re-seeded. Edited in **Settings → MPD** and the TUI `/settings` section, which show ONE row per agent under the four group headings (grouping is display-only) and write `agentRoutes.<Agent>.<leaf>` |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
@@ -624,7 +636,7 @@ Three things do not wait for that restart, and all are useful:
 
 - **The model-config knobs are live-refreshed in-process.** The config service re-resolves on every
   settings save and on a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model routes
-  (`modelchain.*`, `teamModels.slot*`) are read per use, so the next
+  (`modelchain.*`, `agentRoutes.*`) are read per use, so the next
   `mpd_modelchain_resolve` call or the next single-call consult / workmate spawn / teammate start carries the
   new route with no restart. `mpd_config_reload` remains the manual fallback when you want to force a
   re-read.
@@ -652,7 +664,7 @@ Three things do not wait for that restart, and all are useful:
 | `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), and mpd-roster-provider (official-executor fallback only) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES a single-call spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), while a team member never fails on its slot, and the slot's own `fallbacks` chain is consumed once before the spawn. A team member's slot is resolved by `role` → the HEAD of its `description` → its whole `name`; an UNMATCHED member, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw |
+| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), and mpd-roster-provider (official-executor fallback only) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per AGENT with no default layer: an unconfigured or malformed agent route REFUSES a single-call spawn with `AGENT_UNCONFIGURED` (nothing written, no child started), while a team member never fails on its route, and the agent's own `fallbacks` chain is consumed once before the spawn. A team member's route is resolved by `role` → the HEAD of its `description` → its whole `name`; an UNMATCHED member, or one with no usable route, INHERITS the staging session's route with one log line and no throw. The four groups are only the bulk-edit shortcut: a group write changes every member's own entry, after confirmation |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a `settings/document-updated` for the legacy `mpd` NAMESPACE (retired here), and every tick — the row also parses `<workspace>/.mpd/mpd.jsonc` itself | live for a FILE edit — no restart; a FORM save (`/settings`, Web card) does NOT reach these knobs on this harness (the row does not read the `mpd-config` entry) |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -782,7 +794,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 - **CodeGraph tools answer nothing** → run `/mpd-codegraph` to build `.codegraph/codegraph.db`, and
   install `@colbymchenry/codegraph` or set `MPD_DSH_CODEGRAPH_BIN` (its primary spelling
   `MPD_CODEGRAPH_BIN` is read first).
-- **A knob you saved does not apply** → the model-config knobs (`modelchain.*`, `teamModels.slot*`)
+- **A knob you saved does not apply** → the model-config knobs (`modelchain.*`, `agentRoutes.*`)
   are live-refreshed: re-read with `mpd_config_get` / `mpd_modelchain_resolve`, or force
   it with `mpd_config_reload`. Every other knob is captured at mount, so restart the session — and
   `mpd_config_get` proving the new value is NOT proof that a mount-captured plugin acts on it (§9.1
@@ -795,9 +807,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**six commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+**seven commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
 `mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd` and the model pick-list
-`/mpd-model`, and the team row registers `/agent-teams`), and the **two HOST-provided commands the
+`/mpd-model`, the team row registers `/agent-teams`, and `mpd-cellwork` registers `/cellwork`), and
+the **two HOST-provided commands the
 bundle only documents** — `/settings`, the
 host's TUI settings screen (whose MPD section the bundle extends), and `/goal`, the host goal command
 the `mpd` preset mounts. Nothing else exists — in particular **there is no `/roster` command** (the
@@ -807,10 +820,11 @@ roster is reached with the `mpd_roles_list` tool).
 |---|---|---|
 | `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
 | `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
+| `/cellwork <objective>` | starts the dispatch-only cell-work mode: the command writes one cell record and submits the activation directive as your own next turn — the mode, its tools and its bounds are in [`cellwork.md`](cellwork.md) | Web + TUI |
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
 | `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
-| `/mpd-model` | opens the host's pick-list model menu: walks slot → provider → model → reasoning effort and writes `teamModels.<slot>.<leaf>` into the same config entry `/settings` edits; a cancel at any panel writes nothing, and a composition with no dialogs seam says so instead of opening a menu | **TUI only** |
+| `/mpd-model` | opens the host's pick-list model menu: walks group → scope (the whole group, or one agent) → provider → model → reasoning effort and writes `agentRoutes.<Agent>.<leaf>` into the same config entry `/settings` edits; a whole-group write first shows a confirmation panel naming every affected agent and its current route, an individual write names its target, a clear branch removes exactly one entry, and a cancel at any panel writes nothing — a composition with no dialogs seam says so instead of opening a menu | **TUI only** |
 | `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
 | `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
 

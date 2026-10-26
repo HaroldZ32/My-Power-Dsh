@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T121108-04c415",
+  "loopId": "loop-20261026T105128-5dd885",
+  "taskId": "T14",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "team-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/r1-artifact.txt",
+        "bytes": 233,
+        "sha256": "85fc31d9b0711c594e4951fae6afce19c2be0b445e01818b5fdf2902463103bd",
+        "mtime": "2026-10-26T12:09:33.225Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/cellwork-d5-arms.txt",
+        "bytes": 288,
+        "sha256": "76b7dc2950f9e2dfe6755e2399e0fc1198ee08131e5c081c703fbe26709f8541",
+        "mtime": "2026-10-26T12:09:31.192Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/inventory-team-core-lines.txt",
+        "bytes": 379,
+        "sha256": "5925cfabdafdb2e9e16cb69ee10f8e9a6bbddb6126806ea8bdf9d4e98c049582",
+        "mtime": "2026-10-26T12:09:33.214Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/coupling-gate.log",
+        "bytes": 14966,
+        "sha256": "d4671e67715e8f1d8b42a280e28734ed600b928574a6fb6f70ee44c1bd07db1f",
+        "mtime": "2026-10-26T12:09:33.200Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/scope-start.sha256",
+        "bytes": 11104,
+        "sha256": "7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417",
+        "mtime": "2026-10-26T12:08:40.974Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/scope-end.sha256",
+        "bytes": 11104,
+        "sha256": "7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417",
+        "mtime": "2026-10-26T12:10:07.705Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "840ef10f0679e7db97d72c8d88eb3ddaea22341ca106098fb37a0ca31635a655"
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/README.md",
+      "sha256": "5389e485b8bfed3c8bbf8acd1a4f1f11be58daf9f1137c1720fa924c5c402500"
+    },
+    {
+      "path": "docs/independence.md",
+      "sha256": "5c00ddeb4762e17fd112590acb2f25b129ad46946fbe3937bd3c18be5a38be10"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T121016-66c647",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T121016-66c647.log",
+      "logSha256": "4523865813d38d780261e0158515ea66b03a31092d16fe3d881939a5146789e3"
+    },
+    {
+      "evidenceId": "ev-20261026T121047-05403e",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T121047-05403e.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T121047-52db83",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T121047-52db83.log",
+      "logSha256": "38f5db3db286039a238aef140d8e9dfbb4fcfe792755cbaae3c59d82c412c505"
+    },
+    {
+      "evidenceId": "ev-20261026T115118-e05aa9",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T115118-e05aa9.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T12:11:08.034Z",
+  "notes": [
+    "SUBJECT: T13 recorded as a NO-OP repair — both Amendment-9 reds were already closed on the frozen tree when T13 became dispatchable (my T5 PASS at 11:51 measured them closed). So this record judges the two reds AS HISTORY plus the state that now holds, and the two root causes the writer documented, each against an observable.",
+    "SETTLED TREE: packages/mpd-cellwork-plugin + packages/mpd-team-core-plugin + packages/mpd-dsh-adapter-plugin, sha256 sandwich — start == end (7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417) around a 50 s settle window. Evidence: evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/.",
+    "R1 (the D5 stamp) — HISTORY AND STATE: at 11:35Z the arm 'D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own' FAILED with `Received: \"\"` (evidence id ev-20261026T113555-ec8bf6). It PASSES now (cellwork 50 pass / 0 fail), and the ROOT CAUSE the writer documented is observable in the BUILT dist rather than taken on trust: `freeCellId` exists as the collision-safe minter and the sub-cell registration calls `freeCellId(caller.workspace, now)` — the millisecond-precision `cellIdAt` that could mint a sub-cell id equal to its parent's inside the same millisecond is no longer the minter on that path; `parentTeamId` appears 10 times on the cell record surface. The two neighbouring D5 arms (depth fence; a parent with no team yields a ROOT sub-team) pass alongside it, so the fix did not trade one branch for another.",
+    "R2 (the coupling inventory) — HISTORY AND STATE: at 11:44Z the independence gate FAILED naming T3's three files (evidence ev-20261026T114448-01a922). It now reports `frozen inventory: 47 entries; couplings in the band: 47` — PASS — with its own seeded negative control. The PREFERRED fix was taken for THIS row: team-core's frozen import is still the pre-wave statement (`import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"`), so no inventory entry was added for the group work — the new edge was removed rather than frozen. (T3's own entries were independently re-verified in T16: REDUCE to a structural mirror plus ONE deliberate, justified pin.)",
+    "GATES: team-core 357 pass / 0 fail; cellwork 50 pass / 0 fail; full suite 2626 tests / 6 skip (pre-existing) / 0 fail; root tsgo --noEmit clean; verify:comments PASS; verify:docs 52 pairs / 0 failed; cellwork dist FRESH (--only).",
+    "BOUNDS: (a) `mpd-team-core-plugin`'s committed dist is STALE at this instant — the captain's fan-out rebuild is the integration step and graph-core's repair is inlined there; I cite the per-package cellwork FRESH run and the four green repo-wide gates rather than a fan-out green I did not observe. (b) I did not re-derive the regression assertion's own body (it lives in the cellwork test file, outside my citation band); the arm's pass plus the dist-level machinery above are the evidence. (c) D4 (web) is deferred by the captain and is outside this record.",
+    "DECLINED TO JUDGE: whether T13 needed to exist at all as a row — the two reds were fixed by the T2 lane before T13 was dispatchable, so the row is bookkeeping; that is the captain's process call, not a technical finding."
+  ]
+}

@@ -18,13 +18,21 @@
 // (positive green, seeded negative red) PLUS the path forms, so one command proves the gate
 // discriminates rather than merely runs.
 //
+// THE GROUP ARM (`cellwork` wave 4, `.mpd/plans/cellwork-w4-contract.md` D1). `--grouped` checks a
+// NESTED fixture — a root frame, a subcell blocked by the root and spawned by one of its tasks, and a
+// sub-subcell whose task names both an inner blocker and an unknown id — against a SECOND independent
+// oracle that derives the frames, the anchoring and each frame's own ranks by hand. `--seed-wrong-anchor`
+// is its negative control: it un-anchors one box edge, which the gate must refuse by NAMING the pair.
+//
 // USAGE
-//   node scripts/verify-graph-model.ts                      the inline default fixture
+//   node scripts/verify-graph-model.ts                      the inline default (flat) fixture
 //   node scripts/verify-graph-model.ts --emit               ... and print the model snapshot
 //   node scripts/verify-graph-model.ts --fixture <dir>      read <dir>/plan.md + <dir>/board.json
 //   node scripts/verify-graph-model.ts --board <b> --plan <p>
-//   node scripts/verify-graph-model.ts --seed-wrong-edge    the seeded negative control
-//   node scripts/verify-graph-model.ts --self-test          both directions + the path forms
+//   node scripts/verify-graph-model.ts --grouped            the nested (group) fixture
+//   node scripts/verify-graph-model.ts --seed-wrong-edge    the flat seeded negative control
+//   node scripts/verify-graph-model.ts --seed-wrong-anchor   the grouped seeded negative control
+//   node scripts/verify-graph-model.ts --self-test          both directions, the group arms, the path forms
 //
 // The fixture board file is a JSON array of `BoardTask` rows (`{id, subject, blockedBy, status, …}`)
 // or an object carrying them under `tasks`. The fixture plan is ORDINARY TASK-PLAN MARKDOWN — the
@@ -38,7 +46,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildModel } from "../packages/mpd-graph-core/src/model.ts"
 import { parsePlanMarkdown } from "../packages/mpd-graph-core/src/plan.ts"
-import type { BoardTask, GraphEdge, GraphModel, GraphNode, PlanDocument } from "../packages/mpd-graph-core/src/types.ts"
+import type { BoardTask, GraphEdge, GraphGroup, GraphGroupInput, GraphModel, GraphNode, PlanDocument } from "../packages/mpd-graph-core/src/types.ts"
 
 /** This script's own path, used by `--self-test` to spawn the gate for the exit-code arms. */
 const SELF = fileURLToPath(import.meta.url)
@@ -376,6 +384,9 @@ function checkModel(model: GraphModel, expected: GraphModel): string[] {
   if (canonical(model.edges) !== canonical(expected.edges)) failures.push(`edge list: expected ${canonical(expected.edges)} got ${canonical(model.edges)}`)
   if (canonical(model.ranks) !== canonical(expected.ranks)) failures.push(`ranks: expected ${canonical(expected.ranks)} got ${canonical(model.ranks)}`)
   if (canonical(model.cycles) !== canonical(expected.cycles)) failures.push(`cycles: expected ${canonical(expected.cycles)} got ${canonical(model.cycles)}`)
+  // THE GROUPS TRAVEL AS ONE VALUE: a flat model carries no `groups` key on either side, so this
+  // comparison also pins the backward guarantee at the gate (not only in the package's own test).
+  if (canonical(model.groups) !== canonical(expected.groups)) failures.push(`groups: expected ${canonical(expected.groups)} got ${canonical(model.groups)}`)
   /** The report fields compared one by one, so a failure names the list that differs. */
   const fields: ReadonlyArray<keyof GraphModel["report"]> = ["boardOnly", "planOnly", "edgePlanOnly", "edgeBoardOnly", "planProblems", "unresolved", "ranksDerived"]
   for (const field of fields) {
@@ -593,6 +604,10 @@ interface Cli {
   emit: boolean
   /** Whether the negative control should seed a wrong edge. */
   seedWrongEdge: boolean
+  /** Whether `--grouped` was requested: check the built-in nested fixture on its own. */
+  grouped: boolean
+  /** Whether the negative control should seed a WRONG BOX ANCHOR. */
+  seedWrongAnchor: boolean
   /** The fixture directory, when `--fixture` was given. */
   fixtureDir?: string
   /** The explicit board path, when `--board` was given. */
@@ -610,13 +625,15 @@ interface Cli {
  */
 function parseCli(argv: readonly string[]): Cli {
   /** The invocation under construction. */
-  const cli: Cli = { selfTest: false, emit: false, seedWrongEdge: false, help: false }
+  const cli: Cli = { selfTest: false, emit: false, seedWrongEdge: false, grouped: false, seedWrongAnchor: false, help: false }
   for (let index = 0; index < argv.length; index += 1) {
     /** The current argument. */
     const arg = argv[index]
     if (arg === "--self-test") cli.selfTest = true
     else if (arg === "--emit") cli.emit = true
     else if (arg === "--seed-wrong-edge") cli.seedWrongEdge = true
+    else if (arg === "--grouped") cli.grouped = true
+    else if (arg === "--seed-wrong-anchor") cli.seedWrongAnchor = true
     else if (arg === "--help" || arg === "-h") cli.help = true
     else if (arg === "--fixture" || arg === "--board" || arg === "--plan") {
       /** The value that must follow the flag. */
@@ -630,16 +647,20 @@ function parseCli(argv: readonly string[]): Cli {
   }
   if (cli.fixtureDir !== undefined && (cli.boardPath !== undefined || cli.planPath !== undefined)) fail("--fixture cannot be combined with --board/--plan")
   if ((cli.boardPath === undefined) !== (cli.planPath === undefined)) fail("--board and --plan must be given together")
+  if (cli.grouped && (cli.fixtureDir !== undefined || cli.boardPath !== undefined)) fail("--grouped checks the built-in nested fixture and cannot be combined with --fixture/--board/--plan")
   return cli
 }
 
 /** The help text, printed by `--help`. */
 const HELP = [
-  "usage: node scripts/verify-graph-model.ts [--fixture <dir> | --board <path> --plan <path>]",
+  "usage: node scripts/verify-graph-model.ts [--grouped] [--fixture <dir> | --board <path> --plan <path>]",
   "",
-  "  --emit              print the serialized model snapshot",
+  "  (no argument)       check the flat fixture (the six-case table), as before groups existed",
+  "  --grouped           check the built-in nested (group) fixture",
+  "  --emit              print the serialized model snapshot of the fixture being checked",
   "  --seed-wrong-edge   flip one edge (the negative control) and expect a non-zero exit",
-  "  --self-test         run both directions plus the path forms",
+  "  --seed-wrong-anchor un-anchor one box edge (the grouped negative control)",
+  "  --self-test         run both directions, the grouped arms and the path forms",
   "  --help              print this text",
 ].join("\n")
 
@@ -770,6 +791,43 @@ function selfTest(): number {
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+  /** The built-in grouped fixture, the same tree `--grouped` checks. */
+  const groupFixture = defaultGroupFixture()
+  /** The nested model, built once for the positive arms. */
+  const groupModel = buildGroupedModel(groupFixture)
+  /** The tree's declared model, by the gate's own reading. */
+  const groupExpected = expectedGroupedModel(groupFixture)
+  /** The nested positive arm: the oracle AND the hand-written golden must both hold. */
+  const groupedPositive = checkModel(groupModel, groupExpected).concat(checkGroupedGolden(groupModel, groupFixture.golden))
+  arms.push({ name: "grouped positive: the nested model equals its declared tree (oracle + golden)", ok: groupedPositive.length === 0, detail: groupedPositive[0] ?? "0 mismatches" })
+  /** The second build of the same tree, for the nested determinism arm. */
+  const groupedAgain = buildGroupedModel(groupFixture)
+  arms.push({ name: "grouped determinism: two builds of the tree serialize byte-identically", ok: canonical(groupModel) === canonical(groupedAgain), detail: canonical(groupModel) === canonical(groupedAgain) ? "identical" : "the two builds differ" })
+  /** The nested model built from every array reversed, so input order cannot leak into a frame. */
+  const groupedShuffled = buildModel({ board: [...groupFixture.board].reverse(), plan: parsePlanMarkdown(groupFixture.planText), groups: reversedGroupInputs(groupFixture.groups) })
+  arms.push({ name: "grouped input-order independence: reversed boards and subcells build the same tree", ok: canonical(groupedShuffled) === canonical(groupModel), detail: canonical(groupedShuffled) === canonical(groupModel) ? "identical" : "order leaked into the nested model" })
+  /** The flat model of the default fixture: the backward guarantee, at the gate. */
+  const flatModel = buildModel({ board: fixture.board, plan })
+  /** Whether the flat model stayed flat: no `groups` key, and no node claiming a frame. */
+  const stayedFlat = !Object.prototype.hasOwnProperty.call(flatModel, "groups") && flatModel.nodes.every((node) => !("group" in node))
+  arms.push({ name: "backward: a model built with no group carries no groups key and no node frame", ok: stayedFlat, detail: stayedFlat ? "flat, as before groups existed" : "a group leaked into a flat model" })
+  /** The grouped snapshot, so the arm can name the pair the seed will un-anchor. */
+  const groupedEmit = spawnGate(["--grouped", "--emit"])
+  /** The snapshot parsed back, when it parses. */
+  let groupedSnapshot: GraphModel | undefined
+  try {
+    groupedSnapshot = JSON.parse(groupedEmit.output.slice(groupedEmit.output.indexOf("{"), groupedEmit.output.lastIndexOf("}") + 1)) as GraphModel
+  } catch {
+    groupedSnapshot = undefined
+  }
+  /** The pair the seed un-anchors: the first edge with a box as an endpoint. */
+  const seededAnchorPair = firstBoxEdgePair(groupedSnapshot)
+  /** The spawned grouped negative control. */
+  const anchorRun = spawnGate(["--grouped", "--seed-wrong-anchor"])
+  // THE ARM REQUIRES THE NAMED FAILURE: a red exit for an unrelated reason would prove nothing about
+  // the un-anchored box edge, so the FAIL line must name exactly the pair the seed moved.
+  const anchorNamed = seededAnchorPair !== "" && anchorRun.output.includes(`FAIL edge ${seededAnchorPair}:`)
+  arms.push({ name: "--seed-wrong-anchor exits non-zero and a FAIL line NAMES the un-anchored box edge", ok: anchorRun.status !== 0 && anchorNamed, detail: `exit ${anchorRun.status}: ${anchorRun.output.trim().split("\n").filter((line) => line.includes("FAIL edge"))[0] ?? "(no edge named)"}` })
   for (const arm of arms) console.log(`${PREFIX} self-test ${arm.ok ? "PASS" : "FAIL"} — ${arm.name} :: ${arm.detail.slice(0, 240)}`)
   /** How many arms failed. */
   const failed = arms.filter((arm) => !arm.ok).length
@@ -778,6 +836,700 @@ function selfTest(): number {
     return 1
   }
   console.log(`${PREFIX} self-test PASS — ${arms.length} arms: both directions and the path forms`)
+  return 0
+}
+
+/**
+ * The plain codepoint order, used ONLY to compare two collections as SETS.
+ *
+ * The collation order a fixture's ids draw in is the oracle's business; a second opinion on it here
+ * would make the golden depend on the platform's ICU build instead of on the contract, so the golden
+ * states membership and leaves ordering to the oracle.
+ * @param left - one value.
+ * @param right - the other value.
+ * @returns the codepoint comparison.
+ */
+function plainCompare(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+/**
+ * Two collections compared as SETS, for the golden's arms.
+ * @param values - the values, in any order.
+ * @returns the distinct values in codepoint order.
+ */
+function asSet(values: readonly string[]): string[] {
+  return [...new Set(values)].sort(plainCompare)
+}
+
+/** One frame of a GROUPED fixture: its own plan text and board rows, plus its nested subcells. */
+interface GroupFixture {
+  /** The group id, which is the box's id and its pseudo-node id inside the parent frame. */
+  id: string
+  /** The box title. */
+  label: string
+  /** The task that spawned this subcell, when the fixture declares one. */
+  originTaskId?: string
+  /** The frame's plan markdown, in the repository's task-plan grammar; omitted means no plan. */
+  planText?: string
+  /** The frame's own board rows. */
+  board: BoardTask[]
+  /** The subcells nested inside this one. */
+  groups: GroupFixture[]
+}
+
+/** The grouped fixture `--grouped` checks, with the hand-written expectations that judge it. */
+interface GroupedFixture {
+  /** The root frame's plan markdown. */
+  planText: string
+  /** The root frame's board rows. */
+  board: BoardTask[]
+  /** The root frame's subcells. */
+  groups: GroupFixture[]
+  /** The expectations written BY HAND from the contract, independent of the oracle AND of the core. */
+  golden: GroupedGolden
+}
+
+/** The grouped fixture's hand-written expectations, stated as sets so no ICU build can move them. */
+interface GroupedGolden {
+  /** Every node id of the whole tree, as a SET. */
+  nodeIds: string[]
+  /** Each node's frame, column and visual, keyed by id, so the golden states the ranking rule itself. */
+  placement: Record<string, { depth: number; group?: string; visual: string }>
+  /** Every drawn edge as `from→to(source)`, as a SET. */
+  edges: string[]
+  /** The boxes, shallow-first, exactly as the model must serialize them. */
+  groups: GraphGroup[]
+  /** The root frame's rank buckets, which are the only buckets the model carries. */
+  ranks: string[][]
+  /** The disagreement lists the merge must report across the whole tree. */
+  report: {
+    /** Ids a frame's board carries and its plan does not. */
+    boardOnly: string[]
+    /** Ids a frame's plan declares and its board does not (the ghosts inside boxes included). */
+    planOnly: string[]
+    /** Edges only a plan declared, as `from→to`. */
+    edgePlanOnly: string[]
+    /** Edges only a board carried, as `from→to`. */
+    edgeBoardOnly: string[]
+    /** References that name no task and no group anywhere in the tree. */
+    unresolved: string[]
+  }
+}
+
+/** One frame as the grouped oracle resolves it: its input, its place in the tree, its own merge. */
+interface OracleFrame {
+  /** The group id, or `null` for the root frame. */
+  id: string | null
+  /** The box title, or `null` for the root frame. */
+  label: string | null
+  /** The enclosing frame, or `null` for the root frame. */
+  parent: OracleFrame | null
+  /** Nesting depth: `-1` for the root frame, `0` for a box inside it. */
+  depth: number
+  /** The spawn origin, when the fixture declares one. */
+  originTaskId?: string
+  /** The frame's parsed plan. */
+  plan: PlanDocument
+  /** The frame's board rows. */
+  board: readonly BoardTask[]
+  /** The nested frames, ordered by the id collator. */
+  children: OracleFrame[]
+}
+
+/** One frame's own merge, as the grouped oracle resolves it. */
+interface OracleRows {
+  /** The frame's own ids, ordered by the collator. */
+  ids: string[]
+  /** Each id's declared blockers: the union of both sides, sorted. */
+  deps: Map<string, string[]>
+  /** The frame's own task nodes, columns still to be resolved. */
+  nodes: GraphNode[]
+  /** Ids the frame's board carries and its plan does not. */
+  boardOnly: string[]
+  /** Ids the frame's plan declares and its board does not. */
+  planOnly: string[]
+}
+
+/** One pair as a frame declared it, before the attachment rule anchors it. */
+interface OraclePair {
+  /** The blocker id. */
+  from: string
+  /** The blocked id. */
+  to: string
+  /** Whether the frame's board declared the pair. */
+  board: boolean
+  /** Whether the frame's plan declared the pair. */
+  plan: boolean
+  /** Whether the model derives the pair from a spawn origin instead of reading it. */
+  derived: boolean
+}
+
+/** The grouped fixture's root plan: two TODOs whose edge the root board agrees with. */
+const GROUPED_ROOT_PLAN = ["# Grouped fixture plan", "", "## TODOs", "", "- [ ] 1. Root build", "- [ ] 2. Root adopt (blocked by: 1)", "- [ ] 3. Root verify"].join("\n")
+
+/**
+ * The subcell's plan: ONE final-wave item, so its GHOST lives inside the box and its id cannot collide
+ * with the root plan's `T<n>` ids (which is what a per-frame plan has to prove here).
+ */
+const GROUPED_SUBCELL_PLAN = ["## Final Verification Wave", "", "- [ ] F1. Subcell verification"].join("\n")
+
+/** The grouped fixture's root board: a completed task, one waiting on it, and one waiting INSIDE a box. */
+const GROUPED_ROOT_BOARD: BoardTask[] = [
+  { id: "T1", subject: "Root build", kind: "work", status: "completed", owner: "Senior Engineer", blockedBy: [], depth: 0 },
+  { id: "T2", subject: "Root adopt", kind: "work", status: "in_progress", blockedBy: ["T1"], depth: 1 },
+  { id: "T3", subject: "Root verify", kind: "work", status: "pending", blockedBy: ["E1"], depth: 2 },
+]
+
+/**
+ * The built-in grouped fixture, which exercises EVERY branch of the attachment rule at the GATE:
+ *
+ * - `teamB` waits on the root (`B1` names `T1`) while the root's `T2` spawned it — the derived edge;
+ * - `teamB`'s interior holds a further box `teamB1`, whose task names one blocker inside `teamB` and one
+ *   id that exists nowhere (`T99`), so the box→box lift and `report.unresolved` are both drawn;
+ * - the sibling `teamC` waits on a task INSIDE `teamB` (`E1` names `B1`), which is the contract's
+ *   GROUP→GROUP branch (`teamB→teamC` at the root frame);
+ * - the root's `T3` waits on `E1`, a task INSIDE `teamC`, which is the outer-blocked-by-inner case the
+ *   repair had to rank from the DRAWN edge (`teamC→T3`) rather than from the authored reference.
+ * @returns the fixture the `--grouped` run and the self-test's grouped arms check.
+ */
+function defaultGroupFixture(): GroupedFixture {
+  return {
+    planText: GROUPED_ROOT_PLAN,
+    board: GROUPED_ROOT_BOARD,
+    groups: [
+      {
+        id: "teamB",
+        label: "Subcell B",
+        originTaskId: "T2",
+        planText: GROUPED_SUBCELL_PLAN,
+        board: [
+          { id: "B1", subject: "Child build", kind: "work", status: "in_progress", blockedBy: ["T1"] },
+          { id: "B2", subject: "Child adopt", kind: "work", status: "pending", blockedBy: ["B1"] },
+        ],
+        groups: [
+          {
+            id: "teamB1",
+            label: "Subcell B1",
+            originTaskId: "B2",
+            board: [{ id: "D1", subject: "Grandchild work", kind: "work", status: "pending", blockedBy: ["B1", "T99"] }],
+            groups: [],
+          },
+        ],
+      },
+      {
+        id: "teamC",
+        label: "Subcell C",
+        board: [{ id: "E1", subject: "Sibling work", kind: "work", status: "pending", blockedBy: ["B1"] }],
+        groups: [],
+      },
+    ],
+    golden: {
+      // Written in the order the tree draws them, NOT read back off the model: an id list that came
+      // from the implementation would agree with a wrong model forever.
+      nodeIds: ["B1", "B2", "D1", "E1", "F1", "T1", "T2", "T3", "teamB", "teamB1", "teamC"],
+      placement: {
+        T1: { depth: 0, visual: "completed" },
+        T2: { depth: 1, visual: "running" },
+        teamB: { depth: 2, visual: "group" },
+        teamC: { depth: 3, visual: "group" },
+        T3: { depth: 4, visual: "open" },
+        B1: { depth: 0, group: "teamB", visual: "running" },
+        B2: { depth: 1, group: "teamB", visual: "open" },
+        F1: { depth: 0, group: "teamB", visual: "planned" },
+        teamB1: { depth: 2, group: "teamB", visual: "group" },
+        D1: { depth: 0, group: "teamB1", visual: "open" },
+        E1: { depth: 0, group: "teamC", visual: "open" },
+      },
+      edges: [
+        "B1→B2(board)",
+        "B1→teamB1(board)",
+        "B2→teamB1(derived)",
+        "T1→T2(both)",
+        "T1→teamB(board)",
+        "T2→teamB(derived)",
+        // THE CONTRACT'S GROUP→GROUP BRANCH, stated in the golden so it cannot go unexercised again.
+        "teamB→teamC(board)",
+        // THE OUTER-BLOCKED-BY-INNER BRANCH: the root's T3 waits for a task inside teamC.
+        "teamC→T3(board)",
+      ],
+      groups: [
+        { id: "teamB", label: "Subcell B", parentId: null, memberIds: ["B1", "B2", "F1", "teamB1"], depth: 0, originTaskId: "T2" },
+        { id: "teamC", label: "Subcell C", parentId: null, memberIds: ["E1"], depth: 0 },
+        { id: "teamB1", label: "Subcell B1", parentId: "teamB", memberIds: ["D1"], depth: 1, originTaskId: "B2" },
+      ],
+      ranks: [["T1"], ["T2"], ["teamB"], ["teamC"], ["T3"]],
+      report: {
+        boardOnly: ["B1", "B2", "D1", "E1"],
+        planOnly: ["F1"],
+        edgePlanOnly: [],
+        edgeBoardOnly: ["T1→teamB", "teamB→teamC", "teamC→T3", "B1→B2", "B1→teamB1"],
+        unresolved: ["T99"],
+      },
+    },
+  }
+}
+
+/**
+ * Turn one declared subcell into the input the core takes, parsing its plan with the REAL parser.
+ * @param group - the fixture's subcell.
+ * @returns the group input, nested.
+ */
+function groupInputOf(group: GroupFixture): GraphGroupInput {
+  return {
+    id: group.id,
+    label: group.label,
+    board: group.board,
+    groups: group.groups.map((child) => groupInputOf(child)),
+    ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
+    ...(group.planText === undefined ? {} : { plan: parsePlanMarkdown(group.planText) }),
+  }
+}
+
+/**
+ * Build the model a grouped fixture declares.
+ * @param fixture - the fixture.
+ * @returns the model the core builds from its tree.
+ */
+function buildGroupedModel(fixture: GroupedFixture): GraphModel {
+  return buildModel({ board: fixture.board, plan: parsePlanMarkdown(fixture.planText), groups: fixture.groups.map((group) => groupInputOf(group)) })
+}
+
+/**
+ * The same subcells with every array reversed, so the input-order arm reaches the nesting too.
+ * @param groups - the subcells to reverse.
+ * @returns the reversed subcells, recursively.
+ */
+function reversedGroupInputs(groups: readonly GroupFixture[]): GraphGroupInput[] {
+  return [...groups].reverse().map((group) => ({
+    id: group.id,
+    label: group.label,
+    board: [...group.board].reverse(),
+    groups: reversedGroupInputs(group.groups),
+    ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
+    ...(group.planText === undefined ? {} : { plan: parsePlanMarkdown(group.planText) }),
+  }))
+}
+
+/**
+ * Collect one declared subcell into an oracle frame, recursively.
+ * @param group - the fixture's subcell.
+ * @param parent - the frame that contains it.
+ * @returns the frame, its own children ordered by the id collator.
+ */
+function collectOracleFrame(group: GroupFixture, parent: OracleFrame): OracleFrame {
+  /** The frame under construction. */
+  const frame: OracleFrame = {
+    id: group.id,
+    label: group.label,
+    parent,
+    depth: parent.depth + 1,
+    plan: parsePlanMarkdown(group.planText ?? ""),
+    board: group.board,
+    children: [],
+    ...(group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId }),
+  }
+  frame.children = group.groups.map((child) => collectOracleFrame(child, frame)).sort((left, right) => idCompare(left.id ?? "", right.id ?? ""))
+  return frame
+}
+
+/**
+ * One frame's path up to the root, starting at the frame itself.
+ * @param frame - the frame to walk from.
+ * @returns the frames from `frame` to the root.
+ */
+function oraclePath(frame: OracleFrame): OracleFrame[] {
+  /** The frames on the way up. */
+  const path: OracleFrame[] = []
+  for (let cursor: OracleFrame | null = frame; cursor !== null; cursor = cursor.parent) path.push(cursor)
+  return path
+}
+
+/**
+ * The deepest frame two frames share, which is the frame that draws an edge between them.
+ * @param left - one endpoint's frame.
+ * @param right - the other endpoint's frame.
+ * @returns the lowest common ancestor frame.
+ */
+function lowestCommonOracleFrame(left: OracleFrame, right: OracleFrame): OracleFrame {
+  /** The right frame's chain, so the left walk stops at the first shared frame. */
+  const rightPath = oraclePath(right)
+  for (const candidate of oraclePath(left)) if (rightPath.includes(candidate)) return candidate
+  return lowestCommonOracleFrame(left, left)
+}
+
+/**
+ * The id that represents one endpoint inside the frame that draws the edge.
+ * @param frame - the frame holding the endpoint.
+ * @param home - the shared frame the edge is drawn in.
+ * @param id - the endpoint's id.
+ * @returns `id` itself when the frame is the shared one, else the box one level below it.
+ */
+function anchorOracleAt(frame: OracleFrame, home: OracleFrame, id: string): string {
+  if (frame === home) return id
+  /** The path from the frame up to the root; the entry directly below `home` is the box that represents it. */
+  const path = oraclePath(frame)
+  /** That box, when the path really passes through `home`. */
+  const below = path[path.indexOf(home) - 1]
+  return below?.id ?? id
+}
+
+/**
+ * Place one oracle pair in the frame that draws it, by the contract's attachment rule.
+ * @param pairs - each frame's merged pairs, mutated in place.
+ * @param frameOf - which frame holds each id.
+ * @param entry - the pair as a frame declared (or derived) it.
+ */
+function placeOraclePair(pairs: Map<OracleFrame, Map<string, OraclePair>>, frameOf: ReadonlyMap<string, OracleFrame>, entry: OraclePair): void {
+  /** The frame holding the blocker. */
+  const fromFrame = frameOf.get(entry.from)
+  /** The frame holding the blocked id. */
+  const toFrame = frameOf.get(entry.to)
+  if (fromFrame === undefined || toFrame === undefined) return
+  /** The frame that draws this line. */
+  const home = lowestCommonOracleFrame(fromFrame, toFrame)
+  /** The re-anchored blocker. */
+  const from = anchorOracleAt(fromFrame, home, entry.from)
+  /** The re-anchored blocked id. */
+  const to = anchorOracleAt(toFrame, home, entry.to)
+  if (entry.derived && from === to) return
+  /** The drawing frame's pair index. */
+  const held = pairs.get(home)
+  if (held === undefined) return
+  /** The pair's merged entry. */
+  const merged = held.get(`${from}\u0000${to}`) ?? { from, to, board: false, plan: false, derived: false }
+  merged.board = merged.board || entry.board
+  merged.plan = merged.plan || entry.plan
+  merged.derived = merged.derived || entry.derived
+  held.set(`${from}\u0000${to}`, merged)
+}
+
+/**
+ * The model a grouped fixture DECLARES, computed here by this gate's own reading of the contract.
+ *
+ * It never calls `buildModel`: the frames, the anchoring, the per-frame ranking and the flattened
+ * picture are all derived here from the fixture and `deriveRanksOracle`/`cycleIdsOracle`, which is what
+ * makes a green run mean "the core agrees with the contract" instead of "the core agrees with itself".
+ * @param fixture - the grouped fixture.
+ * @returns the model the tree declares.
+ */
+function expectedGroupedModel(fixture: GroupedFixture): GraphModel {
+  /** The root frame. */
+  const root: OracleFrame = { id: null, label: null, parent: null, depth: -1, plan: parsePlanMarkdown(fixture.planText), board: fixture.board, children: [] }
+  root.children = fixture.groups.map((group) => collectOracleFrame(group, root)).sort((left, right) => idCompare(left.id ?? "", right.id ?? ""))
+  /** Every frame, pre-order. */
+  const frames: OracleFrame[] = []
+  /**
+   * Walk the tree in pre-order.
+   * @param frame - the frame to visit.
+   */
+  const walk = (frame: OracleFrame): void => {
+    frames.push(frame)
+    for (const child of frame.children) walk(child)
+  }
+  walk(root)
+  /** Each frame's own merge. */
+  const rows = new Map<OracleFrame, OracleRows>()
+  for (const frame of frames) {
+    /** The frame's board rows by id; the last row wins. */
+    const boardById = new Map<string, BoardTask>()
+    for (const row of frame.board) boardById.set(row.id, row)
+    /** The frame's plan tasks by id. */
+    const planById = new Map(frame.plan.tasks.map((task) => [task.id, task]))
+    /** Every id the frame names, ordered by the collator. */
+    const ids = [...new Set([...boardById.keys(), ...planById.keys()])].sort(idCompare)
+    /** Each id's declared blockers: the union of both sides, sorted. */
+    const deps = new Map<string, string[]>()
+    for (const id of ids) deps.set(id, [...new Set([...(boardById.get(id)?.blockedBy ?? []), ...(planById.get(id)?.blockedBy ?? [])])].sort(idCompare))
+    /** The frame's nodes, columns still unset. */
+    const nodes: GraphNode[] = ids.map((id) => {
+      /** The board row, when the board carries this id. */
+      const row = boardById.get(id)
+      /** The plan task, when the plan declares this id. */
+      const task = planById.get(id)
+      /** The owner: the board's assignment wins over the plan's lane owner. */
+      const assignee = row?.owner ?? task?.owner
+      return {
+        id,
+        subject: row?.subject ?? task?.title ?? id,
+        visual: row === undefined ? "planned" : visualOf(row),
+        dependencies: deps.get(id) ?? [],
+        depth: row?.depth ?? 0,
+        planned: row === undefined,
+        ...(row?.kind === undefined ? {} : { kind: row.kind }),
+        ...(assignee === undefined ? {} : { assignee }),
+        ...(task?.title === undefined ? {} : { title: task.title }),
+        ...(row?.status === undefined ? {} : { status: row.status }),
+        ...(frame.id === null ? {} : { group: frame.id }),
+      }
+    })
+    rows.set(frame, {
+      ids,
+      deps,
+      nodes,
+      boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
+      planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id)),
+    })
+  }
+  /** Which frame holds each id: every task, and every group's box. */
+  const frameOf = new Map<string, OracleFrame>()
+  for (const frame of frames) for (const node of rows.get(frame)?.nodes ?? []) frameOf.set(node.id, frame)
+  /** The box of each group frame, drawn as a node of its parent frame. */
+  const pseudos: GraphNode[] = []
+  /** The nodes drawn inside each frame: its own tasks plus its child boxes. */
+  const level = new Map<OracleFrame, GraphNode[]>()
+  for (const frame of frames) level.set(frame, [...(rows.get(frame)?.nodes ?? [])])
+  for (const frame of frames) {
+    if (frame.id === null || frame.label === null || frame.parent === null) continue
+    /** The frame that draws this box. */
+    const parent = frame.parent
+    /** The box itself. */
+    const pseudo: GraphNode = { id: frame.id, subject: frame.label, visual: "group", dependencies: [], depth: 0, planned: false, ...(parent.id === null ? {} : { group: parent.id }) }
+    frameOf.set(frame.id, parent)
+    pseudos.push(pseudo)
+    level.get(parent)?.push(pseudo)
+  }
+  /** The pairs each frame will draw. */
+  const pairs = new Map<OracleFrame, Map<string, OraclePair>>()
+  for (const frame of frames) pairs.set(frame, new Map())
+  for (const frame of frames) {
+    /** The frame's board rows by id; the last row wins. */
+    const boardById = new Map<string, BoardTask>()
+    for (const row of frame.board) boardById.set(row.id, row)
+    for (const row of boardById.values()) for (const from of row.blockedBy ?? []) placeOraclePair(pairs, frameOf, { from, to: row.id, board: true, plan: false, derived: false })
+    for (const task of frame.plan.tasks) for (const from of task.blockedBy) placeOraclePair(pairs, frameOf, { from, to: task.id, board: false, plan: true, derived: false })
+  }
+  for (const frame of frames) {
+    if (frame.id === null || frame.originTaskId === undefined) continue
+    if (!frameOf.has(frame.originTaskId)) continue
+    placeOraclePair(pairs, frameOf, { from: frame.originTaskId, to: frame.id, board: false, plan: false, derived: true })
+  }
+  /** The blockers each node is DRAWN with, per frame: the oracle's own reading of the attachment rule. */
+  const drawnDeps = new Map<OracleFrame, Map<string, string[]>>()
+  for (const frame of frames) {
+    /** This frame's per-node blockers, in pair order. */
+    const blockers = new Map<string, string[]>()
+    /** This frame's merged pairs. */
+    const held = pairs.get(frame)
+    if (held !== undefined) {
+      for (const entry of held.values()) {
+        /** The blockers already listed under the blocked id. */
+        const list = blockers.get(entry.to)
+        if (list === undefined) blockers.set(entry.to, [entry.from])
+        else list.push(entry.from)
+      }
+    }
+    drawnDeps.set(frame, blockers)
+  }
+  for (const pseudo of pseudos) {
+    /** The frame that draws this box. */
+    const parent = frameOf.get(pseudo.id)
+    if (parent === undefined) continue
+    /** The blockers the attachment rule anchored onto this box. */
+    pseudo.dependencies = [...new Set(drawnDeps.get(parent)?.get(pseudo.id) ?? [])].sort(idCompare)
+  }
+  /** The root frame's rank buckets, which are the only buckets the model carries. */
+  let rootRanks: string[][] = []
+  for (const frame of frames) {
+    /** The nodes drawn inside this frame. */
+    const nodes = level.get(frame) ?? []
+    /** The blockers this frame DRAWS onto each node: the column follows the LINES, not the authored text. */
+    const drawn = drawnDeps.get(frame) ?? new Map<string, string[]>()
+    /** How many drawn lines reach a node of this frame; every one of them resolves by construction. */
+    let resolved = 0
+    for (const blockers of drawn.values()) resolved += blockers.length
+    /** The served depths this frame's rows claim, which draw only when the frame's graph says nothing. */
+    const served = new Map(nodes.map((node) => [node.id, servedRankOf(node.depth)]))
+    /** The rank of every node inside this frame. */
+    const rankOf = resolved === 0 && new Set(served.values()).size > 1 ? served : deriveRanksOracle(nodes.map((node) => node.id), new Map(nodes.map((node) => [node.id, drawn.get(node.id) ?? []])))
+    /** The frame's own buckets, each sorted by the collator. */
+    const deepest = nodes.reduce((max, node) => Math.max(max, rankOf.get(node.id) ?? 0), 0)
+    /** One bucket per rank, so an empty rank still exists and the frame's spacing stays honest. */
+    const buckets: string[][] = Array.from({ length: nodes.length === 0 ? 0 : deepest + 1 }, () => [] as string[])
+    for (const node of nodes) {
+      node.depth = rankOf.get(node.id) ?? node.depth
+      buckets[Math.min(Math.max(0, node.depth), deepest)].push(node.id)
+    }
+    for (const bucket of buckets) bucket.sort(idCompare)
+    if (frame === root) rootRanks = buckets
+  }
+  /** Every drawn edge of every frame, ordered by (`from`, then `to`). */
+  const edges: GraphEdge[] = []
+  for (const frame of frames) {
+    for (const entry of pairs.get(frame)?.values() ?? []) edges.push({ from: entry.from, to: entry.to, source: entry.board && entry.plan ? "both" : entry.plan ? "plan" : entry.board ? "board" : "derived" })
+  }
+  edges.sort((left, right) => idCompare(left.from, right.from) || idCompare(left.to, right.to))
+  /** Every node of every frame, in the draw order. */
+  const nodes: GraphNode[] = [...frames.flatMap((frame) => rows.get(frame)?.nodes ?? []), ...pseudos].sort((left, right) => idCompare(left.id, right.id))
+  /** Cyclic ids of every frame, joined. */
+  const cyclic = new Set<string>()
+  for (const frame of frames) {
+    /** The frame's nodes. */
+    const frameNodes = level.get(frame) ?? []
+    /** The blockers this frame DRAWS onto each node, which is what a loop is made of. */
+    const drawn = drawnDeps.get(frame) ?? new Map<string, string[]>()
+    for (const id of cycleIdsOracle(frameNodes.map((node) => node.id), new Map(frameNodes.map((node) => [node.id, drawn.get(node.id) ?? []])))) cyclic.add(id)
+  }
+  /** Every reference the tree declared. */
+  const refs = new Set<string>()
+  for (const frame of frames) for (const node of rows.get(frame)?.nodes ?? []) for (const ref of node.dependencies) refs.add(ref)
+  for (const frame of frames) if (frame.originTaskId !== undefined) refs.add(frame.originTaskId)
+  /** The declared boxes, shallow-first. */
+  const groups: GraphGroup[] = []
+  for (const frame of frames) {
+    if (frame.id === null || frame.label === null || frame.parent === null) continue
+    groups.push({
+      id: frame.id,
+      label: frame.label,
+      parentId: frame.parent.id,
+      memberIds: [...(level.get(frame) ?? []).map((node) => node.id)].sort(idCompare),
+      depth: frame.depth,
+      ...(frame.originTaskId === undefined ? {} : { originTaskId: frame.originTaskId }),
+    })
+  }
+  groups.sort((left, right) => left.depth - right.depth || idCompare(left.id, right.id))
+  return {
+    nodes,
+    edges,
+    ranks: rootRanks,
+    cycles: [...cyclic].sort(),
+    report: {
+      boardOnly: [...frames.flatMap((frame) => rows.get(frame)?.boardOnly ?? [])].sort(idCompare),
+      planOnly: [...frames.flatMap((frame) => rows.get(frame)?.planOnly ?? [])].sort(idCompare),
+      edgePlanOnly: edges.filter((edge) => edge.source === "plan"),
+      edgeBoardOnly: edges.filter((edge) => edge.source === "board"),
+      planProblems: frames.flatMap((frame) => [...frame.plan.problems]),
+      unresolved: [...refs].filter((ref) => !frameOf.has(ref)).sort(),
+      ranksDerived: true,
+    },
+    groups,
+  }
+}
+
+/**
+ * Compare the produced nested model with the grouped fixture's hand-written expectations.
+ * @param model - the produced model.
+ * @param golden - the contract's own expectations, as sets.
+ * @returns one line per failed expectation.
+ */
+function checkGroupedGolden(model: GraphModel, golden: GroupedGolden): string[] {
+  /** The failed expectations. */
+  const failures: string[] = []
+  if (canonical(asSet(model.nodes.map((node) => node.id))) !== canonical(asSet(golden.nodeIds))) failures.push(`golden node ids: expected ${canonical(asSet(golden.nodeIds))} got ${canonical(asSet(model.nodes.map((node) => node.id)))}`)
+  for (const [id, want] of Object.entries(golden.placement)) {
+    /** The produced node for this id. */
+    const node = model.nodes.find((candidate) => candidate.id === id)
+    if (node === undefined) {
+      failures.push(`golden placement ${id}: missing from the model`)
+      continue
+    }
+    if (node.depth !== want.depth) failures.push(`golden placement ${id}: expected depth ${want.depth} got ${node.depth}`)
+    if ((node.group ?? null) !== (want.group ?? null)) failures.push(`golden placement ${id}: expected group ${JSON.stringify(want.group ?? null)} got ${JSON.stringify(node.group ?? null)}`)
+    if (node.visual !== want.visual) failures.push(`golden placement ${id}: expected visual "${want.visual}" got "${node.visual}"`)
+  }
+  /** An edge as the golden spells it. */
+  const edgeText = (edge: GraphEdge): string => `${edge.from}→${edge.to}(${edge.source})`
+  if (canonical(asSet(model.edges.map(edgeText))) !== canonical(asSet(golden.edges))) failures.push(`golden edges: expected ${canonical(asSet(golden.edges))} got ${canonical(asSet(model.edges.map(edgeText)))}`)
+  /** The box ids the golden declares, so the contract's group→group branch can be required by name. */
+  const boxIds = new Set(golden.groups.map((group) => group.id))
+  // THE BRANCH MUST STAY EXERCISED: the fixture declares a dependency between two sibling subcells, so a
+  // model that never draws a box→box edge has silently dropped the rule the contract names.
+  if (!golden.edges.some((text) => isBoxEdgeText(text, boxIds))) failures.push("golden: the fixture declares a dependency between two subcells, so it must state a box→box edge")
+  if (!model.edges.some((edge) => boxIds.has(edge.from) && boxIds.has(edge.to))) failures.push("golden group→group: the fixture declares a dependency between two subcells, so the model must draw at least one box→box edge")
+  if (canonical(model.groups) !== canonical(golden.groups)) failures.push(`golden groups: expected ${canonical(golden.groups)} got ${canonical(model.groups)}`)
+  if (canonical(model.ranks) !== canonical(golden.ranks)) failures.push(`golden ranks: expected ${canonical(golden.ranks)} got ${canonical(model.ranks)}`)
+  if (canonical(asSet(model.report.boardOnly)) !== canonical(asSet(golden.report.boardOnly))) failures.push(`golden report.boardOnly: expected ${canonical(asSet(golden.report.boardOnly))} got ${canonical(asSet(model.report.boardOnly))}`)
+  if (canonical(asSet(model.report.planOnly)) !== canonical(asSet(golden.report.planOnly))) failures.push(`golden report.planOnly: expected ${canonical(asSet(golden.report.planOnly))} got ${canonical(asSet(model.report.planOnly))}`)
+  if (canonical(asSet(model.report.edgePlanOnly.map((edge) => `${edge.from}→${edge.to}`))) !== canonical(asSet(golden.report.edgePlanOnly))) failures.push(`golden report.edgePlanOnly: expected ${canonical(asSet(golden.report.edgePlanOnly))} got ${canonical(asSet(model.report.edgePlanOnly.map((edge) => `${edge.from}→${edge.to}`)))}`)
+  if (canonical(asSet(model.report.edgeBoardOnly.map((edge) => `${edge.from}→${edge.to}`))) !== canonical(asSet(golden.report.edgeBoardOnly))) failures.push(`golden report.edgeBoardOnly: expected ${canonical(asSet(golden.report.edgeBoardOnly))} got ${canonical(asSet(model.report.edgeBoardOnly.map((edge) => `${edge.from}→${edge.to}`)))}`)
+  if (canonical(asSet(model.report.unresolved)) !== canonical(asSet(golden.report.unresolved))) failures.push(`golden report.unresolved: expected ${canonical(asSet(golden.report.unresolved))} got ${canonical(asSet(model.report.unresolved))}`)
+  return failures
+}
+
+/**
+ * Whether a golden edge spelling joins two BOXES, which is the contract's group→group branch.
+ * @param text - one golden edge, spelled `from→to(source)`.
+ * @param boxes - the group ids the golden declares.
+ * @returns whether both endpoints of that edge are boxes.
+ */
+function isBoxEdgeText(text: string, boxes: ReadonlySet<string>): boolean {
+  /** The blocker: everything before the arrow. */
+  const from = text.slice(0, text.indexOf("→"))
+  /** The blocked id: everything between the arrow and the `(` that opens the source suffix. */
+  const to = text.slice(text.indexOf("→") + 1, text.indexOf("("))
+  return boxes.has(from) && boxes.has(to)
+}
+
+/**
+ * Un-anchor ONE produced box edge, which is the grouped gate's negative control.
+ *
+ * The seed replaces a box endpoint with the first member of that box, which is exactly the picture the
+ * attachment rule forbids: a line drawn INTO the frame instead of terminating on its border.
+ * @param model - the produced model.
+ * @returns the seeded model and a one-line note naming what was changed.
+ */
+function seedWrongAnchor(model: GraphModel): { model: GraphModel; note: string } {
+  /** Each box and its first member, so a box endpoint has somewhere wrong to move to. */
+  const memberOf = new Map((model.groups ?? []).map((group) => [group.id, group.memberIds[0]]))
+  /** The index of the first edge that names a box, in the model's own order. */
+  const index = model.edges.findIndex((edge) => memberOf.has(edge.from) || memberOf.has(edge.to))
+  if (index < 0) return { model, note: "there is no box-anchored edge to seed" }
+  /** The edge the seed mutates. */
+  const anchored = model.edges[index]
+  /** The box endpoint the seed moves; the `to` side when both ends are boxes. */
+  const box = memberOf.has(anchored.to) ? anchored.to : anchored.from
+  /** The inner id the box endpoint is seeded to. */
+  const inner = memberOf.get(box)
+  if (inner === undefined) return { model, note: `box "${box}" declares no member to un-anchor to` }
+  /** The seeded edges. */
+  const edges = model.edges.map((edge, position) => position === index ? { ...edge, ...(memberOf.has(anchored.to) ? { to: inner } : { from: inner }) } : edge)
+  return { model: { ...model, edges }, note: `${anchored.from}→${anchored.to}: endpoint "${box}" seeded to "${inner}"` }
+}
+
+/**
+ * The pair the grouped negative control will un-anchor: the first edge (in the model's order) that
+ * names a group id as either endpoint.
+ * @param model - the model the gate emitted.
+ * @returns `from→to`, or "" when the snapshot carries no box edge.
+ */
+function firstBoxEdgePair(model: GraphModel | undefined): string {
+  if (model === undefined) return ""
+  /** The box ids the model declares. */
+  const boxes = new Set((model.groups ?? []).map((group) => group.id))
+  /** The first box edge, in the emitted order. */
+  const edge = model.edges.find((candidate) => boxes.has(candidate.from) || boxes.has(candidate.to))
+  return edge === undefined ? "" : `${edge.from}→${edge.to}`
+}
+
+/**
+ * Run the grouped check: the built-in nested fixture against the oracle AND the golden.
+ * @param cli - the invocation (its `emit` and `seedWrongAnchor` flags drive the output).
+ * @returns the process exit code: 0 when equal, 1 otherwise.
+ */
+function runGrouped(cli: Cli): number {
+  /** The built-in nested fixture. */
+  const fixture = defaultGroupFixture()
+  /** The model the core builds from the declared tree. */
+  const model = buildGroupedModel(fixture)
+  /** The model the tree declares, by this gate's own reading. */
+  const expected = expectedGroupedModel(fixture)
+  if (cli.emit) console.log(JSON.stringify(model, null, 2))
+  /** The model the comparison judges — mutated only by the deliberate negative control. */
+  let judged = model
+  if (cli.seedWrongAnchor) {
+    /** The seeded model and the note naming what it changed. */
+    const seeded = seedWrongAnchor(model)
+    judged = seeded.model
+    console.log(`${PREFIX} negative control: ${seeded.note}`)
+  }
+  /** Every failed expectation: the oracle's and the golden's. */
+  const failures = checkModel(judged, expected).concat(checkGroupedGolden(judged, fixture.golden))
+  if (failures.length > 0) {
+    for (const line of failures) console.log(`${PREFIX} FAIL ${line}`)
+    console.log(`${PREFIX} FAIL — ${failures.length} grouped expectation(s) did not hold`)
+    return 1
+  }
+  console.log(`${PREFIX} PASS — grouped nodes (${model.nodes.length}), edges (${model.edges.length}), groups (${model.groups?.length ?? 0}), ranks and the report equal the declared tree`)
   return 0
 }
 
@@ -790,6 +1542,10 @@ if (cli.help) {
 if (cli.selfTest) {
   process.exit(selfTest())
 }
-/** The fixture this run judges: an explicit one when paths were given, else the inline default. */
-const fixture = cli.fixtureDir !== undefined ? loadFixtureDir(resolve(cli.fixtureDir)) : cli.boardPath !== undefined && cli.planPath !== undefined ? loadFixturePaths(resolve(cli.planPath), resolve(cli.boardPath)) : defaultFixture()
-process.exit(runFixture(fixture, cli))
+// THE DEFAULT RUN IS THE FLAT ARM, EXACTLY AS BEFORE GROUPS EXISTED: same fixture, same PASS line,
+// same snapshot on `--emit`, byte for byte. The GROUP arm is `--grouped` (and `--self-test` proves
+// both directions), which is how the contract names it — so this gate's historical output never moved.
+if (cli.grouped) process.exit(runGrouped(cli))
+if (cli.fixtureDir !== undefined) process.exit(runFixture(loadFixtureDir(resolve(cli.fixtureDir)), cli))
+if (cli.boardPath !== undefined && cli.planPath !== undefined) process.exit(runFixture(loadFixturePaths(resolve(cli.planPath), resolve(cli.boardPath)), cli))
+process.exit(runFixture(defaultFixture(), cli))

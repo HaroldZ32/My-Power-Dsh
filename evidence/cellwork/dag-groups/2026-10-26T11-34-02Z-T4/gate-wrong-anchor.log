@@ -1,0 +1,6 @@
+[verify-graph-model] negative control: B1→teamB1: endpoint "teamB1" seeded to "C1"
+[verify-graph-model] FAIL edge B1→teamB1: missing (expected source "board")
+[verify-graph-model] FAIL edge B1→C1: unexpected in the model
+[verify-graph-model] FAIL edge list: expected [{"from":"B1","source":"board","to":"B2"},{"from":"B1","source":"board","to":"teamB1"},{"from":"B2","source":"derived","to":"teamB1"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"teamB"},{"from":"T2","source":"derived","to":"teamB"}] got [{"from":"B1","source":"board","to":"B2"},{"from":"B1","source":"board","to":"C1"},{"from":"B2","source":"derived","to":"teamB1"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"teamB"},{"from":"T2","source":"derived","to":"teamB"}]
+[verify-graph-model] FAIL golden edges: expected ["B1→B2(board)","B1→teamB1(board)","B2→teamB1(derived)","T1→T2(both)","T1→teamB(board)","T2→teamB(derived)"] got ["B1→B2(board)","B1→C1(board)","B2→teamB1(derived)","T1→T2(both)","T1→teamB(board)","T2→teamB(derived)"]
+[verify-graph-model] FAIL — 4 grouped expectation(s) did not hold

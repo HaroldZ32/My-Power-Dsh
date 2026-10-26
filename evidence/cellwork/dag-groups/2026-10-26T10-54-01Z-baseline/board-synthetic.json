@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "teamId": "team-synthetic-w4-pin",
+  "name": "synthetic pin",
+  "description": "synthetic board for the W4 backward pin (no groups)",
+  "phase": "active",
+  "members": [
+    {"name": "alpha", "description": "Deep Worker", "role": "Deep Worker"},
+    {"name": "beta", "description": "Reviewer", "role": "Reviewer"}
+  ],
+  "tasks": [
+    {"id": "T1", "subject": "root work", "kind": "work", "owner": "alpha", "status": "completed", "blockedBy": []},
+    {"id": "T2", "subject": "second", "kind": "work", "owner": "alpha", "status": "running", "blockedBy": ["T1"]},
+    {"id": "T3", "subject": "third", "kind": "work", "owner": "beta", "status": "open", "blockedBy": ["T1", "T2"]},
+    {"id": "T4", "subject": "cyclic a", "kind": "fix", "owner": "beta", "status": "open", "blockedBy": ["T5"]},
+    {"id": "T5", "subject": "cyclic b", "kind": "fix", "owner": "beta", "status": "open", "blockedBy": ["T4"]}
+  ],
+  "nextMemberNumber": 3,
+  "nextTaskNumber": 6
+}

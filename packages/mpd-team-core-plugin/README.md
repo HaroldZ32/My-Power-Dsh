@@ -177,6 +177,45 @@ data: {"rev":8}
   official `TEAM_MAILBOX_FULL`), and the queue keeps insertion order.
 - **Everything is workspace-scoped** through `dsh.workspaceRoot(exec)`, never the process cwd.
 
+### Nested teams (subcells)
+
+A team RECORD may carry `parentTeamId`, and that one additive field is the whole topology: it names the
+team this one is a subcell of, and its ABSENCE means a root team — no key is written at all, so a record
+created before nested teams existed reads exactly as it did. Nothing else about a nested team changes: its
+roster, board, phase and lifecycle are its own.
+
+**The seam is DERIVED, not passed.** No `agent_teams_plan` action takes a parent argument. Approval
+derives the parent from the records with three rules, and each has a test:
+
+- a session that the parent team's ROSTER records (by the executor handle it raised, or by member name)
+  nests its new team under it — this is the promoted-subcaptain case;
+- a session that LEADS a team never nests under its own team, so a captain's next wave is a SIBLING, not
+  a child of the previous one;
+- a team that is not LIVE (ended, or whose staged plan was archived without approval) is never a parent,
+  so a sub-team is not born inside a finished wave.
+
+A session recorded on MORE THAN ONE live roster makes the box ambiguous, and approval REFUSES with a
+sentence naming the teams instead of guessing. A hand-edited chain that loops — a cycle no tool can
+write — also refuses, naming the loop, because the projection would otherwise never terminate.
+
+**The projection is a tree of boxes.** `mpdTeams.graph(workspace, teamId)` walks the records, turns every
+live descendant into a `GraphGroupInput` and lets `mpd-graph-core` merge it: `GraphModel.groups` is flat
+and shallow-first, each group is ALSO a pseudo-node of its parent frame (`visual: "group"`), an interior
+node's `depth` is its column INSIDE its own frame, and `ranks` still buckets only the ROOT frame — so a
+task's `rank` on `/plugins/mpd-team/state` remains the OUTER rank. A team with no live child supplies no
+groups at all, and its model is byte-identical to the one this row served before nested teams existed.
+
+**Ids are qualified, because every team mints `T1..Tn`.** A nested team's rows reach the model as
+`<teamId>::<taskId>` (the spelling `dispatch.ts#ledgerKey` already uses) while the root frame's ids stay
+BARE; a blocker that names a task of the SAME frame is qualified with it, and every other reference is
+kept verbatim, because that is the cross-frame edge the attachment rule anchors on a box border. A
+subcell's own plan document is NOT merged into its box: the plan markdown is a workspace document, and
+drawing the parent's plan-only ghosts inside a child would misstate what that child declared.
+
+Cellwork records the parent CELL's team id on the sub-cell (`parentTeamId`) when a promoted subcaptain
+registers it, so the cell log can be read against the nesting; the sub-team's own link is still the team
+plane's derivation, never a second copy.
+
 ## Configuration
 
 None. The plugin declares `tools` and `commands` and resolves both through the adapter.

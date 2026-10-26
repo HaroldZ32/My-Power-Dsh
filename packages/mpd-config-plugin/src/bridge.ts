@@ -75,11 +75,13 @@ export interface BridgeReport {
   readonly candidates?: readonly string[]
   /**
    * The behaviour-change timing for the saved value (design §D.1), REWORDED by the
-   * model-config-live-refresh wave: the model-config knobs (`modelchain.*`, `teamModels.slot*`,
-   * `agentRoutes.*`) are read from the live config service per use, so a save reaches the next
-   * resolve or spawn with no restart, and a `.mpd/mpd.jsonc` edit reaches this process through the
-   * mount-armed watcher. A knob some plugin captured at its own mount keeps its captured value
-   * until the next `dsh` boot; that class is named per knob in the user guide's §9.1.
+   * model-config-live-refresh wave: the model-config knobs (`modelchain.*`, and the per-agent
+   * `agentRoutes.*` table the spawn resolver reads) are read from the live config service per use, so
+   * a save reaches the next resolve or spawn with no restart, and a `.mpd/mpd.jsonc` edit reaches
+   * this process through the mount-armed watcher. The retired `teamModels` block is NOT such a knob:
+   * it is read only by the one-time migration and never routes anything. A knob some plugin captured
+   * at its own mount keeps its captured value until the next `dsh` boot; that class is named per knob
+   * in the user guide's §9.1.
    */
   readonly applies: "live"
 }

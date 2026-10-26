@@ -1,0 +1,6 @@
+-- freeCellId (the collision-safe minter):
+2028:function freeCellId(workspace, now) {
+-- used for the sub-cell id (not cellIdAt):
+4898:      const subcellId = freeCellId(caller.workspace, now);
+-- parentTeamId on the cell record:
+10

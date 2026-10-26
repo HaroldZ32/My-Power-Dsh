@@ -1,0 +1,62 @@
+{
+  "kind": "wave-result",
+  "wave": "cellwork-wave4",
+  "capturedAt": "2026-10-26T12:21:00Z",
+  "branch": "feature/cellwork",
+  "commits": {
+    "feature": "see the follow-up commit",
+    "docs": "see the follow-up commit",
+    "evidence": "see the follow-up commit"
+  },
+  "scope": {
+    "D1": "GraphModel.groups + GraphGroup + derived spawn edge + per-frame ranking + independent grouped oracle; backward no-groups output byte-identical (sha256 d0c269dc…)",
+    "D2": "TeamRecord.parentTeamId (seam (b) implicit derivation: deriveParentTeam at approve, no argument; tool surface 4,996/5,000 chars), descendant merge as nested groups, /state model carries groups, outer rank preserved, Amendment-7 ids <teamId>::<taskId>",
+    "D3": "TUI: second one-cell glyph family (DAG_GROUP_CHARS), frame tree, nested drawing, group hit identity, never-half-a-group, collapsedGroups width ladder; 18 new arms; TUI dist byte-identical across the T15 repair (684fa6f7…)",
+    "D5": "CellState.parentTeamId stamped by cellwork_subteam from the parent cell's team id; journal subcell-created; directive names the box; R1 repair freeCellId (millisecond cell-id collision destroyed the parent record)",
+    "D6": "docs/cellwork nested-DAG section + corrected parent-link bound + WEB-NOT-DELIVERED bound; docs/tui-dag-renderer §3.1 nested groups; cellwork README subsection closing D5's allocation gap",
+    "D4": "DEFERRED (declared bound): web .mpd-dag-group frame, variable-column recursive router, client.js rebuild — patch plan frozen at .mpd/plans/cellwork-w4-t7-plan.md; no fresh session available (4 add_member raises failed: catalog registry down) and both remaining writers invoked a pre-write stop-loss"
+  },
+  "gates": {
+    "packageTests": "graph-core 94/0; team-core 357/0; cellwork 50/0; TUI 609/1 skip/0",
+    "aggregateTests": "2626 tests / 6 skip / 0 fail (T14) and 2620/6/0 (T12)",
+    "typecheck": "exit 0",
+    "comments": "PASS (42,593 declarations at T14)",
+    "docsParity": "pairs=52 failed=0 violations=0 links=465 dead=0",
+    "distFresh": "34/34 fresh after the captain fan-out (team-core rebuilt; graph-core inlined)",
+    "rows": "exit 0",
+    "manifest": "exit 0",
+    "noHostOverride": "exit 0",
+    "installProfileDryRun": "exit 0",
+    "vendor": "corrected re-pin: skills fileCount 382→385, treeSha 104cbc00→f65c919c (three QA scripts were uncounted by the W3 re-pin; skills bytes unchanged since W3)",
+    "testQa": "exit 0",
+    "packClosure": "RED by design: PACKED-MISSING until the W5 re-pack"
+  },
+  "verdicts": [
+    {"row": "T4", "subject": "D1", "record": "rec-20261026T113829-9bf867", "verdict": "FAIL", "feed": "→ T11 (Amendment 8 R1 ranking divergence, R2 gate-fixture gap)"},
+    {"row": "T5", "subject": "D2/D5 + Amendment 7", "record": "rec-20261026T115156-a1cd40", "verdict": "PASS", "feed": "— (Amendment-9 reds already closed before T13)"},
+    {"row": "T6", "subject": "D3", "record": "rec-20261026T114551-e36c78", "verdict": "FAIL", "feed": "→ T15 (TUI coupling inventory; D3 claims otherwise green)"},
+    {"row": "T8", "subject": "D4", "record": "—", "verdict": "VOID", "feed": "T7 deferred by captain ruling"},
+    {"row": "T10", "subject": "D6", "record": "rec-20261026T122032-a37654", "verdict": "PASS", "feed": "—"},
+    {"row": "T12", "subject": "Amendment 8 repair", "record": "rec-20261026T120805-1047b7", "verdict": "PASS", "feed": "judged by the verifier's own falsification probe: pre-repair cycles []/depth(T2)=0 → frozen cycles [\"T1\",\"g\"]/depth(T2)=2; built-in fixture now emits teamB→teamC(board) + teamC→T3(board)"},
+    {"row": "T14", "subject": "Amendment 9 repair", "record": "rec-20261026T121108-04c415", "verdict": "PASS", "feed": "D5 arm that failed Received:\"\" now passes; freeCellId observable in the built cellwork dist; independence gate 47/47"},
+    {"row": "T16", "subject": "TUI coupling repair", "record": "rec-20261026T115653-831f24", "verdict": "PASS", "feed": "REDUCE + one deliberate rankPlan pin; TUI dist byte-identical 684fa6f7…"}
+  ],
+  "amendments": [
+    {"id": "Amendment 7", "substance": "qualified team ids <teamId>::<taskId> (root bare), buildModel refuses duplicates naming both frames, D2 tree input + flat output shape, derived spawn edge source"},
+    {"id": "Amendment 8", "substance": "anchored per-frame ranking/cycle scan (node.dependencies stays authored), cross-frame mutual block reported as a cycle, gate-level group→group proof"},
+    {"id": "Amendment 9", "substance": "D5 parent-team stamp (root cause: millisecond cell-id collision → freeCellId), coupling inventory: remove the import (preferred) or a deliberate named update"}
+  ],
+  "incidents": [
+    {"id": "fresh-member-raise-failed", "observed": "four add_member raises failed (M5 web-engineer, M6 web-renderer, M7 dag-web, M8 web-builder); the adapter log shows the LLM catalog degraded (registry down) and the spawn path cannot resolve", "action": "reused existing writers; D4 deferred with a frozen patch plan instead of a partial lane"},
+    {"id": "team-mailbox-bound", "observed": "all writers hit the 8-undelivered bound while idle; several verdict mails were refused", "action": "all critical relays used send_message with the session id; substance preserved in the records"},
+    {"id": "dist-attribution", "observed": "graph-core edits made team-core/tui dist stale in flight; a verifier batch saw it mid-write", "action": "per-package evidence cited instead of a fan-out green; the captain rebuilt all importers at close (34/34)"},
+    {"id": "vendor-count-correction", "observed": "verify:vendor was red on skills 385 vs a pin of 382 after W3 (three QA scripts uncounted by that re-pin)", "action": "one corrective re-pin in the W4 commit (bytes unchanged since W3); the PR declares it"}
+  ],
+  "declaredBounds": [
+    "D4 web nested frame/router/client.js are NOT delivered; the model, the projection and the TUI are. The follow-up plan is frozen at .mpd/plans/cellwork-w4-t7-plan.md.",
+    "The sub-team ↔ cell chain is proven in two halves (team-core's 13 arms; cellwork's own arm) because the frozen cross-package inventory forbids the import that would prove it end-to-end.",
+    "No PTY capture for the group frames (fixture-level TUI proof).",
+    "No originTaskId is authored in this wave, so no source:\"derived\" spawn edge occurs; a subcell's plan markdown is not merged into its box.",
+    "verify-pack-closure stays red until the W5 re-pack."
+  ]
+}

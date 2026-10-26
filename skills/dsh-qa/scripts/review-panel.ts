@@ -459,7 +459,7 @@ const FIXTURE: string = [
   "",
   "## Degrade matrix",
   "",
-  "Spawn each lane one-shot with `mpd_role_spawn`; a lane whose model slot cannot resolve is INCONCLUSIVE and names the member and the slot; when the roles plugin is unmounted the lanes are labelled panel=advisory.",
+  "Spawn each lane one-shot with `mpd_role_spawn`; a lane whose agent route cannot resolve is INCONCLUSIVE and names the member and the missing `agentRoutes` leaves; when the roles plugin is unmounted the lanes are labelled panel=advisory.",
   "",
   "## The merge table",
   "",

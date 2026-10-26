@@ -573,6 +573,14 @@ export interface DshTeamSpawnRequest {
    * reaches a teammate WITHOUT the official tool row's `freshProvider` indirection.
    */
   agentOptions?: unknown
+  /**
+   * The ABSOLUTE delegation-depth cap the member's own activation must respect (the harness
+   * `startActivation` request's `maxDepth`). NATIVE only: the native backend forwards it verbatim
+   * when the caller supplied one and OMITS the field entirely when it did not, which is what lets a
+   * subcaptain raise a deeper team without touching the `subagent` tool's service default
+   * (capability fact F1). The OFFICIAL backend has no per-call depth channel and ignores it.
+   */
+  maxDepth?: number
   /** Cancellation for the spawn and for the member's first turn. */
   signal?: AbortSignal
 }
@@ -1021,6 +1029,35 @@ export interface DshLiveAgent {
 }
 
 /**
+ * How one context-pressure read was sourced, or why it carries no ratio.
+ *
+ * `observed` — the token meter holds the session's projection AND the window the model reported;
+ * `no-window` — the projection exists but no model has reported a window yet;
+ * `unavailable` — no projection registry, no session, or no materialized state.
+ */
+export type DshContextPressureProvenance = "observed" | "no-window" | "unavailable"
+
+/**
+ * The OCCUPIED context of ONE live session, read from the harness token meter
+ * (`sessionProjections` unit `contextPressure`).
+ *
+ * The window is READ from what the model reported at runtime and is never defaulted: `null` means
+ * "not observed", so a caller that needs a budget must treat it as unmeasurable rather than
+ * substitute a constant. The same rule governs {@link DshContextPressure.ratio}, which exists only
+ * when both sides are positive numbers.
+ */
+export interface DshContextPressure {
+  /** Tokens the next request would carry (`projectedTokens ?? pressureTokens`); null when unreported. */
+  usedTokens: number | null
+  /** The context window the model reported at runtime; null when the meter recorded none. */
+  windowTokens: number | null
+  /** `usedTokens / windowTokens`, only when both are numbers greater than 0; null otherwise. */
+  ratio: number | null
+  /** Machine-readable provenance for the two numbers above. */
+  provenance: DshContextPressureProvenance
+}
+
+/**
  * One persisted session goal, projected for a plugin caller.
  *
  * The durable half mirrors the harness `goalValue` shape (`id`, `revision`,
@@ -1118,6 +1155,21 @@ export interface DshLlmCatalogModel {
   efforts: DshLlmCatalogEffort[]
   /** The adapter-configured default effort, absent when the host declares none. */
   defaultEffort?: string
+  /**
+   * The context window the HARNESS resolved for this exact route
+   * (`resolveModelInfo().context.contextWindow`), or null when the host resolved none.
+   *
+   * OPTIONAL ON THE TYPE, ALWAYS PRESENT ON THE PROJECTION: `undefined` means "a producer did not
+   * report this field" (a hand-built catalog double), while an adapter-produced catalog always
+   * carries it as `number | null`. Never a guessed constant.
+   */
+  contextWindow?: number | null
+  /**
+   * The route's maximum output tokens as the host exposes them
+   * (`resolveModelInfo().defaultMaxTokens`), or null when the host exposes none. Same presence rule
+   * as {@link DshLlmCatalogModel.contextWindow}.
+   */
+  maxOutputTokens?: number | null
 }
 
 /** One provider route and every model it currently advertises. */
@@ -1156,8 +1208,8 @@ export interface DshLlmCatalog {
 /**
  * The route fields one child run is described by, as an effort-carrying caller states them.
  *
- * This is the shape `mpd-roles-plugin` resolves a `teamModels` slot into and the shape
- * `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
+ * This is the shape `mpd-roles-plugin` resolves a roster agent's `agentRoutes` entry into and the
+ * shape `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
  * {@link withSupportedEffort} before the provider ever sees it.
  */
 export interface DshEffortRoute {
@@ -1193,12 +1245,13 @@ export function modelDeclaresNoEffort(catalog: DshLlmCatalog, provider: string, 
  * The route to actually SEND: the caller's own, or a copy with `reasoningEffort` removed when the
  * catalog says the model declares no reasoning efforts at all.
  *
- * WHY THIS EXISTS. A `teamModels` slot is read MATERIALISED over its schema defaults, so a workspace
- * that changed only a slot's provider/model still carries the slot's default effort (`max`/`high`).
- * Handing that keyword to a model the host lists with an EMPTY effort array fails the whole call —
- * the reported defect, on `mpd_role_spawn`, `mpd_workmate_spawn` and a slot-routed `spawn_teammate`
- * alike. Both settings front doors already DERIVE the effort list from the selected model's own
- * `efforts`; this is the runtime half of the same adaptation.
+ * WHY THIS EXISTS. A configured route may carry an effort keyword the model it names does not
+ * support — a hand-written `agentRoutes.<Agent>.reasoningEffort`, or a route migrated from the
+ * retired `teamModels` defaults (`max`/`high`). Handing that keyword to a model the host lists with
+ * an EMPTY effort array fails the whole call — a defect first measured on `mpd_role_spawn`,
+ * `mpd_workmate_spawn` and a routed `spawn_teammate` alike. Both settings front doors already DERIVE
+ * the effort list from the selected model's own `efforts`; this is the runtime half of the same
+ * adaptation.
  *
  * The rule is deliberately narrow, and it is NOT clamping:
  *   * a model listed with NO efforts loses the keyword — the run proceeds on the model's own default
@@ -1238,7 +1291,7 @@ export async function withSupportedEffort(
 }
 
 /**
- * The route a run ACTUALLY takes after its slot's fallback chain is consumed (contract §8).
+ * The route a run ACTUALLY takes after its agent route's fallback chain is consumed (contract §8).
  *
  * The chain is consumed ONCE, before the spawn: the first candidate the catalog POSITIVELY lists
  * (provider listed AND model present) wins, and the winner is then adapted by the SAME
@@ -1292,7 +1345,7 @@ function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): 
 }
 
 /**
- * Consume ONE slot's fallback chain and adapt the winner's effort — the single entry point every
+ * Consume ONE route's fallback chain and adapt the winner's effort — the single entry point every
  * spawn applier calls before a child is started (contract §8).
  *
  * Rules, in order:
@@ -1304,8 +1357,8 @@ function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): 
  * Never throws: a degraded host cannot fail a spawn here.
  *
  * @param dsh - the adapter (or a double) carrying the catalog read.
- * @param primary - the slot's own configured route.
- * @param fallbacks - the slot's fallback chain, in the user's order (unknown shapes are dropped).
+ * @param primary - the configured route the caller resolved (a roster agent's surviving primary).
+ * @param fallbacks - that route's own fallback chain, in the user's order (unknown shapes are dropped).
  * @returns the route to send plus which candidate won and how many entries were dropped.
  */
 export async function resolveRunRoute(
@@ -1352,10 +1405,10 @@ export async function resolveRunRoute(
   /** The winning candidate, before the effort adaptation. */
   const winner = index === 0 ? primary : wellFormed[index - 1]
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`)
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`)
   }
   /** The route after the effort adaptation: the same catalog read, never a second one. */
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner)
@@ -1365,9 +1418,9 @@ export async function resolveRunRoute(
 // ── THE NATIVE TEAM MEMBER'S ROUTE ──────────────────────────────────────────
 //
 // WHY THIS EXISTS. `nativeTeamExecutor().spawn` used to build the durable-child spec from the
-// caller's request and consult no `teamModels` slot, so in a default (native) composition EVERY
-// team member inherited the STAGING session's model route and the four configured routes applied
-// to no teammate. The route decision now lives here, in ONE pure function, and the spawn turns its
+// caller's request and consult no route source, so in a default (native) composition EVERY team
+// member inherited the STAGING session's model route and the configured per-agent routes applied to
+// no teammate. The route decision now lives here, in ONE pure function, and the spawn turns its
 // answer into the child's `agentOptions`.
 //
 // IDENTITY is the hard half. The native path knows a member's role, its description and its name,
@@ -1388,27 +1441,65 @@ export interface DshTeamMemberIdentity {
 }
 
 /**
- * The subset of the `mpdConfig` service's TOTAL slot resolution this module reads.
+ * The code every refused spawn carries, MIRRORED from `AGENT_UNCONFIGURED_CODE` in
+ * `packages/mpd-config-plugin/src/index.ts` (contract §3).
+ */
+export const AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED"
+
+/**
+ * The `AGENT_UNCONFIGURED` sentence ONE refused spawn reports — a MIRROR of
+ * `agentUnconfiguredMessage` in `packages/mpd-config-plugin/src/index.ts` (contract §3).
+ *
+ * WHY MIRRORED INSTEAD OF IMPORTED: the spawn appliers reach the config row as a SERVICE, and a
+ * cross-package import would be a NEW entry in the frozen coupling inventory
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+ * shrink). This module is the one surface every applier already imports, so the sentence lives here
+ * ONCE and the mirror keeps the facts identical: the agent, the missing or malformed leaf paths, both
+ * recovery paths, and that nothing was written and no child was started.
+ *
+ * @param agent - the canonical roster display name whose route is unusable.
+ * @param detail - what is wrong: the missing leaf paths, or the malformed one.
+ * @returns the ONE sentence the appliers throw and the executor quotes.
+ */
+export function agentUnconfiguredMessage(agent: string, detail: string): string {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail
+    + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes."
+    + agent + " in .mpd/mpd.jsonc."
+}
+
+/**
+ * The ONE structured failure a single-call spawn applier throws (contract §3).
+ * @param agent - the canonical roster display name whose route is unusable.
+ * @param detail - the missing leaf paths, or the malformed path.
+ * @returns the error, carrying {@link AGENT_UNCONFIGURED_CODE} so a caller branches on the code.
+ */
+export function agentUnconfiguredRefusal(agent: string, detail: string): Error {
+  /** The thrown error, carrying the canonical sentence and the branchable code. */
+  const error = new Error(agentUnconfiguredMessage(agent, detail))
+  ;(error as Error & { code?: string }).code = AGENT_UNCONFIGURED_CODE
+  return error
+}
+
+/**
+ * The subset of the `mpdConfig` service's TOTAL agent-route resolution this module reads.
  *
  * Mirrored STRUCTURALLY on purpose: a cross-package import would be a new entry in the frozen
- * coupling inventory, and this module must stay able to answer on a composition whose config-row
- * dist is older than the current union (see the version-skew fields below).
+ * coupling inventory, and a foreign service of any shape may answer — an answer without the union's
+ * markers is treated as NO answer, never as a route.
  */
-export interface DshTeamSlotAnswer {
-  /** The service's usable marker; `true` carries a route, `false` a status. */
+export interface DshTeamAgentRouteAnswer {
+  /** The service's usable marker; `true` carries a route, `false` a reason. */
   ok: boolean
-  /** The slot that routes the member (`slot1`..`slot4`), when the answer names one. */
-  slot?: string
+  /** The canonical roster display name the answer belongs to, when it names one. */
+  agent?: string
   /** Why an unusable answer is unusable; `unrouted` means the name is not a roster member. */
-  status?: "unconfigured" | "invalid" | "unrouted"
-  /** The configured primary route; every leaf is optional because an older dist may omit one. */
-  route?: { provider?: string; model?: string; reasoningEffort?: string }
-  /** The slot's OWN fallback chain, forwarded untouched to {@link resolveRunRoute}. */
-  fallbacks?: readonly unknown[]
-  /** The machine-readable refusal code the service attaches (`SLOT_UNCONFIGURED`). */
-  code?: string
-  /** The service's canonical refusal sentence; the spawn quotes it in its ONE log line. */
-  message?: string
+  reason?: "unconfigured" | "invalid" | "unrouted"
+  /** The configured route; every leaf is optional because a foreign dist may omit one. */
+  route?: { provider?: string; model?: string; reasoningEffort?: string; fallbacks?: readonly unknown[] }
+  /** The dotted leaf paths an `unconfigured` answer still needs (`agentRoutes.<Agent>.provider` first). */
+  missing?: readonly unknown[]
+  /** The offending dotted path an `invalid` answer reports, e.g. `agentRoutes.Architect.model`. */
+  problem?: string
 }
 
 /**
@@ -1418,15 +1509,13 @@ export interface DshTeamSlotAnswer {
  */
 export type DshTeamRouteOutcome =
   | {
-      /** A roster member was recognized and its slot is usable. */
+      /** A roster member was recognized and its own `agentRoutes` entry is usable. */
       status: "routed"
       /** The identity channel that matched, as it was sent to the service. */
       member: string
-      /** The slot that routes this member. */
-      slot: string
       /** The configured primary route, before {@link resolveRunRoute} consumes the chain. */
       route: DshEffortRoute
-      /** The slot's own fallback chain, in the user's order. */
+      /** The agent's own fallback chain, in the user's order. */
       fallbacks: readonly unknown[]
     }
   | {
@@ -1434,15 +1523,13 @@ export type DshTeamRouteOutcome =
       status: "unmatched"
     }
   | {
-      /** The member is routed by a slot that cannot be used; the spawn still raises it. */
+      /** The matched agent's route cannot be used; the spawn still raises it (inheritance). */
       status: "unusable"
       /** The identity channel that matched, as it was sent to the service. */
       member: string
-      /** The slot that routes the member, when the service named one. */
-      slot?: string
       /** Which unusable shape the service reported. */
       reason: "unconfigured" | "invalid"
-      /** The service's own sentence, quoted verbatim in the spawn's ONE log line. */
+      /** The canonical `AGENT_UNCONFIGURED` sentence, quoted verbatim in the spawn's ONE log line. */
       detail: string
     }
   | {
@@ -1499,79 +1586,79 @@ function memberIdentityCandidates(identity: DshTeamMemberIdentity): string[] {
 }
 
 /**
- * Resolve ONE native team member's `teamModels` route from its identity (contract: role ->
+ * Resolve ONE native team member's route from its OWN `agentRoutes` entry (contract: role ->
  * description head -> whole name -> unmatched).
  *
  * TOTAL by contract: it never throws. A service that refuses the read, an answer that does not
- * carry the union's shape, and a matched member whose slot is unusable are all REPORTED as union
+ * carry the union's shape, and a matched agent whose route is unusable are all REPORTED as union
  * states, because the spawn must degrade to today's inheritance instead of leaving a team
- * half-built.
+ * half-built. An `unrouted` answer is NOT a failure — the name simply is not a roster agent — so the
+ * identity walk continues to the next channel.
  *
  * @param identity - the member's identity channels, in the caller's own spelling.
- * @param slotResolutionOf - the live config service's total read, or `undefined` when absent.
+ * @param agentRouteResolutionOf - the live config service's total read, or `undefined` when absent.
  * @returns the routed route (plus its fallback chain), or the exact reason no route applies.
  */
 export function resolveTeamMemberRoute(
   identity: DshTeamMemberIdentity,
-  slotResolutionOf: ((member: string) => unknown) | undefined,
+  agentRouteResolutionOf: ((member: string) => unknown) | undefined,
 ): DshTeamRouteOutcome {
-  if (typeof slotResolutionOf !== "function") return { status: "no-config-service" }
+  if (typeof agentRouteResolutionOf !== "function") return { status: "no-config-service" }
   for (const candidate of memberIdentityCandidates(identity)) {
     /** The service's answer for this candidate, contained: a throwing read is "no answer". */
     let answer: unknown
     try {
-      answer = slotResolutionOf(candidate)
+      answer = agentRouteResolutionOf(candidate)
     } catch {
       continue
     }
     if (answer === null || typeof answer !== "object") continue
     /** The answer read as the service's documented union. */
-    const slotAnswer = answer as DshTeamSlotAnswer
-    if (slotAnswer.ok === true) {
+    const routeAnswer = answer as DshTeamAgentRouteAnswer
+    /** The canonical display name the answer carries, else the caller's own spelling. */
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate
+    if (routeAnswer.ok === true) {
       /** The primary route's provider, trimmed; an absent/blank one makes the answer unusable. */
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : ""
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : ""
       /** The primary route's model, trimmed; an absent/blank one makes the answer unusable. */
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : ""
-      /** The slot id the answer names, or "" for an older dist that omits it. */
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : ""
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : ""
       if (provider === "" || model === "") {
-        // `ok: true` with a route nobody can send is a CONTRADICTION, reported as an invalid slot
-        // rather than silently inheriting: the service claimed the member IS routed.
+        // `ok: true` with a route nobody can send is a CONTRADICTION, reported as invalid rather
+        // than silently inheriting: the service claimed the agent IS routed.
         return {
           status: "unusable",
           member: candidate,
-          ...(slot === "" ? {} : { slot }),
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== ""
-            ? slotAnswer.message
-            : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`,
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model"),
         }
       }
       /** The effort keyword, carried only when the service declared a non-blank one. */
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : ""
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : ""
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : [],
+        // The agent's OWN chain rides on its route (config `AgentRoute.fallbacks`), consumed once by
+        // the caller's `resolveRunRoute`.
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : [],
       }
     }
-    if (slotAnswer.ok === false) {
-      // `unrouted` is NOT a failure: the name simply is not a roster member, so the walk continues
-      // to the next identity channel. Only a real member with an unusable slot stops it.
-      if (slotAnswer.status === "unrouted") continue
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        /** The service's own sentence, which the spawn's ONE log line quotes. */
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== ""
-          ? slotAnswer.message
-          : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`
+    if (routeAnswer.ok === false) {
+      // `unrouted` is NOT a failure: the name simply is not a roster agent, so the walk continues to
+      // the next identity channel. Only a real agent with an unusable route stops it.
+      if (routeAnswer.reason === "unrouted") continue
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        /** The detail the canonical `AGENT_UNCONFIGURED` sentence names: leaves, or the bad path. */
+        const detail = routeAnswer.reason === "invalid"
+          ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string"
+          : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0
+            ? routeAnswer.missing.map(String).join(", ")
+            : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model")
         return {
           status: "unusable",
           member: candidate,
-          ...(typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {}),
-          reason: slotAnswer.status,
-          detail,
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail),
         }
       }
     }
@@ -1651,6 +1738,22 @@ export interface DshAdapter {
   liveAgents(): DshLiveAgent[]
   /** One live Agent by id, or undefined. */
   liveAgent(agentId: string): DshLiveAgent | undefined
+  /**
+   * OCCUPIED context of ONE live session, read from the harness `sessionProjections` unit
+   * `contextPressure` — the SAME token-meter projection the host's own status display reads.
+   *
+   * WHY THIS EXISTS (cellwork wave 1): a checkpoint has to fire from the OBSERVED occupancy of the
+   * model that is actually running, not from a configured threshold on a guessed window. The window
+   * is whatever the harness recorded from the provider's `request/context`; this seam never invents
+   * one.
+   *
+   * NEVER throws: a missing `sessionProjections` service, an unresolvable session, a projection the
+   * registry has not materialized and a throwing read all answer `provenance: "unavailable"`.
+   *
+   * @param target the live Agent, its Session object, or a session id (resolved through `sessions`).
+   * @returns the occupancy and its provenance; both numbers are null when nothing was observed.
+   */
+  contextPressure(target: unknown): DshContextPressure
   /**
    * The compaction engine THAT SERVES ONE AGENT, resolved through the agent's own
    * scoped context. This is the ONLY correct engine to drive a member session: the
@@ -2180,7 +2283,7 @@ export interface DshAdapter {
    * `SubagentStartRequest` carries no `agentOptions`/`persona`/`toolFilter`, so the
    * teammate runs on the route of the session that stages it: the captain's in a
    * top-level spawn, the Lead's in a team-lead spawn. `mpd-roster-provider-plugin` applies
-   * a roster member's `teamModels` slot only when the teammate DESCRIPTION names that
+   * a roster agent's own `agentRoutes` entry only when the teammate DESCRIPTION names that
    * member; prompt text cannot change a route.
    *
    * Degrade: THROWS when the service or `spawnTeammate` is absent (reported by the
@@ -3260,7 +3363,8 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
 }
 
 /**
- * Release ONE settled consult activation — the one-shot half of {@link DshAdapter.spawnAgent}.
+ * Release ONE activation the harness handed back — the teardown used by BOTH the one-shot consult and a
+ * team raise that could not be recorded.
  *
  * `activation.result` has already settled when this runs, so the report is captured and a failed
  * teardown can no longer change it. The 0.2.1 handle documents `dispose()` as cancelling that exact
@@ -3273,7 +3377,7 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
  * stay listed `inactive` and is technically cold-resumable. The CONTRACT is one-shot regardless.
  * @param activation - the handle `startActivation` returned, read for its `dispose` member only.
  */
-async function disposeSettledConsult(activation: unknown): Promise<void> {
+async function releaseActivation(activation: unknown): Promise<void> {
   /** The handle's own teardown member; only a callable may be invoked. */
   const dispose = (activation as { dispose?: unknown } | undefined)?.dispose
   if (typeof dispose !== "function") return
@@ -3370,7 +3474,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
-   * The LIVE `mpdConfig` slot resolver, or `undefined` when the composition mounts no config row.
+   * The LIVE `mpdConfig` agent-route resolver, or `undefined` when the composition mounts no config row.
    *
    * WHY THE ADAPTER ROW CAN READ IT (measured, this wave): `mpd-config` provides `mpdConfig`
    * unconditionally in its own `apply`, the two rows are siblings in the same host patch layer,
@@ -3380,39 +3484,25 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * still seen — and a composition that has none answers `undefined`, which is exactly the
    * `no-config-service` outcome rather than a boot failure.
    *
-   * VERSION SKEW (same two-step read as `mpd-roles` and the roster provider): the typed
-   * `slotResolutionOf` is preferred; a stale config-row dist exposes only the older
-   * `teamModelRouteOf`, whose object answer is promoted to a routed slot answer and whose
-   * `undefined` reads as `unrouted` (the adapter owns no roster list, so "no route" is the only
-   * honest answer that dist can give).
-   * @returns the total slot read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
+   * THE READ IS TOTAL AND TYPED (contract §2): `agentRouteResolutionOf` is the ONE method, and an
+   * answer without the union's `ok` marker is treated as NO answer — never as a route — so a foreign
+   * or half-present service degrades to inheritance instead of moving a teammate onto a guess.
+   * @returns the total agent-route read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
    */
-  const configSlotResolver = (): ((member: string) => unknown) | undefined => {
+  const configAgentRouteResolver = (): ((member: string) => unknown) | undefined => {
     /** The live config service, read per call so a late-mounted row is still seen. */
-    const config = service("mpdConfig") as { slotResolutionOf?: unknown; teamModelRouteOf?: unknown } | undefined
+    const config = service("mpdConfig") as { agentRouteResolutionOf?: unknown } | undefined
     if (config === undefined || config === null) return undefined
-    if (typeof config.slotResolutionOf !== "function" && typeof config.teamModelRouteOf !== "function") return undefined
+    if (typeof config.agentRouteResolutionOf !== "function") return undefined
     return (member: string): unknown => {
-      if (typeof config.slotResolutionOf === "function") {
-        try {
-          /** The service's total answer, trusted only when it carries the union's `ok` marker. */
-          const answer = (config.slotResolutionOf as (m: string) => unknown).call(config, member)
-          if (answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean") return answer
-        } catch {
-          // A stale service that throws on the typed read still gets the version-skew read below.
-        }
+      try {
+        /** The service's total answer, trusted only when it carries the union's `ok` marker. */
+        const answer = (config.agentRouteResolutionOf as (m: string) => unknown).call(config, member)
+        return answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean" ? answer : undefined
+      } catch {
+        // A service that throws on the typed read answers NOTHING; the spawn inherits, never fails.
+        return undefined
       }
-      if (typeof config.teamModelRouteOf === "function") {
-        try {
-          /** The older read's route, or undefined when this member has none. */
-          const route = (config.teamModelRouteOf as (m: string) => unknown).call(config, member)
-          if (route !== null && typeof route === "object") return { ok: true, slot: "", route, fallbacks: [] }
-        } catch {
-          // A throwing older read is "no route", never a spawn failure.
-        }
-        return { ok: false, status: "unrouted", slot: undefined }
-      }
-      return undefined
     }
   }
 
@@ -3520,6 +3610,116 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     return engine
   }
 
+  /**
+   * The Session object a context-pressure read needs, from whatever a caller holds.
+   *
+   * The projection registry keys its cells on the SESSION OBJECT, so a bare id has to be resolved
+   * through the harness `sessions` store (falling back to the live-agent registry, whose id IS the
+   * session id). Anything unrecognizable answers undefined rather than a fabricated object.
+   * @param target a live Agent, a Session object, or a session id.
+   * @returns the session object, or undefined when none can be resolved.
+   */
+  function contextPressureSession(target: unknown): unknown {
+    if (typeof target === "string") {
+      /** The id as given; an empty string names nothing. */
+      const id = target.trim()
+      if (id === "") return undefined
+      /** The session store's own lookup, when the composition mounts one. */
+      const sessions = service("sessions")
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          /** The store's session for this id, or a miss the live-registry lookup below can answer. */
+          const found = sessions.get(id)
+          if (found !== undefined && found !== null) return found
+        } catch { /* fall through to the live-agent registry */ }
+      }
+      return liveAgent(id)?.session
+    }
+    if (target === undefined || target === null || typeof target !== "object") return undefined
+    /** The session a live Agent carries; a Session object itself has none and is its own answer. */
+    const session = (target as { session?: unknown }).session
+    if (session !== undefined && session !== null) return session
+    return target
+  }
+
+  /**
+   * A finite number, or null for anything else a projection could answer.
+   *
+   * Every limit read is a pass-through of what the harness resolved: a missing or malformed value is
+   * `null` ("unknown"), never a default.
+   * @param value the raw projection field.
+   * @returns the number, or null.
+   */
+  function finiteNumberOrNull(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null
+  }
+
+  /**
+   * Read one session's context occupancy from the token-meter projection.
+   *
+   * The STATE supplies the observed window (`contextWindow`) and the provider-reported
+   * `pressureTokens`; the CLIENT VIEW supplies the forward-looking `projectedTokens` the state does
+   * not carry. Neither read is allowed to fail the caller: every miss degrades to a provenance.
+   * @param target a live Agent, a Session object, or a session id.
+   * @returns the occupancy plus its provenance; never throws.
+   */
+  function contextPressure(target: unknown): DshContextPressure {
+    /** The session whose projection cell is read; absent means this caller names nothing live. */
+    const session = contextPressureSession(target)
+    if (session === undefined) return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    /** The projection registry; its absence is a composition fact, not an error. */
+    const projections = service("sessionProjections")
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    /** The unit's host state — the only carrier of the observed window; undefined means no cell. */
+    let state: unknown
+    try {
+      state = projections.stateOf(session, "contextPressure")
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    /** That state read field by field: the harness `ContextPressureState` shape. */
+    const stateFields = state as { contextWindow?: unknown; pressureTokens?: unknown }
+    // The CLIENT VIEW is where `projectedTokens` lives; a registry without `snapshot` still answers
+    // with the provider-reported pressure from the state instead of reporting nothing.
+    /** The client-visible snapshot for this unit, or undefined when the registry produces none. */
+    let snapshot: unknown
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined
+    } catch { snapshot = undefined }
+    /** The snapshot's `values` map, per the harness `ProjectionSnapshot` shape. */
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object"
+      ? (snapshot as { values?: unknown }).values
+      : undefined
+    /** The unit's own view inside that map, when it produced one. */
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object"
+      ? (snapshotValues as { contextPressure?: unknown }).contextPressure
+      : undefined
+    /** The view read field by field: the harness `ContextPressureProjection` shape. */
+    const viewFields = view !== undefined && view !== null && typeof view === "object"
+      ? view as { projectedTokens?: unknown; pressureTokens?: unknown }
+      : undefined
+    /** The projection's forward-looking figure, absent before the first provider usage sample. */
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens)
+    /** The provider-reported prompt size, from whichever read carries it. */
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens)
+    // `??` and not `||`: a projected 0 tokens is a real observation, not a missing one.
+    /** The occupied figure, preferring the projection's forward-looking value. */
+    const usedTokens = projectedTokens ?? pressureTokens
+    /** The window the MODEL reported; null is the honest "not observed" answer. */
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow)
+    if (windowTokens === null) return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" }
+    // A zero or negative window is not a usable denominator, so it gets NO ratio rather than a
+    // division by zero or a negative occupancy.
+    /** The ratio, only where both sides are positive numbers. */
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null
+    return { usedTokens, windowTokens, ratio, provenance: "observed" }
+  }
+
   /** Subscribe to a harness event; undefined when no event bus is reachable. */
   function onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined {
     if (typeof ctx?.on !== "function") return undefined
@@ -3625,6 +3825,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           }
           /** The host's configured default effort, when it declared one. */
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined
+          /** The context window the HOST resolved for this exact route, when it advertised one. */
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow)
+          /** The host's adapter-configured output cap, when it declared one. */
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens)
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
@@ -3632,6 +3836,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             // A model with NO reasoning block still appears: empty efforts, no defaultEffort.
             efforts,
             ...(defaultEffort === undefined ? {} : { defaultEffort }),
+            // BOTH LIMITS ARE ALWAYS PRESENT: `null` is the honest "the harness resolved nothing",
+            // and a consumer must handle it instead of inheriting an invented constant.
+            contextWindow,
+            maxOutputTokens,
           })
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries })
@@ -3708,18 +3916,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
         /** The subagents service, or a throw naming the action that could not happen. */
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
-        /** The child's route: the caller's OWN when supplied, else the member's `teamModels` slot. */
+        /** The child's route: the caller's OWN when supplied, else the member's own `agentRoutes` entry. */
         let agentOptions: unknown = request.agentOptions
         if (agentOptions === undefined) {
           // A CALLER'S ROUTE IS NEVER SECOND-GUESSED: when `agentOptions` arrived it was already
-          // resolved by the spawner, so no slot read happens at all.
+          // resolved by the spawner, so no agent-route read happens at all.
           /** What this member's identity resolved to; the config read is per spawn, never cached. */
           const outcome = resolveTeamMemberRoute(
             { role: request.role, description: request.description, name: request.name },
-            configSlotResolver(),
+            configAgentRouteResolver(),
           )
           if (outcome.status === "routed") {
-            /** The slot's fallback chain consumed ONCE, then the winner's effort adapted. */
+            /** The agent's fallback chain consumed ONCE, then the winner's effort adapted. */
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks)
             agentOptions = resolved.route
           } else {
@@ -3728,7 +3936,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             // Omitting `agentOptions` is today's inheritance (the staging session's route).
             /** The one diagnostic sentence: every non-routed outcome names the member and why. */
             const line = outcome.status === "unusable"
-              ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}`
+              ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}`
               : outcome.status === "no-config-service"
                 ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)`
                 : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`
@@ -3743,6 +3951,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             prompt: textBlock(request.prompt),
             parent: caller,
             ...(agentOptions === undefined ? {} : { agentOptions }),
+            // FORWARDED ONLY WHEN SUPPLIED: an absent cap must stay ABSENT (never `undefined`), so
+            // the harness applies its own service default instead of a converted or guessed value.
+            ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),
           },
           signal: request.signal ?? neverAborted(),
         }
@@ -3751,8 +3962,16 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         /** The durable child id, or the empty string when the manager reported none. */
         const handle = String(started?.childId ?? started?.id ?? "")
         // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
-        // put a member on the roster that no later call could reach. It is refused here.
-        if (handle === "") throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`)
+        // put a member on the roster that no later call could reach. It is refused here — AFTER the
+        // activation is RELEASED: the harness counted that child the moment it started (the measured
+        // `subagent limit reached (active child limit: 8)` behind contract
+        // `.mpd/plans/agent-slot-hygiene.md`), so a refusal that walked away would leak exactly one
+        // slot per attempt. `dispose()` is the only release this adapter has, and it is the adapter's
+        // to call: the activation lives here, and no consumer may touch the subagents seam.
+        if (handle === "") {
+          await releaseActivation(started)
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`)
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description })
         return { handle, executor: "native" }
       },
@@ -3819,6 +4038,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (typeof teams.spawnTeammate !== "function") {
           throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member")
         }
+        // `request.maxDepth` is deliberately NOT forwarded: the official service owns its roster and
+        // exposes no per-call depth channel, so a supplied cap is IGNORED without throwing.
         /** The host's spawn answer, whose id is read from whichever field this version fills. */
         const spawned: any = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -4170,6 +4391,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── live-session plane ──────────────────────────────────────────────────
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -4607,7 +4829,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // ONE-SHOT (R2): the report is captured, so release the exact activation ONCE. This is
         // best-effort and cannot change the projection below; `startContinuableAgent` stays the
         // durable seam, so team continuity is untouched.
-        await disposeSettledConsult(activation)
+        await releaseActivation(activation)
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

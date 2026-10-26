@@ -238,6 +238,11 @@ const PLUGIN_PKGS: readonly string[] = [
   // listed here: `mpd-qa-roles-probe` is deliberately absent because it is QA-only
   // and mounted by an overlay, never by the shipped patch.
   "mpd-team-compact-plugin",
+  // mpd-cellwork-plugin is MOUNTED by the bundle patch (row `mpd-cellwork`): the `/cellwork` command,
+  // the dispatch-only captain guard and the cell record under `<workspace>/.mpd/cellwork/`. Listed for
+  // the reason every entry above is — a patch-mounted package missing here would be dropped from the
+  // packed tree while the pack still exited 0.
+  "mpd-cellwork-plugin",
   // mpd-team-core-plugin is MOUNTED by the bundle patch (row `mpd-team-core`): the
   // staged-plan / task-contract / halt workflow around the official team runtime.
   "mpd-team-core-plugin",

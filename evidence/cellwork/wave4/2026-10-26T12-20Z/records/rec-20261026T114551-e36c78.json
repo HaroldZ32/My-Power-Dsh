@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T114551-e36c78",
+  "loopId": "loop-20261026T105128-d3552b",
+  "taskId": "T6",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "render-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+      }
+    ],
+    "probe": []
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    {
+      "path": "docs/tui-dag-renderer.md",
+      "sha256": "645abce0a1b9c04e93ffa35b009cea63a37055f596054fa2ef9a52ba5ba9d857"
+    },
+    {
+      "path": "packages/mpd-tui-plugin/README.md",
+      "sha256": "eb6703170c57db04f3616c0321b12b8fd2ccf011811757ef4aa5af76c960e971"
+    },
+    {
+      "path": "packages/mpd-tui-plugin/README.zh-CN.md",
+      "sha256": "df1d565e30d70403cf5d08db5a7e915b5febbdaf7528468cda15ee906f2283a4"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T114440-318f87",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T114440-318f87.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T114441-0fa409",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T114441-0fa409.log",
+      "logSha256": "9aa9d0ac712be1e8cd2bd895f8ccc022ee583f45c74a89ca3be76f5e0132d5c5"
+    },
+    {
+      "evidenceId": "ev-20261026T114444-8cd371",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T114444-8cd371.log",
+      "logSha256": "0cc8acfbf28cc160bdcf1fb3a3c1088c382b429b290a8235d8c6ed7c74cd18e4"
+    },
+    {
+      "evidenceId": "ev-20261026T114448-0ebab5",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T114448-0ebab5.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "symptom": "`bun test packages` exits 1 on ONE arm: 'the cross-package coupling inventory is exactly the frozen set (independence gate)'. The diff names five T3-owned entries: UNFROZEN — `dag-groups.ts :: import type { GraphGroup } from mpd-graph-core/src/types.ts`, `dag-groups.ts :: import { rankPlan } from mpd-graph-core/src/rank.ts`, `graph.ts :: import type { GraphGroup, RankPlan } ...`, `panel-dag.ts :: import type { GraphGroup } ...`; and STALE — `graph.ts :: import type { RankPlan } ...` (the pre-wave entry no longer matches the widened import line). Observed 2617 pass / 6 skip / 1 fail / 2624 across 156 files. Every D3 claim itself is GREEN; the red is the wave's independence bookkeeping for D3's three files.",
+      "expected": "The frozen inventory must track reality (its own negative control reddens on a STALE entry for exactly this reason). Either reach the shared core through the registered service, or update the inventory DELIBERATELY with each of the five entries named and a one-line justification — an inventory edit is a design decision, not a greening trick (the repair's own rule, Amendment 9 R2).",
+      "docSource": ".mpd/plans/cellwork-w4-contract.md — 'Gates the verifier must run' (`bun test packages`), and the gate's own authority docs/independence.md (A1.3)"
+    }
+  ],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T11:45:51.593Z",
+  "notes": [
+    "BASIS: blind on src. I read the frozen contract (D3 + Amendments 7/8/9), docs/tui-dag-renderer.md, both mpd-tui-plugin README files, the writer's freeze mail, gate output and the BUILT dist; no packages/mpd-tui-plugin/src/** was read before this record.",
+    "SETTLED TREE: packages/mpd-tui-plugin, sha256 sandwich over the whole package — start == end (e1d70e18e3e88a9b92a8f913e19ba22bfbec688e2cdc6badc4c9c1b91a0c56c7) around a 50 s settle window; all 11 hashes the writer declared at 2026-10-26T11:34:46Z verified OK, including dist/index.js 684fa6f7… Evidence: evidence/cellwork/dag-groups/2026-10-26T11-40-29Z-T6/.",
+    "D3 CLAIMS I CONFIRMED MYSELF (not from the writer's report): TUI suite 609 pass / 1 skip / 0 fail across 24 files; the new test file carries 18 arms whose names map one-for-one onto D3's sentences (one-cell+disjoint family; double-line vs rounded; port vs crossing distinct; frame spans EVERY interior row; nested frame strictly inside its parent; unplaceable group collapsed not half box; outside dependency terminates with the port glyph and an arrow above it; a leaving dependency passes THROUGH with the crossing glyph; no-groups board draws the flat picture byte for byte; innermost-frame hit identity; task outranks its frame; click names the group; a cut frame loses its OWN cells only; wholly-inside/outside untouched; narrow panel falls back to rail/list and names every group collapsed; roomy panel draws boxes with no collapse; ungrouped board keeps the pre-group fallback). ARTIFACT-LEVEL (built dist/index.js 684fa6f7…): DAG_GROUP_CHARS holds 17 entries, every one a SINGLE code point (U+2550–U+256C), DISJOINT from the 16-entry node family (no shared glyph); both DAG_CHARS_ONE_CELL and DAG_GROUP_CHARS_ONE_CELL are computed per character; `collapsedGroups` is populated from the tree's refused set AND from the flat fallback; `halfGroupCells`, `hitTestGroup`, `groupId` all present in the bundle — so the comment-only 'built artifact carries it' risk is excluded.",
+    "INTEGRATION CHECK (2), the ghost-row hazard — VERIFIED IN THE BUILT DIST: `modelRows` skips every node whose `visual === GROUP_VISUAL ('group')`, sets `depth: rankOfNode(node)` and threads `node.group` through, so a group pseudo-node can never become a task row or inflate a count; the three `modelRows` call sites all inherit that filter.",
+    "INTEGRATION CHECK (1), within-frame depth — RESIDUAL, NOT A FINDING: the built `modelRanks` still returns ONE flat Map id→`rankOfNode(node)` over EVERY model node, i.e. an interior node's IN-FRAME column is handed to any flat consumer as if it were a global rank. Inside D3 this is within the declared bound (the rail/list mode NAMES collapsed groups instead of drawing them, and the boxed ladder routes a grouped model through dag-groups' per-frame layout), so I record it as a residual for T7/T10 rather than a T3 defect — but it is a landmine for any future flat consumer of `modelRanks`.",
+    "BOUNDS: I could not probe the layout API directly — the built dist exports only `Config`, `apply`, `createPlanActions`, `name`, `resolveConfig`, `workspaceResolver` — so the frame geometry, the port/crossing choice and the collapse ladder rest on the 18 arms plus the artifact greps above, not on my own re-derivation. No PTY capture was made and none is claimed by D3 (the writer declares the same bound). The live `/state` → panel path with real groups is D2's row (T5), so T6 is fixture-scope by construction.",
+    "DECLINED TO JUDGE: (a) the README enumerates the group family as the six double-line glyphs while the module carries 17 (ports/tees/crossings are named in the following bullets) — a documentation-completeness nit for T10, not a D3 behaviour defect; (b) 'a port landing on a title drops one title character' and 'the horizontal port pair / ╪ are declared but unread' — declared bounds, accepted as such; (c) the group-id/task-id collision now reported in `collapsedGroups` instead of refusing — D3's README declares it and the model's own refusal covers the authoring path, so the renderer's tolerance is correct; (d) whether the web plane can express the same frames — D4/T8's subject."
+  ]
+}

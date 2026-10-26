@@ -8,20 +8,20 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 /**
- * A `mpdConfig`-shaped double that routes every base roster member to its SHIPPED chain head.
+ * A `mpdConfig`-shaped double that routes every base roster agent to its SHIPPED chain head.
  *
- * The slot-single-source contract deletes the static-chain fallback for roster members, so a row with
- * no config service refuses every base spawn (asserted in `team-models-routing.test.ts`). These arms
- * are about labels, personas and deny lists, not routing, so they mount the slot system configured to
- * the declared route and keep that property out of the way.
- * @returns the service double the roster row reads for a member's route.
+ * The per-agent routes contract deletes the static-chain fallback for roster agents, so a row with no
+ * config service refuses every base spawn (asserted in `agent-routes-routing.test.ts`). These arms are
+ * about labels, personas and deny lists, not routing, so they mount the agent routes configured to the
+ * declared route and keep that property out of the way.
+ * @returns the service double the roster row reads for an agent's route.
  */
-function configDouble(): { teamModelRouteOf: (member: string) => { provider: string; model: string } | undefined } {
+function configDouble(): { agentRouteResolutionOf: (member: string) => { ok: true; agent: string; route: { provider: string; model: string } } | { ok: false; reason: "unrouted" } } {
   return {
-    teamModelRouteOf: (member: string) => {
-      /** The roster entry this name resolves to, when it is a base member. */
+    agentRouteResolutionOf: (member: string) => {
+      /** The roster entry this name resolves to, when it is a base agent. */
       const role = ROLES.find((r) => r.name === member)
-      return role === undefined ? undefined : { ...role.chain[0] }
+      return role === undefined ? { ok: false, reason: "unrouted" } : { ok: true, agent: role.name, route: { ...role.chain[0] } }
     },
   }
 }
@@ -244,12 +244,12 @@ test("the tool descriptions name the mpd team door, never the refused official p
   expect(list.description).toContain("dependency answer")
   expect(spawn.description).toContain("agent_teams_plan")
   expect(spawn.description).toContain("`agent_teams_task`/`agent_teams_dispatch`")
-  // THE MODEL-ROUTE SENTENCE IS THE CONTRACT (2026-10-24). The old claim — a team teammate
+  // THE MODEL-ROUTE SENTENCE IS THE CONTRACT (2026-10-26). The old claim — a team teammate
   // "inherits the caller's model route" — became FALSE once the team executor resolved a staged
-  // member's `teamModels` slot. What is true: THIS path applies the role's slot, a staged member is
-  // routed the same way by the team executor (`role` first, then the description's head), and ONLY
-  // an unmatched member inherits the staging session's route.
-  expect(spawn.description).toContain("THIS path applies the role's `teamModels` slot")
+  // agent's OWN `agentRoutes` entry. What is true: THIS path applies the role's own entry, a staged
+  // member is routed the same way by the team executor (`role` first, then the description's head),
+  // and ONLY an unmatched member inherits the staging session's route.
+  expect(spawn.description).toContain("THIS path applies the role's own `agentRoutes` entry")
   expect(spawn.description).toContain("routed the same way by the team executor")
   expect(spawn.description).toContain("its `role` first, then its `description` head")
   expect(spawn.description).toContain("only an UNMATCHED member inherits the staging session's route")

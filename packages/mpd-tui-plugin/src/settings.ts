@@ -14,7 +14,7 @@
 // LIVE REFRESH, PER KNOB GROUP (D-18, audit wave 2026-10-25): the config row arms a file
 // watcher at mount AND subscribes to the entry-config document, so its `state` re-resolves on
 // every settings save and on a watched edit of the project file. WHICH knobs that reaches in a
-// RUNNING process is NOT blanket: the model routes this section edits (`teamModels`,
+// RUNNING process is NOT blanket: the model routes this section edits (`agentRoutes`,
 // `modelchain`), `team.stateDir`, `team.gate`/`team.sensitivity`, `captain.investigation` and
 // `delegation.gate` are read PER USE, so the next spawn or guarded call carries them;
 // `tui.dashboardKey` is live one way (false disables at once). `watchdog.*` is the EXCEPTION and is
@@ -26,10 +26,10 @@
 // `BRIDGE_RESTART_LIMIT` names, and SECTION_NOTICE below renders BOTH halves.
 //
 // SEE BEFORE YOU EDIT (R3): the section's own description carries
-// `effectiveModelSummary` — the four effective slot routes and the configured
+// `effectiveModelSummary` — the eleven agents' effective routes and the configured
 // `modelchain` chains — read from the `mpdConfig` service AT SECTION-REQUEST TIME,
-// so every `/settings` open shows the effective config as of now. The per-member
-// `agentRoutes` half is DELETED with the layer (slot-single-source §3).
+// so every `/settings` open shows the effective config as of now. The unit of a model
+// route is the AGENT (`agentRoutes.<Agent>`); the four groups are a DISPLAY grouping only.
 //
 // The disclosure is not only in this header and the READMEs — it is carried by
 // the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key, and
@@ -44,7 +44,7 @@ import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, T
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, ROSTER_AGENT_NAMES, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
 
 // RE-EXPORTED so this row marks its OWN config volatile WITHOUT adding a second cross-package import
 // edge (the coupling inventory pins ONE edge per file, and it may only shrink).
@@ -56,6 +56,15 @@ import { stripControl } from "./sanitize.js"
 import { serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 
 export { SETTINGS_NS }
+
+/**
+ * One declared knob row, as the shared declaration types it.
+ *
+ * Named LOCALLY on purpose: the row type is derived from the `SETTINGS_KNOBS` this file already imports,
+ * so the package needs no second `import type` line from `mpd-config-plugin` — the cross-package coupling
+ * inventory (which may only shrink) counts import LINES, and a derived alias costs none.
+ */
+type SettingsKnobRow = (typeof SETTINGS_KNOBS)[number]
 
 /**
  * The ROW ID the harness's settings machinery serves the mpd knobs under: the loader gives the row
@@ -111,23 +120,37 @@ function knobHint(key: string, semantics?: string): string {
  * pointer or the human sentence the EN one carries — it differs only in the language of the
  * sentence, which the shared schema declares twice (`semantics` / `semanticsZh`).
  */
-function knobHintPair(knob: (typeof SETTINGS_KNOBS)[number]): { zh: string; en: string } {
+function knobHintPair(knob: SettingsKnobRow): { zh: string; en: string } {
   /** The dotted key both halves point at. */
   const key = knob.path.join(".")
   return { zh: knobHint(key, knob.semanticsZh), en: knobHint(key, knob.semantics) }
 }
 
-// ── the twelve team-model slot knobs: a SELECT with a live option list (A4) ─────
+// ── the per-agent route knobs: a SELECT with a live option list (A4) ────────────
 // The host renders `kind: "select"` by CYCLING a frozen option list — it deep-freezes the
-// options at registration and offers no pick-list dialog — so a slot leaf must be
+// options at registration and offers no pick-list dialog — so a route leaf must be
 // registered with the list it should offer, and that list must never be empty (an empty
-// list would leave a slot settable only by typing, which this front door does not allow).
+// list would leave the leaf settable only by typing, which this front door does not allow).
 // The list is therefore projected from the adapter's live model catalog BEFORE register.
+// The route table itself is keyed by AGENT (`agentRoutes.<Agent>.<leaf>`); the four groups are a
+// DISPLAY grouping of the eleven agents and store nothing of their own.
 
-/** The leaf names of one slot knob, in the schema's path order (`teamModels.<slot>.<leaf>`). */
+/** The settings path prefix of every per-agent route entry. */
+export const AGENT_ROUTES_PREFIX = "agentRoutes"
+
+/** The leaf names of one route entry, in the schema's path order (`agentRoutes.<Agent>.<leaf>`). */
 const TEAM_MODEL_LEAVES = ["provider", "model", "reasoningEffort"] as const
-/** The three leaf names of a team-model slot, in schema path order. */
+/** The three leaf names of one route entry, in schema path order. */
 export type TeamModelLeaf = (typeof TEAM_MODEL_LEAVES)[number]
+
+/**
+ * The eleven roster members, in the four groups' own order.
+ *
+ * The shared declaration's OWN list (`ROSTER_AGENT_NAMES`), re-exported under this surface's name, so
+ * the section rows, the `/mpd-model` panels and the migration cannot disagree about who the agents are
+ * and no second derivation of the roster exists.
+ */
+export const AGENT_ROUTE_MEMBERS: readonly string[] = ROSTER_AGENT_NAMES
 
 /** One rendered option: the RAW id the settings document stores, plus its display label. */
 export interface SettingsOption {
@@ -143,7 +166,7 @@ export interface SettingsOption {
  */
 export type SlotOptionSource = "live" | "declared"
 
-/** The three derived option lists the twelve slot knobs are registered with, plus their source. */
+/** The three derived option lists the per-agent route leaves are registered with, plus their source. */
 export interface TeamModelOptionLists {
   /** Provider options: the catalog's provider ids, else the declared list. */
   provider: SettingsOption[]
@@ -180,7 +203,7 @@ function optionLabel(name: unknown, id: string): string {
 }
 
 /**
- * Project the adapter catalog into the option lists of the twelve slot knobs (A4).
+ * Project the adapter catalog into the option lists of the per-agent route leaves (A4).
  *
  * LIVE: provider ids (label = the catalog's provider NAME), the UNION of every provider's
  * model ids (label = the model name), the UNION of every model's effort ids (label = the
@@ -238,14 +261,6 @@ export function teamModelOptionLists(catalog: DshLlmCatalog | undefined): TeamMo
   }
 }
 
-/** The slot leaf a knob path addresses, or undefined for one of the other thirteen knobs. */
-function slotLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
-  if (path[0] !== "teamModels") return undefined
-  /** The path's leaf segment, matched against the three known names. */
-  const leaf = path[2]
-  return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf)
-}
-
 /**
  * Is the namespace already served? Probed through the provider's own read surface: `describe()`
  * is the documented way to enumerate served namespaces, with `get()` as the fallback for a
@@ -278,53 +293,53 @@ function configPluginPresent(ctx: PluginContextLike): boolean {
 }
 
 /**
- * The `mpdConfig` surface the DISPLAY paths read: the raw keyed read plus the typed slot answer.
+ * The `mpdConfig` surface the DISPLAY paths read: the raw keyed read plus the typed agent-route answer.
  *
  * Both members are optional because the service is resolved from a foreign context: an older
  * composition may carry only `get` (the raw config) and a unit double may carry only one of them.
  */
-export interface MpdConfigReadLike extends SlotResolutionServiceLike {
-  /** The raw keyed config read (`teamModels`, `modelchain`, …). */
+export interface MpdConfigReadLike extends AgentRouteServiceLike {
+  /** The raw keyed config read (`agentRoutes`, `modelchain`, …). */
   get?(key?: string): unknown
 }
 
 /**
- * The typed answer a slot-configuration read gives (contract AMENDMENT 1).
+ * The typed answer an agent-route read gives (contract §2).
  *
- * `ok` carries the route and how many fallbacks the slot declares; `unconfigured` names the missing
+ * `ok` carries the route and how many fallbacks the entry declares; `unconfigured` names the missing
  * leaves; `invalid` is the service's own reject verdict; `unavailable` means the service cannot answer
  * at all (not composed, method absent, or an unreadable value) — the state a DISPLAY renders as
  * `<unavailable>` instead of inventing a route.
  */
-export type SlotResolutionDisplay =
+export type AgentRouteDisplay =
   | { state: "ok"; route: string; fallbacks: number }
   | { state: "unconfigured"; missing: string[] }
   | { state: "invalid" }
   | { state: "unavailable" }
 
-/** The minimal config-service slice a slot display needs; `slotResolutionOf` is the whole of it. */
-export interface SlotResolutionServiceLike {
-  /** The member's typed slot answer; absent on a composition that predates the amendment. */
-  slotResolutionOf?(member: string): unknown
+/** The minimal config-service slice an agent-route display needs; `agentRouteResolutionOf` is the whole of it. */
+export interface AgentRouteServiceLike {
+  /** The member's typed route answer; absent on a composition that does not serve routes yet. */
+  agentRouteResolutionOf?(member: string): unknown
 }
 
 /**
- * Read one member's slot configuration into the DISPLAY shape, never throwing.
+ * Read one member's agent route into the DISPLAY shape, never throwing.
  *
  * THE SERVICE'S ANSWER IS NARROWED, NOT TRUSTED: a partial or older service may answer `undefined`, a
  * bare route object or a different union, and the display must degrade rather than crash a dialog. An
  * absent method — or a value that is none of the declared shapes — answers `unavailable`, which is the
  * token the reader sees; a declared `ok:false` with `reason: "unconfigured"` answers `unconfigured`.
  * @param service - the config service slice, or undefined when no config row is composed.
- * @param member - the roster member whose slot is asked about (the amendment's argument).
+ * @param member - the roster member whose route is asked about.
  * @returns the typed display answer.
  */
-export function slotResolutionDisplay(service: SlotResolutionServiceLike | undefined, member: string): SlotResolutionDisplay {
-  if (service === undefined || service === null || typeof service.slotResolutionOf !== "function") return { state: "unavailable" }
+export function agentRouteDisplay(service: AgentRouteServiceLike | undefined, member: string): AgentRouteDisplay {
+  if (service === undefined || service === null || typeof service.agentRouteResolutionOf !== "function") return { state: "unavailable" }
   /** The service's raw answer; a throw is the same fact as an absent answer for a display. */
   let raw: unknown
   try {
-    raw = service.slotResolutionOf(member)
+    raw = service.agentRouteResolutionOf(member)
   } catch {
     return { state: "unavailable" }
   }
@@ -334,7 +349,7 @@ export function slotResolutionDisplay(service: SlotResolutionServiceLike | undef
     const route = raw.route
     if (!isPlainTable(route) || typeof route.provider !== "string" || typeof route.model !== "string") return { state: "invalid" }
     // The effort is optional in the route; the fallback count is reported so a reader can tell a
-    // single-route slot from one carrying backups.
+    // single-route agent from one carrying backups.
     /** The effort fragment, when the route declares one. */
     const effort = typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? ` / ${route.reasoningEffort}` : ""
     // THE ROUTE IS CONFIGURATION, NOT TRUSTED TEXT (CodeRabbit #14): every component comes from
@@ -346,16 +361,15 @@ export function slotResolutionDisplay(service: SlotResolutionServiceLike | undef
     return {
       state: "ok",
       route: routeText,
-      fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks.length : 0,
+      fallbacks: Array.isArray(route.fallbacks) ? route.fallbacks.length : 0,
     }
   }
   if (raw.ok === false) {
-    // THE SERVICE'S OWN DISCRIMINANT IS `status` (contract amendment 1: `unconfigured` | `invalid` |
-    // `unrouted`), not a generic reason. `unrouted` means no slot decides this member — for a display
-    // that is not an unconfigured SLOT, so it degrades to `<unavailable>` rather than claiming a slot
-    // the roster does not route.
-    if (raw.status === "invalid") return { state: "invalid" }
-    if (raw.status !== "unconfigured") return { state: "unavailable" }
+    // THE SERVICE'S OWN DISCRIMINANT IS `reason` (contract §2: `unconfigured` | `invalid` | `unrouted`).
+    // `unrouted` means no key decides this member — for a display that is not an unconfigured AGENT, so
+    // it degrades to `<unavailable>` rather than claiming a route the roster does not carry.
+    if (raw.reason === "invalid") return { state: "invalid" }
+    if (raw.reason !== "unconfigured") return { state: "unavailable" }
     // The missing leaves are REPORTED by the service; a value that carries none still says
     // `unconfigured`, with an empty list rather than an invented one.
     return {
@@ -397,13 +411,15 @@ function summaryLeaf(block: unknown, leaf: string): string {
 
 /**
  * The SEE-BEFORE-YOU-EDIT summary (R3): the current effective model config in one bounded line per
- * language — the four slot routes and the configured `modelchain` chains.
+ * language — the eleven AGENT routes and the configured `modelchain` chains.
  *
- * THE PER-MEMBER OVERRIDE HALF IS GONE (`.mpd/plans/slot-single-source.md` §3): `agentRoutes` is
- * deleted, so a summary that still printed it would advertise a layer no spawn reads. A slot the
- * service reports as `unconfigured` prints the literal `<unconfigured>`; a composition whose service
- * predates the typed read falls back to the RAW stored leaves, and a raw block with neither provider
- * nor model is reported as `<unconfigured>` too — never as an invented route, and never as a throw.
+ * THE UNIT IS THE AGENT (contract §1): a route lives at `agentRoutes.<Agent>`, so the summary counts
+ * how many of the eleven agents resolve and names the ones that do not. An agent the service reports
+ * as `unconfigured` prints the literal `<unconfigured>`; a composition whose service has no typed read
+ * falls back to the RAW stored leaves, and a raw entry with neither provider nor model is reported as
+ * `<unconfigured>` too — never as an invented route, and never as a throw. The line stays BOUNDED (it
+ * rides the section's description): the distinct routes and the unconfigured names are capped, with an
+ * explicit `+N` marker rather than a silently truncated list.
  * @param config - the `mpdConfig` service double, or undefined when no config row is composed.
  * @returns the `{ en, zh }` pair the section's description carries; an explicit unavailability
  *   sentence when the service is absent.
@@ -415,37 +431,52 @@ export function effectiveModelSummary(config: MpdConfigReadLike | undefined): { 
       zh: "生效值不可用（该组合没有 mpdConfig 服务）",
     }
   }
-  /** The slot routes, one fragment per slot in slot order. */
-  const slotFragments: string[] = []
+  /** How many DISTINCT routes the summary prints before it collapses the rest into a count. */
+  const MAX_ROUTES = 3
+  /** How many unconfigured agents the summary names before it collapses the rest into a count. */
+  const MAX_AGENTS = 4
+  /** The distinct effective routes, in roster order. */
+  const routeTexts: string[] = []
+  /** The members with no usable route right now, in roster order. */
+  const unconfiguredAgents: string[] = []
+  /** Whether the route read THREW, so the summary states that instead of inventing a count. */
+  let readFailed = false
   try {
-    /** The four slot blocks, read RAW: the schema layer above them is gone with the default layer. */
-    const slots = config.get("teamModels")
-    for (const slot of TEAM_MODEL_SLOTS) {
-      /** The first member of the slot's group; the typed read is addressed by MEMBER (amendment 1). */
-      const member = TEAM_MODEL_SLOT_GROUPS[slot].members[0] ?? ""
-      /** This slot's typed answer; `unavailable` when the service has no typed read. */
-      const display = slotResolutionDisplay(config, member)
+    /** The raw route table, read ONCE: the fallback for a composition without the typed read. */
+    const table = config.get(AGENT_ROUTES_PREFIX)
+    for (const member of AGENT_ROUTE_MEMBERS) {
+      /** This agent's typed answer; `unavailable` when the service has no typed read. */
+      const display = agentRouteDisplay(config, member)
       if (display.state === "ok") {
-        slotFragments.push(`${slot}:${display.route}`)
+        if (!routeTexts.includes(display.route)) routeTexts.push(display.route)
         continue
       }
-      if (display.state !== "unavailable") {
-        slotFragments.push(`${slot}:<${display.state}>`)
-        continue
+      if (display.state === "unavailable" && isPlainTable(table)) {
+        // The RAW stored entry, as the older-composition fallback. BOTH LEAVES EMPTY IS THE
+        // UNCONFIGURED STATE (the migration writes a full triple or nothing), so such an entry counts
+        // as unconfigured instead of rendering a `//`-looking empty route.
+        /** This agent's raw entry. */
+        const entry = table[member]
+        /** The raw provider leaf. */
+        const provider = summaryLeaf(entry, "provider")
+        /** The raw model leaf. */
+        const model = summaryLeaf(entry, "model")
+        if (provider !== "" && model !== "") {
+          /** The raw route sentence this entry spells. */
+          const rawRoute = `${provider} / ${model}${summaryLeaf(entry, "reasoningEffort") === "" ? "" : ` / ${summaryLeaf(entry, "reasoningEffort")}`}`
+          if (!routeTexts.includes(rawRoute)) routeTexts.push(rawRoute)
+          continue
+        }
       }
-      /** This slot's RAW stored block, the fallback for an older composition. */
-      const block = isPlainTable(slots) ? slots[slot] : undefined
-      /** The raw provider leaf. */
-      const provider = summaryLeaf(block, "provider")
-      /** The raw model leaf. */
-      const model = summaryLeaf(block, "model")
-      // BOTH LEAVES EMPTY IS THE UNCONFIGURED STATE (the seed writes a full triple or nothing), so the
-      // summary prints the contract's own token instead of a `//`-looking empty route.
-      slotFragments.push(provider === "" && model === "" ? `${slot}:<unconfigured>` : `${slot}:${provider}/${model}/${summaryLeaf(block, "reasoningEffort") || "-"}`)
+      unconfiguredAgents.push(member)
     }
   } catch {
-    // An unreadable slot half renders as an explicit gap rather than a wrong route.
-    slotFragments.length = 0
+    // An unreadable route table renders as an explicit GAP rather than a wrong route — and rather
+    // than a fabricated `11/11 configured`: every list this loop filled is discarded, and the
+    // flag is what the sentence reads, so a throwing service cannot read as a fully routed roster.
+    readFailed = true
+    routeTexts.length = 0
+    unconfiguredAgents.length = 0
   }
   /** The configured chains as `key→provider/model` fragments (the first hop, plus a +N marker). */
   const chainFragments: string[] = []
@@ -463,24 +494,38 @@ export function effectiveModelSummary(config: MpdConfigReadLike | undefined): { 
   } catch {
     // An unreadable chains half renders as none-configured rather than as a wrong claim.
   }
-  /** The slot half of the sentence; an explicit gap when the read failed. */
-  const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable"
+  /** The configured count; ZERO when the read threw, because nothing was actually decided. */
+  const configured = readFailed ? 0 : AGENT_ROUTE_MEMBERS.length - unconfiguredAgents.length
+  /** The agents half of the sentence: the count, the distinct routes, then who is unconfigured. */
+  const agentsText = readFailed
+    ? "agent routes unreadable (the config read threw)"
+    : `agents ${String(configured)}/${String(AGENT_ROUTE_MEMBERS.length)} configured`
+      + (routeTexts.length > 0
+        ? ` · routes ${routeTexts.slice(0, MAX_ROUTES).join(" · ")}${routeTexts.length > MAX_ROUTES ? ` (+${String(routeTexts.length - MAX_ROUTES)} more)` : ""}`
+        : "")
+      + (unconfiguredAgents.length > 0
+        ? ` · <unconfigured> ${unconfiguredAgents.slice(0, MAX_AGENTS).join(", ")}${unconfiguredAgents.length > MAX_AGENTS ? ` (+${String(unconfiguredAgents.length - MAX_AGENTS)} more)` : ""}`
+        : "")
+  /** The zh agents half, with the same unreadable branch so neither language can invent a count. */
+  const agentsTextZh = readFailed
+    ? "代理路由不可读（配置读取抛错）"
+    : `代理 ${String(configured)}/${String(AGENT_ROUTE_MEMBERS.length)} 已配置${routeTexts.length > 0 ? ` · 路由 ${routeTexts.slice(0, MAX_ROUTES).join(" · ")}${routeTexts.length > MAX_ROUTES ? `（另有 ${String(routeTexts.length - MAX_ROUTES)} 条）` : ""}` : ""}${unconfiguredAgents.length > 0 ? ` · <unconfigured> ${unconfiguredAgents.slice(0, MAX_AGENTS).join("、")}${unconfiguredAgents.length > MAX_AGENTS ? `（另有 ${String(unconfiguredAgents.length - MAX_AGENTS)} 位）` : ""}` : ""}`
   /** The chains half of the sentence. */
   const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured"
   return {
-    en: `effective now — ${slotsText}; modelchain: ${chainsText}`,
-    zh: `当前生效 —— ${slotsText}；modelchain：${chainsText}`,
+    en: `effective now — ${agentsText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${agentsTextZh}；modelchain：${chainsText}`,
   }
 }
 
 /**
  * One knob's field metadata with its DECLARED options (the shared schema's lists).
  *
- * Every field is built here, so the thirteen non-slot knobs keep their paths, kinds and
+ * Every field is built here, so the thirteen non-route knobs keep their paths, kinds and
  * labels byte-for-byte whatever the catalog says, and `SETTINGS_FIELDS` (the declared
  * baseline this package exports) and the registered section cannot drift apart.
  */
-function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldLike {
+function declaredField(knob: SettingsKnobRow): TuiSettingsFieldLike {
   /** The localized hint pair; the host resolves it per render (its own `pick()`, measured). */
   const hints = knobHintPair(knob)
   return {
@@ -561,39 +606,104 @@ export function wheelInvertFrom(config: unknown, floor: boolean): boolean {
   return typeof leaf === "boolean" ? leaf : floor
 }
 
-/** The declared field list: every knob with its declared options (the pre-catalog baseline). */
-export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.map(declaredField)
+/** The RETIRED settings path prefix of the big-slot block; no row of this section edits it any more. */
+const TEAM_MODELS_PREFIX = "teamModels"
 
 /**
- * The field list the section is REGISTERED with: {@link declaredField} for every knob,
- * with the three leaves of each team-model slot replaced by {@link teamModelOptionLists}. A slot
- * field is therefore always a `select` with a non-empty option list.
+ * The declared field list: every knob with its declared options (the pre-catalog baseline).
  *
- * THE `agentRoutes` ROW FAMILY IS GONE: the per-member override layer is deleted by
- * `.mpd/plans/slot-single-source.md` §3, so the shared knob declaration no longer carries those
- * paths and this builder has no route family to match besides `teamModels`.
+ * Built through {@link settingsFields} so the baseline carries the SAME per-agent route rows the
+ * registered section renders — only the option lists differ (declared instead of catalog-derived) and
+ * the current-state sentence is absent (no config service is read here).
  */
-export function settingsFields(lists: TeamModelOptionLists): readonly TuiSettingsFieldLike[] {
-  return SETTINGS_KNOBS.map((knob) => {
-    /** The slot leaf this knob addresses, undefined for the non-route knobs. */
-    const leaf = slotLeafOf(knob.path)
-    /** The knob's declared field, before any route options are applied. */
+export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = settingsFields(teamModelOptionLists(undefined))
+
+/** The route leaf a knob path addresses under `agentRoutes.<Agent>.<leaf>`, or undefined for any other knob. */
+function agentRouteLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
+  if (path[0] !== AGENT_ROUTES_PREFIX || path.length !== 3) return undefined
+  /** The path's leaf segment, matched against the three known names. */
+  const leaf = path[2]
+  return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf)
+}
+
+/**
+ * The CURRENT-STATE sentence of one agent, for its rows' hints (see-before-you-edit at the row).
+ *
+ * An agent with no usable route reads `<unconfigured>` WITH its missing leaves, so a reader can fix
+ * the right thing instead of facing a blank row; `invalid` (a malformed leaf) and `unavailable` (no
+ * typed read in this composition) are their own tokens, never an invented route.
+ * @param member - the roster member the sentence is about.
+ * @param service - the config service slice, or undefined when no typed read is composed.
+ * @returns the sentence pair the hint appends.
+ */
+function currentStatePair(member: string, service: AgentRouteServiceLike | undefined): { en: string; zh: string } {
+  /** This agent's typed answer; `unavailable` when the composition serves no typed read. */
+  const display = agentRouteDisplay(service, member)
+  if (display.state === "ok") return { en: `current: ${display.route}`, zh: `当前：${display.route}` }
+  if (display.state === "invalid") return { en: "current: <invalid>", zh: "当前：<invalid>" }
+  if (display.state === "unconfigured") {
+    /** The reported missing leaves, when the service names any. */
+    const missing = display.missing.length > 0 ? ` (missing: ${display.missing.join(", ")})` : ""
+    return { en: `current: <unconfigured>${missing}`, zh: `当前：<unconfigured>${missing}` }
+  }
+  return { en: "current: <unavailable>", zh: "当前：<unavailable>" }
+}
+
+/**
+ * The field list the section is REGISTERED with: the shared knobs, with every per-agent route leaf
+ * carrying the catalog-derived option list and its agent's CURRENT state.
+ *
+ * THE ROUTE FAMILY IS PER-AGENT (contract §7): the shared declaration carries
+ * `agentRoutes.<Agent>.<leaf>` knobs in the four groups' order — that order IS the display grouping —
+ * and this builder renders ONE ROW PER AGENT LEAF from them. The retired `teamModels.<slot>` rows are
+ * DROPPED: a slot is not a persisted unit any more, so a row that still edited one would write a block
+ * nothing reads. Every route row is a `select` with a non-empty option list
+ * ({@link teamModelOptionLists}), so no leaf ever needs typing.
+ * @param lists - the catalog-derived option lists, one per leaf.
+ * @param service - the config service slice the rows' current-state sentence reads; optional.
+ * @returns the section's fields, in the shared declaration's order.
+ */
+export function settingsFields(lists: TeamModelOptionLists, service?: AgentRouteServiceLike): readonly TuiSettingsFieldLike[] {
+  /** The rows the section renders, in the shared declaration's order. */
+  const out: TuiSettingsFieldLike[] = []
+  for (const knob of SETTINGS_KNOBS) {
+    // The retired big-slot block: no row of this section edits it (contract §1).
+    if (knob.path[0] === TEAM_MODELS_PREFIX) continue
+    /** The knob's declared field, before the leaf's options and the current-state sentence are applied. */
     const field = declaredField(knob)
-    return leaf === undefined ? field : { ...field, options: lists[leaf] }
-  })
+    /** The agent this knob's path addresses, undefined for a non-route knob. */
+    const agent = knob.path[0] === AGENT_ROUTES_PREFIX && knob.path.length === 3 ? knob.path[1] : undefined
+    /** The route leaf this knob's path addresses. */
+    const leaf = agentRouteLeafOf(knob.path)
+    if (agent === undefined || leaf === undefined) {
+      out.push(field)
+      continue
+    }
+    /** This agent's current-state sentence, in both languages. */
+    const current = currentStatePair(agent, service)
+    out.push({
+      ...field,
+      options: lists[leaf],
+      // The current state rides EVERY leaf row of the agent: whichever row a reader lands on, the
+      // agent's route — or its `<unconfigured>` token with the missing leaves — is right there.
+      hint: `${field.hint ?? ""} · ${current.en}`,
+      hintDescriptions: { zh: `${field.hintDescriptions?.zh ?? field.hint ?? ""} · ${current.zh}` },
+    })
+  }
+  return out
 }
 
 /**
  * The section this plugin declares.
  *
  * Every `hint` is built by {@link knobHint} and names its mpd.jsonc key; the user reading
- * `/settings` learns at the point of use what an edit writes. The twelve team-model slot hints
+ * `/settings` learns at the point of use what an edit writes. The per-agent route hints
  * LEAD with the knob's own human sentence from the shared declaration (`knob.semantics`); the
  * label carries the group name. The long disclosure
  * is stated ONCE by the section's own description (which also carries the R3 effective summary at
  * registration time), never per row.
  *
- * This is the DECLARED shape (cloned per registration, with the slot options replaced by
+ * This is the DECLARED shape (cloned per registration, with the route options replaced by
  * the catalog projection). It is exported so the declared baseline stays inspectable.
  */
 /**
@@ -604,7 +714,7 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  */
 export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`
 
-/** The declared section shape: cloned per registration, with the slot options replaced by the catalog projection. */
+/** The declared section shape: cloned per registration, with the route options replaced by the catalog projection. */
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {
   // THE SECTION IS KEYED BY THE ENTRY, not by the namespace.
   //
@@ -677,7 +787,7 @@ export function registerSettingsSection(
   let namespace: { state: SeamState; detail?: string } = { state: "absent", detail: "settings was not injected" }
   /** The section result this file measured; `undefined` until a path decides it. */
   let section: { state: SeamState; detail?: string } | undefined
-  /** The adapter whose `llmCatalog()` supplies the slot options. */
+  /** The adapter whose `llmCatalog()` supplies the route options. */
   const catalogReader = adapterOverride ?? resolveCatalogReader(ctx)
 
   // 1) Namespace: a GUARDED FALLBACK (design §10.1). `mpd-config-plugin` owns the registration,
@@ -723,7 +833,7 @@ export function registerSettingsSection(
     if (namespace.state === "refused") log.warn(`settings namespace ${SETTINGS_NS} not registered: ${namespace.detail ?? ""}`)
   })
 
-  // 2) Section: the mpd.jsonc fields. The twelve team-model slot knobs carry CATALOG-DERIVED
+  // 2) Section: the mpd.jsonc fields. The per-agent route leaves carry CATALOG-DERIVED
   //    options, and the host DEEP-FREEZES the option list at register time (it renders
   //    `select` by cycling that frozen list) — so the catalog is read BEFORE register, and
   //    because that read is async the registration is deferred by one microtask chain
@@ -736,7 +846,7 @@ export function registerSettingsSection(
   //    racing the frozen option list; this file still owns WHAT the section says.
   /** The section seam handle; its id is the adapter's, so this file names no seam. */
   const sectionHandle = tui.registerSettingsSection(async (): Promise<TuiSettingsSectionLike> => {
-    /** The catalog the slot options are derived from; undefined means the declared fallback. */
+    /** The catalog the route options are derived from; undefined means the declared fallback. */
     let catalog: DshLlmCatalog | undefined
     try {
       catalog = await catalogReader.llmCatalog?.()
@@ -752,14 +862,14 @@ export function registerSettingsSection(
     /** The effective-model-config summary carried by this request's section description. */
     const summary = effectiveModelSummary(configServiceOf(ctx))
     // The A4 measurement line: WHICH branch produced each leaf's option list.
-    log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
+    log.info(`settings section ${SETTINGS_NS} route options: provider=${lists.source.provider}(${lists.provider.length})`
       + ` model=${lists.source.model}(${lists.model.length})`
       + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
       + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
-    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
+    section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; route options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
     return {
       ...SETTINGS_SECTION,
-      fields: settingsFields(lists),
+      fields: settingsFields(lists, configServiceOf(ctx)),
       // The section's own description: the disclosure BOTH front doors state, PLUS the effective
       // summary — the one prose surface a TUI section has, so it is where R3's values render.
       descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE} · ${summary.zh}`, en: `MPD bundle · ${SECTION_NOTICE} · ${summary.en}` },

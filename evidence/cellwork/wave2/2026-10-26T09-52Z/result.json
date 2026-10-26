@@ -1,0 +1,136 @@
+{
+  "kind": "wave-result",
+  "wave": "cellwork-wave2",
+  "capturedAt": "2026-10-26T09:55:00Z",
+  "branch": "feature/cellwork",
+  "commits": {
+    "feature": "78cb08a3",
+    "evidence": "see the follow-up evidence commit"
+  },
+  "scope": {
+    "package": "packages/mpd-cellwork-plugin (12 src modules, 3 test files, bilingual README pair, dist)",
+    "wiring": "cordis.patch.yml row + scripts/install-profile.ts rows[] + scripts/pack-mpd.ts PLUGIN_PKGS + bun.lock",
+    "lanes": [
+      "T1/T7: command, dispatch-only guard, cell state, start/status/stop, row wiring",
+      "T2: planner+splitter staging, Socratic relay, recon, measured splitter, activate",
+      "T3: checkpoint->handoff->compaction->promotion->subteam, dispatch/supervise, durable cell mail"
+    ]
+  },
+  "gates": {
+    "packageTests": "41 pass / 0 fail / 473 expect calls",
+    "aggregateTests": "2564 tests / 153 files / 0 fail / 6 skip",
+    "typecheck": "exit 0",
+    "comments": "PASS (467 files / 41670 declarations)",
+    "docsParity": "pairs=51 dead=0",
+    "rows": "37 row ids incl mpd-cellwork",
+    "manifest": "PASS (row module paths resolve; packed content complete)",
+    "distFresh": "34/34 fresh incl packages/mpd-cellwork-plugin/dist/index.js (pinned bun 1.4.0)",
+    "noHostOverride": "exit 0",
+    "installProfileDryRun": "exit 0 with the row present",
+    "forbiddenLiterals": "1_000_000 / 262144 in the package: 0 hits",
+    "packClosure": "RED by design: PACKED-MISSING [mpd-cellwork-plugin] until the Wave-5 re-pack (T-88 integration)"
+  },
+  "verdicts": [
+    {
+      "task": "T4",
+      "items": "B1/B2/B3/B10 (Amendment 4)",
+      "record": "rec-20261026T092447-74d274",
+      "loop": "loop-20261026T082258-e86c3a",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T091058-07eec2", "ev-20261026T091059-b3948e", "ev-20261026T091101-d6725d", "ev-20261026T091101-b8ad0c", "ev-20261026T091106-13e309", "ev-20261026T091136-38d716", "ev-20261026T091139-d30b9a"]
+    },
+    {
+      "task": "T5",
+      "items": "B4/B5/B6/B7 (Amendments 3+4)",
+      "record": "rec-20261026T093726-e2b526",
+      "loop": "loop-20261026T082258-5986d0",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T093518-26fb03", "ev-20261026T093519-f2734b", "ev-20261026T093522-e1e439", "ev-20261026T093522-ec461a", "ev-20261026T093528-8bb521", "ev-20261026T093559-3b7ecc", "ev-20261026T093602-ac49c9"]
+    },
+    {
+      "task": "T6",
+      "items": "B8/B9 + Amendment 5",
+      "record": "rec-20261026T095227-c4342a",
+      "loop": "loop-20261026T082259-e95a90",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T095057-758550", "ev-20261026T095057-a1815e", "ev-20261026T095100-39ac8d", "ev-20261026T095100-265470", "ev-20261026T095103-eed5d7", "ev-20261026T095134-555867", "ev-20261026T095136-19900e"]
+    }
+  ],
+  "contractAmendments": [
+    {
+      "id": "Amendment 3",
+      "at": "2026-10-26T08:30Z",
+      "substance": "cellwork_start stages TWO members (planner, splitter) and TWO tasks (requirements; split blocked_by it); the splitter is dispatched on requirements completion and the SAME split task is reopened after an update"
+    },
+    {
+      "id": "Amendment 4",
+      "at": "2026-10-26T08:48Z",
+      "substance": "a subcaptain is a MINI-CAPTAIN (captain allowlist minus cellwork_start/stop, plus the sub-cell verbs, no file-work tools); the /cellwork command creates the cell and cellwork_start never does; the row log sink is a sanctioned exception; a corrupt cell record releases the guard with the path surfaced"
+    },
+    {
+      "id": "Amendment 5",
+      "at": "2026-10-26T09:42Z",
+      "substance": "T3 must land the README-pair rules/bounds section and three named arms (update reopens the same split task; recon refuses a stopped cell and journals; the planner directive carries the relay protocol); T6 judges them alongside B8/B9"
+    }
+  ],
+  "findingsAndDisposition": [
+    {
+      "id": "T4-F1-mount",
+      "severity": "high at the time",
+      "status": "CLOSED with a declared bound",
+      "detail": "the writer's earlier bundle-lifecycle PASS was WITHDRAWN by the writer after an integrity check (its artifact proves a checkout boot but names no rows; the gate now dies at its pnpm install step on this network). A real offline boot was then produced by the captain: an overlay row with an absolute module path wrote '[mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none'. Frozen at evidence/cellwork/mount-proof/2026-10-26T09-39-31Z/. Proves the row APPLIES; the bundle-row source rests on verify:rows/manifest."
+    },
+    {
+      "id": "T4-F2-pack-closure",
+      "severity": "medium",
+      "status": "DEFERRED to Wave 5",
+      "detail": "PACKED-MISSING [mpd-cellwork-plugin] because dist/mpd-package predates the package; re-pack + verify-pack-closure --require-packed + the T-91 expected-after-pack list at Wave 5"
+    },
+    {
+      "id": "T5-F1-F2",
+      "severity": "medium",
+      "status": "CLOSED in T3",
+      "detail": "README-pair section + three named arms landed and verified under Amendment 5"
+    },
+    {
+      "id": "T6-low",
+      "severity": "low",
+      "status": "QUEUED for Wave 3",
+      "detail": "three prose behaviours remain UNPROVEN at arm granularity: busy/error classification after the retry budget; mail addressing specifics + the cell stamp; the undelivered row surfaced on supervise. One arm or one README sentence each."
+    }
+  ],
+  "incidents": [
+    {
+      "id": "live-task-scope-overlap",
+      "observed": "W2-T2 and W2-T7 (same package, no dependency path) were created on the LIVE record and ran concurrently; a half-widened config left the tree red",
+      "action": "writers serialized by direct mail; T7 closed by lead override after a captain-run frozen-tree gate batch; the gap is now a plan risk entry (live-record creation bypasses assertScopesOrdered)"
+    },
+    {
+      "id": "dispatch-review-mispairing-again",
+      "observed": "dispatch again offered review rows to the writers while the named verifier was momentarily not idle",
+      "action": "review rows were self-claimed by the verifier from then on; no self-verification occurred"
+    },
+    {
+      "id": "stale-bundle-resolution",
+      "observed": "a link-profile sandbox still composed 227 rows and NO cellwork row, because this machine resolves a stale @mpd-dsh/mpd 0.15.5 (global + dsh-tui profile + dist/mpd-package)",
+      "action": "mount proof via an overlay row with an absolute module path; a reproducible QA mount case is queued in Wave 3"
+    },
+    {
+      "id": "integrity-withdrawal",
+      "observed": "core-engineer's bundle-lifecycle PASS could not be reproduced and was withdrawn in writing; the reviewer's measurement stood",
+      "action": "the mount claim was replaced by a real observation with an explicit bound"
+    }
+  ],
+  "declaredBounds": [
+    "Mount: the row applies under a real boot (overlay, absolute module path); the bundle-patch source is proven by rows+manifest, not by that boot; the pnpm install path is unproven offline.",
+    "verify-pack-closure stays red until the Wave-5 re-pack.",
+    "Mail wake-up is best-effort to members only; member->captain is durable and polled.",
+    "Reseed interrupts the old child best-effort (the native backend exposes no dispose for a settled activation).",
+    "Checkpoints require an OBSERVED window; no observation means no checkpoint (never a guess).",
+    "The sub-team parent_team_id hand-off is Wave 4 (W4-T5).",
+    "The 1/4 budget is a certified ESTIMATE (declared ±25% English; CJK deliberately punitive), not a measurement."
+  ]
+}

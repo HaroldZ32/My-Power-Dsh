@@ -32,8 +32,18 @@ compacted.
   from this repository (measured `MODULE_NOT_FOUND`).
 - **Who** — members only. The captain is never compacted (that is the user's `/compact`).
 - **Barrier** — wait for every member to go idle, then compact them together.
-- **Method** — an unconditional explicit `compactNow`. A null answer means "no safely compactable
-  range", which is recorded as a fact, not as an error.
+- **Method** — an unconditional explicit `compactNow` driven with a REAL `AbortSignal`: one
+  `AbortController` per drive, combined (through `AbortSignal.any`) with the pass's own optional
+  `signal` when a caller supplied one. `undefined` is never passed, because the engine's first
+  statement is `signal.throwIfAborted()`; the pre-fix call crashed there as a raw `TypeError` before
+  any compaction ran. A null answer means "no safely compactable range", which is recorded as a fact,
+  not as an error.
+- **Cancellation** — an aborted signal is a cancellation, not a failure: that member is recorded
+  `failed` with the engine's own `cancelled` code — never as an unclassified failure and never as a
+  `TypeError`. The other classifications are unchanged: the six `ManualCompactionError` codes
+  (`busy`, `cancelled`, `changed`, `summary`, `commit`, `persistence`) and the Cordis lifecycle
+  error class read exactly as before, and an unrecognised error stays unclassified (no invented
+  code).
 - **Audit** — `<workspace>/.mpd/team-compact/<teamId>/`, accumulated and never overwritten. It is
   never `.mpd/team`: this plugin only ever READS a team — the record through the `mpdTeams` service,
   the official plane through the adapter — and writes nothing but its own audits.
@@ -64,6 +74,11 @@ compacted.
 - **`busy` is not the concurrency signal**: driving a busy member throws a Cordis lifecycle error
   (`tokenMeter` in an inactive context), classified separately from the six `ManualCompactionError`
   codes.
+- **The drive signal is MANDATORY and real**: `compactNow`'s FIRST statement is
+  `signal.throwIfAborted()`, so an `undefined` argument throws a `TypeError` before the engine does
+  any work. Every drive therefore receives an `AbortController` signal, and the cancellation branch in
+  `classifyCompactionError` is evaluated FIRST, so an aborted drive can never be filed as an
+  unclassified failure.
 - The `parameters` schema is **object-rooted**. A `type: null` root was measured to make the provider
   reject every model request of a mounting session, which is why the unit test and the mount-level
   `TOOL_PARAM_SCHEMAS` probe both pin it.

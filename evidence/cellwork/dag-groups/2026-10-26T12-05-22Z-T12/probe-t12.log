@@ -1,0 +1,14 @@
+R1a edges: T1->teamB[derived] teamB->T2[board] | depths: B1(d0) T1(d0) T2(d2) teamB(d1) | ranks: [["T1"],["teamB"],["T2"]]
+PASS R1a the anchor edge exists — edge teamB->T2
+PASS R1a the outer task ranks AFTER its box — box d1 vs outer d2
+R1b edges: G1->T1[board] T1->G1[board] | cycles: ["G1","T1"] | ranks: [[],["G1"],["T1"]]
+PASS R1b the cross-frame mutual block is a CYCLE — ["G1","T1"]
+PASS R1b both cycle members are NAMED — ["G1","T1"]
+R1c edges: T1->teamB[board] | depths: B1(d0) T1(d0) teamB(d1)
+PASS R1c inner-blocked-by-outer still anchors on the box — T1->teamB
+PASS R1c the box still ranks after the task that blocks it — box d1
+PASS D sibling subcells still attach frame->frame — GA->GB T1->GA T1->GB
+PASS determinism of the repaired model — identical
+PASS plain JSON round-trip — equal
+
+PROBE RESULT: ALL PASS

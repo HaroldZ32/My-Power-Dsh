@@ -1,0 +1,277 @@
+{
+  "nodes": [
+    {
+      "id": "B1",
+      "subject": "Child build",
+      "visual": "running",
+      "dependencies": [
+        "T1"
+      ],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "status": "in_progress",
+      "group": "teamB"
+    },
+    {
+      "id": "B2",
+      "subject": "Child adopt",
+      "visual": "open",
+      "dependencies": [
+        "B1"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "work",
+      "status": "pending",
+      "group": "teamB"
+    },
+    {
+      "id": "D1",
+      "subject": "Grandchild work",
+      "visual": "open",
+      "dependencies": [
+        "B1",
+        "T99"
+      ],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "status": "pending",
+      "group": "teamB1"
+    },
+    {
+      "id": "E1",
+      "subject": "Sibling work",
+      "visual": "open",
+      "dependencies": [
+        "B1"
+      ],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "status": "pending",
+      "group": "teamC"
+    },
+    {
+      "id": "F1",
+      "subject": "Subcell verification",
+      "visual": "planned",
+      "dependencies": [],
+      "depth": 0,
+      "planned": true,
+      "title": "Subcell verification",
+      "group": "teamB"
+    },
+    {
+      "id": "T1",
+      "subject": "Root build",
+      "visual": "completed",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "assignee": "Senior Engineer",
+      "title": "Root build",
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "subject": "Root adopt",
+      "visual": "running",
+      "dependencies": [
+        "T1"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "work",
+      "title": "Root adopt (blocked by: 1)",
+      "status": "in_progress"
+    },
+    {
+      "id": "T3",
+      "subject": "Root verify",
+      "visual": "open",
+      "dependencies": [
+        "E1"
+      ],
+      "depth": 4,
+      "planned": false,
+      "kind": "work",
+      "title": "Root verify",
+      "status": "pending"
+    },
+    {
+      "id": "teamB",
+      "subject": "Subcell B",
+      "visual": "group",
+      "dependencies": [
+        "T1",
+        "T2"
+      ],
+      "depth": 2,
+      "planned": false
+    },
+    {
+      "id": "teamB1",
+      "subject": "Subcell B1",
+      "visual": "group",
+      "dependencies": [
+        "B1",
+        "B2"
+      ],
+      "depth": 2,
+      "planned": false,
+      "group": "teamB"
+    },
+    {
+      "id": "teamC",
+      "subject": "Subcell C",
+      "visual": "group",
+      "dependencies": [
+        "teamB"
+      ],
+      "depth": 3,
+      "planned": false
+    }
+  ],
+  "edges": [
+    {
+      "from": "B1",
+      "to": "B2",
+      "source": "board"
+    },
+    {
+      "from": "B1",
+      "to": "teamB1",
+      "source": "board"
+    },
+    {
+      "from": "B2",
+      "to": "teamB1",
+      "source": "derived"
+    },
+    {
+      "from": "T1",
+      "to": "T2",
+      "source": "both"
+    },
+    {
+      "from": "T1",
+      "to": "teamB",
+      "source": "board"
+    },
+    {
+      "from": "T2",
+      "to": "teamB",
+      "source": "derived"
+    },
+    {
+      "from": "teamB",
+      "to": "teamC",
+      "source": "board"
+    },
+    {
+      "from": "teamC",
+      "to": "T3",
+      "source": "board"
+    }
+  ],
+  "ranks": [
+    [
+      "T1"
+    ],
+    [
+      "T2"
+    ],
+    [
+      "teamB"
+    ],
+    [
+      "teamC"
+    ],
+    [
+      "T3"
+    ]
+  ],
+  "cycles": [],
+  "report": {
+    "boardOnly": [
+      "B1",
+      "B2",
+      "D1",
+      "E1"
+    ],
+    "planOnly": [
+      "F1"
+    ],
+    "edgePlanOnly": [],
+    "edgeBoardOnly": [
+      {
+        "from": "B1",
+        "to": "B2",
+        "source": "board"
+      },
+      {
+        "from": "B1",
+        "to": "teamB1",
+        "source": "board"
+      },
+      {
+        "from": "T1",
+        "to": "teamB",
+        "source": "board"
+      },
+      {
+        "from": "teamB",
+        "to": "teamC",
+        "source": "board"
+      },
+      {
+        "from": "teamC",
+        "to": "T3",
+        "source": "board"
+      }
+    ],
+    "planProblems": [],
+    "unresolved": [
+      "T99"
+    ],
+    "ranksDerived": true
+  },
+  "groups": [
+    {
+      "id": "teamB",
+      "label": "Subcell B",
+      "parentId": null,
+      "memberIds": [
+        "B1",
+        "B2",
+        "F1",
+        "teamB1"
+      ],
+      "depth": 0,
+      "originTaskId": "T2"
+    },
+    {
+      "id": "teamC",
+      "label": "Subcell C",
+      "parentId": null,
+      "memberIds": [
+        "E1"
+      ],
+      "depth": 0
+    },
+    {
+      "id": "teamB1",
+      "label": "Subcell B1",
+      "parentId": "teamB",
+      "memberIds": [
+        "D1"
+      ],
+      "depth": 1,
+      "originTaskId": "B2"
+    }
+  ]
+}
+[verify-graph-model] PASS — grouped nodes (11), edges (8), groups (3), ranks and the report equal the declared tree

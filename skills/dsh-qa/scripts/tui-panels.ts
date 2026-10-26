@@ -332,7 +332,7 @@ export const SURFACES: readonly SurfaceSpec[] = [
       /writes NO \.mpd\/mpd\.jsonc/,
       /<workspace>\/\.mpd\/mpd\.jsonc write happens only on a host that still serves the RETIRED legacy/,
       /take the new value in the RUNNING process/,
-      /teamModels\.slot\*/,
+      /agentRoutes\.\*/,
       /modelchain\.\*/,
       // `watchdog.*` is NOT a live group (T20-F2): the row pins its scope-qualified EXCEPTION instead.
       /EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the \.mpd\/mpd\.jsonc FILE layer/,

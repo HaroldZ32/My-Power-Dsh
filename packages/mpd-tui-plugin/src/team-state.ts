@@ -47,6 +47,14 @@ const MAX_TASKS = 5000
 const MAX_PROBLEMS = 5
 /** The mailbox key cap (mirrors the retired `MAX_KEY_LENGTH` the normalisation was written for). */
 const MAILBOX_KEY_MAX = 48
+/**
+ * The `visual` a GROUP PSEUDO-NODE carries in the served model: a frame, never a task.
+ *
+ * Declared as data because the row projection is the one reader that must NOT publish such a node as a
+ * board task. The value is the model's own vocabulary (`mpd-graph-core`), restated here as a literal
+ * because that module's constant is not part of the barrel this package imports.
+ */
+const GROUP_VISUAL = "group"
 
 /**
  * THE SESSION-EMPTY MARKER — what a surface says when ITS OWN session has no team.
@@ -177,6 +185,14 @@ export interface TeamTaskRow {
   failedDependencies: string[]
   /** Longest dependency path length (0 = a root); the row's indent. */
   depth: number
+  /**
+   * The INNERMOST group frame this row draws inside, absent for a task of the root frame.
+   *
+   * CARRIED SO THE DRAWING NEEDS NO SECOND LOOKUP: the model names it per node, the projection passes it
+   * through, and `graph.ts` buckets the rows by it when a grouped picture is asked for. A row without one
+   * is a root task, which is the same reading the absent field has on the model.
+   */
+  group?: string
 }
 
 /** One roster row: the member plus the progress facts the Web panel shows. */
@@ -987,12 +1003,18 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
  * TWO DEFENCES, because one was provably too weak. (1) THE CALLER MUST NAME ITS TEAM: this function
  * is reached only from a record-based arm, which passes the record's own `teamId`; the two
  * official-view arms do NOT call it at all, because `graph(workspace)` would answer for the workspace
- * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION,
- * NOT AN INTERSECTION: every board id must appear as a NON-GHOST node AND every non-ghost node must be
- * on the board. An intersection is satisfiable by coincidence — every team numbers its tasks from
- * `T1`, so almost any two teams share an id — while a bijection refuses a model that describes a
- * different (even merely larger) board. A model that survives both is attached; otherwise it is
- * dropped and the board is drawn alone. A throwing service costs the model, never the board.
+ * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION
+ * OVER THE ROOT FRAME (cellwork wave 4, T31): every board id must appear as a NON-GHOST node of that
+ * frame, that frame must carry no other real task, and every OTHER node in the model must be explained
+ * by the nesting — a member of a subcell (`group` names it), a subcell's own box (`visual: "group"`), or
+ * a plan-only ghost. An intersection is satisfiable by coincidence — every team numbers its tasks from
+ * `T1`, so almost any two teams share an id — while this bijection still refuses a model that describes
+ * a different board. IT IS NOT THE WHOLE NODE SET ANY MORE, and that is the fix: the host MERGES the
+ * live descendants into this model, so a nested team's model legitimately carries more nodes than the
+ * parent's board. Demanding equality refused every such model, and the live symptom was a TUI that drew
+ * a qualified sub-team reference (`team-nested-sub::C4`) — an edge from the board — with no frame
+ * around it. A model that survives both defences is attached; otherwise it is dropped and the board is
+ * drawn alone. A throwing service costs the model, never the board.
  * @param workflow - the projection to enrich.
  * @param teams - the `mpdTeams` face, when this composition has one.
  * @param workspace - the workspace this read is scoped to, resolved per call.
@@ -1012,14 +1034,25 @@ function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, wo
   if (model === undefined || !Array.isArray(model.nodes)) return workflow
   /** The task ids this projection's own board carries. */
   const boardIds = new Set(workflow.tasks.map((task) => task.id))
-  /** The model's BOARD-BACKED ids; a ghost is plan-only by definition and cannot prove a board match. */
-  const nodeIds = model.nodes.filter((node) => node.planned === false).map((node) => node.id)
+  // THE ROOT FRAME, WHICH IS THE ONLY PART THE BOARD CAN PROVE: a real task drawn inside this record's
+  // own frame (not a ghost, not a nested member, not a subcell's box).
+  /** The model's ROOT-FRAME task ids — the nodes this board must match node for node. */
+  const rootIds = model.nodes.filter((node) => node.planned === false && node.group === undefined && node.visual !== GROUP_VISUAL).map((node) => node.id)
   /** Those ids as a set, so a duplicated node cannot inflate the count. */
-  const nodeSet = new Set(nodeIds)
-  // THE BIJECTION: equal cardinality, no duplicate nodes, and the board is a subset of the nodes —
-  // which, with equal cardinality, makes the two sets EQUAL. Anything less is satisfiable by a shared
-  // `T1` alone, which is exactly how a foreign team's graph could be accepted.
-  const sameBoard = nodeSet.size === boardIds.size && nodeIds.length === nodeSet.size && [...boardIds].every((id) => nodeSet.has(id))
+  const rootSet = new Set(rootIds)
+  // EVERY EXTRA NODE MUST BE EXPLAINED by the nesting: a member of a group THIS MODEL DECLARES (`group`
+  // names one of `model.groups`), a subcell's own box (`visual: "group"`), or a plan-only ghost. The
+  // declared-group check is load-bearing rather than tidy — a `group` tag naming an id no group carries
+  // explains nothing, and accepting it would let a model smuggled from another source pass itself off as
+  // nested. An unexplained extra real task is another team's row, the exact collision the bijection
+  // exists to refuse, so it costs the model.
+  /** The group ids the MODEL ITSELF declares — the only ids a node's `group` tag may name. */
+  const declaredGroups = new Set((model.groups ?? []).map((group) => group.id))
+  /** Whether every node outside this board is a nested member of a DECLARED group, a box, or a ghost. */
+  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || (node.group !== undefined && declaredGroups.has(node.group)) || node.visual === GROUP_VISUAL)
+  // THE BIJECTION OVER THE ROOT FRAME: equal cardinality, no duplicate root nodes, and the board is a
+  // subset of them — which, with equal cardinality, makes the two sets EQUAL.
+  const sameBoard = rootSet.size === boardIds.size && rootIds.length === rootSet.size && [...boardIds].every((id) => rootSet.has(id)) && extrasExplained
   return sameBoard ? { ...workflow, model } : workflow
 }
 
@@ -1056,6 +1089,7 @@ function ghostRow(node: GraphNode): TeamTaskRow {
     failedDependencies: [],
     depth: rankOfNode(node),
     planned: true,
+    ...(node.group === undefined ? {} : { group: node.group }),
   }
 }
 
@@ -1092,6 +1126,11 @@ export function modelRows(workflow: TeamWorkflow): TeamTaskRow[] {
   /** The joined rows, before the final ordering pass. */
   const rows: TeamTaskRow[] = []
   for (const node of model.nodes) {
+    // A GROUP PSEUDO-NODE IS A FRAME, NOT A TASK (`cellwork` wave 4). The model draws one node per
+    // subcell so the ROOT frame can rank the box, and painting it as a board row would put a fake task
+    // into the counts, the legend, the roster and the pointer. The box reaches the drawing through
+    // `GraphModel.groups` instead, which is why this is a skip and not a second projection.
+    if (node.visual === GROUP_VISUAL) continue
     seen.add(node.id)
     /** This node's board row, when the board carries the id. */
     const row = byId.get(node.id)
@@ -1104,7 +1143,7 @@ export function modelRows(workflow: TeamWorkflow): TeamTaskRow[] {
     // before the drawing saw it. The union (the model node's list) is the graph; everything else stays
     // board-authoritative, including `failedDependencies` (see the header: a dangling PLAN reference is
     // an unresolved report entry, not a failure).
-    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node) })
+    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node), ...(node.group === undefined ? {} : { group: node.group }) })
   }
   for (const task of workflow.tasks) if (!seen.has(task.id)) rows.push(task)
   rows.sort((left, right) => ID_ORDER.compare(left.id, right.id))

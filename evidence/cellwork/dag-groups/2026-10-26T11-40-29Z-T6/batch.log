@@ -1,0 +1,78 @@
+== declared-by-writer hashes (T3 freeze mail 2026-10-26T11:34:46Z)
+declared-check exit=0
+packages/mpd-tui-plugin/src/dag-groups.ts: OK
+packages/mpd-tui-plugin/src/dag-theme.ts: OK
+packages/mpd-tui-plugin/src/graph.ts: OK
+packages/mpd-tui-plugin/src/panel-dag.ts: OK
+packages/mpd-tui-plugin/src/team-state.ts: OK
+packages/mpd-tui-plugin/src/scenes.ts: OK
+packages/mpd-tui-plugin/src/subagent-scene.ts: OK
+packages/mpd-tui-plugin/test/dag-groups.test.ts: OK
+packages/mpd-tui-plugin/dist/index.js: OK
+packages/mpd-tui-plugin/README.md: OK
+packages/mpd-tui-plugin/README.zh-CN.md: OK
+
+== hash sandwich: start 2026-10-26T11:40:29Z
+e1d70e18e3e88a9b92a8f913e19ba22bfbec688e2cdc6badc4c9c1b91a0c56c7  evidence/cellwork/dag-groups/2026-10-26T11-40-29Z-T6/scope-start.sha256
+== settle window 50 s
+e1d70e18e3e88a9b92a8f913e19ba22bfbec688e2cdc6badc4c9c1b91a0c56c7  evidence/cellwork/dag-groups/2026-10-26T11-40-29Z-T6/scope-postsettle.sha256
+
+== TUI suite
+tests exit=0
+ 609 pass
+ 1 skip
+ 0 fail
+Ran 610 tests across 24 files. [12.50s]
+dag-groups exit=0
+18
+
+== dist freshness (tui only)
+dist exit=0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 48ms
+
+== BUILT dist carries the group code (artifact-level)
+DAG_GROUP_CHARS      13
+DAG_CHARS_ONE_CELL   1
+collapsedGroups      3
+halfGroupCells       2
+hitTestGroup         2
+GraphGroupHit        0
+DagRowClick          0
+groupId              5
+DAG_GROUP_CHARS literal found: False
+DAG_CHARS literal found: False
+group family size: 0 | node family size: 0
+group glyphs NOT one UTF-16 cell: []
+group family: 
+shared glyphs with node family: []
+one-cell boolean present: True
+
+== README pair nested-group sections
+packages/mpd-tui-plugin/README.md:464:### Nested groups: subcells as boxes
+packages/mpd-tui-plugin/README.zh-CN.md:376:### 嵌套分组：把子单元画成盒子
+
+== docs + comments + typecheck
+docs exit=0
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+comments exit=0
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+typecheck exit=0
+$ tsgo --noEmit
+
+== full suite (foreign reds expected; attribution only)
+full exit=1
+ 2616 pass
+ 6 skip
+ 1 fail
+Ran 2623 tests across 156 files. [31.45s]
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [96.62ms]
+
+== scope metadata (stat only)
+
+== hash sandwich: end 2026-10-26T11:42:07Z
+e1d70e18e3e88a9b92a8f913e19ba22bfbec688e2cdc6badc4c9c1b91a0c56c7  evidence/cellwork/dag-groups/2026-10-26T11-40-29Z-T6/scope-end.sha256
+SANDWICH OK: start == end (after settle)

@@ -264,13 +264,17 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   }
   const winner = index === 0 ? primary : wellFormed[index - 1];
   if (index > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — agent-route fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
   }
   if (dropped > 0) {
-    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the agent route's chain (never fatal — the run proceeds)`);
   }
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
+}
+var AGENT_UNCONFIGURED_CODE = "AGENT_UNCONFIGURED";
+function agentUnconfiguredMessage(agent, detail) {
+  return AGENT_UNCONFIGURED_CODE + ": " + agent + " is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set agentRoutes." + agent + " in .mpd/mpd.jsonc.";
 }
 function rosterNameHead(label) {
   if (typeof label !== "string")
@@ -297,52 +301,49 @@ function memberIdentityCandidates(identity) {
   }
   return unique;
 }
-function resolveTeamMemberRoute(identity, slotResolutionOf) {
-  if (typeof slotResolutionOf !== "function")
+function resolveTeamMemberRoute(identity, agentRouteResolutionOf) {
+  if (typeof agentRouteResolutionOf !== "function")
     return { status: "no-config-service" };
   for (const candidate of memberIdentityCandidates(identity)) {
     let answer;
     try {
-      answer = slotResolutionOf(candidate);
+      answer = agentRouteResolutionOf(candidate);
     } catch {
       continue;
     }
     if (answer === null || typeof answer !== "object")
       continue;
-    const slotAnswer = answer;
-    if (slotAnswer.ok === true) {
-      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
-      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
-      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+    const routeAnswer = answer;
+    const agentName = typeof routeAnswer.agent === "string" && routeAnswer.agent !== "" ? routeAnswer.agent : candidate;
+    if (routeAnswer.ok === true) {
+      const provider = typeof routeAnswer.route?.provider === "string" ? routeAnswer.route.provider.trim() : "";
+      const model = typeof routeAnswer.route?.model === "string" ? routeAnswer.route.model.trim() : "";
       if (provider === "" || model === "") {
         return {
           status: "unusable",
           member: candidate,
-          ...slot === "" ? {} : { slot },
           reason: "invalid",
-          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+          detail: agentUnconfiguredMessage(agentName, "the mpdConfig service reported a usable agent route but returned no provider/model")
         };
       }
-      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      const effort = typeof routeAnswer.route?.reasoningEffort === "string" ? routeAnswer.route.reasoningEffort.trim() : "";
       return {
         status: "routed",
         member: candidate,
-        slot,
         route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
-        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+        fallbacks: Array.isArray(routeAnswer.route?.fallbacks) ? routeAnswer.route.fallbacks : []
       };
     }
-    if (slotAnswer.ok === false) {
-      if (slotAnswer.status === "unrouted")
+    if (routeAnswer.ok === false) {
+      if (routeAnswer.reason === "unrouted")
         continue;
-      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
-        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+      if (routeAnswer.reason === "unconfigured" || routeAnswer.reason === "invalid") {
+        const detail = routeAnswer.reason === "invalid" ? String(routeAnswer.problem ?? "agentRoutes." + agentName) + " must be a string" : "missing " + (Array.isArray(routeAnswer.missing) && routeAnswer.missing.length > 0 ? routeAnswer.missing.map(String).join(", ") : "agentRoutes." + agentName + ".provider, agentRoutes." + agentName + ".model");
         return {
           status: "unusable",
           member: candidate,
-          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
-          reason: slotAnswer.status,
-          detail
+          reason: routeAnswer.reason,
+          detail: agentUnconfiguredMessage(agentName, detail)
         };
       }
     }
@@ -659,7 +660,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -709,29 +710,19 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
-  const configSlotResolver = () => {
+  const configAgentRouteResolver = () => {
     const config2 = service("mpdConfig");
     if (config2 === undefined || config2 === null)
       return;
-    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+    if (typeof config2.agentRouteResolutionOf !== "function")
       return;
     return (member) => {
-      if (typeof config2.slotResolutionOf === "function") {
-        try {
-          const answer = config2.slotResolutionOf.call(config2, member);
-          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
-            return answer;
-        } catch {}
+      try {
+        const answer = config2.agentRouteResolutionOf.call(config2, member);
+        return answer !== null && typeof answer === "object" && typeof answer.ok === "boolean" ? answer : undefined;
+      } catch {
+        return;
       }
-      if (typeof config2.teamModelRouteOf === "function") {
-        try {
-          const route = config2.teamModelRouteOf.call(config2, member);
-          if (route !== null && typeof route === "object")
-            return { ok: true, slot: "", route, fallbacks: [] };
-        } catch {}
-        return { ok: false, status: "unrouted", slot: undefined };
-      }
-      return;
     };
   };
   function requireService(serviceName, needed) {
@@ -800,6 +791,67 @@ function createDshAdapter(ctx, config = {}) {
       return;
     engineCache.set(agent, engine);
     return engine;
+  }
+  function contextPressureSession(target) {
+    if (typeof target === "string") {
+      const id = target.trim();
+      if (id === "")
+        return;
+      const sessions = service("sessions");
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          const found = sessions.get(id);
+          if (found !== undefined && found !== null)
+            return found;
+        } catch {}
+      }
+      return liveAgent(id)?.session;
+    }
+    if (target === undefined || target === null || typeof target !== "object")
+      return;
+    const session = target.session;
+    if (session !== undefined && session !== null)
+      return session;
+    return target;
+  }
+  function finiteNumberOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function contextPressure(target) {
+    const session = contextPressureSession(target);
+    if (session === undefined)
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    const projections = service("sessionProjections");
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    let state;
+    try {
+      state = projections.stateOf(session, "contextPressure");
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    const stateFields = state;
+    let snapshot;
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined;
+    } catch {
+      snapshot = undefined;
+    }
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object" ? snapshot.values : undefined;
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object" ? snapshotValues.contextPressure : undefined;
+    const viewFields = view !== undefined && view !== null && typeof view === "object" ? view : undefined;
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens);
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens);
+    const usedTokens = projectedTokens ?? pressureTokens;
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow);
+    if (windowTokens === null)
+      return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" };
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null;
+    return { usedTokens, windowTokens, ratio, provenance: "observed" };
   }
   function onEvent(event, handler) {
     if (typeof ctx?.on !== "function")
@@ -886,12 +938,16 @@ function createDshAdapter(ctx, config = {}) {
             });
           }
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow);
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens);
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
             ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
             efforts,
-            ...defaultEffort === undefined ? {} : { defaultEffort }
+            ...defaultEffort === undefined ? {} : { defaultEffort },
+            contextWindow,
+            maxOutputTokens
           });
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
@@ -938,12 +994,12 @@ function createDshAdapter(ctx, config = {}) {
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
         let agentOptions = request.agentOptions;
         if (agentOptions === undefined) {
-          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configAgentRouteResolver());
           if (outcome.status === "routed") {
             const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
             agentOptions = resolved.route;
           } else {
-            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its agent route is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
             rowLogLine("mpd-dsh-adapter", line);
           }
         }
@@ -953,14 +1009,17 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...agentOptions === undefined ? {} : { agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions },
+            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
           signal: request.signal ?? neverAborted()
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -1193,6 +1252,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -1455,7 +1515,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2030,12 +2090,12 @@ function overlayNow(ctx) {
 function chainsNow(ctx, config) {
   return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
 }
-function slotResolutionIn(ctx, member) {
+function agentRouteResolutionIn(ctx, member) {
   try {
     const service = ctx.get?.("mpdConfig");
-    if (typeof service?.slotResolutionOf !== "function")
+    if (typeof service?.agentRouteResolutionOf !== "function")
       return;
-    return service.slotResolutionOf(member);
+    return service.agentRouteResolutionOf(member);
   } catch {
     return;
   }
@@ -2044,11 +2104,11 @@ function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster member resolves from its `teamModels` slot (the ONE configured route, plus that slot's own fallback chain) and reports `<unconfigured>` honestly when the slot is not configured; an extension role keeps its own declared chain.",
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster agent resolves from its OWN `agentRoutes` entry (the ONE configured route, plus that entry's own fallback chain) and reports `<unconfigured>` honestly when the route is not configured; an extension role keeps its own declared chain.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: {
       schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
-      render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "teamModels") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
+      render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "agentRoutes") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
     execute: async (args) => {
       const role = String(args?.role ?? "").trim();
@@ -2058,28 +2118,36 @@ function apply(ctx, config = {}) {
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
       }
-      const slot = slotResolutionIn(ctx, String(spec.name));
-      if (slot !== undefined && slot !== null && typeof slot === "object" && typeof slot.ok === "boolean") {
-        if (slot.ok) {
-          const provider = String(slot.route?.provider ?? "");
-          const model = String(slot.route?.model ?? "");
+      const agentRoute = agentRouteResolutionIn(ctx, String(spec.name));
+      const unconfiguredAnswer = (agent, missing, reason) => ({
+        provider: "",
+        model: "",
+        chain: [],
+        status: "unconfigured",
+        missing: missing.map(String),
+        reason
+      });
+      if (agentRoute !== undefined && agentRoute !== null && typeof agentRoute === "object" && typeof agentRoute.ok === "boolean") {
+        if (agentRoute.ok) {
+          const provider = String(agentRoute.route?.provider ?? "");
+          const model = String(agentRoute.route?.model ?? "");
+          const fallbacks = Array.isArray(agentRoute.route?.fallbacks) ? agentRoute.route.fallbacks : [];
           return {
             provider,
             model,
-            chain: [{ provider, model }, ...(slot.fallbacks ?? []).filter((hop) => isChainArray([hop]))],
+            chain: [{ provider, model }, ...fallbacks.filter((hop) => isChainArray([hop]))],
             status: "configured"
           };
         }
-        if (slot.status !== "unrouted") {
-          return {
-            provider: "",
-            model: "",
-            chain: [],
-            status: "unconfigured",
-            missing: (slot.missing ?? []).map(String),
-            reason: slot.slot === undefined || slot.slot === "" ? String(slot.message ?? "") : "teamModels." + String(slot.slot) + " is not configured — configure it with /mpd-model"
-          };
+        if (agentRoute.reason !== "unrouted") {
+          const agent = String(agentRoute.agent ?? spec.name);
+          return unconfiguredAnswer(agent, agentRoute.missing ?? [], agentRoute.reason === "invalid" ? String(agentRoute.problem ?? "agentRoutes." + agent) + " must be a string — configure it with /mpd-model" : "agentRoutes." + agent + " is not configured — configure it with /mpd-model");
         }
+      }
+      const extensionRole = typeof spec.extension === "string" && spec.extension !== "";
+      if (!extensionRole) {
+        const agent = String(spec.name);
+        return unconfiguredAnswer(agent, ["agentRoutes." + agent + ".provider", "agentRoutes." + agent + ".model"], "agentRoutes." + agent + " is not readable — no usable mpdConfig answer; configure it with /mpd-model");
       }
       const configured = overlayNow(ctx)[String(spec.id)];
       if (isChainArray(configured)) {

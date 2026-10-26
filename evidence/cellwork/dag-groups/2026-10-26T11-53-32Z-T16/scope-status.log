@@ -1,0 +1,12 @@
+ M packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+ M packages/mpd-tui-plugin/README.md
+ M packages/mpd-tui-plugin/README.zh-CN.md
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/dag-theme.ts
+ M packages/mpd-tui-plugin/src/graph.ts
+ M packages/mpd-tui-plugin/src/panel-dag.ts
+ M packages/mpd-tui-plugin/src/scenes.ts
+ M packages/mpd-tui-plugin/src/subagent-scene.ts
+ M packages/mpd-tui-plugin/src/team-state.ts
+?? packages/mpd-tui-plugin/src/dag-groups.ts
+?? packages/mpd-tui-plugin/test/dag-groups.test.ts

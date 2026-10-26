@@ -743,5 +743,5 @@ Append to the 6.6 summary a "Dispatch path" line and, when team path was used, t
 - Do not recreate the team mid-session.
 - Do not run tests from Lead — the external verifier owns that lane.
 - Do not release a completed row: a post-completion FAIL opens a \`kind:"repair"\` row with \`sourceTaskId\`.
-- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); a verifier takes its route from its roster team-model slot and the call cannot choose one.
+- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); a verifier takes its route from its own \`agentRoutes\` entry and the call cannot choose one.
 `

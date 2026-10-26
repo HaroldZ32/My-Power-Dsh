@@ -13,7 +13,7 @@ import { join } from "node:path"
 import { GraphModels } from "../src/graph-model"
 import { resolvePlanFile } from "../../mpd-graph-core/src/index.ts"
 import { TEAM_STATE_PATH, buildTeamState, registerTeamRoutes } from "../src/team-web"
-import { addTeamTask, createTeam, writeTeam, type TeamRecord } from "../src/team-store"
+import { addTeamTask, createTeam, listTeams, writeTeam, type TeamRecord } from "../src/team-store"
 import type { GraphChangeEvent, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "../../mpd-graph-core/src/index.ts"
 
 /** The frozen instant every record in this file is stamped with. */
@@ -110,7 +110,7 @@ function watchDouble(): WatchDouble {
  * A cache wired to a mutable revision, a notification counter and the watcher double.
  * @returns the cache, the counters and a function that "changes" the workspace.
  */
-function cacheFixture(): { models: GraphModels; notifies: () => number; bump: () => void; watch: WatchDouble } {
+function cacheFixture(listTeams?: (workspace: string) => TeamRecord[]): { models: GraphModels; notifies: () => number; bump: () => void; watch: WatchDouble } {
   /** The revision the cache sees; a real feed bumps it on every change window. */
   let revision = 0
   /** How many times the cache asked the feed to publish a change. */
@@ -122,6 +122,7 @@ function cacheFixture(): { models: GraphModels; notifies: () => number; bump: ()
     revision: (): number => revision,
     notify: (): void => { notifies += 1; revision += 1 },
     watch: watch.make,
+    ...(listTeams === undefined ? {} : { listTeams }),
   })
   return { models, notifies: (): number => notifies, bump: (): void => { revision += 1 }, watch }
 }
@@ -366,6 +367,40 @@ describe("the payload carries the model ADDITIVELY, on both projections", () => 
     /** The served rank of every row in the wire payload. */
     const ranks = (body?.tasks as Array<Record<string, unknown>>).map((task) => task.rank)
     expect(ranks).toEqual([0, 1])
+    fixture.models.dispose()
+  })
+})
+
+
+// ── PR #72 CodeRabbit repair, lane R1 (T17) ─────────────────────────────────
+
+describe("the nesting walk reads the team list once", () => {
+  test("CR 4377306770: a three-level tree costs ONE list read per build, not one per level", () => {
+    /** A fresh sandbox. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-graph-once-"))
+    sandboxes.push(workspace)
+    /** The root team. */
+    let root = createTeam(workspace, { teamId: "team-root", name: "root cell", description: "outer", leadSessionId: "sess-root" }, NOW)
+    root = addTeamTask(root, { subject: "root work", description: "own it", kind: "work" }, NOW)
+    writeTeam(workspace, root)
+    /** The child, nested under the root. */
+    let child = createTeam(workspace, { teamId: "team-child", name: "child cell", description: "inner", leadSessionId: "sess-child", parentTeamId: "team-root" }, NOW)
+    child = addTeamTask(child, { subject: "child work", description: "do it", kind: "work" }, NOW)
+    writeTeam(workspace, child)
+    /** The grandchild, nested under the child — the level that made the per-level read quadratic. */
+    let grand = createTeam(workspace, { teamId: "team-grand", name: "grand cell", description: "innermost", leadSessionId: "sess-grand", parentTeamId: "team-child" }, NOW)
+    grand = addTeamTask(grand, { subject: "grand work", description: "do it", kind: "work" }, NOW)
+    writeTeam(workspace, grand)
+    /** How many times the injected reader was called. */
+    let reads = 0
+    /** The cache wired to a COUNTING team-list reader. */
+    const fixture = cacheFixture((ws: string) => { reads += 1; return listTeams(ws) })
+    /** The root's model, which walks all three levels. */
+    const model = fixture.models.get(workspace, root) as GraphModel
+    // TWO nested frames prove the walk really recursed...
+    expect(model.groups?.map((group) => group.id).sort()).toEqual(["team-child", "team-grand"])
+    // ...and the whole walk still cost exactly ONE read of the record list.
+    expect(reads).toBe(1)
     fixture.models.dispose()
   })
 })

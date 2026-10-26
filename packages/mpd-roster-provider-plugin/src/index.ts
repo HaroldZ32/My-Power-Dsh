@@ -4,7 +4,7 @@
 // the route of the session that staged it (the LEAD's in a team-lead spawn):
 // `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to the harness
 // subagent seam (the durable-child start, named `startActivation` since 0.2.1-rc.2), so the mpd
-// `teamModels` slots — which DO route the one-shot consult paths (`mpd_role_spawn`,
+// `agentRoutes` entries — which DO route the one-shot consult paths (`mpd_role_spawn`,
 // `mpd_workmate_spawn`) — had no effect on a teammate. §8 of
 // docs/plan-0.1.7-adaptation.md recorded that as a bound, and it was right about the team service
 // and wrong about the harness.
@@ -22,19 +22,20 @@
 //     always sends `provider: context === "fork" ? config.forkProvider : config.freshProvider`.
 //
 // So this package registers a provider (`mpd-roster`) that DELEGATES to the composition's own
-// provider and applies the member's slot route on the way through — and the bundle points its
+// provider and applies the member's own agent route on the way through — and the bundle points its
 // `mpd-tool-agent-team` row's `freshProvider` at it. No fork of the official plugin, no change to
 // its contract, and the teammate stays a real, continuable, official teammate.
 //
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, resolveRunRoute, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
-// THE single declaration of which member a slot routes. Imported rather than restated: the slots'
-// membership is a contract shared with both settings front doors, and a second copy here is exactly
-// how a routing table drifts from the one the user edits.
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+// THE single declaration of the four `/mpd-model` bulk-edit groups. Imported rather than restated:
+// the groups' membership is a contract shared with both settings front doors, and a second copy here
+// is exactly how the member list drifts from the one the user edits. The groups route NOTHING by
+// themselves — each member's own `agentRoutes` entry is its route.
 import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema.ts"
-import { applyRoute, labelOf, memberFromLabel, type RoutableRequest, type SlotRoute } from "./route.ts"
+import { applyRoute, labelOf, memberFromLabel, type AgentRoute, type RoutableRequest } from "./route.ts"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-roster-provider"
@@ -52,13 +53,6 @@ export const inject = dshSeamInject(DSH_SEAM_SUBAGENTS)
 
 /** The provider name the bundle points `freshProvider` at. */
 export const PROVIDER_NAME = "mpd-roster"
-
-/** member (lower-cased) → slot id, derived ONCE from the slots' own membership declaration. */
-const SLOT_OF_MEMBER: ReadonlyMap<string, string> = new Map(
-  Object.entries(TEAM_MODEL_SLOT_GROUPS).flatMap(([slot, group]) =>
-    group.members.map((member) => [member.toLowerCase(), slot] as const),
-  ),
-)
 
 /** What this module needs from the config service. */
 interface ConfigLike {
@@ -107,14 +101,14 @@ interface ProviderLike {
 export interface RosterProviderConfig {
   /** The composition's own provider a delegation delegates TO. */
   baseProvider?: string
-  /** `false` leaves the provider unregistered, so no slot is applied and every teammate keeps the
+  /** `false` leaves the provider unregistered, so no route is applied and every teammate keeps the
    * harness-resolved route of the session that staged it. */
   enabled?: boolean
 }
 
 /**
  * Register the `mpd-roster` provider, which delegates to the composition's own provider and applies
- * the named member's slot route on the way through.
+ * the named member's own agent route on the way through.
  *
  * @param ctx - the row context; the subagent plane is reached through the adapter, never directly.
  * @param config - row overrides for the provider delegated to and the on/off switch.
@@ -125,15 +119,10 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /** The row's registrations, released together when the row is disposed. */
   const disposers: Array<() => void> = []
 
-  /** The slot that routes a member, from the shared membership declaration (never a second copy). */
-  const slotOf = (member: string): string | undefined => SLOT_OF_MEMBER.get(member.toLowerCase())
-
-  /** The config service surface this row reads; BOTH reads are total (contract amendment 1). */
+  /** The config service surface this row reads; TOTAL by contract (contract §2). */
   interface ConfigServiceLike {
-    /** The typed total resolution the slot-single-source wave exposes. */
-    slotResolutionOf?: (member: string) => unknown
-    /** The older total route read, kept for a composition running a stale config-row dist. */
-    teamModelRouteOf?: (member: string) => unknown
+    /** The typed total agent-route resolution the per-agent routes wave exposes. */
+    agentRouteResolutionOf?: (member: string) => unknown
   }
 
   /** The live config service, or undefined when the composition mounts none (or refuses the lookup). */
@@ -147,73 +136,50 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   }
 
   /**
-   * Build the canonical `SLOT_UNCONFIGURED` refusal for a slot-routed member no service can route.
+   * The route one teammate takes, resolved from the descriptor label — the agent's OWN `agentRoutes`
+   * entry is the only source (contract §4).
    *
-   * Only the DEGRADED composition reaches this (no `mpdConfig` at all, or a pre-wave service that
-   * answers nothing): the shipped bundle always mounts the config row, and its own resolver builds the
-   * sentence every other applier throws. This local sentence states the same facts — the member, the
-   * slot, both recovery paths, and that nothing was written and no child was started.
-   * @param member - the roster member the label named.
-   * @returns the refusal error, carrying the branchable code.
-   */
-  const slotUnconfigured = (member: string): Error => {
-    /** The slot id that routes the member, when the shared declaration knows it. */
-    const slot = slotOf(member) ?? "teamModels"
-    /** The error, with the code every applier attaches. */
-    const error = new Error("SLOT_UNCONFIGURED: " + member + " is routed by " + slot + ", but the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot + " in .mpd/mpd.jsonc.")
-    ;(error as Error & { code?: string }).code = "SLOT_UNCONFIGURED"
-    return error
-  }
-
-  /**
-   * The route one teammate takes, resolved from the descriptor label — the SLOT is the only source
-   * (contract §6).
-   *
-   * A label that names NO member is NOT routed here: this returns `undefined`, `applyRoute` returns the
-   * request by identity, and the harness-resolved route of the session that staged the teammate stands
-   * (the captain's in a top-level spawn, the Lead's in a team-lead spawn) — §6's "identity, unchanged".
+   * A label that names NO member is NOT routed here: this returns `undefined`, `applyRoute` returns
+   * the request by identity, and the harness-resolved route of the session that staged the teammate
+   * stands (the captain's in a top-level spawn, the Lead's in a team-lead spawn) — §4's "identity,
+   * unchanged", the one pass-through this row must never lose.
    * A label that DOES name a member reads the config service's TOTAL resolution per call, so a saved
-   * slot reaches the NEXT teammate; an unusable slot THROWS the canonical refusal, so `base.start` is
-   * never reached and no child is started (the DoD arm).
+   * route reaches the NEXT teammate; an unusable route THROWS the canonical refusal, so `base.start`
+   * is never reached and no child is started (the DoD arm).
    *
    * @param request - the provider's start request, whose label carries the identity.
-   * @returns the primary route plus the slot's own fallback chain, or undefined to inherit.
-   * @throws the structured `SLOT_UNCONFIGURED` failure for a slot-routed member with an unusable slot.
+   * @returns the primary route plus the agent's own fallback chain, or undefined to inherit.
+   * @throws the structured `AGENT_UNCONFIGURED` failure for a roster agent with an unusable route.
    */
-  const routeFor = (request: RoutableRequest): { route: SlotRoute; fallbacks: readonly unknown[] } | undefined => {
-    /** The roster member the label names, or undefined when it names none. */
+  const routeFor = (request: RoutableRequest): { route: AgentRoute; fallbacks: readonly unknown[] } | undefined => {
+    /** The roster agent the label names, or undefined when it names none. */
     const member = memberFromLabel(labelOf(request), knownNames())
     if (member === undefined) return undefined
     /** The live config service, absent under a degraded composition. */
     const live = configService()
-    if (typeof live?.slotResolutionOf === "function") {
+    if (typeof live?.agentRouteResolutionOf === "function") {
       /** The service's TOTAL resolution; a malformed answer is treated as "no service". */
-      const resolution = live.slotResolutionOf(member) as
-        | { ok: true; route: SlotRoute; fallbacks?: readonly unknown[] }
-        | { ok: false; status: "unconfigured" | "invalid"; code: string; message: string }
-        | { ok: false; status: "unrouted" }
+      const resolution = live.agentRouteResolutionOf(member) as
+        | { ok: true; agent: string; route: AgentRoute & { fallbacks?: readonly unknown[] } }
+        | { ok: false; reason: "unconfigured"; agent: string; missing: readonly string[] }
+        | { ok: false; reason: "invalid"; agent: string; problem: string }
+        | { ok: false; reason: "unrouted" }
         | undefined
-      if (resolution !== undefined && resolution !== null && typeof resolution === "object") {
-        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] }
-        // Not slot-routed (a name no group carries): this row does not decide its route.
-        if (resolution.status === "unrouted") return undefined
-        /** The refusal the service built, with its branchable code attached. */
-        const error = new Error(resolution.message)
-        ;(error as Error & { code?: string }).code = resolution.code
-        throw error
+      if (resolution !== undefined && resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
+        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] }
+        // Not routed by `agentRoutes` (an extension role's name): this row does not decide its route.
+        if (resolution.reason === "unrouted") return undefined
+        /** The canonical refusal every applier reports (contract §3). */
+        const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ")
+        throw agentUnconfiguredRefusal(resolution.agent, detail)
       }
     }
-    // VERSION SKEW: the older total read still answers for the members it routes.
-    if (typeof live?.teamModelRouteOf === "function") {
-      /** The older read's route, or undefined when it has none to report. */
-      const route = live.teamModelRouteOf(member) as SlotRoute | undefined | null
-      if (route !== undefined && route !== null && typeof route === "object") return { route, fallbacks: [] }
-    }
-    // No readable slot: a member the roster slot-routes cannot run on an invented route.
-    throw slotUnconfigured(member)
+    // No readable route: a roster agent cannot run on an invented route, and the refusal is the
+    // honest answer — the shipped `roles.data.ts` chain is not a default layer (contract §1).
+    throw agentUnconfiguredRefusal(member, "missing agentRoutes." + member + ".provider, agentRoutes." + member + ".model")
   }
 
-  /** The names a label may match: the union of the slots' member lists. */
+  /** The names a label may match: the union of the four bulk-edit groups' member lists. */
   const knownNames = (): string[] => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
 
   /** The provider to delegate to, defaulting to the harness's own `spawn` provider. */
@@ -265,8 +231,8 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       }
       /** This request read through the routing contract; every other field is forwarded untouched. */
       const routable = request as RoutableRequest
-      // A route resolution that THROWS (an unusable slot) must reach the captain unchanged: the spawn
-      // fails loudly, naming the member and the slot, and `base.start` below is never reached.
+      // A route resolution that THROWS (an unusable route) must reach the captain unchanged: the
+      // spawn fails loudly, naming the agent and the route, and `base.start` below is never reached.
       const resolved = routeFor(routable)
       /** The request with a route applied, or the request itself for an inheriting teammate. */
       const routed = resolved === undefined
@@ -294,4 +260,4 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
 }
 
 export { applyRoute, labelOf, memberFromLabel }
-export type { SlotRoute }
+export type { AgentRoute }

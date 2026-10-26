@@ -1087,7 +1087,9 @@ export function teamGraphView(workflow: TeamWorkflow | undefined, cols: number, 
   const graphTasks = modelRows(workflow)
   if (graphTasks.length === 0) return undefined
   try {
-    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow))
+    // THE FRAMES GO THROUGH (frozen contract D3): a grouped board's per-node column is its column INSIDE
+    // its frame, so a flat pass would interleave two frames' boxes in one rank.
+    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow), workflow.model?.groups)
   } catch {
     // A pathological record must cost the DAG, not the surface.
     return undefined

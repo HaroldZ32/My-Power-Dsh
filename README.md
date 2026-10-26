@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.15.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
@@ -67,9 +67,9 @@ row-by-row ledger behind this table — every row names its evidence, and every 
 open is recorded there. The rows above whose two columns are not the same sentence are exactly those
 recorded deviations. Read the ledger before you rely on the TUI for a Web capability.
 
-![The Team view in the DSH Web GUI sidebar: team id and phase, a progress bar, five members with their model routes and per-member task counts, and a six-node frosted-glass task graph with status colours, dependency edges and a hover card showing the pinned task's status, owner, elapsed time, subject and progress.](./docs/assets/images/web-team-board-v2.png)
+![The Team view in the DSH Web GUI: the team header and progress, the roster with each member's model route, and the nested task graph — a subcell drawn as the subcell-auth FRAME (a .mpd-dag-group box) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it.](./docs/assets/images/web-team-dag-groups.png)
 
-![The DSH-TUI's /mpd team scene: the team header and progress bar, the roster line, and the six-node task graph in box-drawing characters, above the key hints.](./docs/assets/images/tui-team-dag.png)
+![The DSH-TUI's DAG page for the same nested team: the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═) with a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the key hints.](./docs/assets/images/tui-team-dag-groups.png)
 
 ## Features
 
@@ -156,7 +156,7 @@ names it: pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
+| 0.16.0 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
 | 0.15.4 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
@@ -278,7 +278,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.15.5**). Annotated tags are listed under
+version (the current release is **v0.16.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

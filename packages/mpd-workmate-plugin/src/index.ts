@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -760,9 +760,9 @@ export function apply(ctx: Ctx): void {
    *
    * @returns the service double, or undefined when it is absent or refuses the lookup.
    */
-  function configService(): { slotResolutionOf?: (m: string) => unknown; teamModelRouteOf?: (m: string) => unknown } | undefined {
+  function configService(): { agentRouteResolutionOf?: (m: string) => unknown } | undefined {
     try {
-      return ctx.get ? (ctx.get("mpdConfig") as { teamModelRouteOf?: (m: string) => unknown } | undefined) : undefined
+      return ctx.get ? (ctx.get("mpdConfig") as { agentRouteResolutionOf?: (m: string) => unknown } | undefined) : undefined
     } catch {
       // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
       return undefined
@@ -770,64 +770,50 @@ export function apply(ctx: Ctx): void {
   }
 
   /**
-   * The route ONE spawn runs on, resolved from the SLOT SERVICE ONLY (contract §5).
+   * The route ONE spawn runs on, resolved from the base's OWN `agentRoutes` entry ONLY (contract §5).
    *
    * The frozen `meta.provider`/`meta.model` are PROVENANCE now (a snapshot taken at init), never a
-   * routing decision; so is the roster base's declared chain for a roster member. The slot is the
-   * one route source, resolved PER SPAWN so a config saved between two spawns is what the SECOND
-   * spawn runs on.
+   * routing decision; so is the roster base's declared chain for a roster agent. The agent's own
+   * entry is the one route source, resolved PER SPAWN so a config saved between two spawns is what
+   * the SECOND spawn runs on.
    *
-   * Two cases keep their OWN declared route, because no slot exists for them:
-   *   * an EXTENSION role's base is `unrouted` by the slot groups, and its route is its extension's
-   *     own declaration (the roster service reports it as the base's chain head);
-   *   * a `mpdConfig` that answers nothing at all for a BASE member is a REFUSAL, not a fallback:
-   *     the shipped `roles.data.ts` chain is not a default layer (contract §2), so the spawn fails
-   *     with the canonical `SLOT_UNCONFIGURED` sentence and NOTHING is started.
+   * Two cases keep their OWN declared route, because `agentRoutes` decides neither:
+   *   * an EXTENSION role's base answers `unrouted`, and its route is its extension's own declaration
+   *     (the roster service reports it as the base's chain head);
+   *   * a `mpdConfig` that answers nothing at all for a BASE agent is a REFUSAL, not a fallback: the
+   *     shipped `roles.data.ts` chain is not a default layer (contract §1), so the spawn fails with
+   *     the canonical `AGENT_UNCONFIGURED` sentence and NOTHING is started.
    *
    * @param meta - the instance's metadata, whose `baseName` addresses the base.
-   * @returns the primary route plus the slot's fallback chain (empty when the route is not a slot's).
-   * @throws the structured `SLOT_UNCONFIGURED` failure when a roster member's slot is unusable.
+   * @returns the primary route plus the agent's own fallback chain (empty when the route is not one).
+   * @throws the structured `AGENT_UNCONFIGURED` failure when a roster agent's route is unusable.
    */
   function spawnRouteOf(meta: Meta): { route: { provider: string; model: string; reasoningEffort?: string }; fallbacks: readonly unknown[] } {
     /** The live config service, absent until the `mpd-config` row has applied. */
     const live = configService()
-    if (typeof live?.slotResolutionOf === "function") {
-      /** The service's TOTAL resolution, never an exception (contract amendment 1). */
-      const resolution = live.slotResolutionOf(meta.baseName) as
-        | { ok: true; route: { provider: string; model: string; reasoningEffort?: string }; fallbacks?: readonly unknown[] }
-        | { ok: false; status: "unconfigured" | "invalid"; code: string; message: string }
-        | { ok: false; status: "unrouted" }
-      if (resolution !== null && typeof resolution === "object") {
-        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] }
-        // NOT slot-routed (an extension base): its own declared chain below is the route.
-        if (resolution.status === "unrouted") return { route: declaredRouteOfBase(meta), fallbacks: [] }
-        // Routed but unusable: the ONE structured failure, built by the config service itself.
-        const error = new Error(resolution.message)
-        ;(error as Error & { code?: string }).code = resolution.code
-        throw error
-      }
-    }
-    // A config row from before the total surface: its route read is still authoritative for a member
-    // it routes, and an absent answer falls through to the base's declared chain.
-    if (typeof live?.teamModelRouteOf === "function") {
-      /** The older total read's route, or undefined when it has none to report. */
-      const route = live.teamModelRouteOf(meta.baseName) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
-      if (route !== undefined && route !== null && typeof route === "object") {
-        return {
-          route: {
-            provider: String(route.provider ?? ""),
-            model: String(route.model ?? ""),
-            ...(typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? { reasoningEffort: route.reasoningEffort } : {}),
-          },
-          fallbacks: [],
-        }
+    if (typeof live?.agentRouteResolutionOf === "function") {
+      /** The service's TOTAL resolution, never an exception (contract §2). */
+      const resolution = live.agentRouteResolutionOf(meta.baseName) as
+        | { ok: true; agent: string; route: { provider: string; model: string; reasoningEffort?: string; fallbacks?: readonly unknown[] } }
+        | { ok: false; reason: "unconfigured"; agent: string; missing: readonly string[] }
+        | { ok: false; reason: "invalid"; agent: string; problem: string }
+        | { ok: false; reason: "unrouted" }
+        | undefined
+      if (resolution !== null && typeof resolution === "object" && typeof resolution.ok === "boolean") {
+        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.route.fallbacks ?? [] }
+        // NOT routed by `agentRoutes` (an extension base): its own declared chain below is the route.
+        if (resolution.reason === "unrouted") return { route: declaredRouteOfBase(meta), fallbacks: [] }
+        // Routed but unusable: the ONE structured failure every spawn applier reports.
+        /** The detail the canonical sentence names: the missing leaves, or the malformed path. */
+        const detail = resolution.reason === "invalid" ? resolution.problem + " must be a string" : "missing " + resolution.missing.join(", ")
+        throw agentUnconfiguredRefusal(resolution.agent, detail)
       }
     }
     return { route: declaredRouteOfBase(meta), fallbacks: [] }
   }
 
   /**
-   * The route a workmate base DECLARES for itself, for the case no slot decides it.
+   * The route a workmate base DECLARES for itself, for the case no agent route decides it.
    *
    * Only an extension role reaches this: its route is the provider/model its extension declared, which
    * the roster service reports as the base's chain head. A base with no declared route is an ERROR —
@@ -1010,15 +996,15 @@ export function apply(ctx: Ctx): void {
     const dir = wmDir(name)
     if (existsSync(dir)) throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`)
     mkdirSync(dir, { recursive: true })
-    /** The route the instance is BORN with, recorded as provenance only: a usable slot when the base
-     *  is slot-routed, else the base's own declared route (an extension role), else empty — never the
-     *  shipped roster chain, which is not a route any spawn may run on (contract §2/§5). */
+    /** The route the instance is BORN with, recorded as provenance only: the base agent's own usable
+     *  `agentRoutes` entry, else the base's own declared route (an extension role), else empty — never
+     *  the shipped roster chain, which is not a route any spawn may run on (contract §1/§5). */
     const born = ((): { provider: string; model: string } => {
-      /** The live slot resolution of the base, when the config row is mounted. */
+      /** The live agent-route resolution of the base, when the config row is mounted. */
       const live = configService()
-      if (typeof live?.slotResolutionOf === "function") {
-        /** The total resolution; only a usable slot names a route here. */
-        const resolution = live.slotResolutionOf(base.name) as { ok: true; route: { provider: string; model: string } } | { ok: false } | undefined
+      if (typeof live?.agentRouteResolutionOf === "function") {
+        /** The total resolution; only a usable route names one here. */
+        const resolution = live.agentRouteResolutionOf(base.name) as { ok: true; route: { provider: string; model: string } } | { ok: false } | undefined
         if (resolution !== undefined && resolution !== null && resolution.ok === true) return { provider: resolution.route.provider, model: resolution.route.model }
       }
       return { provider: base.provider, model: base.model }
@@ -1112,10 +1098,10 @@ export function apply(ctx: Ctx): void {
       // mutation block on this workmate.
       noteSpawnStart(key)
       try {
-        // THE SLOT IS THE ONLY ROUTE SOURCE (contract §5), resolved PER SPAWN, so a config saved
-        // between two spawns is what the SECOND spawn runs on — an in-flight task keeps its route.
-        // The frozen `meta.provider`/`meta.model` are provenance and never decide a route.
-        /** The primary route plus the slot's own fallback chain, or the structured refusal. */
+        // THE AGENT'S OWN ROUTE IS THE ONLY ROUTE SOURCE (contract §5), resolved PER SPAWN, so a
+        // config saved between two spawns is what the SECOND spawn runs on — an in-flight task keeps
+        // its route. The frozen `meta.provider`/`meta.model` are provenance and never decide a route.
+        /** The primary route plus the agent's own fallback chain, or the structured refusal. */
         const decided = spawnRouteOf(meta)
         /** The route this spawn actually sends: the winning candidate after the ONE pre-spawn
          *  consumption of the fallback chain and the effort adaptation (contract §8). */

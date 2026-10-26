@@ -1038,17 +1038,18 @@ describe("roster section: agent-scoped teammate templates for the mpd Lead", () 
     expect(text).not.toContain("spawn_teammate")
     expect(text).not.toContain("team_task_create")
     // The measured routing bound is stated, never promised away: the native team executor
-    // applies a `teamModels` slot by identity precedence (`role` -> description head -> whole
-    // name), ONLY an unmatched member inherits the staging session's route, and prompt text can
-    // never change a route.
-    expect(text).toContain("a `teamModels` slot applies by identity")
+    // applies each agent's own `agentRoutes` entry by identity precedence (`role` -> description
+    // head -> whole name), ONLY an unmatched member inherits the staging session's route, and
+    // prompt text can never change a route.
+    expect(text).toContain("each agent's `agentRoutes` entry applies by identity")
     expect(text).toContain("`role`, then the `description` head, then the whole `name`")
+    expect(text).toContain("applies that entry directly and refuses when it is unusable")
     expect(text).toContain("An UNMATCHED member inherits YOUR model route (the staging session's)")
     expect(text).toContain("prompt text cannot change a route")
     expect(text).toContain("mpd_role_spawn")
     expect(text).not.toContain("NAMES a roster member")
     // Compact: one line per member plus a header and the instantiation line, and the whole
-    // injected block stays inside its measured budget (1697 chars on 2026-10-24).
+    // injected block stays inside its measured budget (1691 chars on 2026-10-26).
     expect(text.split("\n").length).toBeLessThanOrEqual(ROLES.length + 3)
     expect(text.length).toBeLessThanOrEqual(1700)
   })

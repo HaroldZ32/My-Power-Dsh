@@ -28,8 +28,15 @@
   因为本仓库无法用裸模块名解析官方包（实测 `MODULE_NOT_FOUND`）。
 - **对象** —— 只处理成员。captain 永远不会被压缩（那是用户的 `/compact`）。
 - **屏障** —— 等待所有成员空闲，然后一起压缩。
-- **方式** —— 无条件的显式 `compactNow`。返回 null 表示"没有可安全压缩的区间"，这会作为一条事实
-  记录，而不是错误。
+- **方式** —— 无条件的显式 `compactNow`，并传入真实的 `AbortSignal`：每次驱动使用一个
+  `AbortController`，当调用方提供了本批次自己的可选 `signal` 时，再通过 `AbortSignal.any` 与之合并。
+  绝不会传 `undefined`，因为引擎的第一句就是 `signal.throwIfAborted()`；修复前的调用正是在那里以原始
+  `TypeError` 崩溃，压缩根本没开始。返回 null 表示"没有可安全压缩的区间"，这会作为一条事实记录，
+  而不是错误。
+- **取消** —— 信号被中止属于取消，而不是失败：该成员记为 `failed` 并带上引擎自己的 `cancelled`
+  代码——绝不会记成未分类失败，也绝不会是 `TypeError`。其余分类保持不变：六种
+  `ManualCompactionError` 代码（`busy`、`cancelled`、`changed`、`summary`、`commit`、`persistence`）
+  与 Cordis 生命周期错误类别读法照旧，无法识别的错误仍然是未分类（不臆造代码）。
 - **审计** —— `<工作区>/.mpd/team-compact/<teamId>/`，持续累积、绝不覆盖。它绝不会写到
   `.mpd/team`：本插件对团队只**读**不写——记录经 `mpdTeams` 服务读取，官方平面经 adapter 读取——除自己的
   审计之外不写任何文件。
@@ -50,6 +57,9 @@
   `not-live`，而不是被静默忽略。
 - **`busy` 不是并发信号**：驱动一个忙成员会抛出 Cordis 生命周期错误（inactive context 中的
   `tokenMeter`），该类别与六种 `ManualCompactionError` 分类处理。
+- **驱动信号必须是真实且必需的**：`compactNow` 的**第一句**就是 `signal.throwIfAborted()`，所以传
+  `undefined` 会在引擎做任何工作之前抛出 `TypeError`。因此每次驱动都拿到 `AbortController` 的信号，
+  并且 `classifyCompactionError` 里的取消分支**最先**判定，被中止的驱动绝不会被记成未分类失败。
 - `parameters` schema **以 object 为根**。实测过 `type: null` 根会让 provider 拒绝挂载会话的每一个
   模型请求，这正是单测与挂载级的 `TOOL_PARAM_SCHEMAS` 探针都要钉住它的原因。
 

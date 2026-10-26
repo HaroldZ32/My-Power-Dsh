@@ -1,19 +1,41 @@
-// `/mpd-model` (R3) and the TUI bilingual surfaces (R4).
+// `/mpd-model` (R3) and the TUI bilingual surfaces (R4), keyed by AGENT.
+//
+// THIS FILE REVERSES THE 2026-10-23 DELETION LOCK ON PURPOSE (contract `agent-routes-per-agent.md`
+// §9 / amendment 2 §4). The lock asserted that the menu "must not contain agentRoutes" and wrote
+// `teamModels.<slot>`; the contract now makes the AGENT the unit of model configuration, so the
+// assertions here are the mirror image: the chain is group → scope (whole group / one agent) →
+// provider → model → reasoning effort, a whole-group write is CONFIRMED first and writes every
+// member's own entry, a clear removes exactly one entry, and `teamModels` is written NOWHERE.
 //
 // The doubles MODEL THE HOST rather than being permissive, the same way `plugin.test.ts` does:
 // the dialog double records every panel request and answers from a script, so a test can assert
 // WHICH panels the chain opened, in which order, and — the rule the contract cares about most —
 // that a cancel at any panel reached the host as NO write at all.
 import { describe, expect, test } from "bun:test"
-import { openModelMenu, panelOptions, readStoredSlots, slotPanelOptions, storedSlot, locateNamespace, MODEL_NAMESPACE } from "../src/model-menu"
+import {
+  GROUP_SCOPE_ID,
+  MODEL_NAMESPACE,
+  actionPanelOptions,
+  agentRouteText,
+  confirmationLines,
+  groupPanelOptions,
+  hasStoredRoute,
+  locateNamespace,
+  openModelMenu,
+  panelOptions,
+  readStoredRoutes,
+  routeKeyFor,
+  routeTableOf,
+  scopePanelOptions,
+  storedAgentRoute,
+} from "../src/model-menu"
 import type { ModelMenuResult } from "../src/model-menu"
-import type { CatalogReadSeam } from "../src/settings"
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, slotResolutionDisplay, teamModelOptionLists } from "../src/settings"
-import { MODEL_COMMAND, MODEL_COMMAND_DESCRIPTIONS } from "../src/command-trees"
-import { TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS } from "../../mpd-config-plugin/src/settings-schema"
-import { resolveTeamModelSlot } from "../../mpd-config-plugin/src/index"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, agentRouteDisplay, teamModelOptionLists } from "../src/settings"
+import type { AgentRouteDisplay, CatalogReadSeam } from "../src/settings"
+import { MODEL_COMMAND, MODEL_COMMAND_DESCRIPTION, MODEL_COMMAND_DESCRIPTIONS } from "../src/command-trees"
+import { ROSTER_AGENT_NAMES, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
+import { resolveAgentRoute } from "../../mpd-config-plugin/src/index"
 import { detectLocaleLang, readLangPref, resolveLang, bilingual, pick, substitute } from "../src/i18n"
-import type { LangInputs } from "../src/i18n"
 
 /** One recorded dialog request. */
 interface PanelCall {
@@ -27,10 +49,20 @@ interface PanelCall {
   readonly descriptions: (string | undefined)[]
 }
 
+/** One recorded confirmation request. */
+interface ConfirmCall {
+  /** The confirmation title (the question the host renders). */
+  readonly title: string
+  /** The confirmation body: the affected agents and their current routes. */
+  readonly message: string | undefined
+}
+
 /** A dialog seam double: records every panel and answers from a script. */
 interface DialogDouble {
   /** Every panel the chain opened, in call order. */
   readonly calls: PanelCall[]
+  /** Every confirmation the chain asked for, in call order. */
+  readonly confirms: ConfirmCall[]
   /** The seam itself, shaped as `createDialogs()` returns it. */
   readonly seam: {
     available(): boolean
@@ -44,15 +76,25 @@ interface DialogDouble {
  * Build a dialog double that answers each panel from `answers`, in call order.
  * @param answers - the option id per panel; `undefined` models a cancel (Esc / Ctrl+C / timeout).
  * @param available - whether the seam is composed at all.
- * @returns the double: its call log and the seam.
+ * @param confirmAnswers - the yes/no answer per confirmation; `undefined` models a dismissed dialog.
+ * @returns the double: its call logs and the seam.
  */
-function dialogDouble(answers: readonly (string | undefined)[], available: boolean = true): DialogDouble {
+function dialogDouble(
+  answers: readonly (string | undefined)[],
+  available: boolean = true,
+  confirmAnswers: readonly (boolean | undefined)[] = [],
+): DialogDouble {
   /** Every panel opened, in call order. */
   const calls: PanelCall[] = []
+  /** Every confirmation opened, in call order. */
+  const confirms: ConfirmCall[] = []
   /** This double's place in the answer script. */
   let index = 0
+  /** This double's place in the confirmation script. */
+  let confirmIndex = 0
   return {
     calls,
+    confirms,
     seam: {
       /** Whether a picker can be offered at all. */
       available: (): boolean => available,
@@ -74,9 +116,13 @@ function dialogDouble(answers: readonly (string | undefined)[], available: boole
         index += 1
         return answer
       },
-      /** No yes/no dialog is part of this chain. */
-      async confirm(_title: string, _message?: string): Promise<boolean | undefined> {
-        return undefined
+      /** Records the confirmation and settles the scripted answer. */
+      async confirm(title: string, message?: string): Promise<boolean | undefined> {
+        confirms.push({ title, message })
+        /** This confirmation's scripted answer; a run past the end of the script dismisses it. */
+        const answer = confirmAnswers[confirmIndex]
+        confirmIndex += 1
+        return answer
       },
     },
   }
@@ -144,7 +190,7 @@ function adapterDouble(
   return { seam, writes }
 }
 
-/** A minimal log double: the chain only ever writes INFO/DEBUG/ERROR lines through it. */
+/** A minimal log double: the chain only ever writes INFO/DEBUG/WARN/ERROR lines through it. */
 const LOG = {
   info: () => {},
   debug: () => {},
@@ -157,6 +203,9 @@ const NO_TUI = {} as never
 
 /** The text of one command result; an empty string for the success case with no output. */
 const textOf = (result: ModelMenuResult): string => (result.text === undefined ? "" : result.text)
+
+/** English, stated explicitly so an assertion never depends on the machine's locale. */
+const EN = { env: { DSH_TUI_LANG: "en" } }
 
 /** A provider-first catalog with two providers, so "narrowed vs union" is observable. */
 const CATALOG = {
@@ -172,6 +221,37 @@ const CATALOG = {
     },
     { id: "prov-b", name: "Provider B", models: [{ id: "model-b1", name: "Model B1", efforts: [{ id: "max", name: "max" }] }] },
   ],
+}
+
+/**
+ * A config-service double exposing the contract's typed agent-route answer.
+ * @param answer - the per-agent answer the service gives.
+ * @returns the minimal service slice `agentRouteDisplay` reads.
+ */
+function serviceDouble(answer: (member: string) => unknown): { agentRouteResolutionOf: (member: string) => unknown } {
+  return { agentRouteResolutionOf: answer }
+}
+
+/**
+ * A typed `ok` answer for one agent, used to build "already configured" fixtures.
+ * @param provider - the provider id the route declares.
+ * @param model - the model id the route declares.
+ * @param effort - the reasoning effort, when the route declares one.
+ * @returns the service's `ok` arm.
+ */
+function okAnswer(provider: string, model: string, effort?: string): { ok: true; agent: string; route: { provider: string; model: string; reasoningEffort?: string } } {
+  return { ok: true, agent: "x", route: effort === undefined ? { provider, model } : { provider, model, reasoningEffort: effort } }
+}
+
+/**
+ * The typed answers for a whole roster, all unconfigured — the "nothing is set yet" world.
+ * @returns one `unconfigured` answer per roster agent.
+ */
+function allUnconfigured(): Record<string, AgentRouteDisplay> {
+  /** The display map the panel helpers take. */
+  const out: Record<string, AgentRouteDisplay> = {}
+  for (const member of ROSTER_AGENT_NAMES) out[member] = { state: "unconfigured", missing: ["provider", "model"] }
+  return out
 }
 
 describe("R4: the TUI language resolution follows the HOST's own chain", () => {
@@ -211,8 +291,7 @@ describe("R4: the TUI language resolution follows the HOST's own chain", () => {
     // `||` semantics: an EMPTY LC_ALL means "unset" and falls through to the next variable.
     expect(detectLocaleLang({ LC_ALL: "", LANG: "zh_CN.UTF-8" })).toBe("zh")
     expect(detectLocaleLang({ LC_MESSAGES: "zh_TW.UTF-8", LANG: "en_US.UTF-8" })).toBe("zh")
-    // A3: the CI-shaped locale. `C.UTF-8` is a STATED locale, so it is not zh — it is en, and a
-    // resolver mapping "not zh ⇒ zh" would disagree with the host in exactly this environment.
+    // The CI-shaped locale. `C.UTF-8` is a STATED locale, so it is not zh — it is en.
     expect(detectLocaleLang({ LANG: "C.UTF-8" })).toBe("en")
     expect(detectLocaleLang({ LC_ALL: "C" })).toBe("en")
     expect(detectLocaleLang({ LANG: "POSIX" })).toBe("en")
@@ -246,263 +325,287 @@ describe("R4: the TUI language resolution follows the HOST's own chain", () => {
   })
 })
 
-describe("R3: the /mpd-model pick-list chain", () => {
-  /** A config-service double exposing the contract's typed slot answer (the slot display's source). */
-  const slotServiceDouble = (answer: (member: string) => unknown): { slotResolutionOf: (member: string) => unknown } => ({
-    slotResolutionOf: answer,
-  })
-
-  test("panel 1 labels each slot with its member group, in the resolved language", () => {
-    /** The English panel. */
-    const en = slotPanelOptions("en")
-    expect(en.map((option) => option.id)).toEqual([...TEAM_MODEL_SLOTS])
-    expect(en.map((option) => option.label)).toEqual([
+describe("R3 · the /mpd-model chain is keyed by AGENT (contract §6)", () => {
+  // ── the panels, as pure projections ───────────────────────────────────────
+  test("panel 1 labels each group, names its members and summarises their CURRENT routes", () => {
+    /** The label-only English panel: four groups, in the declaration's order. */
+    const bare = groupPanelOptions("en")
+    expect(bare.map((option) => option.id)).toEqual([...TEAM_MODEL_SLOTS])
+    expect(bare.map((option) => option.label)).toEqual([
       `1. ${TEAM_MODEL_SLOT_GROUPS.slot1.en}`,
       `2. ${TEAM_MODEL_SLOT_GROUPS.slot2.en}`,
       `3. ${TEAM_MODEL_SLOT_GROUPS.slot3.en}`,
       `4. ${TEAM_MODEL_SLOT_GROUPS.slot4.en}`,
     ])
-    /** The Chinese panel: the same ids, the zh group names. */
-    const zh = slotPanelOptions("zh")
-    expect(zh.map((option) => option.id)).toEqual(en.map((option) => option.id))
-    expect(zh[0].label).toBe(`1. ${TEAM_MODEL_SLOT_GROUPS.slot1.zh}`)
-    expect(zh[3].label).toBe(`4. ${TEAM_MODEL_SLOT_GROUPS.slot4.zh}`)
+    // Every member of the group is named on its own option, so a reader knows whom the bulk edit hits.
+    for (const member of TEAM_MODEL_SLOT_GROUPS.slot2.members) expect(bare[1].description).toContain(member)
+    // Contract §6.1: the compact summary is the configured COUNT plus the DISTINCT routes, and the
+    // contract's own token when no member has one.
+    /** One typed answer per roster agent: nothing is configured yet. */
+    const nothing = allUnconfigured()
+    /** The summary with no member configured. */
+    const empty = groupPanelOptions("en", nothing)
+    expect(empty[0].description).toContain(`0/${TEAM_MODEL_SLOT_GROUPS.slot1.members.length} configured`)
+    expect(empty[0].description).toContain("<unconfigured>")
+    /** The typed answers with the whole slot-1 group on ONE route. */
+    const uniform: Record<string, AgentRouteDisplay> = { ...nothing }
+    for (const member of TEAM_MODEL_SLOT_GROUPS.slot1.members) uniform[member] = { state: "ok", route: "prov-a / model-a1 / low", fallbacks: 0 }
+    /** The summary with every member configured the same way. */
+    const full = groupPanelOptions("en", uniform)
+    expect(full[0].description).toContain(`${TEAM_MODEL_SLOT_GROUPS.slot1.members.length}/${TEAM_MODEL_SLOT_GROUPS.slot1.members.length} configured`)
+    expect(full[0].description).toContain("prov-a / model-a1 / low")
+    // The DISTINCT count: one route, so no `+N more distinct` marker appears.
+    expect(full[0].description).not.toContain("more distinct")
   })
 
-  test("the slot panel states each slot's CURRENT configuration from the TYPED slot answer", () => {
-    // Contract AMENDMENT 1: the display reads `slotResolutionOf`, whose union is narrowed here rather
-    // than trusted — a route, `<unconfigured>`, `<invalid>` and `<unavailable>` are four DIFFERENT facts
-    // and the reader must be able to tell them apart.
-    /** One typed answer per slot, covering all four states. */
-    const displays = {
-      slot1: slotResolutionDisplay(slotServiceDouble(() => ({
-        ok: true,
-        route: { provider: "prov-a", model: "model-a1", reasoningEffort: "high" },
-        fallbacks: [{ provider: "prov-b", model: "model-b1" }],
-      })), "Architect"),
-      slot2: slotResolutionDisplay(slotServiceDouble(() => ({ ok: false, status: "unconfigured", missing: ["provider", "model"] })), "Researcher"),
-      slot3: slotResolutionDisplay(slotServiceDouble(() => ({ ok: false, status: "invalid" })), "Deep Worker"),
-      slot4: slotResolutionDisplay(undefined, "Vision Analyst"),
-    }
-    /** The English panel. */
-    const en = slotPanelOptions("en", displays)
-    expect(en[0].description).toContain("current: prov-a / model-a1 / high")
-    expect(en[0].description).toContain("+1 fallbacks")
-    expect(en[1].description).toContain("<unconfigured>")
-    expect(en[2].description).toContain("<invalid>")
-    expect(en[3].description).toContain("<unavailable>")
-    // The zh half carries the same facts under its own words.
-    /** The Chinese panel. */
-    const zh = slotPanelOptions("zh", displays)
-    expect(zh[1].description).toContain("当前：<unconfigured>")
-    expect(zh[3].description).toContain("<unavailable>")
+  test("panel 2 offers the WHOLE GROUP first, then exactly that group's agents", () => {
+    /** The English scope panel for the analysis group. */
+    const options = scopePanelOptions("en", "slot2", allUnconfigured())
+    // Contract §6.2: the bulk edit or ONE agent of the picked group — nothing else is representable.
+    expect(options.map((option) => option.id)).toEqual([GROUP_SCOPE_ID, ...TEAM_MODEL_SLOT_GROUPS.slot2.members])
+    expect(options[0].label).toBe(`whole group (${TEAM_MODEL_SLOT_GROUPS.slot2.members.length} agents)`)
+    expect(options[0].description).toContain("confirmed before anything is written")
+    // Each agent option states its current route (see-before-you-edit), never a blank.
+    for (const option of options.slice(1)) expect(option.description).toContain("<unconfigured>")
+    // An agent OUTSIDE the picked group is unrepresentable, so a group write can never silently widen.
+    expect(options.map((option) => option.id)).not.toContain("Architect")
   })
 
-  test("the display narrows the REAL config service union (contract AMENDMENT 1), not a lookalike", () => {
-    // THE CROSS-PACKAGE ARM: `slotResolutionDisplay` must read the resolver the config service actually
-    // publishes (`resolveTeamModelSlot`'s `SlotResolution`), so a display that invented its own union
-    // would drift silently. All four states are driven through the REAL resolver here.
-    /** The service double over the real resolver and a fixed config. */
-    const serviceOver = (config: unknown): { slotResolutionOf: (member: string) => unknown } => ({
-      slotResolutionOf: (member: string): unknown => resolveTeamModelSlot(member, config),
-    })
-    /** An unconfigured slot: the resolver names the missing leaves and the display shows the token. */
-    expect(slotResolutionDisplay(serviceOver({}), "Architect")).toEqual({ state: "unconfigured", missing: ["provider", "model"] })
-    // A configured slot: the route and the slot's own fallback count.
-    expect(slotResolutionDisplay(serviceOver({
-      teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max", fallbacks: [{ provider: "p2", model: "m2" }] } },
-    }), "Architect")).toEqual({ state: "ok", route: "deepseek-official / deepseek-v4-flash / max", fallbacks: 1 })
-    // A malformed leaf is `invalid`, NOT `unconfigured`: the reader must be able to fix the right thing.
-    expect(slotResolutionDisplay(serviceOver({ teamModels: { slot1: { provider: 7 } } }), "Architect")).toEqual({ state: "invalid" })
-    // A member no slot routes is `unrouted`: for a slot display that is `<unavailable>`, never a claim
-    // that an existing slot is unconfigured.
-    expect(slotResolutionDisplay(serviceOver({}), "Nobody")).toEqual({ state: "unavailable" })
-    // The sentence the user sees carries the token for each state.
-    const displays = {
-      slot1: slotResolutionDisplay(serviceOver({}), "Architect"),
-      slot2: slotResolutionDisplay(serviceOver({ teamModels: { slot2: { provider: "p", model: "m" } } }), "Researcher"),
-      slot3: slotResolutionDisplay(serviceOver({ teamModels: { slot3: { provider: 7 } } }), "Deep Worker"),
-      slot4: slotResolutionDisplay(serviceOver({}), "Nobody"),
-    }
-    /** The English slot panel over those answers. */
-    const options = slotPanelOptions("en", displays)
-    expect(options[0].description).toContain("<unconfigured>")
-    expect(options[1].description).toContain("current: p / m")
-    expect(options[2].description).toContain("<invalid>")
-    expect(options[3].description).toContain("<unavailable>")
+  test("the action panel offers set and clear, and the clear hint states the CONSEQUENCE", () => {
+    /** The English action panel for one agent. */
+    const options = actionPanelOptions("en", "Architect")
+    expect(options.map((option) => option.id)).toEqual(["set", "clear"])
+    // The clear branch names the entry it removes AND what a clear costs (contract §6.7). It states
+    // the cost as a CONSEQUENCE: the error code and the refusal sentence belong to `mpd-config-plugin`.
+    expect(options[1].label).toContain("agentRoutes.Architect")
+    expect(options[1].description).toContain("agentRoutes.Architect")
+    expect(options[1].description).toContain("REFUSED")
   })
 
-  test("the dialog reads the typed answer through the config service; an absent method degrades to <unavailable>", async () => {
-    // The unconfigured state reaches the panel the USER sees, not just the helper: the slot options the
-    // chain asked the dialog for all carry the literal token.
-    /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
-    /** The chain's outcome, over an injected unconfigured service. */
-    const result = await openModelMenu(NO_TUI, LOG, {
-      dialogs: dialogs.seam,
-      adapter: adapterDouble(CATALOG).seam,
-      slotService: slotServiceDouble(() => ({ ok: false, status: "unconfigured", missing: ["provider", "model"] })),
-    })
-    expect(result.kind).toBe("success")
-    expect(dialogs.calls[0].descriptions?.every((text) => typeof text === "string" && text.includes("<unconfigured>"))).toBe(true)
-    // An older composition has no method at all: the panel says `<unavailable>` and the chain still runs
-    // its four panels and writes — the display degrades, the command does not fail.
-    /** The old-composition dialog double. */
-    const oldDialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
-    /** The old-composition outcome (no `slotService`, so the resolved service has no method). */
-    const oldRun = await openModelMenu(NO_TUI, LOG, { dialogs: oldDialogs.seam, adapter: adapterDouble(CATALOG).seam })
-    expect(oldRun.kind).toBe("success")
-    expect(oldDialogs.calls[0].descriptions?.every((text) => typeof text === "string" && text.includes("<unavailable>"))).toBe(true)
+  test("the confirmation lists EVERY affected agent with its current effective route", () => {
+    /** The typed answers: one agent configured, the others unconfigured. */
+    const displays: Record<string, AgentRouteDisplay> = { ...allUnconfigured() }
+    displays.Researcher = { state: "ok", route: "prov-a / model-a1 / low", fallbacks: 2 }
+    /** The confirmation body for the analysis group. */
+    const message = confirmationLines("en", [...TEAM_MODEL_SLOT_GROUPS.slot2.members], displays)
+    // The heading says the write OVERWRITES, and that the routes below are the CURRENT ones.
+    expect(message).toContain("OVERWRITES")
+    // Contract §6.6: every affected agent is listed by name, with its route or the contract's token.
+    expect(message).toContain("Researcher: current: prov-a / model-a1 / low (+2 fallbacks)")
+    expect(message).toContain("Explorer: current: <unconfigured>")
+    expect(message).toContain("Plan Reviewer: current: <unconfigured>")
+    // One line per agent plus the heading, so a long group stays readable.
+    expect(message.split(String.fromCharCode(10))).toHaveLength(TEAM_MODEL_SLOT_GROUPS.slot2.members.length + 1)
   })
 
-  test("the four panels open in order slot → provider → model → effort, and write teamModels.<slot>", async () => {
-    /** The dialog double: slot1, prov-a, model-a2, high. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a2", "high"])
-    /** The adapter double with a live catalog. */
+  test("the current-route sentence carries the CONTRACT's four states, never a throw", () => {
+    expect(agentRouteText("en", { state: "ok", route: "p / m", fallbacks: 0 })).toBe("current: p / m")
+    expect(agentRouteText("en", { state: "ok", route: "p / m", fallbacks: 3 })).toContain("(+3 fallbacks)")
+    expect(agentRouteText("en", { state: "unconfigured", missing: ["a", "b"] })).toBe("current: <unconfigured>")
+    expect(agentRouteText("en", { state: "invalid" })).toBe("current: <invalid>")
+    expect(agentRouteText("en", { state: "unavailable" })).toBe("current: <unavailable>")
+  })
+
+  // ── the WRITE arms the contract enumerates (§9) ───────────────────────────
+  test("a WHOLE-GROUP write saves exactly 3 leaves × N agents, after the required confirmation", async () => {
+    /** The dialog double: group slot2, whole group, prov-a, model-a1, low — then confirm. */
+    const dialogs = dialogDouble(["slot2", GROUP_SCOPE_ID, "prov-a", "model-a1", "low"], true, [true])
+    /** The adapter double with a live catalog and no stored entry. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("success")
-    // FOUR panels, and NO scope panel: the per-member override layer is deleted, so the only write
-    // target is the slot. The ids are asserted rather than the titles because the panel ORDER is the
-    // contract, and a member name appearing here would mean the deleted layer came back.
+    // FIVE select panels (group → scope → provider → model → effort), then the REQUIRED confirmation.
     expect(dialogs.calls.map((call) => call.ids)).toEqual([
       [...TEAM_MODEL_SLOTS],
+      [GROUP_SCOPE_ID, ...TEAM_MODEL_SLOT_GROUPS.slot2.members],
       ["prov-a", "prov-b"],
       ["model-a1", "model-a2"],
-      ["high"],
+      ["low"],
     ])
-    expect(dialogs.calls[0].ids).not.toContain("Deep Worker")
-    // The write is the ONLY one, and it addresses the picked slot's three leaves.
+    expect(dialogs.confirms).toHaveLength(1)
+    // The confirmation names the group and the affected COUNT, and lists every agent's current route.
+    expect(dialogs.confirms[0].title).toContain(TEAM_MODEL_SLOT_GROUPS.slot2.en)
+    expect(dialogs.confirms[0].title).toContain(String(TEAM_MODEL_SLOT_GROUPS.slot2.members.length))
+    for (const member of TEAM_MODEL_SLOT_GROUPS.slot2.members) expect(dialogs.confirms[0].message).toContain(member)
+    // ONE write, 3 leaves × N members, every path under that member's OWN `agentRoutes` entry.
     expect(adapter.writes).toHaveLength(1)
-    // The write targets the config ENTRY, which is the only key the host can mutate (see the
-    // namespace-default arm below for the measured reason).
+    expect(adapter.writes[0].namespace).toBe("mpd-config")
+    /** The expected op list: three leaves for each member, in the group's order. */
+    const expected: { op: string; path: string[]; value: unknown }[] = []
+    for (const member of TEAM_MODEL_SLOT_GROUPS.slot2.members) {
+      expected.push(
+        { op: "set", path: ["agentRoutes", member, "provider"], value: "prov-a" },
+        { op: "set", path: ["agentRoutes", member, "model"], value: "model-a1" },
+        { op: "set", path: ["agentRoutes", member, "reasoningEffort"], value: "low" },
+      )
+    }
+    expect(adapter.writes[0].ops).toEqual(expected)
+    expect(adapter.writes[0].ops).toHaveLength(3 * TEAM_MODEL_SLOT_GROUPS.slot2.members.length)
+    // The retired block is written NOWHERE, on any path of any op.
+    for (const op of adapter.writes[0].ops) expect(op.path[0]).toBe("agentRoutes")
+    // The outcome sentence names the group, the agent count and the leaf count.
+    expect(textOf(result)).toContain(TEAM_MODEL_SLOT_GROUPS.slot2.en)
+    expect(textOf(result)).toContain(`${String(TEAM_MODEL_SLOT_GROUPS.slot2.members.length)} agents`)
+    expect(textOf(result)).toContain("3 leaves")
+    // ... and carries the SAME disclosure the settings section carries.
+    expect(textOf(result)).toContain(BRIDGE_DISCLOSURE)
+    expect(textOf(result)).toContain(BRIDGE_NOT_LOST)
+  })
+
+  test("an INDIVIDUAL write saves exactly 3 leaves for that one agent, and no confirmation", async () => {
+    /** The dialog double: slot1, Planner (no stored entry, so no action panel), then the leaves. */
+    const dialogs = dialogDouble(["slot1", "Planner", "prov-a", "model-a2", "high"], true, [true])
+    /** The adapter double with a live catalog and no stored entry. */
+    const adapter = adapterDouble(CATALOG)
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("success")
+    // FIVE select panels (group, scope, provider, model, effort): no ACTION panel (nothing to clear)
+    // and NO confirmation (one agent only).
+    expect(dialogs.calls).toHaveLength(5)
+    expect(dialogs.confirms).toHaveLength(0)
+    // Contract §6: an individual write shows the TARGET AGENT on the final panel.
+    expect(dialogs.calls[4].title).toContain("Planner")
+    expect(adapter.writes).toHaveLength(1)
     expect(adapter.writes[0].namespace).toBe("mpd-config")
     expect(adapter.writes[0].ops).toEqual([
-      { op: "set", path: ["teamModels", "slot1", "provider"], value: "prov-a" },
-      { op: "set", path: ["teamModels", "slot1", "model"], value: "model-a2" },
-      { op: "set", path: ["teamModels", "slot1", "reasoningEffort"], value: "high" },
+      { op: "set", path: ["agentRoutes", "Planner", "provider"], value: "prov-a" },
+      { op: "set", path: ["agentRoutes", "Planner", "model"], value: "model-a2" },
+      { op: "set", path: ["agentRoutes", "Planner", "reasoningEffort"], value: "high" },
     ])
+    expect(textOf(result)).toContain("Planner")
+    expect(textOf(result)).toContain(BRIDGE_DISCLOSURE)
   })
 
-  test("a leftover agentRoutes block is IGNORED and never rewritten", async () => {
-    // Contract §3's deletion lock: the layer is gone, so a document that still carries the block must
-    // not steer the dialog (no member options) and must not be written to (no unset, no set under it).
-    /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot2", "prov-a", "model-a1", "low"])
-    /** The adapter double whose document carries a stale agentRoutes block. */
-    const adapter = adapterDouble(CATALOG, {
-      stored: {
-        "mpd-config": {
-          teamModels: { slot1: { provider: "p", model: "m", reasoningEffort: "high" } },
-          agentRoutes: { "Deep Worker": { provider: "old", model: "old-model" } },
-        },
-      },
-    })
+  test("a REFUSED confirmation writes NOTHING and says the write was not confirmed", async () => {
+    /** The dialog double answering every panel, then refusing the confirmation. */
+    const dialogs = dialogDouble(["slot2", GROUP_SCOPE_ID, "prov-a", "model-a1", "low"], true, [false])
+    /** The adapter double: it must receive no write at all. */
+    const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("error")
+    expect(adapter.writes).toHaveLength(0)
+    expect(textOf(result)).toContain("not confirmed")
+  })
+
+  test("a DISMISSED confirmation is the same fact as a cancel: nothing is written", async () => {
+    /** The dialog double whose confirmation settles `undefined` (Esc / Ctrl+C / timeout). */
+    const dialogs = dialogDouble(["slot2", GROUP_SCOPE_ID, "prov-a", "model-a1", "low"], true, [undefined])
+    /** The adapter double: it must receive no write at all. */
+    const adapter = adapterDouble(CATALOG)
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("error")
+    expect(adapter.writes).toHaveLength(0)
+    // `undefined` is NOT a confirmation: only a positive answer may reach the write.
+    expect(dialogs.confirms).toHaveLength(1)
+    expect(textOf(result)).toContain("not confirmed")
+  })
+
+  test("the CLEAR branch removes exactly one entry, and that entry only", async () => {
+    /** The stored document: two configured agents, the one being cleared first. */
+    const stored = {
+      "mpd-config": { agentRoutes: { "Senior Engineer": { provider: "p1", model: "m1" }, Architect: { provider: "p2", model: "m2" } } },
+    }
+    /** The dialog double: slot1, Senior Engineer, then the clear action — no provider chain follows. */
+    const dialogs = dialogDouble(["slot1", "Senior Engineer", "clear"], true, [])
+    /** The adapter double whose document carries both entries. */
+    const adapter = adapterDouble(CATALOG, { stored })
+    /** The chain's outcome, rendered in English. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("success")
-    // The only paths the write touches are the picked slot's leaves.
-    expect(adapter.writes.flatMap((write) => write.ops.map((op) => op.path))).toEqual([
-      ["teamModels", "slot2", "provider"],
-      ["teamModels", "slot2", "model"],
-      ["teamModels", "slot2", "reasoningEffort"],
+    // The action panel is panel 3; the clear branch opens NO leaf panels (there is nothing to pick).
+    expect(dialogs.calls.map((call) => call.ids)).toEqual([
+      [...TEAM_MODEL_SLOTS],
+      [GROUP_SCOPE_ID, ...TEAM_MODEL_SLOT_GROUPS.slot1.members],
+      ["set", "clear"],
     ])
-    // The slot panel's descriptions read the SLOT, not the stale member block.
-    expect(dialogs.calls[0].descriptions?.some((text) => typeof text === "string" && text.includes("old-model"))).toBe(false)
+    // ONE write, ONE op: the whole `agentRoutes.<Agent>` entry, never a leaf and never a second entry.
+    expect(adapter.writes).toHaveLength(1)
+    expect(adapter.writes[0].ops).toHaveLength(1)
+    expect(adapter.writes[0].ops[0]).toEqual({ op: "unset", path: ["agentRoutes", "Senior Engineer"] })
+    expect(textOf(result)).toContain("cleared")
+    expect(textOf(result)).toContain("agentRoutes.Senior Engineer")
+    // THE RESOLVER'S VERDICT: ask the REAL resolver about the document after that single removal. The
+    // cleared agent is `unconfigured` with both leaf paths, while the sibling keeps its route.
+    /** The document after the chain's single removal. */
+    const after = { agentRoutes: { Architect: { provider: "p2", model: "m2" } } }
+    /** The cleared agent's typed answer. */
+    const clearedRoute = resolveAgentRoute("Senior Engineer", after)
+    expect(clearedRoute.ok).toBe(false)
+    expect(clearedRoute.ok === false ? clearedRoute.reason : "").toBe("unconfigured")
+    expect(clearedRoute.ok === false && clearedRoute.reason === "unconfigured" ? clearedRoute.missing : []).toEqual([
+      "agentRoutes.Senior Engineer.provider",
+      "agentRoutes.Senior Engineer.model",
+    ])
+    // The sibling entry is untouched: a clear removes ONE agent, not the table.
+    expect(resolveAgentRoute("Architect", after).ok).toBe(true)
   })
 
-  test("panel 3 narrows to the picked provider's models; panel 4 to the picked model's efforts", () => {
-    /** The section's own projection of the catalog. */
-    const lists = teamModelOptionLists(CATALOG as never)
-    expect(panelOptions(lists, "prov-b", undefined, CATALOG).model.map((option) => option.value)).toEqual(["model-b1"])
-    expect(panelOptions(lists, "prov-a", "model-a1", CATALOG).reasoningEffort.map((option) => option.value)).toEqual(["low"])
-    expect(panelOptions(lists, "prov-a", "model-a2", CATALOG).reasoningEffort.map((option) => option.value)).toEqual(["high"])
-  })
-
-  test("panel 3 is NEVER empty: a keyed provider with no models falls back to the union", () => {
-    /** A catalog whose provider A lists no models at all. */
-    const sparse = { degraded: false, providers: [{ id: "prov-a", name: "Provider A", models: [] }, { id: "prov-b", name: "Provider B", models: [{ id: "model-b1", efforts: [] }] }] }
-    /** The section's projection of that catalog. */
-    const lists = teamModelOptionLists(sparse as never)
-    // The slot rows already offer the union, so the menu must not offer LESS than the rows do.
-    expect(panelOptions(lists, "prov-a", undefined, sparse).model).toEqual(lists.model)
-    expect(panelOptions(lists, "prov-a", "model-b1", sparse).reasoningEffort).toEqual(lists.reasoningEffort)
-    expect(panelOptions(lists, "prov-a", undefined, sparse).model.length).toBeGreaterThan(0)
-    expect(panelOptions(lists, "prov-a", "model-b1", sparse).reasoningEffort.length).toBeGreaterThan(0)
-  })
-
-  test("an ABSENT catalog opens the panels over the declared fallback and says so", async () => {
-    /** The dialog double: slot2, the declared provider, model, effort. */
-    const dialogs = dialogDouble(["slot2", "deepseek-official", "deepseek-v4-flash", "high"])
-    /** The adapter double with NO catalog seam at all. */
-    const adapter = adapterDouble(undefined, { withCatalog: false })
+  test("the clear branch keeps the DOCUMENT's own key spelling", async () => {
+    // A hand-written file may spell a member differently (`SeniorEngineer`), and the roster lookup is
+    // case- and separator-insensitive (contract §1), so the removal must address the key a READER
+    // resolves instead of adding a second, dead spelling to the table.
+    /** The stored document, whose key is not the canonical display name. */
+    const stored = { "mpd-config": { agentRoutes: { SeniorEngineer: { provider: "p1", model: "m1" } } } }
+    /** The dialog double: slot1, the agent, then the clear action. */
+    const dialogs = dialogDouble(["slot1", "Senior Engineer", "clear"], true, [])
+    /** The adapter double over that document. */
+    const adapter = adapterDouble(CATALOG, { stored })
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("success")
-    // The panels still opened, over the DECLARED fallback (never an empty list): the slot panel sits at
-    // index 0, so the three leaf panels are indexes 1-3.
-    expect(dialogs.calls[1].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
-    expect(dialogs.calls[2].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.model])
-    expect(dialogs.calls[3].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.reasoningEffort])
-    // ...and the outcome NAMES the degradation instead of claiming a live catalog.
-    expect(textOf(result)).toContain("llmCatalog")
+    expect(adapter.writes[0].ops[0]?.path).toEqual(["agentRoutes", "SeniorEngineer"])
   })
 
-  test("a DEGRADED catalog is treated as no read, and the outcome names the degradation", async () => {
-    /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
-    /** The adapter double whose catalog reports `degraded`. */
-    const adapter = adapterDouble({ degraded: true, providers: [{ id: "prov-a", models: [{ id: "model-a1", efforts: [] }] }] })
-    /** The chain's outcome, with the language pinned so the asserted sentence is explicit. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: { env: { DSH_TUI_LANG: "zh" } } })
-    expect(result.kind).toBe("success")
-    expect(dialogs.calls[1].ids).toEqual([...TEAM_MODEL_FALLBACK_OPTIONS.provider])
-    expect(textOf(result)).toContain("读取不完整")
-    // ...and the SAME arm in en says the same thing in English: the sentence is the pair, not one
-    // hard-coded string.
-    /** The English run of the same degraded chain. */
-    const dialogsEn = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
-    /** The outcome of that English run. */
-    const englishRun = await openModelMenu(NO_TUI, LOG, { dialogs: dialogsEn.seam, adapter: adapterDouble({ degraded: true }).seam, langInputs: { env: { DSH_TUI_LANG: "en" } } })
-    expect(textOf(englishRun)).toContain("the catalog read was incomplete")
+  test("an agent with NO stored entry skips the action panel; one WITH an entry gets it", async () => {
+    // The action panel is offered only when the clear branch has something to remove; the set path is
+    // the only meaningful act for an unconfigured agent, so its chain is one panel shorter.
+    /** The stored document: Architect has an entry, Planner does not. */
+    const stored = { "mpd-config": { agentRoutes: { Architect: { provider: "p", model: "m" } } } }
+    /** The dialog double: Architect gets the action panel before the leaf panels. */
+    const withEntry = dialogDouble(["slot1", "Architect", "set", "prov-a", "model-a1", "low"], true, [])
+    /** Its adapter double. */
+    const withAdapter = adapterDouble(CATALOG, { stored })
+    /** The chain's outcome for the configured agent. */
+    const configured = await openModelMenu(NO_TUI, LOG, { dialogs: withEntry.seam, adapter: withAdapter.seam, langInputs: EN })
+    expect(configured.kind).toBe("success")
+    expect(withEntry.calls[2].ids).toEqual(["set", "clear"])
+    expect(withAdapter.writes[0].ops).toHaveLength(3)
+    // The unconfigured agent's chain skips that panel entirely.
+    /** The dialog double: Planner goes straight to the leaf panels. */
+    const noEntry = dialogDouble(["slot1", "Planner", "prov-a", "model-a1", "low"], true, [])
+    /** Its adapter double, over the same document. */
+    const noAdapter = adapterDouble(CATALOG, { stored })
+    /** The chain's outcome for the unconfigured agent. */
+    const fresh = await openModelMenu(NO_TUI, LOG, { dialogs: noEntry.seam, adapter: noAdapter.seam, langInputs: EN })
+    expect(fresh.kind).toBe("success")
+    expect(noEntry.calls[2].ids).toEqual(["prov-a", "prov-b"])
+    expect(noEntry.calls).toHaveLength(5)
   })
 
-  test("a THROWING catalog read degrades instead of failing the command", async () => {
-    /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "deepseek-official", "deepseek-v4-flash", "max"])
-    /** The adapter double whose catalog read throws. */
-    const adapter = adapterDouble(undefined, {})
-    /** The seam with the throwing read, kept explicit so the arm is unambiguous. */
-    const throwing: CatalogReadSeam = { ...adapter.seam, llmCatalog: async () => Promise.reject(new Error("boom")) as never }
-    /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: throwing })
-    expect(result.kind).toBe("success")
-    expect(textOf(result)).toContain("boom")
-  })
-
-  test("CANCEL at any panel ends the chain and writes NOTHING", async () => {
-    // Four arms, one per panel: the chain stops at the panel that was cancelled.
-    /** The slot cancel. */
-    const atSlot = dialogDouble([undefined])
-    /** The provider cancel. */
-    const atProvider = dialogDouble(["slot1", undefined])
-    /** The model cancel. */
-    const atModel = dialogDouble(["slot1", "prov-a", undefined])
-    /** The effort cancel. */
-    const atEffort = dialogDouble(["slot1", "prov-a", "model-a1", undefined])
-    /** One arm: its dialog double, the panel count it must have seen, and the word its sentence carries. */
+  // ── degradation, refusal and defensive arms ───────────────────────────────
+  test("CANCEL at any SELECT panel ends the chain and writes NOTHING", async () => {
+    // Six arms, one per select panel. The action-panel arm uses a configured agent, because that is
+    // the only case in which the panel exists at all.
+    /** The stored document the action-panel arm needs. */
+    const stored = { "mpd-config": { agentRoutes: { Architect: { provider: "p", model: "m" } } } }
+    /** One arm: its dialog double, the panel count it must have seen, and the English phrase it names. */
     const arms: readonly { dialogs: DialogDouble; panels: number; token: string }[] = [
-      { dialogs: atSlot, panels: 1, token: "槽位" },
-      { dialogs: atProvider, panels: 2, token: "提供商" },
-      { dialogs: atModel, panels: 3, token: "模型" },
-      { dialogs: atEffort, panels: 4, token: "推理强度" },
+      { dialogs: dialogDouble([undefined]), panels: 1, token: "group panel was cancelled" },
+      { dialogs: dialogDouble(["slot1", undefined]), panels: 2, token: "scope panel was cancelled" },
+      { dialogs: dialogDouble(["slot1", "Architect", undefined]), panels: 3, token: "action panel was cancelled" },
+      { dialogs: dialogDouble(["slot1", "Planner", undefined]), panels: 3, token: "provider panel was cancelled" },
+      { dialogs: dialogDouble(["slot1", "Planner", "prov-a", undefined]), panels: 4, token: "model panel was cancelled" },
+      { dialogs: dialogDouble(["slot1", "Planner", "prov-a", "model-a1", undefined]), panels: 5, token: "reasoning-effort panel was cancelled" },
     ]
     for (const arm of arms) {
       /** A fresh adapter double per arm, so its write log is that arm's alone. */
-      const adapter = adapterDouble(CATALOG)
-      /** That arm's outcome, rendered in zh so the token above is stable. */
-      const result = await openModelMenu(NO_TUI, LOG, { dialogs: arm.dialogs.seam, adapter: adapter.seam, langInputs: { env: { DSH_TUI_LANG: "zh" } } })
+      const adapter = adapterDouble(CATALOG, { stored })
+      /** That arm's outcome. */
+      const result = await openModelMenu(NO_TUI, LOG, { dialogs: arm.dialogs.seam, adapter: adapter.seam, langInputs: EN })
       expect(arm.dialogs.calls).toHaveLength(arm.panels)
       // THE RULE: no write happened on this path, at any panel.
       expect(adapter.writes).toHaveLength(0)
@@ -512,141 +615,307 @@ describe("R3: the /mpd-model pick-list chain", () => {
   })
 
   test("an UNBOUND dialogs seam ends the chain before any panel and writes nothing", async () => {
-    /** A dialog double that reports itself unavailable. */
+    /** The dialog double reporting an uncomposed seam. */
     const dialogs = dialogDouble([], false)
-    /** The adapter double, whose write log must stay empty. */
+    /** The adapter double: it must receive no write. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("error")
     expect(dialogs.calls).toHaveLength(0)
     expect(adapter.writes).toHaveLength(0)
+    expect(textOf(result)).toContain("no dialogs seam")
+  })
+
+  test("an ABSENT catalog opens the panels over the declared fallback and says so", async () => {
+    /** The dialog double answering every panel. */
+    const dialogs = dialogDouble(["slot2", GROUP_SCOPE_ID, "prov-a", "model-a1", "low"], true, [true])
+    /** The adapter double with no `llmCatalog` member at all. */
+    const adapter = adapterDouble(CATALOG, { withCatalog: false })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("success")
+    // The panels still open, over the DECLARED list — never empty, and the outcome names the branch.
+    expect(dialogs.calls[2].ids.length).toBeGreaterThan(0)
+    expect(textOf(result)).toContain("the live model catalog is unavailable")
+    expect(textOf(result)).toContain("no llmCatalog seam")
+    // The write still lands: a degraded catalog must not block configuring an agent.
+    expect(adapter.writes).toHaveLength(1)
+  })
+
+  test("a DEGRADED catalog is treated as no live read, and the outcome names the degradation", async () => {
+    /** The dialog double answering every panel. */
+    const dialogs = dialogDouble(["slot1", "Planner", "prov-a", "model-a1", "low"], true, [])
+    /** The adapter double whose catalog read came back degraded. */
+    const adapter = adapterDouble({ ...CATALOG, degraded: true })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("success")
+    expect(textOf(result)).toContain("the catalog read was incomplete")
+  })
+
+  test("a THROWING catalog read degrades instead of failing the command", async () => {
+    /** The dialog double answering every panel. */
+    const dialogs = dialogDouble(["slot1", "Planner", "prov-a", "model-a1", "low"], true, [])
+    /** The adapter double whose catalog read rejects. */
+    const adapter = adapterDouble(Promise.reject(new Error("boom")))
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("success")
+    expect(textOf(result)).toContain("boom")
+  })
+
+  test("panel 3 narrows to the picked provider's models; panel 4 to the picked model's efforts", () => {
+    /** The section's option projection. */
+    const lists = teamModelOptionLists(CATALOG as never)
+    /** The projection after picking prov-a (two models). */
+    const atProvider = panelOptions(lists, "prov-a", undefined, CATALOG)
+    expect(atProvider.model.map((option) => option.value)).toEqual(["model-a1", "model-a2"])
+    // After picking model-a2, the effort list is that model's own.
+    const atModel = panelOptions(lists, "prov-a", "model-a2", CATALOG)
+    expect(atModel.reasoningEffort.map((option) => option.value)).toEqual(["high"])
+  })
+
+  test("panel 3 is NEVER empty: a keyed provider with no models falls back to the union", () => {
+    /** A catalog whose provider lists no models at all. */
+    const sparse = { degraded: false, providers: [{ id: "prov-empty", models: [] }] }
+    /** The section's option projection over that catalog. */
+    const lists = teamModelOptionLists(sparse as never)
+    // The provider is known but keyed empty: the union the settings row offers is the honest fallback.
+    const options = panelOptions(lists, "prov-empty", undefined, sparse)
+    expect(options.model.length).toBeGreaterThan(0)
   })
 
   test("a REFUSED write is reported with the host's own error, and never as success", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
-    /** The adapter double whose mutation is refused by the host. */
-    const adapter = adapterDouble(CATALOG, { write: { ok: false, error: "revision conflict" } })
+    const dialogs = dialogDouble(["slot1", "Planner", "prov-a", "model-a1", "low"], true, [])
+    /** The adapter double whose write is refused. */
+    const adapter = adapterDouble(CATALOG, { write: { ok: false, error: "revision mismatch" } })
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("error")
-    expect(textOf(result)).toContain("revision conflict")
+    expect(textOf(result)).toContain("revision mismatch")
+    expect(textOf(result)).not.toContain(BRIDGE_DISCLOSURE)
   })
 
   test("an adapter with no settings write seam is reported, not thrown", async () => {
     /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot1", "prov-a", "model-a1", "low"])
-    /** The adapter double with a catalog but no mutate member. */
+    const dialogs = dialogDouble(["slot1", "Planner", "prov-a", "model-a1", "low"], true, [])
+    /** The adapter double with no `settingsMutate` member. */
     const adapter = adapterDouble(CATALOG, { withMutate: false })
-    /** The chain's outcome, with the language pinned so the asserted sentence is explicit. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: { env: { DSH_TUI_LANG: "zh" } } })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("error")
-    expect(textOf(result)).toContain("没有可写的设置接缝")
+    expect(textOf(result)).toContain("no settings write seam")
   })
 
-  test("an unknown slot id writes nothing and says which value was unknown", async () => {
-    /** The dialog double whose slot panel answers a value outside the four slots. */
-    const dialogs = dialogDouble(["slot9"])
-    /** The adapter double, whose write log must stay empty. */
+  test("an unknown group id writes nothing and says which value was unknown", async () => {
+    /** The dialog double answering an id no group carries. */
+    const dialogs = dialogDouble(["slot9"], true, [])
+    /** The adapter double: it must receive no write. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("error")
-    expect(textOf(result)).toContain("slot9")
     expect(adapter.writes).toHaveLength(0)
+    expect(textOf(result)).toContain("slot9")
+    // The chain stopped at panel 1: no further panel was opened.
+    expect(dialogs.calls).toHaveLength(1)
   })
 
-  test("the success sentence carries the SAME disclosure the section carries", async () => {
-    /** The dialog double answering every panel. */
-    const dialogs = dialogDouble(["slot3", "prov-a", "model-a1", "low"])
-    /** The adapter double with a live catalog. */
+  test("an agent outside the picked group writes nothing and says which value was unknown", async () => {
+    /** The dialog double whose scope answer is a real member of ANOTHER group. */
+    const dialogs = dialogDouble(["slot2", "Architect"], true, [])
+    /** The adapter double: it must receive no write. */
     const adapter = adapterDouble(CATALOG)
     /** The chain's outcome. */
-    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam })
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("error")
+    expect(adapter.writes).toHaveLength(0)
+    expect(textOf(result)).toContain("Architect")
+    expect(dialogs.calls).toHaveLength(2)
+  })
+
+  test("an unknown action id writes nothing and says which value was unknown", async () => {
+    /** The stored document, so the action panel is actually opened. */
+    const stored = { "mpd-config": { agentRoutes: { Architect: { provider: "p", model: "m" } } } }
+    /** The dialog double answering an action id no panel offers. */
+    const dialogs = dialogDouble(["slot1", "Architect", "delete"], true, [])
+    /** The adapter double: it must receive no write. */
+    const adapter = adapterDouble(CATALOG, { stored })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("error")
+    expect(adapter.writes).toHaveLength(0)
+    expect(textOf(result)).toContain("delete")
+  })
+
+  test("a group write prefers the ENTRY namespace even when a LATER member is the stored one", async () => {
+    // A group's members may be stored unevenly: the FIRST may be unconfigured while a later one is
+    // stored, and the two namespaces may even both be in play. The write is ONE mutate call, so it must
+    // land on the ENTRY namespace whenever ANY member is stored there — writing the legacy name instead
+    // would add a dead duplicate of a member whose real entry the resolver reads from the entry.
+    /** The split document: Researcher (first in slot 2) under the legacy name, Explorer under the entry. */
+    const stored = {
+      mpd: { agentRoutes: { Researcher: { provider: "legacy", model: "legacy-model" } } },
+      "mpd-config": { agentRoutes: { Explorer: { provider: "entry", model: "entry-model" } } },
+    }
+    /** The dialog double answering a whole-group write of slot 2. */
+    const dialogs = dialogDouble(["slot2", GROUP_SCOPE_ID, "prov-a", "model-a1", "low"], true, [true])
+    /** The adapter double over that split document. */
+    const adapter = adapterDouble(CATALOG, { stored, revision: 9 })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
     expect(result.kind).toBe("success")
-    // Contract §4.6: the menu states the bridge truth and the never-lost clause, byte-for-byte the
-    // constants the /settings section states — a menu that claimed a live effect would be the
-    // exact failure the disclosure exists to prevent.
-    expect(textOf(result)).toContain(BRIDGE_DISCLOSURE)
-    expect(textOf(result)).toContain(BRIDGE_NOT_LOST)
-    expect(textOf(result)).toContain("slot3")
+    // The ENTRY wins because Explorer is stored there, and its stored key spelling is preserved.
+    expect(adapter.writes[0].namespace).toBe("mpd-config")
+    expect(adapter.writes[0].revision).toBe(9)
+    expect(adapter.writes[0].ops.filter((op) => op.path[1] === "Explorer")).toHaveLength(3)
   })
 
   test("the revision fence comes from the namespace the write targets", async () => {
-    // The slot already lives in the ENTRY config, so that is where the write goes...
-    /** The adapter double whose entry config already carries slot1. */
-    const entry = adapterDouble(CATALOG, {
-      stored: { "mpd-config": { teamModels: { slot1: { provider: "prov-a", model: "model-a1", reasoningEffort: "low" } } } },
-      revision: 7,
-    })
-    /** Where the chain decided to write. */
-    const located = locateNamespace(entry.seam, "slot1")
-    expect(located).toEqual({ namespace: "mpd-config", revision: 7 })
-    // ...and an UNSET slot ALSO defaults to the entry, because that is the only key the host can
-    // mutate: `dsh-settings` resolves a mutate key against its descriptor list (keyed by profile entry
-    // id) and throws `Plugin entry "<ns>" is no longer configurable` otherwise, while `"mpd"` is a
-    // namespace this bundle registers and never a profile entry. Falling back to the legacy name would
-    // make the default path a guaranteed refusal.
-    /** The adapter double whose namespaces hold nothing. */
-    const empty = adapterDouble(CATALOG, { revision: 3 })
-    expect(locateNamespace(empty.seam, "slot1")).toEqual({ namespace: "mpd-config", revision: 3 })
-    // A slot that genuinely lives under the LEGACY name still wins: that is where the live value is,
-    // and writing the entry instead would persist a second copy no reader resolves.
-    /** The adapter double whose legacy namespace carries slot1. */
-    const legacy = adapterDouble(CATALOG, {
-      stored: { mpd: { teamModels: { slot1: { provider: "prov-a" } } } },
-      revision: 9,
-    })
-    expect(locateNamespace(legacy.seam, "slot1")).toEqual({ namespace: MODEL_NAMESPACE, revision: 9 })
+    // A write must carry the document's current revision, or a concurrent edit is silently clobbered.
+    /** The stored value under the LEGACY namespace, with revision 7. */
+    const stored = { mpd: { agentRoutes: { Planner: { provider: "p", model: "m" } } } }
+    /** The dialog double answering every panel. */
+    const dialogs = dialogDouble(["slot1", "Planner", "set", "prov-a", "model-a1", "low"], true, [])
+    /** The adapter double over that document. */
+    const adapter = adapterDouble(CATALOG, { stored, revision: 7 })
+    /** The chain's outcome. */
+    const result = await openModelMenu(NO_TUI, LOG, { dialogs: dialogs.seam, adapter: adapter.seam, langInputs: EN })
+    expect(result.kind).toBe("success")
+    // The stored entry (under `mpd`) picks the namespace, and its revision rides the write.
+    expect(adapter.writes[0].namespace).toBe(MODEL_NAMESPACE)
+    expect(adapter.writes[0].revision).toBe(7)
   })
+})
 
-  test("the DEFAULT contract's stored values are readable from either settings shape", () => {
-    expect(storedSlot({ teamModels: { slot1: { provider: "p", model: "m", reasoningEffort: "high" } } }, "slot1")).toEqual({
-      provider: "p",
-      model: "m",
-      reasoningEffort: "high",
-    })
+describe("the agent-route table helpers read the DOCUMENT, not an invented shape", () => {
+  test("routeTableOf finds the table at the root and under both host-document halves", () => {
+    expect(routeTableOf({ agentRoutes: { Architect: { provider: "p" } } })).toEqual({ Architect: { provider: "p" } })
     // The host document nests the value under `user`; the read must not lose it there.
-    expect(storedSlot({ user: { teamModels: { slot2: { provider: "p2" } } } }, "slot2")).toEqual({ provider: "p2" })
-    expect(storedSlot({ teamModels: { slot1: { provider: 7 } } }, "slot1")).toEqual({})
-    expect(storedSlot(undefined, "slot1")).toEqual({})
+    expect(routeTableOf({ user: { agentRoutes: { Planner: { model: "m" } } } })).toEqual({ Planner: { model: "m" } })
+    expect(routeTableOf({ value: { agentRoutes: { Lead: { model: "m" } } } })).toEqual({ Lead: { model: "m" } })
+    // A value that carries no table, or no value at all, is an empty table — never a throw.
+    expect(routeTableOf({ teamModels: {} })).toEqual({})
+    expect(routeTableOf(undefined)).toEqual({})
   })
 
-  test("readStoredSlots reads every slot from whichever namespace serves them", () => {
-    /** The adapter double whose legacy namespace carries one slot. */
-    const adapter = adapterDouble(CATALOG, { stored: { mpd: { teamModels: { slot4: { model: "vision" } } } } })
-    /** The per-slot read. */
-    const stored = readStoredSlots(adapter.seam)
-    expect(stored.slot4).toEqual({ model: "vision" })
-    expect(stored.slot1).toEqual({})
+  test("storedAgentRoute keeps only the usable string leaves", () => {
+    expect(storedAgentRoute({ agentRoutes: { Architect: { provider: "p", model: "m", reasoningEffort: "max" } } }, "Architect"))
+      .toEqual({ provider: "p", model: "m", reasoningEffort: "max" })
+    // The roster lookup is case- and separator-insensitive (contract §1).
+    expect(storedAgentRoute({ agentRoutes: { SeniorEngineer: { provider: "p" } } }, "Senior Engineer")).toEqual({ provider: "p" })
+    // A non-string leaf is not a stored value, and an absent entry is empty — never invented.
+    expect(storedAgentRoute({ agentRoutes: { Architect: { provider: 7 } } }, "Architect")).toEqual({})
+    expect(storedAgentRoute(undefined, "Architect")).toEqual({})
   })
 
-  test("the command is registered with BOTH languages and a fallback description", () => {
+  test("routeKeyFor answers the document's own spelling, else the canonical name", () => {
+    expect(routeKeyFor({ SeniorEngineer: {} }, "Senior Engineer")).toBe("SeniorEngineer")
+    expect(routeKeyFor({}, "Senior Engineer")).toBe("Senior Engineer")
+    // An empty member name matches nothing and stays as given, never collapsing to the first key.
+    expect(routeKeyFor({ Architect: {} }, "")).toBe("")
+  })
+
+  test("locateNamespace prefers the stored entry, else the config ENTRY the host can mutate", () => {
+    /** An adapter whose entry namespace stores the agent. */
+    const entryStored = adapterDouble(CATALOG, { stored: { "mpd-config": { agentRoutes: { Architect: { provider: "p" } } } }, revision: 3 })
+    expect(locateNamespace(entryStored.seam, "Architect")).toEqual({
+      namespace: "mpd-config",
+      revision: 3,
+      table: { Architect: { provider: "p" } },
+    })
+    /** An adapter whose agent is stored ONLY under the legacy namespace. */
+    const legacyStored = adapterDouble(CATALOG, { stored: { mpd: { agentRoutes: { Architect: { provider: "p" } } } }, revision: 4 })
+    expect(locateNamespace(legacyStored.seam, "Architect").namespace).toBe("mpd")
+    // Nothing stored anywhere: the ENTRY is the fallback, because it is the only key the host mutates.
+    const empty = adapterDouble(CATALOG, { revision: 5 })
+    expect(locateNamespace(empty.seam, "Architect")).toEqual({ namespace: "mpd-config", revision: 5, table: {} })
+  })
+
+  test("hasStoredRoute answers a stored entry under EITHER namespace", () => {
+    /** An adapter whose entry namespace stores the agent. */
+    const entryStored = adapterDouble(CATALOG, { stored: { "mpd-config": { agentRoutes: { Architect: { provider: "p" } } } } })
+    expect(hasStoredRoute(entryStored.seam, "Architect")).toBe(true)
+    /** An adapter whose agent lives under the legacy namespace only. */
+    const legacyStored = adapterDouble(CATALOG, { stored: { mpd: { agentRoutes: { Architect: { provider: "p" } } } } })
+    expect(hasStoredRoute(legacyStored.seam, "Architect")).toBe(true)
+    /** An adapter whose document carries no route for the agent. */
+    const missing = adapterDouble(CATALOG, { stored: { "mpd-config": { agentRoutes: { Planner: { provider: "p" } } } } })
+    expect(hasStoredRoute(missing.seam, "Architect")).toBe(false)
+  })
+
+  test("readStoredRoutes reads every roster agent from whichever namespace serves them", () => {
+    /** The adapter double whose legacy namespace carries one agent. */
+    const adapter = adapterDouble(CATALOG, { stored: { mpd: { agentRoutes: { "Vision Analyst": { model: "vision" } } } } })
+    /** The per-agent read. */
+    const stored = readStoredRoutes(adapter.seam)
+    expect(stored["Vision Analyst"]).toEqual({ model: "vision" })
+    expect(stored.Architect).toEqual({})
+    // Every roster agent has a key, so a display never has to test for absence.
+    expect(Object.keys(stored)).toHaveLength(ROSTER_AGENT_NAMES.length)
+  })
+
+  test("agentRouteDisplay narrows the REAL config-service union, never trusting a lookalike", () => {
+    // The display is the seam between the config service's typed union (contract §2) and every panel.
+    /** A service answering `ok`, `unconfigured`, `invalid` and `unrouted` respectively. */
+    const service = serviceDouble((member: string): unknown => {
+      if (member === "Architect") return okAnswer("p", "m", "max")
+      if (member === "Planner") return { ok: false, reason: "unconfigured", agent: member, missing: ["agentRoutes.Planner.provider"] }
+      if (member === "Researcher") return { ok: false, reason: "invalid", agent: member, problem: "agentRoutes.Researcher.model" }
+      return { ok: false, reason: "unrouted" }
+    })
+    expect(agentRouteDisplay(service, "Architect")).toEqual({ state: "ok", route: "p / m / max", fallbacks: 0 })
+    expect(agentRouteDisplay(service, "Planner")).toEqual({ state: "unconfigured", missing: ["agentRoutes.Planner.provider"] })
+    expect(agentRouteDisplay(service, "Researcher")).toEqual({ state: "invalid" })
+    // `unrouted` is an EXTENSION role's state, not an unconfigured agent: a display says unavailable.
+    expect(agentRouteDisplay(service, "Explorer")).toEqual({ state: "unavailable" })
+    // An absent service, or one with no typed read, degrades instead of throwing.
+    expect(agentRouteDisplay(undefined, "Architect")).toEqual({ state: "unavailable" })
+    expect(agentRouteDisplay({}, "Architect")).toEqual({ state: "unavailable" })
+  })
+
+  test("the command describes the NEW flow, in both languages", () => {
     expect(MODEL_COMMAND).toBe("mpd-model")
-    expect(MODEL_COMMAND_DESCRIPTIONS.zh).toBeString()
-    expect(MODEL_COMMAND_DESCRIPTIONS.zh.length).toBeGreaterThan(0)
-    expect(MODEL_COMMAND_DESCRIPTIONS.en).toBeString()
+    // The palette line is USER-VISIBLE: it names the agent-keyed chain instead of the retired slot one.
+    expect(MODEL_COMMAND_DESCRIPTIONS.en).toContain("group")
+    expect(MODEL_COMMAND_DESCRIPTIONS.en).toContain("one agent")
+    expect(MODEL_COMMAND_DESCRIPTIONS.en).toContain("confirmation")
+    expect(MODEL_COMMAND_DESCRIPTIONS.zh).toContain("分组")
+    expect(MODEL_COMMAND_DESCRIPTIONS.zh).toContain("单个代理")
+    // The retired vocabulary must be gone from the one string a reader sees before opening the menu.
+    for (const half of [MODEL_COMMAND_DESCRIPTIONS.en, MODEL_COMMAND_DESCRIPTIONS.zh]) {
+      expect(half.toLowerCase()).not.toContain("slot")
+      expect(half).not.toContain("槽位")
+      expect(half).not.toContain("teamModels")
+      expect(half).not.toContain("agentRoutes")
+    }
     // The harness command registry stores ONE string; it is the en half, so the two cannot drift.
-    expect(MODEL_COMMAND_DESCRIPTIONS.en.length).toBeGreaterThan(0)
+    expect(MODEL_COMMAND_DESCRIPTION).toBe(MODEL_COMMAND_DESCRIPTIONS.en)
   })
 })
 
 // ── CodeRabbit #14 (PR #62): the route sentence is CONFIGURATION and must be sanitized ───────────
-describe("the slot's current-route sentence strips control characters (whitespace preserved)", () => {
-  /** A config-service double exposing the contract's typed slot answer. */
-  const slotServiceDouble = (answer: (member: string) => unknown): { slotResolutionOf: (member: string) => unknown } => ({ slotResolutionOf: answer })
-
+describe("the agent's current-route sentence strips control characters (whitespace preserved)", () => {
   test("a control character in a provider/model id never reaches the dialog description", () => {
-    /** The typed answer whose provider and model carry BEL and NUL characters. */
-    const display = slotResolutionDisplay(slotServiceDouble(() => ({
+    /** A BEL character, as a hand-edited config could carry it. */
+    const bel = String.fromCharCode(7)
+    /** A NUL character, the other shape a hand-edited file can carry. */
+    const nul = String.fromCharCode(0)
+    /** An ESC character, the shape that would rewrite a terminal. */
+    const esc = String.fromCharCode(27)
+    /** The typed answer whose provider and model carry those characters. */
+    const display = agentRouteDisplay(serviceDouble(() => ({
       ok: true,
-      route: { provider: "pro\u0007v", model: "mo\u0000del", reasoningEffort: "hi\u001bgh" },
+      agent: "Architect",
+      route: { provider: "pro" + bel + "v", model: "mo" + nul + "del", reasoningEffort: "hi" + esc + "gh" },
       fallbacks: [],
     })), "Architect")
     // The typed state survives; the CONTROL characters do not, and the " / " separators are intact.
     expect(display.state).toBe("ok")
     expect(display.state === "ok" ? display.route : "").toBe("pro v / mo del / hi gh")
-    expect(display.state === "ok" ? display.route : "").not.toMatch(/[\u0000-\u001f]/u)
+    // The same sentence the panels render is the sanitized one.
+    expect(agentRouteText("en", display)).toBe("current: pro v / mo del / hi gh")
   })
 })

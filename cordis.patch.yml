@@ -500,6 +500,16 @@
       name: '@mpd-dsh/mpd/packages/mpd-team-core-plugin/dist/index.js'
     - id: mpd-team-compact
       name: '@mpd-dsh/mpd/packages/mpd-team-compact-plugin/dist/index.js'
+    # CELL-WORK (C9): the command-triggered dispatch-only mode. `/cellwork <objective>` is the ONLY
+    # entry point; it writes `<workspace>/.mpd/cellwork/<cell-id>/state.json`, then injects the
+    # activation directive as the invoking agent's own next turn. The row also installs ONE
+    # `tools.guard` predicate (captain = dispatch only, verifier = never writes, checkpoint = handoff
+    # only) and registers `cellwork_status` / `cellwork_start` / `cellwork_stop`. No default config:
+    # every knob is read from `cellwork.*` in `mpd.jsonc` over the shipped documented default, and the
+    # model's context window is READ from the catalog / the token meter, never configured here.
+    - id: mpd-cellwork
+      name: '@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js'
+      config: {}
     # Bundle asset provisioning (no home writes since 0.3.0): registers the
     # <bundle>/skills corpus as a ctx.skills provider (rank 600 "bundled", below
     # project/custom/user roots) and removes the version-stamped copies that
@@ -589,7 +599,7 @@
 # `ctx.subagents.startContinuable`, so a subagent provider cannot inject a
 # per-teammate model route, persona or tool filter for a continuable teammate.
 # That reduction is recorded in `docs/plan-0.1.7-adaptation.md` §3; the roster's
-# model slots survive on the one-shot consult path, and its read-only discipline
+# per-agent `agentRoutes` routes survive on the one-shot consult path, and its read-only discipline
 # is re-implemented as a tool guard by mpd-roles.
 #
 # The official profile bundle ALSO disables `tool-subagent`,
@@ -691,8 +701,8 @@
         maxMessageBytes: 32768
         disposalTimeoutMs: 5000
 
-    # THE ROSTER PROVIDER: registers `mpd-roster`, the subagent provider that applies an mpd
-    # teamModels slot route to a teammate. It must be mounted for the redirect below to resolve.
+    # THE ROSTER PROVIDER: registers `mpd-roster`, the subagent provider that applies a member's own
+    # `agentRoutes.<Agent>` route to a teammate. It must be mounted for the redirect below to resolve.
     - id: mpd-roster-provider
       name: '@mpd-dsh/mpd/packages/mpd-roster-provider-plugin/dist/index.js'
       config:

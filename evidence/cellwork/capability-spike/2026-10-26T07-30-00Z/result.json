@@ -1,0 +1,79 @@
+{
+  "kind": "capability-spike",
+  "feature": "cell-work",
+  "capturedAt": "2026-10-26T07:30:00Z",
+  "harnessVersion": "0.2.1-rc.3",
+  "mode": "read-only source read; nothing executed",
+  "facts": [
+    {
+      "id": "F1",
+      "question": "Can a depth-1 cell member raise a depth-2 subcaptain?",
+      "answer": "YES only through a direct startActivation with an explicit absolute request.maxDepth >= 2; the subagent tool path refuses it at the default config",
+      "confidence": "high",
+      "evidence": [
+        "dsh-subagent/lib/index.js startActivation, resolveMaxDepth",
+        "dsh-subagent/lib/types/child-agent.js resolveChildDepth",
+        "dsh-subagent-spawn-in-process/lib/index.js capabilities.depthLimit = true",
+        "dsh-tool-subagent/lib/index.js (only external resolveMaxDepth caller)"
+      ]
+    },
+    {
+      "id": "F2",
+      "question": "Does a host-plane row observe child agents' pre-step / turn-stopping?",
+      "answer": "YES, payload carries the live agent and pre-step is a waterfall that can inject {kind:'enter', messages}; turn-stopping is serial and cannot veto",
+      "confidence": "high",
+      "evidence": [
+        "dsh-agent/lib/types/dispatch.js agentEvents fuses the agent",
+        "dsh-scope/lib/index.js scopeTarget admits untagged listeners globally",
+        "repo packages/mpd-team-watchdog-plugin/src/engine.ts (host-plane precedent)"
+      ]
+    },
+    {
+      "id": "F3",
+      "question": "Can a host-plane row read live context occupancy for a child?",
+      "answer": "YES via sessionProjections.stateOf(session, 'contextPressure'); fields are pressureTokens / projectedTokens / contextWindow, never usedTokens; reads take a Session object",
+      "confidence": "high",
+      "evidence": [
+        "dsh-token-meter/lib/types/usage-projection.js",
+        "dsh-session-projection/lib/types/index.d.ts",
+        "presets/mpd.patch.yml (token meter stays on the host plane)"
+      ]
+    },
+    {
+      "id": "F4",
+      "question": "Can a mode-scoped 'captain may only dispatch' guard be installed?",
+      "answer": "YES through dsh.guardTool(exec => string | undefined); denial is the returned string; exec carries name, arguments and the live agent",
+      "confidence": "high",
+      "evidence": [
+        "dsh-tools/lib/index.js prepareExecution / guardReason",
+        "repo packages/mpd-team-core-plugin/src/team-door-guard.ts",
+        "repo packages/mpd-roles-plugin/src/delegation-gate.ts",
+        "repo packages/mpd-roles-plugin/src/complexity-gate.ts"
+      ]
+    },
+    {
+      "id": "F5",
+      "question": "Can a cell member's own context be compressed, and what happens when nothing is compactable?",
+      "answer": "YES with the member's own engine compactNow(agent, signal); idle-only; null = no safe range; reseed = dispose + new activation with the handoff text",
+      "confidence": "high for engine/preconditions, medium for the retire flow",
+      "evidence": [
+        "dsh-compaction-basic/lib/index.js",
+        "repo packages/mpd-dsh-adapter-plugin/src/index.ts compactionEngineForAgent",
+        "repo evidence/omo-align/compact-hinge/result.json"
+      ]
+    }
+  ],
+  "defectsFound": [
+    {
+      "id": "team-compact-signal",
+      "path": "packages/mpd-team-compact-plugin/src/index.ts",
+      "symptom": "compactNow(agent, undefined) throws a raw TypeError before the ManualCompactionError classification because signal.throwIfAborted() is the method's first statement",
+      "action": "Wave 1 fix: pass a real AbortController signal and add a test"
+    }
+  ],
+  "gaps": [
+    "No boot-level depth proof yet (planned Wave 2 probe)",
+    "No live read of a resident child's contextPressure yet (planned Wave 2 QA)",
+    "No execution of the team-compact drive to confirm the TypeError empirically (planned Wave 1 test)"
+  ]
+}

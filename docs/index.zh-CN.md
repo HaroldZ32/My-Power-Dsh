@@ -111,6 +111,7 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
 | [`web-team-board-v2.png`](./assets/images/zh-CN/web-team-board-v2.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册、毛玻璃任务图与悬浮信息卡的 Team 视图。 |
 | [`tui-team-dag.png`](./assets/images/zh-CN/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。 |
+| [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
 | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
 | [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮。 |

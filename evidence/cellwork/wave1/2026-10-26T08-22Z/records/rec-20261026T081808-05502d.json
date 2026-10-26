@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T081808-05502d",
+  "loopId": "loop-20261026T080751-7dcdc2",
+  "taskId": "T8",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "6afa478b-160e-4353-a5c7-a57c3b185fed",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w1-contract.md",
+      "sha256": "2245b51d029b1205c915a655f35a987b2f1972a045fdaf7769308b3715f5ec22"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w1-contract.md",
+        "sha256": "2245b51d029b1205c915a655f35a987b2f1972a045fdaf7769308b3715f5ec22"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-tui-plugin/test/panel-visibility.test.ts",
+        "bytes": 99583,
+        "sha256": "d366571820dceb6873c0ee2eb628cd92491a296a005ca0b6be01b969289c72c4",
+        "mtime": "2026-10-26T08:04:18.575Z"
+      },
+      {
+        "path": "packages/mpd-tui-plugin/dist/index.js",
+        "bytes": 475359,
+        "sha256": "a4ad8e29bd083c9bba5aae0b4050b93766dc157a4842c5311f49e3ddb4bb9884",
+        "mtime": "2026-10-26T08:08:04.657Z"
+      },
+      {
+        "path": "docs/tui.md",
+        "bytes": 162178,
+        "sha256": "51400685d03958b0d7c442f50059c99e41d4cab69ab118a3ec91c7dde850055c",
+        "mtime": "2026-10-26T04:42:19.083Z"
+      },
+      {
+        "path": "docs/tui.zh-CN.md",
+        "bytes": 159589,
+        "sha256": "8b18b443721851686c6f89cfc6670fb31a00c760e97b2d1adcec3acd06c191eb",
+        "mtime": "2026-10-26T04:42:19.084Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w1-contract.md",
+      "sha256": "2245b51d029b1205c915a655f35a987b2f1972a045fdaf7769308b3715f5ec22"
+    },
+    {
+      "path": "docs/tui.md",
+      "sha256": "51400685d03958b0d7c442f50059c99e41d4cab69ab118a3ec91c7dde850055c"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T081638-321495",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081638-321495.log",
+      "logSha256": "c3ab70fbac3747a64cd453d6e38b00d3307f38a5a20c2a335276d63ac0b21f7d"
+    },
+    {
+      "evidenceId": "ev-20261026T081708-3c3237",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081708-3c3237.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T081709-c1f2ec",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081709-c1f2ec.log",
+      "logSha256": "26e830aca551ba975148340b784a065c6a07745f4f995f135be6a84ed861e49c"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T08:18:08.516Z",
+  "notes": [
+    "Basis: BLIND. I did not read packages/mpd-tui-plugin/src/** or test/**; judged A5 as amended (Amendment 2, 2026-10-26T08:15Z), docs/tui.md, the aggregate/typecheck/comments gates and the runner's own arm titles/counts.",
+    "A5 black-box guard met: panel-visibility file = 44 tests / 44 pass / 0 fail / 228 expect() calls (>= 189), exit 0. TUI package = 592 tests / 591 pass / 1 skip / 0 fail / 15783 expects, exit 0; the single skip is a pre-existing unrelated arm in the 'team-workflow projection (read-only, from the OFFICIAL live readout)' describe, not in the panel file and not touched by this wave's change. Aggregate tests gate ev-20261026T081638-321495 exit 0 = 2517 pass / 6 skip / 0 fail / 2523 tests / 150 files. typecheck ev-20261026T081708-3c3237 exit 0; comments ev-20261026T081709-c1f2ec exit 0.",
+    "Amendment 2 title ruling applied: all five pre-fix failing ARMS remain (total 44 unchanged). 2 titles are present verbatim ('the id GRAMMAR is not the blocker: a composed plugin id round-trips'; R13b 'the host composes <pluginId>:<slug>, and <pluginId> comes from the caller's identity'); 3 are re-judged to state the CURRENT host rule: (a) 'default enabled CSV names BUILTINS ONLY…' -> 'the default enable VALUE shows only the host's own panels and nothing of ours'; (b) 'the adapter DOES append a registered id to the CSV…' -> 'the register -> enable wiring as THIS host implements it: an append pre-0.17.0, a derived registry read after'; (c) 'the host re-applies the configured CSV…' -> 'the host re-applies the configured value — a rewrite that drops a registered id before 0.15.0, unions it back on 0.15.x-0.16.x, and derives the set on 0.17.0'. The documentary reason the old titles could not stay literal is docs/tui.md 11.10 (2026-10-25): the two host panel-CSV helpers were consolidated into tuiDisplayPrefs.applySidePanelPanels in the 0.17.0 adaptation.",
+    "Scope: at 2026-10-26T08:02:36Z (pre-integration) git status --short -- packages/mpd-tui-plugin listed ONLY test/panel-visibility.test.ts. After the captain's declared 24-target dist rebuild, dist/index.js also appears; that is integration (contract §2 assigns every dependent dist to the captain; mpd-tui-plugin imports the adapter, so it is a dependent), not a work-task edit. No other path under mpd-tui-plugin changed.",
+    "Independent 'production src untouched' confirmation was relayed by the captain from a separate read-only consult: packages/mpd-tui-plugin/src/** has 0 hits for parseSidePanelIds, 0 for resolveSidePanelIds, 0 for tuiDisplayPrefs; the symbol appears only in test/panel-visibility.test.ts (1 cast declaration + 3 call sites). Recorded as CAPTAIN-RELAYED context; this seat did not read src.",
+    "Declared bounds: (1) I cannot read the test file, so the Amendment-2 property that each re-titled arm PINS the removed 0.17.0 mechanism as an explicit ABSENCE rests on T7's report plus the captain's ruling, not on my own read; the black-box guard above is what I verified. (2) Assertion CONTENT beyond counts/titles is a declared bound of a blind verdict. (3) dist freshness is the captain's integration evidence, not re-derived here. No file was edited by this seat."
+  ]
+}

@@ -1,8 +1,8 @@
 // THE MODEL-CAPABILITY ADAPTATION for a reasoning-effort route — the defect and its bounds in one file.
 //
-// WHY THIS FILE EXISTS. A `teamModels` slot is read MATERIALISED over its schema defaults, so a slot
-// whose model declares NO reasoning efforts at all still carried the slot's default `max`/`high`. That
-// keyword was forced into the run and the provider refused the call — the reported defect.
+// WHY THIS FILE EXISTS. A configured route may carry an effort keyword its model cannot take — a
+// hand-written `agentRoutes.<Agent>.reasoningEffort`, or one migrated from the retired `teamModels`
+// defaults (`max`/`high`) — and forcing that keyword into the run made the provider refuse the call.
 // `withSupportedEffort` is the ONE place that decision is made, so this file pins all THREE of its
 // answers: DROP on a model the catalog lists with `efforts: []`, KEEP on a model that declares efforts
 // (supported or not), and KEEP on every "no knowledge" state (an unknown model, a composition with no
