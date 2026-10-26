@@ -1,0 +1,74 @@
+== declared-by-writer hashes vs measured (freeze mail 2026-10-26T11:22:20Z)
+declared-check exit=1
+packages/mpd-graph-core/src/types.ts: OK
+packages/mpd-graph-core/src/model.ts: OK
+packages/mpd-graph-core/src/index.ts: OK
+packages/mpd-graph-core/test/model-groups.test.ts: FAILED
+packages/mpd-graph-core/README.md: FAILED
+packages/mpd-graph-core/README.zh-CN.md: OK
+packages/mpd-graph-core/dist/index.js: OK
+scripts/verify-graph-model.ts: OK
+sha256sum: WARNING: 2 computed checksums did NOT match
+
+== hash sandwich: start 2026-10-26T11:34:02Z
+66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc  evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/scope-start.sha256
+== settle window 50 s
+66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc  evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/scope-postsettle.sha256
+
+== package tests
+tests exit=0
+ 92 pass
+ 0 fail
+Ran 92 tests across 6 files. [1329.00ms]
+groups-test exit=0
+
+== graph-model gate: self-test (both directions) + grouped + negative controls
+selftest exit=0
+flat exit=0
+grouped exit=0
+wrong-anchor exit=1 (expect non-zero)
+wrong-edge exit=1 (expect non-zero)
+
+== INDEPENDENT BACKWARD PIN (JSON-only, my own pre-wave captures)
+emit-real exit=0
+emit-synthetic exit=0
+-- want dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf and 2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-real.jsononly
+2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b  evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-synthetic.jsononly
+-- groups key count (want 0 0):
+evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-real.jsononly:0
+evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-synthetic.jsononly:0
+-- byte diffs:
+REAL IDENTICAL
+SYNTHETIC IDENTICAL
+-- determinism 3x (real pair):
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+-- grouped snapshot captured:
+grouped-emit exit=0
+
+== my own black-box probe against the BUILT dist (Amendment 8 reproduction)
+probe exit=0
+
+== dist freshness (graph-core only; the fan-out is the captain's)
+dist exit=0
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 30ms
+
+== docs pair (README pair is part of D1)
+docs exit=0
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+
+== root-wide gates (foreign in-flight lanes expected red)
+typecheck exit=0
+comments exit=0
+
+== scope metadata (stat only)
+
+== hash sandwich: end 2026-10-26T11:34:59Z
+66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc  evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/scope-end.sha256
+SANDWICH OK: start == end (after settle)

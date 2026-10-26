@@ -1,0 +1,106 @@
+== hash sandwich: start 2026-10-26T11:53:32Z
+a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361  evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/scope-start.sha256
+== settle window 50 s
+a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361  evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/scope-postsettle.sha256
+
+== TUI dist byte-identity vs T6's verified build (want 684fa6f777a2feda8be6ab9a94e0776681147188dd6022ae4c674554182ea9ec)
+684fa6f777a2feda8be6ab9a94e0776681147188dd6022ae4c674554182ea9ec  packages/mpd-tui-plugin/dist/index.js
+
+== the independence gate: full output + its own self-test
+coupling exit=0
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+RESULT: PASS (the frozen inventory describes the band exactly)
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+RESULT: PASS (the frozen inventory describes the band exactly)
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+SELF-TEST: PASS (14/14 checks)
+ 2 pass
+ 0 fail
+-- the TUI entries the frozen inventory now carries:
+239:  "packages/mpd-tui-plugin/src/index.ts :: import z from \"../../mpd-schemastery\"",
+262:  "packages/mpd-tui-plugin/src/index.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
+263:  "packages/mpd-tui-plugin/src/scenes.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
+275:  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, ROSTER_AGENT_NAMES, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
+285:  "packages/mpd-tui-plugin/src/model-menu.ts :: import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, agentNameKey, teamModelMembers } from \"../../mpd-config-plugin/src/settings-schema\"",
+286:  "packages/mpd-tui-plugin/src/state.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
+287:  "packages/mpd-tui-plugin/src/status.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
+288:  "packages/mpd-tui-plugin/src/team-state.ts :: import type { TeamRecord, TeamTaskRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
+289:  "packages/mpd-tui-plugin/src/watchdog.ts :: import type { IncidentRecord } from \"../../mpd-team-watchdog-plugin/src/sidecars.js\"",
+317:  //   · the TUI plane (`mpd-tui-plugin`) calls the same `rankPlan`/`cycleIds` for its layout and reads
+331:  "packages/mpd-tui-plugin/src/dag-groups.ts :: import { rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+332:  "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+333:  "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
+334:  "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",
+335:  "packages/mpd-tui-plugin/src/team-state.ts :: import { ID_ORDER } from \"../../mpd-graph-core/src/rank.ts\"",
+-- every mpd-graph-core mention in the inventory file (the repair's design decision):
+308-  // here by lane L, whose own scope does not hold this file, on the captain's instruction.
+309-  "packages/mpd-roles-plugin/src/captain-investigation.ts :: import { readTargetPath } from \"../../mpd-verify-plugin/src/law.ts\"",
+310:  // THE SHARED GRAPH CORE (living-graph wave, 2026-10-19): `packages/mpd-graph-core` is a LIBRARY —
+311-  // no cordis row, no patch entry, no runtime dependency — and it is the ONE implementation of the
+312-  // plan→graph model and the rank derivation. Eight edges point at it on purpose, and they are frozen
+--
+320-  // compile-time coupling this gate exists to make loud. A future lane reaching into the core from a
+321-  // THIRD package should add its entry here deliberately, not widen an existing one.
+322:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
+323:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
+324:  "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+325:  "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+326-  // A GROUP FRAME IS RANKED BY THE SAME CORE FUNCTION THE FLAT DRAWING USES (cellwork wave 4):
+327-  // `dag-groups.ts` derives a frame own columns through `rankPlan` when no served column arrived, which
+--
+329-  // ONLY edge the group work adds: the type references that would have doubled it are now STRUCTURAL
+330-  // mirrors (GroupedGroup), so they cost the inventory nothing.
+331:  "packages/mpd-tui-plugin/src/dag-groups.ts :: import { rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+332:  "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+333:  "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
+334:  "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",
+335:  "packages/mpd-tui-plugin/src/team-state.ts :: import { ID_ORDER } from \"../../mpd-graph-core/src/rank.ts\"",
+336-]
+337-
+
+== suites this repair touches
+tui exit=0
+ 609 pass
+ 1 skip
+ 0 fail
+Ran 610 tests across 24 files. [12.52s]
+adapter exit=0
+ 289 pass
+ 0 fail
+Ran 289 tests across 19 files. [2.44s]
+
+== dist freshness (tui + adapter)
+tui dist exit=0
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 46ms
+adapter dist exit=0
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 34ms
+
+== structural GroupedGroup (the REDUCE route) present in the TUI dist?
+GroupedGroup       0
+groupFrame         0
+DAG_GROUP_CHARS    13
+collapsedGroups    3
+
+== docs + comments + typecheck + full suite
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+typecheck exit=0
+$ tsgo --noEmit
+full exit=0
+ 2620 pass
+ 6 skip
+ 0 fail
+Ran 2626 tests across 156 files. [30.67s]
+
+== scope metadata (stat only)
+12
+ packages/mpd-tui-plugin/src/scenes.ts              |   7 +-
+ packages/mpd-tui-plugin/src/subagent-scene.ts      |   4 +-
+ packages/mpd-tui-plugin/src/team-state.ts          |  24 +-
+ 10 files changed, 1771 insertions(+), 211 deletions(-)
+
+== hash sandwich: end 2026-10-26T11:55:12Z
+a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361  evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/scope-end.sha256
+SANDWICH OK: start == end (after settle)

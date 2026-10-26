@@ -1,0 +1,177 @@
+{
+  "nodes": [
+    {
+      "id": "F1",
+      "subject": "final check (blocked by 1, 4)",
+      "visual": "planned",
+      "dependencies": [
+        "T1",
+        "T4"
+      ],
+      "depth": 3,
+      "planned": true,
+      "title": "final check (blocked by 1, 4)"
+    },
+    {
+      "id": "T1",
+      "subject": "root work",
+      "visual": "completed",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "assignee": "alpha",
+      "title": "root work",
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "subject": "second",
+      "visual": "open",
+      "dependencies": [
+        "T1"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "work",
+      "assignee": "alpha",
+      "title": "second step (blocked by 1)",
+      "status": "running"
+    },
+    {
+      "id": "T3",
+      "subject": "third",
+      "visual": "open",
+      "dependencies": [
+        "T1",
+        "T2"
+      ],
+      "depth": 2,
+      "planned": false,
+      "kind": "work",
+      "assignee": "beta",
+      "title": "ghost only in the plan (blocked by 2)",
+      "status": "open"
+    },
+    {
+      "id": "T4",
+      "subject": "cyclic a",
+      "visual": "open",
+      "dependencies": [
+        "T5"
+      ],
+      "depth": 2,
+      "planned": false,
+      "kind": "fix",
+      "assignee": "beta",
+      "title": "cyclic a (blocked by 5)",
+      "status": "open"
+    },
+    {
+      "id": "T5",
+      "subject": "cyclic b",
+      "visual": "open",
+      "dependencies": [
+        "T4"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "fix",
+      "assignee": "beta",
+      "status": "open"
+    }
+  ],
+  "edges": [
+    {
+      "from": "T1",
+      "to": "F1",
+      "source": "plan"
+    },
+    {
+      "from": "T1",
+      "to": "T2",
+      "source": "both"
+    },
+    {
+      "from": "T1",
+      "to": "T3",
+      "source": "board"
+    },
+    {
+      "from": "T2",
+      "to": "T3",
+      "source": "both"
+    },
+    {
+      "from": "T4",
+      "to": "F1",
+      "source": "plan"
+    },
+    {
+      "from": "T4",
+      "to": "T5",
+      "source": "board"
+    },
+    {
+      "from": "T5",
+      "to": "T4",
+      "source": "both"
+    }
+  ],
+  "ranks": [
+    [
+      "T1"
+    ],
+    [
+      "T2",
+      "T5"
+    ],
+    [
+      "T3",
+      "T4"
+    ],
+    [
+      "F1"
+    ]
+  ],
+  "cycles": [
+    "T4",
+    "T5"
+  ],
+  "report": {
+    "boardOnly": [
+      "T5"
+    ],
+    "planOnly": [
+      "F1"
+    ],
+    "edgePlanOnly": [
+      {
+        "from": "T1",
+        "to": "F1",
+        "source": "plan"
+      },
+      {
+        "from": "T4",
+        "to": "F1",
+        "source": "plan"
+      }
+    ],
+    "edgeBoardOnly": [
+      {
+        "from": "T1",
+        "to": "T3",
+        "source": "board"
+      },
+      {
+        "from": "T4",
+        "to": "T5",
+        "source": "board"
+      }
+    ],
+    "planProblems": [],
+    "unresolved": [],
+    "ranksDerived": true
+  }
+}
+[verify-graph-model] PASS — nodes (6), edges (7), ranks, cycles and the report equal the declared input

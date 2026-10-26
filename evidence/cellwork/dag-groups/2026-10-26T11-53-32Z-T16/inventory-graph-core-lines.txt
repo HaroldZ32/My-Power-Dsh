@@ -1,0 +1,24 @@
+308-  // here by lane L, whose own scope does not hold this file, on the captain's instruction.
+309-  "packages/mpd-roles-plugin/src/captain-investigation.ts :: import { readTargetPath } from \"../../mpd-verify-plugin/src/law.ts\"",
+310:  // THE SHARED GRAPH CORE (living-graph wave, 2026-10-19): `packages/mpd-graph-core` is a LIBRARY —
+311-  // no cordis row, no patch entry, no runtime dependency — and it is the ONE implementation of the
+312-  // plan→graph model and the rank derivation. Eight edges point at it on purpose, and they are frozen
+--
+320-  // compile-time coupling this gate exists to make loud. A future lane reaching into the core from a
+321-  // THIRD package should add its entry here deliberately, not widen an existing one.
+322:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
+323:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
+324:  "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+325:  "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+326-  // A GROUP FRAME IS RANKED BY THE SAME CORE FUNCTION THE FLAT DRAWING USES (cellwork wave 4):
+327-  // `dag-groups.ts` derives a frame own columns through `rankPlan` when no served column arrived, which
+--
+329-  // ONLY edge the group work adds: the type references that would have doubled it are now STRUCTURAL
+330-  // mirrors (GroupedGroup), so they cost the inventory nothing.
+331:  "packages/mpd-tui-plugin/src/dag-groups.ts :: import { rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+332:  "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+333:  "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
+334:  "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",
+335:  "packages/mpd-tui-plugin/src/team-state.ts :: import { ID_ORDER } from \"../../mpd-graph-core/src/rank.ts\"",
+336-]
+337-

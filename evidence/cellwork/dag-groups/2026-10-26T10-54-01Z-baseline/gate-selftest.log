@@ -1,0 +1,9 @@
+[verify-graph-model] self-test PASS — positive: the default model equals its declared input (oracle + golden) :: 0 mismatches
+[verify-graph-model] self-test PASS — determinism: two builds serialize byte-identically :: identical
+[verify-graph-model] self-test PASS — input-order independence: reversed board and plan arrays build the same model :: identical
+[verify-graph-model] self-test PASS — negative: a seeded wrong edge is refused and NAMED :: edge F1→F2: expected source "plan" got "board"
+[verify-graph-model] self-test PASS — --fixture <dir> loads plan.md + board.json and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+[verify-graph-model] self-test PASS — --board <path> --plan <path> loads the explicit files and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+[verify-graph-model] self-test PASS — --emit prints the serialized model and still exits by the check :: exit 0, snapshot=present
+[verify-graph-model] self-test PASS — --seed-wrong-edge exits non-zero and a FAIL line NAMES the edge :: exit 1: [verify-graph-model] FAIL edge F1→F2: expected source "plan" got "board"
+[verify-graph-model] self-test PASS — 8 arms: both directions and the path forms

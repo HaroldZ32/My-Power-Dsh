@@ -1,0 +1,5 @@
+groups: ['teamB', 'teamC', 'teamB1']
+edges: ['B1->B2[board]', 'B1->teamB1[board]', 'B2->teamB1[derived]', 'T1->T2[both]', 'T1->teamB[board]', 'T2->teamB[derived]', 'teamB->teamC[board]', 'teamC->T3[board]']
+frame->frame edges: ['teamB->teamC']
+RESULT: PASS — the built-in fixture produces a frame->frame edge
+groups payload: [{"id": "teamB", "label": "Subcell B", "parentId": null, "memberIds": ["B1", "B2", "F1", "teamB1"], "depth": 0, "originTaskId": "T2"}, {"id": "teamC", "label": "Subcell C", "parentId": null, "memberIds": ["E1"], "depth": 0}, {"id": "teamB1", "label": "Subcell B1", "parentId": "teamB", "memberIds": ["D1"], "depth": 1, "originTaskId": "B2"}]

@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T115653-831f24",
+  "loopId": "loop-20261026T105128-d3552b",
+  "taskId": "T16",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "render-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/tui-dist.sha256",
+        "bytes": 104,
+        "sha256": "b78b421193170fd70dd09024346e27051defe91046c8271a995ee4f84730d8c2",
+        "mtime": "2026-10-26T11:54:22.343Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/inventory-graph-core-lines.txt",
+        "bytes": 2389,
+        "sha256": "432596f510659160b59d536ccfc5d938206ef365f90c924b7f334953c91f285c",
+        "mtime": "2026-10-26T11:54:22.719Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/coupling-gate.log",
+        "bytes": 14966,
+        "sha256": "b19cd01fd1df5ea34f8ddea3b7ad650d630d73da0b10c7c792b92162e9ed0e7c",
+        "mtime": "2026-10-26T11:54:22.701Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/structural-tokens.txt",
+        "bytes": 85,
+        "sha256": "99b1158c42dd60fa1e4034de15877545bfaa81dcdf80b72cfd9ab3a82760912e",
+        "mtime": "2026-10-26T11:54:37.878Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/scope-start.sha256",
+        "bytes": 10623,
+        "sha256": "a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361",
+        "mtime": "2026-10-26T11:53:32.319Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/scope-end.sha256",
+        "bytes": 10623,
+        "sha256": "a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361",
+        "mtime": "2026-10-26T11:55:12.110Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    {
+      "path": "docs/independence.md",
+      "sha256": "5c00ddeb4762e17fd112590acb2f25b129ad46946fbe3937bd3c18be5a38be10"
+    },
+    {
+      "path": "packages/mpd-tui-plugin/README.md",
+      "sha256": "eb6703170c57db04f3616c0321b12b8fd2ccf011811757ef4aa5af76c960e971"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T115542-7644f5",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T115542-7644f5.log",
+      "logSha256": "03f09b1e6b12ae0018a6f921b542de196c5b8114dd2fffb9ad36064ee2318f00"
+    },
+    {
+      "evidenceId": "ev-20261026T115634-01398d",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T115634-01398d.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T115635-72e28d",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T115635-72e28d.log",
+      "logSha256": "ad0136afaab47633de0d7cebf7abfa111e25eaca0493845f28acb1d6c92478bd"
+    },
+    {
+      "evidenceId": "ev-20261026T115637-541376",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T115637-541376.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T11:56:53.931Z",
+  "notes": [
+    "SUBJECT: T15's repair as its own claim — the ROUTE (REDUCE to structural mirrors + ONE deliberate, justified inventory pin) and the REPAIR FACT (the TUI dist is byte-identical to T6's verified build, so the change is type-level only). This is a re-verification, not a fresh feature: T6's finding (the coupling inventory red) was accurate when I measured it at 11:44 and is now CLOSED by this repair.",
+    "SETTLED TREE: packages/mpd-tui-plugin + packages/mpd-dsh-adapter-plugin, sha256 sandwich over both packages — start == end (a421c8491f1126ffff663923dd58aa6af46515192b72b026c8f1d5a48e04e361) around a 50 s settle window. Evidence: evidence/cellwork/dag-groups/2026-10-26T11-53-32Z-T16/.",
+    "THE REPAIR FACT, independently measured: `sha256(packages/mpd-tui-plugin/dist/index.js)` = 684fa6f777a2feda8be6ab9a94e0776681147188dd6022ae4c674554182ea9ec — the EXACT hash I verified for T6 at 11:34Z and the writer declared for T15, so the repair emitted not one byte of runtime difference; `verify-dist-fresh --only mpd-tui-plugin` and `--only mpd-dsh-adapter-plugin` both FRESH (1/1 each).",
+    "THE ROUTE, measured from the inventory file itself (the design decision I was asked to judge): the TUI now carries FIVE graph-core entries — `dag-groups.ts :: import { rankPlan }` (the ONE new line, carrying a written justification that a group frame derives its own columns through the SAME core function the flat drawing uses, and that a private copy is forbidden), plus four PRE-EXISTING ones (`graph.ts :: {cycleIds, rankPlan}`, `graph.ts :: type {RankPlan}`, `team-state.ts :: type {GraphModel, GraphNode}`, `team-state.ts :: {ID_ORDER}`). The type-only references that W4 would have added were REDUCED to a structural mirror ahead of the inventory, so the group work costs exactly one line. `GroupedGroup` and `groupFrame` are absent from the dist, which is what a type-only construct must look like after a build.",
+    "GATES: independence gate PASS — 'frozen inventory: 47 entries; couplings in the band: 47' with its own seeded negative control 14/14; TUI suite 609 pass / 1 skip (pre-existing) / 0 fail; adapter suite 289 pass / 0 fail; FULL suite 2620 pass / 6 skip / 0 fail (2626 across 156 files); root tsgo --noEmit clean; verify:comments PASS; verify:docs 52 pairs / 0 failed.",
+    "BOUNDS: (a) the repo-wide `dist` gate went RED between my --only runs and the later evidence call (STALE graph-core and team-core) — the cause is T11's in-flight repair in `packages/mpd-graph-core/src` and the team-core dist that inlines it, NOT this repair: both packages in T16's scope measured FRESH, and I therefore cite the per-package runs in this record rather than a full-fan-out green I did not observe. (b) the structural mirror (`GroupedGroup`) is a deliberate divergence risk: if `GraphGroup` gains a field, the TUI's copy will not redden and only the runtime shape (and the D3 arms) would notice. The inventory comment states this cost explicitly, and the frozen rule forbids the import that would remove it, so I record it as a standing residual of the repo's independence rule, not a defect of this repair. (c) I did not re-judge D3's drawing behaviour here — T6's arms and my artifact checks stand, and the dist is byte-identical to the build they were measured on.",
+    "DECLINED TO JUDGE: whether the ONE pin could have been avoided entirely by NOT ranking a group frame (a served column always existing) — the writer's justification is that a frame must derive columns through the same core function, and duplicating `rankPlan` is forbidden by the same rule; that is a design decision inside the frozen independence rule and it is documented where the next reader will look."
+  ]
+}

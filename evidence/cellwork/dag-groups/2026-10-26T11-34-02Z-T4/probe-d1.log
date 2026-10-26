@@ -1,0 +1,31 @@
+
+### A inner-blocked-by-outer (mirror)
+edges: T1->teamB[board]
+nodes: B1(d0,teamB) T1(d0) teamB(d1)
+ranks: [["T1"],["teamB"]] | cycles: [] | unresolved: []
+
+### B outer-blocked-by-inner (Amendment 8)
+edges: T1->teamB[derived] teamB->T2[board]
+nodes: B1(d0,teamB) T1(d0) T2(d0) teamB(d1)
+ranks: [["T1","T2"],["teamB"]] | cycles: [] | unresolved: []
+
+### C cross-frame mutual block
+edges: G1->T1[board] T1->G1[board]
+nodes: G1(d1) T1(d0) X1(d0,G1)
+ranks: [["T1"],["G1"]] | cycles: [] | unresolved: []
+
+### D group→group (sibling subcells)
+edges: GA->GB[board] T1->GA[derived] T1->GB[derived]
+nodes: A1(d0,GA) A2(d0,GB) GA(d1) GB(d2) T1(d0)
+ranks: [["T1"],["GA"],["GB"]] | cycles: [] | unresolved: []
+
+### E duplicate id in two frames
+mpd-graph-core: the grouping input carries id "T1" in the root frame and group "G"; ids must be unique across the whole tree
+
+### E2 group id collides with a task id
+mpd-graph-core: the grouping input carries id "G" in the root frame and the root frame; ids must be unique across the whole tree
+
+### F determinism: IDENTICAL
+### F plain-JSON round-trip: EQUAL
+### F map/set leak: none visible
+### A/B depth check: {"mirror_T2":null,"diverging_T2_depth":0,"group_teamB_depth":1,"diverging_edge":["teamB->T2"]}

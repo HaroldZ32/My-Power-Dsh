@@ -1,0 +1,155 @@
+{
+  "nodes": [
+    {
+      "id": "T1",
+      "subject": "W3-T1 re-split + hardening + QA cases (C1-C4)",
+      "visual": "completed",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "assignee": "flow-engineer",
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "subject": "W3-T2 bilingual feature docs, user-guide pointer, CHANGELOG, README sentences (C5)",
+      "visual": "completed",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "assignee": "docs-engineer",
+      "status": "completed"
+    },
+    {
+      "id": "T3",
+      "subject": "W3-T3 verify re-split, hardening and QA cases (C1-C4)",
+      "visual": "completed",
+      "dependencies": [
+        "T1"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "review",
+      "assignee": "w3-verifier",
+      "status": "completed"
+    },
+    {
+      "id": "T4",
+      "subject": "W3-T4 verify bilingual docs, pointers, CHANGELOG and README sentences (C5)",
+      "visual": "completed",
+      "dependencies": [
+        "T2"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "review",
+      "assignee": "w3-verifier",
+      "status": "completed"
+    },
+    {
+      "id": "T5",
+      "subject": "W3-T5 repair: dispatched contract path + accepted verdict durability (Amendment 6)",
+      "visual": "completed",
+      "dependencies": [
+        "T3"
+      ],
+      "depth": 2,
+      "planned": false,
+      "kind": "repair",
+      "assignee": "flow-engineer",
+      "status": "completed"
+    },
+    {
+      "id": "T6",
+      "subject": "W3-T6 verify Amendment 6 repair (R1/R2)",
+      "visual": "completed",
+      "dependencies": [
+        "T5"
+      ],
+      "depth": 3,
+      "planned": false,
+      "kind": "review",
+      "assignee": "w3-verifier",
+      "status": "completed"
+    }
+  ],
+  "edges": [
+    {
+      "from": "T1",
+      "to": "T3",
+      "source": "board"
+    },
+    {
+      "from": "T2",
+      "to": "T4",
+      "source": "board"
+    },
+    {
+      "from": "T3",
+      "to": "T5",
+      "source": "board"
+    },
+    {
+      "from": "T5",
+      "to": "T6",
+      "source": "board"
+    }
+  ],
+  "ranks": [
+    [
+      "T1",
+      "T2"
+    ],
+    [
+      "T3",
+      "T4"
+    ],
+    [
+      "T5"
+    ],
+    [
+      "T6"
+    ]
+  ],
+  "cycles": [],
+  "report": {
+    "boardOnly": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6"
+    ],
+    "planOnly": [],
+    "edgePlanOnly": [],
+    "edgeBoardOnly": [
+      {
+        "from": "T1",
+        "to": "T3",
+        "source": "board"
+      },
+      {
+        "from": "T2",
+        "to": "T4",
+        "source": "board"
+      },
+      {
+        "from": "T3",
+        "to": "T5",
+        "source": "board"
+      },
+      {
+        "from": "T5",
+        "to": "T6",
+        "source": "board"
+      }
+    ],
+    "planProblems": [],
+    "unresolved": [],
+    "ranksDerived": true
+  }
+}
+[verify-graph-model] PASS — nodes (6), edges (4), ranks, cycles and the report equal the declared input

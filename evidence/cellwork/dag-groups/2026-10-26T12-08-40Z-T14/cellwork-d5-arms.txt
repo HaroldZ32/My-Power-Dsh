@@ -1,0 +1,3 @@
+(pass) B8: cellwork_subteam enforces depthMax and registers the sub-cell when it fits 
+(pass) D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own 
+(pass) D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so 

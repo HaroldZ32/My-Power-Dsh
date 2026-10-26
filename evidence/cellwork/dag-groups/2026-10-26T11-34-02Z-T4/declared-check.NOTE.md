@@ -1,0 +1,1 @@
+# NOTE: the FIRST declared-check.log (kept as declared-check.err.log + declared.sha256.MY-TRANSCRIPTION-ERROR) had the test/README lines SWAPPED by my own transcription; the tree was never in conflict. Measured hashes above match the writer freeze mail word for word.

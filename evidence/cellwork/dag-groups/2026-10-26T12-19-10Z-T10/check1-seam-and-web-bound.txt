@@ -1,0 +1,18 @@
+-- the old bullet (want NO MATCH):
+   (NO MATCH — retired)
+-- the seam (implicit derivation) named:
+234:**The seam is implicit derivation, and it has no argument to forget.** `cellwork_subteam` stamps the parent
+345:- **`parent_team_id` is implicit, not a knob.** A sub-team's parent is DERIVED by the team plane at
+-- the zh twin's seam wording:
+196:**这条缝是隐式推导，并且没有一个可以被忘记的参数。** `cellwork_subteam` 把父 cell 的**实时** team id 写到新 cell
+289:- **`parent_team_id` 是隐式推导，不是旋钮。** 子 team 的父级由团队平面在批准时从父 team 的名册推导
+-- the web deferral bound, stated rather than implied (want an explicit NOT-delivered sentence):
+247:(`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as boxes"). The web DAG's group frame is NOT
+349:- **The WEB nested frame is NOT delivered this wave.** The team record, the shared model and the TUI carry
+350:  nested groups (see "Nested DAG: subcells as group boxes"); the web DAG's group frame, its recursive
+352:  `.mpd/plans/cellwork-w4-t7-plan.md`. Nothing in this document claims the web surface renders a box, and a
+353:  reader must not read the TUI's vocabulary as a web capability.
+205:（`packages/mpd-tui-plugin/README.md` 的 "Nested groups: subcells as boxes"）。web DAG 的分组帧**不属于**本次交付；
+292:- **WEB 端的嵌套帧在本波次不交付。** team 记录、共享模型与 TUI 都带上了嵌套分组（见"嵌套 DAG：子单元画成分组
+293:  盒子"）；web DAG 的分组帧、它的递归几何与它的 client 重建都是**后续工作**，补丁计划冻结在
+294:  `.mpd/plans/cellwork-w4-t7-plan.md`。本文档没有任何一句声称 web 表面会画盒子，读者也不得把 TUI 的词汇当成 web

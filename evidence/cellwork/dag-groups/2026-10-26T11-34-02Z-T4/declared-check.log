@@ -1,0 +1,8 @@
+packages/mpd-graph-core/src/types.ts: OK
+packages/mpd-graph-core/src/model.ts: OK
+packages/mpd-graph-core/src/index.ts: OK
+packages/mpd-graph-core/test/model-groups.test.ts: OK
+packages/mpd-graph-core/README.md: OK
+packages/mpd-graph-core/README.zh-CN.md: OK
+packages/mpd-graph-core/dist/index.js: OK
+scripts/verify-graph-model.ts: OK

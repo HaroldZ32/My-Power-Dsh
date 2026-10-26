@@ -1,0 +1,210 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts:
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 32 package(s), 176 .ts file(s)
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 81:
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-boulder-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/activate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/budget.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/caller.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/dispatch.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/flow.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol-core.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/recon.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/staging.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-goal-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/ask-user-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/captain-investigation.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/delegation-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/verify-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/route.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-door-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-ulw-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/observe.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdGoal, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 3 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:5755: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:1286: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+  packages/mpd-verify-plugin/src/index.ts:111: [harness-service-provide] -> VERIFY_SERVICE — ctx.provide(VERIFY_SERVICE, runtime)
+RESULT: PASS (the frozen inventory describes the band exactly)
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 32 package(s), 176 .ts file(s)
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 81:
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-boulder-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/activate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/budget.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/caller.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/dispatch.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/flow.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol-core.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/recon.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/staging.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-goal-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/ask-user-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/captain-investigation.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/delegation-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/verify-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/route.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-door-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-ulw-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/observe.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdGoal, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 3 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:5755: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:1286: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+  packages/mpd-verify-plugin/src/index.ts:111: [harness-service-provide] -> VERIFY_SERVICE — ctx.provide(VERIFY_SERVICE, runtime)
+RESULT: PASS (the frozen inventory describes the band exactly)
+(pass) the cross-package coupling inventory is exactly the frozen set (independence gate) [108.29ms]
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+  ok   an INVENTORIED coupling is not reported (no false positive)
+  ok   a NEW cross-package import reddens
+  ok   a SANCTIONED adapter import is exempt, and is PRINTED as sanctioned
+  ok   an INTRA-package import is not a coupling
+  ok   a globalThis WRITE reddens in both spellings on one line
+  ok   ctx.provide("tools") reddens as a harness-service provide
+  ok   ctx.provide("mpdFixture") is allowed and NAMED
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.29ms]
+
+ 2 pass
+ 0 fail
+ 2 expect() calls
+Ran 2 tests across 1 file. [356.00ms]

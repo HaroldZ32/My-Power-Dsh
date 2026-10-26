@@ -1,0 +1,37 @@
+=== W4-T15 — cross-package coupling inventory repair (route: REDUCE, one deliberate pin) ===
+timestamp: 2026-10-26T11:49:06Z
+
+--- BEFORE (T6 finding, rec-20261026T114551-e36c78): RESULT FAIL (4 new, 1 stale)
+  dag-groups.ts :: import type { GraphGroup } from .../types.ts      -> REMOVED (structural GroupedGroup)
+  dag-groups.ts :: import { rankPlan } from .../rank.ts              -> KEPT + PINNED (one core derivation)
+  graph.ts      :: import type { GraphGroup, RankPlan } from ...      -> reverted to the PINNED RankPlan line
+  panel-dag.ts  :: import type { GraphGroup } from .../types.ts       -> REMOVED (structural GroupedGroup)
+
+--- bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+RESULT: PASS (the frozen inventory describes the band exactly)
+RESULT: PASS (the frozen inventory describes the band exactly)
+SELF-TEST: PASS (14/14 checks)
+
+--- bun test packages/mpd-dsh-adapter-plugin (whole package)
+
+ 289 pass
+ 0 fail
+ 1192 expect() calls
+Ran 289 tests across 19 files. [2.60s]
+
+--- bun test packages/mpd-tui-plugin
+ 1 skip
+ 0 fail
+ 15929 expect() calls
+Ran 610 tests across 24 files. [13.12s]
+
+--- bun run typecheck (TUI + adapter lines only; empty = clean)
+(no diagnostics in the two packages)
+
+--- node scripts/verify-comment-coverage.ts
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+--- node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 684fa6f777a2… 29ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 773ms
