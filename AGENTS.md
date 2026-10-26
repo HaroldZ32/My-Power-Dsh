@@ -504,10 +504,10 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.4** (measured
-  2026-10-25); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one command
-  from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the manifest's
-  **`files` allowlist**, then `reconcile` reads the
+  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.5** (measured
+  2026-10-26T02:36Z); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
+  command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
+  manifest's **`files` allowlist**, then `reconcile` reads the
   installed package's `dsh.bundle.patch` files, validates that they load, and appends the package name to
   `dsh.profile.bundles`. Proof: the live lane `node scripts/docker-e2e.ts --mode oneclick --spec
   github:HaroldZ32/My-Power-Dsh` on a bare `ubuntu:24.04`.
