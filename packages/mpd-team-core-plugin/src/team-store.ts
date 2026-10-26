@@ -176,6 +176,19 @@ export interface TeamRecord {
    * captaincy instead. Bounded to the most recent few — it is an identity trail, not a log.
    */
   leadHistory?: string[]
+  /**
+   * The team this one is a SUBCELL of, or absent for a root team (cellwork wave 4).
+   *
+   * THE ONE TEAM-TOPOLOGY FIELD, and deliberately additive: a record written before this field
+   * existed — or by a caller that has no parent — carries no key at all, and every reader treats the
+   * absence as "root team". Nothing about the team's own board, roster or phase changes because it
+   * nests; this is the edge the graph projection turns into a box.
+   *
+   * A nested team's parent is always a LIVE record of the same workspace, and the chain it starts must
+   * terminate: `agent_teams_plan` validates existence, liveness and the absence of a cycle before a
+   * plan can carry the link, so a hand-edited record is the only way a bad chain reaches disk.
+   */
+  parentTeamId?: string
   /** Where the team is in its lifecycle. */
   phase: TeamPhase
   /** ISO instant the record was created. */
@@ -470,6 +483,15 @@ export interface NewTeamInput {
    * evidence by PLAN identity rather than by Lead + name (PR #42 review F-D).
    */
   planId?: string
+  /**
+   * The team this one nests under, when the approving plan named one (cellwork wave 4).
+   *
+   * Omitted means a ROOT team, which is what every creation path did before nested teams existed; the
+   * store writes no key in that case, so an ungrouped record stays byte-identical to the ones already
+   * on disk. The caller (`agent_teams_plan`) is the authority that validated the link against the
+   * live records; this store records what it was given.
+   */
+  parentTeamId?: string
 }
 
 /**
@@ -502,6 +524,10 @@ export function createTeam(workspace: string, input: NewTeamInput, now: Date): T
     // from a plan, so it is the one moment the link can be stamped. Omitted when the caller has no plan
     // (a hand-built or migrated record), which `isLiveTeam` reads as "archive evidence cannot identify".
     ...(input.planId === undefined || input.planId === "" ? {} : { planId: input.planId }),
+    // THE NESTING EDGE, written only when the approving plan carried one: a root team therefore keeps
+    // exactly the key set it had before nested teams existed, which is what makes the additive claim
+    // checkable rather than asserted.
+    ...(input.parentTeamId === undefined || input.parentTeamId === "" ? {} : { parentTeamId: input.parentTeamId }),
     phase: "staged",
     createdAt: now.toISOString(),
     members: [],

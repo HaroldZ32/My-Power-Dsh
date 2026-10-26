@@ -745,8 +745,13 @@ function createTeamComponent(
     const graphWindow = Math.max(3, measured.window - 4)
     /** The ranks the host's model served, when it published one; the scene never re-derives its own. */
     const servedRanks = modelRanks(workflow)
+    // THE GROUP FRAMES COME WITH THE MODEL (frozen contract D3). A served model's per-node column is the
+    // column INSIDE its own frame, so a flat drawing of a grouped board would stack two frames' boxes in
+    // one rank — the reason this call passes the frames through instead of drawing the board flat.
+    /** The group frames the model declares, or undefined when this board has none. */
+    const groups = workflow?.model?.groups
     /** The boxed drawing for this render, at its own width — the scene's picture unless it is too narrow. */
-    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks)
+    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks, groups)
     // THE FULL-SCREEN SCENE OBEYS THE PANEL'S RULE (clause A3): boxes while two node columns of the
     // drawing fit, and the rail only for a terminal that genuinely cannot show them. Before this the
     // scene had no rule of its own and inherited the layout's rank cap, so a deep board fell back to a

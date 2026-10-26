@@ -67,7 +67,27 @@
 // against `ascii codepoints=34 cellWidth=34 endsWith│=true`. The `wide` array below is that fix, and
 // it is why a CJK subject can no longer shear the drawing.
 import { cellWidth, clampCells, sliceCells, stripControl } from "./sanitize.js"
-import { DAG_CHARS, DAG_GHOST_MARKER, DAG_TONE_GLYPH } from "./dag-theme.js"
+import { DAG_CHARS, DAG_GHOST_MARKER, DAG_GROUP_CHARS, DAG_TONE_GLYPH } from "./dag-theme.js"
+// THE GROUP TREE (wave `cellwork`, contract D3): the nested layout's geometry, kept in its own module so
+// it can be measured and asserted WITHOUT a canvas. This file only paints what that module returns.
+import {
+  GROUP_BAND_ROWS,
+  GROUP_BORDER,
+  GROUP_COLUMN_GAP,
+  buildFrameTree,
+  drawnColumns,
+  frameEdges,
+  measureFrame,
+  rankFrame,
+  type ChildSize,
+  type FrameChild,
+  type FrameEdges,
+  type FrameId,
+  type FrameNode,
+  type FrameRanks,
+  type FrameSize,
+  type GroupedGroup,
+} from "./dag-groups.js"
 // THE SHARED PLAN→GRAPH CORE (wave `living-graph`): the ONE rank derivation both planes use. The
 // private copy that used to live here — `deriveRanks`, `servedRank`, `ID_ORDER`, `bucketRanks`,
 // `rankPlan` and their `RankPlan` type — is DELETED, so a fix now reaches the web plane too. What is
@@ -97,6 +117,37 @@ export interface GraphTask {
   depth: number
   /** Attempt counter, when the record carries one. */
   attempt?: number
+  /**
+   * The INNERMOST group frame this task draws inside, absent for a task of the root frame.
+   *
+   * The group id, never the group's record: a drawing needs to know WHICH box holds a task, and the
+   * boxes themselves arrive once in {@link layoutBoxesNatural}'s `groups` argument.
+   */
+  group?: string
+}
+
+/**
+ * One GROUP FRAME's rectangle, in the drawing's own coordinates, so a pointer can resolve to a box.
+ *
+ * A group's box is not a task and cannot be a {@link GraphHit}: the page that pins a group would have
+ * to invent a task id for it, and a group is a PLACE rather than a row of the board. The two arrays
+ * therefore stay separate, and {@link hitTestGroup} answers for the frames.
+ */
+export interface GraphGroupHit {
+  /** The group id the frame draws. */
+  groupId: string
+  /** The frame's title, drawn on its top border. */
+  label: string
+  /** Nesting depth: `1` for a box inside the root frame. */
+  depth: number
+  /** The frame's first row, relative to the graph's own top. */
+  row: number
+  /** The frame's last row, inclusive. */
+  rowEnd: number
+  /** The frame's first column, relative to the graph's own left. */
+  col: number
+  /** The frame's last column, inclusive. */
+  colEnd: number
 }
 
 /**
@@ -188,6 +239,21 @@ export interface GraphView {
    * character of every mid-length label while this flag still answered `false`.
    */
   labelOverflow?: boolean
+  /**
+   * The GROUP FRAMES this drawing enclosed, in draw order; absent when the board has no groups.
+   *
+   * A frame's rectangle is where the group's box was drawn, so the page resolves a click on a box to
+   * the group it names — the same geometry the border was painted from, never a second measurement.
+   */
+  groups?: readonly GraphGroupHit[]
+  /**
+   * The group ids this drawing could NOT frame, in id order.
+   *
+   * NEVER silently dropped: a group whose record is unusable (an unknown parent, a parent cycle, an id
+   * that collides with a task) has no box to draw, and a page that showed it as though it had one would
+   * be inventing a picture. The rail and the list name these groups COLLAPSED instead.
+   */
+  collapsedGroups?: readonly string[]
 }
 
 /**
@@ -751,7 +817,7 @@ export interface GraphBudget {
  *   means the core derives them (the standalone-fixture path).
  * @returns the view, or `undefined` when the board refuses to be drawn as boxes.
  */
-export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget, servedRanks?: ReadonlyMap<string, number>): GraphView | undefined {
+export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget, servedRanks?: ReadonlyMap<string, number>, groups?: readonly GroupedGroup[]): GraphView | undefined {
   /** What the board's references resolve to, and therefore how it is ranked. */
   const plan = rankPlan(tasks, servedRanks)
   /** The ranks, in draw order; an empty board still gets a view, so the page can say "nothing here". */
@@ -785,7 +851,213 @@ export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, 
   // form per drawing is the contract, and two boxes of different heights in one column would leave the
   // edges between them pointing at rows nobody recomputed.
   void budget
-  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label)
+  // THE NESTED DRAWING COMES FIRST, and only when the board really carries groups: a board with none
+  // takes the flat path below BYTE FOR BYTE, which is what keeps this wave additive. A group set that
+  // places nothing (every record unusable) also falls through, rather than drawing an empty frame.
+  if (groups !== undefined && groups.length > 0) {
+    /** The nested drawing, when the group records place at least one box. */
+    const nested = drawGroupedBoxes(tasks, groups, focus, nodeWidth, servedRanks, label, plan)
+    if (nested !== undefined) return nested
+  }
+  /** The flat drawing: what a board without placeable frames gets. */
+  const flat = drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label)
+  // A GROUP SET THAT PLACES NOTHING IS STILL REPORTED. The flat picture is the honest drawing (there is no
+  // box to enclose), but a caller that asked for groups deserves to be told which ones the tree refused —
+  // otherwise an unusable record would vanish silently, which is the one thing this wave may not do.
+  if (groups !== undefined && groups.length > 0) {
+    /** The tree the records would have built, for its refusal list. */
+    const refused = buildFrameTree(tasks, groups)
+    if (refused.collapsed.length > 0) flat.collapsedGroups = [...refused.collapsed].sort()
+  }
+  return flat
+}
+
+/** The four grids one drawing writes into, plus the read that turns them into rows. */
+interface CellCanvas {
+  /**
+   * OR one direction into a cell; edges MERGE, they never overwrite.
+   * @param row - the cell's row.
+   * @param col - the cell's column.
+   * @param dir - the direction bits (see the `UP`/`DOWN`/`LEFT`/`RIGHT` masks).
+   * @param at - the tone the cell is drawn in.
+   */
+  link(row: number, col: number, dir: number, at: GraphTone): void
+  /**
+   * Write a literal character over the mask: a label, or a group frame's border.
+   * @param row - the cell's row.
+   * @param col - the cell's column.
+   * @param char - the character; a WIDE glyph claims the cells it covers.
+   * @param at - the tone the cell is drawn in.
+   */
+  label(row: number, col: number, char: string, at: GraphTone): void
+  /**
+   * Draw one straight run between two waypoints.
+   * @param fromRow - the run's first row.
+   * @param fromCol - the run's first column.
+   * @param toRow - the run's last row.
+   * @param toCol - the run's last column.
+   * @param at - the tone the run is drawn in.
+   */
+  run(fromRow: number, fromCol: number, toRow: number, toCol: number, at: GraphTone): void
+  /**
+   * The finished rows, top to bottom.
+   * @returns one span list per row, trailing blanks trimmed and same-tone runs collapsed.
+   */
+  lines(): GraphSpan[][]
+}
+
+/**
+ * Build one cell canvas at a FIXED width.
+ *
+ * WHY THIS IS A FACTORY AND NOT LOCAL STATE INSIDE ONE DRAWING: there are now TWO drawings — the flat
+ * board, and the nested one that groups need — and they must paint by the SAME rules for a mask merge, a
+ * label beating a junction, and the continuation cell of a wide glyph. A second copy of those rules is
+ * exactly the drift this file's comments keep warning about, so they live here once and every drawing
+ * asks for a canvas.
+ *
+ * The width is fixed at creation because the caller SIZES the picture before it paints: a canvas free to
+ * grow sideways would let a long edge's lane widen a drawing whose placement was already decided.
+ * @param width - the drawing's own width in cells.
+ * @returns the canvas.
+ */
+function createCellCanvas(width: number): CellCanvas {
+  /** The accumulated direction mask per cell. */
+  const mask: number[][] = []
+  /** The literal characters written over the mask (labels and frame borders). */
+  const text: (string | null)[][] = []
+  /** The tone per cell; a later, LOUDER write wins so a chain edge stays visible across a trunk. */
+  const tone: (GraphTone | null)[][] = []
+  /**
+   * The cells a WIDE glyph already covers, which must render as NOTHING rather than as a space.
+   *
+   * THE CJK FIX (see the header): a wide glyph takes two cells, so the cell after it is part of the
+   * glyph and cannot carry a space — a space there makes the row one cell wider than the grid it was
+   * built for and pushes the box's closing border off its own column.
+   */
+  const wide: boolean[][] = []
+  /** The tone precedence, so a merge never dims something the focus lit. `blank` is lowest. */
+  const order: GraphTone[] = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"]
+  /**
+   * The tone currently in a cell.
+   * @param row - the cell's row.
+   * @param col - the cell's column.
+   * @returns the tone, or undefined for a cell nothing has written.
+   */
+  const toneAt = (row: number, col: number): GraphTone | undefined => tone[row]?.[col] ?? undefined
+  /**
+   * Grow the canvas so a cell can be written.
+   * @param row - the row that must exist.
+   */
+  const grow = (row: number): void => {
+    while (mask.length <= row) { mask.push(new Array(width).fill(0)); text.push(new Array(width).fill(null)); tone.push(new Array(width).fill(null)); wide.push(new Array(width).fill(false)) }
+  }
+  /**
+   * OR one direction into a cell; edges MERGE, they never overwrite.
+   * @param row - the cell's row.
+   * @param col - the cell's column.
+   * @param dir - the direction bits.
+   * @param at - the tone the cell is drawn in.
+   */
+  const link = (row: number, col: number, dir: number, at: GraphTone): void => {
+    if (col < 0 || col >= width || row < 0) return
+    grow(row)
+    // A cell inside a wide glyph is not a cell this drawing may enter: the glyph already owns it.
+    if (wide[row][col]) return
+    mask[row][col] |= dir
+    /** The tone already there, if any. */
+    const current = toneAt(row, col)
+    if (current === undefined || order.indexOf(at) > order.indexOf(current)) tone[row][col] = at
+  }
+  /**
+   * Write a label character; it always beats a junction glyph.
+   * @param row - the cell's row.
+   * @param col - the cell's column.
+   * @param char - the character.
+   * @param at - the tone the cell is drawn in.
+   */
+  const label = (row: number, col: number, char: string, at: GraphTone): void => {
+    if (col < 0 || col >= width) return
+    grow(row)
+    if (wide[row][col]) return
+    text[row][col] = char
+    tone[row][col] = at
+    // EVERY CELL THE GLYPH COVERS IS MARKED, in CELLS and never in characters: the glyph's own tone is
+    // carried onto its continuation cells so the two render as ONE span, and any junction or label a
+    // previous write left there is cleared — the glyph has replaced that cell, not merely sat beside it.
+    for (let step = 1; step < cellWidth(char); step++) {
+      /** The cell this glyph's next column covers; past the edge there is nothing to mark. */
+      const over = col + step
+      if (over >= width) break
+      text[row][over] = null
+      mask[row][over] = 0
+      tone[row][over] = at
+      wide[row][over] = true
+    }
+  }
+  /**
+   * Draw one straight run between two waypoints of an edge.
+   *
+   * ONE ARITHMETIC FOR BOTH AXES: every cell gets the bit pointing at the NEXT cell and the bit pointing
+   * back at the PREVIOUS one, so a vertical trunk, a horizontal jog and a one-cell stub are the same call
+   * — and the mask can never disagree with the geometry it was derived from.
+   * @param fromRow - the run's first row.
+   * @param fromCol - the run's first column.
+   * @param toRow - the run's last row.
+   * @param toCol - the run's last column.
+   * @param at - the tone the run is drawn in.
+   */
+  const run = (fromRow: number, fromCol: number, toRow: number, toCol: number, at: GraphTone): void => {
+    /** How many steps the run takes: the longer of the two axes. */
+    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol))
+    /** The row a step moves by. */
+    const stepRow = Math.sign(toRow - fromRow)
+    /** The column a step moves by. */
+    const stepCol = Math.sign(toCol - fromCol)
+    for (let step = 0; step <= steps; step += 1) {
+      /** The cell this step writes. */
+      const row = fromRow + stepRow * step
+      /** Its column. */
+      const col = fromCol + stepCol * step
+      /** The bit toward the NEXT cell, when there is one. */
+      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT
+      /** The bit toward the PREVIOUS cell, when there is one. */
+      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT
+      link(row, col, ahead | behind, at)
+    }
+  }
+  /**
+   * The finished rows: trailing blanks trimmed, runs of one tone collapsed into spans.
+   * @returns one span list per row.
+   */
+  const lines = (): GraphSpan[][] => {
+    /** The rendered rows. */
+    const out: GraphSpan[][] = []
+    for (let row = 0; row < mask.length; row++) {
+      /** This row's cells, junction or label. */
+      const cells: GraphSpan[] = []
+      /** The run being accumulated. */
+      let accumulated: GraphSpan | null = null
+      for (let col = 0; col < width; col++) {
+        /** The character at this cell: a label wins over the junction glyph for its mask. */
+        // A cell a WIDE glyph covers renders as NOTHING, never as the background space it would
+        // otherwise fall back to — that is what keeps the row exactly as wide as the grid it was built
+        // for, and the box's closing border on its own column (the CJK defect, see the header).
+        const char = wide[row][col] ? "" : (text[row][col] ?? JUNCTION[mask[row][col]] ?? " ")
+        // An untouched cell is BACKGROUND, and consecutive background is ONE span rather than one per
+        // cell: the host renders each span as its own element, so a 108-cell row of mostly gaps would
+        // otherwise build ~100 elements per row on every render — and this scene re-renders on hover.
+        /** The tone at this cell; an untouched cell is background. */
+        const at: GraphTone = toneAt(row, col) ?? "blank"
+        if (accumulated !== null && accumulated.tone === at) accumulated.text += char
+        else { accumulated = { text: char, tone: at }; cells.push(accumulated) }
+      }
+      while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "") cells.pop()
+      out.push(clampSpans(cells, width))
+    }
+    while (out.length > 0 && out[out.length - 1].every((span) => span.text.trim() === "")) out.pop()
+    return out
+  }
+  return { link, label, run, lines }
 }
 
 /**
@@ -988,85 +1260,11 @@ function drawBoxes(
    */
   const width = baseWidth + extraLanes
 
-  /** The accumulated direction mask per cell. */
-  const mask: number[][] = []
-  /** The literal characters written over the mask (labels). */
-  const text: (string | null)[][] = []
-  /** The tone per cell; a later, LOUDER write wins so a chain edge stays visible across a trunk. */
-  const tone: (GraphTone | null)[][] = []
-  /**
-   * The cells a WIDE glyph already covers, which must render as NOTHING rather than as a space.
-   *
-   * THE CJK FIX (see the header): a wide glyph takes two cells, so the cell after it is part of the
-   * glyph and cannot carry a space — a space there makes the row one cell wider than the grid it was
-   * built for and pushes the box's closing border off its own column.
-   */
-  const wide: boolean[][] = []
-  /** The tone precedence, so a merge never dims something the focus lit. `blank` is lowest. */
-  const order: GraphTone[] = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"]
-  /** The tone currently in a cell, or undefined. */
-  const toneAt = (row: number, col: number): GraphTone | undefined => tone[row]?.[col] ?? undefined
-  /** Grow the canvas so a cell can be written. */
-  const grow = (row: number): void => {
-    while (mask.length <= row) { mask.push(new Array(width).fill(0)); text.push(new Array(width).fill(null)); tone.push(new Array(width).fill(null)); wide.push(new Array(width).fill(false)) }
-  }
-  /** OR one direction into a cell; edges MERGE, they never overwrite. */
-  const link = (row: number, col: number, dir: number, at: GraphTone): void => {
-    if (col < 0 || col >= width || row < 0) return
-    grow(row)
-    // A cell inside a wide glyph is not a cell this drawing may enter: the glyph already owns it.
-    if (wide[row][col]) return
-    mask[row][col] |= dir
-    /** The tone already there, if any. */
-    const current = toneAt(row, col)
-    if (current === undefined || order.indexOf(at) > order.indexOf(current)) tone[row][col] = at
-  }
-  /** Write a label character; it always beats a junction glyph. */
-  const label = (row: number, col: number, char: string, at: GraphTone): void => {
-    if (col < 0 || col >= width) return
-    grow(row)
-    if (wide[row][col]) return
-    text[row][col] = char
-    tone[row][col] = at
-    // EVERY CELL THE GLYPH COVERS IS MARKED, in CELLS and never in characters: the glyph's own tone is
-    // carried onto its continuation cells so the two render as ONE span, and any junction or label a
-    // previous write left there is cleared — the glyph has replaced that cell, not merely sat beside it.
-    for (let step = 1; step < cellWidth(char); step++) {
-      /** The cell this glyph's next column covers; past the edge there is nothing to mark. */
-      const over = col + step
-      if (over >= width) break
-      text[row][over] = null
-      mask[row][over] = 0
-      tone[row][over] = at
-      wide[row][over] = true
-    }
-  }
-  /**
-   * Draw one straight run between two waypoints of a long edge.
-   *
-   * ONE ARITHMETIC FOR BOTH AXES: every cell gets the bit pointing at the NEXT cell and the bit
-   * pointing back at the PREVIOUS one, so a vertical trunk, a horizontal jog and a one-cell stub are
-   * the same call — and the mask can never disagree with the geometry it was derived from.
-   */
-  const run = (fromRow: number, fromCol: number, toRow: number, toCol: number, at: GraphTone): void => {
-    /** How many steps the run takes: the longer of the two axes. */
-    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol))
-    /** The row a step moves by. */
-    const stepRow = Math.sign(toRow - fromRow)
-    /** The column a step moves by. */
-    const stepCol = Math.sign(toCol - fromCol)
-    for (let step = 0; step <= steps; step += 1) {
-      /** The cell this step writes. */
-      const row = fromRow + stepRow * step
-      /** Its column. */
-      const col = fromCol + stepCol * step
-      /** The bit toward the NEXT cell, when there is one. */
-      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT
-      /** The bit toward the PREVIOUS cell, when there is one. */
-      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT
-      link(row, col, ahead | behind, at)
-    }
-  }
+  /** The canvas this drawing paints into: the cells, the mask and the rules that merge them. */
+  const canvas = createCellCanvas(width)
+  /** The three writers this body uses; the finished rows are read once, at the end. */
+  const { link, label, run } = canvas
+
   /** Every rectangle the pointer can land in. */
   /** One rectangle per box, so the pointer can resolve to a task. */
   const hits: GraphHit[] = []
@@ -1179,31 +1377,9 @@ function drawBoxes(
     link(childTop, to, UP, entryTone)
     label(arrowRow, to, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone))
   }
-  /** The rendered rows: trailing blanks trimmed, runs of one tone collapsed into spans. */
-  const lines: GraphSpan[][] = []
-  for (let row = 0; row < mask.length; row++) {
-    /** This row's cells, junction or label. */
-    const cells: GraphSpan[] = []
-    /** The run being accumulated. */
-    let run: GraphSpan | null = null
-    for (let col = 0; col < width; col++) {
-      /** The character at this cell: a label wins over the junction glyph for its mask. */
-      // A cell a WIDE glyph covers renders as NOTHING, never as the background space it would
-      // otherwise fall back to — that is what keeps the row exactly as wide as the grid it was built
-      // for, and the box's closing border on its own column (the CJK defect, see the header).
-      const char = wide[row][col] ? "" : (text[row][col] ?? JUNCTION[mask[row][col]] ?? " ")
-      // An untouched cell is BACKGROUND, and consecutive background is ONE span rather than one per
-      // cell: the host renders each span as its own element, so a 108-cell row of mostly gaps would
-      // otherwise build ~100 elements per row on every render — and this scene re-renders on hover.
-      /** The tone at this cell; an untouched cell is background. */
-      const at: GraphTone = toneAt(row, col) ?? "blank"
-      if (run !== null && run.tone === at) run.text += char
-      else { run = { text: char, tone: at }; cells.push(run) }
-    }
-    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "") cells.pop()
-    lines.push(clampSpans(cells, width))
-  }
-  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === "")) lines.pop()
+  /** The finished rows, read off the canvas once: it owns the trimming and the span merge. */
+  const lines = canvas.lines()
+
   /** The focus's chain as a list, for the header and the tests. */
   const chainList = chain === undefined ? [] : [...chain].sort()
   /** The finished view; `focus` is assigned only when there IS one, which exactOptionalPropertyTypes requires. */
@@ -1219,6 +1395,469 @@ function drawBoxes(
   // The empty board draws no text, so the overflow fact above is vacuous for it — and `labelOverflow`
   // defaults to `false` for every caller that did not measure a label, which is the honest answer.
   void tasks
+  return view
+}
+
+/** The rows one TASK box occupies: top border, label, bottom border (frozen clause AC2, one form only). */
+const TASK_BOX_ROWS = 3
+
+/** One box's rectangle in the drawing's own cells. */
+interface BoxRect {
+  /** The first row. */
+  row: number
+  /** The last row, inclusive. */
+  rowEnd: number
+  /** The first column. */
+  col: number
+  /** The last column, inclusive. */
+  colEnd: number
+}
+
+/**
+ * The centre column of one box, which is the column its arrows and its ports sit on.
+ *
+ * THE LEFT-MIDDLE CELL when the width is even, for the reason the flat drawing records at its own
+ * `centreOf`: the `▼` beneath it and the hit rectangle's own centre must land on ONE column, and a
+ * rounding that went the other way would read as an off-by-one in the picture.
+ * @param rect - the box.
+ * @returns the column a run enters or leaves the box on.
+ */
+function boxCentre(rect: BoxRect): number {
+  return rect.col + Math.floor((rect.colEnd - rect.col) / 2)
+}
+
+/**
+ * THE NESTED DRAWING: a group is a BOX whose interior is that group's own DAG (contract D3).
+ *
+ * WHAT IS RECURSIVE HERE, exactly. Each frame lays its children out as its own little board — columns
+ * top to bottom, boxes side by side inside a column, one band of rows between two columns — and a
+ * GROUP child is laid out by the SAME code one level down, at the rectangle its parent gave it. That is
+ * the whole of the recursion: there is no second layout engine, no per-depth special case, and no
+ * absolute coordinate anywhere below the root, so an inner frame cannot disagree with the outer frame
+ * that placed it.
+ *
+ * THE BORDER FAMILY IS A DIFFERENT ONE (`DAG_GROUP_CHARS`): double lines, one cell per glyph, so a box
+ * that CONTAINS boxes can never be read as a task. Two roles are distinct by construction rather than
+ * by wording (frozen contract D3):
+ *   - an edge that TERMINATES on a frame side draws that side's PORT glyph (`╧` arriving from above on
+ *     a top side, `╤` leaving downward from a bottom side) — the dependency attaches to the BOX;
+ *   - an edge that PASSES THROUGH a frame side draws the CROSSING glyph (`╫`), which is a single line
+ *     through a double one, so a run that continues inside is never drawn as an arrival.
+ * The crossing role exists for an edge whose real endpoint is DEEPER than the box this frame draws
+ * (a projection that joined a board to a model built before the group existed): the line enters the
+ * box, and the box's own interior arrows take over — the drawing never invents the inner target,
+ * because the anchored endpoint no longer names it.
+ *
+ * WHAT IT REFUSES: a group record the tree cannot place (an unknown parent, a parent cycle, an id that
+ * collides with a task) gets no box and is reported in `collapsedGroups`; a frame set that places no
+ * box at all refuses the whole drawing (`undefined`), leaving the caller its flat picture. A width
+ * that cannot hold a frame is the PANEL's decision, not this function's: it draws what the content
+ * needs and reports its width, exactly as the flat natural-width path does.
+ * @param tasks - the board to draw.
+ * @param groups - the group records, flat and in any order.
+ * @param focus - the task to light, with its dependency chain.
+ * @param nodeWidth - the width one TASK box uses, already clamped by the caller.
+ * @param servedRanks - the SERVED column of each box inside its own frame, when a model published one.
+ * @param widestLabel - the widest label the drawing would write, for the overflow report.
+ * @param plan - the flat rank plan over the whole board, for its unresolved/derived report.
+ * @returns the drawing, or undefined when the group records place nothing.
+ */
+function drawGroupedBoxes(
+  tasks: readonly GraphTask[],
+  groups: readonly GroupedGroup[],
+  focus: string | undefined,
+  nodeWidth: number,
+  servedRanks: ReadonlyMap<string, number> | undefined,
+  widestLabel: number,
+  plan: RankPlan<GraphTask>,
+): GraphView | undefined {
+  /** The frame tree the group records place. */
+  const tree = buildFrameTree(tasks, groups)
+  // A tree with nothing but its root has nothing to frame, and the caller's flat drawing is then the
+  // honest picture rather than a box drawn around the whole board.
+  if (tree.frames.size <= 1) return undefined
+  /** The edges each frame draws, already anchored to a box that frame can see. */
+  const edges = frameEdges(tasks, tree, groups)
+  /** The focus's chain, or undefined when nothing is focused. */
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
+  /** Every task by id, for its tone and its label. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /** Each frame's columns, measured once. */
+  const rankCache = new Map<FrameId, FrameRanks>()
+  /** Each frame's size, measured once, bottom-up. */
+  const sizeCache = new Map<FrameId, FrameSize>()
+  /** Each box's rectangle, by the box id (a task id, or a group id for its box). */
+  const rects = new Map<string, BoxRect>()
+  /** The group frames drawn, which is what the pointer resolves a box to. */
+  const groupHits: GraphGroupHit[] = []
+  /** The frames that contain the focus, so a frame on the focus's own path can stay lit. */
+  const lit = new Set<FrameId>()
+  /** The child each box id was placed as, per frame, so a drawer can tell a task from a group box. */
+  const childOf = new Map<string, FrameChild>()
+
+  /**
+   * One frame's columns, measured once.
+   * @param frame - the frame to rank.
+   * @returns its columns and the column of every box.
+   */
+  const ranksOf = (frame: FrameNode): FrameRanks => {
+    /** The columns already measured. */
+    const held = rankCache.get(frame.id)
+    if (held !== undefined) return held
+    /** The measurement, over the edges this frame draws. */
+    const measured = rankFrame(frame, edges.get(frame.id) ?? [], servedRanks)
+    rankCache.set(frame.id, measured)
+    return measured
+  }
+
+  /**
+   * The size of one child box.
+   * @param child - the child.
+   * @returns its width and height in cells, borders included.
+   */
+  const sizeOfChild = (child: FrameChild): ChildSize => {
+    if (child.kind === "task") return { width: nodeWidth, height: TASK_BOX_ROWS }
+    /** The child frame's own size, which IS its box's size. */
+    const inner = sizeOf(child.frame as FrameNode)
+    return { width: inner.width, height: inner.height }
+  }
+
+  /**
+   * One frame's size, measured once, bottom-up.
+   * @param frame - the frame to measure.
+   * @returns its size, borders included when it is a group.
+   */
+  function sizeOf(frame: FrameNode): FrameSize {
+    /** The size already measured. */
+    const held = sizeCache.get(frame.id)
+    if (held !== undefined) return held
+    /** This frame's columns. */
+    const columns = ranksOf(frame).columns
+    /** The measured size of every child box. */
+    const childSizes = new Map<string, ChildSize>()
+    for (const child of frame.children) childSizes.set(child.id, sizeOfChild(child))
+    /** The column each box draws in. */
+    const rankOfBox = ranksOf(frame).rankOf
+    /** How many of this frame's edges skip a column, which is the lane budget its interior reserves. */
+    const longEdges = (edges.get(frame.id) ?? []).filter((edge) => {
+      /** The blocker's column. */
+      const from = rankOfBox.get(edge.from)
+      /** The dependent's column. */
+      const to = rankOfBox.get(edge.to)
+      return from !== undefined && to !== undefined && to > from + 1
+    }).length
+    /** The measurement. */
+    const measured = measureFrame(columns, childSizes, longEdges, frame.id !== null)
+    sizeCache.set(frame.id, measured)
+    return measured
+  }
+
+  // The frames on the focus's path, walked from the focused task's own frame up to the root.
+  if (focus !== undefined) {
+    for (let cursor: FrameNode | null = tree.frames.get(tree.frameOfTask.get(focus) ?? null) ?? null; cursor !== null; cursor = cursor.parent) lit.add(cursor.id)
+  }
+
+  /** The drawing's own width: the root frame's interior, which has no border of its own. */
+  const width = sizeOf(tree.root).width
+  /** The canvas every frame paints into. */
+  const canvas = createCellCanvas(width)
+  /** The three writers this body uses; the finished rows are read once, at the end. */
+  const { link, label, run } = canvas
+
+  /**
+   * The tone a group frame is drawn in.
+   * @param frame - the frame.
+   * @returns `chain` while the focus lives inside it, `dim` otherwise — the same reading the flat
+   *   drawing gives a task outside the chain, one level up.
+   */
+  const frameTone = (frame: FrameNode): GraphTone => (lit.has(frame.id) ? "chain" : "dim")
+
+  /**
+   * Draw one TASK box.
+   * @param task - the task.
+   * @param rect - its rectangle.
+   * @param exits - whether an edge leaves it, which is what the bottom border's stub says.
+   */
+  function drawTaskBox(task: GraphTask, rect: BoxRect, exits: boolean): void {
+    /** The tone this box is drawn in. */
+    const at = toneOf(task, focus, chain)
+    // THE TOP AND BOTTOM BORDERS, then the sides: only the sides run through the label row, and a naive
+    // "paint the padding, then the label" shape leaves the title floating outside its own box.
+    for (let col = rect.col + 1; col < rect.colEnd; col++) link(rect.row, col, LEFT | RIGHT, at)
+    link(rect.row, rect.col, RIGHT | DOWN, at)
+    link(rect.row, rect.colEnd, LEFT | DOWN, at)
+    for (let col = rect.col + 1; col < rect.colEnd; col++) link(rect.rowEnd, col, LEFT | RIGHT, at)
+    link(rect.rowEnd, rect.col, RIGHT | UP, at)
+    link(rect.rowEnd, rect.colEnd, LEFT | UP, at)
+    for (let row = rect.row + 1; row < rect.rowEnd; row += 1) { link(row, rect.col, UP | DOWN, at); link(row, rect.colEnd, UP | DOWN, at) }
+    /** The column the next label character goes to. */
+    let cursor = rect.col + 1
+    for (const char of clampCells(stripControl(" " + labelOf(task, focus)), rect.colEnd - rect.col - 1)) {
+      label(rect.row + 1, cursor, char, at)
+      cursor += cellWidth(char)
+    }
+    // An edge LEAVES from the middle of the bottom border, which is what makes the `┬` read as "this box
+    // has children" without a separate stub row — the flat drawing's own decision, kept here.
+    if (exits) link(rect.rowEnd, boxCentre(rect), DOWN, at)
+  }
+
+  /**
+   * Draw one GROUP FRAME: its border in the second glyph family, and its title in the top side.
+   * @param groupId - the group's id.
+   * @param title - the frame's title.
+   * @param rect - its rectangle.
+   * @param frame - the frame's own node, for the tone.
+   * @param exits - whether an edge leaves the box, which writes the port glyph on its bottom side.
+   */
+  function drawGroupFrame(groupId: string, title: string, rect: BoxRect, frame: FrameNode, exits: boolean): void {
+    /** The tone the frame is drawn in. */
+    const at = frameTone(frame)
+    // THE FOUR SIDES: `═`/`║` between the corners, written as LITERAL GLYPHS rather than as mask bits,
+    // because the mask's junction table belongs to the node family and a shared mask would let a node
+    // corner and a frame corner merge into one cell.
+    for (let col = rect.col + 1; col < rect.colEnd; col += 1) { label(rect.row, col, DAG_GROUP_CHARS.horizontal, at); label(rect.rowEnd, col, DAG_GROUP_CHARS.horizontal, at) }
+    for (let row = rect.row + 1; row < rect.rowEnd; row += 1) { label(row, rect.col, DAG_GROUP_CHARS.vertical, at); label(row, rect.colEnd, DAG_GROUP_CHARS.vertical, at) }
+    label(rect.row, rect.col, DAG_GROUP_CHARS.cornerDownRight, at)
+    label(rect.row, rect.colEnd, DAG_GROUP_CHARS.cornerDownLeft, at)
+    label(rect.rowEnd, rect.col, DAG_GROUP_CHARS.cornerUpRight, at)
+    label(rect.rowEnd, rect.colEnd, DAG_GROUP_CHARS.cornerUpLeft, at)
+    // THE TITLE SITS IN THE TOP SIDE, which is the box-drawing idiom and costs the interior no rows: the
+    // label takes the border's own cells, clamped so it can never write over a corner.
+    /** The column the next title character goes to. */
+    let cursor = rect.col + 1
+    for (const char of clampCells(stripControl(" " + title + " "), rect.colEnd - rect.col - 1)) {
+      label(rect.row, cursor, char, at)
+      cursor += cellWidth(char)
+    }
+    // AN EXIT LEAVING THE BOX IS A PORT on its bottom side, and it has to be WRITTEN here: the bottom
+    // side is a literal glyph, so a mask bit added by the router would never be seen.
+    if (exits) label(rect.rowEnd, boxCentre(rect), DAG_GROUP_CHARS.portDown, at)
+    groupHits.push({ groupId, label: title, depth: frame.depth, row: rect.row, rowEnd: rect.rowEnd, col: rect.col, colEnd: rect.colEnd })
+  }
+
+  /**
+   * Draw one frame: place its children, draw their boxes, then route its edges.
+   * @param frame - the frame to draw.
+   * @param originRow - the frame's first row, borders included.
+   * @param originCol - the frame's first column, borders included.
+   */
+  function drawFrame(frame: FrameNode, originRow: number, originCol: number): void {
+    /** This frame's measurement. */
+    const size = sizeOf(frame)
+    /** Whether this frame draws a border of its own (every frame except the root). */
+    const bordered = frame.id !== null
+    /** The interior's first row. */
+    const innerRow = originRow + (bordered ? GROUP_BORDER : 0)
+    /** The interior's first column. */
+    const innerCol = originCol + (bordered ? GROUP_BORDER : 0)
+    /** This frame's columns, with a served empty column closed (it would otherwise spend a band of rows). */
+    const columns = drawnColumns(ranksOf(frame).columns)
+    /** The top row of each drawn column. */
+    const colTops: number[] = []
+    /** The last row of each drawn column's boxes. */
+    const colBottoms: number[] = []
+    /** The box ids that have an edge leaving them, so a box with children shows its exit. */
+    const exits = new Set((edges.get(frame.id) ?? []).map((edge) => edge.from))
+    // PLACE, then draw: the rectangles have to exist before a border is painted, because an inner frame
+    // is drawn at the rectangle its parent gave it and nothing below the root knows an absolute cell.
+    /** The row the next column starts at. */
+    let row = innerRow
+    for (const column of columns) {
+      colTops.push(row)
+      /** The column's first free column. */
+      let cursor = innerCol
+      for (const child of column) {
+        /** This child's own size. */
+        const childSize = sizeOfChild(child)
+        rects.set(child.id, { row, rowEnd: row + childSize.height - 1, col: cursor, colEnd: cursor + childSize.width - 1 })
+        childOf.set(child.id, child)
+        cursor += childSize.width + GROUP_COLUMN_GAP
+      }
+      /** The column's own height: its tallest box. */
+      const tallest = column.reduce((max, child) => Math.max(max, sizeOfChild(child).height), 0)
+      colBottoms.push(row + tallest - 1)
+      row += tallest + GROUP_BAND_ROWS
+    }
+    for (const column of columns) {
+      for (const child of column) {
+        /** The rectangle placement gave this child. */
+        const rect = rects.get(child.id) as BoxRect
+        if (child.kind === "task") {
+          drawTaskBox(byId.get(child.id) as GraphTask, rect, exits.has(child.id))
+        } else {
+          // A GROUP BOX: the border first, then its own interior at the rectangle the border encloses.
+          drawGroupFrame(child.id, (child.group as GroupedGroup).label, rect, child.frame as FrameNode, exits.has(child.id))
+          drawFrame(child.frame as FrameNode, rect.row, rect.col)
+        }
+      }
+    }
+    // THE EDGES, after every box of this frame exists: a run must be able to read both of its ends.
+    drawFrameEdges(frame, columns, colBottoms, innerCol, innerCol + size.innerWidth - 1)
+  }
+
+  /**
+   * Route one frame's edges: adjacent ones through the band below their column, long ones down a lane.
+   * @param frame - the frame whose edges are drawn.
+   * @param columns - its drawn columns.
+   * @param colBottoms - the last row of each column.
+   * @param innerLeft - the interior's first column.
+   * @param innerRight - the interior's last column, the reserved lane region's edge included.
+   */
+  function drawFrameEdges(frame: FrameNode, columns: readonly FrameChild[][], colBottoms: readonly number[], innerLeft: number, innerRight: number): void {
+    /** The edges this frame draws. */
+    const list = edges.get(frame.id) ?? []
+    if (list.length === 0) return
+    /** The column each box draws in. */
+    const rankOfBox = ranksOf(frame).rankOf
+    /** The x-ranges each drawn column's boxes occupy, so a lane can be PROVED clear. */
+    const covered = columns.map((column) => column.map((child) => rects.get(child.id) as BoxRect))
+    /** The rows each lane already claims, so two trunks never merge into one line. */
+    const laneRows = new Map<number, Set<number>>()
+    for (const edge of list) {
+      /** The blocker's rectangle. */
+      const fromRect = rects.get(edge.from)
+      /** The dependent's rectangle. */
+      const toRect = rects.get(edge.to)
+      if (fromRect === undefined || toRect === undefined) continue
+      /** The blocker's column. */
+      const fromRank = rankOfBox.get(edge.from)
+      /** The dependent's column. */
+      const toRank = rankOfBox.get(edge.to)
+      // A SAME-COLUMN OR BACKWARD EDGE IS NOT DRAWN, exactly as the flat drawing declines it: the band
+      // language has no route for one, and inventing one here would draw a line the flat picture cannot.
+      if (fromRank === undefined || toRank === undefined || toRank <= fromRank) continue
+      /** The column the run leaves the blocker on. */
+      const fromCol = boxCentre(fromRect)
+      /** The column the run enters the dependent on. */
+      const toCol = boxCentre(toRect)
+      /** The tone this run carries: `chain` while the pin lights both ends, the visible `edge` otherwise. */
+      const at = edgeToneOf(edge.from, edge.to, focus, chain)
+      /** The row the run leaves the blocker's box. */
+      const exitRow = fromRect.rowEnd
+      /** The dependent's top border, which is where an arrival lands. */
+      const toTop = toRect.row
+      /** The row the arrowhead sits on: one above the dependent. */
+      const arrowRow = toTop - 1
+      // A BOX WHOSE REAL ENDPOINT IS INSIDE IT CARRIES A CROSSING, not an arrival: the run has to pass
+      // through the box's border, and the glyph says so.
+      if (edge.fromDeeper) label(exitRow, fromCol, DAG_GROUP_CHARS.crossVertical, at)
+      if (toRank === fromRank + 1) {
+        /** The row the run jogs horizontally on: the band's second row, so the exit and the arrow clear it. */
+        const busRow = (colBottoms[fromRank] as number) + 2
+        run(exitRow, fromCol, busRow, fromCol, at)
+        if (fromCol !== toCol) run(busRow, fromCol, busRow, toCol, at)
+        run(busRow, toCol, arrowRow - 1, toCol, at)
+        link(toTop, toCol, UP, at)
+        label(arrowRow, toCol, ARROW_DOWN, at)
+        // A DEPENDENT THAT IS A GROUP BOX takes the PORT glyph on its top side: its border is a literal
+        // glyph, so the mask bit `link` just added would never be painted, and the arrow now points at a
+        // PORT — which is the whole semantic of the attachment rule ("the dependency attaches to the box").
+        attach(toRect, toCol, edge.to, at)
+        continue
+      }
+      // THE LONG EDGE: down a lane no box of the columns between covers, then back to the dependent.
+      /** The row the run jogs onto the lane. */
+      const leaveRow = (colBottoms[fromRank] as number) + 1
+      /** The row the run jogs back toward the dependent. */
+      const enterRow = toTop - 2
+      /** The best lane found so far, or -1. */
+      let best = -1
+      /** Its distance from the middle of the two centres, so a closer free column replaces it. */
+      let bestCost = Number.POSITIVE_INFINITY
+      for (let candidate = innerLeft; candidate <= innerRight; candidate += 1) {
+        /** Whether every intermediate column leaves this lane to the run. */
+        let clear = true
+        for (let column = fromRank + 1; column < toRank && clear; column += 1) {
+          for (const rect of covered[column] as BoxRect[]) {
+            if (candidate >= rect.col && candidate <= rect.colEnd) { clear = false; break }
+          }
+        }
+        if (!clear) continue
+        /** The rows already taken at this column by an earlier trunk. */
+        const taken = laneRows.get(candidate)
+        /** Whether this trunk's rows collide with them. */
+        let free = true
+        for (let probe = leaveRow; probe <= enterRow && free; probe += 1) free = taken?.has(probe) !== true
+        if (!free) continue
+        /** How far this column sits from the middle of the two centres. */
+        const cost = Math.abs(candidate - (fromCol + toCol) / 2)
+        if (cost < bestCost) { best = candidate; bestCost = cost }
+      }
+      // THE RESERVED COLUMNS MAKE THIS UNREACHABLE, and it is kept as the arithmetic's own floor: a
+      // frame reserves one interior column per long edge, so the region past the widest box is always
+      // free; if a measurement ever regressed, the last interior column is still better than a lost edge.
+      if (best < 0) best = innerRight
+      /** The rows this trunk claims, so a later long edge picks a different column when it can. */
+      const claimed = laneRows.get(best) ?? new Set<number>()
+      for (let probe = leaveRow; probe <= enterRow; probe += 1) claimed.add(probe)
+      laneRows.set(best, claimed)
+      run(exitRow, fromCol, leaveRow, fromCol, at)
+      run(leaveRow, fromCol, leaveRow, best, at)
+      run(leaveRow, best, enterRow, best, at)
+      run(enterRow, best, enterRow, toCol, at)
+      run(enterRow, toCol, arrowRow - 1, toCol, at)
+      link(toTop, toCol, UP, at)
+      label(arrowRow, toCol, ARROW_DOWN, at)
+      attach(toRect, toCol, edge.to, at)
+    }
+  }
+
+  /**
+   * Mark a run's arrival on a dependent's top border.
+   *
+   * A TASK's border is a mask cell, and the `link(…, UP)` the caller already wrote is the whole of the
+   * arrival. A GROUP's top border is a LITERAL glyph, so the arrival has to be written as the port,
+   * which is exactly the distinction the contract draws between crossing and terminating.
+   * @param rect - the dependent's rectangle.
+   * @param col - the column the run arrives on.
+   * @param id - the dependent's box id.
+   * @param at - the tone the port is drawn in.
+   */
+  function attach(rect: BoxRect, col: number, id: string, at: GraphTone): void {
+    /** The child this box was placed as. */
+    const child = childOf.get(id)
+    if (child === undefined || child.kind !== "group") return
+    label(rect.row, col, DAG_GROUP_CHARS.portUp, at)
+  }
+
+  // The whole picture, drawn: the root frame places the top-level boxes, and every group box draws its
+  // own interior at the rectangle its parent gave it.
+  drawFrame(tree.root, 0, 0)
+  /** The finished rows. */
+  const lines = canvas.lines()
+  /** The focus's chain as a list, for the header and the tests. */
+  const chainList = chain === undefined ? [] : [...chain].sort()
+  /** Every task's rectangle, in draw order, as a pointer hit. */
+  const hits: GraphHit[] = []
+  for (const [id, rect] of rects) {
+    /** The child this id was placed as. */
+    const child = childOf.get(id)
+    if (child === undefined || child.kind !== "task") continue
+    // The task's own frame is reported beside its rectangle: a click inside a box is also a click
+    // inside the group that box is drawn in, and a caller that wants to name the group reads it here.
+    hits.push({ taskId: id, row: rect.row, rowEnd: rect.rowEnd, col: rect.col, colEnd: rect.colEnd })
+  }
+  /** The finished view. */
+  const view: GraphView = {
+    lines,
+    hits,
+    width,
+    mode: "boxes",
+    cycles: cycleIds(tasks),
+    chain: chainList,
+    // A grouped drawing takes its columns from the SERVED map when one arrived, and derives each
+    // frame's own otherwise; the flat plan's flag answers "did the HOST derive", which is the same
+    // question the footer asks, so it is handed on rather than re-derived here.
+    ranksDerived: plan.derived,
+    unresolved: plan.unresolved,
+    boxRows: 3,
+    groups: groupHits,
+  }
+  if (focus !== undefined) view.focus = focus
+  if (tree.collapsed.length > 0) view.collapsedGroups = [...tree.collapsed].sort()
+  // A label that does not fit its box is reported exactly as the flat path reports it, so the panel's
+  // "never cut a label" refusal fires on a nested drawing too.
+  if (widestLabel > nodeWidth - 2 - 1) view.labelOverflow = true
   return view
 }
 
@@ -1428,8 +2067,8 @@ export function layoutGraph(tasks: readonly GraphTask[], cols: number, focus?: s
  *   means the core derives them (the standalone-fixture path).
  * @returns the view; its `width` may exceed `cols`.
  */
-export function layoutGraphNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget, servedRanks?: ReadonlyMap<string, number>): GraphView {
-  return layoutBoxesNatural(tasks, focus, budget, servedRanks) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus, servedRanks)
+export function layoutGraphNatural(tasks: readonly GraphTask[], focus?: string, budget?: GraphBudget, servedRanks?: ReadonlyMap<string, number>, groups?: readonly GroupedGroup[]): GraphView {
+  return layoutBoxesNatural(tasks, focus, budget, servedRanks, groups) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus, servedRanks)
 }
 
 /**
@@ -1447,4 +2086,26 @@ export function hitTest(view: GraphView, row: number, col: number): string | und
     if (row >= hit.row && row <= hit.rowEnd && col >= hit.col && col <= hit.colEnd) return hit.taskId
   }
   return undefined
+}
+
+/**
+ * Resolve a pointer position to a GROUP FRAME.
+ *
+ * THE FRAMES ARE RESOLVED AFTER THE TASKS, and that order is the rendering's own: a box is painted over
+ * the frame that encloses it, so a cell inside a task box belongs to the task even when the frame's
+ * rectangle also contains it. A caller that wants "the group under this cell" asks this only when
+ * {@link hitTest} answered nothing, which is what the panel does.
+ * @param view - the drawn view.
+ * @param row - the pointer's row, relative to the graph's own top.
+ * @param col - the pointer's column, relative to the graph's own left.
+ * @returns the innermost group whose frame holds the cell, or undefined outside every frame.
+ */
+export function hitTestGroup(view: GraphView, row: number, col: number): string | undefined {
+  /** The innermost frame holding the cell, which is the deepest one whose rectangle contains it. */
+  let found: GraphGroupHit | undefined
+  for (const frame of view.groups ?? []) {
+    if (row < frame.row || row > frame.rowEnd || col < frame.col || col > frame.colEnd) continue
+    if (found === undefined || frame.depth > found.depth) found = frame
+  }
+  return found?.groupId
 }

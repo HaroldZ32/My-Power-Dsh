@@ -117,6 +117,16 @@ export interface CellState {
   parentCellId: string | null
   /** The live team record this cell drives, or `""` until `cellwork_start` approved one. */
   teamId: string
+  /**
+   * The TEAM ID of the parent cell at the moment this cell was registered as its sub-cell, or `""`.
+   *
+   * THE CELL PLANE'S HALF OF THE NESTING (`cellwork` wave 4, contract D5). The team plane derives the
+   * sub-team's parent from its own roster — a promoted subcaptain is a MEMBER of the parent team, so
+   * approving its sub-team nests it without any argument — and this field is what makes that derivation
+   * auditable from the CELL side: it names the parent team the sub-cell belonged to, at registration,
+   * even after the parent cell's own record moves on.
+   */
+  parentTeamId: string
   /** Sub-cells this cell registered, in registration order. */
   subcellIds: string[]
   /** The accepted requirements revision; 0 before the first `finalize`. */
@@ -313,6 +323,9 @@ export function newCellState(input: NewCellInput): CellState {
     depth: input.depth ?? 0,
     parentCellId: input.parentCellId ?? null,
     teamId: "",
+    // A cell is registered before it has its own team, and a TOP cell has no parent team at all; the
+    // sub-cell's value is stamped by `cellwork_subteam` from the parent's live team id.
+    parentTeamId: "",
     subcellIds: [],
     requirementsRevision: 0,
     splitRevision: null,
@@ -598,6 +611,9 @@ function normalizeCellState(raw: unknown): CellState | null {
     depth: typeof raw.depth === "number" ? raw.depth : 0,
     parentCellId: typeof raw.parentCellId === "string" ? raw.parentCellId : null,
     teamId: typeof raw.teamId === "string" ? raw.teamId : "",
+    // TOLERANT READ: a record written before nested teams existed carries no key, and reads as "no parent
+    // team" rather than as a broken record — the whole nesting feature is additive on both planes.
+    parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,

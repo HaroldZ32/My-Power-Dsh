@@ -323,6 +323,12 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+  // A GROUP FRAME IS RANKED BY THE SAME CORE FUNCTION THE FLAT DRAWING USES (cellwork wave 4):
+  // `dag-groups.ts` derives a frame own columns through `rankPlan` when no served column arrived, which
+  // is the repo rule against a second derivation - a private copy was the only alternative. This is the
+  // ONLY edge the group work adds: the type references that would have doubled it are now STRUCTURAL
+  // mirrors (GroupedGroup), so they cost the inventory nothing.
+  "packages/mpd-tui-plugin/src/dag-groups.ts :: import { rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
   "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
   "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",

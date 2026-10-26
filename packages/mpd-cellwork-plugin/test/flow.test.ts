@@ -902,6 +902,80 @@ test("B8: cellwork_subteam enforces depthMax and registers the sub-cell when it 
   expect(String(refused.error)).toContain("depth.max = " + String(DEFAULT_CELLWORK_CONFIG.depthMax))
 })
 
+// ── D5: the sub-cell records the box it will nest inside ────────────────────
+//
+// WHAT THIS ARM PROVES, and what it deliberately leaves to the team plane. Cellwork's half of nested
+// DAG groups (contract D5, seam (b) — implicit derivation) is that a registered sub-cell knows the
+// PARENT CELL'S TEAM id: that team is the box the sub-team will be drawn inside, and the promoted
+// subcaptain is a MEMBER of it, which is exactly what makes the team plane derive the link at approval
+// with no argument passed. What this file cannot prove is the sub-TEAM record's own `parentTeamId`: that
+// record is minted by `mpd-team-core-plugin` and the proof lives in its `nested-teams.test.ts` arms
+// ("a MEMBER's approval nests its team under the team whose roster records it"). Neither package may
+// import the other — the cross-package coupling inventory is frozen — so the chain is proven in two
+// halves and stated as such rather than simulated here.
+
+test("D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The started cell, whose planning team this harness approves as `team-1`. */
+  const cellId = await startCell(harness)
+  /** The parent cell's record before the registration. */
+  const before = readCell(harness.workspace, cellId)
+  if (!before.ok) throw new Error("expected a record")
+  // THE PARENT CELL DRIVES ONE TEAM, and it is the box the sub-team will nest inside.
+  expect(before.state.teamId).toBe("team-1")
+  // A TOP cell has no parent team of its own — the field is empty, not a broken record.
+  expect(before.state.parentTeamId).toBe("")
+  // Promote the planner, the way a handoff does, so it may register a sub-cell.
+  writeCell(harness.workspace, { ...before.state, members: { ...before.state.members, "cell-planner": { ...before.state.members["cell-planner"], mode: "subcaptain" } } })
+  /** The registered sub-cell. */
+  const registered = await runTool(harness, "cellwork_subteam", { objective: "child objective" }, plannerAgent(harness))
+  expect(registered.ok).toBe(true)
+  expect(registered.parentTeamId).toBe("team-1")
+  /** The sub-cell's own record on disk. */
+  const subcell = readCell(harness.workspace, String(registered.cellId))
+  if (!subcell.ok) throw new Error("expected a sub-cell record")
+  // THE SUB-CELL NEVER REUSES AN EXISTING CELL ID. Measured while proving D5: `cellIdAt` is
+  // millisecond-precision, and a sub-cell registered inside the parent's own minting millisecond
+  // OVERWROTE the parent's record (this arm read the parent back and saw no team). The id is minted
+  // through `freeCellId`, so the assertion below is the regression guard for that class.
+  expect(registered.cellId).not.toBe(cellId)
+  expect(subcell.state.parentTeamId).toBe("team-1")
+  expect(subcell.state.parentCellId).toBe(cellId)
+  // THE PARENT CELL NAMES ONLY ITS OWN TEAM: nesting adds no child team to it, so the parent record is
+  // byte-for-byte the shape it had (plus the sub-cell ID it always recorded).
+  /** The parent cell's record after the registration. */
+  const after = readCell(harness.workspace, cellId)
+  if (!after.ok) throw new Error("expected a record")
+  expect(after.state.teamId).toBe("team-1")
+  expect(after.state.parentTeamId).toBe("")
+  expect(after.state.subcellIds).toEqual([String(registered.cellId)])
+  // THE JOURNAL CARRIES THE LINK, so a later reader of the cell log can see which team the box landed in.
+  /** The sub-cell's journal entries. */
+  const entries = readFileSync(journalPath(harness.workspace, String(registered.cellId)), "utf8").trim().split("\n").map((line) => JSON.parse(line) as Record<string, unknown>)
+  expect(entries.find((entry) => entry.event === "subcell-created")?.parentTeamId).toBe("team-1")
+  // AND THE DIRECTIVE STATES WHERE THE BOX LANDS — the subcaptain is told the nesting is derived, not
+  // asked for: no argument exists for it.
+  expect(String(registered.directive)).toContain("NESTS AS A BOX inside team team-1")
+})
+
+test("D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The started cell. */
+  const cellId = await startCell(harness)
+  /** The parent cell's record, with its team link cleared — a cell that never approved one. */
+  const record = readCell(harness.workspace, cellId)
+  if (!record.ok) throw new Error("expected a record")
+  writeCell(harness.workspace, { ...record.state, teamId: "", members: { ...record.state.members, "cell-planner": { ...record.state.members["cell-planner"], mode: "subcaptain" } } })
+  /** The registered sub-cell. */
+  const registered = await runTool(harness, "cellwork_subteam", { objective: "orphan child" }, plannerAgent(harness))
+  expect(registered.ok).toBe(true)
+  // NO PARENT TEAM TO NAME: the sub-team is a root team in the DAG, and nothing is invented.
+  expect(registered.parentTeamId).toBe("")
+  expect(String(registered.directive)).toContain("ROOT team in the DAG")
+})
+
 // ── B8/B9: the captain-only protocol tools ─────────────────────────────────
 
 test("cellwork_dispatch and cellwork_supervise are captain-only; supervise reports the pending board", async () => {

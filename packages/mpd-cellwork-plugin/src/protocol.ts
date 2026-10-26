@@ -4,7 +4,7 @@
 // `cellwork_subteam`, `cellwork_send`, `cellwork_inbox`. The listeners: the host-plane `agent/pre-step`
 // checkpoint detector and the `agent/turn-stopping` compaction barrier. The decision logic they share
 // lives in `protocol-core.ts` (pure, unit-testable); this file binds it to the adapter and to disk.
-import { appendJournal, cellIdAt, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
+import { appendJournal, freeCellId, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
 import { dispatchOwnerOnly, nameKey, sendThroughExecutor, type DispatchRecordView, type DispatchReport } from "./dispatch"
@@ -425,6 +425,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           error: { type: "string" },
           cellId: { type: "string" },
           parentCellId: { type: "string" },
+          // The parent cell's TEAM id, recorded on the sub-cell: the box this sub-team will nest inside.
+          parentTeamId: { type: "string" },
           depth: { type: "number" },
           directive: { type: "string" },
         },
@@ -456,16 +458,27 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (objective === "") return { ok: false, error: "cellwork_subteam: `objective` is required — a sub-cell needs its own objective" }
       /** The instant the sub-cell is minted. */
       const now = new Date()
-      /** The new sub-cell's id. */
-      const subcellId = cellIdAt(now)
+      // THE ID MUST NOT COLLIDE WITH AN EXISTING CELL (`cellIdAt` is millisecond-precision and a sub-cell
+      // registered inside the parent's own minting millisecond would OVERWRITE that record). Measured while
+      // proving D5: the collision silently replaced the parent cell's record with the sub-cell's. The
+      // command path already mints through `freeCellId` for exactly this reason; this path now does too.
+      /** The new sub-cell's id, free of every cell directory this workspace already has. */
+      const subcellId = freeCellId(caller.workspace, now)
+      // THE CELL PLANE'S HALF OF THE NESTING (cellwork wave 4, contract D5): the parent CELL already
+      // knows which TEAM it drives, so the sub-cell records that team here. The sub-team's own
+      // `parentTeamId` is passed nowhere — the team plane derives it at approval from the parent team's
+      // roster, which records this promoted member's session — but the cell record can now be read
+      // against it, and the directive tells the subcaptain where its box will land.
+      /** The parent cell's live team id, or `""` when that cell never approved a team. */
+      const parentTeamId = parent.teamId
       /** The sub-cell record: its captain is the promoted member calling this tool. */
-      const subcell: CellState = newCellState({ cellId: subcellId, objective, captainSessionId: caller.sessionId, now, depth: childDepth, parentCellId: parent.cellId })
+      const subcell: CellState = { ...newCellState({ cellId: subcellId, objective, captainSessionId: caller.sessionId, now, depth: childDepth, parentCellId: parent.cellId }), parentTeamId }
       writeCell(caller.workspace, subcell)
       /** The parent record after registering the link. */
       const next: CellState = { ...parent, subcellIds: [...parent.subcellIds, subcellId] }
-      transition(caller.workspace, next, { event: "subcell", subcellId, depth: childDepth, parentCellId: parent.cellId, objective }, now)
-      appendJournal(caller.workspace, subcellId, { event: "subcell-created", parentCellId: parent.cellId, depth: childDepth, captainSessionId: caller.sessionId }, now)
-      return { ok: true, cellId: subcellId, parentCellId: parent.cellId, depth: childDepth, directive: subteamDirective(subcellId, childDepth, parent.cellId) }
+      transition(caller.workspace, next, { event: "subcell", subcellId, depth: childDepth, parentCellId: parent.cellId, parentTeamId, objective }, now)
+      appendJournal(caller.workspace, subcellId, { event: "subcell-created", parentCellId: parent.cellId, depth: childDepth, captainSessionId: caller.sessionId, parentTeamId }, now)
+      return { ok: true, cellId: subcellId, parentCellId: parent.cellId, parentTeamId, depth: childDepth, directive: subteamDirective(subcellId, childDepth, parent.cellId, parentTeamId) }
     },
   }))
 

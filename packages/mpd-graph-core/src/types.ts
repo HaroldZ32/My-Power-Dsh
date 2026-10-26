@@ -165,6 +165,13 @@ export interface GraphNode extends GraphTask {
   title?: string
   /** The board's durable status, absent for a ghost. */
   status?: string
+  /**
+   * The INNERMOST group whose interior draws this node, absent for a node of the root frame.
+   *
+   * A node that is itself a GROUP FRAME (a subcell's box) carries its PARENT group's id here, because
+   * the frame it represents is the box's interior while the box is drawn inside its parent.
+   */
+  group?: string
 }
 
 /**
@@ -172,14 +179,90 @@ export interface GraphNode extends GraphTask {
  *
  * `from` is the blocker and `to` the blocked task, so the arrow the drawing paints reads the same
  * way as the board's `blockedBy`. The direction is never inferred from the order of the two arrays.
+ *
+ * AN EDGE SPANNING TWO FRAMES names GROUP IDS on the side it crosses, never the inner task: the
+ * attachment rule in {@link GraphGroup} re-anchors it, so a renderer draws a port on the box instead
+ * of a line escaping it.
  */
 export interface GraphEdge {
   /** The id that must close first. */
   from: string
   /** The id that is blocked by {@link GraphEdge.from}. */
   to: string
-  /** Where the edge was declared: on the board, only in the plan, or by both agreeing. */
-  source: "board" | "plan" | "both"
+  /**
+   * Where the edge came from: the board, only the plan, both agreeing, or `"derived"` for the spawn
+   * edge this model itself derives from a group's {@link GraphGroupInput.originTaskId}.
+   */
+  source: "board" | "plan" | "both" | "derived"
+}
+
+/**
+ * One GROUP of the merged model: a subcell's FRAME, whose interior is that subcell's own DAG.
+ *
+ * THE ONE GROUP CONCEPT (`cellwork` wave 4). A subcell renders as a box; the box interior is the
+ * subcell's own dependency graph; a dependency from outside attaches to the box, not to a task inside
+ * it; nesting repeats recursively. This record is the box, and {@link GraphGroupInput} is how the
+ * caller declares it.
+ *
+ * THE ATTACHMENT RULE (binding, implemented in `model.ts`). An edge with one endpoint inside group G
+ * and the other outside is re-anchored to G's frame, where G is the INNERMOST group containing the
+ * inside endpoint; an edge fully inside one group keeps its two tasks as written; an edge between two
+ * groups becomes group→group; and a group's spawn edge from {@link originTaskId} is DERIVED by the
+ * model, never authored by the caller.
+ *
+ * RANKING. The outer model ranks its GROUP PSEUDO-NODES — one per child group, drawn as a node whose
+ * `visual` is `"group"` — so external columns stay correct, and each group's interior is ranked by its
+ * own recursive merge. Every node's {@link GraphNode.depth} is therefore its column INSIDE its own
+ * frame, and {@link GraphModel.ranks} buckets the ROOT frame only.
+ *
+ * Plain JSON, like everything else on the wire: no `Map`, no `Set`, no instance.
+ */
+export interface GraphGroup {
+  /** The frame's id, which is also the id of its pseudo-node inside the parent frame. */
+  id: string
+  /** The frame's display title, drawn on the box border. */
+  label: string
+  /** The enclosing group's id, or `null` when the box sits directly inside the root frame. */
+  parentId: string | null
+  /**
+   * The ids drawn DIRECTLY inside this frame, in id-collator order: the frame's own task nodes plus
+   * the ids of its immediate child groups (each of which is a box in its own right).
+   */
+  memberIds: string[]
+  /** Nesting depth: `0` for a box inside the root frame, one more for every enclosing group. */
+  depth: number
+  /** The task that spawned this subcell, when the caller declared one; see `model.ts`. */
+  originTaskId?: string
+}
+
+/**
+ * One group a caller declares to `buildModel`: a subcell's id, label and its OWN interior input.
+ *
+ * The interior is a full merge input — its own board and plan, so a subcell's tasks are ranked among
+ * themselves — plus its own child groups, which is what makes nesting recursion instead of a second
+ * concept. Ids must be unique across the WHOLE tree: the id is the join key the two planes already
+ * use, and a duplicate is refused rather than silently resolved.
+ */
+export interface GraphGroupInput {
+  /** The frame's id; it becomes the pseudo-node id inside the parent frame and the box's own id. */
+  id: string
+  /** The frame's display title. */
+  label: string
+  /**
+   * The id of the task that spawned this subcell, when the caller knows it.
+   *
+   * The model DERIVES the spawn edge `originTaskId → <this group's id>` from it — the caller never
+   * authors that edge. An origin naming no node anywhere is reported in `report.unresolved`; one
+   * naming a node INSIDE this group derives nothing, because the group cannot be blocked by its own
+   * interior.
+   */
+  originTaskId?: string
+  /** The subcell's own board rows; omitted or empty means a frame with no tasks of its own. */
+  board?: readonly BoardTask[]
+  /** The subcell's own parsed plan; omitted means the subcell has no plan file. */
+  plan?: PlanDocument
+  /** The subcells nested INSIDE this one, recursively; each becomes a further box. */
+  groups?: readonly GraphGroupInput[]
 }
 
 /**
@@ -231,6 +314,17 @@ export interface GraphModel {
   cycles: string[]
   /** What the merge decided, case by case. */
   report: GraphReport
+  /**
+   * Every group the input declared, flat and ordered by (`depth`, then `id`), parents before children.
+   *
+   * ABSENT when the caller supplied no group at all — that is what keeps an ungrouped model
+   * byte-identical to the flat model this package produced before groups existed. Its presence is the
+   * signal that a frame of the model is a box rather than a task.
+   *
+   * {@link ranks} still buckets the ROOT frame only (its own tasks plus the top-level group
+   * pseudo-nodes); an interior's columns are carried by each member's {@link GraphNode.depth}.
+   */
+  groups?: GraphGroup[]
 }
 
 /**
@@ -259,4 +353,13 @@ export interface BuildModelInput {
   board?: readonly BoardTask[]
   /** The parsed plan; omitted means "no plan file", which turns every board id into a boardOnly id. */
   plan?: PlanDocument
+  /**
+   * The subcells this model contains, recursively; omitted or empty means a FLAT model.
+   *
+   * Supplying at least one group is what turns the model into a nested one: each group's interior is
+   * merged and ranked on its own, its tasks are flattened into {@link GraphModel.nodes} carrying
+   * {@link GraphNode.group}, and cross-frame edges are re-anchored by the attachment rule. A model
+   * built without groups is byte-identical to the flat model this package has always produced.
+   */
+  groups?: readonly GraphGroupInput[]
 }

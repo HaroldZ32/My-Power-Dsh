@@ -2049,6 +2049,7 @@ function newCellState(input) {
     depth: input.depth ?? 0,
     parentCellId: input.parentCellId ?? null,
     teamId: "",
+    parentTeamId: "",
     subcellIds: [],
     requirementsRevision: 0,
     splitRevision: null,
@@ -2226,6 +2227,7 @@ function normalizeCellState(raw) {
     depth: typeof raw.depth === "number" ? raw.depth : 0,
     parentCellId: typeof raw.parentCellId === "string" ? raw.parentCellId : null,
     teamId: typeof raw.teamId === "string" ? raw.teamId : "",
+    parentTeamId: typeof raw.parentTeamId === "string" ? raw.parentTeamId : "",
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
@@ -4476,10 +4478,11 @@ function promotionDirective(cellId, memberName, depth, nextStep) {
 function handoffWrittenDirective(path) {
   return "[mpd-cellwork] handoff written to " + path + ". END YOUR TURN NOW — do not call another tool; the plugin compacts and promotes you from that document.";
 }
-function subteamDirective(subcellId, depth, parentCellId) {
+function subteamDirective(subcellId, depth, parentCellId, parentTeamId) {
   return [
     "[mpd-cellwork] SUB-CELL " + subcellId + " registered (depth " + String(depth) + ", parent " + parentCellId + ").",
     "",
+    parentTeamId === "" ? "This cell has no team of its own yet, so your sub-team will be a ROOT team in the DAG." : "Your sub-team NESTS AS A BOX inside team " + parentTeamId + ": the team plane derives the parent from that team's own roster, which records you as a member — you never pass a parent id.",
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
     "only. To leave your sub-cell call `cellwork_stop`; the parent cell keeps its record."
@@ -4860,6 +4863,7 @@ missing sections: ` + result.missing.join(", ") : ""));
           error: { type: "string" },
           cellId: { type: "string" },
           parentCellId: { type: "string" },
+          parentTeamId: { type: "string" },
           depth: { type: "number" },
           directive: { type: "string" }
         },
@@ -4891,13 +4895,14 @@ missing sections: ` + result.missing.join(", ") : ""));
       if (objective === "")
         return { ok: false, error: "cellwork_subteam: `objective` is required — a sub-cell needs its own objective" };
       const now = new Date;
-      const subcellId = cellIdAt(now);
-      const subcell = newCellState({ cellId: subcellId, objective, captainSessionId: caller.sessionId, now, depth: childDepth, parentCellId: parent.cellId });
+      const subcellId = freeCellId(caller.workspace, now);
+      const parentTeamId = parent.teamId;
+      const subcell = { ...newCellState({ cellId: subcellId, objective, captainSessionId: caller.sessionId, now, depth: childDepth, parentCellId: parent.cellId }), parentTeamId };
       writeCell(caller.workspace, subcell);
       const next = { ...parent, subcellIds: [...parent.subcellIds, subcellId] };
-      transition(caller.workspace, next, { event: "subcell", subcellId, depth: childDepth, parentCellId: parent.cellId, objective }, now);
-      appendJournal(caller.workspace, subcellId, { event: "subcell-created", parentCellId: parent.cellId, depth: childDepth, captainSessionId: caller.sessionId }, now);
-      return { ok: true, cellId: subcellId, parentCellId: parent.cellId, depth: childDepth, directive: subteamDirective(subcellId, childDepth, parent.cellId) };
+      transition(caller.workspace, next, { event: "subcell", subcellId, depth: childDepth, parentCellId: parent.cellId, parentTeamId, objective }, now);
+      appendJournal(caller.workspace, subcellId, { event: "subcell-created", parentCellId: parent.cellId, depth: childDepth, captainSessionId: caller.sessionId, parentTeamId }, now);
+      return { ok: true, cellId: subcellId, parentCellId: parent.cellId, parentTeamId, depth: childDepth, directive: subteamDirective(subcellId, childDepth, parent.cellId, parentTeamId) };
     }
   }));
   disposers.push(dsh.registerTool({

@@ -210,15 +210,23 @@ export function handoffWrittenDirective(path: string): string {
 /**
  * The directive a freshly registered sub-cell's captain receives.
  *
+ * IT NAMES THE NESTING, because nothing on this plane asks the subcaptain for it: the team plane derives
+ * the sub-team's parent from the parent team's own roster (the subcaptain is a MEMBER of it), so the
+ * directive states WHICH team the box will land inside instead of demanding an argument. When the parent
+ * cell never approved a team there is no parent team id, and the sub-team is a root team like any other.
  * @param subcellId - the new sub-cell id.
  * @param depth - its depth.
  * @param parentCellId - the cell that registered it.
+ * @param parentTeamId - the parent cell's live team id, or `""` when it had none.
  * @returns the directive text.
  */
-export function subteamDirective(subcellId: string, depth: number, parentCellId: string): string {
+export function subteamDirective(subcellId: string, depth: number, parentCellId: string, parentTeamId: string): string {
   return [
     "[mpd-cellwork] SUB-CELL " + subcellId + " registered (depth " + String(depth) + ", parent " + parentCellId + ").",
     "",
+    parentTeamId === ""
+      ? "This cell has no team of its own yet, so your sub-team will be a ROOT team in the DAG."
+      : "Your sub-team NESTS AS A BOX inside team " + parentTeamId + ": the team plane derives the parent from that team's own roster, which records you as a member — you never pass a parent id.",
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
     "only. To leave your sub-cell call `cellwork_stop`; the parent cell keeps its record.",

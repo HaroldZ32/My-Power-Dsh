@@ -44,7 +44,11 @@ import { PANEL_FRAME_BORDER_ROWS, PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, 
 // its answer inside its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene
 // draws between ITS sections: one divider primitive, so this page cannot invent a second-looking one.
 import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
-import { boxesFitWidth, hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphTask, type GraphView } from "./graph.js"
+import { boxesFitWidth, hitTest, hitTestGroup, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphSpan, type GraphTask, type GraphView } from "./graph.js"
+// THE GROUP RECORD the served model publishes for each subcell box (`cellwork` wave 4): a frame's id, its
+// title, its parent frame and the ids DIRECTLY inside it. Read as the STRUCTURAL type the drawing
+// uses, so this page adds no cross-package edge beyond the ones the inventory already counts.
+import type { GroupedGroup } from "./dag-groups.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
@@ -203,6 +207,14 @@ export interface DagPage {
    * once a served map is applied.
    */
   ranksSource: DagRanksSource
+  /**
+   * The GROUP FRAMES the served model declares, when it declares any (`cellwork` wave 4).
+   *
+   * ABSENT means this board has no groups, which is also the reading a model without the field gets — and
+   * then the drawing is the flat one, byte for byte. PRESENT means the page asks for a nested drawing and
+   * the frames are drawn as boxes around their own interiors.
+   */
+  groups?: readonly GroupedGroup[]
   /** The workspace this projection was scoped to. */
   workspace: string
   /** The team's display name, or an explicit placeholder when the record carries none. */
@@ -267,6 +279,7 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       ...(typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {}),
       ...(task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }),
       ...(task.planned === true ? { planned: true } : {}),
+      ...(task.group === undefined ? {} : { group: panelField(task.group, 60) ?? "" }),
     })
   }
   // The SAME C6 rule, one guard later: a board whose every row failed to project is still a resolved
@@ -297,9 +310,29 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   const ranksSource: DagRanksSource = workflow.model === undefined
     ? "local"
     : workflow.model.report.ranksDerived === true ? "derived-host" : "served-host"
+  // THE FRAMES, sanitised like every other record field: a label is a display string that came from a file,
+  // and its member lists are ids the drawing joins rows by.
+  /** The group records this projection carries, or an empty list when the model has none. */
+  const groups: GroupedGroup[] = []
+  for (const group of workflow.model?.groups ?? []) {
+    /** The group's id, sanitised; a record without one cannot be joined and is dropped. */
+    const id = panelField(group.id, 60)
+    if (id === undefined || id === "") continue
+    /** The parent frame's id, which is `null` for a box drawn inside the root frame. */
+    const parentId = group.parentId === null ? null : panelField(group.parentId, 60) ?? null
+    groups.push({
+      id,
+      label: panelField(group.label, 60) ?? id,
+      parentId,
+      memberIds: (Array.isArray(group.memberIds) ? group.memberIds : []).map((member) => panelField(member, 60) ?? "").filter((member) => member !== ""),
+      depth: typeof group.depth === "number" && Number.isFinite(group.depth) ? Math.max(0, Math.floor(group.depth)) : 0,
+      ...(group.originTaskId === undefined ? {} : { originTaskId: panelField(group.originTaskId, 60) ?? "" }),
+    })
+  }
   return {
     tasks,
     ...(ranks === undefined ? {} : { ranks }),
+    ...(groups.length === 0 ? {} : { groups }),
     ranksSource,
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
@@ -469,6 +502,98 @@ export function halfBoxRows(hits: readonly GraphHit[], dagStart: number, windowS
 }
 
 /**
+ * The FRAME CELLS a render must not paint, because the window's own edge would cut their group's box.
+ *
+ * THE PER-NODE RULE, EXTENDED TO THE THING THAT CONTAINS NODES (frozen contract D3: "never draw half a
+ * GROUP"). {@link halfBoxRows} blanks a whole ROW, which is right for a task box — a three-row box that
+ * straddles the edge is a picture of nothing. A group frame is different in exactly one way: its border is
+ * a CELL SET, not a row band, so blanking its rows would throw away the interior boxes that are perfectly
+ * readable. This returns the frame's own cells instead (its two horizontal rules, or its two sides for an
+ * interior row), and the caller blanks those and keeps the rest.
+ *
+ * A frame is CUT only when PART of it is inside the window: one entirely outside is never drawn (the
+ * slice drops it), and one entirely inside is whole. That is the same predicate the per-node rule uses.
+ * @param view - the drawing, for its frames.
+ * @param dagStart - the page row the drawing's first line occupies.
+ * @param windowStart - the first page row the window shows.
+ * @param windowRows - how many page rows the window shows.
+ * @returns the drawing-local row indices to blank cells on, each with the columns to blank.
+ */
+export function halfGroupCells(view: GraphView, dagStart: number, windowStart: number, windowRows: number): Map<number, Set<number>> {
+  /** The cells to blank, keyed by DRAWING row. */
+  const blank = new Map<number, Set<number>>()
+  /** The first page row the window shows, floored. */
+  const start = Math.max(0, Math.floor(Number.isFinite(windowStart) ? windowStart : 0))
+  /** One past the last page row the window shows. */
+  const end = start + Math.max(1, Math.floor(Number.isFinite(windowRows) ? windowRows : 1))
+  for (const frame of view.groups ?? []) {
+    /** The frame's first page row. */
+    const top = dagStart + frame.row
+    /** The frame's last page row, inclusive. */
+    const bottom = dagStart + frame.rowEnd
+    // ENTIRELY OUTSIDE: the slice does not draw it, so nothing needs blanking.
+    if (bottom < start || top >= end) continue
+    // WHOLE: every row of the frame is inside the window, which is the half a reader can read.
+    if (top >= start && bottom < end) continue
+    for (let row = Math.max(top, start); row <= Math.min(bottom, end - 1); row += 1) {
+      /** The drawing row this page row belongs to. */
+      const local = row - dagStart
+      /** The columns to blank on it: the frame's whole width on a rule row, its two sides elsewhere. */
+      const cols = new Set<number>()
+      if (local === frame.row || local === frame.rowEnd) {
+        for (let col = frame.col; col <= frame.colEnd; col += 1) cols.add(col)
+      } else {
+        cols.add(frame.col)
+        cols.add(frame.colEnd)
+      }
+      /** The cells already chosen for this row, merged so two frames' cuts compose. */
+      const held = blank.get(local) ?? new Set<number>()
+      for (const col of cols) held.add(col)
+      blank.set(local, held)
+    }
+  }
+  return blank
+}
+
+/**
+ * Replace one row's cells with blanks, keeping the row's own cell count and every other character.
+ *
+ * THE CELL COUNT IS THE CONTRACT, for the reason the CJK fix records in `graph.ts`: a row that grew or
+ * shrank would move every border to its right. A WIDE glyph on a blanked cell therefore becomes TWO
+ * spaces rather than one — the glyph is removed whole, and the row keeps its width.
+ * @param spans - the drawing row's spans, in draw order.
+ * @param cells - the columns to blank, in the drawing's own coordinates.
+ * @returns the row's spans with those cells blanked.
+ */
+function blankCells(spans: readonly GraphSpan[], cells: ReadonlySet<number>): GraphSpan[] {
+  /** The rebuilt spans. */
+  const out: GraphSpan[] = []
+  /** The run being accumulated. */
+  let run: GraphSpan | null = null
+  /** The drawing column of the next character. */
+  let col = 0
+  /**
+   * Append one piece to the row, merging it with the run before it when the tones agree.
+   * @param text - the piece.
+   * @param tone - the tone it is drawn in.
+   */
+  const push = (text: string, tone: GraphSpan["tone"]): void => {
+    if (run !== null && run.tone === tone) run.text += text
+    else { run = { text, tone }; out.push(run) }
+  }
+  for (const span of spans) {
+    for (const character of span.text) {
+      /** The cells this character occupies. */
+      const width = cellWidth(character)
+      if (cells.has(col)) push(width > 1 ? "  " : " ", "blank")
+      else push(character, span.tone)
+      col += width
+    }
+  }
+  return out
+}
+
+/**
  * Lay the board out for the measured panel.
  *
  * THE MODE IS A FACT ABOUT THE GEOMETRY, never a guess about the terminal — but the geometry it is a
@@ -500,21 +625,29 @@ export function halfBoxRows(hits: readonly GraphHit[], dagStart: number, windowS
  *   means the drawing derives them through the core, exactly as it did before this wave.
  * @returns the drawing and the mode that produced it.
  */
-export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number, servedRanks?: ReadonlyMap<string, number>): DagPanelLayout {
+export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number, servedRanks?: ReadonlyMap<string, number>, groups?: readonly GroupedGroup[]): DagPanelLayout {
   /** The usable viewport width; a nonsense width still has to produce something drawable. */
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
   /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
-  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks)
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks, groups)
   if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width)) {
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
   }
+  // THE WIDTH GUARD'S COLLAPSE (frozen contract D3). The ladder below is the existing rail/list fallback,
+  // unchanged; what this adds is the HONEST REPORT that a group's box could not be drawn at this width —
+  // the groups are named COLLAPSED instead of being painted half a side. A board with no groups reports
+  // nothing, so the flat degrade is byte-identical to the pre-group page.
+  /** The group ids a non-boxed rendering shows collapsed, or undefined when it has none. */
+  const collapsed = groups === undefined || groups.length === 0 ? undefined : groups.map((group) => group.id).sort()
+  /** The view a fallback mode renders: the drawing's own, plus the collapse report when there is one. */
+  const withCollapse = (view: GraphView): GraphView => (collapsed === undefined ? view : { ...view, collapsedGroups: collapsed })
   if (tasks.length > LIST_ROWS) {
     /** The dense table, for a board with more rows than a rail can show legibly. */
-    const dense = layoutList(tasks, width, focus, servedRanks)
+    const dense = withCollapse(layoutList(tasks, width, focus, servedRanks))
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) }
   }
   /** The forest, for a board a box cannot hold. */
-  const rail = layoutRail(tasks, width, focus, servedRanks)
+  const rail = withCollapse(layoutRail(tasks, width, focus, servedRanks))
   return { view: rail, mode: "rail", list: false, ...viewFacts(rail) }
 }
 
@@ -764,6 +897,14 @@ export interface DagRowClick {
   /** The task under the pointer, or absent when the pointer resolved to no task at all. */
   taskId?: string
   /**
+   * The GROUP FRAME under the pointer, when the pointer landed on a box's border rather than a task.
+   *
+   * PRESENT ONLY WHEN `taskId` IS ABSENT: a cell inside a task box belongs to the task, because the box is
+   * painted over the frame that encloses it — the drawing's own order, kept here so the two identities can
+   * never both answer for one click.
+   */
+  groupId?: string
+  /**
    * True when the COLUMN-aware rectangle decided this, false when the row band did.
    *
    * The distinction is the caller's, and it is the whole of AC4: a column-aware miss means the pointer
@@ -796,7 +937,12 @@ export function dagRowClick(view: GraphView, row: number, colOffset: number, eve
     const col = (Number.isFinite(colOffset) ? Math.max(0, Math.floor(colOffset)) : 0) + localCol
     /** The task whose rectangle holds the pointer. */
     const taskId = hitTest(view, row, col)
-    return { ...(taskId === undefined ? {} : { taskId }), byColumn: true }
+    if (taskId !== undefined) return { taskId, byColumn: true }
+    // NOT A TASK: the cell may still be a group frame's own border, which is a box the reader can point at
+    // (contract D3's group hit identity). Resolved through the drawing's own rectangles, never re-derived.
+    /** The innermost group frame holding the pointer, when one does. */
+    const groupId = hitTestGroup(view, row, col)
+    return { ...(groupId === undefined ? {} : { groupId }), byColumn: true }
   }
   // NO USABLE COORDINATES: the row-band resolution this page used before the column existed, kept so a
   // host that delivers a click without a position still pins rather than doing nothing at all.
@@ -1110,7 +1256,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
     const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: previousSizes.current?.contentRows ?? 1, viewportRows: previousSizes.current?.viewportRows ?? windowRows, contentCols: contentCols, viewportCols: contentCols }
     /** The drawing for this render, at the natural width and for the height THIS panel measured. */
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks)
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks, page.groups)
     // THE DRAWING'S OWN WIDTH, once it has been laid out: what the window may pan across. It is the
     // DRAWING's width and not the panel's (captain's ruling R8) — the purpose, said once: the pan exists
     // so the WHOLE DAG can be seen, and it is not a page-level scrolling mode. Every other row of the page
@@ -1318,6 +1464,15 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
        * set is what makes the window rank-aligned (see {@link halfBoxRows}).
        */
       const blankRows = layout.mode === "boxes" ? halfBoxRows(layout.view.hits, dagStart, viewport.offset, windowRows) : new Set<number>()
+      /**
+       * The FRAME CELLS this render must leave blank, drawing row by row.
+       *
+       * THE SAME RULE AS {@link halfBoxRows}, ONE LEVEL UP: a box is shown whole or not at all, and a
+       * GROUP is a box that contains boxes — so a frame the window would cut loses its FRAME (its sides
+       * and its two horizontal rules) rather than being painted as two stubs. Only the frame's own cells
+       * go blank; the interior keeps drawing, because a task inside it is bound by its own rule.
+       */
+      const cutFrameCells = layout.mode === "boxes" ? halfGroupCells(layout.view, dagStart, viewport.offset, windowRows) : new Map<number, Set<number>>()
       for (let index = 0; index < layout.view.lines.length; index += 1) {
         // THE ROW IS RECORDED IN THE PAGE'S OWN COLUMN COORDINATES, not in the drawing's: the header and
         // the other chrome rows were pushed BEFORE this loop, so the drawing's line `index` sits at
@@ -1350,7 +1505,12 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
         // continues past the edge. This is the vertical half of the same rule the width guard applies —
         // a box is shown whole or not shown as a box (see {@link halfBoxRows}).
         /** The row's spans: the drawing's own, or a window-wide blank when its box would be cut. */
-        const spans = blankRows.has(index) ? [{ text: " ".repeat(contentCols), tone: "blank" }] : sliceSpans(phased, viewport.colOffset, contentCols)
+        /** The frame cells this drawing row must not paint, when a group's frame straddles the window edge. */
+        const cutFrame = cutFrameCells.get(index)
+        /** The row's spans: the drawing's own, minus a cut frame's cells, or a window-wide blank for a cut box. */
+        const spans = blankRows.has(index)
+          ? [{ text: " ".repeat(contentCols), tone: "blank" }]
+          : sliceSpans(cutFrame === undefined ? phased : blankCells(phased, cutFrame), viewport.colOffset, contentCols)
         // THE TASK THIS ROW BELONGS TO IS NO LONGER RESOLVED HERE, and that is the fix: the row band
         // cannot tell two boxes of one rank apart. The handler below resolves the pointer THROUGH THE
         // DRAWING at click time, with this row's own index and the pointer's own column.
