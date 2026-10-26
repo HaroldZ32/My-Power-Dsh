@@ -446,6 +446,26 @@ export function drawnColumns(columns: readonly FrameChild[][]): FrameChild[][] {
 }
 
 /**
+ * The DRAWN column each box sits in, with the served holes already closed.
+ *
+ * THE ARRAYS A DRAWER INDEXES ARE THE DRAWN ONES. `drawFrame` lays out `drawnColumns(...)`, so the column
+ * bottoms, the box rectangles per drawn column and the adjacency `to === from + 1` are all positions in
+ * THAT array — a served rank stops being a valid index the moment an empty served column is closed.
+ * Taking every index from here is what keeps the three agreeing (CodeRabbit 4377306778: the lane budget
+ * and the frame-edge drawer read served ranks and could index past the drawn arrays).
+ * @param columns - a frame's columns, index = the column a box was served.
+ * @returns the drawn column of every box id, and how many drawn columns there are.
+ */
+export function drawnRankOf(columns: readonly FrameChild[][]): { rankOf: Map<string, number>; count: number } {
+  /** The non-empty columns, which is the array every drawn index refers to. */
+  const used = drawnColumns(columns)
+  /** The drawn column of each box id. */
+  const rankOf = new Map<string, number>()
+  used.forEach((column, index) => { for (const child of column) rankOf.set(child.id, index) })
+  return { rankOf, count: used.length }
+}
+
+/**
  * Measure one frame from its children's sizes.
  *
  * THE LANE BUDGET IS PART OF THE WIDTH, and that is the decision this function exists to make: a

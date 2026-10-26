@@ -103,10 +103,20 @@ export function evaluateInvocation(record: ProbeRecord["empty"], expectedKind: s
  * @param objective The objective the invocation carried.
  * @returns The verdict, the cell ids and the problems.
  */
-export function evaluateCells(cells: unknown, objective: string): { ok: boolean; ids: string[]; problems: Problems } {
+export function evaluateCells(cells: unknown, objective: string, cellsAfterEmpty?: unknown): { ok: boolean; ids: string[]; problems: Problems } {
   /** One problem per failed expectation. */
   const problems: Problems = []
-  if (!Array.isArray(cells)) return { ok: false, ids: [], problems: ["the probe recorded no cell list"] }
+  // THE EMPTY INVOCATION'S OWN CLAIM, checked against the snapshot taken BEFORE the non-empty dispatch
+  // (CodeRabbit 4377306805). Without it the usage answer's "writes nothing" was only inferred from what a
+  // LATER invocation did, so a cell written by the empty spelling could slip through.
+  if (!Array.isArray(cellsAfterEmpty)) {
+    problems.push("the probe recorded no post-empty cell list, so the claim that the empty invocation left the cell root empty cannot be checked")
+  } else if (cellsAfterEmpty.length !== 0) {
+    /** The cells the EMPTY invocation left behind, named so the failure says what was written. */
+    const stray = (cellsAfterEmpty as Array<Record<string, unknown>>).map((row) => String(row.cellId ?? ""))
+    problems.push("the EMPTY invocation wrote " + String(cellsAfterEmpty.length) + " cell(s) (" + stray.join(", ") + "), but the usage answer must leave the cell root empty")
+  }
+  if (!Array.isArray(cells)) return { ok: false, ids: [], problems: [...problems, "the probe recorded no cell list"] }
   /** The recorded cell rows. */
   const rows = cells as Array<Record<string, unknown>>
   /** Every cell id the boot's workspace holds. */
@@ -228,7 +238,9 @@ function selfTest(): void {
   // 3. The cell-artifact arm: one good record, then a wrong objective and a missing journal event.
   /** One good cell row, as the probe records it. */
   const goodCell = { cellId: "cell-1", state: { objective: OBJECTIVE, phase: "requirements", captainSessionId: "session-1" }, statePath: "/x/state.json", firstJournalEvent: { at: "now", event: "start" } }
-  check("cell positive", evaluateCells([goodCell], OBJECTIVE).ok)
+  check("cell positive", evaluateCells([goodCell], OBJECTIVE, []).ok)
+  check("cell written by the EMPTY invocation", !evaluateCells([goodCell], OBJECTIVE, [{ cellId: "cell-stray" }]).ok)
+  check("cell post-empty list not recorded", !evaluateCells([goodCell], OBJECTIVE, undefined).ok)
   check("cell wrong objective", !evaluateCells([{ ...goodCell, state: { ...goodCell.state, objective: "other" } }], OBJECTIVE).ok)
   check("cell missing start", !evaluateCells([{ ...goodCell, firstJournalEvent: { event: "split-accepted" } }], OBJECTIVE).ok)
   check("cell two cells", !evaluateCells([goodCell, { ...goodCell, cellId: "cell-2" }], OBJECTIVE).ok)
@@ -333,7 +345,7 @@ async function main(): Promise<void> {
     /** The non-empty invocation (success after the submission). */
     const activation = evaluateInvocation(probe === null ? null : probe.filled, "success", SUBMITTED_PROBE, "filled")
     /** The handler's own artifact. */
-    const cells = evaluateCells(probe?.cells, OBJECTIVE)
+    const cells = evaluateCells(probe?.cells, OBJECTIVE, probe?.cellsAfterEmpty)
     /** The directive in the harness session log. */
     const directive = evaluateDirective(userMessageTexts(records), OBJECTIVE)
     /** The dispatcher's own command record. */

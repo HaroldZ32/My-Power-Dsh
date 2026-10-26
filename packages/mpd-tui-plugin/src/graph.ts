@@ -76,6 +76,7 @@ import {
   GROUP_COLUMN_GAP,
   buildFrameTree,
   drawnColumns,
+  drawnRankOf,
   frameEdges,
   measureFrame,
   rankFrame,
@@ -1536,8 +1537,16 @@ function drawGroupedBoxes(
     /** The measured size of every child box. */
     const childSizes = new Map<string, ChildSize>()
     for (const child of frame.children) childSizes.set(child.id, sizeOfChild(child))
-    /** The column each box draws in. */
-    const rankOfBox = ranksOf(frame).rankOf
+    /**
+     * The column each box DRAWS in — the position in the array the drawer will index.
+     *
+     * THE LANE BUDGET MUST BE COUNTED IN THE DRAWN SPACE (CodeRabbit 4377306778): a served column that
+     * is empty is closed for the layout, so two boxes served columns 0 and 3 are ADJACENT in the drawing
+     * and `drawFrameEdges` routes them through the band, not down a reserved lane. Counting that edge as
+     * long here would reserve a lane the drawer never uses, and counting a genuinely long one as adjacent
+     * would leave it without one.
+     */
+    const rankOfBox = drawnRankOf(columns).rankOf
     /** How many of this frame's edges skip a column, which is the lane budget its interior reserves. */
     const longEdges = (edges.get(frame.id) ?? []).filter((edge) => {
       /** The blocker's column. */
@@ -1707,8 +1716,16 @@ function drawGroupedBoxes(
     /** The edges this frame draws. */
     const list = edges.get(frame.id) ?? []
     if (list.length === 0) return
-    /** The column each box draws in. */
-    const rankOfBox = ranksOf(frame).rankOf
+    /**
+     * The column each box draws in — an index into `columns`, `colBottoms` and `covered`.
+     *
+     * THE DRAWN SPACE, NEVER THE SERVED ONE (CodeRabbit 4377306778). `drawFrame` passes the COMPACTED
+     * columns (`drawnColumns`), so a served rank that pointed past a closed empty column indexed another
+     * column's bottom, or `undefined` — which threw inside the lane scan and stopped the scene render.
+     * Every index below is taken from here, including the `to === from + 1` adjacency test, so the three
+     * arrays and the routing decision cannot disagree.
+     */
+    const rankOfBox = drawnRankOf(columns).rankOf
     /** The x-ranges each drawn column's boxes occupy, so a lane can be PROVED clear. */
     const covered = columns.map((column) => column.map((child) => rects.get(child.id) as BoxRect))
     /** The rows each lane already claims, so two trunks never merge into one line. */

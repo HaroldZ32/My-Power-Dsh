@@ -50,6 +50,13 @@ export interface GraphModelDeps {
   warn?: (line: string) => void
   /** The watcher factory, injected so an arm can drive batches without a filesystem. */
   watch?: (targets: GraphWatchTargets, options: GraphWatchOptions) => GraphWatcher
+  /**
+   * The team-list reader, injected so an arm can COUNT the reads.
+   *
+   * The nesting walk needs every record once; reading the list inside each recursion level would cost
+   * one directory scan plus one parse of every record per level of the tree, for every model build.
+   */
+  listTeams?: (workspace: string) => TeamRecord[]
 }
 
 /** One team's cached model, the workspace revision it was built at, and the plan it was built from. */
@@ -175,7 +182,7 @@ interface GroupInput {
  * A child's interior gets NO plan: the plan markdown is a WORKSPACE document (the newest one resolved
  * for this workspace), and merging it into a subcell's box would draw the parent's plan-only ghosts
  * inside a child that never declared them.
- * @param workspace - the workspace the records live in.
+ * @param children - every record INDEXED BY PARENT, read once for the whole build.
  * @param parentTeamId - the team whose children are collected.
  * @param archive - the archive index, read once by the caller for liveness.
  * @param warn - the row's bounded diagnostic sink, when one was injected.
@@ -183,19 +190,17 @@ interface GroupInput {
  * @returns one input per live child, ordered by team id (the core sorts again; this keeps the walk stable).
  */
 function groupInputsOf(
-  workspace: string,
+  children: ReadonlyMap<string, readonly TeamRecord[]>,
   parentTeamId: string,
   archive: ArchivedPlanIndex,
   warn: ((line: string) => void) | undefined,
   seen: Set<string>,
 ): GroupInput[] {
-  /** The live children of this team, in a stated order rather than the directory's. */
-  const children = listTeams(workspace)
-    .filter((record) => record.parentTeamId === parentTeamId)
-    .sort((left, right) => (left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0))
+  /** The live children of this team, already in a stated order rather than the directory's. */
+  const own = children.get(parentTeamId) ?? []
   /** The frames collected so far. */
   const inputs: GroupInput[] = []
-  for (const child of children) {
+  for (const child of own) {
     if (seen.has(child.teamId)) {
       warn?.(`[mpd-team-core] team ${child.teamId} is nested inside ${parentTeamId}, which is already on its own parent chain — the record was edited by hand; the projection skips the repeat`)
       continue
@@ -203,7 +208,7 @@ function groupInputsOf(
     if (!isLiveTeam(child, archive)) continue
     seen.add(child.teamId)
     /** This child's own frames, collected before it is returned so the recursion is honest. */
-    const nested = groupInputsOf(workspace, child.teamId, archive, warn, seen)
+    const nested = groupInputsOf(children, child.teamId, archive, warn, seen)
     inputs.push({
       id: child.teamId,
       label: child.name,
@@ -226,12 +231,36 @@ function groupInputsOf(
  * @param workspace - the workspace the records live in.
  * @param record - the team whose model is being built (its own id roots the walk).
  * @param warn - the row's bounded diagnostic sink, when one was injected.
+ * @param list - the team-list reader; the row's own seam, defaulted to the store.
  * @returns an object spread into the build input: `{}` for a childless team, `{ groups }` otherwise.
  */
-function groupsOf(workspace: string, record: TeamRecord, warn: ((line: string) => void) | undefined): { groups?: readonly GroupInput[] } {
+function groupsOf(workspace: string, record: TeamRecord, warn: ((line: string) => void) | undefined, list: (workspace: string) => TeamRecord[]): { groups?: readonly GroupInput[] } {
+  /** EVERY record, read ONCE: the recursion below walks this index instead of re-listing per level. */
+  const index = childrenByParent(list(workspace))
   /** Every live descendant of this team, nested as deep as the records go. */
-  const groups = groupInputsOf(workspace, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]))
+  const groups = groupInputsOf(index, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]))
   return groups.length === 0 ? {} : { groups }
+}
+
+/**
+ * Index team records by the parent they name, so one read serves every recursion level.
+ * @param records - every team record in the workspace.
+ * @returns the children of each parent id, each list ordered by team id.
+ */
+function childrenByParent(records: readonly TeamRecord[]): Map<string, TeamRecord[]> {
+  /** The index under construction. */
+  const index = new Map<string, TeamRecord[]>()
+  for (const record of records) {
+    /** The parent this record names, when it names one at all (a root team names none). */
+    const parent = record.parentTeamId
+    if (parent === undefined || parent === "") continue
+    /** The children already listed under that parent. */
+    const held = index.get(parent)
+    if (held === undefined) index.set(parent, [record])
+    else held.push(record)
+  }
+  for (const children of index.values()) children.sort((left, right) => (left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0))
+  return index
 }
 
 /**
@@ -293,7 +322,7 @@ export class GraphModels {
         // THE NESTING INPUT, OMITTED WHEN THE TEAM HAS NO LIVE CHILD: a flat tree's model therefore
         // carries no `groups` key at all and stays byte-identical to the one this row served before
         // nested teams existed (the backward guarantee is a test, not an intention).
-        ...groupsOf(workspace, record, this.deps.warn),
+        ...groupsOf(workspace, record, this.deps.warn, this.deps.listTeams ?? listTeams),
       })
       this.cache.set(key, { revision, planPath, model })
       return model

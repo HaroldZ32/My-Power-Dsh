@@ -2265,33 +2265,70 @@ function callerContext(dsh, exec, deps = {}) {
   const sessionId = sessionIdOf(exec?.agent);
   if (workspace === "")
     return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: null };
-  const active = readActiveCell(workspace);
-  if (!active.ok)
-    return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: active };
-  if (active.cell === null)
+  const scan = liveTree(workspace);
+  if (scan.refusal !== null)
+    return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: scan.refusal };
+  if (scan.cells.length === 0)
     return { workspace, sessionId, member: "", seat: undefined, cell: null, refusal: null };
-  const cell = active.cell.state;
-  if (sessionId !== "" && sessionId === cell.captainSessionId) {
-    return { workspace, sessionId, member: "captain", seat: { cellId: cell.cellId, name: "captain", mode: "captain" }, cell, refusal: null };
+  const ordered = [...scan.cells].sort((left, right) => right.depth - left.depth || compareIds(right.state.cellId, left.state.cellId));
+  for (const candidate of ordered) {
+    const held = seatIn(candidate.state, workspace, sessionId, deps);
+    if (held !== undefined)
+      return { workspace, sessionId, member: held.member, seat: held.seat, cell: candidate.state, refusal: null };
   }
+  const oldest = [...scan.cells].sort((left, right) => compareIds(left.state.cellId, right.state.cellId))[0];
+  return { workspace, sessionId, member: "", seat: undefined, cell: oldest.state, refusal: null };
+}
+function liveTree(workspace) {
+  const live = [];
+  for (const cellId of listCellIds(workspace)) {
+    const read = readCell(workspace, cellId);
+    if (!read.ok)
+      return { cells: [], refusal: read };
+    if (read.state.phase !== "stopped")
+      live.push(read.state);
+  }
+  const byId = new Map(live.map((cell) => [cell.cellId, cell]));
+  return { cells: live.map((cell) => ({ state: cell, depth: depthOf(cell, byId) })), refusal: null };
+}
+function depthOf(cell, live) {
+  let depth = 0;
+  let cursor = cell.parentCellId;
+  const seen = new Set([cell.cellId]);
+  while (cursor !== null && cursor !== "" && !seen.has(cursor)) {
+    seen.add(cursor);
+    const parent = live.get(cursor);
+    if (parent === undefined)
+      break;
+    depth += 1;
+    cursor = parent.parentCellId;
+  }
+  return depth;
+}
+function compareIds(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+function seatIn(cell, workspace, sessionId, deps) {
+  if (sessionId === "")
+    return;
+  if (sessionId === cell.captainSessionId)
+    return { member: "captain", seat: { cellId: cell.cellId, name: "captain", mode: "captain" } };
   for (const member of Object.values(cell.members)) {
-    if (sessionId !== "" && member.sessionId === sessionId) {
-      return { workspace, sessionId, member: member.name, seat: { cellId: cell.cellId, name: member.name, mode: memberMode(member.mode) }, cell, refusal: null };
-    }
+    if (member.sessionId === sessionId)
+      return { member: member.name, seat: { cellId: cell.cellId, name: member.name, mode: memberMode(member.mode) } };
   }
   const rawRecord = cell.teamId === "" ? undefined : deps.teams?.()?.get?.(workspace, cell.teamId);
   const record = typeof rawRecord === "object" && rawRecord !== null ? rawRecord : undefined;
-  if (record !== undefined && sessionId !== "") {
-    const rows = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) : [];
-    for (const row of rows) {
-      if (row.executorRef !== sessionId)
-        continue;
-      const name = typeof row.name === "string" && row.name !== "" ? row.name : "member";
-      const mode = memberMode(cell.members[name]?.mode);
-      return { workspace, sessionId, member: name, seat: { cellId: cell.cellId, name, mode }, cell, refusal: null };
-    }
+  if (record === undefined)
+    return;
+  const rows = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) : [];
+  for (const row of rows) {
+    if (row.executorRef !== sessionId)
+      continue;
+    const name = typeof row.name === "string" && row.name !== "" ? row.name : "member";
+    return { member: name, seat: { cellId: cell.cellId, name, mode: memberMode(cell.members[name]?.mode) } };
   }
-  return { workspace, sessionId, member: "", seat: undefined, cell, refusal: null };
+  return;
 }
 function memberMode(mode) {
   return mode ?? "member";
@@ -2437,7 +2474,7 @@ function isSubcaptainAllowed(toolName) {
   return isCaptainAllowed(toolName);
 }
 function captainRefusal(toolName) {
-  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, " + "`cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), `agent_teams_*` " + "(`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, dispatch with `agent_teams_dispatch` (a busy owner is REPORTED, never " + "substituted), and relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
+  return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY " + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. " + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, " + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), " + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), " + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it " + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent " + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed " + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to " + "its own writer.) Relay the planner's questions with `ask_user_question`. To leave the mode and get " + "every tool back, call `cellwork_stop`.";
 }
 function verifierRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, so it never " + "fixes what it judges. Read the frozen contract and the documentation (not the implementation), run " + "the gates, then record the verdict with `mpd_verify_record` (a PASS needs the documents it cites " + "and its gate evidence ids); reading, `bash`, `grep`, `glob` and `mpd_verify_*` stay available. A " + "FAIL bounces the work back to its writer as a repair task, and only a RECORDED FAIL makes " + "implementation reading legitimate, for diagnosis.";
@@ -2599,10 +2636,13 @@ function readRequirements(workspace, cellId) {
     return null;
   return readFileSync2(path, "utf8");
 }
-function writeRequirements(workspace, cellId, text) {
-  atomicWriteText(requirementsPath(workspace, cellId), text.endsWith(`
+function storedRequirementsText(text) {
+  return text.endsWith(`
 `) ? text : text + `
-`);
+`;
+}
+function writeRequirements(workspace, cellId, text) {
+  atomicWriteText(requirementsPath(workspace, cellId), storedRequirementsText(text));
 }
 
 // packages/mpd-cellwork-plugin/src/split.ts
@@ -3619,50 +3659,84 @@ async function stagePlanningTeam(deps) {
       return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" };
     return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value : {} };
   };
+  const planName = "cell " + deps.cell.cellId;
   const status = await call({ action: "status" });
   if (!status.ok)
     return { ok: false, error: "cellwork could not read the session's team state: " + status.error };
   const staged = status.value.plan;
-  if (typeof staged === "object" && staged !== null) {
-    const plan = staged;
-    if (typeof plan.approvedAt === "string" && plan.approvedAt !== "") {
+  const plan = typeof staged === "object" && staged !== null ? staged : undefined;
+  const resumable = plan !== undefined && textField2(plan, "name") === planName;
+  const approvedAlready = resumable && textField2(plan, "approvedAt") !== "";
+  if (plan !== undefined && !resumable) {
+    if (textField2(plan, "approvedAt") !== "") {
       return { ok: false, error: "a team plan is already APPROVED in this session; cellwork needs the staging slot free — finish or archive that team first" };
     }
     const stagedRows = (Array.isArray(plan.members) ? plan.members.length : 0) + (Array.isArray(plan.tasks) ? plan.tasks.length : 0);
     if (stagedRows > 0) {
       return { ok: false, error: "a different team plan is already staged in this session (" + String(stagedRows) + " row(s)); approve or delete it before starting cellwork" };
     }
-  } else if (typeof status.value.team === "object" && status.value.team !== null) {
-    return { ok: false, error: "this session already drives team " + textField2(status.value.team, "teamId") + "; cellwork requires its own fresh team" };
   }
-  if (typeof staged !== "object" || staged === null) {
-    const created = await call({ action: "create", name: "cell " + deps.cell.cellId, description: deps.cell.objective });
+  if (approvedAlready) {
+    const liveTeam = typeof status.value.team === "object" && status.value.team !== null ? status.value.team : undefined;
+    const recoveredId = textField2(liveTeam, "teamId");
+    if (recoveredId === "") {
+      return { ok: false, error: "the planning plan " + planName + ' is APPROVED but the session reports no team id — inspect `agent_teams_plan {action:"status"}` before retrying', planName, partial: true };
+    }
+    const roster = Array.isArray(liveTeam?.members) ? liveTeam.members.filter((row) => typeof row === "object" && row !== null) : [];
+    const recovered = {};
+    for (const [name, role] of [[PLANNER_MEMBER, PLANNER_ROLE], [SPLITTER_MEMBER, SPLITTER_ROLE]]) {
+      const row = roster.find((candidate) => textField2(candidate, "name") === name);
+      if (row !== undefined) {
+        recovered[name] = livePlanningMemberRow(name, role, textField2(row, "executorRef") === "" ? textField2(row, "id") : textField2(row, "executorRef"), deps.cell, deps.now);
+        continue;
+      }
+      const appended = await call({ action: "add_member", member: { name, role, description: name + " (" + role + ")", prompt: name === PLANNER_MEMBER ? plannerPrompt(deps) : splitterPrompt(deps) } });
+      if (!appended.ok) {
+        return { ok: false, error: "the planning team " + recoveredId + " is approved but " + name + " could not be raised: " + appended.error, planName, teamId: recoveredId, partial: true };
+      }
+      recovered[name] = livePlanningMemberRow(name, role, textField2(appended.value, "spawned"), deps.cell, deps.now);
+    }
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, planName };
+  }
+  if (plan === undefined) {
+    if (typeof status.value.team === "object" && status.value.team !== null) {
+      return { ok: false, error: "this session already drives team " + textField2(status.value.team, "teamId") + "; cellwork requires its own fresh team" };
+    }
+    const created = await call({ action: "create", name: planName, description: deps.cell.objective });
     if (!created.ok)
-      return { ok: false, error: "cellwork could not stage the planning team: " + created.error };
+      return { ok: false, error: "cellwork could not stage the planning team: " + created.error, planName };
   }
+  const presentMembers = new Set((Array.isArray(plan?.members) ? plan.members : []).map((row) => typeof row === "object" && row !== null ? textField2(row, "name") : ""));
   for (const [name, role, prompt] of [
     [PLANNER_MEMBER, PLANNER_ROLE, plannerPrompt(deps)],
     [SPLITTER_MEMBER, SPLITTER_ROLE, splitterPrompt(deps)]
   ]) {
+    if (presentMembers.has(name))
+      continue;
     const appended = await call({ action: "add_member", member: { name, role, description: name + " (" + role + ")", prompt } });
     if (!appended.ok)
-      return { ok: false, error: "cellwork could not stage " + name + ": " + appended.error };
+      return { ok: false, error: "cellwork could not stage " + name + ": " + appended.error, planName, partial: true };
   }
-  const requirements = await call({
-    action: "create_task",
-    task: { subject: REQUIREMENTS_TASK_SUBJECT, description: plannerTaskDescription(deps.cell), kind: "requirement", owner: PLANNER_MEMBER, blocked_by: [] }
-  });
-  if (!requirements.ok)
-    return { ok: false, error: "cellwork could not stage the requirements task: " + requirements.error };
-  const split = await call({
-    action: "create_task",
-    task: { subject: SPLIT_TASK_SUBJECT, description: splitterTaskDescription(deps.cell), kind: "work", owner: SPLITTER_MEMBER, blocked_by: [REQUIREMENTS_TASK_SUBJECT] }
-  });
-  if (!split.ok)
-    return { ok: false, error: "cellwork could not stage the split task: " + split.error };
+  const presentSubjects = new Set((Array.isArray(plan?.tasks) ? plan.tasks : []).map((row) => typeof row === "object" && row !== null ? textField2(row, "subject") : ""));
+  if (!presentSubjects.has(REQUIREMENTS_TASK_SUBJECT)) {
+    const requirements = await call({
+      action: "create_task",
+      task: { subject: REQUIREMENTS_TASK_SUBJECT, description: plannerTaskDescription(deps.cell), kind: "requirement", owner: PLANNER_MEMBER, blocked_by: [] }
+    });
+    if (!requirements.ok)
+      return { ok: false, error: "cellwork could not stage the requirements task: " + requirements.error, planName, partial: true };
+  }
+  if (!presentSubjects.has(SPLIT_TASK_SUBJECT)) {
+    const split = await call({
+      action: "create_task",
+      task: { subject: SPLIT_TASK_SUBJECT, description: splitterTaskDescription(deps.cell), kind: "work", owner: SPLITTER_MEMBER, blocked_by: [REQUIREMENTS_TASK_SUBJECT] }
+    });
+    if (!split.ok)
+      return { ok: false, error: "cellwork could not stage the split task: " + split.error, planName, partial: true };
+  }
   const approved = await call({ action: "approve" });
   if (!approved.ok)
-    return { ok: false, error: "cellwork could not approve the planning team: " + approved.error };
+    return { ok: false, error: "cellwork could not approve the planning team: " + approved.error, planName, partial: true };
   const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team : undefined;
   const teamId = textField2(team, "teamId");
   const raised = createdMembers(approved.value);
@@ -3684,9 +3758,9 @@ async function stagePlanningTeam(deps) {
     };
   }
   if (teamId === "")
-    return { ok: false, error: 'the planning team was approved but the answer carried no team id — inspect `agent_teams_plan {action:"status"}` before retrying' };
+    return { ok: false, error: 'the planning team was approved but the answer carried no team id — inspect `agent_teams_plan {action:"status"}` before retrying', planName, partial: true };
   if (stoppedAt !== "") {
-    return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + '); the record exists — inspect `agent_teams_plan {action:"status"}` and repair it', teamId, members };
+    return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + '); the record exists — inspect `agent_teams_plan {action:"status"}` and repair it', teamId, members, planName, partial: true };
   }
   return {
     ok: true,
@@ -3694,6 +3768,10 @@ async function stagePlanningTeam(deps) {
     members,
     tasks: { requirementsId: posted[0]?.id, splitId: posted[1]?.id }
   };
+}
+function livePlanningMemberRow(name, role, handle, cell, now) {
+  const base = planningMemberRow(name, role, cell, now);
+  return handle === "" ? base : { ...base, sessionId: handle, executorRef: handle };
 }
 function planningMemberRow(name, role, cell, now) {
   return { name, role, sessionId: cell.members[name]?.sessionId ?? "", executorRef: cell.members[name]?.executorRef ?? "", mode: "member", handoffReady: cell.members[name]?.handoffReady ?? false, handoffs: cell.members[name]?.handoffs ?? 0, joinedAt: cell.members[name]?.joinedAt ?? now.toISOString() };
@@ -3797,7 +3875,6 @@ function installCellworkFlow(deps) {
   };
   const windowFor = async (role) => resolveTaskWindow({ routeOf, catalog: () => dsh.llmCatalog(), config }, role);
   const callerFor = (exec) => callerContext(dsh, exec, { teams });
-  const recordFor = (teamId) => recordOf(teams(), dsh.workspaceRoot(), teamId);
   const transition = (workspace, next, entry, now) => {
     const lines = appendJournal(workspace, next.cellId, entry, now);
     const stamped = { ...next, journalCursor: lines > 0 ? lines : next.journalCursor };
@@ -3903,7 +3980,7 @@ missing sections: ` + result.missing.join(", ") : ""));
               return "";
             }
           })();
-          if (accepted === text_) {
+          if (accepted === storedRequirementsText(text_)) {
             return { ok: true, action, revision: state.requirementsRevision, splitStale: state.splitStale, alreadyFinalized: true, sections: validation.sections, requirementsPath: path };
           }
           return { ok: false, error: "cellwork_requirements: revision " + String(state.requirementsRevision) + ' is already accepted and the document CHANGED — use {action:"update"} to revise it (an accepted revision is never rewritten in place)' };
@@ -4242,7 +4319,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         captainAgent: exec.agent,
         split: stored.verdict,
         personaFor,
-        recordFor,
+        recordFor: (teamId) => recordOf(teams(), caller.workspace, teamId),
         now: new Date
       });
       if (!activated.ok)
@@ -4485,7 +4562,10 @@ function subteamDirective(subcellId, depth, parentCellId, parentTeamId) {
     parentTeamId === "" ? "This cell has no team of its own yet, so your sub-team will be a ROOT team in the DAG." : "Your sub-team NESTS AS A BOX inside team " + parentTeamId + ": the team plane derives the parent from that team's own roster, which records you as a member — you never pass a parent id.",
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
-    "only. To leave your sub-cell call `cellwork_stop`; the parent cell keeps its record."
+    "only. Your surface here is `cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate` and",
+    "`cellwork_subteam`; starting and ending a cell belong to the PARENT captain, and the guard refuses",
+    "those verbs for you. To leave this sub-cell, `cellwork_send` a stop request to the parent cell — the",
+    "parent archives it and your record is kept."
   ].join(`
 `);
 }
@@ -4882,8 +4962,9 @@ missing sections: ` + result.missing.join(", ") : ""));
         return { ok: false, error: refusalText2(caller.refusal), path: caller.refusal.path };
       if (caller.cell === null || caller.member === "")
         return { ok: false, error: "cellwork_subteam: this session belongs to no active cell" };
-      if (caller.seat?.mode !== "subcaptain")
-        return { ok: false, error: "cellwork_subteam is SUBCAPTAIN ONLY: this session is " + JSON.stringify(caller.member) + " in mode " + JSON.stringify(caller.seat?.mode ?? "none") + " — a sub-cell is registered by a member the plugin promoted after its handoff+compaction" };
+      const mayNest = caller.seat?.mode === "subcaptain" || caller.seat?.mode === "captain" && caller.cell.parentCellId !== null;
+      if (!mayNest)
+        return { ok: false, error: "cellwork_subteam is SUBCAPTAIN ONLY: this session is " + JSON.stringify(caller.member) + " in mode " + JSON.stringify(caller.seat?.mode ?? "none") + " — a sub-cell is registered by a member the plugin promoted after its handoff+compaction (or by the captain of a sub-cell, to nest deeper)" };
       const parent = caller.cell;
       if (parent.phase === "stopped")
         return { ok: false, error: "cellwork_subteam: cell " + parent.cellId + " is stopped and archived" };
@@ -5212,6 +5293,15 @@ function liveTasks(record) {
   const live = record.tasks.filter((task) => typeof task === "object" && task !== null);
   return live.filter((task) => task.status === "claimed" || task.status === "in_progress").map((task) => String(task.id ?? "?") + " (" + String(task.subject ?? "") + ")");
 }
+function liveSubcellIds(workspace, ids) {
+  const live = [];
+  for (const id of ids) {
+    const child = readCell(workspace, id);
+    if (child.ok && child.state.phase !== "stopped")
+      live.push(id);
+  }
+  return live;
+}
 function refusalText3(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed; repair or archive that file first";
 }
@@ -5304,12 +5394,11 @@ function apply(ctx, config = {}) {
       const requested = argString3(readArgs3(args), "cellId");
       let state;
       if (requested === "") {
-        const active = readActiveCell(caller.workspace);
-        if (!active.ok)
-          return { ok: false, error: refusalText3(active), path: active.path };
-        if (active.cell === null)
+        if (caller.refusal !== null)
+          return { ok: false, error: refusalText3(caller.refusal), path: caller.refusal.path };
+        if (caller.cell === null)
           return { ok: false, error: "cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`" };
-        state = active.cell.state;
+        state = caller.cell;
       } else {
         const single = readCell(caller.workspace, requested);
         if (!single.ok)
@@ -5402,8 +5491,11 @@ function apply(ctx, config = {}) {
           config: cfg,
           now
         });
-        if (!staged.ok)
-          return { ok: false, error: staged.error ?? "cellwork_start: staging the planning team failed" };
+        if (!staged.ok) {
+          const partialState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} } };
+          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now);
+          return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" };
+        }
         stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} } };
         recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {} }, now);
       }
@@ -5461,12 +5553,11 @@ function apply(ctx, config = {}) {
       const requested = argString3(input, "cellId");
       let state;
       if (requested === "") {
-        const active = readActiveCell(workspace);
-        if (!active.ok)
-          return { ok: false, error: refusalText3(active), path: active.path };
-        if (active.cell === null)
+        if (caller.refusal !== null)
+          return { ok: false, error: refusalText3(caller.refusal), path: caller.refusal.path };
+        if (caller.cell === null)
           return { ok: false, error: "cellwork_stop: no cell is active in this workspace" };
-        state = active.cell.state;
+        state = caller.cell;
       } else {
         const single = readCell(workspace, requested);
         if (!single.ok)
@@ -5478,6 +5569,10 @@ function apply(ctx, config = {}) {
       }
       if (state.phase === "stopped") {
         return { ok: true, cellId: state.cellId, archived: true, forced: false, reason: state.stopReason === "" ? "already stopped" : state.stopReason, inProgress: [], statePath: statePath(workspace, state.cellId) };
+      }
+      const liveChildren = liveSubcellIds(workspace, state.subcellIds);
+      if (liveChildren.length > 0 && input.force !== true) {
+        return { ok: false, error: "cellwork_stop refused: " + String(liveChildren.length) + " sub-cell(s) of " + state.cellId + " are still active (" + liveChildren.join(", ") + '). Stop each one first, by id and as ITS captain (`cellwork_stop {cellId: "..."}`), or pass force:true with a reason — a forced stop is journaled' };
       }
       const inProgress = liveTasks(teamRecordOf(ctx, workspace, state.teamId));
       const forced = input.force === true;
@@ -5495,6 +5590,9 @@ function apply(ctx, config = {}) {
     const objective = String(invocation?.rawInput ?? "").trim();
     if (objective === "")
       return { kind: "error", text: CELLWORK_USAGE };
+    const captainSessionId = sessionIdOf(invocation?.agent);
+    if (captainSessionId === "")
+      return { kind: "error", text: "cellwork refused: the invoking agent carries no session id, so no captain can be recorded — nothing was written" };
     const workspace = dsh.workspaceRoot({ agent: invocation?.agent });
     const active = readActiveCell(workspace);
     if (!active.ok)
@@ -5506,7 +5604,7 @@ function apply(ctx, config = {}) {
       };
     }
     const now = new Date;
-    const created = newCellState({ cellId: freeCellId(workspace, now), objective, captainSessionId: sessionIdOf(invocation?.agent), now });
+    const created = newCellState({ cellId: freeCellId(workspace, now), objective, captainSessionId, now });
     writeCell(workspace, created);
     recordTransition(workspace, created, { event: "start", phase: created.phase, objective, captainSessionId: created.captainSessionId }, now);
     const directive = dsh.userMessage({ text: activationDirective({ state: created, workspace }), source: { kind: "mpd-cellwork", reason: "activation-directive" } });

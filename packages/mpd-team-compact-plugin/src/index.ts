@@ -157,8 +157,14 @@ export interface CompactAudit {
   teamName: string
   /** Pass start in epoch milliseconds; also the source of this record's file name. */
   at: number
-  /** The pass-level verdict: `compacted` drove at least one member, the others explain a pass that did not. */
-  outcome: "compacted" | "refused" | "not-live" | "timeout"
+  /**
+   * The pass-level verdict: `compacted` drove at least one member, the others explain a pass that did not.
+   *
+   * `cancelled` is its own value rather than a `timeout` (CodeRabbit 4377306758): a pass the CALLER
+   * cancelled and a pass whose members never idled are different facts, and an audit that folded them
+   * together would report the wrong cause for the reader who has to decide what to do next.
+   */
+  outcome: "compacted" | "refused" | "not-live" | "timeout" | "cancelled"
   /** Why the pass did not compact, when it did not. */
   refusedReason?: string
   /** One record per compactable member, in roster order — the captain is never among them. */
@@ -656,13 +662,61 @@ export async function compactTeamPass(
   const idleWaitMs = options.idleWaitMs ?? DEFAULT_IDLE_WAIT_MS
   /** Effective poll interval for this pass, after the default is applied. */
   const idlePollMs = options.idlePollMs ?? DEFAULT_IDLE_POLL_MS
+  /**
+   * The pass's own cancellation, when the caller supplied one.
+   *
+   * THE BARRIER IS THE ONE WAIT THAT NEVER TOUCHES THE ENGINE, so it was the one place a cancellation
+   * was invisible: an aborted pass kept polling for up to `idleWaitMs` and then recorded `timeout`,
+   * which names the wrong cause (CodeRabbit 4377306758). It is checked before the loop, on every
+   * iteration and inside the wait itself.
+   */
+  const passSignal = options.signal
   /** The instant the barrier stops waiting, so a member that never idles cannot hang the pass. */
   const deadline = now() + idleWaitMs
+  /**
+   * Wait one poll interval, or less when the pass is cancelled first.
+   *
+   * With NO pass signal the injected `sleep` stays the whole wait, which is what keeps a unit arm in
+   * control of time; with one, an abort wakes the wait immediately instead of spending the interval.
+   * @param ms - the interval to wait at most.
+   * @returns a promise that settles when the interval elapses or the pass is cancelled.
+   */
+  const waitOnePoll = (ms: number): Promise<void> => {
+    if (passSignal === undefined) return sleep(ms)
+    if (passSignal.aborted) return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      /** Resolve once, detaching the abort listener; the interval itself is left to finish unattended. */
+      const finish = (): void => { passSignal.removeEventListener("abort", finish); resolve() }
+      passSignal.addEventListener("abort", finish, { once: true })
+      void sleep(ms).then(finish, finish)
+    })
+  }
   /** Whether every live member is idle right now; re-evaluated on each poll. */
   let allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)))
-  while (!allIdle && now() < deadline) {
-    await sleep(idlePollMs)
+  while (!allIdle && now() < deadline && passSignal?.aborted !== true) {
+    await waitOnePoll(idlePollMs)
     allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)))
+  }
+  // A CANCELLED PASS IS NOT A TIMEOUT: it stopped waiting because the CALLER said so, not because the
+  // members never idled. Recorded as `cancelled`; the members that were ready carry the engine's own
+  // `cancelled` code, and nothing was driven.
+  if (passSignal?.aborted === true) {
+    /** The members still busy when the cancellation arrived, named in the reason. */
+    const stillBusy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name)
+    return {
+      ...base,
+      outcome: "cancelled",
+      refusedReason: `the pass was cancelled while waiting for every member to be idle${stillBusy.length === 0 ? "" : `; still busy: ${stillBusy.join(", ")}`}`,
+      members: resolved.map((entry) => ({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        ...(entry.staged
+          ? { outcome: "skipped-staged", reason: "member has no session id yet (not spawned)" }
+          : entry.agent === undefined
+            ? { outcome: "skipped-not-live", reason: "no live Agent for this session id" }
+            : { outcome: "failed", failureCode: "cancelled", error: "the pass was cancelled during the idle barrier; nothing was compacted for this member" }),
+      })),
+    }
   }
   if (!allIdle) {
     /** Names of the members still busy when the barrier expired, named in the refusal. */

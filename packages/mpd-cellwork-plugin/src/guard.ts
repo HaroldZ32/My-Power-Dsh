@@ -170,11 +170,13 @@ export function captainRefusal(toolName: string): string {
   return "cellwork: `" + toolName + "` is refused — while a cell is running the CAPTAIN DISPATCHES ONLY "
     + "(user clause 1): it edits no file, runs no shell, does no reconnaissance and verifies nothing. "
     + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, "
-    + "`cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), `agent_teams_*` "
-    + "(`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), "
+    + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), "
+    + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), "
     + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it "
-    + "with `agent_teams_plan`, dispatch with `agent_teams_dispatch` (a busy owner is REPORTED, never "
-    + "substituted), and relay the planner's questions with `ask_user_question`. To leave the mode and get "
+    + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent "
+    + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed "
+    + "but it is NOT the verb for this board: it falls back to roster order, which can hand review work to "
+    + "its own writer.) Relay the planner's questions with `ask_user_question`. To leave the mode and get "
     + "every tool back, call `cellwork_stop`."
 }
 

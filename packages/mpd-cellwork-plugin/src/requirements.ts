@@ -178,6 +178,26 @@ export function readRequirements(workspace: string, cellId: string): string | nu
  * @param cellId - the cell whose document is written.
  * @param text - the complete document body.
  */
+/**
+ * The exact bytes {@link writeRequirements} stores for one document.
+ *
+ * Exported so the idempotency check compares the STORED form on both sides: a caller that repeats
+ * `finalize` with the same content, WITHOUT a trailing newline, must be recognized as unchanged rather
+ * than refused as "CHANGED" against the newline this writer added.
+ * @param text - the document as the caller sent it.
+ * @returns the text with exactly one trailing newline.
+ */
+export function storedRequirementsText(text: string): string {
+  return text.endsWith("\n") ? text : text + "\n"
+}
+
+/**
+ * Write one requirements document atomically, in its stored form.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose document this is.
+ * @param text - the document as the caller sent it.
+ */
 export function writeRequirements(workspace: string, cellId: string, text: string): void {
-  atomicWriteText(requirementsPath(workspace, cellId), text.endsWith("\n") ? text : text + "\n")
+  atomicWriteText(requirementsPath(workspace, cellId), storedRequirementsText(text))
 }

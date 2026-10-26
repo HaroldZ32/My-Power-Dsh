@@ -229,7 +229,10 @@ export function subteamDirective(subcellId: string, depth: number, parentCellId:
       : "Your sub-team NESTS AS A BOX inside team " + parentTeamId + ": the team plane derives the parent from that team's own roster, which records you as a member — you never pass a parent id.",
     "You are its captain now: stage the sub-team with `agent_teams_plan` (members + tasks, approve), then",
     "`cellwork_activate` with the accepted split. The same guard applies to you as to any captain: dispatch",
-    "only. To leave your sub-cell call `cellwork_stop`; the parent cell keeps its record.",
+    "only. Your surface here is `cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate` and",
+    "`cellwork_subteam`; starting and ending a cell belong to the PARENT captain, and the guard refuses",
+    "those verbs for you. To leave this sub-cell, `cellwork_send` a stop request to the parent cell — the",
+    "parent archives it and your record is kept.",
   ].join("\n")
 }
 

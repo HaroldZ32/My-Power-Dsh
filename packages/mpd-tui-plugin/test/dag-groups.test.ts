@@ -229,6 +229,46 @@ describe("D3 · an edge CROSSES or TERMINATES, and the picture says which", () =
     // And neither of them painted a frame glyph.
     expect(rowsOf(bare as GraphView).join("\n")).not.toContain(DAG_GROUP_CHARS.cornerDownRight)
   })
+
+  // ── CR R2 (CodeRabbit 4377306778): a SERVED column hole must not shift a drawn index ────────
+  // `drawFrame` lays out `drawnColumns(...)`, so `colBottoms`, `covered` and the adjacency test are
+  // positions in THAT array. Indexing them with SERVED ranks meant a served rank of 3 addressed the
+  // FOURTH drawn column: the lane scan reached `covered[2]` of a two-entry array and threw, which stops
+  // `scenes.ts` and `dagPanelLayout` — the DAG simply disappeared. These arms pin both halves: no throw,
+  // and the picture a hole-bearing serve draws is the SAME one a closed serve draws.
+
+  test("cr R2: a served column HOLE is closed for the layout, and the frame edges land on the drawn columns", () => {
+    /** The board whose SERVED columns carry holes in the root frame AND inside the frame. */
+    const gappedTasks: readonly GraphTask[] = [
+      task("A", [], 0),
+      task("G1", ["A"], 0, "teamG"),
+      task("G2", ["G1"], 3, "teamG"),
+    ]
+    /** The one frame of {@link gappedTasks}; the root's box is `teamG`. */
+    const gappedGroups: readonly GraphGroup[] = [{ id: "teamG", label: "teamG", parentId: null, memberIds: ["G1", "G2"], depth: 0 }]
+    /** THE SERVE ITSELF: root columns {0,3} and interior columns {0,3} — two holes to close. */
+    const gappedRanks: ReadonlyMap<string, number> = new Map([["A", 0], ["teamG", 3], ["G1", 0], ["G2", 3]])
+    /** The same board with those holes ALREADY closed, which is the picture the holes must not change. */
+    const closedRanks: ReadonlyMap<string, number> = new Map([["A", 0], ["teamG", 1], ["G1", 0], ["G2", 1]])
+    /** The drawing of the hole-bearing serve, which used to THROW inside the lane scan. */
+    let gapped: GraphView | undefined
+    expect(() => { gapped = layoutBoxesNatural(gappedTasks, undefined, undefined, gappedRanks, gappedGroups) }).not.toThrow()
+    if (gapped === undefined) throw new Error("the gapped fixture must draw")
+    /** The drawing of the closed serve. */
+    const closed = layoutBoxesNatural(gappedTasks, undefined, undefined, closedRanks, gappedGroups)
+    if (closed === undefined) throw new Error("the closed fixture must draw")
+    // ONE PICTURE, TWO SERVES: closing a hole is a layout decision, never a different graph.
+    expect(rowsOf(gapped)).toEqual(rowsOf(closed))
+    /** The whole drawing as text, so the two edges can be looked for. */
+    const drawing = rowsOf(gapped).join("\n")
+    // AND THE EDGES REALLY LANDED ON THE RIGHT COLUMNS: the root's dependency arrives on the box's top
+    // border as a PORT, and the interior's edge arrives on its own dependent — one arrival each.
+    expect(drawing).toContain(DAG_GROUP_CHARS.portUp)
+    expect(drawing.split(DAG_CHARS.arrowDown).length - 1).toBe(2)
+    // The frame really encloses the interior: it is drawn, and the interior's rows sit inside it.
+    expect(gapped.groups?.length).toBe(1)
+  })
+
 })
 
 describe("D3 · the group hit identity", () => {

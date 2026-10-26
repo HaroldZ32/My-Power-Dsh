@@ -4670,10 +4670,10 @@ function framedBoardOf(record) {
     blockedBy: (row.blockedBy ?? []).map((reference) => own.has(reference) ? `${record.teamId}::${reference}` : reference)
   }));
 }
-function groupInputsOf(workspace, parentTeamId, archive, warn, seen) {
-  const children = listTeams(workspace).filter((record) => record.parentTeamId === parentTeamId).sort((left, right) => left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0);
+function groupInputsOf(children, parentTeamId, archive, warn, seen) {
+  const own = children.get(parentTeamId) ?? [];
   const inputs = [];
-  for (const child of children) {
+  for (const child of own) {
     if (seen.has(child.teamId)) {
       warn?.(`[mpd-team-core] team ${child.teamId} is nested inside ${parentTeamId}, which is already on its own parent chain — the record was edited by hand; the projection skips the repeat`);
       continue;
@@ -4681,7 +4681,7 @@ function groupInputsOf(workspace, parentTeamId, archive, warn, seen) {
     if (!isLiveTeam(child, archive))
       continue;
     seen.add(child.teamId);
-    const nested = groupInputsOf(workspace, child.teamId, archive, warn, seen);
+    const nested = groupInputsOf(children, child.teamId, archive, warn, seen);
     inputs.push({
       id: child.teamId,
       label: child.name,
@@ -4691,9 +4691,26 @@ function groupInputsOf(workspace, parentTeamId, archive, warn, seen) {
   }
   return inputs;
 }
-function groupsOf(workspace, record, warn) {
-  const groups = groupInputsOf(workspace, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]));
+function groupsOf(workspace, record, warn, list) {
+  const index = childrenByParent(list(workspace));
+  const groups = groupInputsOf(index, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]));
   return groups.length === 0 ? {} : { groups };
+}
+function childrenByParent(records) {
+  const index = new Map;
+  for (const record of records) {
+    const parent = record.parentTeamId;
+    if (parent === undefined || parent === "")
+      continue;
+    const held = index.get(parent);
+    if (held === undefined)
+      index.set(parent, [record]);
+    else
+      held.push(record);
+  }
+  for (const children of index.values())
+    children.sort((left, right) => left.teamId < right.teamId ? -1 : left.teamId > right.teamId ? 1 : 0);
+  return index;
 }
 
 class GraphModels {
@@ -4718,7 +4735,7 @@ class GraphModels {
       const model = buildModel({
         board: boardOf(record),
         plan: readPlanFile(planPath),
-        ...groupsOf(workspace, record, this.deps.warn)
+        ...groupsOf(workspace, record, this.deps.warn, this.deps.listTeams ?? listTeams)
       });
       this.cache.set(key, { revision, planPath, model });
       return model;

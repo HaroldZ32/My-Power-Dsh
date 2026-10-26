@@ -148,6 +148,15 @@ export interface ProbeRecord {
   filled: InvocationRecord | null
   /** Every cell directory present after both dispatches, oldest first. */
   cells: CellRecordProbe[]
+  /**
+   * Every cell directory present after the EMPTY dispatch ONLY — the snapshot the case asserts is empty.
+   *
+   * WHY IT EXISTS (CodeRabbit 4377306805). `cells` is overwritten by the non-empty dispatch, so the state
+   * the usage answer left behind was recorded and then lost: the case's own claim ("the empty invocation
+   * left the cell root empty") was checked only INDIRECTLY, through a later invocation that would merely
+   * produce two cells or be refused. This field keeps the evidence for the claim itself.
+   */
+  cellsAfterEmpty: CellRecordProbe[]
   /** Every error the probe swallowed, so a case can fail with the real cause. */
   errors: string[]
 }
@@ -210,7 +219,7 @@ export function apply(ctx: ProbeContext, config: ProbeConfig = {}): void {
   /** The objective token the non-empty invocation is dispatched with. */
   const objective = typeof config?.objective === "string" && config.objective.length > 0 ? config.objective : "qa-cellwork-objective-token"
   /** The record document, rewritten after every step so a crash still leaves partial evidence. */
-  const record: ProbeRecord = { at: new Date().toISOString(), objective, cwd: process.cwd(), listed: null, descriptors: null, empty: null, filled: null, cells: [], errors: [] }
+  const record: ProbeRecord = { at: new Date().toISOString(), objective, cwd: process.cwd(), listed: null, descriptors: null, empty: null, filled: null, cells: [], cellsAfterEmpty: [], errors: [] }
   /** Persist the record; a write failure is recorded rather than thrown into the step. */
   const flush = (): void => {
     try { writeFileSync(outFile, JSON.stringify(record, null, 2) + "\n") } catch (error) { record.errors.push("flush: " + String((error as Error)?.message ?? error)) }
@@ -273,8 +282,9 @@ export function apply(ctx: ProbeContext, config: ProbeConfig = {}): void {
     } catch (error) {
       record.errors.push("empty: " + String((error as Error)?.message ?? error))
     }
-    // The cell root must still be EMPTY here: the usage answer is not allowed to create a cell.
-    record.cells = readCells(record.cwd)
+    // The cell root must still be EMPTY here: the usage answer is not allowed to create a cell, and this
+    // is the ONLY moment the pre-invocation state is observable — the next dispatch overwrites `cells`.
+    record.cellsAfterEmpty = readCells(record.cwd)
     flush()
 
     // THE NON-EMPTY INVOCATION is the arm the case gates on: the handler must settle `success`, which

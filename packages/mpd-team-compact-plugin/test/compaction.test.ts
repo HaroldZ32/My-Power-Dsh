@@ -331,6 +331,66 @@ test("t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout
   } finally { cleanup() }
 })
 
+// ── CR R2 (CodeRabbit 4377306758): the barrier obeys the PASS cancellation too ──────────────
+// The barrier is the one wait that never touches the engine, so an aborted pass used to spend the whole
+// `idleWaitMs` budget polling and then record `timeout` — the wrong cause for an audit reader. These two
+// arms pin the fix from both sides: a pass cancelled BEFORE the barrier must not poll at all, and one
+// cancelled DURING the wait must stop at the poll that saw the abort.
+
+test("cr R2: a pass cancelled BEFORE the barrier never polls, and records cancellation not timeout", async () => {
+  /** The fixture handles for a roster with one member still working, so the barrier must wait. */
+  const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
+  try {
+    /** The live team record whose roster keeps the barrier busy. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The caller's controller, aborted BEFORE the pass runs. */
+    const controller = new AbortController()
+    controller.abort()
+    /** Every barrier wait this pass asked for, in milliseconds. */
+    const waits: number[] = []
+    /** The audit of the cancelled pass. */
+    const audit = await compactTeamPass(dsh, team, {
+      terminal: TERMINAL, idleWaitMs: 5_000, idlePollMs: 1,
+      signal: controller.signal,
+      sleep: async (ms: number) => { waits.push(ms) },
+    })
+    // CANCELLATION IS ITS OWN VERDICT: the members did not fail to idle, the caller gave up.
+    expect(audit.outcome).toBe("cancelled")
+    expect(audit.refusedReason).toContain("cancelled")
+    // PROMPTLY: not one poll interval was spent on a pass nobody wants any more.
+    expect(waits).toEqual([])
+    // And nothing was driven.
+    expect(engineCalls).toEqual([])
+  } finally { cleanup() }
+})
+
+test("cr R2: a pass cancelled DURING the barrier stops at the poll that saw the abort", async () => {
+  /** The fixture handles for a roster with one member still working. */
+  const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
+  try {
+    /** The live team record the barrier holds. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The caller's controller, aborted from inside the first poll. */
+    const controller = new AbortController()
+    /** How many poll intervals the barrier asked for. */
+    let polls = 0
+    /** The audit of the pass the caller cancels mid-wait. */
+    const audit = await compactTeamPass(dsh, team, {
+      terminal: TERMINAL, idleWaitMs: 60_000, idlePollMs: 1,
+      signal: controller.signal,
+      sleep: async () => {
+        polls += 1
+        // THE CALLER GIVES UP WHILE THE BARRIER WAITS: the abort must end this wait, not the budget.
+        if (polls === 1) controller.abort()
+      },
+    })
+    expect(audit.outcome).toBe("cancelled")
+    // ONE poll, not sixty seconds' worth: the wait itself is abortable.
+    expect(polls).toBe(1)
+    expect(engineCalls).toEqual([])
+  } finally { cleanup() }
+})
+
 test("t48 BARRIER: an idle member is compacted once every member is idle", async () => {
   /** The fixture handles for a roster whose members are all idle. */
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "idle" } })

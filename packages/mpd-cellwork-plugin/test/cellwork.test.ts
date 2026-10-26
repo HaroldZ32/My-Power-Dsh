@@ -14,7 +14,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFil
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply, inject } from "../src/index.ts"
-import { CAPTAIN_TOOL_NAMES, CHECKPOINT_ALLOW_TOOLS, FILE_WORK_TOOLS, SUBCAPTAIN_FORBIDDEN_NAMES, SUBCAPTAIN_TOOL_NAMES, VERIFIER_DENY_TOOLS, cellworkGuardDecision, type CellworkSeat } from "../src/guard.ts"
+import { CAPTAIN_TOOL_NAMES, CHECKPOINT_ALLOW_TOOLS, FILE_WORK_TOOLS, SUBCAPTAIN_FORBIDDEN_NAMES, SUBCAPTAIN_TOOL_NAMES, VERIFIER_DENY_TOOLS, captainRefusal, cellworkGuardDecision, type CellworkSeat } from "../src/guard.ts"
+import { subteamDirective } from "../src/protocol-core.ts"
 import { CELLWORK_STATE_VERSION, cellDir, cellworkRoot, journalPath, listCellIds, newCellState, readActiveCell, readCell, statePath, writeCell } from "../src/state.ts"
 
 /** One fake live agent: the id the harness fuses into a dispatch, and its session header. */
@@ -723,4 +724,48 @@ test("no context-window literal is baked into the package, and the row names no 
   expect(all).toContain("dsh.registerCommand(")
   expect(all).toContain("dsh.registerTool(")
   expect(all).toContain("dsh.guardTool(")
+})
+
+
+// ── PR #72 CodeRabbit repairs, lane R1 (T17) ────────────────────────────────
+
+test("CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all", () => {
+  /** The harness: no cell exists yet. */
+  const harness = makeHarness()
+  apply(harness.ctx, {})
+  /** An agent handle that carries no session id under any of the three spellings. */
+  const sessionless = { followup: (): void => {} }
+  /** The handler's answer. */
+  const answer = runCommand(harness, "ship the thing", sessionless)
+  expect(answer.kind).toBe("error")
+  expect(answer.text).toContain("no session id")
+  // NOTHING WAS WRITTEN. A record with an empty `captainSessionId` is one this build refuses to read,
+  // and it would fence every later `/cellwork` in the workspace — so the cell root must not exist.
+  expect(existsSync(cellworkRoot(harness.workspace))).toBe(false)
+  expect(listCellIds(harness.workspace)).toEqual([])
+})
+
+test("CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch`", () => {
+  /** The captain's refusal paragraph for a write attempt. */
+  const paragraph = captainRefusal("write")
+  // The recommendation is the owner-only verb cellwork reimplements dispatch for.
+  expect(paragraph).toContain("cellwork_dispatch")
+  expect(paragraph).toContain("owner-only")
+  // The FALSE parenthetical the finding quotes must be gone from the recommendation: the tool it named
+  // falls back to roster order, which can hand review work to its writer.
+  expect(paragraph).not.toContain("dispatch with `agent_teams_dispatch`")
+})
+
+test("CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits", () => {
+  /** The directive a freshly registered sub-cell's captain receives. */
+  const directive = subteamDirective("cell-sub", 1, "cell-parent", "team-1")
+  // The guard REFUSES these for a subcaptain, so a directive that named one would teach a failing call.
+  for (const forbidden of SUBCAPTAIN_FORBIDDEN_NAMES) expect(directive).not.toContain(forbidden)
+  // The leave path is the allowed one: mail the PARENT captain, who owns the stop.
+  expect(directive).toContain("cellwork_send")
+  for (const allowed of SUBCAPTAIN_TOOL_NAMES) expect(directive).toContain(allowed)
+  // The nesting facts stay stated: which cell is the parent and how deep the box sits.
+  expect(directive).toContain("cell-sub")
+  expect(directive).toContain("cell-parent")
+  expect(directive).toContain("team-1")
 })

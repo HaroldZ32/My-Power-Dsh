@@ -2217,11 +2217,39 @@ async function compactTeamPass(dsh, team, options) {
   }
   const idleWaitMs = options.idleWaitMs ?? DEFAULT_IDLE_WAIT_MS;
   const idlePollMs = options.idlePollMs ?? DEFAULT_IDLE_POLL_MS;
+  const passSignal = options.signal;
   const deadline = now() + idleWaitMs;
+  const waitOnePoll = (ms) => {
+    if (passSignal === undefined)
+      return sleep(ms);
+    if (passSignal.aborted)
+      return Promise.resolve();
+    return new Promise((resolve3) => {
+      const finish = () => {
+        passSignal.removeEventListener("abort", finish);
+        resolve3();
+      };
+      passSignal.addEventListener("abort", finish, { once: true });
+      sleep(ms).then(finish, finish);
+    });
+  };
   let allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)));
-  while (!allIdle && now() < deadline) {
-    await sleep(idlePollMs);
+  while (!allIdle && now() < deadline && passSignal?.aborted !== true) {
+    await waitOnePoll(idlePollMs);
     allIdle = live.every((entry) => agentIsIdle(dsh.liveAgent(entry.member.id)));
+  }
+  if (passSignal?.aborted === true) {
+    const stillBusy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name);
+    return {
+      ...base,
+      outcome: "cancelled",
+      refusedReason: `the pass was cancelled while waiting for every member to be idle${stillBusy.length === 0 ? "" : `; still busy: ${stillBusy.join(", ")}`}`,
+      members: resolved.map((entry) => ({
+        member: entry.member.name,
+        sessionId: entry.member.id,
+        ...entry.staged ? { outcome: "skipped-staged", reason: "member has no session id yet (not spawned)" } : entry.agent === undefined ? { outcome: "skipped-not-live", reason: "no live Agent for this session id" } : { outcome: "failed", failureCode: "cancelled", error: "the pass was cancelled during the idle barrier; nothing was compacted for this member" }
+      }))
+    };
   }
   if (!allIdle) {
     const busy = live.filter((entry) => !agentIsIdle(dsh.liveAgent(entry.member.id))).map((entry) => entry.member.name);

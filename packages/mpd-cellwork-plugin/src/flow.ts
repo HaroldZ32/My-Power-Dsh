@@ -13,7 +13,7 @@
 import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type CellReadFailure, type CellState, type CellMemberRecord } from "./state"
 import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
-import { readRequirements, validateRequirementsText, writeRequirements } from "./requirements"
+import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
 import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
@@ -234,8 +234,6 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     resolveTaskWindow({ routeOf, catalog: () => dsh.llmCatalog(), config }, role)
   /** The caller's context for one dispatch. */
   const callerFor = (exec: DshToolExec): CallerContext => callerContext(dsh, exec, { teams })
-  /** Read one live team record by id, or undefined when the service cannot answer. */
-  const recordFor = (teamId: string): Record<string, unknown> | undefined => recordOf(teams(), dsh.workspaceRoot(), teamId)
   /**
    * Persist one transition: journal first, then the record (a torn journal costs one history line).
    *
@@ -373,7 +371,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           const accepted = ((): string => {
             try { return readRequirements(caller.workspace, state.cellId) ?? "" } catch { return "" }
           })()
-          if (accepted === text_) {
+          if (accepted === storedRequirementsText(text_)) {
             return { ok: true, action, revision: state.requirementsRevision, splitStale: state.splitStale, alreadyFinalized: true, sections: validation.sections, requirementsPath: path }
           }
           return { ok: false, error: "cellwork_requirements: revision " + String(state.requirementsRevision) + " is already accepted and the document CHANGED — use {action:\"update\"} to revise it (an accepted revision is never rewritten in place)" }
@@ -754,7 +752,11 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         captainAgent: exec.agent,
         split: stored.verdict,
         personaFor,
-        recordFor,
+        // BOUND TO THE CALLER'S WORKSPACE, resolved from THIS dispatch's exec: `dsh.workspaceRoot()`
+        // without it falls back to `DSH_WORKSPACE_ROOT`/`process.cwd()`, and a host serving a session
+        // whose workspace differs from the process cwd would read another tree's board (or none at all)
+        // for the dispatch pass and for closing the open splitter row.
+        recordFor: (teamId: string) => recordOf(teams(), caller.workspace, teamId),
         now: new Date(),
       })
       if (!activated.ok) return { ok: false, error: activated.error }

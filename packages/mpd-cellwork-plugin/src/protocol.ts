@@ -444,7 +444,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
       if (caller.cell === null || caller.member === "") return { ok: false, error: "cellwork_subteam: this session belongs to no active cell" }
-      if (caller.seat?.mode !== "subcaptain") return { ok: false, error: "cellwork_subteam is SUBCAPTAIN ONLY: this session is " + JSON.stringify(caller.member) + " in mode " + JSON.stringify(caller.seat?.mode ?? "none") + " — a sub-cell is registered by a member the plugin promoted after its handoff+compaction" }
+      // TWO SEATS MAY NEST, and they are the same person seen from two frames: a promoted member (a
+      // `subcaptain` seat in the PARENT cell) and the CAPTAIN of a cell that is itself a sub-cell —
+      // which is where R1's tree resolution puts that member once its own cell exists. The TOP cell's
+      // captain is excluded, because promotion is what earns a sub-cell.
+      /** Whether this caller may register a sub-cell. */
+      const mayNest = caller.seat?.mode === "subcaptain" || (caller.seat?.mode === "captain" && caller.cell.parentCellId !== null)
+      if (!mayNest) return { ok: false, error: "cellwork_subteam is SUBCAPTAIN ONLY: this session is " + JSON.stringify(caller.member) + " in mode " + JSON.stringify(caller.seat?.mode ?? "none") + " — a sub-cell is registered by a member the plugin promoted after its handoff+compaction (or by the captain of a sub-cell, to nest deeper)" }
       /** The parent cell. */
       const parent = caller.cell
       if (parent.phase === "stopped") return { ok: false, error: "cellwork_subteam: cell " + parent.cellId + " is stopped and archived" }

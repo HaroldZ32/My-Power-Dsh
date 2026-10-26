@@ -7,7 +7,7 @@
 // touches the repository's own state: every workspace is a fresh temp directory, and every assertion reads
 // what the plugin wrote there.
 import { test, expect } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
@@ -78,6 +78,24 @@ interface Harness {
   teamRecords: Map<string, Record<string, any>>
   /** A member's session id by board name. */
   handles: Map<string, string>
+  /** Every read the plugin made of a team record, with the workspace it asked about. */
+  teamReads: Array<{ workspace: string; teamId: string }>
+  /**
+   * Answer team reads for ONE workspace only, or for every workspace again when called with undefined.
+   *
+   * Exists so a workspace arm can prove WHICH tree the row read: with the gate on the caller's
+   * workspace, a read that used the process root finds nothing.
+   * @param workspace - the one workspace the double answers, or undefined to lift the gate.
+   */
+  teamsOnlyFor: (workspace: string | undefined) => void
+  /**
+   * Make the NEXT team-plane call of one action fail (or, for `approve`, stop after one member).
+   *
+   * Exists so an arm can inject a mid-staging failure at the exact point the finding names, instead of
+   * simulating the partial state by hand.
+   * @param action - the `agent_teams_plan` action to break (`add_member`, `create_task`, `approve`).
+   */
+  failPlan: (action: string) => void
 }
 
 /** The roster the fake `mpdRoles` service serves, with distinguishable persona texts. */
@@ -139,6 +157,14 @@ function makeHarness(): Harness {
   const spawns: Array<{ label: string; maxDepth: unknown; prompt: string }> = []
   /** Live team records. */
   const teamRecords = new Map<string, Record<string, any>>()
+  /** Every team read, with the workspace asked about. */
+  const teamReads: Array<{ workspace: string; teamId: string }> = []
+  /** The one workspace the double answers, when an arm narrowed it. */
+  let teamsGate: string | undefined
+  /** The plan action the NEXT call must fail, or "" when none is queued. */
+  let planFailure = ""
+  /** Whether the next `approve` must stop after raising only its first member. */
+  let approveStopsAfterOne = false
   /** Member handles by name. */
   const handles = new Map<string, string>()
   /** The staged plan, when one exists. */
@@ -159,6 +185,12 @@ function makeHarness(): Harness {
     if (name === "agent_teams_plan") {
 /** The plan action the fake answers. */
       const action = String(args.action ?? "")
+      // THE INJECTED STAGING FAILURE: one call of the named action answers as an error, which is the
+      // mid-staging break a partial-team arm needs.
+      if (planFailure !== "" && planFailure === action) {
+        planFailure = ""
+        return { isError: true, value: { error: "the injected " + action + " failure" } }
+      }
       if (action === "status") return { isError: false, value: { plan, team: record, members: record?.members ?? [], tasks: record?.tasks ?? [] } }
       if (action === "create") {
         plan = { planId: "plan-1", name: args.name, description: args.description, approval: "required", members: [], tasks: [] }
@@ -198,6 +230,18 @@ function makeHarness(): Harness {
       }
       if (action === "approve") {
         if (plan === null) throw new Error("no plan")
+        if (approveStopsAfterOne) {
+          approveStopsAfterOne = false
+          // THE `stoppedAt` SHAPE: the team exists, its first member was raised, the second was not.
+          record = {
+            teamId: "team-1",
+            members: [{ id: "M1", name: plan.members[0]?.name, role: plan.members[0]?.role, status: "running", executorRef: "handle-" + String(plan.members[0]?.name) }],
+            tasks: plan.tasks.map((task: Record<string, any>, index: number) => ({ ...task, id: "T" + String(index + 1), status: "pending" })),
+          }
+          teamRecords.set("team-1", record)
+          plan = { ...plan, approvedAt: "now" }
+          return { isError: false, value: { team: record, stoppedAt: "the splitter could not be raised", created: { members: record.members.map((member: Record<string, any>) => ({ name: member.name, id: member.executorRef })), tasks: [] } } }
+        }
         record = {
           teamId: "team-1",
           members: plan.members.map((member: Record<string, any>, index: number) => {
@@ -252,7 +296,19 @@ function makeHarness(): Harness {
     tools: toolsService,
     commands: commandsService,
     agents: { list: (): FakeAgent[] => [captain] },
-    mpdTeams: { get: (_workspace: string, teamId: string): unknown => teamRecords.get(teamId) },
+    mpdTeams: {
+      /**
+       * Answer one team read, recording WHICH workspace was asked about.
+       * @param workspace - the workspace the caller passed.
+       * @param teamId - the team asked for.
+       * @returns the record, or undefined when the arm gated the double to another workspace.
+       */
+      get: (workspace: string, teamId: string): unknown => {
+        teamReads.push({ workspace, teamId })
+        if (teamsGate !== undefined && workspace !== teamsGate) return undefined
+        return teamRecords.get(teamId)
+      },
+    },
     mpdRoles: {
       list: (): Array<{ name: string; persona: string }> => ROSTER.map((entry) => ({ ...entry })),
       get: (key: string): { name: string; persona: string } | null => ROSTER.find((entry) => entry.name.toLowerCase() === key.toLowerCase()) ?? null,
@@ -297,7 +353,16 @@ function makeHarness(): Harness {
     get(service: string): unknown { return services[service] },
   } as Parameters<typeof apply>[0]
   apply(ctx, {})
-  return { ctx, workspace, captain, tools, commands, events, calls, sends, spawns, teamRecords, handles }
+  return {
+    ctx, workspace, captain, tools, commands, events, calls, sends, spawns, teamRecords, handles, teamReads,
+    teamsOnlyFor: (only: string | undefined): void => { teamsGate = only },
+    failPlan: (action: string): void => {
+      // `approve` has its OWN break: the approval still runs and stops after one member (the `stoppedAt`
+      // shape). Every other action answers as a plain error.
+      if (action === "approve") approveStopsAfterOne = true
+      else planFailure = action
+    },
+  }
 }
 
 /**
@@ -891,9 +956,11 @@ test("B8: cellwork_subteam enforces depthMax and registers the sub-cell when it 
   expect(registered.ok).toBe(true)
   expect(registered.depth).toBe(1)
   expect(readCell(harness.workspace, String(registered.cellId)).ok).toBe(true)
-  // A cell already at the cap refuses the next level with the exact bound.
-  /** The record at the depth cap. */
-  const deep = readCell(harness.workspace, cellId)
+  // A cell already at the cap refuses the next level with the exact bound. THE CAP IS WRITTEN ON THE
+  // CELL THE PLANNER NOW CAPTAINS: R1 resolves a promoted subcaptain to its OWN sub-cell, not to the
+  // parent where it is a plain subcaptain member.
+  /** The promoted planner's own sub-cell, which is the seat this call resolves to. */
+  const deep = readCell(harness.workspace, String(registered.cellId))
   if (!deep.ok) throw new Error("expected a record")
   writeCell(harness.workspace, { ...deep.state, depth: DEFAULT_CELLWORK_CONFIG.depthMax })
   /** The refused registration. */
@@ -1411,4 +1478,220 @@ test("Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and 
   expect(superseded.length).toBe(1)
   expect(superseded[0].revision).toBe(1)
   expect(superseded[0].by).toBe(2)
+})
+
+
+// ── PR #72 CodeRabbit repair, lane R1 (T17) ─────────────────────────────────
+
+test("CR 4377306694: a repeated finalize of the SAME content (no trailing newline) is IDEMPOTENT, not CHANGED", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  // COMPLETE_REQUIREMENTS carries NO trailing newline; the writer adds one, so the comparison must
+  // normalize BOTH sides or the same document reads as changed.
+  expect(COMPLETE_REQUIREMENTS.endsWith("\n")).toBe(false)
+  /** The first finalize. */
+  const first = await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  expect(first.ok).toBe(true)
+  expect(first.alreadyFinalized).toBe(false)
+  /** The SAME document again, byte for byte. */
+  const again = await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  expect(again.ok).toBe(true)
+  expect(again.alreadyFinalized).toBe(true)
+  expect(again.revision).toBe(1)
+  // A genuinely CHANGED document stays refused: update is what moves a revision.
+  const changed = await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS + "\nmore\n" }, plannerAgent(harness))
+  expect(changed.ok).toBe(false)
+  expect(String(changed.error)).toContain("update")
+})
+
+
+// ── PR #72 CodeRabbit repairs, lane R1 (T17): the cell TREE, not just its oldest cell ─────────────
+
+test("CR 4377306675: a promoted subcaptain resolves to ITS OWN sub-cell — dispatch/supervise/activate accepted — and the captain stays on its own cell", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The parent cell. */
+  const cellId = await startCell(harness)
+  // Promote the planner the way a handoff does, then let it register its own sub-cell.
+  /** The parent record, with the planner promoted. */
+  const parent = readCell(harness.workspace, cellId)
+  if (!parent.ok) throw new Error("expected a record")
+  writeCell(harness.workspace, { ...parent.state, members: { ...parent.state.members, "cell-planner": { ...parent.state.members["cell-planner"], mode: "subcaptain" } } })
+  /** The registered sub-cell. */
+  const registered = await runTool(harness, "cellwork_subteam", { objective: "child objective" }, plannerAgent(harness))
+  expect(registered.ok).toBe(true)
+  /** The sub-cell's id. */
+  const subcellId = String(registered.cellId)
+  // THE RESOLUTION: the promoted member's session is the CAPTAIN of the sub-cell AND a subcaptain
+  // member of the parent; the deeper seat is the one it holds.
+  /** The promoted member's own view. */
+  const own = await runTool(harness, "cellwork_status", {}, plannerAgent(harness))
+  expect(own.cellId).toBe(subcellId)
+  expect((own.seat as { mode?: string } | null)?.mode).toBe("captain")
+  // THE CAPTAIN still resolves to ITS cell, never to the sub-cell.
+  /** The captain's view. */
+  const captainView = await runTool(harness, "cellwork_status", {}, harness.captain)
+  expect(captainView.cellId).toBe(cellId)
+  expect((captainView.seat as { mode?: string } | null)?.mode).toBe("captain")
+  // THE THREE CALLS THE FINDING NAMES are no longer refused with CAPTAIN-ONLY on the parent: they now
+  // run against the sub-cell, where this session really is the captain.
+  for (const toolName of ["cellwork_supervise", "cellwork_activate", "cellwork_dispatch"]) {
+    /** That call's answer. */
+    const answer = await runTool(harness, toolName, {}, plannerAgent(harness))
+    expect(String(answer.error ?? "")).not.toContain("CAPTAIN-ONLY")
+  }
+})
+
+test("CR 4377306675: the parent REFUSES a silent stop while its sub-cell is live, and the forced way is journaled", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The parent cell. */
+  const cellId = await startCell(harness)
+  /** The parent record, with the planner promoted. */
+  const parent = readCell(harness.workspace, cellId)
+  if (!parent.ok) throw new Error("expected a record")
+  writeCell(harness.workspace, { ...parent.state, members: { ...parent.state.members, "cell-planner": { ...parent.state.members["cell-planner"], mode: "subcaptain" } } })
+  /** The live sub-cell. */
+  const registered = await runTool(harness, "cellwork_subteam", { objective: "child objective" }, plannerAgent(harness))
+  expect(registered.ok).toBe(true)
+  /** The sub-cell's id. */
+  const subcellId = String(registered.cellId)
+  // The captain's plain stop is refused, and the refusal NAMES the live sub-cell (so an operator can
+  // stop it by id, as ITS captain — the only session the guard lets act on it).
+  /** The refused stop. */
+  const refused = await runTool(harness, "cellwork_stop", {}, harness.captain)
+  expect(refused.ok).toBe(false)
+  expect(String(refused.error)).toContain(subcellId)
+  // The exception is available, and taking it is recorded.
+  /** The forced stop. */
+  const forced = await runTool(harness, "cellwork_stop", { force: true, reason: "wave closed" }, harness.captain)
+  expect(forced.ok).toBe(true)
+  expect(forced.forced).toBe(true)
+})
+
+test("CR 4377306686: the team record is read from the CALLER's workspace, not the process root", async () => {
+  /** The harness with a finalized, accepted cell. */
+  const harness = makeHarness()
+  /** The started cell. */
+  await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  /** The accepted split. */
+  const split = await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  expect(split.accepted).toBe(true)
+  // A SECOND workspace: the caller's session lives there, and the cell's own tree is copied into it. The
+  // PROCESS ROOT (DSH_WORKSPACE_ROOT) still points at the harness workspace, so the two differ.
+  /** The caller's own workspace. */
+  const callerWorkspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-caller-"))
+  cpSync(join(harness.workspace, ".mpd"), join(callerWorkspace, ".mpd"), { recursive: true })
+  // The team service answers ONLY for the caller's workspace: a read through the process root finds
+  // nothing, which is exactly the failure the finding describes.
+  harness.teamsOnlyFor(callerWorkspace)
+  /** The captain, whose session header puts its workspace at the second tree. */
+  const caller: FakeAgent = { id: "session-captain", session: { id: "session-captain", header: { cwd: callerWorkspace } }, followup: (): void => { harness.events.push("submit") } }
+  /** Where the read log stood before the activation, so only ITS reads are judged. */
+  const readsBefore = harness.teamReads.length
+  /** The activation, which dispatches from the team record. */
+  const activated = await runTool(harness, "cellwork_activate", {}, caller)
+  expect(String(activated.error ?? "")).not.toContain("could not be read")
+  /** The team reads THIS call made. */
+  const activationReads = harness.teamReads.slice(readsBefore)
+  // EVERY read of THIS team went to the caller's workspace — never to the process root.
+  expect(activationReads.some((read) => read.workspace === callerWorkspace && read.teamId === "team-1")).toBe(true)
+  expect(activationReads.filter((read) => read.teamId === "team-1" && read.workspace !== callerWorkspace)).toEqual([])
+})
+
+
+// ── PR #72 CodeRabbit repair, lane R1 (T17): partial staging is preserved and recoverable ──────────
+
+/**
+ * Create a cell through the command, and return its id.
+ *
+ * `cellwork_start` stages the team, so an arm that wants to break the staging must create the cell
+ * WITHOUT starting it — which is what the command alone does.
+ * @param harness - the harness whose command is invoked.
+ * @returns the new cell's id.
+ */
+function createCellOnly(harness: Harness): string {
+  /** The one captured command. */
+  const command = harness.commands.find((candidate) => candidate.name === "cellwork")
+  if (command === undefined) throw new Error("no command captured")
+  expect(command.handler({ rawInput: "ship the widget", agent: harness.captain }).kind).toBe("success")
+  /** The workspace's active cell, which the command just wrote. */
+  const active = readActiveCell(harness.workspace)
+  if (!active.ok || active.cell === null) throw new Error("no active cell after the command")
+  return active.cell.state.cellId
+}
+
+test("CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  // BOTH members stage, then the requirements task fails: a genuinely PARTIAL plan, not an empty slot.
+  harness.failPlan("create_task")
+  /** The cell the command created (the command stages nothing). */
+  const cellId = createCellOnly(harness)
+  /** The failed start. */
+  const failed = await runTool(harness, "cellwork_start", {})
+  expect(failed.ok).toBe(false)
+  expect(String(failed.error)).toContain("RESUMES")
+  // THE RECORDED OUTCOME: the journal names the partial slot, which is how a reader (and the retry)
+  // knows the half-staged plan belongs to THIS cell.
+  expect(readFileSync(journalPath(harness.workspace, cellId), "utf8")).toContain("planning-team-partial")
+  expect(readFileSync(journalPath(harness.workspace, cellId), "utf8")).toContain("cell " + cellId)
+  // THE RECOVERY: the same call resumes that slot — ONE plan, and each member appended exactly once.
+  /** The retried start. */
+  const retried = await runTool(harness, "cellwork_start", {})
+  expect(retried.ok).toBe(true)
+  expect(retried.staged).toBe(true)
+  expect(retried.teamMembers).toBe(2)
+  expect(harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "create")).toHaveLength(1)
+  expect(harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "add_member").map((call) => String((call.arguments.member as Record<string, unknown>).name))).toEqual(["cell-planner", "cell-splitter"])
+  expect(harness.teamRecords.get("team-1")?.members).toHaveLength(2)
+})
+
+test("CR 4377316529: an approval that stops mid-way PERSISTS the team id and its members, and the retry reuses that team", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  // The approval raises the planner and stops: the team EXISTS, the splitter never arrived.
+  harness.failPlan("approve")
+  /** The cell the command created. */
+  const cellId = createCellOnly(harness)
+  /** The failed start. */
+  const failed = await runTool(harness, "cellwork_start", {})
+  expect(failed.ok).toBe(false)
+  // THE PRESERVED OUTCOME: the cell records the team the approval managed to create, so no later call
+  // can mistake that team for a stranger's slot.
+  /** The record after the failure. */
+  const afterFailure = readCell(harness.workspace, cellId)
+  expect(afterFailure.ok && afterFailure.state.teamId).toBe("team-1")
+  // THE RECOVERY: the retry takes the idempotent path on that SAME team and approves nothing twice.
+  /** The retried start. */
+  const retried = await runTool(harness, "cellwork_start", {})
+  expect(retried.ok).toBe(true)
+  expect(retried.teamId).toBe("team-1")
+  expect(harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "approve")).toHaveLength(1)
+})
+
+test("CR 4377316529: an approved-but-UNRECORDED team is recovered and its missing member repaired, never re-approved", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  // The approval stops with the splitter unraised.
+  harness.failPlan("approve")
+  /** The cell the command created. */
+  const cellId = createCellOnly(harness)
+  await runTool(harness, "cellwork_start", {})
+  // THE SHAPE THE FINDING DESCRIBES: the approved team exists, the plan is APPROVED, and the cell still
+  // claims no team (a build that failed before persisting it). Simulated by clearing those fields.
+  /** The record as the failed build left it. */
+  const record = readCell(harness.workspace, cellId)
+  if (!record.ok) throw new Error("expected a record")
+  writeCell(harness.workspace, { ...record.state, teamId: "", members: {} })
+  // THE RECOVERY: the approved plan is OUR slot, so the team is recovered from it and the member the
+  // approval never raised is APPENDED to the live team.
+  /** The recovered start. */
+  const recovered = await runTool(harness, "cellwork_start", {})
+  expect(recovered.ok).toBe(true)
+  expect(recovered.teamId).toBe("team-1")
+  expect(harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "add_member").map((call) => String((call.arguments.member as Record<string, unknown>).name))).toContain("cell-splitter")
+  expect(harness.calls.filter((call) => call.name === "agent_teams_plan" && call.arguments.action === "approve")).toHaveLength(1)
 })

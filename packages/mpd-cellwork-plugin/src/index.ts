@@ -256,6 +256,26 @@ function liveTasks(record: Record<string, unknown> | undefined): string[] {
     .map((task) => String(task.id ?? "?") + " (" + String(task.subject ?? "") + ")")
 }
 
+/**
+ * The sub-cells of one cell that are still running.
+ *
+ * A sub-cell whose record cannot be read is NOT counted as live: the fence exists to protect a cell
+ * somebody can still act on, and an unreadable record is reported by the readers that hit it.
+ * @param workspace - the workspace the cells live in.
+ * @param ids - the sub-cell ids the parent recorded.
+ * @returns the ids whose record reads and whose phase is not `stopped`, in recorded order.
+ */
+function liveSubcellIds(workspace: string, ids: readonly string[]): string[] {
+  /** The live sub-cell ids. */
+  const live: string[] = []
+  for (const id of ids) {
+    /** That sub-cell's record. */
+    const child = readCell(workspace, id)
+    if (child.ok && child.state.phase !== "stopped") live.push(id)
+  }
+  return live
+}
+
 /** The sentence a refusing read answers with, naming the absolute path and what was wrong. */
 function refusalText(failure: CellReadFailure): string {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed; repair or archive that file first"
@@ -387,11 +407,12 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       /** The record being reported; resolved by exactly one of the two branches below. */
       let state: CellState
       if (requested === "") {
-        /** The workspace's active cell, or the refusal that replaced it. */
-        const active = readActiveCell(caller.workspace)
-        if (!active.ok) return { ok: false, error: refusalText(active), path: active.path }
-        if (active.cell === null) return { ok: false, error: "cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`" }
-        state = active.cell.state
+        // THE CALLER'S OWN CELL, not the workspace's oldest one (R1): a promoted subcaptain holds its
+        // seat in the SUB-cell, and reporting the parent there would describe a cell this caller is only
+        // a member of. `callerContext` resolves the tree once, so every tool reports the same cell.
+        if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
+        if (caller.cell === null) return { ok: false, error: "cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`" }
+        state = caller.cell
       } else {
         /** The named cell's own record. */
         const single = readCell(caller.workspace, requested)
@@ -494,7 +515,16 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           config: cfg,
           now,
         })
-        if (!staged.ok) return { ok: false, error: staged.error ?? "cellwork_start: staging the planning team failed" }
+        if (!staged.ok) {
+          // A PARTIAL STAGING IS PRESERVED (R1): whatever the failed pass wrote — a plan slot, some
+          // members, an already-approved team — is written to the CELL RECORD and journaled, so the next
+          // call RESUMES that same slot instead of refusing it and a half-team never sits behind a
+          // record that claims no team at all. The refusal names the recovery so a model can act on it.
+          /** The record carrying whatever the failed pass managed to approve. */
+          const partialState: CellState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) } }
+          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now)
+          return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" }
+        }
         /** The record carrying the approved team and the two planning members. */
         stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) } }
         recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {} }, now)
@@ -560,11 +590,12 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       /** The record being stopped; resolved by exactly one of the two branches below. */
       let state: CellState
       if (requested === "") {
-        /** The workspace's active cell, or the refusal that replaced it. */
-        const active = readActiveCell(workspace)
-        if (!active.ok) return { ok: false, error: refusalText(active), path: active.path }
-        if (active.cell === null) return { ok: false, error: "cellwork_stop: no cell is active in this workspace" }
-        state = active.cell.state
+        // THE CELL THE CALLER HOLDS A SEAT IN (R1). A sub-cell's captain stops ITS cell; the parent's
+        // captain stops the parent, which the live-sub-cell fence below guards. `caller.cell` is the
+        // oldest live cell only for a session that holds no seat anywhere.
+        if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
+        if (caller.cell === null) return { ok: false, error: "cellwork_stop: no cell is active in this workspace" }
+        state = caller.cell
       } else {
         /** The named cell's own record. */
         const single = readCell(workspace, requested)
@@ -576,6 +607,15 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
       }
       if (state.phase === "stopped") {
         return { ok: true, cellId: state.cellId, archived: true, forced: false, reason: state.stopReason === "" ? "already stopped" : state.stopReason, inProgress: [], statePath: statePath(workspace, state.cellId) }
+      }
+      // A CELL WITH A LIVE SUB-CELL MAY NOT BE STOPPED SILENTLY (R1). The sub-cell's captain is the
+      // only session the guard lets act on it, so stopping the parent first would leave a cell nobody
+      // can reach: the sub-cell is stopped first (by id, as ITS captain), or the captain takes the
+      // exception with force:true and the journal records that it did.
+      /** The sub-cells of this cell that are still running. */
+      const liveChildren = liveSubcellIds(workspace, state.subcellIds)
+      if (liveChildren.length > 0 && input.force !== true) {
+        return { ok: false, error: "cellwork_stop refused: " + String(liveChildren.length) + " sub-cell(s) of " + state.cellId + " are still active (" + liveChildren.join(", ") + "). Stop each one first, by id and as ITS captain (`cellwork_stop {cellId: \"...\"}`), or pass force:true with a reason — a forced stop is journaled" }
       }
       /** The live tasks a non-forced stop must refuse on. */
       const inProgress = liveTasks(teamRecordOf(ctx, workspace, state.teamId))
@@ -607,6 +647,14 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
     /** The user's objective from the invocation, trimmed. */
     const objective = String(invocation?.rawInput ?? "").trim()
     if (objective === "") return { kind: "error", text: CELLWORK_USAGE }
+    // THE SESSION ID IS CHECKED BEFORE ANYTHING IS WRITTEN. `normalizeCellState` treats an empty
+    // `captainSessionId` as an identity failure, so a record written without one is a record no later
+    // call can read — and every `/cellwork` after it would refuse with "cannot be read", leaving a cell
+    // that only a hand edit could clear. A sessionless agent therefore gets a teaching refusal and the
+    // workspace is left untouched.
+    /** The invoking agent's session id, which becomes this cell's captain. */
+    const captainSessionId = sessionIdOf(invocation?.agent)
+    if (captainSessionId === "") return { kind: "error", text: "cellwork refused: the invoking agent carries no session id, so no captain can be recorded — nothing was written" }
     /** The command's workspace, resolved from the invoking agent. */
     const workspace = dsh.workspaceRoot({ agent: invocation?.agent } as DshToolExec)
     /** The workspace's current cell scan. */
@@ -621,7 +669,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
     /** The instant this cell is minted at, which its id also encodes. */
     const now = new Date()
     /** The fresh record, phase `requirements`, capturing the captain session. */
-    const created = newCellState({ cellId: freeCellId(workspace, now), objective, captainSessionId: sessionIdOf(invocation?.agent), now })
+    const created = newCellState({ cellId: freeCellId(workspace, now), objective, captainSessionId, now })
     writeCell(workspace, created)
     recordTransition(workspace, created, { event: "start", phase: created.phase, objective, captainSessionId: created.captainSessionId }, now)
     /** The activation directive submitted as the invoking agent's own next user turn. */

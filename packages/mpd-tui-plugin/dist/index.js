@@ -6375,6 +6375,15 @@ var GROUP_BORDER = 1;
 function drawnColumns(columns) {
   return columns.filter((column) => column.length > 0);
 }
+function drawnRankOf(columns) {
+  const used = drawnColumns(columns);
+  const rankOf = new Map;
+  used.forEach((column, index) => {
+    for (const child of column)
+      rankOf.set(child.id, index);
+  });
+  return { rankOf, count: used.length };
+}
 function measureFrame(columns, sizes, longEdges, bordered) {
   const used = drawnColumns(columns);
   const widest = used.reduce((max, column) => {
@@ -6880,7 +6889,7 @@ function drawGroupedBoxes(tasks, groups, focus, nodeWidth, servedRanks, widestLa
     const childSizes = new Map;
     for (const child of frame.children)
       childSizes.set(child.id, sizeOfChild(child));
-    const rankOfBox = ranksOf(frame).rankOf;
+    const rankOfBox = drawnRankOf(columns).rankOf;
     const longEdges = (edges.get(frame.id) ?? []).filter((edge) => {
       const from2 = rankOfBox.get(edge.from);
       const to = rankOfBox.get(edge.to);
@@ -6983,7 +6992,7 @@ function drawGroupedBoxes(tasks, groups, focus, nodeWidth, servedRanks, widestLa
     const list = edges.get(frame.id) ?? [];
     if (list.length === 0)
       return;
-    const rankOfBox = ranksOf(frame).rankOf;
+    const rankOfBox = drawnRankOf(columns).rankOf;
     const covered = columns.map((column) => column.map((child) => rects.get(child.id)));
     const laneRows = new Map;
     for (const edge of list) {

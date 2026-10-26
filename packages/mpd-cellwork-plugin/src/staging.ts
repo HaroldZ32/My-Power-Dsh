@@ -73,6 +73,18 @@ export interface StageResult {
   members?: Record<string, CellMemberRecord>
   /** The board ids of the two tasks. */
   tasks?: { requirementsId?: string; splitId?: string }
+  /**
+   * The name of the plan slot this cell stages under (`"cell " + cellId`), so a caller can journal WHICH
+   * plan a partial failure left behind and a retry can recognize its own slot.
+   */
+  planName?: string
+  /**
+   * Whether the staging stopped after WRITING something (a plan, a member, a task, or an approved team).
+   *
+   * A partial result still carries what EXISTS — `teamId` and `members` when the approval got that far —
+   * so the caller can record it and the next call can resume instead of refusing.
+   */
+  partial?: boolean
 }
 
 /** A loosely-read tool value: the team tools answer records, and every field is checked before use. */
@@ -260,15 +272,23 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     if (!result.ok) return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" }
     return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value as ToolValue : {} }
   }
+  /** THE NAME THIS CELL ALWAYS STAGES UNDER, and the key a retry recognizes its own slot by. */
+  const planName = "cell " + deps.cell.cellId
   /** The session's current plan/team state, read before anything is staged. */
   const status = await call({ action: "status" })
   if (!status.ok) return { ok: false, error: "cellwork could not read the session's team state: " + status.error }
   /** The plan already staged for this session, when one exists. */
   const staged = status.value.plan
-  if (typeof staged === "object" && staged !== null) {
-    /** The staged plan as a record. */
-    const plan = staged as ToolValue
-    if (typeof plan.approvedAt === "string" && plan.approvedAt !== "") {
+  /** The staged plan read as a record, or undefined when the slot is free. */
+  const plan = typeof staged === "object" && staged !== null ? staged as ToolValue : undefined
+  /** Whether the plan in the slot is THIS cell's, so it may be RESUMED instead of refused. */
+  const resumable = plan !== undefined && textField(plan, "name") === planName
+  /** Whether that plan is already approved, which means the TEAM exists and only a record may be missing. */
+  const approvedAlready = resumable && textField(plan, "approvedAt") !== ""
+  // A PLAN THAT IS NOT OURS STILL REFUSES, exactly as before: cellwork needs a free slot, and resuming
+  // somebody else's plan would stage this cell's members onto another cell's board.
+  if (plan !== undefined && !resumable) {
+    if (textField(plan, "approvedAt") !== "") {
       return { ok: false, error: "a team plan is already APPROVED in this session; cellwork needs the staging slot free — finish or archive that team first" }
     }
     /** How many rows that plan already carries. */
@@ -276,40 +296,84 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     if (stagedRows > 0) {
       return { ok: false, error: "a different team plan is already staged in this session (" + String(stagedRows) + " row(s)); approve or delete it before starting cellwork" }
     }
-  } else if (typeof status.value.team === "object" && status.value.team !== null) {
-    return { ok: false, error: "this session already drives team " + textField(status.value.team as ToolValue, "teamId") + "; cellwork requires its own fresh team" }
   }
-  // No usable plan is staged: create one and fill it. `approval:"required"` is the default, and the
-  // explicit approve call below is what executes it (nothing is spawned before that).
-  if (typeof staged !== "object" || staged === null) {
+  // A PLAN LEFT BY AN EARLIER ATTEMPT OF THIS SAME CELL IS RESUMED, not refused: a half-staged team is
+  // what a failed approval leaves behind, and refusing it would strand a cell nobody can start.
+  if (approvedAlready) {
+    /** The approved team the status answer carries, when it carries one. */
+    const liveTeam = typeof status.value.team === "object" && status.value.team !== null ? status.value.team as ToolValue : undefined
+    /** The team id the approval minted. */
+    const recoveredId = textField(liveTeam, "teamId")
+    if (recoveredId === "") {
+      return { ok: false, error: "the planning plan " + planName + " is APPROVED but the session reports no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying", planName, partial: true }
+    }
+    /** The roster rows that team carries. */
+    const roster = Array.isArray(liveTeam?.members) ? liveTeam.members.filter((row) => typeof row === "object" && row !== null) as Array<ToolValue> : []
+    /** The planning rows recovered from that roster, keyed by name. */
+    const recovered: Record<string, CellMemberRecord> = {}
+    for (const [name, role] of [[PLANNER_MEMBER, PLANNER_ROLE], [SPLITTER_MEMBER, SPLITTER_ROLE]] as const) {
+      /** That member's live row, when the approval raised it. */
+      const row = roster.find((candidate) => textField(candidate, "name") === name)
+      if (row !== undefined) {
+        recovered[name] = livePlanningMemberRow(name, role, textField(row, "executorRef") === "" ? textField(row, "id") : textField(row, "executorRef"), deps.cell, deps.now)
+        continue
+      }
+      // THE REPAIR THE FINDING ASKS FOR: the approval stopped before raising this member. A live team's
+      // Lead may append it, so the failed row is repaired instead of re-approving the whole plan.
+      /** That repair append. */
+      const appended = await call({ action: "add_member", member: { name, role, description: name + " (" + role + ")", prompt: name === PLANNER_MEMBER ? plannerPrompt(deps) : splitterPrompt(deps) } })
+      if (!appended.ok) {
+        return { ok: false, error: "the planning team " + recoveredId + " is approved but " + name + " could not be raised: " + appended.error, planName, teamId: recoveredId, partial: true }
+      }
+      recovered[name] = livePlanningMemberRow(name, role, textField(appended.value, "spawned"), deps.cell, deps.now)
+    }
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, planName }
+  }
+  // No usable plan of ours is staged: create one and fill it. `approval:"required"` is the default, and
+  // the explicit approve call below is what executes it (nothing is spawned before that).
+  if (plan === undefined) {
+    if (typeof status.value.team === "object" && status.value.team !== null) {
+      return { ok: false, error: "this session already drives team " + textField(status.value.team as ToolValue, "teamId") + "; cellwork requires its own fresh team" }
+    }
     /** The creation answer. */
-    const created = await call({ action: "create", name: "cell " + deps.cell.cellId, description: deps.cell.objective })
-    if (!created.ok) return { ok: false, error: "cellwork could not stage the planning team: " + created.error }
+    const created = await call({ action: "create", name: planName, description: deps.cell.objective })
+    if (!created.ok) return { ok: false, error: "cellwork could not stage the planning team: " + created.error, planName }
   }
+  /** The member names the slot ALREADY carries, so a resume never duplicates a row a failed pass wrote. */
+  const presentMembers = new Set((Array.isArray(plan?.members) ? plan.members : []).map((row) => typeof row === "object" && row !== null ? textField(row as ToolValue, "name") : ""))
   /** The two members, staged before the tasks so both owners resolve. */
   for (const [name, role, prompt] of [
     [PLANNER_MEMBER, PLANNER_ROLE, plannerPrompt(deps)] as const,
     [SPLITTER_MEMBER, SPLITTER_ROLE, splitterPrompt(deps)] as const,
   ]) {
+    if (presentMembers.has(name)) continue
     /** One member append. */
     const appended = await call({ action: "add_member", member: { name, role, description: name + " (" + role + ")", prompt } })
-    if (!appended.ok) return { ok: false, error: "cellwork could not stage " + name + ": " + appended.error }
+    if (!appended.ok) return { ok: false, error: "cellwork could not stage " + name + ": " + appended.error, planName, partial: true }
   }
+  /** The task subjects the slot ALREADY carries, for the same resume reason. */
+  const presentSubjects = new Set((Array.isArray(plan?.tasks) ? plan.tasks : []).map((row) => typeof row === "object" && row !== null ? textField(row as ToolValue, "subject") : ""))
   /** The requirements task, an explicit root. */
-  const requirements = await call({
-    action: "create_task",
-    task: { subject: REQUIREMENTS_TASK_SUBJECT, description: plannerTaskDescription(deps.cell), kind: "requirement", owner: PLANNER_MEMBER, blocked_by: [] },
-  })
-  if (!requirements.ok) return { ok: false, error: "cellwork could not stage the requirements task: " + requirements.error }
+  if (!presentSubjects.has(REQUIREMENTS_TASK_SUBJECT)) {
+    /** The requirements row append. */
+    const requirements = await call({
+      action: "create_task",
+      task: { subject: REQUIREMENTS_TASK_SUBJECT, description: plannerTaskDescription(deps.cell), kind: "requirement", owner: PLANNER_MEMBER, blocked_by: [] },
+    })
+    if (!requirements.ok) return { ok: false, error: "cellwork could not stage the requirements task: " + requirements.error, planName, partial: true }
+  }
   /** The split task, blocked by the requirements task (by subject, which approval resolves). */
-  const split = await call({
-    action: "create_task",
-    task: { subject: SPLIT_TASK_SUBJECT, description: splitterTaskDescription(deps.cell), kind: "work", owner: SPLITTER_MEMBER, blocked_by: [REQUIREMENTS_TASK_SUBJECT] },
-  })
-  if (!split.ok) return { ok: false, error: "cellwork could not stage the split task: " + split.error }
+  if (!presentSubjects.has(SPLIT_TASK_SUBJECT)) {
+    /** The split row append. */
+    const split = await call({
+      action: "create_task",
+      task: { subject: SPLIT_TASK_SUBJECT, description: splitterTaskDescription(deps.cell), kind: "work", owner: SPLITTER_MEMBER, blocked_by: [REQUIREMENTS_TASK_SUBJECT] },
+    })
+    if (!split.ok) return { ok: false, error: "cellwork could not stage the split task: " + split.error, planName, partial: true }
+  }
   /** The approval, which raises the two members and mints the record. */
   const approved = await call({ action: "approve" })
-  if (!approved.ok) return { ok: false, error: "cellwork could not approve the planning team: " + approved.error }
+  if (!approved.ok) return { ok: false, error: "cellwork could not approve the planning team: " + approved.error, planName, partial: true }
   /** The team record the approval built. */
   const team = typeof approved.value.team === "object" && approved.value.team !== null ? approved.value.team as ToolValue : undefined
   /** The approved team id, which every later write addresses. */
@@ -335,9 +399,12 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
       joinedAt: deps.now.toISOString(),
     }
   }
-  if (teamId === "") return { ok: false, error: "the planning team was approved but the answer carried no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying" }
+  if (teamId === "") return { ok: false, error: "the planning team was approved but the answer carried no team id — inspect `agent_teams_plan {action:\"status\"}` before retrying", planName, partial: true }
   if (stoppedAt !== "") {
-    return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + "); the record exists — inspect `agent_teams_plan {action:\"status\"}` and repair it", teamId, members }
+    // THE PARTIAL OUTCOME IS PRESERVED, not thrown away: the team EXISTS, its id and the rows the
+    // approval did raise travel back with the refusal, and the caller records them so the retry takes
+    // the idempotent path instead of staging a second team.
+    return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + "); the record exists — inspect `agent_teams_plan {action:\"status\"}` and repair it", teamId, members, planName, partial: true }
   }
   return {
     ok: true,
@@ -345,6 +412,22 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     members,
     tasks: { requirementsId: posted[0]?.id, splitId: posted[1]?.id },
   }
+}
+
+/**
+ * Build one planning member row from the handle a LIVE team record (or a repair append) carries.
+ *
+ * @param name - the member's board name.
+ * @param role - its roster role label.
+ * @param handle - the executor handle the team minted for it.
+ * @param cell - the cell being started, whose own row wins when it already carries a handle.
+ * @param now - the instant to stamp.
+ * @returns the member row.
+ */
+function livePlanningMemberRow(name: string, role: string, handle: string, cell: CellState, now: Date): CellMemberRecord {
+  /** The row the cell already carries, which is complete when the cell knows the handle. */
+  const base = planningMemberRow(name, role, cell, now)
+  return handle === "" ? base : { ...base, sessionId: handle, executorRef: handle }
 }
 
 /**
