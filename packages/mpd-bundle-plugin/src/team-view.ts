@@ -246,6 +246,19 @@
     dependencies?: string[]
     /** True for a plan-only GHOST, which is drawn rather than dropped. */
     planned?: boolean
+    /**
+     * The INNERMOST group whose interior draws this node, absent for a node of the root frame.
+     *
+     * A node that is itself a GROUP FRAME carries its PARENT group's id here: the frame it represents
+     * is the box's interior, while the box is drawn inside its parent.
+     */
+    group?: string
+    /**
+     * The RENDERED state the host computed — `completed|running|failed|blocked|open|cancelled|planned`,
+     * plus `group` for a group's pseudo-node. Read rather than re-derived: a node whose state this
+     * plane invented could disagree with the same board in the terminal.
+     */
+    visual?: string
   }
 
   /** One dependency edge of the host's model: `from` must close before `to`. */
@@ -266,9 +279,24 @@
    * planes that draw from it directly. A structural subset is deliberate: the factory body has no
    * imports, and a type is the only way to describe the wire without one.
    */
+  /**
+   * The graph model the host serves beside the board, narrowed to what this drawing reads.
+   *
+   * THE FULL VALUE IS `GraphModel` FROM `mpd-graph-core` — `{ nodes, edges, ranks, cycles, report }`.
+   * The factory reads the NODES (plan-only ghosts AND a subcell's box), the EDGES (so a plan-declared
+   * dependency or an edge anchored on a box is drawn) and the REPORT. Each board task's served rank
+   * rides on the task entries as {@link TeamTask.rank}, so no join is needed for a box's column.
+   */
   interface ServedGraphModel {
     /** Every merged node, ghosts included; absent on a payload that carries no model. */
     nodes?: ServedGraphModelNode[]
+    /**
+     * Every group the host declared, flat and shallow-first; ABSENT for a team with no live child.
+     *
+     * The absence is the flat picture's own guarantee: a team that never raised a sub-team serves no
+     * `groups` key at all, so a flat model draws exactly the bytes it drew before subcells existed.
+     */
+    groups?: ServedGraphModelGroup[]
     /** Every merged edge, plan-declared ones included; absent on a payload with no model. */
     edges?: ServedGraphModelEdge[]
     /**
@@ -277,6 +305,24 @@
      * {@link GraphGeometry.unresolved} surface.
      */
     report: { ranksDerived: boolean; unresolved: string[] }
+  }
+
+  /**
+   * One GROUP of the host's model: a subcell's frame.
+   *
+   * A structural subset of `mpd-graph-core`'s `GraphGroup` — the fields this drawing paints. The
+   * renderer paints a FRAME for each of them and stops drawing the matching node as a task, which is
+   * what makes a subcell read as a box rather than as one more card with a strange id.
+   */
+  interface ServedGraphModelGroup {
+    /** The frame's id, which is also the id of its pseudo-node in the parent frame. */
+    id: string
+    /** The frame's display title, painted on the box. */
+    label?: string
+    /** The enclosing group's id, or null when the box sits directly inside the root frame. */
+    parentId?: string | null
+    /** Nesting depth: 0 for a box inside the root frame, one more per enclosing group. */
+    depth?: number
   }
 
   /** The payload the route serves. */
@@ -383,6 +429,19 @@
     ordinal: number
     /** Its offset from the column's top edge. */
     top: number
+    /**
+     * The box's own height in pixels — ABSENT on the flat path, whose boxes all share
+     * {@link GEO.nodeHeight}.
+     *
+     * A NESTED drawing mixes two kinds of item: a task card (one node height) and a group's box (the
+     * height of the interior it encloses). Publishing the height per node is what lets the router, the
+     * `overlaps` audit and the DOM agree without re-deriving it anywhere.
+     */
+    height?: number
+    /** The box's x in the canvas's pixels — ABSENT on the flat path, whose x is its column's own. */
+    left?: number
+    /** The box's width in pixels — ABSENT on the flat path, whose width is `column - 2 * inset`. */
+    width?: number
   }
 
   /** One painted rectangle of one drawn edge, in the canvas's own pixels. */
@@ -535,6 +594,71 @@
      * Reported rather than silently repaired, so a board that defeats the router is visible.
      */
     overlaps: EdgeOverlap[]
+    /**
+     * The GROUP FRAMES this drawing paints, ABSENT when the model declares no group.
+     *
+     * A subcell is a BOX: its frame is painted under the drawing (`svg` < frames < nodes), and its
+     * pseudo-node is deliberately NOT emitted as a task card, so no `data-mpd-node` carries a group id.
+     *
+     * NESTED geometry (`nested` present): each rectangle ENCLOSES the interior it declares — the frame's
+     * own cards and the boxes nested inside it — because `layoutNested` lays that interior out
+     * recursively (`rectangle = interior + FRAME_PAD` a side) and re-plans it at the box's placed origin.
+     * The frames list is flat and holds EVERY group of the tree, innermost included.
+     *
+     * FLAT geometry (`nested` absent): there are no frames at all, because a flat payload declares no
+     * groups. That is the one remaining difference, and it is the FLAT PATH's own scope rather than a
+     * bound on this channel: `layout` sends every model that declares a group to the nested renderer, so
+     * a collapsed box is no longer a shape this geometry produces. `layoutFlat`'s own frame pass is
+     * retained for a direct caller and draws a box on the item's cell; see its comment.
+     *
+     * The nested path's own limits are published BESIDE the rectangles, not hidden in this comment:
+     * {@link nestedBackEdges} lists the interior dependencies it could not route.
+     */
+    groups?: GraphFrame[]
+    /**
+     * Whether this geometry is the NESTED one: every node carries its own absolute `left`/`top`/`width`/
+     * `height`, the columns are not a uniform grid, and the DOM positions the cards absolutely instead of
+     * inside rank columns.
+     *
+     * ABSENT on the flat path, whose bytes stay what they were — the flag is the render branch, not a
+     * second geometry. `groups` and this flag are emitted together, so a reader that sees frames knows
+     * how to read them.
+     */
+    nested?: true
+    /**
+     * The dependency witnesses a nested frame could NOT route, because the two ends sit on one column or
+     * run backwards (a cycle the core reports rather than repairs).
+     *
+     * ABSENT when every edge was drawn. ABSENT on the flat path too, which routes those edges on the left
+     * side instead — this list exists so a nested omission is VISIBLE rather than silent.
+     */
+    nestedBackEdges?: string[]
+  }
+
+  /**
+   * One painted frame: the rectangle a subcell's box occupies, in the canvas's own pixels.
+   *
+   * The numbers are the LAYOUT's own — on the nested path the rectangle the interior was planned inside,
+   * on the flat path the cell the item was placed in — so the asserted frame and the painted one cannot
+   * drift, exactly as `data-mpd-box` is for a task.
+   */
+  interface GraphFrame {
+    /** The group's id, which the frame's `data-mpd-group` carries. */
+    id: string
+    /** The box's title, painted on the frame. */
+    label: string
+    /** The enclosing group's id, or null for a box directly inside the root frame. */
+    parentId: string | null
+    /** The nesting depth the host declared, echoed for a reader that wants it without the model. */
+    depth: number
+    /** The frame's left x. */
+    left: number
+    /** The frame's top y. */
+    top: number
+    /** The frame's width in pixels. */
+    width: number
+    /** The frame's height in pixels. */
+    height: number
   }
 
   /** One pair of different edges whose runs are collinear and share more than half a pixel. */
@@ -608,6 +732,8 @@
 @keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }
 .mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-flow { animation: none; } [data-mpd-flow] { display: none; } }
+.mpd-dag-group { border: 1px solid rgba(77,107,254,.42); border-radius: 10px; background: rgba(77,107,254,.045); pointer-events: none; }
+.mpd-dag-group-label { position: absolute; left: 5px; top: -8px; padding: 0 5px; white-space: nowrap; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 9px; line-height: 15px; color: #4d6bfe; background: var(--dsw-alias-bg-layer-1, #ffffff); border-radius: 3px; }
 `
 
   /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */
@@ -1631,7 +1757,7 @@
        *   rather than looking like a model that lost its report.
        * @returns the columns, the canvas size, every node's box and every routed edge.
        */
-      const layout = (tasks: TeamTask[], radius: number = EDGE_RADIUS, served?: ServedGraphModel): GraphGeometry => {
+      const layoutFlat = (tasks: TeamTask[], radius: number = EDGE_RADIUS, served?: ServedGraphModel): GraphGeometry => {
         /**
          * The board plus the model's plan-only GHOSTS — the tasks the drawing actually lays out.
          *
@@ -1650,13 +1776,20 @@
           /** One row per node only the plan carries. */
           const ghosts: TeamTask[] = []
           for (const node of model.nodes) {
-            if (known.has(node.id) || node.planned !== true) continue
+            // A GROUP'S PSEUDO-NODE IS DRAWN TOO, and it is neither a board row nor a ghost: the host
+            // serves a subcell's box as a NODE of the parent frame (`visual: "group"`), and this plane
+            // draws it as a FRAME rather than a card. Without this branch the box would not exist on the
+            // canvas at all and every edge the host anchored on it would vanish from the picture.
+            if (known.has(node.id)) continue
+            if (node.planned !== true && node.visual !== "group") continue
+            /** Whether this synthesized row is a subcell's BOX rather than a plan-only ghost. */
+            const isFrame = node.visual === "group"
             ghosts.push({
               id: node.id,
               subject: node.title ?? node.subject ?? node.id,
               ...(node.kind === undefined ? {} : { kind: node.kind }),
-              status: "planned",
-              visual: "planned",
+              status: isFrame ? "group" : "planned",
+              visual: isFrame ? "group" : "planned",
               ...(node.assignee === undefined ? {} : { owner: node.assignee }),
               blockedBy: Array.isArray(node.dependencies) ? [...node.dependencies] : [],
               failedBy: [],
@@ -2043,6 +2176,36 @@
         )
         /** The measured gutter between two neighbouring columns' boxes. */
         const gutter = inset * 2
+        // ── GROUP FRAMES (cellwork wave 4, contract D4 — the NARROW SEAM) ────────────────────────────
+        // A SUBCELL IS A BOX. The host serves one group per subcell and draws each of them as an ITEM
+        // here — an edge anchored on the group's id terminates on that item, which is why the router
+        // needs no group-aware code at all — and this pass turns each such item into a FRAME rectangle
+        // so the renderer paints a box instead of a task card. A frame IS the cell a task box would
+        // have occupied, so every existing proof transfers unchanged: `overlapAudit` still sees the
+        // item as a box, and a route cannot enter a frame for the same reason it cannot enter a task.
+        //
+        // THIS IS THE FLAT PATH'S OWN PASS, and it draws a box on the item's cell WITHOUT recursion. The
+        // router never reaches it with a grouped model — `layout` sends every payload that declares a
+        // group to `layoutNested`, which draws the interior inside the rectangle — so this pass is the
+        // retained fallback for a DIRECT `layoutFlat` call (kept, not deleted, because it is the flat
+        // path's contract with its own arms).
+        /** One frame per served group whose item this drawing actually carries. */
+        const groups: GraphFrame[] = []
+        for (const group of served !== undefined && Array.isArray(served.groups) ? served.groups : []) {
+          /** The item the host drew this group as, when the drawing carries it at all. */
+          const item = nodeOf[group.id]
+          if (item === undefined) continue
+          groups.push({
+            id: group.id,
+            label: group.label === undefined || group.label === "" ? group.id : group.label,
+            parentId: group.parentId === undefined ? null : group.parentId,
+            depth: typeof group.depth === "number" && Number.isFinite(group.depth) ? group.depth : item.rank,
+            left: item.rank * GEO.column + inset,
+            top: item.top,
+            width: GEO.column - inset * 2,
+            height: GEO.nodeHeight,
+          })
+        }
         /** How far a lane may stand from a gutter's centre and still clear both boxes. */
         const halfBand = Math.max(0, inset - LANE_CLEARANCE)
         /** The most lanes one gutter can hold as DISTINCT columns at one pixel apart. */
@@ -2300,8 +2463,519 @@
           unresolvedRecorded,
           centerY,
           overlaps: overlapAudit(edges),
+          // ABSENT WHEN THERE IS NOTHING TO FRAME: a flat team's geometry therefore serializes exactly
+          // the bytes it did before subcells existed, which is the flat path's own backward guarantee.
+          ...(groups.length === 0 ? {} : { groups }),
         }
       }
+
+      // ── THE NESTED LAYOUT (cellwork wave 4, contract D4 — the RECURSIVE half) ──────────────────────
+      //
+      // WHAT IT DOES. A subcell is a BOX whose interior is that subcell's OWN dependency graph, and a
+      // dependency from outside attaches to the box's border. The HOST has already done the hard half:
+      // `mpd-graph-core` flattens the tree into one item list per frame, re-anchors every cross-frame edge
+      // onto the group's id, and publishes each group as a pseudo-node of its parent frame. This function
+      // therefore only renders what was declared: it lays each frame out from ITS OWN items, recurses into
+      // the frames nested inside it, and offsets everything into the ONE pixel canvas the SVG, the frames
+      // and the cards all share.
+      //
+      // WHY A SEPARATE FUNCTION, not a parameterised branch of the flat layout: the flat path's emissions
+      // are pinned byte for byte by its own arms (`data-mpd-curve` equality, the routed rects, the exact
+      // rank columns), and threading a frame id plus an origin through six hundred lines of it would put
+      // that guarantee at risk for no gain. This path reuses the same constants, `curveOf` and
+      // `overlapAudit`, and `layout` routes to it ONLY when the model declares a group — so a flat team's
+      // geometry is the value it always was.
+      //
+      // DECLARED BOUNDS, stated rather than discovered:
+      //   · a cyclic dependency INSIDE one frame is not routed here (the flat path draws it on the left);
+      //     `nestedBackEdges` lists its witness, so the omission is visible instead of silent;
+      //   · columns are packed in rank order and stacked top-aligned, NOT barycentre-relaxed, and a
+      //     rank-skipping edge crosses in a band reserved above the frame's own boxes;
+      //   · the hover halo covers the root frame's cards; an interior card keeps its own tone.
+      /** The padding a group's border keeps around the interior it encloses. */
+      const FRAME_PAD = 10
+      /** How much narrower a frame's own columns get per nesting level, so an interior fits its box. */
+      const NESTED_COLUMN_STEP = 40
+      /** The narrowest a nested column may get before its cards stop being readable. */
+      const NESTED_COLUMN_MIN = 72
+      /** The gap between two columns of one frame. */
+      const NESTED_GUTTER = 26
+      /** The gap between two boxes stacked in one column. */
+      const NESTED_ITEM_GAP = 10
+      /** The room ONE rank-skipping edge's crossing row claims above a frame's boxes. */
+      const NESTED_BAND_STEP = 6
+      /** The spacing between two lanes of one gutter, so two trunks never share a column. */
+      const NESTED_LANE_STEP = 2
+
+      /** One item of one frame: a task card, or a nested box whose interior is another frame. */
+      interface NestedItem {
+        /** The id the model names it by (a task id, or the group's id for a box). */
+        id: string
+        /** Its column INSIDE this frame. */
+        rank: number
+        /** The task row a card draws, absent for a box. */
+        task?: TeamTask
+        /** The group record a box draws, absent for a card. */
+        group?: ServedGraphModelGroup
+        /** The interior layout of a box, already sized and placed relative to the box's own origin. */
+        plan?: FramePlan
+        /** Its x inside this frame's interior. */
+        left: number
+        /** Its y inside this frame's interior. */
+        top: number
+        /** Its width in pixels. */
+        width: number
+        /** Its height in pixels. */
+        height: number
+      }
+
+      /** One frame's finished drawing, in that frame's OWN interior coordinates (origin = its top-left). */
+      interface FramePlan {
+        /** The items this frame holds, placed. */
+        items: NestedItem[]
+        /** The interior's width in pixels. */
+        width: number
+        /** The interior's height in pixels. */
+        height: number
+        /** Every task card this frame (and its descendants) draws, absolutely positioned. */
+        nodes: GraphNode[]
+        /** Every routed edge this frame (and its descendants) draws. */
+        edges: DrawnEdge[]
+        /** Every box this frame (and its descendants) paints, absolutely positioned. */
+        frames: GraphFrame[]
+        /** Every collinear overlap this frame's own router failed to separate. */
+        overlaps: EdgeOverlap[]
+        /** The witnesses of this frame's edges that could not be routed (a cycle inside one frame). */
+        backEdges: string[]
+        /** How many columns this frame's own interior has. */
+        rankCount: number
+        /** The nesting depth this plan was measured at, so a re-plan at a placed origin keeps its level. */
+        depth: number
+      }
+
+      /**
+       * The nested drawing of one team: every frame laid out from its own items, recursively.
+       *
+       * The returned `columns` is EMPTY on purpose — the drawing is not a uniform grid, so the DOM branch
+       * positions the cards from `nodes[].left/top/width/height` (`nested: true` is what tells it to) — and
+       * `groups` carries EVERY frame, innermost included, each with its absolute rectangle.
+       * @param tasks - the board, in the order the route served it (the ROOT frame's cards).
+       * @param radius - the corner radius the painted curves are built with.
+       * @param served - the host's model, which must declare at least one group.
+       * @returns the geometry the renderer paints, in the same shape the flat path returns.
+       */
+      const layoutNested = (tasks: TeamTask[], radius: number, served: ServedGraphModel): GraphGeometry => {
+        /** The model's nodes by id, so a group's pseudo-node can be read for its column. */
+        const nodeById = new Map<string, ServedGraphModelNode>()
+        for (const node of Array.isArray(served.nodes) ? served.nodes : []) nodeById.set(node.id, node)
+        /** The model's groups by id, so a frame can find its own children. */
+        const groupById = new Map<string, ServedGraphModelGroup>()
+        for (const group of served.groups ?? []) groupById.set(group.id, group)
+        /** Every edge the model declares, in serving order. */
+        const servedEdges = Array.isArray(served.edges) ? served.edges : []
+        /** The column width of one nesting level: the root's own, shrinking until the readable floor. */
+        const columnOf = (depth: number): number => Math.max(NESTED_COLUMN_MIN, GEO.column - depth * NESTED_COLUMN_STEP)
+        /** The width of a task card in one nesting level. */
+        const cardWidthOf = (depth: number): number => columnOf(depth) - GEO.inset * 2
+        /** The card of one model node, synthesized so an interior draws with the SAME renderer a board row does. */
+        const rowOfNode = (node: ServedGraphModelNode): TeamTask => ({
+          id: node.id,
+          subject: node.title ?? node.subject ?? node.id,
+          ...(node.kind === undefined ? {} : { kind: node.kind }),
+          status: node.status ?? "open",
+          visual: node.visual ?? node.status ?? "open",
+          ...(node.assignee === undefined ? {} : { owner: node.assignee }),
+          blockedBy: Array.isArray(node.dependencies) ? [...node.dependencies] : [],
+          failedBy: [],
+          depth: node.depth,
+          rank: node.depth,
+        })
+        /** The root frame's cards: the board plus every plan-only ghost, exactly as the flat path draws them. */
+        const rootCards = (): TeamTask[] => {
+          /** The ids the board already carries, so a board node is never drawn twice. */
+          const known = new Set(tasks.map((task) => task.id))
+          /** One row per node only the plan carries. */
+          const ghosts: TeamTask[] = []
+          for (const node of Array.isArray(served.nodes) ? served.nodes : []) {
+            if (known.has(node.id) || node.visual === "group" || node.planned !== true) continue
+            ghosts.push({ ...rowOfNode(node), status: "planned", visual: "planned", planned: true })
+          }
+          return [...tasks, ...ghosts]
+        }
+        /**
+         * Lay ONE frame out: its items placed in columns, its own edges routed, its boxes' interiors recurred.
+         * @param frameId - the group this frame is, or `null` for the root frame.
+         * @param depth - its nesting depth (0 = the root).
+         * @param originX - the canvas x this frame's interior starts at (0 for the root).
+         * @param originY - the canvas y this frame's interior starts at (0 for the root).
+         * @returns the frame's plan: LOCAL sizes, and canvas coordinates for everything it emits.
+         */
+        const planFrame = (frameId: string | null, depth: number, originX: number, originY: number): FramePlan => {
+          /** The card rows this frame holds — the board for the root, the model's interior nodes otherwise. */
+          const rows: TeamTask[] = frameId === null
+            ? rootCards()
+            : (Array.isArray(served.nodes) ? served.nodes : [])
+              .filter((node) => (node.group ?? null) === frameId && node.visual !== "group")
+              .map(rowOfNode)
+          /** The cards as items, each in the column the host served for it. */
+          const items: NestedItem[] = rows.map((task) => ({
+            id: task.id,
+            // THE SAME DEGRADE THE FLAT PATH USES: a payload that carries only the served `depth` (an older
+            // server) still lands in a column, instead of every card collapsing into column 0.
+            rank: typeof task.rank === "number" && Number.isFinite(task.rank)
+              ? Math.max(0, Math.floor(task.rank))
+              : (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0),
+            task,
+            left: 0,
+            top: 0,
+            // THE CARD'S WIDTH IS THE LEVEL'S OWN, not the parent's: a box's interior is narrower than the
+            // root's columns, which is what lets a two-level picture stay inside its parent's box.
+            width: cardWidthOf(depth),
+            height: GEO.nodeHeight,
+          }))
+          /** The nested frames this frame draws, planned BEFORE placement because a box is sized by them. */
+          const childGroups = (served.groups ?? []).filter((group) => (group.parentId ?? null) === frameId)
+          for (const group of childGroups) {
+            /** The child's own SIZING plan, which is the same at every origin (columns and stacks only). */
+            const plan = sizePlanOf(group.id, depth + 1)
+            /** The pseudo-node the host drew for this box, whose served column places it in THIS frame. */
+            const pseudo = nodeById.get(group.id)
+            items.push({
+              id: group.id,
+              rank: pseudo === undefined ? 0 : Math.max(0, Math.floor(pseudo.depth)),
+              group,
+              plan,
+              left: 0,
+              top: 0,
+              // A BOX IS ITS INTERIOR plus the border's own padding, and that is what makes its frame
+              // enclose the drawing inside it rather than merely sit behind a card.
+              width: plan.width + FRAME_PAD * 2,
+              height: plan.height + FRAME_PAD * 2,
+            })
+          }
+          /** The rank columns, deepest first by rank, each holding its items in id order. */
+          const columns: NestedItem[][] = []
+          for (const item of items) {
+            while (columns.length <= item.rank) columns.push([])
+            columns[item.rank].push(item)
+          }
+          for (const column of columns) column.sort((left, right) => ID_ORDER.compare(left.id, right.id))
+          /** The ids this frame draws, so an edge naming a box that is not here draws nothing. */
+          const drawn = new Set(items.map((item) => item.id))
+          /** The frame's own dependencies, in serving order: forward only (see the bound above). */
+          const wants: Array<{ from: NestedItem; to: NestedItem; key: string }> = []
+          /** The witnesses this frame could not route, reported rather than dropped. */
+          const backEdges: string[] = []
+          /** The item each id names, for the edge pass. */
+          const itemOf = new Map(items.map((item) => [item.id, item]))
+          for (const edge of servedEdges) {
+            /** The blocker's item, when this frame draws it. */
+            const from = itemOf.get(edge.from)
+            /** The blocked item, when this frame draws it. */
+            const to = itemOf.get(edge.to)
+            // BOTH ENDPOINTS MUST BE THIS FRAME'S OWN: the host already re-anchored every crossing edge
+            // onto the box, so an edge whose ends live in different frames is not this frame's to draw.
+            if (from === undefined || to === undefined) continue
+            if (to.rank <= from.rank) {
+              backEdges.push(to.id + "<-" + from.id)
+              continue
+            }
+            wants.push({ from, to, key: from.id + ">" + to.id })
+          }
+          /** How many of this frame's edges skip a column, which is the crossing band it must reserve. */
+          const longCount = wants.filter((want) => want.to.rank - want.from.rank >= 2).length
+          /** The vertical room the crossing band takes above the frame's own boxes. */
+          const bandExtent = longCount * NESTED_BAND_STEP
+          /** The width each column needs: its widest item. */
+          const columnWidths = columns.map((column) => column.reduce((max, item) => Math.max(max, item.width), 0))
+          /** The x of each column's left edge, cumulative, one gutter between neighbours. */
+          const columnX: number[] = []
+          for (let rank = 0; rank < columns.length; rank += 1) {
+            columnX.push(rank === 0 ? 0 : (columnX[rank - 1] ?? 0) + (columnWidths[rank - 1] ?? 0) + NESTED_GUTTER)
+          }
+          /** Place every item: its column's x, stacked in its column from the band's own floor. */
+          const columnTops: number[] = columns.map(() => bandExtent)
+          for (let rank = 0; rank < columns.length; rank += 1) {
+            for (const item of columns[rank]) {
+              item.left = columnX[rank] ?? 0
+              item.top = columnTops[rank] ?? bandExtent
+              columnTops[rank] = item.top + item.height + NESTED_ITEM_GAP
+            }
+          }
+          /** The interior's width: the last column's right edge. */
+          const width = columns.length === 0 ? 0 : (columnX[columns.length - 1] ?? 0) + (columnWidths[columnWidths.length - 1] ?? 0)
+          /** The interior's height: the tallest column, plus the band the long edges cross in. */
+          const height = bandExtent + columns.reduce((max, column, rank) => {
+            /** The stack this column actually spends, minus the gap after its last box. */
+            const spent = (columnTops[rank] ?? bandExtent) - bandExtent - (column.length === 0 ? 0 : NESTED_ITEM_GAP)
+            return Math.max(max, spent)
+          }, 0)
+          /** Every edge touching an item, with the counterpart whose position orders its port. */
+          const incident = new Map<string, Array<{ key: string; counterpart: NestedItem }>>(items.map((item) => [item.id, []]))
+          for (const want of wants) {
+            incident.get(want.from.id)?.push({ key: want.key, counterpart: want.to })
+            incident.get(want.to.id)?.push({ key: want.key, counterpart: want.from })
+          }
+          /**
+           * Snap one port's y onto its COLUMN's parity channel, inside the item's own band.
+           *
+           * WHY A PARITY CHANNEL AT ALL (CodeRabbit 4378469416). Ports are spread around each item's
+           * middle, and that is not enough once items have DIFFERENT heights: a 166px box in row 0 has
+           * its middle at y=83, and a 62px box in row 1 of the NEXT column can have its middle at y=83 as
+           * well. A departure run and an arrival run land in the SAME gutter at the same y, and
+           * `overlapAudit` (which tolerates 0.5px) sees two horizontal runs sharing two pixels — the
+           * "one thicker line" class the whole router exists to prevent.
+           *
+           * THE RULE. A port carries its own column's parity, so two different columns can never align:
+           * ranks r and r+1 differ by one, therefore their ports differ by at least one pixel, WHATEVER
+           * the heights are. Items of the SAME column share the channel but are stacked, so their bands —
+           * and therefore their ports — are disjoint; and one item's fan-in is spread by
+           * {@link portStepOf}. The band is respected (the walk stays inside `lo..hi`), which is what
+           * "accounting for variable heights" means: the channel does not move a port out of its box.
+           * @param wanted - the y the fan-in geometry asked for.
+           * @param parity - the parity its column carries (`rank % 2`).
+           * @param lo - the highest y this item's band allows.
+           * @param hi - the lowest y this item's band allows.
+           * @returns the nearest y to `wanted` inside `lo..hi` that carries `parity`.
+           */
+          const snapToParity = (wanted: number, parity: number, lo: number, hi: number): number => {
+            /** The nearest value at or below the asked one that carries the channel. */
+            let y = Math.floor((wanted - parity) / 2) * 2 + parity
+            // TWO-PIXEL STEPS, so the walk cannot leave the channel it was just snapped onto. The band is
+            // at least 37px tall on every item this layout draws (a 42px card keeps 2px clear at each
+            // end), so one of the two directions always lands inside it.
+            while (y < lo) y += 2
+            while (y > hi) y -= 2
+            return y
+          }
+          /** The port y of every edge on every item: spread by counterpart, then put on its channel. */
+          const portOf = new Map<string, Map<string, number>>()
+          for (const item of items) {
+            /** This item's edges, ordered by the counterpart's own middle. */
+            const ordered = [...(incident.get(item.id) ?? [])].sort((left, right) => {
+              /** The difference of the two counterparts' vertical middles. */
+              const delta = (left.counterpart.top + left.counterpart.height / 2) - (right.counterpart.top + right.counterpart.height / 2)
+              return delta !== 0 ? delta : ID_ORDER.compare(left.key, right.key)
+            })
+            /** The pitch this item's fan-in earns, centred on the item's own middle. */
+            const pitch = portStepOf(ordered.length)
+            /** The item's own middle, where a single edge attaches. */
+            const middle = item.top + item.height / 2
+            /** This item's ports, by edge key. */
+            const ports = new Map<string, number>()
+            ordered.forEach((entry, index) => {
+              // SPREAD, THEN SNAPPED: the fan-in decides the ORDER of the ports, and the column's parity
+              // channel decides their y — clamped inside the item so a port never lands on a corner.
+              const wanted = middle + (index - (ordered.length - 1) / 2) * pitch
+              ports.set(entry.key, snapToParity(wanted, item.rank % 2, item.top + 2, item.top + item.height - 3))
+            })
+            portOf.set(item.id, ports)
+          }
+          /** The edges crossing each gutter, which is where a lane must be found. */
+          const crossing: string[][] = columns.slice(0, Math.max(0, columns.length - 1)).map(() => [])
+          for (const want of wants) {
+            for (let rank = want.from.rank; rank < want.to.rank; rank += 1) crossing[rank]?.push(want.key)
+          }
+          /** The edge each key names. */
+          const wantOf = new Map(wants.map((want) => [want.key, want]))
+          /** The y the crossing band gives one edge: its own row, above every box of this frame. */
+          const bandRowOf = (key: string): number => {
+            /** This edge's index among the frame's long edges, in serving order. */
+            const index = wants.filter((want) => want.to.rank - want.from.rank >= 2).findIndex((want) => want.key === key)
+            return bandExtent - (index + 1) * NESTED_BAND_STEP
+          }
+          /** The x one edge's vertical run stands at inside one gutter, always two lanes apart. */
+          const laneX = (gutter: number, key: string): number => {
+            /** The keys this gutter carries, ordered by the run's own midpoint. */
+            const keys = crossing[gutter] ?? []
+            /** The middle of the gutter between this column and the next. */
+            const centre = (columnX[gutter] ?? 0) + (columnWidths[gutter] ?? 0) + NESTED_GUTTER / 2
+            /** How many lanes stand on each side at most, so the spread never leaves the gutter. */
+            const reach = Math.min(Math.floor((NESTED_GUTTER - 2) / (2 * NESTED_LANE_STEP)), Math.ceil(keys.length / 2))
+            /** This edge's own index, which decides its side and distance. */
+            const index = keys.indexOf(key)
+            /** The alternating offset: 0, +1, -1, +2, -2 — the first lane stays nearest the centre. */
+            const offset = index <= 0 ? 0 : (index % 2 === 1 ? 1 : -1) * Math.ceil(index / 2)
+            return centre + Math.max(-reach, Math.min(reach, offset)) * NESTED_LANE_STEP
+          }
+          /** A horizontal run's rectangle, one pixel tall, never zero-width. */
+          const horizontal = (fromX: number, toX: number, y: number): EdgeRect => ({ left: Math.min(fromX, toX), top: y, width: Math.max(1, Math.abs(toX - fromX)), height: 1 })
+          /** A vertical run's rectangle, one pixel wide, never zero-height. */
+          const vertical = (x: number, fromY: number, toY: number): EdgeRect => ({ left: x, top: Math.min(fromY, toY), width: 1, height: Math.max(1, Math.abs(toY - fromY)) })
+          /** This frame's routed edges. */
+          const edges: DrawnEdge[] = []
+          for (const want of wants) {
+            /** The departure y on the blocker's right border. */
+            const fromY = portOf.get(want.from.id)?.get(want.key) ?? want.from.top + want.from.height / 2
+            /** The arrival y on the blocked item's left border. */
+            const toY = portOf.get(want.to.id)?.get(want.key) ?? want.to.top + want.to.height / 2
+            /** The x the run leaves from: the blocker's own right border. */
+            const fromX = want.from.left + want.from.width
+            /** The x the run arrives at: the blocked item's own left border, a PORT on the box. */
+            const toX = want.to.left
+            /** The route's vertices, in travel order. */
+            const waypoints: CurvePoint[] = [{ x: fromX, y: fromY }]
+            /** The painted runs, cut from the same vertices. */
+            const segments: Array<{ key: string; rect: EdgeRect }> = []
+            if (want.to.rank - want.from.rank >= 2) {
+              /** The crossing row this edge owns. */
+              const row = bandRowOf(want.key)
+              /** The lane it rises in, beside its blocker. */
+              const laneOut = laneX(want.from.rank, want.key)
+              /** The lane it descends in, beside its dependant. */
+              const laneIn = laneX(want.to.rank - 1, want.key)
+              segments.push({ key: "out", rect: horizontal(fromX, laneOut, fromY) })
+              segments.push({ key: "riser", rect: vertical(laneOut, fromY, row) })
+              segments.push({ key: "cross1", rect: horizontal(laneOut, laneIn, row) })
+              segments.push({ key: "riser2", rect: vertical(laneIn, row, toY) })
+              segments.push({ key: "in", rect: horizontal(laneIn, toX, toY) })
+              waypoints.push({ x: laneOut, y: fromY }, { x: laneOut, y: row }, { x: laneIn, y: row }, { x: laneIn, y: toY }, { x: toX, y: toY })
+            } else {
+              /** The lane this hop's vertical run stands in, inside the one gutter between the boxes. */
+              const lane = laneX(want.from.rank, want.key)
+              segments.push({ key: "out", rect: horizontal(fromX, lane, fromY) })
+              segments.push({ key: "riser", rect: vertical(lane, fromY, toY) })
+              segments.push({ key: "in", rect: horizontal(lane, toX, toY) })
+              waypoints.push({ x: lane, y: fromY }, { x: lane, y: toY }, { x: toX, y: toY })
+            }
+            // THE WHOLE ROUTE MOVES WITH ITS FRAME: the vertices, the rects cut from them and the head are
+            // built in this frame's own coordinates, so the painted path is re-parametrised from the
+            // SHIFTED vertices — a `d` left in local numbers would draw a line one level away from the
+            // polyline the containment proofs read.
+            /** The route's vertices in the canvas's own space. */
+            const absoluteWaypoints = waypoints.map((point) => ({ x: point.x + originX, y: point.y + originY }))
+            /** The painted form of exactly those vertices. */
+            const shape = curveOf(absoluteWaypoints, radius)
+            edges.push({
+              parent: want.from.id,
+              child: want.to.id,
+              witness: want.to.id + "<-" + want.from.id,
+              segments: segments.map((segment) => ({ key: segment.key, rect: { left: segment.rect.left + originX, top: segment.rect.top + originY, width: segment.rect.width, height: segment.rect.height } })),
+              curve: { d: shape.d, points: shape.points, tip: { x: toX + originX, y: toY + originY }, radius },
+              // THE HEAD SITS ON THE ARRIVAL PORT, pointing right: this path only routes forward edges, so
+              // the travel is always rightward and the marker's tip is the item's left border.
+              marker: { left: toX - MARK_W + originX, top: toY - Math.floor(MARK_H / 2) + originY, width: MARK_W, height: MARK_H },
+              pointsLeft: false,
+            })
+          }
+          /** The cards this frame's OWN items contribute, before the boxes' interiors are added. */
+          const nodes: GraphNode[] = []
+          for (let rank = 0; rank < columns.length; rank += 1) {
+            for (let row = 0; row < columns[rank].length; row += 1) {
+              /** The placed item this card draws. */
+              const item = columns[rank][row]
+              if (item.task === undefined) continue
+              nodes.push({
+                task: item.task,
+                rank,
+                row,
+                ordinal: item.rank + 1,
+                // THE CARD'S RECTANGLE IN THE CANVAS'S OWN SPACE: the placement above is local to this
+                // frame, and every consumer (the DOM, the containment proofs) reads one coordinate space.
+                top: item.top + originY,
+                left: item.left + originX,
+                width: item.width,
+                height: item.height,
+              })
+            }
+          }
+          /** The boxes this frame paints itself, and the interiors it holds. */
+          const frames: GraphFrame[] = []
+          /** The collinear pairs this frame's router failed to separate; empty is the promise. */
+          const overlaps = overlapAudit(edges)
+          for (const item of items) {
+            if (item.group === undefined || item.plan === undefined) continue
+            frames.push({
+              id: item.id,
+              label: item.group.label === undefined || item.group.label === "" ? item.id : item.group.label,
+              parentId: item.group.parentId === undefined ? null : item.group.parentId,
+              depth: typeof item.group.depth === "number" && Number.isFinite(item.group.depth) ? item.group.depth : item.rank,
+              // THE BOX'S RECTANGLE IS IN THE PARENT'S OWN SPACE: its item was placed locally, so the frame
+              // this pass publishes must carry the parent's origin — every nested coordinate here is
+              // absolute, and a local frame rect would sit a level away from the interior it encloses.
+              left: item.left + originX,
+              top: item.top + originY,
+              width: item.width,
+              height: item.height,
+            })
+            // THE INTERIOR IS LAID OUT AT ITS PLACED ORIGIN: this pass re-plans the child with the box's
+            // own canvas position, so every card, run and curve it emits is ALREADY absolute — a hand
+            // shift afterwards would have to re-translate the painted paths too, and a path and its
+            // polyline drifting apart is exactly the class this file's geometry is built to prevent.
+            /** The child's drawing at the origin the parent placed its box at. */
+            const placed = planFrame(item.id, item.plan.depth, item.left + FRAME_PAD + originX, item.top + FRAME_PAD + originY)
+            for (const node of placed.nodes) nodes.push(node)
+            for (const edge of placed.edges) edges.push(edge)
+            for (const frame of placed.frames) frames.push(frame)
+            overlaps.push(...placed.overlaps)
+            backEdges.push(...placed.backEdges)
+          }
+          return { items, width, height, nodes, edges, frames, overlaps, backEdges, rankCount: columns.length, depth }
+        }
+        /** The sizing plan of every frame, so a nested tree is measured ONCE per frame whatever its depth. */
+        const sizePlanCache = new Map<string, FramePlan>()
+        /**
+         * One frame's ORIGIN-INDEPENDENT plan, memoized.
+         *
+         * A frame's width and height are a function of its own items alone — columns, stacks and the
+         * crossing band — so the same plan answers at every origin. Measuring it once is what keeps the
+         * recursion linear in the number of frames instead of exponential in the nesting depth: the
+         * emission pass below re-plans each frame exactly once, at the origin its box was placed at.
+         * @param frameId - the group to measure.
+         * @param depth - its nesting depth.
+         * @returns the plan, whose emitted coordinates are relative to the frame's own origin.
+         */
+        const sizePlanOf = (frameId: string, depth: number): FramePlan => {
+          /** The measurement already taken, when there is one. */
+          const held = sizePlanCache.get(frameId)
+          if (held !== undefined) return held
+          /** The measurement itself, at a zero origin. */
+          const plan = planFrame(frameId, depth, 0, 0)
+          sizePlanCache.set(frameId, plan)
+          return plan
+        }
+        /** The root frame's finished plan, which IS the canvas. */
+        const root = planFrame(null, 0, 0, 0)
+        /** The record's own unresolved report, read exactly as the flat path reads it. */
+        const recorded = new Set<string>()
+        for (const task of tasks) for (const reference of Array.isArray(task.unresolvedBlockers) ? task.unresolvedBlockers : []) recorded.add(reference)
+        return {
+          columns: [],
+          rankCount: root.rankCount,
+          width: root.width,
+          height: root.height,
+          gridTemplateColumns: "",
+          nodes: root.nodes,
+          edges: root.edges,
+          inset: GEO.inset,
+          gutter: NESTED_GUTTER,
+          maxLanes: 0,
+          laneOverflow: 0,
+          slots: [],
+          ranksDerived: served.report !== undefined && served.report.ranksDerived === true,
+          unresolved: [...new Set(Array.isArray(served.report?.unresolved) ? served.report.unresolved : [])],
+          unresolvedRecorded: [...recorded].sort(),
+          centerY: Math.round(root.height / 2),
+          overlaps: root.overlaps,
+          ...(root.backEdges.length === 0 ? {} : { nestedBackEdges: root.backEdges }),
+          ...(root.frames.length === 0 ? {} : { groups: root.frames }),
+          nested: true,
+        }
+      }
+
+      /**
+       * The drawing's ONE entry point: the nested renderer when the model declares a group, the flat one
+       * otherwise.
+       *
+       * THE ROUTING IS THE WHOLE DIFFERENCE: a team with no subcell serves no `groups`, so it takes the
+       * flat path unchanged — byte for byte, which is what its own arms pin.
+       * @param tasks - the board, in the order the route served it.
+       * @param radius - the corner radius the painted curves are built with.
+       * @param served - the host's model, when the payload carried one.
+       * @returns the geometry the renderer paints.
+       */
+      const layout = (tasks: TeamTask[], radius: number = EDGE_RADIUS, served?: ServedGraphModel): GraphGeometry =>
+        served !== undefined && Array.isArray(served.groups) && served.groups.length > 0 ? layoutNested(tasks, radius, served) : layoutFlat(tasks, radius, served)
 
       /**
        * The transitive halo of one task: the hovered node, its ANCESTORS (what it rests on) and its
@@ -2735,6 +3409,67 @@
         // or a plan-only node could be painted yet never tint its neighbours.
         /** Every task the drawing contains: the board plus any plan-only ghost. */
         const drawingTasks = graph.nodes.map((node) => node.task)
+        /**
+         * One card of the NESTED drawing, positioned from the geometry's own absolute rectangle.
+         *
+         * WHY A SECOND CARD RENDERER. The flat drawing puts each card inside its rank's column `div`, so
+         * its x comes from the column and its y from a `translate3d`; the nested drawing has no uniform
+         * grid (a box's interior is narrower than the root's columns, and a column is as wide as its
+         * widest item), so every card carries its own `left`/`top`/`width`/`height` and the DOM places it
+         * absolutely in the SAME one canvas the SVG and the frames layer use. The card's own markup — the
+         * glyph, the id, the kind code and the graph-safe subject — is IDENTICAL to the flat card's, which
+         * is why `data-mpd-box` and `data-mpd-node` keep their spelling: a verifier reads both drawings
+         * the same way.
+         * @param node - one placed card from the geometry.
+         * @returns the element that draws it.
+         */
+        const nestedCardOf = (node: GraphNode): unknown => {
+          /** The card's own placement, never re-derived from a column. */
+          const box = { left: node.left ?? 0, top: node.top, width: node.width ?? (GEO.column - graph.inset * 2), height: node.height ?? GEO.nodeHeight }
+          /** Whether the hover halo dims this card, which it can only do to a node the halo measured. */
+          const dimmed = focusing && focus[node.task.id] !== true
+          return react.createElement("div", {
+            key: "node-" + node.task.id,
+            "data-mpd-node": node.task.id,
+            className: "mpd-dag-node",
+            "data-visual": node.task.visual,
+            // THE SAME WITNESS SPELLING the flat card publishes: `left,top,width,height`.
+            "data-mpd-box": box.left + "," + box.top + "," + box.width + "," + box.height,
+            "data-mpd-box-rank": String(node.rank),
+            ...(node.task.planned === true ? { "data-mpd-planned": "true" } : {}),
+            role: "button",
+            tabIndex: 0,
+            "aria-pressed": pinned === node.task.id,
+            title: node.task.subject,
+            style: {
+              ...CSS.node,
+              position: "absolute",
+              left: "0px",
+              top: "0px",
+              width: box.width + "px",
+              height: box.height + "px",
+              // THE POSITION IS A TRANSFORM here too, so a card that moves between frames animates.
+              transform: "translate3d(" + box.left + "px," + box.top + "px,0)",
+              borderColor: dimmed ? CSS.edge.background : toneOf(node.task.visual),
+              opacity: dimmed ? "0.4" : "1",
+              borderWidth: pinned === node.task.id ? "1px" : "0.5px",
+            },
+            onMouseEnter: (event: unknown) => { if (setHover !== null) setHover(node.task.id); setTipState({ id: node.task.id, ...tipPoint(event) }) },
+            onMouseMove: (event: unknown) => { setTipState({ id: node.task.id, ...tipPoint(event) }) },
+            onMouseLeave: () => { if (setHover !== null) setHover(null); setTipState(null) },
+            onBlur: () => { setTipState(null) },
+            onClick: () => { if (setPinned !== null) setPinned(pinned === node.task.id ? null : node.task.id) },
+            onKeyDown: (event: { key?: string }) => {
+              if (event?.key !== "Enter" && event?.key !== " ") return
+              if (setPinned !== null) setPinned(pinned === node.task.id ? null : node.task.id)
+            },
+          },
+            react.createElement("div", { key: "node-top", style: CSS.nodeTop },
+              react.createElement("span", { key: "glyph", style: { color: toneOf(node.task.visual), fontWeight: 700 } }, glyphOf(node.task.visual)),
+              react.createElement("span", { key: "id", style: { fontWeight: 700 } }, node.task.id),
+              react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(node.task.kind))),
+            react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[node.task.id] ?? ""))
+        }
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
         // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
@@ -2779,6 +3514,8 @@
         const pinnedTask = pinned === null ? undefined : drawingTasks.find((candidate) => candidate.id === pinned)
         /** The hover card's task, also looked up in what is DRAWN; undefined closes the card. */
         const tipTask = tip === null ? undefined : drawingTasks.find((candidate) => candidate.id === tip.id)
+        /** The ids this drawing paints as FRAMES, so the node layer never draws one as a task card. */
+        const frameIds = new Set((graph.groups === undefined ? [] : graph.groups).map((frame) => frame.id))
         /** The panel's elements, in render order. */
         const children: unknown[] = [
           // ONE SCOPED STYLESHEET AT THE PANEL ROOT, outside `[data-mpd-graph]`: the material, the
@@ -2877,12 +3614,39 @@
                 viewBox: "0 0 " + graph.width + " " + graph.height,
                 style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" },
               }, edges.concat(flows)),
+              // THE FRAMES LAYER: a subcell's box, BETWEEN the edge plane and the task cards — so an
+              // arriving edge passes UNDER the frame's border while the tasks stay ABOVE it. It is
+              // `pointer-events: none` scenery; `data-mpd-group` is the witness a verifier reads, and a
+              // frame's id is deliberately NOT a `data-mpd-node`, so the task layer never claims a box
+              // it does not draw. NULL when the model declares no group, which leaves a flat picture
+              // byte for byte as it was.
+              graph.groups === undefined || graph.groups.length === 0 ? null : react.createElement("div", {
+                key: "frames",
+                "data-mpd-frames": "1",
+                style: { position: "absolute", left: 0, top: 0, pointerEvents: "none" },
+              }, graph.groups.map((frame) => react.createElement("div", {
+                key: "frame-" + frame.id,
+                className: "mpd-dag-group",
+                // THE FRAME'S OWN RECTANGLE in the SAME spelling `data-mpd-box` uses — `id,left,top,
+                // width,height` — so the geometry is asserted from what was rendered, not re-derived.
+                "data-mpd-group": frame.id + "," + frame.left + "," + frame.top + "," + frame.width + "," + frame.height,
+                "data-mpd-group-depth": String(frame.depth),
+                style: { position: "absolute", left: frame.left + "px", top: frame.top + "px", width: frame.width + "px", height: frame.height + "px" },
+              }, react.createElement("span", { key: "label", className: "mpd-dag-group-label" }, frame.label)))),
+              // THE NESTED CARDS: with the nested geometry every card carries its own absolute
+              // rectangle (see `nestedCardOf`), and `graph.columns` is EMPTY, so the column branch right
+              // below paints nothing. A flat drawing passes `null` here and keeps its own grid untouched.
+              graph.nested === true ? react.createElement("div", {
+                key: "nested-cards",
+                "data-mpd-cards": "1",
+                style: { position: "absolute", left: 0, top: 0, width: graph.width + "px", height: graph.height + "px" },
+              }, graph.nodes.map((node) => nestedCardOf(node))) : null,
               graph.columns.map((column, rank) => react.createElement("div", {
                 key: "col-" + rank,
                 "data-mpd-rank": String(rank),
                 style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
               },
-              column.map((task) => react.createElement("div", {
+              column.filter((task) => !frameIds.has(task.id)).map((task) => react.createElement("div", {
                 key: "node-" + task.id,
                 "data-mpd-node": task.id,
                 // THE FROSTED-GLASS CLASS AND THE RENDERED STATE both live on the card: the class is

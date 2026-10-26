@@ -334,6 +334,7 @@ function parsePlanMarkdown(text) {
 }
 // packages/mpd-graph-core/src/model.ts
 var BOARD_VISUALS = new Set(["completed", "running", "failed", "blocked", "open", "cancelled"]);
+var GROUP_VISUAL = "group";
 function visualOf(task) {
   if (task.visual !== undefined && BOARD_VISUALS.has(task.visual))
     return task.visual;
@@ -359,15 +360,69 @@ function statusVisual(status) {
 function uniqueSorted(values) {
   return [...new Set(values)].sort((left, right) => ID_ORDER.compare(left, right));
 }
-function buildModel(input) {
+function sortedIds(ids) {
+  return [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
+}
+function pairKey(from, to) {
+  return `${from}\x00${to}`;
+}
+function byNodeId(left, right) {
+  return ID_ORDER.compare(left.id, right.id);
+}
+function byFrameId(left, right) {
+  return ID_ORDER.compare(left.id ?? "", right.id ?? "");
+}
+function byFrameDepthThenId(left, right) {
+  return left.depth - right.depth || ID_ORDER.compare(left.id, right.id);
+}
+function isGroupFrame(frame) {
+  return frame.id !== null && frame.label !== null;
+}
+function frameName(frame) {
+  return frame.id === null ? "the root frame" : `group "${frame.id}"`;
+}
+function refuseDuplicate(id, first, second) {
+  throw new Error(`mpd-graph-core: the grouping input carries id "${id}" in ${frameName(first)} and ${frameName(second)}; ids must be unique across the whole tree`);
+}
+function claimId(frameOf, id, frame) {
+  const held = frameOf.get(id);
+  if (held !== undefined)
+    refuseDuplicate(id, held, frame);
+  frameOf.set(id, frame);
+}
+function collectFrame(group, parent) {
+  const frame = {
+    id: group.id,
+    label: group.label,
+    parent,
+    depth: parent.depth + 1,
+    board: group.board ?? [],
+    children: [],
+    ...group.originTaskId === undefined ? {} : { originTaskId: group.originTaskId },
+    ...group.plan === undefined ? {} : { plan: group.plan }
+  };
+  frame.children = (group.groups ?? []).map((child) => collectFrame(child, frame)).sort(byFrameId);
+  return frame;
+}
+function flattenFrames(root) {
+  const frames = [];
+  const walk = (frame) => {
+    frames.push(frame);
+    for (const child of frame.children)
+      walk(child);
+  };
+  walk(root);
+  return frames;
+}
+function mergeFrame(frame) {
   const boardById = new Map;
-  for (const task of input.board ?? [])
+  for (const task of frame.board)
     boardById.set(task.id, task);
   const planById = new Map;
-  for (const task of input.plan?.tasks ?? [])
+  for (const task of frame.plan?.tasks ?? [])
     planById.set(task.id, task);
   const ids = [...new Set([...boardById.keys(), ...planById.keys()])].sort((left, right) => ID_ORDER.compare(left, right));
-  const drafts = [];
+  const nodes = [];
   for (const id of ids) {
     const board = boardById.get(id);
     const planned = planById.get(id);
@@ -375,7 +430,7 @@ function buildModel(input) {
     const assignee = board?.owner ?? planned?.owner;
     const title = planned?.title;
     const status = board?.status;
-    drafts.push({
+    nodes.push({
       id,
       subject: board?.subject ?? planned?.title ?? id,
       visual: board === undefined ? "planned" : visualOf(board),
@@ -385,46 +440,216 @@ function buildModel(input) {
       ...kind === undefined ? {} : { kind },
       ...assignee === undefined ? {} : { assignee },
       ...title === undefined ? {} : { title },
-      ...status === undefined ? {} : { status }
+      ...status === undefined ? {} : { status },
+      ...frame.id === null ? {} : { group: frame.id }
     });
   }
   const declared = new Map;
-  const keyOf = (from, to) => `${from}\x00${to}`;
   for (const task of boardById.values()) {
     for (const from of task.blockedBy ?? []) {
-      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      const entry = declared.get(pairKey(from, task.id)) ?? { from, to: task.id, board: false, plan: false, derived: false };
       entry.board = true;
-      declared.set(keyOf(from, task.id), entry);
+      declared.set(pairKey(from, task.id), entry);
     }
   }
   for (const task of planById.values()) {
     for (const from of task.blockedBy) {
-      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      const entry = declared.get(pairKey(from, task.id)) ?? { from, to: task.id, board: false, plan: false, derived: false };
       entry.plan = true;
-      declared.set(keyOf(from, task.id), entry);
+      declared.set(pairKey(from, task.id), entry);
     }
   }
-  const nodeIds = new Set(ids);
-  const edges = [];
-  for (const entry of declared.values()) {
-    if (!nodeIds.has(entry.from) || !nodeIds.has(entry.to))
+  return {
+    frame,
+    nodes,
+    declared: [...declared.values()],
+    boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
+    planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id))
+  };
+}
+function lowestCommonFrame(left, right) {
+  const ancestors = new Set;
+  for (let frame = right;frame !== null; frame = frame.parent)
+    ancestors.add(frame);
+  for (let frame = left;frame !== null; frame = frame.parent)
+    if (ancestors.has(frame))
+      return frame;
+  return left;
+}
+function anchorAt(frame, home, id) {
+  if (frame === home)
+    return id;
+  let current = frame;
+  while (current.parent !== home) {
+    if (current.parent === null)
+      return id;
+    current = current.parent;
+  }
+  return current.id ?? id;
+}
+function edgeSource(entry) {
+  if (entry.board && entry.plan)
+    return "both";
+  if (entry.plan)
+    return "plan";
+  if (entry.board)
+    return "board";
+  return "derived";
+}
+function placeEdge(edgeMaps, frameOf, entry) {
+  const fromFrame = frameOf.get(entry.from);
+  const toFrame = frameOf.get(entry.to);
+  if (fromFrame === undefined || toFrame === undefined)
+    return;
+  const home = lowestCommonFrame(fromFrame, toFrame);
+  const from = anchorAt(fromFrame, home, entry.from);
+  const to = anchorAt(toFrame, home, entry.to);
+  if (entry.derived && from === to)
+    return;
+  const held = edgeMaps.get(home);
+  if (held === undefined)
+    return;
+  const merged = held.get(pairKey(from, to)) ?? { from, to, board: false, plan: false, derived: false };
+  merged.board = merged.board || entry.board;
+  merged.plan = merged.plan || entry.plan;
+  merged.derived = merged.derived || entry.derived;
+  held.set(pairKey(from, to), merged);
+}
+function buildModel(input) {
+  const root = {
+    id: null,
+    label: null,
+    parent: null,
+    depth: -1,
+    board: input.board ?? [],
+    children: [],
+    ...input.plan === undefined ? {} : { plan: input.plan }
+  };
+  root.children = (input.groups ?? []).map((group) => collectFrame(group, root)).sort(byFrameId);
+  const frames = flattenFrames(root);
+  const merges = frames.map((frame) => mergeFrame(frame));
+  const frameOf = new Map;
+  for (const merge of merges)
+    for (const node of merge.nodes)
+      claimId(frameOf, node.id, merge.frame);
+  const level = new Map;
+  for (const merge of merges)
+    level.set(merge.frame, [...merge.nodes].sort(byNodeId));
+  const pseudos = [];
+  for (const frame of frames) {
+    if (!isGroupFrame(frame) || frame.parent === null)
       continue;
-    edges.push({ from: entry.from, to: entry.to, source: entry.board && entry.plan ? "both" : entry.plan ? "plan" : "board" });
+    const parent = frame.parent;
+    const pseudo = {
+      id: frame.id,
+      subject: frame.label,
+      visual: GROUP_VISUAL,
+      dependencies: [],
+      depth: 0,
+      planned: false,
+      ...parent.id === null ? {} : { group: parent.id }
+    };
+    claimId(frameOf, frame.id, parent);
+    pseudos.push(pseudo);
+    level.get(parent)?.push(pseudo);
+  }
+  const edgeMaps = new Map;
+  for (const frame of frames)
+    edgeMaps.set(frame, new Map);
+  for (const merge of merges)
+    for (const entry of merge.declared)
+      placeEdge(edgeMaps, frameOf, entry);
+  for (const frame of frames) {
+    if (!isGroupFrame(frame) || frame.originTaskId === undefined)
+      continue;
+    if (!frameOf.has(frame.originTaskId))
+      continue;
+    placeEdge(edgeMaps, frameOf, { from: frame.originTaskId, to: frame.id, board: false, plan: false, derived: true });
+  }
+  const drawnDeps = new Map;
+  for (const frame of frames) {
+    const blockers = new Map;
+    const held = edgeMaps.get(frame);
+    if (held !== undefined) {
+      for (const entry of held.values()) {
+        const list = blockers.get(entry.to);
+        if (list === undefined)
+          blockers.set(entry.to, [entry.from]);
+        else
+          list.push(entry.from);
+      }
+    }
+    drawnDeps.set(frame, blockers);
+  }
+  for (const pseudo of pseudos) {
+    const parent = frameOf.get(pseudo.id);
+    if (parent === undefined)
+      continue;
+    pseudo.dependencies = uniqueSorted(drawnDeps.get(parent)?.get(pseudo.id) ?? []);
+  }
+  const layouts = new Map;
+  let rootLayout;
+  const drawingNodes = new Map;
+  for (const frame of frames) {
+    const nodes2 = level.get(frame) ?? [];
+    const drawn = nodes2.map((node) => ({ ...node, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node.id) ?? []) }));
+    drawingNodes.set(frame, drawn);
+    const layout = rankPlan(drawn);
+    layouts.set(frame, layout);
+    if (frame === root)
+      rootLayout = layout;
+    for (const node of nodes2)
+      node.depth = layout.rankOf.get(node.id) ?? node.depth;
+  }
+  const edges = [];
+  for (const frame of frames) {
+    const held = edgeMaps.get(frame);
+    if (held === undefined)
+      continue;
+    for (const entry of held.values())
+      edges.push({ from: entry.from, to: entry.to, source: edgeSource(entry) });
   }
   edges.sort((left, right) => ID_ORDER.compare(left.from, right.from) || ID_ORDER.compare(left.to, right.to));
-  const layout = rankPlan(drafts);
-  const nodes = drafts.map((node) => ({ ...node, depth: layout.rankOf.get(node.id) ?? node.depth }));
-  const ranks = layout.ranks.map((rank) => rank.map((task) => task.id));
+  const nodes = [...merges.flatMap((merge) => merge.nodes), ...pseudos].sort(byNodeId);
+  const ranks = (rootLayout?.ranks ?? []).map((rank) => rank.map((task) => task.id));
+  const cyclic = new Set;
+  for (const frame of frames)
+    for (const id of cycleIds(drawingNodes.get(frame) ?? []))
+      cyclic.add(id);
+  const refs = new Set;
+  for (const merge of merges)
+    for (const node of merge.nodes)
+      for (const ref of node.dependencies)
+        refs.add(ref);
+  for (const frame of frames)
+    if (frame.originTaskId !== undefined)
+      refs.add(frame.originTaskId);
+  const unresolved = [...refs].filter((ref) => !frameOf.has(ref)).sort();
   const report = {
-    boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
-    planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id)),
+    boardOnly: sortedIds(merges.flatMap((merge) => merge.boardOnly)),
+    planOnly: sortedIds(merges.flatMap((merge) => merge.planOnly)),
     edgePlanOnly: edges.filter((edge) => edge.source === "plan"),
     edgeBoardOnly: edges.filter((edge) => edge.source === "board"),
-    planProblems: [...input.plan?.problems ?? []],
-    unresolved: [...layout.unresolved],
-    ranksDerived: layout.derived
+    planProblems: frames.flatMap((frame) => [...frame.plan?.problems ?? []]),
+    unresolved,
+    ranksDerived: rootLayout?.derived ?? true
   };
-  return { nodes, edges, ranks, cycles: cycleIds(nodes), report };
+  const groups = groupRecords(frames, level);
+  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+}
+function groupRecords(frames, level) {
+  const groups = [];
+  for (const frame of frames.filter(isGroupFrame).sort(byFrameDepthThenId)) {
+    groups.push({
+      id: frame.id,
+      label: frame.label,
+      parentId: frame.parent === null ? null : frame.parent.id,
+      memberIds: sortedIds((level.get(frame) ?? []).map((node) => node.id)),
+      depth: frame.depth,
+      ...frame.originTaskId === undefined ? {} : { originTaskId: frame.originTaskId }
+    });
+  }
+  return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
 import { readFileSync, readdirSync, statSync } from "node:fs";

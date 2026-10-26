@@ -1,0 +1,6 @@
+# rough arm-count baseline (lines containing `test(` or `it(`), pre-W4, HEAD 6171fd7ec83aca7ebc820c26eba4429fbe86e2aa
+packages/mpd-graph-core/test/model.test.ts:16
+packages/mpd-graph-core/test/plan.test.ts:16
+packages/mpd-graph-core/test/rank.test.ts:14
+packages/mpd-graph-core/test/resolve.test.ts:12
+packages/mpd-graph-core/test/watch.test.ts:14

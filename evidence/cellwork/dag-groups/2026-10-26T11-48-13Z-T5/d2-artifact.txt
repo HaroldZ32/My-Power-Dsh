@@ -1,0 +1,20 @@
+-- symbols present:
+   parentTeamId               7
+   deriveParentTeam           2
+   assertParentChainAcyclic   2
+   framedBoardOf              2
+   groupInputsOf              3
+   groupsOf                   2
+   isLiveTeam                 9
+-- Amendment 7 qualification (expect the qualification + same-frame blockedBy map):
+4655:    id: `${record.teamId}::${row.id}`,
+4656:    blockedBy: (row.blockedBy ?? []).map((reference) => own.has(reference) ? `${record.teamId}::${reference}` : reference)
+-- groups omitted for a childless team (backward pin), expect the '{}' fallback:
+4189:  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+4682:  return groups.length === 0 ? {} : { groups };
+-- /state projection: tasks come from the RECORD (no model pseudo-nodes) and rank from the model:
+2553:  const tasks = record.tasks.map((task) => {
+3264:  const tasks = record.tasks.map((task) => {
+3282:      ...model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }
+-- derivation rules present (roster+not-lead, >1 refine, cycle):
+7

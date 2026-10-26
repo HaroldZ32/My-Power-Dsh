@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T113829-9bf867",
+  "loopId": "loop-20261026T105128-98c855",
+  "taskId": "T4",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "graph-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "a1d0c8b51cbe1aeb9ddc397de7eeed77049be476088b3789c317d38c5e56379a"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "a1d0c8b51cbe1aeb9ddc397de7eeed77049be476088b3789c317d38c5e56379a"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/probe-d1.log",
+        "bytes": 1243,
+        "sha256": "6380ea3bee5907c4462ebde59684cf54e319a5b0b116acea3ac126593bb79433",
+        "mtime": "2026-10-26T11:34:55.926Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-real.jsononly",
+        "bytes": 2951,
+        "sha256": "dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf",
+        "mtime": "2026-10-26T11:34:55.563Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/emit-synthetic.jsononly",
+        "bytes": 2935,
+        "sha256": "2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b",
+        "mtime": "2026-10-26T11:34:55.565Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/gate-selftest.log",
+        "bytes": 2104,
+        "sha256": "99bf62bbc2e07e00f7187789f9aadeb85610c4244a99271dd421f71b3d70efc6",
+        "mtime": "2026-10-26T11:34:55.001Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/scope-start.sha256",
+        "bytes": 1891,
+        "sha256": "66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc",
+        "mtime": "2026-10-26T11:34:02.932Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T11-34-02Z-T4/scope-end.sha256",
+        "bytes": 1891,
+        "sha256": "66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc",
+        "mtime": "2026-10-26T11:34:59.495Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T10-54-01Z-baseline/model-nogroups.jsononly",
+        "bytes": 2951,
+        "sha256": "dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf",
+        "mtime": "2026-10-26T11:02:22.805Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T10-54-01Z-baseline/model-nogroups-synthetic.jsononly",
+        "bytes": 2935,
+        "sha256": "2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b",
+        "mtime": "2026-10-26T11:02:22.814Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "a1d0c8b51cbe1aeb9ddc397de7eeed77049be476088b3789c317d38c5e56379a"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "389ecf7d965428f5624c6331efda1172da852f54be815fcdc6e017d0abeee4be"
+    },
+    {
+      "path": "packages/mpd-graph-core/README.md",
+      "sha256": "4c2b7506c90818fb8ee29a99950342a07fbdef865e9fccf96f9c4c4595421100"
+    },
+    {
+      "path": "packages/mpd-graph-core/README.zh-CN.md",
+      "sha256": "c789597e57e63c2107c86eb0145db8c0a774460b9b514691cf9bd48d9439a91f"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T113626-d04b8d",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T113626-d04b8d.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T113723-77a70e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T113723-77a70e.log",
+      "logSha256": "3a3f717958b32b55c711754e435b9a81589af1fe196f35726a204ba77c38bf5e"
+    },
+    {
+      "evidenceId": "ev-20261026T113730-83b616",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T113730-83b616.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    },
+    {
+      "evidenceId": "ev-20261026T113731-d91fd6",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T113731-d91fd6.log",
+      "logSha256": "e2521e31160f8f3b30422ce84cf310fb9e3c9268228460dc571463330c3b17c5"
+    }
+  ],
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "symptom": "A frame's rank and cycle scan are seeded from the AUTHORED blockedBy refs, so a reference that crosses an anchor does not resolve in the frame that draws the edge. Reproduced black-box against the BUILT dist (probe-d1.log): case B — outer task T2 blocked by inner B1 draws the edge teamB->T2[board], yet T2 gets depth 0 and ranks [[T1,T2],[teamB]] put T2 in an EARLIER column than the box the line leaves from (a backwards dependency line). Case C — a cross-frame mutual block (T1 blocked by X1 inside G1, X1 blocked by T1) emits both G1->T1 and T1->G1 with cycles: [] so the panel's `dependency cycle: <ids>` warning can never fire. The mirror case (A) and the group->group case (D) are correct, which matches the writer's own scope note.",
+      "expected": "Rank each frame from the ANCHORED pair set (the from of every pair whose to is the node) while keeping node.dependencies as authored text, and report a cross-frame mutual block as a CYCLE instead of two silent roots (contract Amendment 8 R1; D1's ranking clause: the outer model ranks group pseudo-nodes so external columns stay correct).",
+      "docSource": ".mpd/plans/cellwork-w4-contract.md — Amendment 8 (2026-10-26T11:30Z) R1 'anchored ranking', plus D1 'Ranking'"
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "symptom": "The BUILT-IN nested fixture of the independent oracle gate never produces a group->group edge. The gate's grouped model shows only B1->B2, B1->teamB1, B2->teamB1[derived], T1->T2, T1->teamB, T2->teamB — no frame-to-frame edge — while the model itself does implement the branch (my probe case D yields GA->GB[board]). The branch is therefore asserted only by a package arm, and a regression in it cannot redden `verify-graph-model`.",
+      "expected": "The gate fixture, its grouped oracle (expectedGroupedModel) and the golden must each demonstrate the group->group attachment the contract names, so the durable gate — not only a package test — can catch a regression (contract Amendment 8 R2; D1 attachment rule 'an edge between two groups becomes group->group').",
+      "docSource": ".mpd/plans/cellwork-w4-contract.md — Amendment 8 R2 'gate-level group->group proof'; D1 attachment rule"
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "symptom": "For a collision between a GROUP id and a task id, the refusal message names the same frame twice: 'the grouping input carries id \"G\" in the root frame and the root frame; ids must be unique across the whole tree'. The refusal itself is correct and arrives before any model is built, but the message cannot tell a caller which group collided (probe case E2).",
+      "expected": "Name the two DISTINCT frames that carry the id, so a caller debugging a group-id collision learns the group as well as the task (README 'Ids are unique across the WHOLE tree ... REFUSED with an Error naming both frames').",
+      "docSource": "packages/mpd-graph-core/README.md — 'Ids are unique across the WHOLE tree'"
+    }
+  ],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T11:38:29.652Z",
+  "notes": [
+    "BASIS: blind on src. I read the frozen contract (D1-D6 + Amendments 7/8), .mpd/plans/cellwork.md §4.13 and Wave 4, both mpd-graph-core README files, gate output and the BUILT dist; no packages/mpd-graph-core/src/** or scripts/verify-graph-model.ts content was read before this FAIL was recorded. The record was authored BEFORE any implementation read.",
+    "SETTLED TREE: scope packages/mpd-graph-core + scripts/verify-graph-model.ts, sha256 sandwich over 17 files — start and end aggregates identical (66de708f3faca0c2253d6841e0d7331374edecdba1b45a9f401126706c1f4dcc) around a 50 s settle window; all 8 hashes the writer declared at 2026-10-26T11:22:20Z verified OK (my first declared-check had the test/README lines swapped by MY transcription; the corrected check is declared-check.log, the error kept as declared-check.err.log).",
+    "PASSING HALF OF D1 (independently measured, not taken from the writer's report): backward pin byte-identical on TWO of my own pre-wave captures taken at HEAD 6171fd7e — real W3 board+plan dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf and a synthetic ghost/cycle board 2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b, no `groups` key emitted in either (count 0/0); determinism 3x identical; engine gate 13 self-test arms (8 flat + grouped positive, grouped determinism, grouped order-independence, backward no-groups, --seed-wrong-anchor) with both negative controls exiting non-zero; grouped oracle green ('groups (2) ... equal the declared tree'); package suite 92 pass / 0 fail across 6 files; dist FRESH for graph-core (and the whole fan-out now 34/34 fresh); verify:docs 52 pairs 0 failed; root tsgo --noEmit clean; verify:comments PASS (474 files, 42651 declarations); plain-JSON round-trip equal and no Map/Set leak visible in the emitted model (probe case F).",
+    "BOUNDS: I did not run the web/TUI consumption of the nested model (D3/D4 rows); I did not boot a live /plugins/mpd-team/state (D2/T5); `bun test packages` (the tests gate, ev-20261026T113555-ec8bf6) exits 1 on TWO arms OUTSIDE this row's scope — the D5 sub-cell parent-team arm in packages/mpd-cellwork-plugin/test/flow.test.ts and the cross-package coupling inventory gate in packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts — both T2-owned, recorded here as foreign-lane bounds and NOT as T1 findings; no PTY capture was attempted and none is claimed by D1.",
+    "CONSIDERED AND DECLINED: (a) node.dependencies keeping the authored refs while edges re-anchor — Amendment 8 R1 explicitly REQUIRES authored text to stay, so the defect is the ranking consuming it (F1), not the shape; (b) buildModel takes a TASK ARRAY while the README describes the input as the live board record — pre-existing convention, unchanged by this row (the gate converts the record; my probe confirms arrays at both levels), so not a W4 finding; (c) GraphGroup.depth (nesting) and GraphNode.depth (rank) share a name — the contract's own field naming; (d) the trailing '[verify-graph-model] PASS' line in --emit output — gate diagnostics, not the model; the byte-identity claim was judged on the model document, which is identical byte for byte."
+  ]
+}

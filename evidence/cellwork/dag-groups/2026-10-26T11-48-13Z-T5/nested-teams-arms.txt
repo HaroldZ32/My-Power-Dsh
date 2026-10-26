@@ -1,0 +1,13 @@
+(pass) the parent link is additive and derived from the records > a root team's record carries NO parentTeamId key, and reads back as plain JSON 
+(pass) the parent link is additive and derived from the records > a MEMBER's approval nests its team under the team whose roster records it 
+(pass) the parent link is additive and derived from the records > a Lead's NEXT wave is a SIBLING, never a child of its own team 
+(pass) the parent link is additive and derived from the records > three levels: a grandchild nests under its own parent, not under the root 
+(pass) the parent link is additive and derived from the records > a team that ENDED is no parent: its member's next team is a ROOT 
+(pass) the parent link is additive and derived from the records > TWO live rosters refuse the approval instead of guessing the box 
+(pass) the parent link is additive and derived from the records > a hand-edited CYCLE in the chain refuses the approval 
+(pass) the projection groups every live descendant, recursively > a childless tree keeps EXACTLY today's model (the backward pin) 
+(pass) the projection groups every live descendant, recursively > one group per child, the child's rows inside it, and the OUTER rank unchanged 
+(pass) the projection groups every live descendant, recursively > three levels nest recursively: a grandchild is a box inside the child's box 
+(pass) the projection groups every live descendant, recursively > the same records produce the same bytes, in two sandboxes 
+(pass) the projection groups every live descendant, recursively > a terminal child is NOT drawn as a box 
+(pass) the projection groups every live descendant, recursively > the `/state` payload carries `groups` and keeps every OUTER task's rank 

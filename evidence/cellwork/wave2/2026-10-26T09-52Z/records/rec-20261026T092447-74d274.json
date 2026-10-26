@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T092447-74d274",
+  "loopId": "loop-20261026T082258-e86c3a",
+  "taskId": "T4",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "9158b3e1-3c4f-4af2-bb85-0b17340a1462",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w2-contract.md",
+        "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/package.json",
+        "bytes": 260,
+        "sha256": "5af625dd892a60e29e1e57d23d3f15f9becbcb44ee839009e0d6240d17f5b68e",
+        "mtime": "2026-10-26T08:28:58.947Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 6632,
+        "sha256": "596ec7f3bc0b81412cebc332865930e1d20f2005e1df01ab2b845b3a3201ce98",
+        "mtime": "2026-10-26T08:48:02.821Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 6678,
+        "sha256": "3cbac0ac4b92e3fdbd3262a3b47231a68a2505003ac285d1f709ed51c01f960d",
+        "mtime": "2026-10-26T08:48:02.822Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/dist/index.js",
+        "bytes": 125235,
+        "sha256": "308342d3d8269c79ae19c0eb2ee94d73e122d82c541ce6e56d46e33254b4d26b",
+        "mtime": "2026-10-26T09:10:13.372Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/index.ts",
+        "bytes": 33292,
+        "sha256": "595ebe8fc8fe89fecd928fca9f63ea574bec56f995e3c39cc61e8d45f5fa78c7",
+        "mtime": "2026-10-26T08:44:28.810Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/guard.ts",
+        "bytes": 15416,
+        "sha256": "60c39a800a2796b5eca4a0e90c038402286440e2b6677575d5f998a2f3da7fca",
+        "mtime": "2026-10-26T08:47:36.831Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/state.ts",
+        "bytes": 25960,
+        "sha256": "c7ae3b5b20dadca99f877e589d33713f3e993cffa34ab7f9a48bf063840c77a0",
+        "mtime": "2026-10-26T08:44:28.810Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/caller.ts",
+        "bytes": 9232,
+        "sha256": "419d30fe3b45c393c120e291aecfc53003ef2eadc22130d6afacc501c205bdcb",
+        "mtime": "2026-10-26T08:35:20.159Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/config.ts",
+        "bytes": 12668,
+        "sha256": "5a742b74df0ad834caa18a20e3b49abe38cdaa391819d105fc30c3b73452d3ce",
+        "mtime": "2026-10-26T08:48:31.875Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/prompts.ts",
+        "bytes": 4572,
+        "sha256": "830f3207d4ce08ea2f166d23f949282e9751c98ddb88b9eb477903e106e295fc",
+        "mtime": "2026-10-26T08:33:17.956Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/cellwork.test.ts",
+        "bytes": 34454,
+        "sha256": "4e5557b3406bfc350b42e0b95e574ebe3aa4ccf5a8a2fa6b99255d9b9010ba47",
+        "mtime": "2026-10-26T08:47:56.036Z"
+      },
+      {
+        "path": "cordis.patch.yml",
+        "bytes": 58766,
+        "sha256": "0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      },
+      {
+        "path": "scripts/pack-mpd.ts",
+        "bytes": 66097,
+        "sha256": "6927354be6f1e1cf959bd4692737d5c22708263b1ee979221deb1359b01e26d1",
+        "mtime": "2026-10-26T08:39:11.668Z"
+      },
+      {
+        "path": "scripts/install-profile.ts",
+        "bytes": 54267,
+        "sha256": "ef5f2eeb1fe105df8f2673b003385577ccf8d9f070cad9cb51790ba9f42c6a77",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "79e566265c080dee341d9eeb9cec89871dd8a9fadf88c45d6a4935d2bde1e774"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "596ec7f3bc0b81412cebc332865930e1d20f2005e1df01ab2b845b3a3201ce98"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T091058-07eec2",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091058-07eec2.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T091059-b3948e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091059-b3948e.log",
+      "logSha256": "135bfe23302a47d163939cb779faf5005d714ea1207da3a315282d827d37b10b"
+    },
+    {
+      "evidenceId": "ev-20261026T091101-d6725d",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091101-d6725d.log",
+      "logSha256": "2b158d4f2fe8af5a64fa4c582f122be6d86d71f03016244d573282949c303565"
+    },
+    {
+      "evidenceId": "ev-20261026T091101-b8ad0c",
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091101-b8ad0c.log",
+      "logSha256": "ffe748774a361e5d19cccf60f7e715a466b86c966bae9d923f671e78db3b38d4"
+    },
+    {
+      "evidenceId": "ev-20261026T091106-13e309",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091106-13e309.log",
+      "logSha256": "582ce00c534da3673f45e4ebdbcefba890b39a8c1665e83cd06d0a38c7f6f65b"
+    },
+    {
+      "evidenceId": "ev-20261026T091136-38d716",
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091136-38d716.log",
+      "logSha256": "6ecbfbd3838112e1f2f53851bfebbc1e014d732c4b51676f569a55906854da34"
+    },
+    {
+      "evidenceId": "ev-20261026T091139-d30b9a",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T091139-d30b9a.log",
+      "logSha256": "5b1d07e87138739b95fb388bcbe5bcff0c379251158d12294450437ee66dca2d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T09:24:47.355Z",
+  "notes": [
+    "BOUNDS: T4 judges B1/B2/B3/B10 only (contract 'Implementation ownership' ruling); the Amendment-3 staging belongs to T5. Blind: packages/mpd-cellwork-plugin/src/** and test/** were NOT read; no FAIL was recorded.",
+    "HASH SANDWICH HELD: start 2026-10-26T09:10:50Z / end 2026-10-26T09:23:59Z, HEAD 6fe9e27e both sides. Package digest c847d76a3574f3aa6f2c9323119e5580df59ba09f498a2bf27e9a1c2fa6b5270 identical at both reads (17 files); cordis.patch.yml 0ef73e7d775e1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca, scripts/install-profile.ts ef5f2eeb…, scripts/pack-mpd.ts 6927354b…, package.json 53704a4a…, bun.lock eeea08e3… unchanged. The captain's freeze held; nobody wrote during the batch.",
+    "UNIT EVIDENCE (my own run): bun test packages/mpd-cellwork-plugin = 17 pass / 0 fail / 266 expect / 1 file. Arms observed by name: exactly one /cellwork command registered; empty-whitespace writes no state; non-empty writes the record + exactly ONE directive; a second /cellwork refuses and names the active cell; no-live-turn-surface archives instead of fencing; pure guard decision (no seat allows, each mode refuses its own surface); installed guard fences the active cell's captain only; no tools.guard seam installs nothing and says so; subcaptain fenced as a MINI-CAPTAIN while the captain keeps start/stop (Amendment 4); atomic write round-trip with no temp file left; corrupt state refused with its path and the command refuses on it; unreadable schema VERSION refused and named; status reports the cell + live team counts + caller seat; cellwork_start captain-only, idempotent, NEVER creates a cell; cellwork_stop archives, refuses live work unless forced, returns tools; a new cell can follow a stop; no context-window literal and the row names no harness seam.",
+    "GATES (evidence ids): typecheck ev-07eec2 exit 0; comments ev-b3948e PASS (459 files / 41007 declarations — up from 446/40153, so the new package IS in the source set); docs ev-d6725d PASS pairs=51 dead=0 with 'ok packages/mpd-cellwork-plugin/README.md'; rows ev-b8ad0c 37 row ids incl mpd-cellwork; tests ev-13e309 2540 tests / 151 files / 0 fail / 6 skip incl 23 cellwork lines; manifest ev-38d716 PASS (npm pack --dry-run 1063 files, 0 required absent); dist ev-d30b9a 34/34 fresh incl 'FRESH packages/mpd-cellwork-plugin/dist/index.js sha 308342d3d826…' under pinned bun 1.4.0.",
+    "TABLE-EXTERNAL GATES (bash, real exit codes captured without a pipe): verify-no-host-override exit 0 (0 of 0 id-targets collide with the 214 host ids); install-profile --dry-run exit 0 and its generated patch carries '- id: mpd-cellwork' at the expected relative path; forbidden-literal scan (1_000_000 / 262144) = 0 hits in src/test/docs/dist; PLUGIN_PKGS does declare mpd-cellwork-plugin (scripts/pack-mpd.ts). pack-closure is RED — see finding F2.",
+    "F2 (reported, not a B-item FAIL): node scripts/verify-pack-closure.ts exits 1 with 'PACKED-MISSING [mpd-cellwork-plugin]' — dist/mpd-package/ (gitignored, pack stamp 2026-10-26T02:50:27Z) predates the package while PLUGIN_PKGS now declares it. AGENTS.md T-88 assigns dist/mpd-package/** to the INTEGRATION task, so the remedy is a re-pack at integration + re-run; T1 is not the owner and this is not a contract B-item.",
+    "F1 (reported, not a B-item FAIL): the contract's MOUNTED boot gate produced NO evidence in this environment. bundle-lifecycle fails at its INSTALL step, not at the mount: corepack/pnpm fetch to registry.npmjs.org times out, and with COREPACK_ENABLE_NETWORK=0 it demands pnpm-11.24.0 from the registry. The alternative sandbox-profile boot composes the row set from a STALE GLOBAL @mpd-dsh/mpd 0.15.5 at ~/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd (mtime 11:15 local, byte-identical to dist/mpd-package/cordis.patch.yml): it has mpd-team-compact but NO mpd-cellwork row and no cellwork package, so any boot here measures the global copy, not the checkout. Therefore 'the row APPLIES without aborting' is UNPROVEN in this environment, and my PASS does NOT certify the mount.",
+    "Judged against the DOCUMENTED behaviour for the two items the unit boundary cannot show: the ONE teaching paragraph per refusal and the directive's producer kind mpd-cellwork are taken from the package README, not independently observed (blindness is prose). Declined: the reusable-helper exports (internal seam for T2, proven by T5's staging), the detail of each verifier-mode deny entry (one table-driven arm covers all modes), and B4-B9 (T5/T6 scope)."
+  ]
+}

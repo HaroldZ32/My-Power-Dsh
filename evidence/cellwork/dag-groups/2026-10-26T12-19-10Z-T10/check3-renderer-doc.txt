@@ -1,0 +1,28 @@
+-- new subsection present in both:
+docs/tui-dag-renderer.md:76:### 3.1 Nested groups: subcells as boxes (wave 4)
+docs/tui-dag-renderer.zh-CN.md:64:### 3.1 嵌套分组：子单元画成盒子（第 4 波）
+-- glyph family / port / crossing / collapse vocabulary (EN):
+83:- **A second one-cell glyph family.** `DAG_GROUP_CHARS` is the double-line set `╔ ╗ ╚ ╝ ║ ═`, visually
+89:- **Crossing versus terminating.** An edge arriving on a side draws that side's PORT glyph (`╧` on a top
+91:  CROSSING glyph (`╫`, a single line through a double one). They are separate glyphs by construction, so a
+93:- **Group hit identity.** `hitTestGroup(view, row, col)` answers with the INNERMOST frame holding a cell,
+94:  and `dagRowClick` reports `groupId` when the pointer landed on a frame; a task still outranks the frame
+96:- **Never half a group.** A frame the vertical window would cut loses its OWN cells and keeps its
+99:  reported COLLAPSED in `collapsedGroups` instead of being painted half-drawn.
+-- the same in zh:
+71:- **第二套单格字形家族。** `DAG_GROUP_CHARS` 是双线集合 `╔ ╗ ╚ ╝ ║ ═`，与节点家族圆角单线在视觉上明显不同。
+76:- **穿过与终止。** 到达某条边上的边画该边的**端口**字形（上边是 `╧`），于是这条依赖读起来是附着在**盒子**上的。
+77:  而**穿过**一条边的线画**交叉**字形（`╫`，单线穿过双线）。两者在构造上就是不同字形，所以一条在内部继续的线永远
+79:- **分组命中身份。** `hitTestGroup(view, row, col)` 回答持有该格的最内层帧，指针落在帧上时 `dagRowClick` 报告
+82:  的规则，扩展到装着节点的东西上）；当宽度守卫放不下两个节点列时，阶梯会落到 rail/list，并在 `collapsedGroups`
+-- existing headings must NOT be renamed (the six original section titles):
+10:## 1. The question
+18:## 2. What was evaluated
+20:### 2.1 notcurses — NOT viable
+40:### 2.2 The reference `dsh-blender-plugin` — no graphics code
+47:### 2.3 The host `ui.Image` path — bounded, raster-only, non-interactive
+64:## 3. The decision
+76:### 3.1 Nested groups: subcells as boxes (wave 4)
+101:## 4. The colour baseline: the WEB tones
+124:## 5. What would have to change for a renderer
+137:## 6. Evidence and bounds

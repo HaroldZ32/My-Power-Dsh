@@ -110,6 +110,36 @@ mount-captured exception (the knobs that need the next `dsh` boot) — the card'
 scoped statement, and its copy in `settings-card.ts` stays byte-identical to the TUI's, so a reader
 of either front door learns that the EFFECT is per knob (`docs/user-guide.md` §9.1).
 
+## Nested groups: a subcell is a frame
+
+The TEAM view paints a subcell as a frame instead of as one more task card. The host serves the box as a
+node of the PARENT frame (`visual: "group"`) together with the model's `groups` list, and the drawing turns
+each of those items into a `.mpd-dag-group` rectangle in a layer of its own — so the painted order is
+`svg` edges, then the frames, then the task cards, and no `data-mpd-node` ever carries a group's id.
+
+- **A box is its INTERIOR, laid out recursively.** Each frame's own items are placed by the same rules a
+  flat drawing uses — columns by the served column, stacked in id order, a crossing band reserved above the
+  boxes for the rank-skipping edges — and the box is then sized to that interior plus the frame's own
+  padding, so the rectangle it publishes (`data-mpd-group="<id>,<left>,<top>,<width>,<height>"`) encloses
+  the cards and the nested boxes it holds. Nesting repeats: a subcell inside a subcell gets its own frame,
+  strictly inside its parent's rectangle.
+- **The router needs no group-aware code.** An edge whose endpoint is the box is anchored on the group's id
+  by the host, which makes it an ordinary drawn edge that terminates on the frame's border — the arrow's tip
+  x IS the box's left border. `overlaps` is audited PER FRAME and the union is what the geometry serves, so
+  the no-two-runs-share-a-pixel promise extends to every interior unchanged.
+- **One canvas, absolute coordinates.** The nested branch emits every card, run and frame in the canvas's
+  own pixels (`nodes[].left/top/width/height`, `groups[].left/top/…`) and the DOM positions the cards
+  absolutely instead of inside rank columns; a box's interior is re-planned at the origin its box was
+  placed at, so the painted path and the polyline a test proves containment with are one curve.
+- **A flat team is untouched.** With no `groups` in the model the geometry carries no `groups` key, no
+  `nested` flag and the render emits no frames layer at all, so a flat picture's bytes and DOM are what
+  they were before subcells existed.
+- **DECLARED BOUNDS.** A cyclic dependency INSIDE one frame is not routed by this build (the flat path
+  draws it on the left); the geometry lists its witness in `nestedBackEdges` so the omission is visible
+  rather than silent. Columns are packed in rank order and stacked top-aligned — no barycentre relaxation,
+  unlike the flat path — and the hover halo covers the root frame's cards (an interior card keeps its own
+  tone).
+
 ## Config
 
 None. This is infrastructure: the self-row carries no config in the bundle patch.

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T081333-e1a781",
+  "loopId": "loop-20261026T074304-b04dd1",
+  "taskId": "T3",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "6afa478b-160e-4353-a5c7-a57c3b185fed",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w1-contract.md",
+      "sha256": "4670d50651499940a7a302b75f7ae5c701c1f70bf65c1103c60c3ef9d8a23370"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w1-contract.md",
+        "sha256": "4670d50651499940a7a302b75f7ae5c701c1f70bf65c1103c60c3ef9d8a23370"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/src/index.ts",
+        "bytes": 321046,
+        "sha256": "08c12881d4a1c4e0aa90bc977dc601031dcad2fb547b8580cfd2582f0756c90b",
+        "mtime": "2026-10-26T07:51:23.573Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/test/adapter-context-pressure.test.ts",
+        "bytes": 12342,
+        "sha256": "44e89f6a62da636cb8a99b50f8a1916ade82fdf9b910634e47838faafa9c4d9d",
+        "mtime": "2026-10-26T07:52:50.681Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/test/adapter-model-window.test.ts",
+        "bytes": 4634,
+        "sha256": "d9a8d8226eb944b508b4b897a8344c53fa3523f64b410ad8ea11e3bbc060b9bd",
+        "mtime": "2026-10-26T07:53:02.519Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/test/adapter.test.ts",
+        "bytes": 90935,
+        "sha256": "782cf31be05d4b7193a3559f994e786518c16fb8e98d3124aa45fca39f831101",
+        "mtime": "2026-10-26T07:52:21.832Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts",
+        "bytes": 30007,
+        "sha256": "ae3dd3830b222539ff4e9a419b4167087befb7ab10f1b7448af8ef5a0dab6290",
+        "mtime": "2026-10-26T07:53:35.230Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/README.md",
+        "bytes": 24081,
+        "sha256": "54aff1eb9fc4a39dd65ca3c649e7ea845388be3f5ba6832e6c7ff31621050ded",
+        "mtime": "2026-10-26T08:00:37.334Z"
+      },
+      {
+        "path": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+        "bytes": 24008,
+        "sha256": "c2c6787e6cb138353bb1b9095fe15dd323a5a82e60bb77058b80eba6038852ac",
+        "mtime": "2026-10-26T08:01:03.265Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w1-contract.md",
+      "sha256": "4670d50651499940a7a302b75f7ae5c701c1f70bf65c1103c60c3ef9d8a23370"
+    },
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/README.md",
+      "sha256": "54aff1eb9fc4a39dd65ca3c649e7ea845388be3f5ba6832e6c7ff31621050ded"
+    },
+    {
+      "path": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "sha256": "c2c6787e6cb138353bb1b9095fe15dd323a5a82e60bb77058b80eba6038852ac"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T081250-0e5f1d",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081250-0e5f1d.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T081239-0c1ad9",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081239-0c1ad9.log",
+      "logSha256": "26e830aca551ba975148340b784a065c6a07745f4f995f135be6a84ed861e49c"
+    },
+    {
+      "evidenceId": "ev-20261026T081251-828de2",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081251-828de2.log",
+      "logSha256": "70fb61f4151f3c5f4513c4fc93c4d24193bbb32dca36d2d31206380c9a67e527"
+    },
+    {
+      "evidenceId": "ev-20261026T081321-8659f6",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T081321-8659f6.log",
+      "logSha256": "ed063e9d963d3073abec8ef1bcf70a07780128c334fd3430a37a2e48adc76399"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T08:13:33.070Z",
+  "notes": [
+    "Basis: BLIND. I did not read packages/mpd-dsh-adapter-plugin/src/** or test/**; judged the frozen contract (incl. Amendment 1), the package README pair, the gate evidence and the test runner's own arm titles/counts.",
+    "A1: adapter-context-pressure.test.ts has 12 green arms covering projectedTokens preferred over pressureTokens then divided by the REPORTED window; pressure fallback; no-window with NO guessed constant; zero projection -> ratio null; unavailable for no service, no materialized state and a throwing state read; a throwing snapshot still answers from state; Agent / Session id / sessions-store resolution; a target naming no session is unavailable. A2 (4 arms): context.contextWindow and defaultMaxTokens land verbatim; unresolved window AND cap are both null; one resolved limit never invents the other; resolved cap without a window leaves window null. A3 (3 arms): supplied maxDepth forwarded on the activation request; absent stays ABSENT (key omitted, never undefined); the OFFICIAL backend ignores a supplied cap without throwing.",
+    "Amendment 1 respected: the README states both keys are ALWAYS written at runtime as number|null, null = the harness resolved nothing, type-level optionality means undefined = producer did not report; the A2 arms pin key presence and the null-when-unresolved case. A3's README section documents native forward-exactly-when-supplied and the official ignore-without-throw.",
+    "Package run: bun test packages/mpd-dsh-adapter-plugin = 289 pass / 0 fail / 1192 expect() calls / 19 files, exit 0. Gates: typecheck ev-20261026T081250-0e5f1d exit 0; comments ev-20261026T081239-0c1ad9 exit 0; tests aggregate ev-20261026T081251-828de2 exit 0 (2517 pass, 6 skip, 0 fail, 2523 tests / 150 files); docs parity ev-20261026T081321-8659f6 exit 0 (pairs=50 failed=0 violations=0 links=453 dead=0) supports the bilingual README basis.",
+    "Scope observed by git status: only the adapter src/test/README pair changed for this loop's scope (plus the declared 24-target dist rebuild by the captain at integration). No file was edited by this seat.",
+    "Bounds: assertion CONTENT in the test files was not read (blindness); I observed titles, counts, exit codes and README text only. dist/ freshness is the captain's integration work and is not part of this verdict."
+  ]
+}

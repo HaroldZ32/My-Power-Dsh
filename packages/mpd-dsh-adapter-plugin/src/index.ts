@@ -573,6 +573,14 @@ export interface DshTeamSpawnRequest {
    * reaches a teammate WITHOUT the official tool row's `freshProvider` indirection.
    */
   agentOptions?: unknown
+  /**
+   * The ABSOLUTE delegation-depth cap the member's own activation must respect (the harness
+   * `startActivation` request's `maxDepth`). NATIVE only: the native backend forwards it verbatim
+   * when the caller supplied one and OMITS the field entirely when it did not, which is what lets a
+   * subcaptain raise a deeper team without touching the `subagent` tool's service default
+   * (capability fact F1). The OFFICIAL backend has no per-call depth channel and ignores it.
+   */
+  maxDepth?: number
   /** Cancellation for the spawn and for the member's first turn. */
   signal?: AbortSignal
 }
@@ -1021,6 +1029,35 @@ export interface DshLiveAgent {
 }
 
 /**
+ * How one context-pressure read was sourced, or why it carries no ratio.
+ *
+ * `observed` — the token meter holds the session's projection AND the window the model reported;
+ * `no-window` — the projection exists but no model has reported a window yet;
+ * `unavailable` — no projection registry, no session, or no materialized state.
+ */
+export type DshContextPressureProvenance = "observed" | "no-window" | "unavailable"
+
+/**
+ * The OCCUPIED context of ONE live session, read from the harness token meter
+ * (`sessionProjections` unit `contextPressure`).
+ *
+ * The window is READ from what the model reported at runtime and is never defaulted: `null` means
+ * "not observed", so a caller that needs a budget must treat it as unmeasurable rather than
+ * substitute a constant. The same rule governs {@link DshContextPressure.ratio}, which exists only
+ * when both sides are positive numbers.
+ */
+export interface DshContextPressure {
+  /** Tokens the next request would carry (`projectedTokens ?? pressureTokens`); null when unreported. */
+  usedTokens: number | null
+  /** The context window the model reported at runtime; null when the meter recorded none. */
+  windowTokens: number | null
+  /** `usedTokens / windowTokens`, only when both are numbers greater than 0; null otherwise. */
+  ratio: number | null
+  /** Machine-readable provenance for the two numbers above. */
+  provenance: DshContextPressureProvenance
+}
+
+/**
  * One persisted session goal, projected for a plugin caller.
  *
  * The durable half mirrors the harness `goalValue` shape (`id`, `revision`,
@@ -1118,6 +1155,21 @@ export interface DshLlmCatalogModel {
   efforts: DshLlmCatalogEffort[]
   /** The adapter-configured default effort, absent when the host declares none. */
   defaultEffort?: string
+  /**
+   * The context window the HARNESS resolved for this exact route
+   * (`resolveModelInfo().context.contextWindow`), or null when the host resolved none.
+   *
+   * OPTIONAL ON THE TYPE, ALWAYS PRESENT ON THE PROJECTION: `undefined` means "a producer did not
+   * report this field" (a hand-built catalog double), while an adapter-produced catalog always
+   * carries it as `number | null`. Never a guessed constant.
+   */
+  contextWindow?: number | null
+  /**
+   * The route's maximum output tokens as the host exposes them
+   * (`resolveModelInfo().defaultMaxTokens`), or null when the host exposes none. Same presence rule
+   * as {@link DshLlmCatalogModel.contextWindow}.
+   */
+  maxOutputTokens?: number | null
 }
 
 /** One provider route and every model it currently advertises. */
@@ -1686,6 +1738,22 @@ export interface DshAdapter {
   liveAgents(): DshLiveAgent[]
   /** One live Agent by id, or undefined. */
   liveAgent(agentId: string): DshLiveAgent | undefined
+  /**
+   * OCCUPIED context of ONE live session, read from the harness `sessionProjections` unit
+   * `contextPressure` — the SAME token-meter projection the host's own status display reads.
+   *
+   * WHY THIS EXISTS (cellwork wave 1): a checkpoint has to fire from the OBSERVED occupancy of the
+   * model that is actually running, not from a configured threshold on a guessed window. The window
+   * is whatever the harness recorded from the provider's `request/context`; this seam never invents
+   * one.
+   *
+   * NEVER throws: a missing `sessionProjections` service, an unresolvable session, a projection the
+   * registry has not materialized and a throwing read all answer `provenance: "unavailable"`.
+   *
+   * @param target the live Agent, its Session object, or a session id (resolved through `sessions`).
+   * @returns the occupancy and its provenance; both numbers are null when nothing was observed.
+   */
+  contextPressure(target: unknown): DshContextPressure
   /**
    * The compaction engine THAT SERVES ONE AGENT, resolved through the agent's own
    * scoped context. This is the ONLY correct engine to drive a member session: the
@@ -3295,7 +3363,8 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
 }
 
 /**
- * Release ONE settled consult activation — the one-shot half of {@link DshAdapter.spawnAgent}.
+ * Release ONE activation the harness handed back — the teardown used by BOTH the one-shot consult and a
+ * team raise that could not be recorded.
  *
  * `activation.result` has already settled when this runs, so the report is captured and a failed
  * teardown can no longer change it. The 0.2.1 handle documents `dispose()` as cancelling that exact
@@ -3308,7 +3377,7 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
  * stay listed `inactive` and is technically cold-resumable. The CONTRACT is one-shot regardless.
  * @param activation - the handle `startActivation` returned, read for its `dispose` member only.
  */
-async function disposeSettledConsult(activation: unknown): Promise<void> {
+async function releaseActivation(activation: unknown): Promise<void> {
   /** The handle's own teardown member; only a callable may be invoked. */
   const dispose = (activation as { dispose?: unknown } | undefined)?.dispose
   if (typeof dispose !== "function") return
@@ -3541,6 +3610,116 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     return engine
   }
 
+  /**
+   * The Session object a context-pressure read needs, from whatever a caller holds.
+   *
+   * The projection registry keys its cells on the SESSION OBJECT, so a bare id has to be resolved
+   * through the harness `sessions` store (falling back to the live-agent registry, whose id IS the
+   * session id). Anything unrecognizable answers undefined rather than a fabricated object.
+   * @param target a live Agent, a Session object, or a session id.
+   * @returns the session object, or undefined when none can be resolved.
+   */
+  function contextPressureSession(target: unknown): unknown {
+    if (typeof target === "string") {
+      /** The id as given; an empty string names nothing. */
+      const id = target.trim()
+      if (id === "") return undefined
+      /** The session store's own lookup, when the composition mounts one. */
+      const sessions = service("sessions")
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          /** The store's session for this id, or a miss the live-registry lookup below can answer. */
+          const found = sessions.get(id)
+          if (found !== undefined && found !== null) return found
+        } catch { /* fall through to the live-agent registry */ }
+      }
+      return liveAgent(id)?.session
+    }
+    if (target === undefined || target === null || typeof target !== "object") return undefined
+    /** The session a live Agent carries; a Session object itself has none and is its own answer. */
+    const session = (target as { session?: unknown }).session
+    if (session !== undefined && session !== null) return session
+    return target
+  }
+
+  /**
+   * A finite number, or null for anything else a projection could answer.
+   *
+   * Every limit read is a pass-through of what the harness resolved: a missing or malformed value is
+   * `null` ("unknown"), never a default.
+   * @param value the raw projection field.
+   * @returns the number, or null.
+   */
+  function finiteNumberOrNull(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null
+  }
+
+  /**
+   * Read one session's context occupancy from the token-meter projection.
+   *
+   * The STATE supplies the observed window (`contextWindow`) and the provider-reported
+   * `pressureTokens`; the CLIENT VIEW supplies the forward-looking `projectedTokens` the state does
+   * not carry. Neither read is allowed to fail the caller: every miss degrades to a provenance.
+   * @param target a live Agent, a Session object, or a session id.
+   * @returns the occupancy plus its provenance; never throws.
+   */
+  function contextPressure(target: unknown): DshContextPressure {
+    /** The session whose projection cell is read; absent means this caller names nothing live. */
+    const session = contextPressureSession(target)
+    if (session === undefined) return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    /** The projection registry; its absence is a composition fact, not an error. */
+    const projections = service("sessionProjections")
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    /** The unit's host state — the only carrier of the observed window; undefined means no cell. */
+    let state: unknown
+    try {
+      state = projections.stateOf(session, "contextPressure")
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    }
+    /** That state read field by field: the harness `ContextPressureState` shape. */
+    const stateFields = state as { contextWindow?: unknown; pressureTokens?: unknown }
+    // The CLIENT VIEW is where `projectedTokens` lives; a registry without `snapshot` still answers
+    // with the provider-reported pressure from the state instead of reporting nothing.
+    /** The client-visible snapshot for this unit, or undefined when the registry produces none. */
+    let snapshot: unknown
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined
+    } catch { snapshot = undefined }
+    /** The snapshot's `values` map, per the harness `ProjectionSnapshot` shape. */
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object"
+      ? (snapshot as { values?: unknown }).values
+      : undefined
+    /** The unit's own view inside that map, when it produced one. */
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object"
+      ? (snapshotValues as { contextPressure?: unknown }).contextPressure
+      : undefined
+    /** The view read field by field: the harness `ContextPressureProjection` shape. */
+    const viewFields = view !== undefined && view !== null && typeof view === "object"
+      ? view as { projectedTokens?: unknown; pressureTokens?: unknown }
+      : undefined
+    /** The projection's forward-looking figure, absent before the first provider usage sample. */
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens)
+    /** The provider-reported prompt size, from whichever read carries it. */
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens)
+    // `??` and not `||`: a projected 0 tokens is a real observation, not a missing one.
+    /** The occupied figure, preferring the projection's forward-looking value. */
+    const usedTokens = projectedTokens ?? pressureTokens
+    /** The window the MODEL reported; null is the honest "not observed" answer. */
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow)
+    if (windowTokens === null) return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" }
+    // A zero or negative window is not a usable denominator, so it gets NO ratio rather than a
+    // division by zero or a negative occupancy.
+    /** The ratio, only where both sides are positive numbers. */
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null
+    return { usedTokens, windowTokens, ratio, provenance: "observed" }
+  }
+
   /** Subscribe to a harness event; undefined when no event bus is reachable. */
   function onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined {
     if (typeof ctx?.on !== "function") return undefined
@@ -3646,6 +3825,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           }
           /** The host's configured default effort, when it declared one. */
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined
+          /** The context window the HOST resolved for this exact route, when it advertised one. */
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow)
+          /** The host's adapter-configured output cap, when it declared one. */
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens)
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
@@ -3653,6 +3836,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             // A model with NO reasoning block still appears: empty efforts, no defaultEffort.
             efforts,
             ...(defaultEffort === undefined ? {} : { defaultEffort }),
+            // BOTH LIMITS ARE ALWAYS PRESENT: `null` is the honest "the harness resolved nothing",
+            // and a consumer must handle it instead of inheriting an invented constant.
+            contextWindow,
+            maxOutputTokens,
           })
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries })
@@ -3764,6 +3951,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             prompt: textBlock(request.prompt),
             parent: caller,
             ...(agentOptions === undefined ? {} : { agentOptions }),
+            // FORWARDED ONLY WHEN SUPPLIED: an absent cap must stay ABSENT (never `undefined`), so
+            // the harness applies its own service default instead of a converted or guessed value.
+            ...(request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }),
           },
           signal: request.signal ?? neverAborted(),
         }
@@ -3772,8 +3962,16 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         /** The durable child id, or the empty string when the manager reported none. */
         const handle = String(started?.childId ?? started?.id ?? "")
         // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
-        // put a member on the roster that no later call could reach. It is refused here.
-        if (handle === "") throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`)
+        // put a member on the roster that no later call could reach. It is refused here — AFTER the
+        // activation is RELEASED: the harness counted that child the moment it started (the measured
+        // `subagent limit reached (active child limit: 8)` behind contract
+        // `.mpd/plans/agent-slot-hygiene.md`), so a refusal that walked away would leak exactly one
+        // slot per attempt. `dispose()` is the only release this adapter has, and it is the adapter's
+        // to call: the activation lives here, and no consumer may touch the subagents seam.
+        if (handle === "") {
+          await releaseActivation(started)
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`)
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description })
         return { handle, executor: "native" }
       },
@@ -3840,6 +4038,8 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (typeof teams.spawnTeammate !== "function") {
           throw new Error("mpd-dsh-adapter: the Agent Teams service exposes no spawnTeammate() — cannot raise a team member")
         }
+        // `request.maxDepth` is deliberately NOT forwarded: the official service owns its roster and
+        // exposes no per-call depth channel, so a supplied cap is IGNORED without throwing.
         /** The host's spawn answer, whose id is read from whichever field this version fills. */
         const spawned: any = await teams.spawnTeammate.call(teams, caller, {
           name: request.name,
@@ -4191,6 +4391,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── live-session plane ──────────────────────────────────────────────────
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -4628,7 +4829,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // ONE-SHOT (R2): the report is captured, so release the exact activation ONCE. This is
         // best-effort and cannot change the projection below; `startContinuableAgent` stays the
         // durable seam, so team continuity is untouched.
-        await disposeSettledConsult(activation)
+        await releaseActivation(activation)
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

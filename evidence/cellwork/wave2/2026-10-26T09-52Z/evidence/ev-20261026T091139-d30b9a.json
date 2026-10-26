@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "evidenceId": "ev-20261026T091139-d30b9a",
+  "loopId": "loop-20261026T082258-e86c3a",
+  "kind": "gate",
+  "cmd": "node scripts/verify-dist-fresh.ts",
+  "exit": 0,
+  "at": "2026-10-26T09:11:40.094Z",
+  "logPath": ".mpd/verify/evidence/ev-20261026T091139-d30b9a.log",
+  "logSha256": "5b1d07e87138739b95fb388bcbe5bcff0c379251158d12294450437ee66dca2d"
+}

@@ -1,0 +1,28 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-graph-core/test/model-groups.test.ts:
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > the serialized model equals the bytes the pre-group model produced [1.48ms]
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > no group key leaks into the model or into any node [0.16ms]
+(pass) backward compatibility: no groups means the FLAT model, byte for byte > an EMPTY groups array is the same model as no groups at all [0.18ms]
+(pass) plain JSON and determinism > a grouped model round-trips through JSON unchanged [0.45ms]
+(pass) plain JSON and determinism > the same grouped input builds the same model whatever order it arrives in [0.35ms]
+(pass) the attachment rule > one endpoint inside a group and the other outside: the edge is re-anchored to the box [0.28ms]
+(pass) the attachment rule > an edge fully inside one group keeps its two inner tasks [0.15ms]
+(pass) the attachment rule > an edge between two groups becomes group→group in the frame that draws both boxes [0.18ms]
+(pass) the attachment rule > two inner tasks blocked by the same outer task draw ONE box port, not two [0.12ms]
+(pass) the derived spawn edge > the origin task blocks the box with source 'derived', named by neither disagreement list [0.26ms]
+(pass) the derived spawn edge > an origin naming no node is reported as unresolved and derives no edge [0.20ms]
+(pass) the derived spawn edge > an origin inside the subcell it spawned draws nothing at all [0.14ms]
+(pass) nesting > the groups are flat, shallow-first, with parentId, depth and direct memberIds [0.19ms]
+(pass) nesting > a nested edge is lifted to the frame that draws both of its ends [0.29ms]
+(pass) nesting > each frame ranks its own interior, so depth is the column INSIDE that frame [0.19ms]
+(pass) nesting > ranks bucket the ROOT frame only, with the top-level box ranked by its incoming edges [0.17ms]
+(pass) the box is a node > the pseudo-node carries the label, the group visual and the column of its parent frame [0.20ms]
+(pass) the box is a node > an interior ghost keeps the frame it was planned in [0.24ms]
+(pass) the two refusals > one id in two frames is refused, naming both frames [0.68ms]
+(pass) the two refusals > a group id that collides with a task id is refused [0.22ms]
+
+ 20 pass
+ 0 fail
+ 42 expect() calls
+Ran 20 tests across 1 file. [127.00ms]

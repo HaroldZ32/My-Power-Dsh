@@ -1,0 +1,10 @@
+ packages/mpd-tui-plugin/README.md             |  35 +
+ packages/mpd-tui-plugin/README.zh-CN.md       |  27 +
+ packages/mpd-tui-plugin/dist/index.js         | 731 ++++++++++++++++++---
+ packages/mpd-tui-plugin/src/dag-theme.ts      |  93 +++
+ packages/mpd-tui-plugin/src/graph.ts          | 880 ++++++++++++++++++++++----
+ packages/mpd-tui-plugin/src/panel-dag.ts      | 175 ++++-
+ packages/mpd-tui-plugin/src/scenes.ts         |   7 +-
+ packages/mpd-tui-plugin/src/subagent-scene.ts |   4 +-
+ packages/mpd-tui-plugin/src/team-state.ts     |  24 +-
+ 9 files changed, 1764 insertions(+), 212 deletions(-)

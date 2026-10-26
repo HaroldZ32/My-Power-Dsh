@@ -296,8 +296,8 @@ interface GraphGeometry {
   height: number
   /** The column-major grid template. */
   gridTemplateColumns: string
-  /** Every node's box, in column-major order. */
-  nodes: Array<{ task: { id: string; visual?: string; planned?: boolean }; rank: number; row: number; ordinal: number; top: number }>
+  /** Every node's box, in column-major order — with its own absolute rectangle on the nested path. */
+  nodes: Array<{ task: { id: string; visual?: string; planned?: boolean }; rank: number; row: number; ordinal: number; top: number; left?: number; width?: number; height?: number }>
   /** One ROUTED edge per drawable dependency, which is what the render paints and the arms assert. */
   edges: Array<{
     parent: string
@@ -325,10 +325,14 @@ interface GraphGeometry {
   overlaps: Array<{ a: string; b: string; orientation: "horizontal" | "vertical"; at: number; overlap: number }>
   /** Whether the ranks were DERIVED from the `blockedBy` graph (R20), or taken off the served depth. */
   ranksDerived: boolean
+  /** Whether this is the NESTED geometry (every node carries its own absolute rectangle). */
+  nested?: true
   /** The blocker references no task on the board carries, sorted. */
   unresolved: string[]
   /** The subset of `unresolved` that the RECORD ITSELF reports; empty when the payload carries none. */
   unresolvedRecorded: string[]
+  /** The GROUP FRAMES this drawing paints, absent when the model declares no group (D4's narrow seam). */
+  groups?: Array<{ id: string; label: string; parentId: string | null; depth: number; left: number; top: number; width: number; height: number }>
 }
 
 /** Everything one rendered case needs: the tree, the runtime and the restored globals. */
@@ -2942,5 +2946,401 @@ describe("team-view D2: elapsed formatting and the ticker", () => {
     const subject = collectByKey(one(hovered, "data-mpd-tip-card", "1"), "tip-subject")[0]
     expect(flatText(subject)).toContain("冻结验收契约")
     expect(collect(one(hovered, "data-mpd-graph", "ranks=2 edges=1"), "data-mpd-tip-card").length).toBe(0)
+  })
+})
+
+
+// ── PR #72 / cellwork wave 4 D4: a subcell renders as a FRAME (the narrow seam) ──────────────────
+
+/**
+ * A payload whose model declares ONE subcell box beside the root board.
+ *
+ * THE BOX IS NOT A TASK ROW: the host serves it as a NODE of the parent frame (`visual: "group"`), and
+ * the board does not carry it — that is the shape the frame channel reads, and it is what makes the box
+ * a frame rather than one more card.
+ * @returns the canned state payload a frame arm renders.
+ */
+function groupedState(): Record<string, unknown> {
+  /** The flat payload's two-task board, which IS the root frame. */
+  const base = stateOf(TASKS.slice(0, 2)) as Record<string, unknown>
+  return {
+    ...base,
+    model: {
+      nodes: [
+        { id: "T1", depth: 0, subject: "Freeze the acceptance contract", visual: "completed" },
+        { id: "T2", depth: 1, subject: "Build the header and the progress bar", visual: "running" },
+        { id: "teamB", depth: 2, subject: "Subcell B", visual: "group" },
+      ],
+      // BOTH EDGES THE HOST WOULD ANCHOR: the board's own dependency, and the derived spawn edge whose
+      // endpoint IS the box — the second one is why the frame needs no router of its own.
+      edges: [{ from: "T1", to: "T2" }, { from: "T2", to: "teamB" }],
+      groups: [{ id: "teamB", label: "Subcell B", parentId: null, depth: 0 }],
+      report: { ranksDerived: true, unresolved: [] },
+    },
+  }
+}
+
+/**
+ * The DRAWING LAYERS in render order, as the witnesses a verifier reads.
+ *
+ * The contract's z-order is an ORDER, not a stack of classes: a depth-first walk that records the three
+ * witnesses in the order they are emitted proves `svg` < frames < nodes on the rendered tree itself.
+ * @param tree - one settled render.
+ * @returns one entry per layer witness, in render order.
+ */
+function layerOrder(tree: TreeNode): string[] {
+  /** The witnesses, in depth-first order. */
+  const order: string[] = []
+  /**
+   * Walk one node.
+   * @param node - the node or list to visit.
+   */
+  const walk = (node: TreeNode): void => {
+    if (Array.isArray(node)) { for (const child of node) walk(child); return }
+    if (node === null || typeof node !== "object") return
+    /** This element's props, so the witnesses can be read without a cast per access. */
+    const props = node.props ?? {}
+    if (typeof props["data-edges"] === "string") order.push("edges")
+    if (typeof props["data-mpd-frames"] === "string") order.push("frames")
+    if (typeof props["data-mpd-node"] === "string") order.push("node")
+    walk(props.children as TreeNode)
+  }
+  walk(tree)
+  return order
+}
+
+describe("D4 narrow seam: a subcell is a frame, not a task card", () => {
+  test("the geometry publishes one frame per group, SIZED BY ITS INTERIOR, and the flat model publishes none", () => {
+    /** The view module, for the pure layout. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The grouped payload. */
+    const state = groupedState()
+    /** The drawing of the grouped payload. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    expect(graph.groups?.length).toBe(1)
+    /** The frame. */
+    const frame = graph.groups?.[0]
+    expect(frame).toBeDefined()
+    // THE RECURSIVE GEOMETRY (T23): a box is its INTERIOR plus the frame's own padding. This fixture
+    // declares NO interior node, so the box is exactly the padding on both axes — which is what makes
+    // the size a function of the interior rather than the collapsed cell the narrow seam drew.
+    expect(frame?.id).toBe("teamB")
+    expect(frame?.label).toBe("Subcell B")
+    expect(frame?.parentId).toBeNull()
+    expect(frame?.width).toBe(20)
+    expect(frame?.height).toBe(20)
+    // THE NESTED BRANCH WAS TAKEN, and the flat control below was not.
+    expect(graph.nested).toBe(true)
+    // THE ROUTER NEEDS NO GROUP-AWARE CODE: the box is an ordinary item, so the audit that proves no two
+    // edges share a run still holds, and the edge TERMINATES on the frame's border port — the arrow's tip
+    // x IS the box's left border, which is the whole semantic of the attachment rule.
+    expect(graph.overlaps).toEqual([])
+    expect(graph.edges.map((edge) => edge.parent + ">" + edge.child)).toContain("T2>teamB")
+    /** The edge that lands on the box. */
+    const arrival = graph.edges.find((edge) => edge.child === "teamB")
+    expect(arrival?.curve.tip.x).toBe(frame?.left)
+    // THE FLAT CONTROL: the same layout without a grouped model carries NO `groups` key at all, which is
+    // what keeps a flat picture's geometry byte-identical to the pre-wave one.
+    /** The flat payload. */
+    const flat = stateOf(TASKS.slice(0, 2)) as Record<string, unknown>
+    /** The flat geometry. */
+    const flatGraph = view.layout(flat.tasks as Parameters<ViewModule["layout"]>[0], undefined, flat.model as Parameters<ViewModule["layout"]>[2])
+    expect(Object.keys(flatGraph)).not.toContain("groups")
+  })
+
+  test("the render emits svg → frames → nodes, and NO `data-mpd-node` carries a group id", async () => {
+    /** One settled render of the grouped payload. */
+    const rendered = await renderView({ state: groupedState() })
+    /** The frame elements the render published. */
+    const frames = collect(rendered.tree, "data-mpd-group")
+    expect(frames.length).toBe(1)
+    // The frame's published rectangle is `id,left,top,width,height` — the same spelling `data-mpd-box` uses.
+    expect(String(frames[0].props["data-mpd-group"]).startsWith("teamB,")).toBe(true)
+    expect(typeof frames[0].props.className === "string" && String(frames[0].props.className).includes("mpd-dag-group")).toBe(true)
+    // NO TASK CARD CLAIMS THE BOX: the frame's id is not a `data-mpd-node`, so the task layer stays honest.
+    const nodeIds = collect(rendered.tree, "data-mpd-node").map((node) => String(node.props["data-mpd-node"]))
+    expect(nodeIds).not.toContain("teamB")
+    expect(nodeIds).toEqual(expect.arrayContaining(["T1", "T2"]))
+    // THE Z-ORDER IS AN ORDER: edges first, then the frame layer, then every card.
+    /** The layer witnesses in render order. */
+    const layers = layerOrder(rendered.tree)
+    expect(layers[0]).toBe("edges")
+    expect(layers[1]).toBe("frames")
+    expect(layers.slice(2).every((layer) => layer === "node")).toBe(true)
+  })
+
+  test("the containment instrument catches a curve INSIDE the frame, and the real routes never enter it", () => {
+    /** The view module, whose published polyline is what the claim is about. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The grouped payload. */
+    const state = groupedState()
+    /** The drawn geometry, INCLUDING the frame the render paints. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    /** The frame as a rectangle, taken from the geometry the render consumes. */
+    const frame: Rect = { ...(graph.groups as NonNullable<typeof graph.groups>)[0] }
+    // THE INSTRUMENT DISCRIMINATES: a segment driven through the frame's middle is caught. Without this
+    // control a green containment arm could be a vacuous one.
+    expect(segmentEntersInterior({ x: frame.left - 4, y: frame.top + frame.height / 2 }, { x: frame.left + frame.width + 4, y: frame.top + frame.height / 2 }, frame)).toBe(true)
+    // AND THE DRAWN ROUTES DO NOT: a frame IS the cell a task box would have occupied, so the same
+    // construction that keeps a curve out of a box keeps it out of a frame. The edge whose OWN endpoint
+    // is the box is exempt — its lead-in abuts the border it terminates on, by design.
+    expect(graph.edges.length).toBe(2)
+    for (const edge of graph.edges) {
+      /** Whether this edge's own endpoint IS the box. */
+      const ownFrame = edge.parent === "teamB" || edge.child === "teamB"
+      for (let index = 1; index < edge.curve.points.length; index += 1) {
+        if (ownFrame) continue
+        expect(segmentEntersInterior(edge.curve.points[index - 1], edge.curve.points[index], frame)).toBe(false)
+      }
+    }
+  })
+
+  test("a flat render has no frames layer at all (the backward guarantee, on the DOM)", async () => {
+    /** One settled render of the ordinary payload. */
+    const rendered = await renderView({ state: stateOf(TASKS) })
+    expect(collect(rendered.tree, "data-mpd-frames").length).toBe(0)
+    expect(collect(rendered.tree, "data-mpd-group").length).toBe(0)
+    expect(layerOrder(rendered.tree)).not.toContain("frames")
+  })
+})
+
+// ── T23 · THE RECURSIVE GEOMETRY: a box's interior is drawn INSIDE it ─────────────────────────────
+//
+// WHAT THESE ARMS PROVE, and why each one is falsifiable. The narrow seam sized a box to the CELL a
+// collapsed pseudo-node occupied, so the frame was decoration. The recursive path sizes it to its
+// interior and draws that interior in place, which is what makes a subcell's own DAG visible at all:
+//   · the fixture is built by the SHARED CORE (`buildModel`), so the attachment rule under test is the
+//     host's own, not a hand-written edge list that could agree with the drawing by accident;
+//   · the nesting arm fails if the boxes are merely PLACED rather than recursed into (a collapsed frame
+//     reports the padding size, never two card heights);
+//   · the columns arm fails if an interior is FLATTENED into one column (both cards would share an x),
+//     which is the failure mode a "draw the items, forget the ranks" implementation has;
+//   · the DOM arm fails if the cards are still placed by the root's column grid.
+// A THREE-LEVEL model: root `T1 → T2`, then the box `teamB` holding `B1 → B2` and the NESTED box `teamC`
+// holding `C1`. The cross-frame edges arrive already re-anchored on the boxes by the core.
+/** The three-level fixture, built by the host's own merge so its attachments are the real rule. */
+function nestedModel(): GraphModel {
+  /** One board row: the minimum a task must carry into the core's merge. */
+  const row = (id: string, blockedBy: string[]): BoardTask => ({ id, subject: id, status: "open", visual: "open", blockedBy, depth: 0 })
+  return buildModel({
+    board: [row("T1", []), row("T2", ["T1"])],
+    groups: [{
+      id: "teamB",
+      label: "Subcell B",
+      board: [row("B1", ["T2"]), row("B2", ["B1"])],
+      groups: [{ id: "teamC", label: "Subcell C", board: [row("C1", ["B2"])] }],
+    }],
+  })
+}
+
+/** The payload one nested render is driven with: the root board plus the core's own model. */
+function nestedState(): unknown {
+  /** The flat payload whose board IS the root frame. */
+  const base = stateOf(TASKS.slice(0, 2)) as Record<string, unknown>
+  return { ...base, model: nestedModel() }
+}
+
+describe("T23 · the recursive geometry draws a box's interior inside it", () => {
+  test("a frame is sized by its INTERIOR, and an inner subcell frame nests STRICTLY inside it", () => {
+    /** The view module, for the pure layout. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The nested payload. */
+    const state = nestedState() as Record<string, unknown>
+    /** The drawing of the nested payload. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    // THE BRANCH: the nested renderer ran, and it published one frame per box rather than per card.
+    expect(graph.nested).toBe(true)
+    expect(graph.groups?.map((frame) => frame.id).sort()).toEqual(["teamB", "teamC"])
+    /** The outer frame. */
+    const outer = graph.groups?.find((frame) => frame.id === "teamB")
+    /** The inner frame, which lives INSIDE the outer box. */
+    const inner = graph.groups?.find((frame) => frame.id === "teamC")
+    expect(outer).toBeDefined()
+    expect(inner).toBeDefined()
+    // THE RECURSION IS REAL, and this is the arm that fails if it is removed: a box is its INTERIOR plus
+    // the frame's own 10px padding on each side. A collapsed box (the narrow seam) is the padding alone —
+    // 20×20 — so these two equalities stop holding the moment the interior stops being laid out inside.
+    /** The card the inner box's interior holds. */
+    const innerCard = graph.nodes.find((node) => node.task.id === "C1")
+    expect((inner?.width as number) - ((innerCard?.width as number) ?? 0)).toBe(20)
+    expect((inner?.height as number) - ((innerCard?.height as number) ?? 0)).toBe(20)
+    // AND THE OUTER BOX IS WIDER THAN ANY CARD IT CONTAINS, because its interior's THREE columns (B1's,
+    // B2's and the inner box's) have to fit inside it.
+    expect((outer?.width as number) > 2 * ((innerCard?.width as number) ?? 0)).toBe(true)
+    expect((outer?.height as number) > 42).toBe(true)
+    // STRICT NESTING on all four sides: the inner frame stands inside the outer one, never beside it.
+    expect((inner?.left as number) > (outer?.left as number)).toBe(true)
+    expect((inner?.top as number) > (outer?.top as number)).toBe(true)
+    expect((inner?.left as number) + (inner?.width as number)).toBeLessThan((outer?.left as number) + (outer?.width as number))
+    expect((inner?.top as number) + (inner?.height as number)).toBeLessThan((outer?.top as number) + (outer?.height as number))
+    // AND EVERY CARD STANDS INSIDE ITS OWN BOX: the interior is drawn in place, not merely sized for.
+    for (const [id, frame] of [["B1", outer], ["B2", outer], ["C1", inner]] as const) {
+      /** The card the model placed for this id. */
+      const card = graph.nodes.find((node) => node.task.id === id)
+      expect(card).toBeDefined()
+      expect((card?.left as number) >= (frame?.left as number)).toBe(true)
+      expect((card?.top as number) >= (frame?.top as number)).toBe(true)
+      expect((card?.left as number) + ((card?.width as number) ?? 0)).toBeLessThanOrEqual((frame?.left as number) + ((frame?.width as number) ?? 0))
+      expect((card?.top as number) + ((card?.height as number) ?? 0)).toBeLessThanOrEqual((frame?.top as number) + ((frame?.height as number) ?? 0))
+    }
+    // THE AUDIT STILL HOLDS ON THE WORSE BOARD: no two of the nested drawing's runs share a column of
+    // pixels, because each frame's own router keeps its lanes distinct.
+    expect(graph.overlaps).toEqual([])
+    // THE RE-ANCHORED EDGES TERMINATE ON THE BOXES: `T2 → teamB` and `B2 → teamC` arrive at a frame's
+    // left border, which is the attachment rule made visible.
+    expect(graph.edges.map((edge) => edge.parent + ">" + edge.child)).toEqual(expect.arrayContaining(["T2>teamB", "B2>teamC"]))
+    expect(graph.edges.find((edge) => edge.child === "teamB")?.curve.tip.x).toBe(outer?.left)
+    expect(graph.edges.find((edge) => edge.child === "teamC")?.curve.tip.x).toBe(inner?.left)
+  })
+
+  test("an interior keeps its OWN columns: a flattened layout would put both of its cards at one x", () => {
+    /** The view module, for the pure layout. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The nested payload. */
+    const state = nestedState() as Record<string, unknown>
+    /** The drawing of the nested payload. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    /** The card each id was drawn as. */
+    const cardOf = (id: string): { left?: number; top?: number } | undefined => graph.nodes.find((node) => node.task.id === id)
+    // `B1` and `B2` are two ranks INSIDE the box: their cards must therefore sit in two columns. A build
+    // that placed every interior card in column 0 would put them at the SAME x, which is the exact
+    // "columns flattened" regression this arm exists to catch.
+    expect(cardOf("B2")?.left).not.toBe(cardOf("B1")?.left)
+    expect((cardOf("B2")?.left as number) > (cardOf("B1")?.left as number)).toBe(true)
+    // The ROOT frame keeps its own columns too, so the root's cards are not pulled into the interior's.
+    expect((cardOf("T2")?.left as number) > (cardOf("T1")?.left as number)).toBe(true)
+    // AND THE INNER BOX IS AN ITEM OF THE FRAME THAT CONTAINS IT, in ITS OWN served column: `B2` blocks
+    // the box, so the host served it one column further right — a box is placed by the same rule a card
+    // is, which is the one concept the whole drawing rests on.
+    /** The inner frame. */
+    const inner = graph.groups?.find((frame) => frame.id === "teamC")
+    expect((inner?.left as number) > (cardOf("B2")?.left as number)).toBe(true)
+    expect((inner?.top as number) >= (cardOf("B2")?.top as number)).toBe(true)
+  })
+
+  test("the nested render places cards ABSOLUTELY inside the frames, and the layers still order svg → frames → nodes", async () => {
+    /** One settled render of the nested payload. */
+    const rendered = await renderView({ state: nestedState() })
+    /** Every frame the render published. */
+    const frames = collect(rendered.tree, "data-mpd-group")
+    expect(frames.length).toBe(2)
+    /** Every frame's published rectangle, by id. */
+    const rectOf = new Map<string, [number, number, number, number]>()
+    for (const frame of frames) {
+      /** The `id,left,top,width,height` witness the frame publishes. */
+      const [id, left, top, width, height] = String(frame.props["data-mpd-group"]).split(",")
+      rectOf.set(id, [Number(left), Number(top), Number(width), Number(height)])
+    }
+    // THE ABSOLUTE CARD LAYER EXISTS, which the flat drawing never renders.
+    expect(collect(rendered.tree, "data-mpd-cards").length).toBe(1)
+    /** Every card's published box, by task id. */
+    const boxOf = new Map<string, [number, number, number, number]>()
+    for (const node of collect(rendered.tree, "data-mpd-node")) {
+      /** The `left,top,width,height` witness the card publishes. */
+      const [left, top, width, height] = String(node.props["data-mpd-box"]).split(",")
+      boxOf.set(String(node.props["data-mpd-node"]), [Number(left), Number(top), Number(width), Number(height)])
+    }
+    expect([...boxOf.keys()].sort()).toEqual(["B1", "B2", "C1", "T1", "T2"])
+    // NO CARD CLAIMS A BOX: a frame's id is a `data-mpd-group`, never a `data-mpd-node`.
+    expect([...boxOf.keys()]).not.toContain("teamB")
+    expect([...boxOf.keys()]).not.toContain("teamC")
+    // EACH CARD IS DRAWN INSIDE ITS OWN FRAME'S PUBLISHED RECTANGLE — the rendered proof of the recursion,
+    // measured from the DOM rather than from the geometry that produced it.
+    for (const [id, frameId] of [["B1", "teamB"], ["B2", "teamB"], ["C1", "teamC"]] as const) {
+      /** This card's box. */
+      const box = boxOf.get(id)
+      /** Its frame's rectangle. */
+      const rect = rectOf.get(frameId)
+      expect(box).toBeDefined()
+      expect(rect).toBeDefined()
+      expect((box?.[0] as number) >= (rect?.[0] as number)).toBe(true)
+      expect((box?.[1] as number) >= (rect?.[1] as number)).toBe(true)
+      expect((box?.[0] as number) + (box?.[2] as number)).toBeLessThanOrEqual((rect?.[0] as number) + (rect?.[2] as number))
+      expect((box?.[1] as number) + (box?.[3] as number)).toBeLessThanOrEqual((rect?.[1] as number) + (rect?.[3] as number))
+    }
+    // THE Z-ORDER IS AN ORDER: the edge plane, then the frames, then the cards.
+    /** The layer witnesses in render order. */
+    const order = layerOrder(rendered.tree)
+    expect(order[0]).toBe("edges")
+    expect(order.indexOf("frames")).toBeGreaterThan(0)
+    expect(order.indexOf("node")).toBeGreaterThan(order.indexOf("frames"))
+  })
+})
+
+// ── T25 · MIXED HEIGHTS: the parity channel is what keeps two columns' runs apart ─────────────────
+//
+// THE WITNESS (CodeRabbit 4378469416). Ports are spread around each item's middle, and equal middles are
+// exactly what a HEIGHT MIX produces: a 166px box in row 0 of the left column and a 62px box in row 1 of
+// the right column both put their middle at y=83. The departure run of `P→Q` and the arrival run of
+// `W→U` then sit in the one gutter at the same y — collinear, and a collision the moment their lanes
+// order the other way round. The parity channel makes a port carry its OWN column's parity, so two
+// neighbouring columns can never align whatever their heights are.
+//
+// WHAT DISCRIMINATES, MEASURED. Reverting the channel to the centre-based clamp (control run) keeps
+// `overlaps` EMPTY for this serving order — the two runs meet at a single corner x, which `overlapAudit`
+// tolerates by design (it allows a corner touch and flags > 0.5px) — and reddens the PORT assertion below
+// with `Received: 0`, i.e. the two ends share one y. So the audit is stated as an invariant here, while the
+// y-separation is the assertion that fails if the fix is reverted.
+describe("T25 · mixed heights keep the nested lanes apart", () => {
+  test("equal MIDDLES in neighbouring columns never become collinear runs", () => {
+    /** The three-card row `P`’s interior stacks, which is what makes the box 166px tall. */
+    const stacked = ["P1", "P2", "P3"]
+    /** One board row for the core: the minimum a task must carry in. */
+    const row = (id: string, blockedBy: string[]): BoardTask => ({ id, subject: id, status: "open", visual: "open", blockedBy, depth: 0 })
+    /** THE MIXED-HEIGHT TREE: `P` (a tall box) and `W` share column 0; `Q` and `U` (a short box) share 1. */
+    const model = buildModel({
+      // `Q` names a task INSIDE `P`, so the core's attachment rule re-anchors the edge onto the BOX
+      // (`P → Q`) — the dependency this arm needs, authored the way a real board declares one.
+      board: [row("W", []), row("Q", ["P1"])],
+      groups: [
+        // P: three cards at ONE rank, so its interior is one tall column rather than three wide ones.
+        { id: "P", label: "Box P", board: stacked.map((id) => row(id, [])) },
+        // U: one card blocked by the OTHER column's `W`, which the core re-anchors to `U` itself.
+        { id: "U", label: "Box U", board: [row("U1", ["W"])] },
+      ],
+    })
+    /** The view module, for the pure layout. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // THE ROOT ROWS ARE READ OFF THE MODEL, exactly as the route fills them: a hand-written `rank` here
+    // could disagree with the host's own column and make the arm pass on a fixture the server never sends.
+    /** Every root-frame CARD the core placed, with the column it was served. */
+    const rootRows = (model.nodes as Array<{ id: string; depth: number; visual?: string; group?: string }>)
+      .filter((node) => node.group === undefined && node.visual !== "group")
+      .map((node) => ({ id: node.id, subject: node.id, status: "open", visual: "open", blockedBy: [] as string[], failedBy: [] as string[], depth: node.depth, rank: node.depth }))
+    /** The payload: the root frame's cards plus the model that carries the two boxes. */
+    const state = { ...(stateOf(rootRows) as Record<string, unknown>), tasks: rootRows, model }
+    /** The drawing of the mixed-height tree. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    /** The tall box. */
+    const boxP = graph.groups?.find((frame) => frame.id === "P")
+    /** The short box. */
+    const boxU = graph.groups?.find((frame) => frame.id === "U")
+    // THE PRECONDITION THAT MAKES THIS FIXTURE THE WITNESS: the two boxes' MIDDLES coincide exactly, so a
+    // centre-based port rule would hand the two runs the same y. This is asserted rather than assumed —
+    // a fixture that stopped mixing heights would otherwise pass vacuously.
+    expect(boxP?.height).toBe(166)
+    expect(boxU?.height).toBe(62)
+    expect((boxP?.top as number) + (boxP?.height as number) / 2).toBe((boxU?.top as number) + (boxU?.height as number) / 2)
+    // THE INVARIANT the whole router exists for, on a board where two neighbouring items' CENTRES coincide.
+    expect(graph.overlaps).toEqual([])
+    // AND THE SEPARATION IS THE ONE THAT COLLIDED — THE DISCRIMINATOR: `P→Q` leaves the tall box's right
+    // border, `W→U` arrives on the short box's left border, and the parity channel puts those two ys at
+    // least one pixel apart. With the centre-based clamp this assertion reads `Received: 0` (measured).
+    /** The run that left the tall box. */
+    const departure = graph.edges.find((edge) => edge.parent === "P" && edge.child === "Q")
+    /** The run that arrived on the short box. */
+    const arrival = graph.edges.find((edge) => edge.parent === "W" && edge.child === "U")
+    expect(departure).toBeDefined()
+    expect(arrival).toBeDefined()
+    /** The y the departure really leaves at (the route's first vertex). */
+    const departureY = departure?.curve.points[0]?.y as number
+    /** The y the arrival really lands at (the arrow's tip). */
+    const arrivalY = arrival?.curve.tip.y as number
+    expect(Math.abs(departureY - arrivalY)).toBeGreaterThanOrEqual(1)
+    // Both ends are still INSIDE their boxes: the channel snapped the port, it did not move it out.
+    expect(departureY).toBeGreaterThan(boxP?.top as number)
+    expect(departureY).toBeLessThan((boxP?.top as number) + (boxP?.height as number))
+    expect(arrivalY).toBeGreaterThan(boxU?.top as number)
+    expect(arrivalY).toBeLessThan((boxU?.top as number) + (boxU?.height as number))
   })
 })

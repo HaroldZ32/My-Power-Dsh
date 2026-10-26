@@ -1,0 +1,84 @@
+== hash sandwich: start 2026-10-26T11:48:13Z
+e2d600b4615a28472a9d7d2be4ea09c7b54c827fc2736ef74175c44d7fc0a5c5  evidence/cellwork/dag-groups/2026-10-26T11-48-13Z-T5/scope-start.sha256
+== settle window 50 s
+e2d600b4615a28472a9d7d2be4ea09c7b54c827fc2736ef74175c44d7fc0a5c5  evidence/cellwork/dag-groups/2026-10-26T11-48-13Z-T5/scope-postsettle.sha256
+
+== per-package suites
+team-core exit=0
+ 357 pass
+ 0 fail
+Ran 357 tests across 24 files. [1.72s]
+cellwork exit=0
+ 50 pass
+ 0 fail
+Ran 50 tests across 3 files. [196.00ms]
+nested-teams exit=0
+13
+(pass) B8: cellwork_subteam enforces depthMax and registers the sub-cell when it fits 
+(pass) D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own 
+(pass) D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so 
+
+== the independence gate (attribution: whose edges are red)
+coupling exit=0
+
+== dist freshness (this row's two packages)
+team-core dist exit=0
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 45ms
+cellwork dist exit=0
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 38ms
+
+== D2 claims, artifact-level (built dist)
+-- symbols present:
+   parentTeamId               7
+   deriveParentTeam           2
+   assertParentChainAcyclic   2
+   framedBoardOf              2
+   groupInputsOf              3
+   groupsOf                   2
+   isLiveTeam                 9
+-- Amendment 7 qualification (expect the qualification + same-frame blockedBy map):
+4655:    id: `${record.teamId}::${row.id}`,
+4656:    blockedBy: (row.blockedBy ?? []).map((reference) => own.has(reference) ? `${record.teamId}::${reference}` : reference)
+-- groups omitted for a childless team (backward pin), expect the '{}' fallback:
+4189:  return { nodes, edges, ranks, cycles: [...cyclic].sort(), report, ...groups.length === 0 ? {} : { groups } };
+4682:  return groups.length === 0 ? {} : { groups };
+-- /state projection: tasks come from the RECORD (no model pseudo-nodes) and rank from the model:
+2553:  const tasks = record.tasks.map((task) => {
+3264:  const tasks = record.tasks.map((task) => {
+3282:      ...model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }
+-- derivation rules present (roster+not-lead, >1 refine, cycle):
+7
+
+== README pair state (D2 nested section; D5 nested-groups sentence)
+packages/mpd-team-core-plugin/README.md:180:### Nested teams (subcells)
+packages/mpd-team-core-plugin/README.md:184:created before nested teams existed reads exactly as it did. Nothing else about a nested team changes: its
+packages/mpd-team-core-plugin/README.md:206:groups at all, and its model is byte-identical to the one this row served before nested teams existed.
+packages/mpd-team-core-plugin/README.md:208:**Ids are qualified, because every team mints `T1..Tn`.** A nested team's rows reach the model as
+-- cellwork README pair, any mention of nested groups / parentTeamId (D5 names this sentence):
+   (NO MATCH in either file)
+
+== docs + comments + typecheck
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+typecheck exit=0
+$ tsgo --noEmit
+
+== full suite (tests gate; foreign reds expected)
+full exit=0
+ 2618 pass
+ 6 skip
+ 0 fail
+Ran 2624 tests across 156 files. [31.43s]
+
+== scope metadata (stat only)
+ packages/mpd-team-core-plugin/src/index.ts        |  93 ++++-
+ packages/mpd-team-core-plugin/src/team-store.ts   |  26 ++
+ 11 files changed, 841 insertions(+), 112 deletions(-)
+
+== hash sandwich: end 2026-10-26T11:49:41Z
+e2d600b4615a28472a9d7d2be4ea09c7b54c827fc2736ef74175c44d7fc0a5c5  evidence/cellwork/dag-groups/2026-10-26T11-48-13Z-T5/scope-end.sha256
+SANDWICH OK: start == end (after settle)

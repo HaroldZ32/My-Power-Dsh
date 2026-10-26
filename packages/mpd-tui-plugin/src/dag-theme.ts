@@ -168,6 +168,99 @@ export const DAG_CHARS_ONE_CELL: boolean = Object.values(DAG_CHARS).every((glyph
 )
 
 /**
+ * THE GROUP FRAME'S GLYPH TABLE — a SECOND border family, and why a second one is needed at all.
+ *
+ * WHAT A GROUP IS (the cellwork wave-4 requirement): a subcell renders as a BOX whose interior is that
+ * subcell's own DAG, and a dependency from outside attaches to the BOX rather than to a task inside it.
+ * The frame therefore stands BESIDE the node boxes it encloses, and the two have to be readable as
+ * different things at a glance. They differ by LINE WEIGHT, which survives a monochrome terminal:
+ * a group frame is DOUBLE-LINED (`╔ ╗ ╚ ╝ ║ ═`) while every node box is the rounded single-line family
+ * in {@link DAG_CHARS} (`╭ ╮ ╰ ╯ │ ─`). A colour-only difference would vanish in a theme that dims, and
+ * a difference in corner SHAPE alone would be one cell of information.
+ *
+ * THE TWO ROLES AN EDGE CAN HAVE AT A FRAME BORDER are separate glyphs, because a run that stops on a
+ * border must never be drawn as though it continued through it (frozen contract D3):
+ *
+ *   - CROSSING (`╫`, `╪`): an edge passing THROUGH a side — a single line through a double one, which is
+ *     exactly what the character means in the box-drawing block. It is drawn when an edge's endpoint is
+ *     a group NESTED inside the frame this run is laid out in, so the run has to enter an enclosing box
+ *     on its way to it.
+ *   - PORT (`╤ ╧ ╞ ╡`): an edge TERMINATING on a side — the re-anchored endpoint of a dependency whose
+ *     other end lives outside this frame. The stub points INTO the frame, so the arrowhead reads as
+ *     "attached to this box", which is the whole semantic the attachment rule buys.
+ *
+ * EVERY ENTRY IS ONE CELL, asserted by {@link DAG_GROUP_CHARS_ONE_CELL} through the same `cellWidth`
+ * measure the node family uses. The box-drawing block is narrow in the installed fonts, but that is a
+ * fact about a font and not about this table: a wide glyph here would shear the frame's right border
+ * off its own column exactly as it would a node box's.
+ */
+export const DAG_GROUP_CHARS = Object.freeze({
+  /** `DOWN|RIGHT`: a group frame's TOP-LEFT corner. */
+  cornerDownRight: "╔",
+  /** `DOWN|LEFT`: a group frame's TOP-RIGHT corner. */
+  cornerDownLeft: "╗",
+  /** `UP|RIGHT`: a group frame's BOTTOM-LEFT corner. */
+  cornerUpRight: "╚",
+  /** `UP|LEFT`: a group frame's BOTTOM-RIGHT corner. */
+  cornerUpLeft: "╝",
+  /** `UP|DOWN`: a group frame's vertical side. */
+  vertical: "║",
+  /** `LEFT|RIGHT`: a group frame's horizontal side. */
+  horizontal: "═",
+  /** `UP|DOWN|RIGHT`: a vertical side with a horizontal side branching right. */
+  teeRight: "╠",
+  /** `UP|DOWN|LEFT`: a vertical side with a horizontal side branching left. */
+  teeLeft: "╣",
+  /** `UP|LEFT|RIGHT`: a horizontal side with a vertical side rising from it. */
+  teeUp: "╩",
+  /** `DOWN|LEFT|RIGHT`: a horizontal side with a vertical side descending from it. */
+  teeDown: "╦",
+  /** All four directions: the frame's own crossing, where two of its sides meet. */
+  cross: "╬",
+  /** An edge CROSSING a horizontal side: vertical single through horizontal double. */
+  crossVertical: "╫",
+  /** An edge CROSSING a vertical side: horizontal single through vertical double. */
+  crossHorizontal: "╪",
+  /**
+   * A run MEETING a horizontal side with its stub BELOW the side: single `│` under a double `═`.
+   *
+   * The drawing uses it for a dependency LEAVING a group box downward (the exit stub under the box's
+   * bottom side), which is the same picture as an arrival from below that stops there — both are "a
+   * single line meeting a double side from underneath", which is what the glyph says.
+   */
+  portDown: "╤",
+  /**
+   * A run MEETING a horizontal side with its stub ABOVE the side: single `│` over a double `═`.
+   *
+   * This is the RE-ANCHORED ARRIVAL: an outside dependency enters the box and stops on its top side, so
+   * the arrow above the side points at a port rather than at a task.
+   */
+  portUp: "╧",
+  /**
+   * A run MEETING a vertical side with its stub on the RIGHT: `├`-shaped single line beside a double one.
+   *
+   * Declared for completeness of the border algebra — a router that entered a frame from the right would
+   * need it. The drawing's own routes only ever cross a frame's HORIZONTAL sides (a dependency is
+   * vertical), so this glyph is currently unread, and the theme says so rather than pretending.
+   */
+  portRight: "╞",
+  /** A run MEETING a vertical side with its stub on the LEFT; unread for the reason {@link portRight} gives. */
+  portLeft: "╡",
+} as const)
+
+/**
+ * The cells each GROUP-FRAME glyph occupies — the assertion {@link DAG_CHARS_ONE_CELL} makes for the
+ * node family, on its own table.
+ *
+ * KEPT SEPARATE RATHER THAN FOLDED INTO ONE FLAG: the two families are read by different drawing code,
+ * so a widening introduced into one of them has to name the family it broke. A test also asserts the
+ * two tables share no glyph — "visually distinct" is a claim about this data, not only about the font.
+ */
+export const DAG_GROUP_CHARS_ONE_CELL: boolean = Object.values(DAG_GROUP_CHARS).every((glyph) =>
+  [...glyph].every((character) => cellWidth(character) === 1),
+)
+
+/**
  * The marker a PLAN-ONLY node (a ghost) draws INSTEAD OF a state glyph.
  *
  * WHY A SINGLE ASCII `+`. The theme declares six state marks and no `planned` glyph, and a ghost must

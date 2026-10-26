@@ -1,0 +1,86 @@
+# cellwork-command — Wave 3 / C3 real run
+sandbox=/tmp/mpd-cellwork-command-EgTpIJ
+DSH_HOME=/tmp/mpd-cellwork-command-EgTpIJ/dsh-home
+HOME=/tmp/mpd-cellwork-command-EgTpIJ/run-home
+ws=/tmp/mpd-cellwork-command-EgTpIJ/ws
+
+
+[install] node scripts/install-profile.ts --yes --dsh-home <sandbox> --profile mpd-headless --skip-toolchain
+
+[[install exit=0]]
+[install-profile] dshHome=/tmp/mpd-cellwork-command-EgTpIJ/dsh-home profile=mpd-headless write=true
+[install-profile] profileDir=/tmp/mpd-cellwork-command-EgTpIJ/dsh-home/profiles/mpd-headless
+[install-profile] homePatch=/tmp/mpd-cellwork-command-EgTpIJ/dsh-home/cordis.patch.yml
+[install-profile] preset row <- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml (verbatim preset-mpd block; NO $DSH_HOME/.agent-presets copy — the row model has no preset root)
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 37 (id-target=0, insert=37)
+- insert:
+  - id: preset-mpd
+    name: '@deepseek-ai/dsh-agent-preset'
+    config:
+      id: mpd
+      order: 1
+      name: "MPD (Main Working Agent)"
+      description: "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin."
+      plugins:
+        # The `mpd` agent preset: the bundle's main working agent (derived from the
+        # shipped `standard` preset). Conventions carried by this preset:
+        #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
+        #     injected for every project session (see the agent-instructions row below);
+        #  2) tool presentation is native (every row tool exposed directly to the model);
+        #  3) the specialist roster's 11 specialists are NOT presets: they are specialist
+        #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
+        #     templates for the OFFICIAL Agent Teams plugin (staged through
+        #     `agent_teams_plan`; the captain takes a member's persona text from
+        #     mpd_role_persona, and the roster is also
+        #     served as an agent-scoped prompt section by mpd-roles-plugin);
+        #  4) ROW SET = the shipped `standard` preset's. The harness moves capabilities
+        #     between the host plane and the preset plane between releases (the Web
+        #     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
+        #     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
+        #     step with `standard` — a missing row is a missing capability for every mpd
+        #     session. `skills/dsh-qa/scripts/preset-conformance.ts` checks both the
+        #     row set and every row config against the INSTALLED harness at gate time.
+        #
+        # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+        # standing scope; every session naming it joins by scope parentage, so the
+        # tools and prompt sections registered here cover each joined agent while a
+        # session's own state stays keyed per Session/Agent inside the plugins. The
+        # host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
+        # preset must not own: the registries themselves, the sandbox and approval
+        # stack, persistence, and the model route.
+        #
+        # A service row here MUST sit inside a group carrying an `isolate` realm.
+        # Without one it publishes into the root realm, where it is process-global —
+        # another preset publishing the same name collides, and a host reader would
+        # resolve one preset's instance for every session; `dsh-agent-presets` rejects
+        # that at mount. `true` means an entry-local realm: this standing mount's own
+        # private instance, apart from every other preset's. (A shared label does NOT
+        # pool instances — `provide()` throws on the second registration under the
+        # same realm symbol; labels join REALMS, and are not what this file needs.)
+
+        # ── identity ────────────────────────────────
+
+[stub] listening on 127.0.0.1:38697
+
+[overlay] /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command/probe-overlay.yml
+- insert:
+    - id: cellwork-command-probe
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/cellwork-command-probe.ts"
+      config:
+        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command/probe.json"
+        objective: "qa-cellwork-objective-command"
+
+
+[boot] $ dsh --profile mpd-headless --patch <overlay> "Reply with exactly: cellwork-command-qa" (cwd /tmp/mpd-cellwork-command-EgTpIJ/ws)
+[[exit=0]]
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+[cellwork-command-probe] LISTED=agent-teams,cellwork,compact,feedback,goal,mpd,mpd-model,permission,plan,ultrawork,ulw
+[cellwork-command-probe] FILLED=success CELLS=cell-20261026T103430663Z
+QA-STUB-CELLWORK-COMMAND-OK
+
+
+[session] records=35 userMessages=4
+
+[verdict] problems=0

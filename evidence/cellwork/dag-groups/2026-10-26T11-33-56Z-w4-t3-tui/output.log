@@ -1,0 +1,31 @@
+=== T3 (D3 TUI group frames) — gate transcript ===
+timestamp: 2026-10-26T11:33:56Z
+workspace: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+
+--- bun test packages/mpd-tui-plugin
+ 1 skip
+ 0 fail
+ 15929 expect() calls
+Ran 610 tests across 24 files. [12.95s]
+exit: 0
+
+--- node scripts/verify-comment-coverage.ts
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+--- bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+
+--- node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 770ms
+
+--- bun run typecheck (mpd-tui-plugin lines only; an empty block means clean)
+(no diagnostics in packages/mpd-tui-plugin)
+
+--- built dist carries the group code (greps over packages/mpd-tui-plugin/dist/index.js)
+double-line corner ╔ : 1
+collapsedGroups   : 3
+DAG_GROUP_CHARS   : 13

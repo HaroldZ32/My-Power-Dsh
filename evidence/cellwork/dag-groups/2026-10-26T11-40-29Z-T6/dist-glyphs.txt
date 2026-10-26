@@ -1,0 +1,7 @@
+DAG_GROUP_CHARS literal found: False
+DAG_CHARS literal found: False
+group family size: 0 | node family size: 0
+group glyphs NOT one UTF-16 cell: []
+group family: 
+shared glyphs with node family: []
+one-cell boolean present: True

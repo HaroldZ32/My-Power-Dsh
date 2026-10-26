@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "slug": "cellwork-mount",
+  "subject": "the mpd-cellwork row MODULE applies and registers under a real offline dsh boot, supplied by the 2026-10-26 overlay recipe",
+  "case": "cellwork-mount",
+  "wave": "cellwork-w3",
+  "command": "dsh --profile mpd-headless --patch <mount-overlay> \"Reply with exactly: cellwork-mount-qa\"",
+  "row": {
+    "id": "mpd-cellwork",
+    "module": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/dist/index.js",
+    "suppliedBy": "the --patch overlay; the installed row was REMOVED from the composed home patch first"
+  },
+  "sandbox": {
+    "root": "/tmp/mpd-cellwork-mount-MHLwmL",
+    "dshHome": "/tmp/mpd-cellwork-mount-MHLwmL/dsh-home",
+    "home": "/tmp/mpd-cellwork-mount-MHLwmL/run-home",
+    "ws": "/tmp/mpd-cellwork-mount-MHLwmL/ws"
+  },
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "rowRemoved": {
+      "ok": true,
+      "removed": 1
+    },
+    "mount": {
+      "ok": true,
+      "carrier": "sink",
+      "mountLine": "[2026-10-26T10:34:39.347Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none",
+      "problems": [],
+      "bootExit": 0,
+      "sinkFile": "/tmp/mpd-cellwork-mount-MHLwmL/ws/.mpd/logs/mpd-cellwork.log"
+    },
+    "composition": {
+      "ok": true,
+      "exit": 0,
+      "problems": [],
+      "note": "COMPOSITION ONLY: --dump-config composes rows and never executes plugin code"
+    },
+    "negativeControl": {
+      "ok": true,
+      "exit": 0,
+      "signatures": [
+        "Cannot find module",
+        "ERR_MODULE_NOT_FOUND"
+      ],
+      "problems": []
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 2,
+      "keys": [
+        "--tmp-mpd-cellwork-mount-MHLwmL-ws-negative--",
+        "--tmp-mpd-cellwork-mount-MHLwmL-ws--"
+      ]
+    }
+  },
+  "problems": [],
+  "proves": [
+    "The row's own apply() ran to completion under a REAL boot in an isolated DSH_HOME/HOME/workspace (never --dump-config): the log sink carries `[mpd-cellwork] mounted: guard=… depthMax=… checkpointRatio=… windowFraction=…`, which is written after the guard install, the tool registrations and the command registration.",
+    "No loader failure and no apply-crash signature appears in that boot's output.",
+    "The same overlay composes the row at the absolute module path (`--dump-config` excerpt on disk; COMPOSITION ONLY).",
+    "The negative control really discriminates: an overlay naming a MISSING module produced no mount line and a loader failure (or a failing boot)."
+  ],
+  "doesNotProve": [
+    "That the BUNDLE's own `cordis.patch.yml` row is the source of the mount. On this machine the bundle resolution is stale (0.15.5, no cellwork row), which is WHY the overlay is used. The bundle wiring rests on `verify:rows` (37 ids incl mpd-cellwork) and `verify:manifest` (row module paths resolve).",
+    "The `dsh plugin add` install/uninstall path for this row (needs a registry): `bundle-lifecycle` dies at its install step on this network.",
+    "A session-level tool list (a `request/header` tools[] witness). This boot proves apply and the mount line; the unit suite proves the registrations, and the command case proves one whole surface end to end."
+  ]
+}

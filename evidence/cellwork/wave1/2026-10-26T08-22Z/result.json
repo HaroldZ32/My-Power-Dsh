@@ -1,0 +1,119 @@
+{
+  "kind": "wave-result",
+  "wave": "cellwork-wave1",
+  "capturedAt": "2026-10-26T08:25:00Z",
+  "branch": "feature/cellwork",
+  "commits": {
+    "team-compact-abort-signal": "ac3151ff",
+    "tui-host-drift": "9ef5a6a7",
+    "adapter-seams": "be795221"
+  },
+  "scope": {
+    "adapter": "contextPressure(target); catalog contextWindow/maxOutputTokens; DshTeamSpawnRequest.maxDepth native forward",
+    "compact": "real per-drive AbortSignal; abort classified as cancelled; six codes + unclassified preserved",
+    "tui": "five R13/R13b arms re-judged against installed host 0.17.0 (pre-existing drift, declared adjacent fix)"
+  },
+  "gates": {
+    "verifyDistFresh": "33/33 fresh (pinned bun 1.4.0; 24 were stale after the adapter edit)",
+    "aggregateTests": "2517 pass / 6 skip / 0 fail / 2523 tests / 150 files (exit 0)",
+    "typecheck": "exit 0",
+    "comments": "exit 0 (446 files, 40153 declarations)",
+    "docsParity": "pairs=50 failed=0 violations=0 links=453 checked=421 resolved=421 dead=0",
+    "adapterPackage": "289 pass / 0 fail / 1192 expects / 19 files",
+    "compactPackage": "26 pass / 0 fail / 129 expects",
+    "tuiPanel": "44 pass / 0 fail / 228 expects (pre-fix 39 pass / 5 fail / 189)",
+    "tuiPackage": "591 pass / 1 skip / 0 fail"
+  },
+  "verdicts": [
+    {
+      "task": "T3",
+      "items": "A1-A3",
+      "record": "rec-20261026T081333-e1a781",
+      "loop": "loop-20261026T074304-b04dd1",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": [
+        "ev-20261026T081250-0e5f1d",
+        "ev-20261026T081239-0c1ad9",
+        "ev-20261026T081251-828de2",
+        "ev-20261026T081321-8659f6"
+      ]
+    },
+    {
+      "task": "T4",
+      "items": "A4",
+      "record": "rec-20261026T081616-240d2d",
+      "loop": "loop-20261026T074304-abc80e",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": [
+        "ev-20261026T081527-6893db",
+        "ev-20261026T081528-7eb4c3",
+        "ev-20261026T081557-edda1c"
+      ]
+    },
+    {
+      "task": "T8",
+      "items": "A5 (Amendment 2)",
+      "record": "rec-20261026T081808-05502d",
+      "loop": "loop-20261026T080751-7dcdc2",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": [
+        "ev-20261026T081638-321495",
+        "ev-20261026T081708-3c3237",
+        "ev-20261026T081709-c1f2ec"
+      ]
+    }
+  ],
+  "contractAmendments": [
+    {
+      "id": "Amendment 1",
+      "at": "2026-10-26T07:55:00Z",
+      "item": "A2",
+      "substance": "the shared TypeScript interface may declare contextWindow/maxOutputTokens optional; runtime ALWAYS emits both keys as number|null and a test pins presence plus the null case"
+    },
+    {
+      "id": "Amendment 2",
+      "at": "2026-10-26T08:15:00Z",
+      "item": "A5",
+      "substance": "arms and assertions are preserved; an arm TITLE may be re-judged when the installed host removed the mechanism it named, provided the new title states the current rule and the arm pins the removed mechanism as an explicit absence; black-box guard = 44 arms, five group prefixes, expect() calls >= 189 (measured 228), aggregate green"
+    }
+  ],
+  "a5TitleMapping": {
+    "presentVerbatim": [
+      "the id GRAMMAR is not the blocker: a composed plugin id round-trips",
+      "R13b the host composes <pluginId>:<slug>"
+    ],
+    "rejudged": [
+      "default enabled CSV names BUILTINS ONLY -> the default enable VALUE shows only the host's own panels",
+      "adapter DOES append a registered id to the CSV -> the register->enable wiring as THIS host implements it: append pre-0.17.0, derived registry read after",
+      "host re-applies the configured CSV -> the host re-applies the configured value, drops before 0.15.0, unions on 0.15.x-0.16.x, derives on 0.17.0"
+    ]
+  },
+  "incidents": [
+    {
+      "id": "dispatch-review-mispairing",
+      "observed": "agent_teams_dispatch fell back to roster order when the declared verifier was momentarily not idle, pairing T8 (review of T7) to compact-engineer, the T7 writer, and T4 to adapter-engineer",
+      "action": "both pairings released twice, both writers ordered to stop and confirmed they produced no seat, no evidence and no record; review rows were completed by the named verifier via self-claim",
+      "consequence": "recorded in plan risk register; cellwork's own dispatch pairs ONLY the declared owner and refuses substitution; the platform fallback is left as AGENTS.md 5 rule 5 describes"
+    },
+    {
+      "id": "verify-evidence-loop-binding",
+      "observed": "mpd_verify_evidence's explicit loop_id argument does not bind; evidence follows the last mpd_verify_seat, and wrongly bound evidence is refused as forged-evidence",
+      "action": "verifier rebound the seat immediately before each gate batch",
+      "consequence": "declared tooling defect for the PR write-up; no workaround relies on the loop_id argument"
+    },
+    {
+      "id": "t8-description-stale",
+      "observed": "the T8 board description predates Amendment 2 (it says reuse loop b04dd1 and no arm title changed)",
+      "action": "record uses loop 7dcdc2 and the amended A5 rule; this result.json is the supersession note"
+    }
+  ],
+  "declaredBounds": [
+    "Blind verification: assertion CONTENT was not read; A5's absence-pinning property rests on the T7 report plus the captain ruling, and the black-box guard (counts, prefixes, expect calls) is what was verified.",
+    "No live mount for A1-A3: no wave-1 consumer drives contextPressure yet; the official backend's maxDepth ignore is unit-proven, not live-proven.",
+    "The tui legacy branches (<=0.16.x) are preserved but unexercised on this machine (only 0.17.0 installed).",
+    "Dist freshness is the captain's integration evidence, not re-derived by the verifier."
+  ]
+}

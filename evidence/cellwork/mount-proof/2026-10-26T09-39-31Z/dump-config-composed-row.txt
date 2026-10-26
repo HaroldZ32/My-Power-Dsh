@@ -1,0 +1,8 @@
+      - id: tool-plugin-market
+        name: '@deepseek-ai/dsh-plugin-market/tools'
+        disabled: true
+# == /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/mount-proof-overlay-20261026T173917Z/cellwork-overlay.yml
+- id: mpd-cellwork
+  name: >-
+    file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/dist/index.js
+  config: {}

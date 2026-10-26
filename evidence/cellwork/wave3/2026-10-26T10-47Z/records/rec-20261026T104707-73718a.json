@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T104707-73718a",
+  "loopId": "loop-20261026T103044-f19aea",
+  "taskId": "T6",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "flow-engineer",
+  "verifierId": "91d948be-af36-4a28-b9e2-ab80a7c174ae",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+      }
+    ],
+    "probe": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "bytes": 6002,
+        "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897",
+        "mtime": "2026-10-26T10:30:44.746Z"
+      },
+      {
+        "path": "docs/cellwork.md",
+        "bytes": 23432,
+        "sha256": "f17a41f4a639118b49aae8791d2d233ed6647cf8dc5dd1392d74974bcd1b745e",
+        "mtime": "2026-10-26T10:39:42.238Z"
+      },
+      {
+        "path": "docs/cellwork.zh-CN.md",
+        "bytes": 22610,
+        "sha256": "de98acdfc82652c02c2cb2295599815dd0f113c395c4b18eff7d8b8891a6e8a0",
+        "mtime": "2026-10-26T10:39:53.588Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 11650,
+        "sha256": "840ef10f0679e7db97d72c8d88eb3ddaea22341ca106098fb37a0ca31635a655",
+        "mtime": "2026-10-26T10:39:33.484Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 11417,
+        "sha256": "d82e8738ba26952e0d68aa6127323dc8817532a7533ef76548c4ee68d1e626f2",
+        "mtime": "2026-10-26T10:39:33.728Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/dist/index.js",
+        "bytes": 270540,
+        "sha256": "b1b20d34abd8457ee5c45ef39366151b96b9b7907c7333eca8b9be67981992dc",
+        "mtime": "2026-10-26T10:41:01.108Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/dispatch.ts",
+        "bytes": 17470,
+        "sha256": "eccd6c920016e9a63a6b3840464a6f8a243a695c9cea0eae2a228fa3935d8b39",
+        "mtime": "2026-10-26T10:40:57.800Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/split.ts",
+        "bytes": 24828,
+        "sha256": "0ad5af0bb773e06336e1d8b3370a00ecb1de781e7d70b88d9c4c64f62eaceb78",
+        "mtime": "2026-10-26T10:39:38.945Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/activate.ts",
+        "bytes": 27616,
+        "sha256": "595965dfa670639cb7245bda2ca8d8b14ee8cb038563ce8d2d0405a288cecdf3",
+        "mtime": "2026-10-26T10:40:38.825Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/flow.ts",
+        "bytes": 50423,
+        "sha256": "aa30a5d40b75e1c7d0281ac1fb0e2b33a4098904d9063e0f65dcd00092dd5666",
+        "mtime": "2026-10-26T10:39:53.751Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/state.ts",
+        "bytes": 28881,
+        "sha256": "b071b160a91eb5586560e7ee4b175b5cdc5a6f9b83333bd6bdccf57d443d6a26",
+        "mtime": "2026-10-26T10:39:14.108Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/flow.test.ts",
+        "bytes": 78993,
+        "sha256": "96d0ef0abbfe9c51b3db60ba16c80b4dfd3c953b083a55ad5ce98476b4ece74e",
+        "mtime": "2026-10-26T10:40:23.235Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "488cc430f0ac483ca9408bb54f86dd5bc681f69f83eb53cadd121f8635cabe48"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "f17a41f4a639118b49aae8791d2d233ed6647cf8dc5dd1392d74974bcd1b745e"
+    },
+    {
+      "path": "docs/cellwork.zh-CN.md",
+      "sha256": "de98acdfc82652c02c2cb2295599815dd0f113c395c4b18eff7d8b8891a6e8a0"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "840ef10f0679e7db97d72c8d88eb3ddaea22341ca106098fb37a0ca31635a655"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "sha256": "d82e8738ba26952e0d68aa6127323dc8817532a7533ef76548c4ee68d1e626f2"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T104450-39b5af",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T104450-39b5af.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T104451-8ec35d",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T104451-8ec35d.log",
+      "logSha256": "4e5ce9590ee70e5f0a1580df2d55ef26e8a3708fb689876ba2c8d07d2535f68e"
+    },
+    {
+      "evidenceId": "ev-20261026T104456-df1a27",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T104456-df1a27.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    },
+    {
+      "evidenceId": "ev-20261026T104456-4efe05",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T104456-4efe05.log",
+      "logSha256": "aadf97b7d7bd7b4273ceab58b8b72d7a0b1a5557d9bc7597d9109f870eb900e9"
+    },
+    {
+      "evidenceId": "ev-20261026T104459-d0e10a",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T104459-d0e10a.log",
+      "logSha256": "021dd9b61c9878ba41174876d68e6b969e4f559fea6f1d6892340deac8c9110f"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T10:47:07.657Z",
+  "notes": [
+    "HASH SANDWICH HELD: start 2026-10-26T10:44:44Z / end 2026-10-26T10:46:32Z. Contract (with Amendment 6) 8e964cd0edd1e3a9…; package tree digest ec12b78ad33febd9… (25 files), dist/index.js b1b20d34abd8457e…; docs f17a41f4a639118b… / de98acdfc82652c0…; README pair 840ef10f0679e7db… / d82e8738ba26952e…; user-guide 3c87bebb445113d4… / 4ae1faeb5a3ffcfd…; CHANGELOG a0604313c0e65ad9…; HEAD a6932fd1 — identical at both reads, no drift.",
+    "GATES (all exit 0): typecheck ev-20261026T104450-39b5af; tests ev-20261026T104459-d0e10a = 2565 pass / 6 skip / 0 fail / 43372 expect / 153 files [30.54s]; comments ev-20261026T104451-8ec35d PASS; docs ev-20261026T104456-df1a27 = pairs=52 failed=0 violations=0 dead=0 links=465 PASS (docs/cellwork.md and the README pair each printed 'ok'); dist ev-20261026T104456-4efe05 = 34/34 targets fresh, 1 NOT COVERED declared. Test delta vs T3 = exactly +2 arms, and they are the two Amendment 6 arms (2563→2565 pass).",
+    "R1 — PASS. The arm 'Amendment 6 R1: the dispatched message names the contract file the verify loop froze, and that file EXISTS' is present and green. Amendment 6 R1 required: the dispatched message names the SAME contract file the verify loop opened (the split key, not the board id), and an arm asserts the named file EXISTS on disk — both halves are in the arm's observable assertion. The non-obvious half flow-engineer fixed (activation must pass THIS revision's activatedTasks map, otherwise the message falls into the cannot-name branch) is covered by consequence: a cannot-name branch would emit no file name, so the existence assertion on the NAMED file would redden — the arm is falsifiable on that failure mode.",
+    "R2 — PASS. The arm 'Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and SURVIVES a refused resubmission' is present and green. It asserts BOTH halves Amendment 6 named: (a) a refusal never destroys an accepted verdict — the accepted split/<rev>.json survives a refused same-revision resubmission (refusal written to split/<rev>.refused.json per the repair report: a distinct path, which the amendment allows); (b) a newer acceptance SUPERSEDES the previous revision (supersededRevision:1 plus exactly one split-superseded journal row, per the repair report) with `show` still reporting the accepted verdict. Falsifiability: both properties are observable end-state (accepted file bytes, a recorded superseded revision), which the pre-fix behaviour (overwrite on refusal; no supersede marker) could not satisfy.",
+    "FALSIFIABILITY BOUND (declared): I did not run the two arms against the pre-fix code — no pre-T5 snapshot exists (the repaired bytes overwrote the pre-fix tree, and HEAD a6932fd1 predates the whole Wave-3 feature set, so a HEAD-based probe would be invalid). The falsifiability judgment rests on (i) the arms' artifact-level assertions (existence / survival / supersede), which are exactly the pre-fix failure modes, and (ii) the +2 arm delta with no other test changes.",
+    "SCOPE — honoured. T5's write window (18:38–18:43 +08:00) touched only packages/mpd-cellwork-plugin/src/{flow,split,state,activate,dispatch}.ts + test/flow.test.ts + dist/index.js; the README pair's 18:39 mtimes are docs-engineer's authorized correction batch (hashes match it exactly), and git status shows no row/manifest/preset/skills edit beyond what T1 already carried. No docs/README/skills/row edits by the repair.",
+    "DOCS BATCH CONFIRMED inside this T6 docs gate: the four authorized hashes are exactly what the gate saw (docs f17a41f4…/de98acdf…, README 840ef10f…/d82e8738…; user-guide 3c87bebb…/4ae1faeb… and CHANGELOG a0604313… unchanged since T4). Content verified in BOTH languages: '.mpd/team/mailbox.jsonl' has ZERO occurrences in all four files; a send appends to the TARGET cell's mail.jsonl (RECIPIENT cell for cross-cell), the sender's journal records cell:<cellId> + toCell:<target>, fromCell mirrored, durable-only; tree-only addressing with the literal \"not in this cell's tree\"; a mail.jsonl row in the docs state table; the no-cancel-verb declared bound via state.json: cancelledTasks with the board row visible and skipped only by cellwork dispatch; supervise names unreadMail + wakeFailures[] without weakening theundelivered statement. Structure intact: heading trees identical (11 H2 + 4 H3 in both docs; README 8 H2 each), switch links under the titles, the T4 NIT-fixed sentence, the C2 vocabulary, and the 'Re-split in detail'/'重切分的细节' H3 all present.",
+    "REGRESSION: the T3-verified C1/C2 arms still pass in this same run (C1 second-activation + cancelled, C2.1/.2/.3), and the Wave-2 B8/B9/Amendment 5 arms are unchanged — the repair did not disturb the verified surface.",
+    "DECLARED, not run: verify:vendor remains red on the skills/** change (single per-wave re-pin at commit) and verify-pack-closure stays red (PACKED-MISSING) until Wave 5 — contract-declared bounds, not findings."
+  ]
+}

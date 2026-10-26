@@ -1,0 +1,21 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/nested-teams.test.ts:
+(pass) the parent link is additive and derived from the records > a root team's record carries NO parentTeamId key, and reads back as plain JSON [4.44ms]
+(pass) the parent link is additive and derived from the records > a MEMBER's approval nests its team under the team whose roster records it [1.67ms]
+(pass) the parent link is additive and derived from the records > a Lead's NEXT wave is a SIBLING, never a child of its own team [1.50ms]
+(pass) the parent link is additive and derived from the records > three levels: a grandchild nests under its own parent, not under the root [2.14ms]
+(pass) the parent link is additive and derived from the records > a team that ENDED is no parent: its member's next team is a ROOT [1.65ms]
+(pass) the parent link is additive and derived from the records > TWO live rosters refuse the approval instead of guessing the box [1.83ms]
+(pass) the parent link is additive and derived from the records > a hand-edited CYCLE in the chain refuses the approval [0.82ms]
+(pass) the projection groups every live descendant, recursively > a childless tree keeps EXACTLY today's model (the backward pin) [0.90ms]
+(pass) the projection groups every live descendant, recursively > one group per child, the child's rows inside it, and the OUTER rank unchanged [1.53ms]
+(pass) the projection groups every live descendant, recursively > three levels nest recursively: a grandchild is a box inside the child's box [1.51ms]
+(pass) the projection groups every live descendant, recursively > the same records produce the same bytes, in two sandboxes [2.21ms]
+(pass) the projection groups every live descendant, recursively > a terminal child is NOT drawn as a box [1.25ms]
+(pass) the projection groups every live descendant, recursively > the `/state` payload carries `groups` and keeps every OUTER task's rank [1.29ms]
+
+ 13 pass
+ 0 fail
+ 36 expect() calls
+Ran 13 tests across 1 file. [159.00ms]

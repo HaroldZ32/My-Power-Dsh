@@ -1,0 +1,56 @@
+== hash sandwich: start 2026-10-26T12:08:40Z
+7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417  evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/scope-start.sha256
+== settle window 50 s
+7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417  evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/scope-postsettle.sha256
+
+== the two Amendment-9 reds, re-measured
+cellwork exit=0
+ 50 pass
+ 0 fail
+Ran 50 tests across 3 files. [186.00ms]
+(pass) B8: cellwork_subteam enforces depthMax and registers the sub-cell when it fits 
+(pass) D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own 
+(pass) D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so 
+team-core exit=0
+ 357 pass
+ 0 fail
+Ran 357 tests across 24 files. [1.65s]
+coupling exit=0
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+RESULT: PASS (the frozen inventory describes the band exactly)
+frozen inventory: 47 entr(y|ies); couplings in the band: 47, sanctioned adapter imports: 81
+RESULT: PASS (the frozen inventory describes the band exactly)
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+-- team-core's graph-model entries (the R2 preferred fix: the frozen import must be unchanged):
+322:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
+323:  "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
+
+== the R1 root-cause machinery is in the BUILT cellwork dist
+-- freeCellId (the collision-safe minter):
+2028:function freeCellId(workspace, now) {
+-- used for the sub-cell id (not cellIdAt):
+4898:      const subcellId = freeCellId(caller.workspace, now);
+-- parentTeamId on the cell record:
+10
+
+== dist freshness (this row's packages)
+mpd-cellwork-plugin dist exit=0
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 37ms
+mpd-team-core-plugin dist exit=1
+[verify-dist-fresh] FAIL - 1 of 1 targets not fresh (STALE: 1) — 41ms
+
+== repo-wide gates
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+typecheck exit=0
+$ tsgo --noEmit
+full exit=0
+ 6 skip
+ 0 fail
+Ran 2626 tests across 156 files. [31.03s]
+
+== hash sandwich: end 2026-10-26T12:10:07Z
+7f1043cd3c7a25fafdfe827bcc4d7b7c70696aded88bff8c7d5eb900857c4417  evidence/cellwork/dag-groups/2026-10-26T12-08-40Z-T14/scope-end.sha256
+SANDWICH OK: start == end (after settle)

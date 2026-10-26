@@ -43,6 +43,8 @@ interface DoubleOptions {
   memberId?: string
   /** The `mpdConfig` service double the spawn resolves the agent's route through, when one exists. */
   config?: { agentRouteResolutionOf?: (member: string) => unknown }
+  /** How many times the activation double's `dispose()` was called — the slot-release witness. */
+  disposals?: { count: number }
 }
 
 /** The doubles one arm drives, plus the executor the adapter hands back. */
@@ -75,10 +77,20 @@ function harness(options: DoubleOptions = {}): Harness {
   /** The native double: only the three seams the executor uses. */
   const subagents: Record<string, unknown> = {
     providers: () => ["spawn", "fork", "mpd-roster"],
-    /** Record the raise and answer with a durable child id. */
+    /** Record the raise and answer with a durable child id plus the activation's teardown seam. */
     startContinuable(spec: unknown): Promise<unknown> {
       record("startContinuable", this, [spec])
-      return Promise.resolve({ childId: options.childId ?? "child-1", messageId: "msg-1" })
+      /** The activation handle, which carries `dispose` as the harness documents it. */
+      const activation = {
+        childId: options.childId ?? "child-1",
+        messageId: "msg-1",
+        /** Record the release, so an arm can prove a leaked slot was handed back. */
+        dispose(): Promise<void> {
+          if (options.disposals !== undefined) options.disposals.count += 1
+          return Promise.resolve()
+        },
+      }
+      return Promise.resolve(activation)
     },
     /** Record the delivery and answer with an inbox id. */
     sendMessage(sender: unknown, targetId: unknown, content: unknown, opts: unknown): Promise<unknown> {
@@ -291,12 +303,18 @@ describe("the native backend", () => {
     expect(spec.provider).toBe("spawn")
   })
 
-  test("a start that reports NO child id is refused, so no phantom member is recorded", async () => {
+  test("a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks", async () => {
+    /** Counts the activation's teardown calls. */
+    const disposals = { count: 0 }
     /** The harness whose backend answers without a handle. */
-    const h = harness({ childId: "" })
+    const h = harness({ childId: "", disposals })
     await expect(h.executor.spawn(h.lead, { ...REQUEST })).rejects.toThrow(/reported no child id/)
     // The registry stayed empty: a member with no handle is a member no call could reach.
     expect(h.executor.members()).toEqual([])
+    // THE SLOT IS HANDED BACK (contract `.mpd/plans/agent-slot-hygiene.md`): the harness counted that
+    // child the moment it started, so a refusal that walked away would leak one active child per attempt
+    // — the measured way to `subagent limit reached (active child limit: 8)`.
+    expect(disposals.count).toBe(1)
   })
 
   test("send delivers through sendMessage, which cold-resumes an absent child", async () => {
@@ -521,5 +539,45 @@ describe("the seam is total", () => {
       expect(executor.reason).toMatch(/native|official/)
       expect(executor.reason).not.toContain("undefined")
     }
+  })
+})
+
+describe("the depth cap (capability fact F1)", () => {
+  test("a supplied maxDepth is forwarded on the activation request", async () => {
+    /** The harness whose native backend records the activation spec. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST, maxDepth: 3 })
+    /** The activation request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    // The harness's own `request.maxDepth` field, exactly as the caller supplied it.
+    expect(request.maxDepth).toBe(3)
+  })
+
+  test("an absent maxDepth stays ABSENT, never `undefined`", async () => {
+    /** The harness under test. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST })
+    /** The activation request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    // Absence is the contract: a written `maxDepth: undefined` is indistinguishable to some
+    // serializers from a caller-supplied value and could defeat the service default.
+    expect("maxDepth" in request).toBe(false)
+    expect(Object.hasOwn(request, "maxDepth")).toBe(false)
+  })
+
+  test("the OFFICIAL backend IGNORES a supplied cap without throwing", async () => {
+    process.env[OVERRIDE] = "official"
+    /** The harness whose official backend records its own request. */
+    const h = harness()
+    /** The spawn result, which proves the call completed on that backend. */
+    const result = await h.executor.spawn(h.lead, { ...REQUEST, maxDepth: 2 })
+    expect(result.executor).toBe("official")
+    /** The official spawn call the double recorded. */
+    const call = h.calls.find((entry) => entry.seam === "spawnTeammate")
+    expect(call).toBeDefined()
+    /** The official spawn request, in that service's own vocabulary. */
+    const request = call?.args[1] as Record<string, unknown>
+    // The official service has no per-call depth channel: the cap must not leak into its vocabulary.
+    expect("maxDepth" in request).toBe(false)
   })
 })

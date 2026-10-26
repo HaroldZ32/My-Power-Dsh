@@ -1,0 +1,93 @@
+== declared-by-writer hashes (T11 freeze mail 2026-10-26T11:59:04Z)
+declared-check exit=0
+packages/mpd-graph-core/src/types.ts: OK
+packages/mpd-graph-core/src/model.ts: OK
+packages/mpd-graph-core/src/index.ts: OK
+packages/mpd-graph-core/test/model-groups.test.ts: OK
+packages/mpd-graph-core/README.md: OK
+packages/mpd-graph-core/README.zh-CN.md: OK
+packages/mpd-graph-core/dist/index.js: OK
+scripts/verify-graph-model.ts: OK
+
+== hash sandwich: start 2026-10-26T12:05:22Z
+c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a  evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/scope-start.sha256
+== settle window 50 s
+c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a  evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/scope-postsettle.sha256
+
+== MY OWN PROBE (Amendment 8 R1/R2, black-box on the BUILT dist) — must be ALL PASS
+probe exit=0
+R1a edges: T1->teamB[derived] teamB->T2[board] | depths: B1(d0) T1(d0) T2(d2) teamB(d1) | ranks: [["T1"],["teamB"],["T2"]]
+PASS R1a the anchor edge exists — edge teamB->T2
+PASS R1a the outer task ranks AFTER its box — box d1 vs outer d2
+R1b edges: G1->T1[board] T1->G1[board] | cycles: ["G1","T1"] | ranks: [[],["G1"],["T1"]]
+PASS R1b the cross-frame mutual block is a CYCLE — ["G1","T1"]
+PASS R1b both cycle members are NAMED — ["G1","T1"]
+R1c edges: T1->teamB[board] | depths: B1(d0) T1(d0) teamB(d1)
+PASS R1c inner-blocked-by-outer still anchors on the box — T1->teamB
+PASS R1c the box still ranks after the task that blocks it — box d1
+PASS D sibling subcells still attach frame->frame — GA->GB T1->GA T1->GB
+PASS determinism of the repaired model — identical
+PASS plain JSON round-trip — equal
+
+PROBE RESULT: ALL PASS
+
+== the built-in fixture must NOW produce a frame->frame edge (R2)
+grouped-emit exit=0
+groups: ['teamB', 'teamC', 'teamB1']
+edges: ['B1->B2[board]', 'B1->teamB1[board]', 'B2->teamB1[derived]', 'T1->T2[both]', 'T1->teamB[board]', 'T2->teamB[derived]', 'teamB->teamC[board]', 'teamC->T3[board]']
+frame->frame edges: ['teamB->teamC']
+RESULT: PASS — the built-in fixture produces a frame->frame edge
+groups payload: [{"id": "teamB", "label": "Subcell B", "parentId": null, "memberIds": ["B1", "B2", "F1", "teamB1"], "depth": 0, "originTaskId": "T2"}, {"id": "teamC", "label": "Subcell C", "parentId": null, "memberIds": ["E1"], "depth": 0}, {"id": "teamB1", "label": "Subcell B1", "parentId": "teamB", "memberIds": ["D1"], "depth": 1, "originTaskId": "B2"}]
+
+== gate arms (both directions + grouped arms)
+selftest exit=0
+[verify-graph-model] self-test PASS — --seed-wrong-anchor exits non-zero and a FAIL line NAMES the un-anchored box edge :: exit 1: [verify-graph-model] FAIL edge B1→teamB1: missing (expected source "board")
+[verify-graph-model] self-test PASS — 13 arms: both directions and the path forms
+flat exit=0
+[verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+grouped exit=0
+[verify-graph-model] PASS — grouped nodes (11), edges (8), groups (3), ranks and the report equal the declared tree
+wrong-anchor exit=1 (expect non-zero)
+[verify-graph-model] negative control: B1→teamB1: endpoint "teamB1" seeded to "D1"
+[verify-graph-model] FAIL edge B1→teamB1: missing (expected source "board")
+[verify-graph-model] FAIL edge B1→D1: unexpected in the model
+
+== graph-core suite
+tests exit=0
+ 94 pass
+ 0 fail
+Ran 94 tests across 6 files. [1326.00ms]
+22
+
+== INDEPENDENT BACKWARD PIN (my own pre-wave captures, JSON-only)
+-- want dd4af9c3… and 2f521a23…
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-real.jsononly
+2f521a230521f97ed1de61a56684d83b8eaeba7072bfcd2ceeaeba5c1623027b  evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-synthetic.jsononly
+REAL IDENTICAL
+SYNTHETIC IDENTICAL
+-- groups key count (want 0 0):
+evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-real.jsononly:0
+evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/emit-synthetic.jsononly:0
+-- determinism 3x:
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+dd4af9c303e714cfd8129d261e7c721d5dfd4a1ec8b197b4f39615a847a98fbf  -
+
+== dist freshness (graph-core only) + full table
+graph-core dist exit=0
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 37ms
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+typecheck exit=0
+$ tsgo --noEmit
+full exit=0
+ 2620 pass
+ 6 skip
+ 0 fail
+Ran 2626 tests across 156 files. [30.98s]
+
+== hash sandwich: end 2026-10-26T12:06:49Z
+c23866ecd3c6d1689f5be54ef29ce7698ab3709585cb79639fdbe2549d98486a  evidence/cellwork/dag-groups/2026-10-26T12-05-22Z-T12/scope-end.sha256
+SANDWICH OK: start == end (after settle)

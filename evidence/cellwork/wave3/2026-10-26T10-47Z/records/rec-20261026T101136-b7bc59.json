@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T101136-b7bc59",
+  "loopId": "loop-20261026T095624-e75a74",
+  "taskId": "T4",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "docs-engineer",
+  "verifierId": "91d948be-af36-4a28-b9e2-ab80a7c174ae",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "0ca89c00996bfda832b5bbe9824103953f304545d0f55f18f4b2b7dd061a20a8"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "sha256": "0ca89c00996bfda832b5bbe9824103953f304545d0f55f18f4b2b7dd061a20a8"
+      }
+    ],
+    "probe": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "bytes": 4864,
+        "sha256": "0ca89c00996bfda832b5bbe9824103953f304545d0f55f18f4b2b7dd061a20a8",
+        "mtime": "2026-10-26T09:55:21.742Z"
+      },
+      {
+        "path": "docs/cellwork.md",
+        "bytes": 21215,
+        "sha256": "2545c5b14e8480418b49c416878dd6c09e7082a03df0e7f85d29e68afd4f8309",
+        "mtime": "2026-10-26T10:00:22.891Z"
+      },
+      {
+        "path": "docs/cellwork.zh-CN.md",
+        "bytes": 20415,
+        "sha256": "b1a3f0673b3c21fd69309f04909c8b6ebf544a3145ae8e1c492bff3189cf1add",
+        "mtime": "2026-10-26T10:01:15.639Z"
+      },
+      {
+        "path": "docs/user-guide.md",
+        "bytes": 86530,
+        "sha256": "3c87bebb445113d4473d0ec1f86c2ca0397dc31dbc0d5877fb3c36776d8afc89",
+        "mtime": "2026-10-26T10:02:07.055Z"
+      },
+      {
+        "path": "docs/user-guide.zh-CN.md",
+        "bytes": 85619,
+        "sha256": "4ae1faeb5a3ffcfda6bb2c5586ed94c11d8a779f91d25551dd407a2c989a7955",
+        "mtime": "2026-10-26T10:02:09.272Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "bytes": 120888,
+        "sha256": "a0604313c0e65ad9411ea0ca17e24a2345178e6fd242faaa1f97362cc5810155",
+        "mtime": "2026-10-26T10:02:57.612Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 10686,
+        "sha256": "7e3bc46a3025729cc0670530ceafe265e0f43855fcf28d3aa57d2afb7278a186",
+        "mtime": "2026-10-26T10:03:18.265Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 10408,
+        "sha256": "1502419ca3fad0f4611ee2ca2a1cba2950ec18d053122f79df3408ad84b207f9",
+        "mtime": "2026-10-26T10:03:19.353Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "0ca89c00996bfda832b5bbe9824103953f304545d0f55f18f4b2b7dd061a20a8"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "488cc430f0ac483ca9408bb54f86dd5bc681f69f83eb53cadd121f8635cabe48"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "2545c5b14e8480418b49c416878dd6c09e7082a03df0e7f85d29e68afd4f8309"
+    },
+    {
+      "path": "docs/cellwork.zh-CN.md",
+      "sha256": "b1a3f0673b3c21fd69309f04909c8b6ebf544a3145ae8e1c492bff3189cf1add"
+    },
+    {
+      "path": "docs/user-guide.md",
+      "sha256": "3c87bebb445113d4473d0ec1f86c2ca0397dc31dbc0d5877fb3c36776d8afc89"
+    },
+    {
+      "path": "docs/user-guide.zh-CN.md",
+      "sha256": "4ae1faeb5a3ffcfda6bb2c5586ed94c11d8a779f91d25551dd407a2c989a7955"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "a0604313c0e65ad9411ea0ca17e24a2345178e6fd242faaa1f97362cc5810155"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "7e3bc46a3025729cc0670530ceafe265e0f43855fcf28d3aa57d2afb7278a186"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "sha256": "1502419ca3fad0f4611ee2ca2a1cba2950ec18d053122f79df3408ad84b207f9"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T100523-05df40",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T100523-05df40.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "minor",
+      "symptom": "docs/cellwork.md '## Tests and evidence' says of evidence/cellwork/'s directories 'each directory carries its `result.json` and the raw logs', and docs/cellwork.zh-CN.md mirrors it ('每个目录带自己的 result.json 与原始日志'); evidence/cellwork/capability-spike/2026-10-26T07-30-00Z/ carries result.json + report.md only (its result.json records mode 'read-only source read; nothing executed', so it produced no raw logs). Three named sets, one mismatch.",
+      "expected": "Say what each directory really carries — result.json plus raw logs where the wave ran commands, and the spike's report.md — or drop the 'raw logs' clause for the spike.",
+      "docSource": ".mpd/plans/cellwork-w3-contract.md"
+    }
+  ],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T10:11:36.770Z",
+  "notes": [
+    "HASH SANDWICH HELD: start 2026-10-26T10:05:13Z / end 2026-10-26T10:09:15Z, all eight subject files byte-identical at both reads, and identical to the hashes docs-engineer reported at 10:03:41Z: contract 0ca89c00996bfda8…, docs/cellwork.md 2545c5b14e848041…, docs/cellwork.zh-CN.md b1a3f0673b3c21fd…, docs/user-guide.md 3c87bebb445113d4…, docs/user-guide.zh-CN.md 4ae1faeb5a3ffcfd…, CHANGELOG.md a0604313c0e65ad9…, README.md 7e3bc46a3025729c…, README.zh-CN.md 1502419ca3fad0f4…. No drift; the flow lane wrote nothing in this window (the package tree stayed at the Wave-2 digest).",
+    "GATE: mpd_verify_evidence docs = ev-20261026T100523-05df40 (bun run verify:docs, exit 0). Quoted: pairs=52 failed=0 violations=0 dead=0 links=465 checked=433 resolved=433; docs/cellwork.md printed 'ok'. A second direct `bun run verify:docs` reproduced it (log .mpd/verify/evidence/w3-t4-verify-docs.log).",
+    "PARITY: heading trees identical — 1 H1 + 11 H2 + 3 H3 in BOTH files; switch links on line 3 of each (within the gate's first-eight-lines rule, the house format); both languages carry the same topics: the command/single trigger, all 14 tool surfaces plus the command row, the four guard modes (captain/verifier/checkpoint/subcaptain, plus the ordinary-member no-op row), the measured budget with provenance catalog/observed/override/uncertified and the ±25%-English/punitive-CJK estimate bound, the checkpoint→handoff→compaction→promotion protocol, cell-aware mail, the .mpd/cellwork/<cellId>/ state layout, config + precedence, and every declared bound (mount overlay, Wave-5 pack closure, best-effort mail wake-up, best-effort reseed, observed-window-only checkpoints, parent_team_id deferred, blindness prose).",
+    "USER GUIDE: pointers present in BOTH languages in §6 (EN line 411; ZH line 364) and §12 (EN line 823; ZH line 720); both §12 intros say the bundle contributes SEVEN commands and both command tables carry the /cellwork row; the gate proved no dead link.",
+    "CHANGELOG: under `## Unreleased`; names the feature (Added — cell-work mode (/cellwork)) AND exactly two adjacent Wave-1 fixes — mpd-team-compact passes a real AbortSignal (matches evidence/cellwork/wave1: per-drive AbortController, abort classified cancelled, six codes + unclassified preserved, and the compact source's own comment that compactNow's first statement is signal.throwIfAborted()) and the TUI panel-enablement arms re-judged against host 0.17.0 (matches wave1: 39 pass/5 fail → 44 pass/0 fail); the cited evidence paths (wave1, wave2, capability-spike, mount-proof) all exist.",
+    "README PAIR: both languages now carry the C2 sentences — compaction outcomes classified and journaled (null/busy/error), cellwork_send addressing for a member name, `captain` and a cross-subcell recipient with the cell:<cellId> journal stamp, and the UNDELIVERED row surfaced on cellwork_supervise (not only the pending board) — and both keep the identical precedence wording (project file > row config > shipped default); README heading trees identical (8 H2 each).",
+    "BOUNDS / CROSS-ROW: (a) two forward-looking sentences — docs/cellwork.md's 'the Wave-3 QA cases prove that the command is registered and that its handler submits the directive, and reproduce the mount', and the README's supervise/barrier C2 sentences — state C2/C3/C4 REQUIREMENTS of this same contract; their truth is adjudicated by T3, so if T3 fails C2/C3/C4 those sentences become doc overclaims to repair (not a T4 defect now). (b) plan §4.3's cellwork_start row still says 'create the cell', contradicted by the shipped README and the docs — stale plan text outside C5's write scope, reported as an observation only. (c) the 28,544-token overhead seed is stated in plan §4.5 and mirrored by both docs; no separate raw-measurement artifact exists beyond that design record.",
+    "DECLINED TO JUDGE: external URLs (verify:docs ignores them by design); the English-only CHANGELOG (exempt by policy); the estimator formula's simplification for a NON-DEFAULT cjkCharsPerToken (it mirrors plan §4.5's own formula verbatim and defaults are consistent)."
+  ]
+}

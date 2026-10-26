@@ -1724,7 +1724,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -1856,6 +1856,67 @@ function createDshAdapter(ctx, config = {}) {
     engineCache.set(agent, engine);
     return engine;
   }
+  function contextPressureSession(target) {
+    if (typeof target === "string") {
+      const id = target.trim();
+      if (id === "")
+        return;
+      const sessions = service("sessions");
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          const found = sessions.get(id);
+          if (found !== undefined && found !== null)
+            return found;
+        } catch {}
+      }
+      return liveAgent(id)?.session;
+    }
+    if (target === undefined || target === null || typeof target !== "object")
+      return;
+    const session = target.session;
+    if (session !== undefined && session !== null)
+      return session;
+    return target;
+  }
+  function finiteNumberOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function contextPressure(target) {
+    const session = contextPressureSession(target);
+    if (session === undefined)
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    const projections = service("sessionProjections");
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    let state;
+    try {
+      state = projections.stateOf(session, "contextPressure");
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    const stateFields = state;
+    let snapshot;
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined;
+    } catch {
+      snapshot = undefined;
+    }
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object" ? snapshot.values : undefined;
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object" ? snapshotValues.contextPressure : undefined;
+    const viewFields = view !== undefined && view !== null && typeof view === "object" ? view : undefined;
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens);
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens);
+    const usedTokens = projectedTokens ?? pressureTokens;
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow);
+    if (windowTokens === null)
+      return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" };
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null;
+    return { usedTokens, windowTokens, ratio, provenance: "observed" };
+  }
   function onEvent(event, handler) {
     if (typeof ctx?.on !== "function")
       return;
@@ -1941,12 +2002,16 @@ function createDshAdapter(ctx, config = {}) {
             });
           }
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow);
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens);
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
             ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
             efforts,
-            ...defaultEffort === undefined ? {} : { defaultEffort }
+            ...defaultEffort === undefined ? {} : { defaultEffort },
+            contextWindow,
+            maxOutputTokens
           });
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
@@ -2008,14 +2073,17 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...agentOptions === undefined ? {} : { agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions },
+            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
           signal: request.signal ?? neverAborted()
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -2248,6 +2316,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -2510,7 +2579,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -4525,6 +4594,7 @@ function cycleIds(tasks) {
 var MAX_TEAMS = 20;
 var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
+var GROUP_VISUAL = "group";
 var NO_SESSION_TEAM_MARKER = "no team in this session";
 var WORKSPACE_SCOPE_MARKER = "workspace-level";
 function asString(value) {
@@ -4896,7 +4966,8 @@ function ghostRow(node) {
     dependencies: [...node.dependencies],
     failedDependencies: [],
     depth: rankOfNode(node),
-    planned: true
+    planned: true,
+    ...node.group === undefined ? {} : { group: node.group }
   };
 }
 function modelRows(workflow) {
@@ -4907,13 +4978,15 @@ function modelRows(workflow) {
   const seen = new Set;
   const rows = [];
   for (const node of model.nodes) {
+    if (node.visual === GROUP_VISUAL)
+      continue;
     seen.add(node.id);
     const row = byId.get(node.id);
     if (row === undefined) {
       rows.push(ghostRow(node));
       continue;
     }
-    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node) });
+    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node), ...node.group === undefined ? {} : { group: node.group } });
   }
   for (const task of workflow.tasks)
     if (!seen.has(task.id))
@@ -5492,6 +5565,26 @@ var DAG_CHARS = Object.freeze({
   railElbowMid: "├─"
 });
 var DAG_CHARS_ONE_CELL = Object.values(DAG_CHARS).every((glyph) => [...glyph].every((character) => cellWidth(character) === 1));
+var DAG_GROUP_CHARS = Object.freeze({
+  cornerDownRight: "╔",
+  cornerDownLeft: "╗",
+  cornerUpRight: "╚",
+  cornerUpLeft: "╝",
+  vertical: "║",
+  horizontal: "═",
+  teeRight: "╠",
+  teeLeft: "╣",
+  teeUp: "╩",
+  teeDown: "╦",
+  cross: "╬",
+  crossVertical: "╫",
+  crossHorizontal: "╪",
+  portDown: "╤",
+  portUp: "╧",
+  portRight: "╞",
+  portLeft: "╡"
+});
+var DAG_GROUP_CHARS_ONE_CELL = Object.values(DAG_GROUP_CHARS).every((glyph) => [...glyph].every((character) => cellWidth(character) === 1));
 var DAG_GHOST_MARKER = "+";
 var DAG_CHROME = Object.freeze({
   nodeBorder: "round",
@@ -6138,6 +6231,179 @@ function usePanelTitleRow(kit, options) {
   }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
 }
 
+// packages/mpd-tui-plugin/src/dag-groups.ts
+function sameFrame(left, right) {
+  return left === right;
+}
+function buildFrameTree(tasks, groups) {
+  const byId = new Map;
+  for (const group of groups)
+    if (!byId.has(group.id))
+      byId.set(group.id, group);
+  const taskIds = new Set(tasks.map((task) => task.id));
+  const collapsed = [];
+  const frameByGroup = new Map;
+  const root = { id: null, label: null, parent: null, depth: 0, children: [], childFrames: new Map };
+  const frames = new Map([[null, root]]);
+  const frameOfTask = new Map;
+  const reachable = (id) => {
+    const seen = new Set;
+    let cursor = id;
+    while (cursor !== null) {
+      if (seen.has(cursor))
+        return false;
+      seen.add(cursor);
+      const group = byId.get(cursor);
+      if (group === undefined)
+        return false;
+      cursor = group.parentId;
+    }
+    return true;
+  };
+  const order = [...byId.values()].map((group) => group.id).sort((left, right) => byId.get(left).depth - byId.get(right).depth || (left < right ? -1 : left > right ? 1 : 0));
+  for (const id of order) {
+    if (taskIds.has(id) || !reachable(id)) {
+      collapsed.push(id);
+      continue;
+    }
+    const group = byId.get(id);
+    const parentFrame = group.parentId === null ? root : frames.get(group.parentId) ?? root;
+    const frame = { id: group.id, label: group.label, parent: parentFrame, depth: parentFrame.depth + 1, children: [], childFrames: new Map };
+    frames.set(group.id, frame);
+    frameByGroup.set(group.id, frame);
+    parentFrame.children.push({ kind: "group", id: group.id, group, frame });
+    parentFrame.childFrames.set(group.id, frame);
+  }
+  for (const task of tasks) {
+    const frame = task.group === undefined ? root : frames.get(task.group);
+    const home = frame ?? root;
+    home.children.push({ kind: "task", id: task.id });
+    frameOfTask.set(task.id, home.id);
+  }
+  return { root, frames, frameOfTask, collapsed };
+}
+function anchorOf(endpoint, endpointFrame, drawnFrame) {
+  let frame = endpointFrame;
+  let id = endpoint;
+  let deeper = false;
+  while (!sameFrame(frame.id, drawnFrame.id)) {
+    if (frame.parent === null)
+      return { id, deeper: true };
+    id = frame.id;
+    frame = frame.parent;
+    deeper = true;
+  }
+  return { id, deeper };
+}
+function frameEdges(tasks, tree, groups) {
+  const frameOf = (id) => {
+    const home = tree.frameOfTask.get(id);
+    if (home !== undefined)
+      return tree.frames.get(home);
+    const boxIn = tree.frames.get(id);
+    return boxIn === undefined ? undefined : boxIn.parent ?? undefined;
+  };
+  const merged = new Map;
+  for (const task of tasks) {
+    const toFrame = frameOf(task.id);
+    if (toFrame === undefined)
+      continue;
+    for (const from2 of task.dependencies ?? []) {
+      if (from2 === task.id)
+        continue;
+      const fromFrame = frameOf(from2);
+      if (fromFrame === undefined)
+        continue;
+      const drawn = drawnFrameOf(fromFrame, toFrame);
+      const anchorFrom = anchorOf(from2, fromFrame, drawn);
+      const anchorTo = anchorOf(task.id, toFrame, drawn);
+      const key = `${drawn.id ?? "\x00root"}\x00${anchorFrom.id}\x00${anchorTo.id}`;
+      const held = merged.get(key);
+      if (held !== undefined) {
+        held.fromDeeper = held.fromDeeper || anchorFrom.deeper;
+        held.toDeeper = held.toDeeper || anchorTo.deeper;
+        continue;
+      }
+      merged.set(key, { frame: drawn.id, from: anchorFrom.id, to: anchorTo.id, fromDeeper: anchorFrom.deeper, toDeeper: anchorTo.deeper });
+    }
+  }
+  const byFrame = new Map;
+  for (const edge of merged.values()) {
+    const list = byFrame.get(edge.frame) ?? [];
+    list.push(edge);
+    byFrame.set(edge.frame, list);
+  }
+  return byFrame;
+}
+function drawnFrameOf(left, right) {
+  const chain = new Set;
+  for (let cursor = left;cursor !== null; cursor = cursor.parent)
+    chain.add(cursor.id);
+  for (let cursor = right;cursor !== null; cursor = cursor.parent)
+    if (chain.has(cursor.id))
+      return cursor;
+  return left;
+}
+function rankFrame(frame, edges, servedColumns) {
+  const ids = frame.children.map((child) => child.id);
+  const served = servedColumns !== undefined && ids.every((id) => servedColumns.has(id));
+  const rankOf = new Map;
+  if (served) {
+    for (const id of ids)
+      rankOf.set(id, Math.max(0, Math.floor(servedColumns.get(id))));
+  } else {
+    const blockers = new Map;
+    const known = new Set(ids);
+    for (const edge of edges) {
+      if (!known.has(edge.from) || !known.has(edge.to))
+        continue;
+      const list = blockers.get(edge.to) ?? [];
+      list.push(edge.from);
+      blockers.set(edge.to, list);
+    }
+    const plan = rankPlan(ids.map((id) => ({ id, depth: 0, dependencies: blockers.get(id) ?? [] })));
+    for (const id of ids)
+      rankOf.set(id, plan.rankOf.get(id) ?? 0);
+  }
+  const count = ids.reduce((max, id) => Math.max(max, (rankOf.get(id) ?? 0) + 1), 0);
+  const columns = Array.from({ length: count }, () => []);
+  for (const child of frame.children)
+    columns[rankOf.get(child.id) ?? 0].push(child);
+  return { columns, rankOf };
+}
+var GROUP_COLUMN_GAP = 3;
+var GROUP_BAND_ROWS = 4;
+var GROUP_BORDER = 1;
+function drawnColumns(columns) {
+  return columns.filter((column) => column.length > 0);
+}
+function drawnRankOf(columns) {
+  const used = drawnColumns(columns);
+  const rankOf = new Map;
+  used.forEach((column, index) => {
+    for (const child of column)
+      rankOf.set(child.id, index);
+  });
+  return { rankOf, count: used.length };
+}
+function measureFrame(columns, sizes, longEdges, bordered) {
+  const used = drawnColumns(columns);
+  const widest = used.reduce((max, column) => {
+    let width = 0;
+    column.forEach((child, index) => {
+      width += (sizes.get(child.id)?.width ?? 0) + (index === 0 ? 0 : GROUP_COLUMN_GAP);
+    });
+    return Math.max(max, width);
+  }, 0);
+  const height = used.reduce((sum, column, index) => {
+    const tallest = column.reduce((tall, child) => Math.max(tall, sizes.get(child.id)?.height ?? 0), 0);
+    return sum + tallest + (index === 0 ? 0 : GROUP_BAND_ROWS);
+  }, 0);
+  const innerWidth = widest + Math.max(0, longEdges);
+  const pad = bordered ? GROUP_BORDER : 0;
+  return { width: innerWidth + pad * 2, height: height + pad * 2, innerWidth, innerHeight: height };
+}
+
 // packages/mpd-tui-plugin/src/graph.ts
 var GRAPH_THEME = Object.freeze({
   completed: "success",
@@ -6294,7 +6560,7 @@ function dependencyChain(tasks, id) {
   }
   return seen;
 }
-function layoutBoxesNatural(tasks, focus, budget, servedRanks) {
+function layoutBoxesNatural(tasks, focus, budget, servedRanks, groups) {
   const plan = rankPlan(tasks, servedRanks);
   const ranks = plan.ranks;
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
@@ -6306,7 +6572,99 @@ function layoutBoxesNatural(tasks, focus, budget, servedRanks) {
       empty.focus = focus;
     return empty;
   }
-  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label);
+  if (groups !== undefined && groups.length > 0) {
+    const nested = drawGroupedBoxes(tasks, groups, focus, nodeWidth, servedRanks, label, plan);
+    if (nested !== undefined)
+      return nested;
+  }
+  const flat = drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan, label);
+  if (groups !== undefined && groups.length > 0) {
+    const refused = buildFrameTree(tasks, groups);
+    if (refused.collapsed.length > 0)
+      flat.collapsedGroups = [...refused.collapsed].sort();
+  }
+  return flat;
+}
+function createCellCanvas(width) {
+  const mask = [];
+  const text = [];
+  const tone = [];
+  const wide = [];
+  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
+  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
+  const grow = (row) => {
+    while (mask.length <= row) {
+      mask.push(new Array(width).fill(0));
+      text.push(new Array(width).fill(null));
+      tone.push(new Array(width).fill(null));
+      wide.push(new Array(width).fill(false));
+    }
+  };
+  const link = (row, col, dir, at) => {
+    if (col < 0 || col >= width || row < 0)
+      return;
+    grow(row);
+    if (wide[row][col])
+      return;
+    mask[row][col] |= dir;
+    const current = toneAt(row, col);
+    if (current === undefined || order.indexOf(at) > order.indexOf(current))
+      tone[row][col] = at;
+  };
+  const label = (row, col, char, at) => {
+    if (col < 0 || col >= width)
+      return;
+    grow(row);
+    if (wide[row][col])
+      return;
+    text[row][col] = char;
+    tone[row][col] = at;
+    for (let step = 1;step < cellWidth(char); step++) {
+      const over = col + step;
+      if (over >= width)
+        break;
+      text[row][over] = null;
+      mask[row][over] = 0;
+      tone[row][over] = at;
+      wide[row][over] = true;
+    }
+  };
+  const run = (fromRow, fromCol, toRow, toCol, at) => {
+    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol));
+    const stepRow = Math.sign(toRow - fromRow);
+    const stepCol = Math.sign(toCol - fromCol);
+    for (let step = 0;step <= steps; step += 1) {
+      const row = fromRow + stepRow * step;
+      const col = fromCol + stepCol * step;
+      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT;
+      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT;
+      link(row, col, ahead | behind, at);
+    }
+  };
+  const lines = () => {
+    const out = [];
+    for (let row = 0;row < mask.length; row++) {
+      const cells = [];
+      let accumulated = null;
+      for (let col = 0;col < width; col++) {
+        const char = wide[row][col] ? "" : text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
+        const at = toneAt(row, col) ?? "blank";
+        if (accumulated !== null && accumulated.tone === at)
+          accumulated.text += char;
+        else {
+          accumulated = { text: char, tone: at };
+          cells.push(accumulated);
+        }
+      }
+      while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
+        cells.pop();
+      out.push(clampSpans(cells, width));
+    }
+    while (out.length > 0 && out[out.length - 1].every((span) => span.text.trim() === ""))
+      out.pop();
+    return out;
+  };
+  return { link, label, run, lines };
 }
 function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLabel) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
@@ -6398,61 +6756,8 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
     lanes.push({ ...edge, lane: best });
   }
   const width = baseWidth + extraLanes;
-  const mask = [];
-  const text = [];
-  const tone = [];
-  const wide = [];
-  const order = ["blank", "dim", "edge", "open", "cancelled", "blocked", "chain", "running", "completed", "failed", "focus"];
-  const toneAt = (row, col) => tone[row]?.[col] ?? undefined;
-  const grow = (row) => {
-    while (mask.length <= row) {
-      mask.push(new Array(width).fill(0));
-      text.push(new Array(width).fill(null));
-      tone.push(new Array(width).fill(null));
-      wide.push(new Array(width).fill(false));
-    }
-  };
-  const link = (row, col, dir, at) => {
-    if (col < 0 || col >= width || row < 0)
-      return;
-    grow(row);
-    if (wide[row][col])
-      return;
-    mask[row][col] |= dir;
-    const current = toneAt(row, col);
-    if (current === undefined || order.indexOf(at) > order.indexOf(current))
-      tone[row][col] = at;
-  };
-  const label = (row, col, char, at) => {
-    if (col < 0 || col >= width)
-      return;
-    grow(row);
-    if (wide[row][col])
-      return;
-    text[row][col] = char;
-    tone[row][col] = at;
-    for (let step = 1;step < cellWidth(char); step++) {
-      const over = col + step;
-      if (over >= width)
-        break;
-      text[row][over] = null;
-      mask[row][over] = 0;
-      tone[row][over] = at;
-      wide[row][over] = true;
-    }
-  };
-  const run = (fromRow, fromCol, toRow, toCol, at) => {
-    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol));
-    const stepRow = Math.sign(toRow - fromRow);
-    const stepCol = Math.sign(toCol - fromCol);
-    for (let step = 0;step <= steps; step += 1) {
-      const row = fromRow + stepRow * step;
-      const col = fromCol + stepCol * step;
-      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT;
-      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT;
-      link(row, col, ahead | behind, at);
-    }
-  };
+  const canvas = createCellCanvas(width);
+  const { link, label, run } = canvas;
   const hits = [];
   for (let rank = 0;rank < drawn.length; rank++) {
     const top = rank * RANK_STRIDE;
@@ -6538,32 +6843,266 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
     link(childTop, to, UP, entryTone);
     label(arrowRow, to, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone));
   }
-  const lines = [];
-  for (let row = 0;row < mask.length; row++) {
-    const cells = [];
-    let run2 = null;
-    for (let col = 0;col < width; col++) {
-      const char = wide[row][col] ? "" : text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
-      const at = toneAt(row, col) ?? "blank";
-      if (run2 !== null && run2.tone === at)
-        run2.text += char;
-      else {
-        run2 = { text: char, tone: at };
-        cells.push(run2);
-      }
-    }
-    while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
-      cells.pop();
-    lines.push(clampSpans(cells, width));
-  }
-  while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
-    lines.pop();
+  const lines = canvas.lines();
   const chainList = chain === undefined ? [] : [...chain].sort();
   const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
   if (focus !== undefined)
     view.focus = focus;
   if (widestLabel !== undefined)
     view.labelOverflow = widestLabel > labelCells - 1;
+  return view;
+}
+var TASK_BOX_ROWS = 3;
+function boxCentre(rect) {
+  return rect.col + Math.floor((rect.colEnd - rect.col) / 2);
+}
+function drawGroupedBoxes(tasks, groups, focus, nodeWidth, servedRanks, widestLabel, plan) {
+  const tree = buildFrameTree(tasks, groups);
+  if (tree.frames.size <= 1)
+    return;
+  const edges = frameEdges(tasks, tree, groups);
+  const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const rankCache = new Map;
+  const sizeCache = new Map;
+  const rects = new Map;
+  const groupHits = [];
+  const lit = new Set;
+  const childOf = new Map;
+  const ranksOf = (frame) => {
+    const held = rankCache.get(frame.id);
+    if (held !== undefined)
+      return held;
+    const measured = rankFrame(frame, edges.get(frame.id) ?? [], servedRanks);
+    rankCache.set(frame.id, measured);
+    return measured;
+  };
+  const sizeOfChild = (child) => {
+    if (child.kind === "task")
+      return { width: nodeWidth, height: TASK_BOX_ROWS };
+    const inner = sizeOf(child.frame);
+    return { width: inner.width, height: inner.height };
+  };
+  function sizeOf(frame) {
+    const held = sizeCache.get(frame.id);
+    if (held !== undefined)
+      return held;
+    const columns = ranksOf(frame).columns;
+    const childSizes = new Map;
+    for (const child of frame.children)
+      childSizes.set(child.id, sizeOfChild(child));
+    const rankOfBox = drawnRankOf(columns).rankOf;
+    const longEdges = (edges.get(frame.id) ?? []).filter((edge) => {
+      const from2 = rankOfBox.get(edge.from);
+      const to = rankOfBox.get(edge.to);
+      return from2 !== undefined && to !== undefined && to > from2 + 1;
+    }).length;
+    const measured = measureFrame(columns, childSizes, longEdges, frame.id !== null);
+    sizeCache.set(frame.id, measured);
+    return measured;
+  }
+  if (focus !== undefined) {
+    for (let cursor = tree.frames.get(tree.frameOfTask.get(focus) ?? null) ?? null;cursor !== null; cursor = cursor.parent)
+      lit.add(cursor.id);
+  }
+  const width = sizeOf(tree.root).width;
+  const canvas = createCellCanvas(width);
+  const { link, label, run } = canvas;
+  const frameTone = (frame) => lit.has(frame.id) ? "chain" : "dim";
+  function drawTaskBox(task, rect, exits) {
+    const at = toneOf(task, focus, chain);
+    for (let col = rect.col + 1;col < rect.colEnd; col++)
+      link(rect.row, col, LEFT | RIGHT, at);
+    link(rect.row, rect.col, RIGHT | DOWN, at);
+    link(rect.row, rect.colEnd, LEFT | DOWN, at);
+    for (let col = rect.col + 1;col < rect.colEnd; col++)
+      link(rect.rowEnd, col, LEFT | RIGHT, at);
+    link(rect.rowEnd, rect.col, RIGHT | UP, at);
+    link(rect.rowEnd, rect.colEnd, LEFT | UP, at);
+    for (let row = rect.row + 1;row < rect.rowEnd; row += 1) {
+      link(row, rect.col, UP | DOWN, at);
+      link(row, rect.colEnd, UP | DOWN, at);
+    }
+    let cursor = rect.col + 1;
+    for (const char of clampCells(stripControl(" " + labelOf(task, focus)), rect.colEnd - rect.col - 1)) {
+      label(rect.row + 1, cursor, char, at);
+      cursor += cellWidth(char);
+    }
+    if (exits)
+      link(rect.rowEnd, boxCentre(rect), DOWN, at);
+  }
+  function drawGroupFrame(groupId, title, rect, frame, exits) {
+    const at = frameTone(frame);
+    for (let col = rect.col + 1;col < rect.colEnd; col += 1) {
+      label(rect.row, col, DAG_GROUP_CHARS.horizontal, at);
+      label(rect.rowEnd, col, DAG_GROUP_CHARS.horizontal, at);
+    }
+    for (let row = rect.row + 1;row < rect.rowEnd; row += 1) {
+      label(row, rect.col, DAG_GROUP_CHARS.vertical, at);
+      label(row, rect.colEnd, DAG_GROUP_CHARS.vertical, at);
+    }
+    label(rect.row, rect.col, DAG_GROUP_CHARS.cornerDownRight, at);
+    label(rect.row, rect.colEnd, DAG_GROUP_CHARS.cornerDownLeft, at);
+    label(rect.rowEnd, rect.col, DAG_GROUP_CHARS.cornerUpRight, at);
+    label(rect.rowEnd, rect.colEnd, DAG_GROUP_CHARS.cornerUpLeft, at);
+    let cursor = rect.col + 1;
+    for (const char of clampCells(stripControl(" " + title + " "), rect.colEnd - rect.col - 1)) {
+      label(rect.row, cursor, char, at);
+      cursor += cellWidth(char);
+    }
+    if (exits)
+      label(rect.rowEnd, boxCentre(rect), DAG_GROUP_CHARS.portDown, at);
+    groupHits.push({ groupId, label: title, depth: frame.depth, row: rect.row, rowEnd: rect.rowEnd, col: rect.col, colEnd: rect.colEnd });
+  }
+  function drawFrame(frame, originRow, originCol) {
+    const size = sizeOf(frame);
+    const bordered = frame.id !== null;
+    const innerRow = originRow + (bordered ? GROUP_BORDER : 0);
+    const innerCol = originCol + (bordered ? GROUP_BORDER : 0);
+    const columns = drawnColumns(ranksOf(frame).columns);
+    const colTops = [];
+    const colBottoms = [];
+    const exits = new Set((edges.get(frame.id) ?? []).map((edge) => edge.from));
+    let row = innerRow;
+    for (const column of columns) {
+      colTops.push(row);
+      let cursor = innerCol;
+      for (const child of column) {
+        const childSize = sizeOfChild(child);
+        rects.set(child.id, { row, rowEnd: row + childSize.height - 1, col: cursor, colEnd: cursor + childSize.width - 1 });
+        childOf.set(child.id, child);
+        cursor += childSize.width + GROUP_COLUMN_GAP;
+      }
+      const tallest = column.reduce((max, child) => Math.max(max, sizeOfChild(child).height), 0);
+      colBottoms.push(row + tallest - 1);
+      row += tallest + GROUP_BAND_ROWS;
+    }
+    for (const column of columns) {
+      for (const child of column) {
+        const rect = rects.get(child.id);
+        if (child.kind === "task") {
+          drawTaskBox(byId.get(child.id), rect, exits.has(child.id));
+        } else {
+          drawGroupFrame(child.id, child.group.label, rect, child.frame, exits.has(child.id));
+          drawFrame(child.frame, rect.row, rect.col);
+        }
+      }
+    }
+    drawFrameEdges(frame, columns, colBottoms, innerCol, innerCol + size.innerWidth - 1);
+  }
+  function drawFrameEdges(frame, columns, colBottoms, innerLeft, innerRight) {
+    const list = edges.get(frame.id) ?? [];
+    if (list.length === 0)
+      return;
+    const rankOfBox = drawnRankOf(columns).rankOf;
+    const covered = columns.map((column) => column.map((child) => rects.get(child.id)));
+    const laneRows = new Map;
+    for (const edge of list) {
+      const fromRect = rects.get(edge.from);
+      const toRect = rects.get(edge.to);
+      if (fromRect === undefined || toRect === undefined)
+        continue;
+      const fromRank = rankOfBox.get(edge.from);
+      const toRank = rankOfBox.get(edge.to);
+      if (fromRank === undefined || toRank === undefined || toRank <= fromRank)
+        continue;
+      const fromCol = boxCentre(fromRect);
+      const toCol = boxCentre(toRect);
+      const at = edgeToneOf(edge.from, edge.to, focus, chain);
+      const exitRow = fromRect.rowEnd;
+      const toTop = toRect.row;
+      const arrowRow = toTop - 1;
+      if (edge.fromDeeper)
+        label(exitRow, fromCol, DAG_GROUP_CHARS.crossVertical, at);
+      if (toRank === fromRank + 1) {
+        const busRow = colBottoms[fromRank] + 2;
+        run(exitRow, fromCol, busRow, fromCol, at);
+        if (fromCol !== toCol)
+          run(busRow, fromCol, busRow, toCol, at);
+        run(busRow, toCol, arrowRow - 1, toCol, at);
+        link(toTop, toCol, UP, at);
+        label(arrowRow, toCol, ARROW_DOWN, at);
+        attach(toRect, toCol, edge.to, at);
+        continue;
+      }
+      const leaveRow = colBottoms[fromRank] + 1;
+      const enterRow = toTop - 2;
+      let best = -1;
+      let bestCost = Number.POSITIVE_INFINITY;
+      for (let candidate = innerLeft;candidate <= innerRight; candidate += 1) {
+        let clear = true;
+        for (let column = fromRank + 1;column < toRank && clear; column += 1) {
+          for (const rect of covered[column]) {
+            if (candidate >= rect.col && candidate <= rect.colEnd) {
+              clear = false;
+              break;
+            }
+          }
+        }
+        if (!clear)
+          continue;
+        const taken = laneRows.get(candidate);
+        let free = true;
+        for (let probe = leaveRow;probe <= enterRow && free; probe += 1)
+          free = taken?.has(probe) !== true;
+        if (!free)
+          continue;
+        const cost = Math.abs(candidate - (fromCol + toCol) / 2);
+        if (cost < bestCost) {
+          best = candidate;
+          bestCost = cost;
+        }
+      }
+      if (best < 0)
+        best = innerRight;
+      const claimed = laneRows.get(best) ?? new Set;
+      for (let probe = leaveRow;probe <= enterRow; probe += 1)
+        claimed.add(probe);
+      laneRows.set(best, claimed);
+      run(exitRow, fromCol, leaveRow, fromCol, at);
+      run(leaveRow, fromCol, leaveRow, best, at);
+      run(leaveRow, best, enterRow, best, at);
+      run(enterRow, best, enterRow, toCol, at);
+      run(enterRow, toCol, arrowRow - 1, toCol, at);
+      link(toTop, toCol, UP, at);
+      label(arrowRow, toCol, ARROW_DOWN, at);
+      attach(toRect, toCol, edge.to, at);
+    }
+  }
+  function attach(rect, col, id, at) {
+    const child = childOf.get(id);
+    if (child === undefined || child.kind !== "group")
+      return;
+    label(rect.row, col, DAG_GROUP_CHARS.portUp, at);
+  }
+  drawFrame(tree.root, 0, 0);
+  const lines = canvas.lines();
+  const chainList = chain === undefined ? [] : [...chain].sort();
+  const hits = [];
+  for (const [id, rect] of rects) {
+    const child = childOf.get(id);
+    if (child === undefined || child.kind !== "task")
+      continue;
+    hits.push({ taskId: id, row: rect.row, rowEnd: rect.rowEnd, col: rect.col, colEnd: rect.colEnd });
+  }
+  const view = {
+    lines,
+    hits,
+    width,
+    mode: "boxes",
+    cycles: cycleIds(tasks),
+    chain: chainList,
+    ranksDerived: plan.derived,
+    unresolved: plan.unresolved,
+    boxRows: 3,
+    groups: groupHits
+  };
+  if (focus !== undefined)
+    view.focus = focus;
+  if (tree.collapsed.length > 0)
+    view.collapsedGroups = [...tree.collapsed].sort();
+  if (widestLabel > nodeWidth - 2 - 1)
+    view.labelOverflow = true;
   return view;
 }
 function layoutRail(tasks, cols, focus, servedRanks) {
@@ -6650,8 +7189,8 @@ function layoutList(tasks, cols, focus, servedRanks) {
     view.focus = focus;
   return view;
 }
-function layoutGraphNatural(tasks, focus, budget, servedRanks) {
-  return layoutBoxesNatural(tasks, focus, budget, servedRanks) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus, servedRanks);
+function layoutGraphNatural(tasks, focus, budget, servedRanks, groups) {
+  return layoutBoxesNatural(tasks, focus, budget, servedRanks, groups) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus, servedRanks);
 }
 function hitTest(view, row, col) {
   for (const hit of view.hits) {
@@ -6659,6 +7198,16 @@ function hitTest(view, row, col) {
       return hit.taskId;
   }
   return;
+}
+function hitTestGroup(view, row, col) {
+  let found;
+  for (const frame of view.groups ?? []) {
+    if (row < frame.row || row > frame.rowEnd || col < frame.col || col > frame.colEnd)
+      continue;
+    if (found === undefined || frame.depth > found.depth)
+      found = frame;
+  }
+  return found?.groupId;
 }
 
 // packages/mpd-tui-plugin/src/subagent-scene.ts
@@ -7067,7 +7616,7 @@ function teamGraphView(workflow, cols, rows) {
   if (graphTasks.length === 0)
     return;
   try {
-    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow));
+    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow), workflow.model?.groups);
   } catch {
     return;
   }
@@ -8135,7 +8684,8 @@ function dagPageOf(workflow) {
       failedDependencies: (Array.isArray(task.failedDependencies) ? task.failedDependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
       ...typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {},
       ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" },
-      ...task.planned === true ? { planned: true } : {}
+      ...task.planned === true ? { planned: true } : {},
+      ...task.group === undefined ? {} : { group: panelField(task.group, 60) ?? "" }
     });
   }
   if (tasks.length === 0 && workflow.team === undefined)
@@ -8153,9 +8703,25 @@ function dagPageOf(workflow) {
   }
   const ranks = modelRanks(workflow);
   const ranksSource = workflow.model === undefined ? "local" : workflow.model.report.ranksDerived === true ? "derived-host" : "served-host";
+  const groups = [];
+  for (const group of workflow.model?.groups ?? []) {
+    const id = panelField(group.id, 60);
+    if (id === undefined || id === "")
+      continue;
+    const parentId = group.parentId === null ? null : panelField(group.parentId, 60) ?? null;
+    groups.push({
+      id,
+      label: panelField(group.label, 60) ?? id,
+      parentId,
+      memberIds: (Array.isArray(group.memberIds) ? group.memberIds : []).map((member) => panelField(member, 60) ?? "").filter((member) => member !== ""),
+      depth: typeof group.depth === "number" && Number.isFinite(group.depth) ? Math.max(0, Math.floor(group.depth)) : 0,
+      ...group.originTaskId === undefined ? {} : { originTaskId: panelField(group.originTaskId, 60) ?? "" }
+    });
+  }
   return {
     tasks,
     ...ranks === undefined ? {} : { ranks },
+    ...groups.length === 0 ? {} : { groups },
     ranksSource,
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
@@ -8213,17 +8779,72 @@ function halfBoxRows(hits, dagStart, windowStart, windowRows) {
   }
   return blank;
 }
-function dagPanelLayout(tasks, cols, focus, rows, servedRanks) {
+function halfGroupCells(view, dagStart, windowStart, windowRows) {
+  const blank = new Map;
+  const start = Math.max(0, Math.floor(Number.isFinite(windowStart) ? windowStart : 0));
+  const end = start + Math.max(1, Math.floor(Number.isFinite(windowRows) ? windowRows : 1));
+  for (const frame of view.groups ?? []) {
+    const top = dagStart + frame.row;
+    const bottom = dagStart + frame.rowEnd;
+    if (bottom < start || top >= end)
+      continue;
+    if (top >= start && bottom < end)
+      continue;
+    for (let row = Math.max(top, start);row <= Math.min(bottom, end - 1); row += 1) {
+      const local = row - dagStart;
+      const cols = new Set;
+      if (local === frame.row || local === frame.rowEnd) {
+        for (let col = frame.col;col <= frame.colEnd; col += 1)
+          cols.add(col);
+      } else {
+        cols.add(frame.col);
+        cols.add(frame.colEnd);
+      }
+      const held = blank.get(local) ?? new Set;
+      for (const col of cols)
+        held.add(col);
+      blank.set(local, held);
+    }
+  }
+  return blank;
+}
+function blankCells(spans, cells) {
+  const out = [];
+  let run = null;
+  let col = 0;
+  const push2 = (text, tone) => {
+    if (run !== null && run.tone === tone)
+      run.text += text;
+    else {
+      run = { text, tone };
+      out.push(run);
+    }
+  };
+  for (const span of spans) {
+    for (const character of span.text) {
+      const width = cellWidth(character);
+      if (cells.has(col))
+        push2(width > 1 ? "  " : " ", "blank");
+      else
+        push2(character, span.tone);
+      col += width;
+    }
+  }
+  return out;
+}
+function dagPanelLayout(tasks, cols, focus, rows, servedRanks, groups) {
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
-  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks);
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks, groups);
   if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width)) {
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
   }
+  const collapsed = groups === undefined || groups.length === 0 ? undefined : groups.map((group) => group.id).sort();
+  const withCollapse = (view) => collapsed === undefined ? view : { ...view, collapsedGroups: collapsed };
   if (tasks.length > LIST_ROWS) {
-    const dense = layoutList(tasks, width, focus, servedRanks);
+    const dense = withCollapse(layoutList(tasks, width, focus, servedRanks));
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) };
   }
-  const rail = layoutRail(tasks, width, focus, servedRanks);
+  const rail = withCollapse(layoutRail(tasks, width, focus, servedRanks));
   return { view: rail, mode: "rail", list: false, ...viewFacts(rail) };
 }
 function dagBadge(tasks) {
@@ -8325,7 +8946,10 @@ function dagRowClick(view, row, colOffset, event) {
   if (localCol !== undefined) {
     const col = (Number.isFinite(colOffset) ? Math.max(0, Math.floor(colOffset)) : 0) + localCol;
     const taskId = hitTest(view, row, col);
-    return { ...taskId === undefined ? {} : { taskId }, byColumn: true };
+    if (taskId !== undefined)
+      return { taskId, byColumn: true };
+    const groupId = hitTestGroup(view, row, col);
+    return { ...groupId === undefined ? {} : { groupId }, byColumn: true };
   }
   const band = view.hits.find((candidate) => row >= candidate.row && row <= candidate.rowEnd);
   return { ...band === undefined ? {} : { taskId: band.taskId }, byColumn: false };
@@ -8452,7 +9076,7 @@ function createDagPanelComponent(readWorkflow, options) {
     const focus = pinnedNow() ?? cursorNow();
     const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - DAG_FOOTER_ROWS);
     const sizes = { contentRows: previousSizes.current?.contentRows ?? 1, viewportRows: previousSizes.current?.viewportRows ?? windowRows, contentCols, viewportCols: contentCols };
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks);
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks, page.groups);
     sizes.contentCols = layout?.view.width ?? contentCols;
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
     const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"));
@@ -8549,6 +9173,7 @@ function createDagPanelComponent(readWorkflow, options) {
       const breathing = breathe !== baseGlyph;
       const dagStart = children.length;
       const blankRows = layout.mode === "boxes" ? halfBoxRows(layout.view.hits, dagStart, viewport.offset, windowRows) : new Set;
+      const cutFrameCells = layout.mode === "boxes" ? halfGroupCells(layout.view, dagStart, viewport.offset, windowRows) : new Map;
       for (let index = 0;index < layout.view.lines.length; index += 1) {
         for (const candidate of layout.view.hits) {
           if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId))
@@ -8557,7 +9182,8 @@ function createDagPanelComponent(readWorkflow, options) {
         const row = layout.view.lines[index];
         const running = row.some((span) => span.tone === "running");
         const phased = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
-        const spans = blankRows.has(index) ? [{ text: " ".repeat(contentCols), tone: "blank" }] : sliceSpans(phased, viewport.colOffset, contentCols);
+        const cutFrame = cutFrameCells.get(index);
+        const spans = blankRows.has(index) ? [{ text: " ".repeat(contentCols), tone: "blank" }] : sliceSpans(cutFrame === undefined ? phased : blankCells(phased, cutFrame), viewport.colOffset, contentCols);
         children.push(graphRow(kit, spans, {
           key: `row-${index}`,
           cols: contentCols,
@@ -9798,7 +10424,8 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const graphWidth = Math.max(20, measured.cols - 4);
     const graphWindow = Math.max(3, measured.window - 4);
     const servedRanks = modelRanks(workflow);
-    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks);
+    const groups = workflow?.model?.groups;
+    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks, groups);
     const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks);
     const scrollXMax = Math.max(0, view.width - graphWidth);
     const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);

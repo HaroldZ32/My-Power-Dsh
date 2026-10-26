@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T095227-c4342a",
+  "loopId": "loop-20261026T082259-e95a90",
+  "taskId": "T6",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "9158b3e1-3c4f-4af2-bb85-0b17340a1462",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "15b585c819be098a1440085e45996c31acaa43450a10acaf5efff2b4a784b656"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w2-contract.md",
+        "sha256": "15b585c819be098a1440085e45996c31acaa43450a10acaf5efff2b4a784b656"
+      }
+    ],
+    "probe": [
+      {
+        "path": "packages/mpd-cellwork-plugin/package.json",
+        "bytes": 260,
+        "sha256": "5af625dd892a60e29e1e57d23d3f15f9becbcb44ee839009e0d6240d17f5b68e",
+        "mtime": "2026-10-26T08:28:58.947Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 9914,
+        "sha256": "e9593c2bbae952a1c728449705850bd717a300c0b253eaa7490fa0c6baeffc79",
+        "mtime": "2026-10-26T09:49:01.372Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 9693,
+        "sha256": "6865fd07eedbb306fd3cbdef1aab4382c8f22c8ed5c802d8eb53447c3de51d9d",
+        "mtime": "2026-10-26T09:49:01.372Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/dist/index.js",
+        "bytes": 260107,
+        "sha256": "71af1b07c9cd17b7549962c3ebd120a11d0c574df353d0807208a4f34ed8a5f9",
+        "mtime": "2026-10-26T09:49:30.659Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/protocol.ts",
+        "bytes": 43134,
+        "sha256": "d3a6e40bc1ef4f306c9327f5ea077d4281365c9cc666ba232b2c4f0e5457a318",
+        "mtime": "2026-10-26T09:46:40.081Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+        "bytes": 18465,
+        "sha256": "b6e0aa8a44deb67ebb872ef86a2f6708a263d1017ef56c5093ddd32d2b05c644",
+        "mtime": "2026-10-26T09:46:48.766Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/mail.ts",
+        "bytes": 6942,
+        "sha256": "c964ae850214b064d97417c0ceb1ffe2172b0200b34cc5a37dc3a5ba941abcb2",
+        "mtime": "2026-10-26T09:49:13.284Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/staging.ts",
+        "bytes": 22073,
+        "sha256": "d65435d04c3051fd69cd1a6681474f7a4a1dbda057e72d6ed7f6713b70cefb7e",
+        "mtime": "2026-10-26T09:46:26.165Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/prompts.ts",
+        "bytes": 4618,
+        "sha256": "a3eaa5b0fc8f9318e9029cb2a982a88c6976fa156685bd8cc7ea00dc82d280c1",
+        "mtime": "2026-10-26T09:42:29.409Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/src/index.ts",
+        "bytes": 36365,
+        "sha256": "12f447115be91573bbf8d591181794bfaaa7d746d290884dd043f16d51b563a3",
+        "mtime": "2026-10-26T09:46:26.165Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/cellwork.test.ts",
+        "bytes": 36961,
+        "sha256": "2a2f5a25a3f4ad266518fb7b563f86e774567ec412fd68ec3f92fe276fec097f",
+        "mtime": "2026-10-26T09:47:16.611Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/budget.test.ts",
+        "bytes": 7951,
+        "sha256": "5b625f9a92edcd39506df04c192c8e372bc3cef99db479408bb9eb01c07788ba",
+        "mtime": "2026-10-26T09:29:01.272Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/test/flow.test.ts",
+        "bytes": 51741,
+        "sha256": "a08006237925843abc3361942b56bde54832ab9fdb4fa7c860d97c0b244e8505",
+        "mtime": "2026-10-26T09:49:21.423Z"
+      },
+      {
+        "path": ".mpd/plans/cellwork-w2-contract.md",
+        "bytes": 16916,
+        "sha256": "15b585c819be098a1440085e45996c31acaa43450a10acaf5efff2b4a784b656",
+        "mtime": "2026-10-26T09:40:03.229Z"
+      },
+      {
+        "path": "cordis.patch.yml",
+        "bytes": 58766,
+        "sha256": "0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      },
+      {
+        "path": "scripts/pack-mpd.ts",
+        "bytes": 66097,
+        "sha256": "6927354be6f1e1cf959bd4692737d5c22708263b1ee979221deb1359b01e26d1",
+        "mtime": "2026-10-26T08:39:11.668Z"
+      },
+      {
+        "path": "scripts/install-profile.ts",
+        "bytes": 54267,
+        "sha256": "ef5f2eeb1fe105df8f2673b003385577ccf8d9f070cad9cb51790ba9f42c6a77",
+        "mtime": "2026-10-26T08:39:11.667Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w2-contract.md",
+      "sha256": "15b585c819be098a1440085e45996c31acaa43450a10acaf5efff2b4a784b656"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "e9593c2bbae952a1c728449705850bd717a300c0b253eaa7490fa0c6baeffc79"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T095057-758550",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095057-758550.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T095057-a1815e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095057-a1815e.log",
+      "logSha256": "42f8b29dcc92221fbc474691139069e6fa91e48d7afe7ed5166d3c82524df2e5"
+    },
+    {
+      "evidenceId": "ev-20261026T095100-39ac8d",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095100-39ac8d.log",
+      "logSha256": "2b158d4f2fe8af5a64fa4c582f122be6d86d71f03016244d573282949c303565"
+    },
+    {
+      "evidenceId": "ev-20261026T095100-265470",
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095100-265470.log",
+      "logSha256": "ffe748774a361e5d19cccf60f7e715a466b86c966bae9d923f671e78db3b38d4"
+    },
+    {
+      "evidenceId": "ev-20261026T095103-eed5d7",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095103-eed5d7.log",
+      "logSha256": "97651d7d9b8997f7860a6ccddaa37ea5d131e684944a77b7843f236a1970a59c"
+    },
+    {
+      "evidenceId": "ev-20261026T095134-555867",
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095134-555867.log",
+      "logSha256": "6091d0d9e9407f1aa85c294187447d6d8df6918abebc7879a2468591f7efa061"
+    },
+    {
+      "evidenceId": "ev-20261026T095136-19900e",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T095136-19900e.log",
+      "logSha256": "60098fa3e1d04bb6ece9db06c357aeeadaf064c0158b079f28c0ff636f1dcd3f"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T09:52:27.111Z",
+  "notes": [
+    "BOUNDS: T6 judges B8/B9 AND Amendment 5 (README pair section + the three named arms) per the frozen contract. Blind: src/** and test/** NOT read; no FAIL recorded.",
+    "HASH SANDWICH HELD: start 2026-10-26T09:50:38Z / end 2026-10-26T09:52:02Z, HEAD 6fe9e27e both sides; package digest 6409a1abe6cec839b85dc9a8c6a93cb88d3690203ed0620d810cfeeb0cb66ab2 identical at both reads (25 files); cordis.patch.yml 0ef73e7d…, scripts/install-profile.ts ef5f2eeb…, scripts/pack-mpd.ts 6927354b…, package.json 53704a4a…, bun.lock eeea08e3… unchanged; the FROZEN CONTRACT itself was byte-identical at both reads (15b585c819be098a1440085e45996c31acaa43450a10acaf5efff2b4a784b656), so Amendment 5 was frozen before my batch.",
+    "UNIT EVIDENCE (my own run): bun test packages/mpd-cellwork-plugin = 41 pass / 0 fail / 473 expect / 3 files. B8 arms: planCheckpoint never guesses, fires once at the ratio, suppresses reinjection; handoff validation accepts both grammars and names every missing section; cellwork_handoff writes the document, marks the member ready and journals it; the barrier compacts with a REAL signal, promotes on success, and reseeds from the handoff on null; cellwork_subteam enforces depthMax and registers the sub-cell when it fits. B9 arm: cellwork_send writes a durable row and cellwork_inbox acknowledges it exactly once. Also green: cellwork_dispatch and cellwork_supervise are captain-only and supervise reports the pending board.",
+    "AMENDMENT 5 — VERIFIED PRESENT AND PASSING (this was the T5 finding, now contract-required): (a) 'Amendment 5a: a requirements update re-dispatches the SAME split task with the new revision'; (b) 'Amendment 5b: cellwork_recon refuses a stopped cell, and the returned report is JOURNALED'; (c) 'Amendment 5c: the planner directive carries the relay protocol, and the captain authors nothing'. README pair: both files now carry '## Flow rules and declared bounds' / '## 流程规则与声明边界' with the same 8-heading tree, each of B4 relay, B6 measured budget (stat + 16 KiB CJK + catalog/override/uncertified + accept conditions + breakdown), B7 owner-only dispatch + verify loop BEFORE dispatch, B5 prose-only child-persona bound (personaInjected:false), the synthetic cellwork:<cellId> producer, the single windowOverride + planning-task identity, and config precedence stated IDENTICALLY in both languages (project file > row config > shipped default) — which also closes T4's NIT.",
+    "GATES (evidence ids): typecheck ev-758550 exit 0; comments ev-a1815e exit 0 (467 files / 41670 declarations, up from 459/41007); docs ev-39ac8d PASS pairs=51 dead=0; rows ev-265470 (mpd-cellwork present); tests ev-eed5d7 (2564 tests / 153 files / 0 fail; 39 cellwork lines); manifest ev-555867 PASS; dist ev-19900e 34/34 fresh incl 'FRESH packages/mpd-cellwork-plugin/dist/index.js sha 71af1b07c9cd…' under pinned bun 1.4.0.",
+    "TABLE-EXTERNAL GATES: verify-no-host-override exit 0 (0 of 0 collide with 214 host ids); install-profile --dry-run exit 0 with the mpd-cellwork row present; forbidden-literal scan (1_000_000 / 262144) = 0 hits. verify-pack-closure exit 1 (PACKED-MISSING [mpd-cellwork-plugin]) — Wave-5 integration per the captain's ruling, NOT a T3 finding.",
+    "F1 (reported, LOW, evidence precision — does not change the verdict): three narrow contract details are not visible in the 41 arm names and are not named in the README: (i) B8's busy/error classification after the retry budget (the barrier arm names null only); (ii) B9's addressing specifics — by member NAME, by 'captain', and cross-subcell resolution — plus the cell:<cellId> journal stamp; (iii) the undelivered mail row being surfaced on cellwork_supervise (the supervise arm reports the PENDING BOARD). The contract's required-arm list ('checkpoint injection suppression, compaction signal, reseed path, depth fence, mail addressing') IS met at arm granularity, so these are recorded UNPROVEN, not refuted. Direction: one arm each, or one README sentence each.",
+    "BOUND (mount, context only — NOT my evidence): evidence/cellwork/mount-proof/2026-10-26T09-39-31Z/ exists and I read it at 09:50Z; cellwork-mount.log carries '[mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none'. Per its own result.json and the contract, it proves the APPLY half from an overlay row with an ABSOLUTE module path; it does NOT prove the bundle's own cordis.patch.yml row is the source (this machine's bundle resolution picks a stale global 0.15.5 copy). The bundle wiring rests on verify:rows and verify:manifest, both green here.",
+    "Declined to judge: 'the captain is never checkpointed' (by construction — checkpointing targets active cell MEMBERS and the captain is a caller, never a member); the idle-barrier's boundedness (it is the documented idleBarrierDelayMs/compactionRetries knob pair); 'delivered through the harness transport' (the arm proves a durable row + exactly-once ack, not the transport's identity); intra-team member-to-member mail (it is the existing, unchanged agent_teams_mail)."
+  ]
+}

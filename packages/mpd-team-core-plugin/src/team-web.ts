@@ -253,7 +253,9 @@ export function buildWorkspaceTeams(teams: readonly TeamRecord[], activeId: stri
         completed: team.tasks.filter((task) => task.status === "completed").length,
         failed: team.tasks.filter((task) => task.status === "failed").length,
       },
-      members: team.members.length,
+      // A `failed` member is a raise that never happened (the store removes it going forward); a legacy
+      // record's leftover row must not be counted as a teammate a reader can talk to.
+      members: team.members.filter((member) => member.status !== "failed").length,
       active: team.teamId === activeId,
     })),
     ...(activeId === undefined ? {} : { activeId }),
@@ -392,7 +394,10 @@ export function buildTeamState(
       failed: summary.failed,
       releasedByFailure: summary.releasedByFailure,
     },
-    members: record.members.map((member) => {
+    // THE ROSTER A READER MAY ACT ON: a `failed` row is a raise that never happened — the store removes it
+    // for every new failure and a legacy record's leftover row is filtered here, so no surface renders a
+    // member that does not exist as live.
+    members: record.members.filter((member) => member.status !== "failed").map((member) => {
       /** This member's progress over the tasks it owns. */
       const progress = memberProgress(record, member.name)
       return {

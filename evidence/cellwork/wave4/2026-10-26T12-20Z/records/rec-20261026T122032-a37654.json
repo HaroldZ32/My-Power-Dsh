@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T122032-a37654",
+  "loopId": "loop-20261026T105128-d3552b",
+  "taskId": "T10",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "graph-engineer",
+  "verifierId": "1e5e4911-23b3-487a-ada5-84709967ab45",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w4-contract.md",
+        "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/check1-seam-and-web-bound.txt",
+        "bytes": 1805,
+        "sha256": "1f3ad9d9156f6033424d0b1a013a2f89179bf8f29c81b310a923388311b315ff",
+        "mtime": "2026-10-26T12:20:00.110Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/check2-cellwork-readme.txt",
+        "bytes": 533,
+        "sha256": "29f504dc6cc4d83985dcb69d59713d99b9ae8aeb51d42074eb4b90a632b79211",
+        "mtime": "2026-10-26T12:20:00.129Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/check3-renderer-doc.txt",
+        "bytes": 2318,
+        "sha256": "41218a6369346186c66cec6965f3b5f563b0fe7e7ba0d362202a61925e199d82",
+        "mtime": "2026-10-26T12:20:00.144Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/heading-parity.txt",
+        "bytes": 413,
+        "sha256": "b23f70ba6d9aad58a3b8b85e3f5f7a7b8cc25c3d03325b3d33c8104740c6e21f",
+        "mtime": "2026-10-26T12:20:00.187Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/verify-docs.log",
+        "bytes": 5695,
+        "sha256": "f1cd5c649cd09c267a266cc0229bb2d47d307e24828f6fc331a23b9fa9a522fa",
+        "mtime": "2026-10-26T12:20:00.253Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/scope-start.sha256",
+        "bytes": 576,
+        "sha256": "eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575",
+        "mtime": "2026-10-26T12:19:10.081Z"
+      },
+      {
+        "path": "evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/scope-end.sha256",
+        "bytes": 576,
+        "sha256": "eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575",
+        "mtime": "2026-10-26T12:20:00.324Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w4-contract.md",
+      "sha256": "5c7a106b850519cbacb1c68d556b153fb8708713abe5b2612ad6093021eade47"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "389ecf7d965428f5624c6331efda1172da852f54be815fcdc6e017d0abeee4be"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "38a45ac7c4cb2727b3482a23a1c06ff1088aa3347725eac0341d16abb1dc1a92"
+    },
+    {
+      "path": "docs/cellwork.zh-CN.md",
+      "sha256": "8696ccf5a4fe536eecb4a15d2e3b2b67f0711fc6e7564fb68e464164e1b5408d"
+    },
+    {
+      "path": "docs/tui-dag-renderer.md",
+      "sha256": "6aa9c06f48f63776613949aecf73ac0cd2bb5d02da6c25cf579280c70153fbdb"
+    },
+    {
+      "path": "docs/tui-dag-renderer.zh-CN.md",
+      "sha256": "e707ac3b971daa123f61edfd684812d112086becb23b3484682891b694ccd0ec"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "e19011c251bfdb116475fea96dc70e50b0f86ec7bf4b3c210ee7b644487bfef8"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "sha256": "d431285c0f7ed1afe9ca5f2697284280cbd813f47d92624f6c53bcd223c59e3f"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T122010-473a11",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T122010-473a11.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T12:20:32.582Z",
+  "notes": [
+    "SETTLED TREE: the six documentation files, sha256 sandwich — all 6 declared hashes verified against the writer's 2026-10-26T12:15:17Z freeze, start == end (eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575) around a 50 s settle window. `git status` shows exactly those six files dirty and nothing else, so the docs-only claim holds. Evidence: evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/.",
+    "CHECK 1 — THE FALSE BULLET IS RETIRED AND THE SEAM IS NAMED, in BOTH languages: `grep 'parent_team_id` is deferred'` and its zh spelling (`parent_team_id 推迟`) return NO MATCH in either file. In its place the pair states the seam as IMPLICIT DERIVATION and explains why it has no argument to forget ('The seam is implicit derivation, and it has no argument to forget.' / '这条缝是隐式推导，并且没有一个可以被忘记的参数。'), and the bounds bullet reads '`parent_team_id` is implicit, not a knob.' / '`parent_team_id` 是隐式推导，不是旋钮。' — which matches what I verified in the built team-core dist at T5 (`deriveParentTeam`, no parent argument on any action) and in the built cellwork dist at T14 (`cellwork_subteam` stamping via `freeCellId` + `parentTeamId`).",
+    "CHECK 2 — THE D5 ALLOCATION GAP IS CLOSED, in both languages and with heading parity: `### Subcells render as nested groups` (EN) and `### 子单元渲染为嵌套分组` (zh) exist, and the pair now reports 10 headings on both sides with the same structure (8 level-2 each) plus the language switch in the first four lines. The sentence states the box, the interior as the subcell's own graph, external dependencies attaching to the FRAME, and recursion — exactly the contract's D5 wording.",
+    "CHECK 3 — THE RENDERER DECISION RECORD PAIR: `### 3.1 Nested groups: subcells as boxes (wave 4)` / `### 3.1 嵌套分组：子单元画成盒子（第 4 波）` sit inside §3 in both files and carry the three required facts — `DAG_GROUP_CHARS` as a second ONE-CELL double-line family visually distinct from the node family, a frame spanning its interior's rows, and the collapse rule (`collapsedGroups`, rail/list) with 'never half a group'; the crossing-vs-terminating distinction is spelled with the actual glyphs (`╧` port, `╫` crossing) and the hit identity with `hitTestGroup`/`groupId`. NO existing heading was renamed: the six original section titles of the decision record are intact (1..6 plus 2.1-2.3), and the zh twin carries the same tree.",
+    "HONESTY OF THE DELIVERED-SURFACE CLAIM (the check that matters most for a deferred item): the doc says in both languages that the TEAM RECORD, the SHARED MODEL and the TUI carry nested groups, and that the WEB group frame, its recursive geometry and its client rebuild are a FOLLOW-UP whose patch plan is frozen at `.mpd/plans/cellwork-w4-t7-plan.md` — that file EXISTS (5362 B, written 2026-10-26T19:53 local). The only sentence in either language that mentions the web rendering is the one that DISCLAIMS it ('Nothing in this document claims the web surface renders a box, and a reader must not read the TUI's vocabulary as a web capability.' / '本文档没有任何一句声称 web 表面会画盒子…'). So the deferral is stated as a bound, exactly as the captain required, and no capability is claimed that the wave did not ship.",
+    "GATES: verify:docs PASS — pairs 52, failed 0, violations 0, links 465, dead 0 (real CJK content and link resolution included). Heading-tree parity measured per pair: cellwork 17/17 with 12/12 level-2, renderer record 11/11 with 6/6, cellwork README 10/10 with 8/8 — SAME on all three, with the switch link directly under the title in all six files.",
+    "BOUNDS: documentation-only row — I ran no package suite, no dist gate and no typecheck, because no source, dist or patch row was touched (verified by the dirty-file set). D4 (the web frame) remains DEFERRED by the captain; T7/T8 are outside this record and this record claims nothing about them.",
+    "DECLINED TO JUDGE: (a) the prose style and length of the new sections (no requirement fixes them beyond topic parity); (b) whether the docs should ALSO carry the Amendment-8 ranking caveat — the ranking is correct as frozen (T12 verified the repaired behaviour), so there is no remaining caveat to state; (c) the decision record's §5 'what would have to change for a renderer' — untouched by this wave and still accurate."
+  ]
+}

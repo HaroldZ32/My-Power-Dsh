@@ -7,16 +7,26 @@
 // live under `evidence/tui/dag-port/verification/pty/`; this file pins the MECHANISM those frames
 // show, so a regression reddens in `bun test` instead of waiting for the next capture.
 //
-// THE CHAIN THIS FILE PINS (each link measured, see the report):
-//   1. the host enables sidebar panels from ONE comma-separated CSV whose default is exactly the
-//      three builtins — no plugin panel is in it until something adds it;
-//   2. the panels adapter DOES append a successfully registered plugin id to that CSV;
-//   3. the CSV is an in-memory live setting, and the host's settings-apply path REWRITES it from
-//      configuration — so the append is transient (on >= 0.15.0 the rewrite UNIONS registered ids
-//      back and only an explicit `/settings` removal lasts; the rewrite arm is version-split);
+// THE CHAIN THIS FILE PINS (each link measured, see the report). The first three links are
+// HOST-ERA-DEPENDENT — see HOST ERAS below for the split:
+//   1. the host enables sidebar panels from ONE live value: before 0.17.0 an explicit CSV defaulting to
+//      its builtins; from 0.17.0 the sentinel `*`, which the host RESOLVES against its own registry;
+//   2. the register -> enable wiring follows that value: an append to the CSV pre-0.17.0, a pure
+//      registry read after it (registration writes no CSV);
+//   3. the value is an in-memory live setting, and the host's settings-apply path REWRITES it from
+//      configuration — so any runtime enable is transient (on >= 0.15.0 the rewrite UNIONS registered
+//      ids back and only an explicit `/settings` removal lasts; on 0.17.0 the sentinel derives the set
+//      from the registry, so only an explicit list pins a panel off; each rewrite arm is era-split);
 //   4. a sidebar splits only at or above `CHAT_MIN + PANEL_MIN + DIVIDER`, and at that exact width
 //      the panel column is `PANEL_MIN` cells wide — so a plugin that declares a WIDER floor than the
 //      host's own minimum gets the host's "too narrow" notice in the band between the two.
+//
+// HOST ERAS. The enable-list rule changed twice under this file, so each affected arm carries the
+// INSTALLED host's own branch instead of a version literal: the 0.17.0 arms branch on the presence of
+// the consolidated panel-CSV API (`parseSidePanelPanels` + `resolveSidePanelIds`), which `docs/tui.md`
+// §11.10 records as 0.17.0's "two host panel-CSV helpers consolidated"; the older arms keep the 0.15.0
+// union and the 0.14 append, byte for byte. The admitted host is 0.17.0 (`dsh-plugin.json`
+// `compat.hosts`), which is the branch this machine runs.
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { EventEmitter } from "node:events"
@@ -25,7 +35,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { installedHostRoot } from "./lib/host-root"
 
-import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, hostSelfHealsPanelCsv, probeHostPrefs, readHostPackageVersion, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
+import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, hostOwnsPanelCsv, hostSelfHealsPanelCsv, probeHostPrefs, readHostPackageVersion, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   createPanelComponent,
   PANEL_DESCRIPTOR_FROZEN,
@@ -75,12 +85,49 @@ const PANELS_PATH = join(HOST, "lib", "types", "dsh-adapter", "panels.js")
 /** The host's settings adapter, which re-applies the configured CSV. */
 const PLUGIN_PATH = join(HOST, "lib", "types", "dsh-adapter", "plugin.js")
 
-/** The host's live-setting factories and panel-CSV rules. */
+/** The host's config-schema module, which owns the `sidePanel.panels` default. */
+const ADAPTER_INDEX_PATH = join(HOST, "lib", "types", "dsh-adapter", "index.js")
+
+/**
+ * The installed host's strict parse of one `sidePanel.panels` value (0.17.0's settings-save gate).
+ *
+ * Four answers, and every caller must handle all of them: `list` names ids, `all` is the
+ * registry-following sentinel, and `empty`/`invalid` are the gate's refusals (never silently a list).
+ */
+type HostPanelParse =
+  | { mode: "all" }
+  | { mode: "empty" }
+  | { mode: "invalid"; reason: string }
+  | { mode: "list"; ids: string[] }
+
+/** The host's live-setting factories and panel-CSV rules, across the two host API eras. */
 const prefs = await import(PREFS_PATH) as {
   DEFAULT_SIDE_PANEL_IDS: string
   SIDE_PANEL_ID_PATTERN: RegExp
   normalizeSidePanelPanels(value: unknown): string
-  parseSidePanelIds(value: unknown): string[]
+  /** The supplied default's sentinel, when this host has one (`*` from 0.17.0). */
+  ALL_SIDE_PANELS?: string
+  /** The live store's current value — what this run would enable with no settings layer applied. */
+  getSidePanelPanels?(): unknown
+  /** LEGACY (<= 0.16.x): split a CSV into the enabled ids. Removed by 0.17.0's consolidation. */
+  parseSidePanelIds?(value: unknown): string[]
+  /** 0.17.0: the consolidated STRICT parse (the settings-save gate). */
+  parseSidePanelPanels?(value: string): HostPanelParse
+  /** 0.17.0: the ONE derivation of "which panels are enabled" from the stored value + registry. */
+  resolveSidePanelIds?(configured: unknown, registered: readonly string[], hiddenTemporary?: readonly string[]): string[]
+}
+
+/**
+ * Whether the installed host exposes 0.17.0's CONSOLIDATED panel-CSV API.
+ *
+ * 0.17.0 replaced the CSV splitter with a strict parse plus `resolveSidePanelIds` — the derivation
+ * that made a registration-time append unnecessary (the `*` default follows the registry). The arms
+ * below split on this API rather than on a version literal, because the API is what they actually
+ * call (`docs/tui.md` §11.10 records the consolidation as the 0.17.0 addition).
+ * @returns true when the strict parse and the resolver are both present.
+ */
+function hostHasDerivedPanelCsv(): boolean {
+  return typeof prefs.parseSidePanelPanels === "function" && typeof prefs.resolveSidePanelIds === "function"
 }
 
 /** The host's split geometry, as pure functions of the content width. */
@@ -130,33 +177,62 @@ async function hostBuiltinPanelIds(): Promise<Set<string>> {
 }
 
 describe("R13 · the host's panel enablement rule (read from the installed host)", () => {
-  test("the default enabled CSV names BUILTINS ONLY and NOTHING of ours", async () => {
-    /** The ids the default CSV enables, read through the host's own parser. */
-    const defaults = prefs.parseSidePanelIds(prefs.DEFAULT_SIDE_PANEL_IDS)
-    // NON-VACUOUS: an EMPTY default would satisfy every "contains nothing of ours" claim below while
-    // proving nothing at all, so the list must name at least one panel before it is believed.
-    expect(defaults.length).toBeGreaterThan(0)
+  test("the default enable VALUE shows only the host's own panels and nothing of ours", async () => {
     /** The ids the INSTALLED host registers as its own panels, read from its own registry. */
     const builtins = await hostBuiltinPanelIds()
     // The registry must really have answered: a store that listed nothing would make the subset claim
     // below vacuously true, which is the direction this arm exists to catch.
     expect(builtins.size).toBeGreaterThan(0)
-    for (const id of defaults) {
-      // THE LOAD-BEARING HALF: every default id is one of the HOST's OWN panels. An unconfigured host
-      // therefore shows no plugin panel at all — the default cannot be the reason ours appear, and every
-      // visibility claim has to explain the ADD (the adapter's keeper, or the user's settings).
-      expect(builtins.has(id)).toBe(true)
-      // …and the default the host ships is legal by the host's own rule, which is the other half of "the
-      // host could have accepted this id".
-      expect(prefs.SIDE_PANEL_ID_PATTERN.test(id)).toBe(true)
-    }
-    // NOTHING OF OURS, checked against the slugs THIS BUNDLE registers rather than against a spelling
-    // written here: the host composes a plugin panel's id as `<pluginId>:<slug>`, so a bundle panel
-    // could only ever arrive as one of these two forms, and renaming a page re-judges this arm.
-    for (const id of defaults) {
-      for (const slug of ourPanelSlugs()) {
-        expect(id).not.toBe(slug)
-        expect(id.endsWith(`:${slug}`)).toBe(false)
+    if (hostHasDerivedPanelCsv()) {
+      // 0.17.0 ERA — THE ENABLE SET IS DERIVED, NOT STORED. The shipped default is the sentinel `*`,
+      // and the host resolves it against ITS OWN registry: a stock host (only builtins registered)
+      // enables its builtins and nothing else. The sentinel is what removed the need for a
+      // registration-time append — and it is why OUR panel appears once it is REGISTERED (next).
+      expect(prefs.ALL_SIDE_PANELS).toBe("*")
+      /** The value this run would enable with no settings layer applied: the live store's initial value. */
+      const configured = String(prefs.getSidePanelPanels?.() ?? "")
+      // The arm above already pinned the sentinel's own spelling, so the live value is compared to it.
+      expect(configured).toBe("*")
+      /** The ids the host itself derives from that value against a STOCK registry. */
+      const enabled = prefs.resolveSidePanelIds?.(configured, [...builtins]) ?? []
+      expect(enabled.length).toBeGreaterThan(0)
+      for (const id of enabled) {
+        // THE LOAD-BEARING HALF: every enabled id is one of the HOST's OWN panels, so a stock host
+        // shows no plugin panel at all…
+        expect(builtins.has(id)).toBe(true)
+        // …and the value the host ships is legal by the host's own grammar.
+        expect(prefs.SIDE_PANEL_ID_PATTERN.test(id)).toBe(true)
+      }
+      // THE RULE THAT REPLACED THE APPEND: with one of OUR panels registered, the SAME default enables
+      // it — the host, not a CSV literal, adds it. A registered temporary address joins the tail, and
+      // our composed ids are `session:act<N>:<slug>` on this host.
+      /** A registry holding the host's builtins plus one of OUR registered panels. */
+      const registered = [...builtins, `session:act1:${ourPanelSlugs()[0]}`]
+      /** What the same default derives once our panel is registered. */
+      const withOurs = prefs.resolveSidePanelIds?.(configured, registered) ?? []
+      expect(withOurs).toContain(`session:act1:${ourPanelSlugs()[0]}`)
+      // …while the default VALUE still names none of ours: it is a sentinel, not a CSV list.
+      expect(configured).not.toContain(ourPanelSlugs()[0])
+    } else {
+      // LEGACY ERA (<= 0.16.x): the stored CSV itself names the builtins, so the default cannot be the
+      // reason ours appear — every visibility claim has to explain the ADD (the keeper, or the user).
+      /** The ids the legacy default CSV enables, read through the host's own splitter. */
+      const defaults = prefs.parseSidePanelIds?.(prefs.DEFAULT_SIDE_PANEL_IDS) ?? []
+      // NON-VACUOUS: an EMPTY default would satisfy every "contains nothing of ours" claim below while
+      // proving nothing at all, so the list must name at least one panel before it is believed.
+      expect(defaults.length).toBeGreaterThan(0)
+      for (const id of defaults) {
+        expect(builtins.has(id)).toBe(true)
+        expect(prefs.SIDE_PANEL_ID_PATTERN.test(id)).toBe(true)
+      }
+      // NOTHING OF OURS, checked against the slugs THIS BUNDLE registers rather than against a spelling
+      // written here: the host composes a plugin panel's id as `<pluginId>:<slug>`, so a bundle panel
+      // could only ever arrive as one of these two forms, and renaming a page re-judges this arm.
+      for (const id of defaults) {
+        for (const slug of ourPanelSlugs()) {
+          expect(id).not.toBe(slug)
+          expect(id.endsWith(`:${slug}`)).toBe(false)
+        }
       }
     }
   })
@@ -166,20 +242,42 @@ describe("R13 · the host's panel enablement rule (read from the installed host)
     // a panel is refused for many reasons, and this arm removes one of them from suspicion.
     expect(prefs.SIDE_PANEL_ID_PATTERN.test("act1:team")).toBe(true)
     expect(prefs.SIDE_PANEL_ID_PATTERN.test("mpd-tui:team")).toBe(true)
-    expect(prefs.parseSidePanelIds(prefs.normalizeSidePanelPanels("todo,jobs,agents,act1:team")))
-      .toEqual(["todo", "jobs", "agents", "act1:team"])
+    expect(prefs.SIDE_PANEL_ID_PATTERN.test("session:act1:team")).toBe(true)
+    if (hostHasDerivedPanelCsv()) {
+      // 0.17.0 ERA: the strict settings gate accepts the composed list verbatim…
+      expect(prefs.parseSidePanelPanels?.("todo,jobs,agents,act1:team")).toEqual({ mode: "list", ids: ["todo", "jobs", "agents", "act1:team"] })
+      // …and the IDENTITY rule lands in the RESOLVER, not the grammar: a bare legacy `actN:` address is
+      // never honoured (issue #1695), while the run-local `session:actN:` form a registered panel answers
+      // to IS. The two spellings the grammar admits therefore lead to different outcomes.
+      expect(prefs.resolveSidePanelIds?.("todo,jobs,agents,act1:team", ["todo", "jobs", "agents"]) ?? []).not.toContain("act1:team")
+      expect(prefs.resolveSidePanelIds?.("todo,jobs,agents", ["todo", "jobs", "agents", "session:act1:team"]) ?? []).toContain("session:act1:team")
+    } else {
+      // LEGACY ERA: one splitter both normalizes and parses, so the round-trip is that pair.
+      expect(prefs.parseSidePanelIds?.(prefs.normalizeSidePanelPanels("todo,jobs,agents,act1:team")))
+        .toEqual(["todo", "jobs", "agents", "act1:team"])
+    }
   })
 
-  test("the adapter DOES append a registered id to the CSV — so the mechanism exists and can be undone", () => {
+  test("the register -> enable wiring as THIS host implements it: an append pre-0.17.0, a derived registry read after", () => {
     /** The panels adapter's source, where the register -> enable wiring lives. */
     const source = readFileSync(PANELS_PATH, "utf8")
-    expect(source).toContain("enablePanelIdInStore")
-    // The append itself, as the adapter writes it: read the CSV, push the id, apply it back.
-    expect(source).toMatch(/function enablePanelIdInStore[\s\S]{0,400}applySidePanelPanels/)
-    // And the live setting is IN-MEMORY: no persistence, so the CSV is rebuilt from configuration on
-    // every apply. This is what makes the append transient rather than durable.
-    /** The display-preferences module, whose live settings the panels adapter writes through. */
+    /** The display-preferences module's source: the host's live settings and its enabled-set derivation. */
     const prefsSource = readFileSync(PREFS_PATH, "utf8")
+    if (hostHasDerivedPanelCsv()) {
+      // 0.17.0 ERA — THE HOST OWNS THE ENABLE LIST: registration touches the REGISTRY only. The appended
+      // splitter is gone, the panels adapter writes no CSV at registration, and `resolveSidePanelIds`
+      // derives the enabled set from the stored value plus that registry. There is therefore no append
+      // of ours for the host to drop — which is why this bundle's keeper stands down on this host.
+      expect(source).not.toContain("enablePanelIdInStore")
+      expect(source).not.toContain("applySidePanelPanels")
+      expect(prefsSource).toContain("export function resolveSidePanelIds(")
+    } else {
+      // LEGACY ERA: the append itself, as the adapter writes it — read the CSV, push the id, apply it back.
+      expect(source).toContain("enablePanelIdInStore")
+      expect(source).toMatch(/function enablePanelIdInStore[\s\S]{0,400}applySidePanelPanels/)
+    }
+    // BOTH ERAS: the live setting is IN-MEMORY — no persistence, so the value is rebuilt from
+    // configuration on every apply. This is what makes any runtime enable transient rather than durable.
     /** The live-setting factory's own body, sliced so the persistence check cannot see a neighbour. */
     const factory = prefsSource.slice(prefsSource.indexOf("function createLiveSetting"), prefsSource.indexOf("const pageMarginStore"))
     expect(factory).toContain("let state = initial")
@@ -187,40 +285,64 @@ describe("R13 · the host's panel enablement rule (read from the installed host)
     expect(factory).not.toContain("readFileSync")
   })
 
-  test("the host re-applies the configured CSV — a rewrite that on < 0.15.0 DROPS a registered id, and on >= 0.15.0 UNIONS registered ids back", () => {
-    // VERSION-AWARE SPLIT (clause C2 of `tui-015-adaptation`): the premise this arm was born on — the
-    // host's own settings-apply rewrite is how a registered panel DISAPPEARS — is true of every host
-    // before 0.15.0 and of no host after it. Both branches stay in the file so an upgrade re-judges
-    // the arm instead of silently sliding past a literal the new build no longer carries.
+  test("the host re-applies the configured value — a rewrite that drops a registered id before 0.15.0, unions it back on 0.15.x-0.16.x, and derives the set on 0.17.0", () => {
+    // ERA-AWARE SPLIT: the premise this arm was born on — the host's own settings-apply rewrite is how
+    // a registered panel DISAPPEARS — is true of every host before 0.15.0, healed by the host itself on
+    // 0.15.x-0.16.x, and superseded on 0.17.0, where the stored value is DERIVED against the registry.
+    // Every branch stays in the file so an upgrade re-judges the arm instead of sliding past a literal
+    // the new build no longer carries.
     /** The settings adapter's source: the apply path that mirrors configuration into the live stores. */
     const source = readFileSync(PLUGIN_PATH, "utf8")
-    /** The panels adapter's source, where the 0.15.0 union machinery lives when there is one. */
+    /** The panels adapter's source, where the union machinery lives when there is one. */
     const panels = readFileSync(PANELS_PATH, "utf8")
-    if (hostSelfHealsPanelCsv(readHostPackageVersion(HOST))) {
-      // A SELF-HEALING HOST (>= 0.15.0): the mirror apply runs through the union helper, and a
+    /** The installed host's version, from its own package metadata. */
+    const version = readHostPackageVersion(HOST)
+    if (hostHasDerivedPanelCsv()) {
+      // 0.17.0 ERA — the apply mirrors the CONFIGURED value only, and the default is the sentinel `*`
+      // that lets the registry supply plugin panels, so neither an append nor a union runs. The
+      // bundle's own ownership gate must agree with the era this arm pins.
+      expect(hostOwnsPanelCsv(version)).toBe(true)
+      expect(source).toContain("applySidePanelPanels(config.sidePanel?.panels)")
+      expect(source).toContain("ALL_SIDE_PANELS")
+      expect(panels).not.toContain("registeredPanelIds")
+      expect(panels).not.toContain("removedPanelIds")
+      // THE SCHEMA DEFAULT IS THE SENTINEL — read from the host's own config schema, not restated.
+      /** The host's config-schema module, which owns the `sidePanel.panels` default. */
+      const schemaSource = readFileSync(ADAPTER_INDEX_PATH, "utf8")
+      expect(schemaSource).toContain("panels: Schema.transform(Schema.string().default(ALL_SIDE_PANELS)")
+    } else if (hostSelfHealsPanelCsv(version)) {
+      // A SELF-HEALING HOST (0.15.x-0.16.x): the mirror apply runs through the union helper, and a
       // `/settings` edit records removals session-wide — the disappearance now lasts only when the
       // user asked for it, which is exactly why the keeper stands down there.
       expect(source).toContain("applyConfiguredSidePanelPanels(config.sidePanel?.panels)")
       expect(source).toContain("applySidePanelPanelsFromSettings(")
       expect(panels).toContain("registeredPanelIds")
       expect(panels).toContain("removedPanelIds")
+      expect(source).toContain("DEFAULT_SIDE_PANEL_IDS")
     } else {
       // A PRE-0.15.0 HOST: the literal mirror apply exists, an unedited config re-applies a
       // builtins-only list, and any id a plugin appended is dropped — the 0.14 defect, pinned.
       expect(source).toContain("applySidePanelPanels(config.sidePanel?.panels)")
+      expect(source).toContain("DEFAULT_SIDE_PANEL_IDS")
     }
     // BOTH ERAS: the configured value's own default is the schema default — THE VALUE IS ASSERTED AS
     // AN INVARIANT — idempotence — rather than as a CSV literal: a hard-coded list, old or new, is a
     // defect, because it makes this file's claim about the version of the host it was written against
-    // instead of about the rule. Normalizing an already-normalized CSV is a no-op, so whatever the
+    // instead of about the rule. Normalizing an already-normalized value is a no-op, so whatever the
     // host re-applies is stable across every re-apply the session performs.
-    expect(source).toContain("DEFAULT_SIDE_PANEL_IDS")
-    /** The default CSV after the host's own normalization — what a config re-apply actually writes. */
+    /** The host's default ordering skeleton after the host's own normalization. */
     const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)
     expect(prefs.normalizeSidePanelPanels(once)).toBe(once)
     // …and it is a real, non-empty list: idempotence alone would be satisfied by an empty string, which
-    // is the one answer that would make the "names builtins only" arm above vacuous.
-    expect(prefs.parseSidePanelIds(once).length).toBeGreaterThan(0)
+    // is the one answer that would make the arm above vacuous.
+    if (hostHasDerivedPanelCsv()) {
+      /** The strict parse of the normalized default — only its LIST form names ids. */
+      const parsed = prefs.parseSidePanelPanels?.(once)
+      expect(parsed?.mode).toBe("list")
+      expect(parsed?.mode === "list" ? parsed.ids.length : 0).toBeGreaterThan(0)
+    } else {
+      expect(prefs.parseSidePanelIds?.(once)?.length ?? 0).toBeGreaterThan(0)
+    }
   })
 })
 
@@ -299,8 +421,15 @@ describe("R13b · the composed panel id (read from the installed host)", () => {
     expect(source).toContain("const finalId = pluginId + ':' + d.id")
     // The prefix is the identity's componentId ONLY when a Component identity exists …
     expect(source).toMatch(/function pluginIdFor\(caller, owner\)[\s\S]{0,400}identity\.componentId/u)
-    // … and otherwise the host mints its own `act<N>` — the branch a loader row takes.
-    expect(source).toContain("fallback = 'act' + String(fallbackSeq)")
+    if (hostHasDerivedPanelCsv()) {
+      // 0.17.0 ERA: the fallback is NAMESPACED — `session:act<N>` — because an anonymous activation is
+      // now run-local (`isTemporarySidePanelId`) and a bare `actN:` address is never honoured. The
+      // prefix is still the host's own minted identity, never a caller-spelled plugin name.
+      expect(source).toContain("fallback = 'session:act' + String(fallbackSeq)")
+    } else {
+      // … and otherwise the host mints its own `act<N>` — the branch a loader row took before 0.17.0.
+      expect(source).toContain("fallback = 'act' + String(fallbackSeq)")
+    }
   })
 
   test("a Component identity exists only for an ADMITTED Component, which a patch row never is", () => {

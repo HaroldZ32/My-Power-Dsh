@@ -16,7 +16,7 @@
 | `ctx.subagents.start("spawn", …)` | `spawnAgent(spec)` | 字符串 prompt → 内容块；扁平 `provider`/`model` 或 `agentOptions`；`run.result` 无论是 Promise 还是对象都会 await；归一化 `{output, structured, stopReason}` |
 | `ctx.skills.registerProvider` / `list` / `get` | `registerSkillProvider`、`listSkills`、`loadSkill` | disposer 透传、缺省参数 |
 | `ctx.agentPresets.resolve` | `resolvePreset(id)` | 归一化 `{id, path, trust, broken}` |
-| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | 把宿主的实时模型目录投影为 `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort? }] }], degraded }` —— reasoning 块被**摊平**到模型上，`efforts` 始终是数组；只读且从不抛错 |
+| `ctx.llm.listProviders` / `listModels` / `resolveModelInfo` | `llmCatalog()` | 把宿主的实时模型目录投影为 `{ providers: [{ id, name, models: [{ id, name, description?, efforts: [{ id, name, description? }], defaultEffort?, contextWindow: number | null, maxOutputTokens: number | null }] }], degraded }` —— reasoning 块被**摊平**到模型上，`efforts` 始终是数组；只读且从不抛错 |
 | `ctx.tools.register`（**逐字节**） | `registerHostTool(def)` | 把**已经是 Harness 形态**的定义原样转发 —— 同一个对象引用抵达 `tools.register`（端到端 `Object.is` 成立），disposer 透传。`registerTool` 会做归一化（因而会丢掉 `finalizeContent`/`presentCall`/`presentResult`/`isConcurrencySafe`），本方法刻意不做。接缝缺失时抛错 |
 | `ctx.subagents`（运行时对象） | `subagentRuntime()` | 保持同一性的运行时对象（`startContinuable`/`interrupt`/`getProvider`/`list`）；缺失时为 `undefined` |
 | `ctx.subagents.getProvider` | `subagentProvider(name)` | 薄转发；缺失时为 `undefined`（调用方自己的检查会抛出同样的错误） |
@@ -41,6 +41,7 @@
 | 活跃团队折叠 | `teamLiveTeams()` | 每个活跃 **Lead** agent 一项（`{teamId, leadName, leadSessionId, members, tasks}`）；服务或 agent 注册表缺失时为 `[]`，单个 agent 读取失败只让该项为 `[]`，不会拖垮整个折叠 |
 | `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | 由适配器调用 `next()`；listener 收到 `(payload, downstream)`，可返回**修改后的**决策（建议性通知正是这样注入的），或返回 `undefined` 表示放行；listener 抛错会被兜住；无事件总线时为空操作 |
 | 活跃 agent 自有的 scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | 段落被**逐字节**转发到**该 agent 自己的** scope（绑定接收者、disposer 透传），因此该贡献只送达某一个 preset 的 session，而不是本进程服务的所有 session；agent scope 无此接缝时在调用点抛错 |
+| `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | 单个活跃会话的已占用上下文，归一化为 `{usedTokens, windowTokens, ratio, provenance}`：`usedTokens = projectedTokens ?? pressureTokens`，`windowTokens` 取自模型自报的 `contextWindow`（**绝不**设默认值），仅当两者都是大于 0 的数字时才给出 `ratio`，provenance 为 `observed \| no-window \| unavailable`；同步、绝不抛错；接受活跃 Agent、Session 对象或 session id |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
 
 上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：当时采纳的
@@ -60,6 +61,35 @@
 `subagentsProviderRegister` —— 且绝不更名既有标志。两个 **AGENT 作用域**的行
 （`onAgentPreStep`、`agentPromptSection`）报告 `agentPreStep`（事件总线）与
 `agentPromptSection`（实时探针：某个活跃 agent 自己的 scope 带有 `systemPrompt.section`）。
+
+### 单个活跃会话的上下文压力（`contextPressure`）
+
+`contextPressure(target)` 读取 Harness token meter 的 `sessionProjections` 单元
+`contextPressure` —— 与宿主自身状态显示所用的是**同一个**投影 —— 针对**一个**会话。读取
+**状态**（`stateOf`）得到已观测到的窗口（`contextWindow`，来自 provider 的 `request/context`）
+与 provider 上报的 `pressureTokens`；读取**客户端视图**（`snapshot`）得到状态里没有的前瞻值
+`projectedTokens`。返回
+
+```ts
+{ usedTokens: number | null, windowTokens: number | null, ratio: number | null,
+  provenance: "observed" | "no-window" | "unavailable" }
+```
+
+规则如下，任何一条都不得放宽：
+
+- `usedTokens = projectedTokens ?? pressureTokens` —— 优先采用投影的前瞻值；投影值 `0` 是真实观测，
+  不是缺失；
+- `windowTokens` 是模型在运行时**上报**的窗口，**绝不**设默认值：不会出现 `1_000_000`、`262_144`
+  或任何配置值。首个 `request/context` 事件之前，`no-window` 才是诚实答案；
+- 仅当**两者**都是大于 0 的数字时 `ratio = usedTokens / windowTokens`，否则为 `null`；
+- `provenance` 是机器可读的：`observed`（投影存在且有窗口）、`no-window`（投影存在、窗口缺失）、
+  `unavailable`（无注册表、无会话或无状态）；
+- 读取是**同步**的且**绝不抛错** —— `sessionProjections` 服务缺失、会话无法解析、投影尚未物化、
+  读取抛错，一律返回 `unavailable`。
+
+`target` 可以是活跃 Agent（使用其自身的 `session`）、Session 对象，或 session id（经 Harness
+`sessions` 存储解析，失败时回退到活跃 agent 注册表）。不做任何缓存：每次调用都重新读取投影，
+因此检查点决策绝不会基于过期数字。
 
 ## 官方 Agent Teams 平面
 
@@ -103,6 +133,18 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 其记录才是持久载体），绝不对已完成的子会话 `send_message`。团队 member 不受影响 —— team 路径
 继续使用独立的持久接缝（`startContinuableAgent`）。
 
+### 团队执行器的深度上限（`maxDepth`）
+
+`DshTeamSpawnRequest` 接受可选的 `maxDepth` —— 成员自身激活的**绝对**委派深度上限（即 Harness
+`startActivation` 请求的 `maxDepth`，按非负安全整数校验）。这是 cellwork 升起 depth-2+ 子队长
+（subcaptain）的**唯一**途径（能力事实 F1），因为 `subagent` 工具自身的服务默认值永远不会超过 1。
+
+- **原生**后端：**仅当调用方提供了值**时，才把它作为 `request.maxDepth` 转发。未提供的上限保持
+  **缺失** —— 键被省略，绝不写成 `undefined` —— 这样 Harness 会采用自己的默认值，而不是一个被转换
+  或猜测出的值。
+- **官方**后端：`maxDepth` 被**忽略**且不抛错。官方服务拥有自己的名册，且没有按次调用的深度通道；
+  运行该后端的组合不应指望该上限生效。
+
 ### D6 静态闸门（`test/no-direct-team-access.test.ts`）
 
 该静态闸门扫描 `packages/mpd-*/src/**/*.ts`（本包除外）中的字面标识符 `agentTeams` 与
@@ -128,6 +170,12 @@ node packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts --self-t
 - 某个 provider 的 `listModels` reject，或某个模型的 `resolveModelInfo` reject，会被**跳过**
   （目录仍然存活，`degraded: true`）；
 - 解析信息里没有 reasoning 块的模型依然出现，`efforts: []` 且没有 `defaultEffort`；
+- 每个模型都携带**Harness 自己解析出的**窗口：`contextWindow` 来自
+  `resolveModelInfo().context.contextWindow`，`maxOutputTokens` 来自 `.defaultMaxTokens`，类型均为
+  `number | null`。两个键**始终**写入：`null` 表示"Harness 没有解析出任何值"，绝不是兜底常量，而它
+  正是拆分阶段预算唯一诚实的输入；
+- 这两个字段在**类型**层面是可选的，以兼容早于它们存在的目录替身：`undefined` 表示"该生产者未上报
+  此字段"，`null` 表示"Harness 没有解析出任何值"；
 - `capabilities().llmCatalog` 报告该接缝（三个方法都存在时才为 true），这正是调用方分支所依
   赖的标志。
 

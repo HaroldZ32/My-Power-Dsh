@@ -667,7 +667,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -799,6 +799,67 @@ function createDshAdapter(ctx, config = {}) {
     engineCache.set(agent, engine);
     return engine;
   }
+  function contextPressureSession(target) {
+    if (typeof target === "string") {
+      const id = target.trim();
+      if (id === "")
+        return;
+      const sessions = service("sessions");
+      if (sessions !== undefined && sessions !== null && typeof sessions.get === "function") {
+        try {
+          const found = sessions.get(id);
+          if (found !== undefined && found !== null)
+            return found;
+        } catch {}
+      }
+      return liveAgent(id)?.session;
+    }
+    if (target === undefined || target === null || typeof target !== "object")
+      return;
+    const session = target.session;
+    if (session !== undefined && session !== null)
+      return session;
+    return target;
+  }
+  function finiteNumberOrNull(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  function contextPressure(target) {
+    const session = contextPressureSession(target);
+    if (session === undefined)
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    const projections = service("sessionProjections");
+    if (projections === undefined || projections === null || typeof projections.stateOf !== "function") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    let state;
+    try {
+      state = projections.stateOf(session, "contextPressure");
+    } catch {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    if (state === undefined || state === null || typeof state !== "object") {
+      return { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" };
+    }
+    const stateFields = state;
+    let snapshot;
+    try {
+      snapshot = typeof projections.snapshot === "function" ? projections.snapshot(session, ["contextPressure"]) : undefined;
+    } catch {
+      snapshot = undefined;
+    }
+    const snapshotValues = snapshot !== undefined && snapshot !== null && typeof snapshot === "object" ? snapshot.values : undefined;
+    const view = snapshotValues !== undefined && snapshotValues !== null && typeof snapshotValues === "object" ? snapshotValues.contextPressure : undefined;
+    const viewFields = view !== undefined && view !== null && typeof view === "object" ? view : undefined;
+    const projectedTokens = finiteNumberOrNull(viewFields?.projectedTokens);
+    const pressureTokens = finiteNumberOrNull(viewFields?.pressureTokens) ?? finiteNumberOrNull(stateFields.pressureTokens);
+    const usedTokens = projectedTokens ?? pressureTokens;
+    const windowTokens = finiteNumberOrNull(stateFields.contextWindow);
+    if (windowTokens === null)
+      return { usedTokens, windowTokens: null, ratio: null, provenance: "no-window" };
+    const ratio = usedTokens !== null && usedTokens > 0 && windowTokens > 0 ? usedTokens / windowTokens : null;
+    return { usedTokens, windowTokens, ratio, provenance: "observed" };
+  }
   function onEvent(event, handler) {
     if (typeof ctx?.on !== "function")
       return;
@@ -884,12 +945,16 @@ function createDshAdapter(ctx, config = {}) {
             });
           }
           const defaultEffort = typeof reasoning?.defaultEffort === "string" ? reasoning.defaultEffort : undefined;
+          const contextWindow = finiteNumberOrNull(resolved?.context?.contextWindow);
+          const maxOutputTokens = finiteNumberOrNull(resolved?.defaultMaxTokens);
           entries.push({
             id: modelId,
             name: catalogLabel(rawModel?.name, modelId),
             ...typeof rawModel?.description === "string" ? { description: rawModel.description } : {},
             efforts,
-            ...defaultEffort === undefined ? {} : { defaultEffort }
+            ...defaultEffort === undefined ? {} : { defaultEffort },
+            contextWindow,
+            maxOutputTokens
           });
         }
         catalog.push({ id: providerId, name: catalogLabel(rawProvider?.name, providerId), models: entries });
@@ -951,14 +1016,17 @@ function createDshAdapter(ctx, config = {}) {
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...agentOptions === undefined ? {} : { agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions },
+            ...request.maxDepth === undefined ? {} : { maxDepth: request.maxDepth }
           },
           signal: request.signal ?? neverAborted()
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -1191,6 +1259,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    contextPressure,
     compactionEngineForAgent,
     onEvent,
     llmCatalog,
@@ -1453,7 +1522,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

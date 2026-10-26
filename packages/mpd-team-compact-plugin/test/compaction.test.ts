@@ -196,7 +196,14 @@ function fixture(options: FixtureOptions = {}): Fixture {
     if (!memberEngines.has(id)) {
       memberEngines.set(id, {
         name: "compaction",
-        compactNow: async (...args: unknown[]) => { engineCalls.push({ id, kind: "member", args }); return { shadowedTokenCount: 7, summarySeq: 3 } },
+        compactNow: async (...args: unknown[]) => {
+          // FAITHFUL to `dsh-compaction-basic`: its FIRST statement is `signal.throwIfAborted()`,
+          // so this double raises exactly what the real engine raises — and on a missing signal it
+          // reproduces the measured F9 defect (a raw TypeError) instead of silently succeeding.
+          ;(args[1] as AbortSignal).throwIfAborted()
+          engineCalls.push({ id, kind: "member", args })
+          return { shadowedTokenCount: 7, summarySeq: 3 }
+        },
       })
     }
     return memberEngines.get(id)
@@ -324,6 +331,66 @@ test("t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout
   } finally { cleanup() }
 })
 
+// ── CR R2 (CodeRabbit 4377306758): the barrier obeys the PASS cancellation too ──────────────
+// The barrier is the one wait that never touches the engine, so an aborted pass used to spend the whole
+// `idleWaitMs` budget polling and then record `timeout` — the wrong cause for an audit reader. These two
+// arms pin the fix from both sides: a pass cancelled BEFORE the barrier must not poll at all, and one
+// cancelled DURING the wait must stop at the poll that saw the abort.
+
+test("cr R2: a pass cancelled BEFORE the barrier never polls, and records cancellation not timeout", async () => {
+  /** The fixture handles for a roster with one member still working, so the barrier must wait. */
+  const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
+  try {
+    /** The live team record whose roster keeps the barrier busy. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The caller's controller, aborted BEFORE the pass runs. */
+    const controller = new AbortController()
+    controller.abort()
+    /** Every barrier wait this pass asked for, in milliseconds. */
+    const waits: number[] = []
+    /** The audit of the cancelled pass. */
+    const audit = await compactTeamPass(dsh, team, {
+      terminal: TERMINAL, idleWaitMs: 5_000, idlePollMs: 1,
+      signal: controller.signal,
+      sleep: async (ms: number) => { waits.push(ms) },
+    })
+    // CANCELLATION IS ITS OWN VERDICT: the members did not fail to idle, the caller gave up.
+    expect(audit.outcome).toBe("cancelled")
+    expect(audit.refusedReason).toContain("cancelled")
+    // PROMPTLY: not one poll interval was spent on a pass nobody wants any more.
+    expect(waits).toEqual([])
+    // And nothing was driven.
+    expect(engineCalls).toEqual([])
+  } finally { cleanup() }
+})
+
+test("cr R2: a pass cancelled DURING the barrier stops at the poll that saw the abort", async () => {
+  /** The fixture handles for a roster with one member still working. */
+  const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "working" } })
+  try {
+    /** The live team record the barrier holds. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The caller's controller, aborted from inside the first poll. */
+    const controller = new AbortController()
+    /** How many poll intervals the barrier asked for. */
+    let polls = 0
+    /** The audit of the pass the caller cancels mid-wait. */
+    const audit = await compactTeamPass(dsh, team, {
+      terminal: TERMINAL, idleWaitMs: 60_000, idlePollMs: 1,
+      signal: controller.signal,
+      sleep: async () => {
+        polls += 1
+        // THE CALLER GIVES UP WHILE THE BARRIER WAITS: the abort must end this wait, not the budget.
+        if (polls === 1) controller.abort()
+      },
+    })
+    expect(audit.outcome).toBe("cancelled")
+    // ONE poll, not sixty seconds' worth: the wait itself is abortable.
+    expect(polls).toBe(1)
+    expect(engineCalls).toEqual([])
+  } finally { cleanup() }
+})
+
 test("t48 BARRIER: an idle member is compacted once every member is idle", async () => {
   /** The fixture handles for a roster whose members are all idle. */
   const { workspace, teamId, dsh, engineCalls, cleanup } = fixture({ statuses: { [OTHER]: "idle" } })
@@ -391,6 +458,66 @@ test("t48 F5: a lifecycle error mid-pass is recorded against the member and does
     expect(first.failureCode).toBeUndefined()
     expect(first.error).toContain("inactive context")
     expect(second.outcome).toBe("compacted") // the pass continued
+  } finally { cleanup() }
+})
+
+test("t48 F9: every compactNow drive receives a REAL AbortSignal, never undefined", async () => {
+  /** The fixture handles; its engine double rejects exactly like the harness engine on a missing signal. */
+  const { workspace, teamId, dsh, engineCalls, cleanup } = fixture()
+  try {
+    /** The live team record the pass drives. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The audit of a pass in which every drive is expected to succeed on a real signal. */
+    const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL })
+    expect(audit.outcome).toBe("compacted")
+    expect(engineCalls.length).toBe(2)
+    for (const call of engineCalls) {
+      /** The argument the engine's FIRST statement reads — the one the old code passed as `undefined`. */
+      const signal = call.args[1]
+      expect(signal).toBeInstanceOf(AbortSignal)
+      expect((signal as AbortSignal).aborted).toBe(false)
+      expect(typeof (signal as AbortSignal).throwIfAborted).toBe("function")
+      // The engine's first statement is `signal.throwIfAborted()`: it must not throw on what we hand it.
+      expect(() => (signal as AbortSignal).throwIfAborted()).not.toThrow()
+    }
+  } finally { cleanup() }
+})
+
+test("t48 F9: an aborted drive is a CANCELLATION; an unrecognised failure stays unclassified", () => {
+  /** The standard DOMException that `signal.throwIfAborted()` raises. */
+  const aborted = classifyCompactionError(new DOMException("This operation was aborted", "AbortError"))
+  expect(aborted.outcome).toBe("failed")
+  expect(aborted.failureCode).toBe("cancelled")
+  /** A caller's controller, aborted before classification so the signal state alone decides. */
+  const controller = new AbortController()
+  controller.abort()
+  // The signal's OWN aborted state is enough, even when the rejection carries no AbortError name.
+  const bySignal = classifyCompactionError(new Error("engine stopped"), controller.signal)
+  expect(bySignal.failureCode).toBe("cancelled")
+  /** An error this module does not know: it must stay UNCLASSIFIED, with no invented code. */
+  const unknown = classifyCompactionError(new Error("socket hang up"))
+  expect(unknown.outcome).toBe("failed")
+  expect(unknown.failureCode).toBeUndefined()
+})
+
+test("t48 F9: a pre-aborted pass signal is recorded as cancelled, never as a raw TypeError", async () => {
+  /** The caller's controller, aborted BEFORE the pass so every drive meets an aborted signal. */
+  const controller = new AbortController()
+  controller.abort()
+  /** The fixture handles for a pass the caller has already cancelled. */
+  const { workspace, teamId, dsh, cleanup } = fixture()
+  try {
+    /** The live team record the pass tries to drive. */
+    const team = readTeamRecord(dsh, workspace, teamId)!
+    /** The audit that must record a CANCELLATION for both members, not an unclassifiable failure. */
+    const audit = await compactTeamPass(dsh, team, { terminal: TERMINAL, signal: controller.signal })
+    expect(audit.members.length).toBe(2)
+    for (const member of audit.members) {
+      expect(member.outcome).toBe("failed")
+      expect(member.failureCode).toBe("cancelled")
+      expect(member.error ?? "").not.toContain("TypeError")
+      expect(member.error ?? "").not.toContain("throwIfAborted")
+    }
   } finally { cleanup() }
 })
 

@@ -73,6 +73,31 @@ that is strictly less than what the grid already does.
 4. **This record is the provenance for the “no graphics this wave” claim**, so a later reader does not
    have to re-derive it from a ticket.
 
+### 3.1 Nested groups: subcells as boxes (wave 4)
+
+A subcell is a BOX whose interior is that subcell's own DAG, and the grid is not abandoned to draw it: the
+whole nesting stays one character grid, so pan, scroll, key focus and hit-testing keep working unchanged.
+The facts below are the panel's contract (`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as
+boxes"), recorded here because this file is the renderer decision record.
+
+- **A second one-cell glyph family.** `DAG_GROUP_CHARS` is the double-line set `╔ ╗ ╚ ╝ ║ ═`, visually
+  distinct from the node family's rounded single lines. Every glyph is asserted to occupy exactly ONE cell,
+  and the two families are asserted to share no glyph: a wide glyph would shear a border off its own
+  column, and a shared glyph would make a box read as a task.
+- **The frame spans its interior's rows.** A frame's height is measured bottom-up from the interior it
+  contains, and the frame is drawn over the rows its content actually occupies — never a fixed rectangle.
+- **Crossing versus terminating.** An edge arriving on a side draws that side's PORT glyph (`╧` on a top
+  side), so the dependency reads as attached to the BOX. An edge that passes THROUGH a side draws the
+  CROSSING glyph (`╫`, a single line through a double one). They are separate glyphs by construction, so a
+  run that continues inside is never mistaken for an arrival.
+- **Group hit identity.** `hitTestGroup(view, row, col)` answers with the INNERMOST frame holding a cell,
+  and `dagRowClick` reports `groupId` when the pointer landed on a frame; a task still outranks the frame
+  around it, because the box is painted over it.
+- **Never half a group.** A frame the vertical window would cut loses its OWN cells and keeps its
+  interior's text (the per-node whole-or-nothing rule, extended to the thing that contains nodes); when the
+  width guard cannot show two node columns, the ladder falls through to the rail/list and every group is
+  reported COLLAPSED in `collapsedGroups` instead of being painted half-drawn.
+
 ## 4. The colour baseline: the WEB tones
 
 `packages/mpd-tui-plugin/src/dag-theme.ts` carries `DAG_TONE_WEB_HEX` — the WEB view's own `TONE`

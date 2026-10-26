@@ -1,0 +1,97 @@
+== declared-by-writer hashes (T9 freeze mail 2026-10-26T12:15:17Z)
+declared-check exit=0
+docs/cellwork.md: OK
+docs/cellwork.zh-CN.md: OK
+docs/tui-dag-renderer.md: OK
+docs/tui-dag-renderer.zh-CN.md: OK
+packages/mpd-cellwork-plugin/README.md: OK
+packages/mpd-cellwork-plugin/README.zh-CN.md: OK
+
+== hash sandwich: start 2026-10-26T12:19:10Z
+eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575  evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/scope-start.sha256
+== settle window 50 s
+eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575  evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/scope-postsettle.sha256
+
+== CHECK 1: the FALSE 'parent_team_id is deferred' bullet must be GONE (EN + zh), and the implicit seam named
+-- the old bullet (want NO MATCH):
+   (NO MATCH — retired)
+-- the seam (implicit derivation) named:
+234:**The seam is implicit derivation, and it has no argument to forget.** `cellwork_subteam` stamps the parent
+345:- **`parent_team_id` is implicit, not a knob.** A sub-team's parent is DERIVED by the team plane at
+-- the zh twin's seam wording:
+196:**这条缝是隐式推导，并且没有一个可以被忘记的参数。** `cellwork_subteam` 把父 cell 的**实时** team id 写到新 cell
+289:- **`parent_team_id` 是隐式推导，不是旋钮。** 子 team 的父级由团队平面在批准时从父 team 的名册推导
+-- the web deferral bound, stated rather than implied (want an explicit NOT-delivered sentence):
+247:(`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as boxes"). The web DAG's group frame is NOT
+349:- **The WEB nested frame is NOT delivered this wave.** The team record, the shared model and the TUI carry
+350:  nested groups (see "Nested DAG: subcells as group boxes"); the web DAG's group frame, its recursive
+352:  `.mpd/plans/cellwork-w4-t7-plan.md`. Nothing in this document claims the web surface renders a box, and a
+353:  reader must not read the TUI's vocabulary as a web capability.
+205:（`packages/mpd-tui-plugin/README.md` 的 "Nested groups: subcells as boxes"）。web DAG 的分组帧**不属于**本次交付；
+292:- **WEB 端的嵌套帧在本波次不交付。** team 记录、共享模型与 TUI 都带上了嵌套分组（见"嵌套 DAG：子单元画成分组
+293:  盒子"）；web DAG 的分组帧、它的递归几何与它的 client 重建都是**后续工作**，补丁计划冻结在
+294:  `.mpd/plans/cellwork-w4-t7-plan.md`。本文档没有任何一句声称 web 表面会画盒子，读者也不得把 TUI 的词汇当成 web
+
+== CHECK 2: the cellwork README pair carries the D5 subsection (both languages, heading parity)
+10
+10
+-- the EN subsection:
+129:### Subcells render as nested groups
+131:A subcell is drawn as a GROUP BOX in the shared DAG: the box's interior is that subcell's own graph, a
+-- the zh subsection:
+114:### 子单元渲染为嵌套分组
+116:子单元在共享 DAG 里被画成一个**分组盒子**：盒子的内部就是该子单元自己的图，来自外部的依赖附着到盒子的帧上、
+117:而不是盒内某个任务上，并且嵌套会递归。本包提供的是这张图所依据的**事实**，而不是图本身。
+
+== CHECK 3: the renderer decision record pair (nested-group decision, glyph family, collapse rule)
+-- new subsection present in both:
+docs/tui-dag-renderer.md:76:### 3.1 Nested groups: subcells as boxes (wave 4)
+docs/tui-dag-renderer.zh-CN.md:64:### 3.1 嵌套分组：子单元画成盒子（第 4 波）
+-- glyph family / port / crossing / collapse vocabulary (EN):
+83:- **A second one-cell glyph family.** `DAG_GROUP_CHARS` is the double-line set `╔ ╗ ╚ ╝ ║ ═`, visually
+89:- **Crossing versus terminating.** An edge arriving on a side draws that side's PORT glyph (`╧` on a top
+91:  CROSSING glyph (`╫`, a single line through a double one). They are separate glyphs by construction, so a
+93:- **Group hit identity.** `hitTestGroup(view, row, col)` answers with the INNERMOST frame holding a cell,
+94:  and `dagRowClick` reports `groupId` when the pointer landed on a frame; a task still outranks the frame
+96:- **Never half a group.** A frame the vertical window would cut loses its OWN cells and keeps its
+99:  reported COLLAPSED in `collapsedGroups` instead of being painted half-drawn.
+-- the same in zh:
+71:- **第二套单格字形家族。** `DAG_GROUP_CHARS` 是双线集合 `╔ ╗ ╚ ╝ ║ ═`，与节点家族圆角单线在视觉上明显不同。
+76:- **穿过与终止。** 到达某条边上的边画该边的**端口**字形（上边是 `╧`），于是这条依赖读起来是附着在**盒子**上的。
+77:  而**穿过**一条边的线画**交叉**字形（`╫`，单线穿过双线）。两者在构造上就是不同字形，所以一条在内部继续的线永远
+79:- **分组命中身份。** `hitTestGroup(view, row, col)` 回答持有该格的最内层帧，指针落在帧上时 `dagRowClick` 报告
+82:  的规则，扩展到装着节点的东西上）；当宽度守卫放不下两个节点列时，阶梯会落到 rail/list，并在 `collapsedGroups`
+-- existing headings must NOT be renamed (the six original section titles):
+10:## 1. The question
+18:## 2. What was evaluated
+20:### 2.1 notcurses — NOT viable
+40:### 2.2 The reference `dsh-blender-plugin` — no graphics code
+47:### 2.3 The host `ui.Image` path — bounded, raster-only, non-interactive
+64:## 3. The decision
+76:### 3.1 Nested groups: subcells as boxes (wave 4)
+101:## 4. The colour baseline: the WEB tones
+124:## 5. What would have to change for a renderer
+137:## 6. Evidence and bounds
+
+== heading-tree parity per pair (structure, not just counts)
+docs/cellwork.md  h=17 h2=12   |   docs/cellwork.zh-CN.md  h=17 h2=12   SAME
+   switch link under the title: en=1 zh=1
+docs/tui-dag-renderer.md  h=11 h2=6   |   docs/tui-dag-renderer.zh-CN.md  h=11 h2=6   SAME
+   switch link under the title: en=1 zh=1
+packages/mpd-cellwork-plugin/README.md  h=10 h2=8   |   packages/mpd-cellwork-plugin/README.zh-CN.md  h=10 h2=8   SAME
+   switch link under the title: en=1 zh=1
+
+== docs gate (pairs, links, CJK, resolution)
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+
+== no claim exceeds what the wave delivered (spot check on absolute web claims)
+docs/cellwork.md:352:  `.mpd/plans/cellwork-w4-t7-plan.md`. Nothing in this document claims the web surface renders a box, and a
+
+== scope metadata (stat only) + full-suite sanity
+6
+34
+
+== hash sandwich: end 2026-10-26T12:20:00Z
+eba1bec6e4b59a815d2df5d68e48c7973b04024df5519463112fef6fdbfd7575  evidence/cellwork/dag-groups/2026-10-26T12-19-10Z-T10/scope-end.sha256
+SANDWICH OK: start == end (after settle)

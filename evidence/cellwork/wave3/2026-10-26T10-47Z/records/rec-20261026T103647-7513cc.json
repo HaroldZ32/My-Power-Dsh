@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "recordId": "rec-20261026T103647-7513cc",
+  "loopId": "loop-20261026T095624-7aed34",
+  "taskId": "T3",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "flow-engineer",
+  "verifierId": "91d948be-af36-4a28-b9e2-ab80a7c174ae",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+      }
+    ],
+    "probe": [
+      {
+        "path": ".mpd/plans/cellwork-w3-contract.md",
+        "bytes": 6002,
+        "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897",
+        "mtime": "2026-10-26T10:30:44.746Z"
+      },
+      {
+        "path": "docs/cellwork.md",
+        "bytes": 22412,
+        "sha256": "9e5935f936887c8b3f5033deee872175f7a75f60f7f34b884fcfaae5b583ede0",
+        "mtime": "2026-10-26T10:15:52.975Z"
+      },
+      {
+        "path": "docs/cellwork.zh-CN.md",
+        "bytes": 21556,
+        "sha256": "82168717b2b671659c2bdcc77170d705a20435e2daaa1f458ad972d0fe442072",
+        "mtime": "2026-10-26T10:15:53.999Z"
+      },
+      {
+        "path": "docs/user-guide.md",
+        "bytes": 86530,
+        "sha256": "3c87bebb445113d4473d0ec1f86c2ca0397dc31dbc0d5877fb3c36776d8afc89",
+        "mtime": "2026-10-26T10:02:07.055Z"
+      },
+      {
+        "path": "docs/user-guide.zh-CN.md",
+        "bytes": 85619,
+        "sha256": "4ae1faeb5a3ffcfda6bb2c5586ed94c11d8a779f91d25551dd407a2c989a7955",
+        "mtime": "2026-10-26T10:02:09.272Z"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "bytes": 120888,
+        "sha256": "a0604313c0e65ad9411ea0ca17e24a2345178e6fd242faaa1f97362cc5810155",
+        "mtime": "2026-10-26T10:02:57.612Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.md",
+        "bytes": 10904,
+        "sha256": "577fedd5b62c766de62f6bde508ea2c5be743a29ce2907630424d73943b90599",
+        "mtime": "2026-10-26T10:15:37.349Z"
+      },
+      {
+        "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+        "bytes": 10627,
+        "sha256": "f4de77ee440d0fcdb0de63d1263ba1f76176eb2a6da27364a6b418849ccded95",
+        "mtime": "2026-10-26T10:15:38.447Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/cellwork-command.ts",
+        "bytes": 26600,
+        "sha256": "dc373142761e9872bdf295320dd539163f038966e7d19ab89cbc5c08242ebd3c",
+        "mtime": "2026-10-26T10:26:49.095Z"
+      },
+      {
+        "path": "skills/dsh-qa/scripts/cellwork-mount.ts",
+        "bytes": 25167,
+        "sha256": "b31051ca169abe079237d589368f32df5a7acd59b6afa8349182c1b5058b9d3b",
+        "mtime": "2026-10-26T10:25:28.330Z"
+      },
+      {
+        "path": "skills/dsh-qa/SKILL.md",
+        "bytes": 74782,
+        "sha256": "6a224e90e7fb68d7b405d65b3f349c6c220069977d0e05a8e6bb3ac7503d937d",
+        "mtime": "2026-10-26T10:26:20.051Z"
+      },
+      {
+        "path": "evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command/result.json",
+        "bytes": 3117,
+        "sha256": "f67ed2127a9020f9a75c60d6d33a0494911cedbd9a4ae5faba710b83ff40887b",
+        "mtime": "2026-10-26T10:34:30.822Z"
+      },
+      {
+        "path": "evidence/cellwork/qa/2026-10-26T10-34-37.048Z-mount/result.json",
+        "bytes": 3268,
+        "sha256": "e4071274d6165b0c406fc815c44eb4726aad92c052334197978e74e25ee2cce0",
+        "mtime": "2026-10-26T10:34:53.129Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/cellwork-w3-contract.md",
+      "sha256": "8e964cd0edd1e3a92984eaefcf0fcf60ba3413fb6e88a72827d953d8365ab897"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "c75c0da1f6b0fc6b18ace028fa800962304e95bd78e83d04067936dd243ed3d0"
+    },
+    {
+      "path": ".mpd/plans/cellwork.md",
+      "sha256": "488cc430f0ac483ca9408bb54f86dd5bc681f69f83eb53cadd121f8635cabe48"
+    },
+    {
+      "path": "docs/cellwork.md",
+      "sha256": "9e5935f936887c8b3f5033deee872175f7a75f60f7f34b884fcfaae5b583ede0"
+    },
+    {
+      "path": "docs/cellwork.zh-CN.md",
+      "sha256": "82168717b2b671659c2bdcc77170d705a20435e2daaa1f458ad972d0fe442072"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.md",
+      "sha256": "577fedd5b62c766de62f6bde508ea2c5be743a29ce2907630424d73943b90599"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/README.zh-CN.md",
+      "sha256": "f4de77ee440d0fcdb0de63d1263ba1f76176eb2a6da27364a6b418849ccded95"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "6a224e90e7fb68d7b405d65b3f349c6c220069977d0e05a8e6bb3ac7503d937d"
+    },
+    {
+      "path": "evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command/result.json",
+      "sha256": "f67ed2127a9020f9a75c60d6d33a0494911cedbd9a4ae5faba710b83ff40887b"
+    },
+    {
+      "path": "evidence/cellwork/qa/2026-10-26T10-34-37.048Z-mount/result.json",
+      "sha256": "e4071274d6165b0c406fc815c44eb4726aad92c052334197978e74e25ee2cce0"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261026T103203-9d6730",
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103203-9d6730.log",
+      "logSha256": "ffe748774a361e5d19cccf60f7e715a466b86c966bae9d923f671e78db3b38d4"
+    },
+    {
+      "evidenceId": "ev-20261026T103203-611205",
+      "cmd": "bun run verify:manifest",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103203-611205.log",
+      "logSha256": "dab952bf3efb757f31fdb89e0ccdfa1e4b76ceb19c6b27f08565aa6f95b02621"
+    },
+    {
+      "evidenceId": "ev-20261026T103209-2c0a55",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103209-2c0a55.log",
+      "logSha256": "58782fdf6773ed03f255bf323833c47ccf7a5e587a44a6e5a72e4814c66cd8e5"
+    },
+    {
+      "evidenceId": "ev-20261026T103212-73153a",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103212-73153a.log",
+      "logSha256": "a3513bbce9d3f955c21f98703bdff7cc3a4dacba356338be65dd1a1b45f9bf1d"
+    },
+    {
+      "evidenceId": "ev-20261026T103216-9a4938",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103216-9a4938.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261026T103220-9c2a3a",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103220-9c2a3a.log",
+      "logSha256": "0cfbea03877903dfb9046b74c04f30705c4278d3fa5b50cea3a3de136b3fcb43"
+    },
+    {
+      "evidenceId": "ev-20261026T103225-b7924d",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261026T103225-b7924d.log",
+      "logSha256": "5414f73c7096643a9a16579f7b1b46133a780edffb38ac5f4bc4b5d0d06bebc4"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-26T10:36:47.182Z",
+  "notes": [
+    "HASH SANDWICH HELD: start 2026-10-26T10:31:27Z / end 2026-10-26T10:35:50Z; contract (with Amendment 6) 8e964cd0edd1e3a9…, package tree digest 00eeaaee9f0e3cd1… (25 files), QA scripts dc373142761e9872… / b31051ca169abe07…, SKILL.md 6a224e90e7fb68d7…, docs 9e5935f936887c8b… / 82168717b2b67165…, README pair 577fedd5b62c766d… / f4de77ee440d0fcd…, user-guide 3c87bebb445113d4… / 4ae1faeb5a3ffcfd…, CHANGELOG a0604313c0e65ad9…, HEAD a6932fd1 — all identical at both reads, no drift during the batch.",
+    "GATES (all seven from the fixed table, exit 0): typecheck ev-20261026T103216-9a4938; tests ev-20261026T103225-b7924d = 2563 pass / 6 skip / 0 fail / 43350 expect / 153 files [30.37s]; comments ev-20261026T103209-2c0a55 PASS; docs ev-20261026T103212-73153a = pairs=52 failed=0 violations=0 dead=0 links=465 PASS; dist ev-20261026T103220-9c2a3a = 34/34 targets fresh (1 NOT COVERED declared: the sha-pinned vendored serve.js); rows ev-20261026T103203-9d6730 PASS (37 ids); manifest ev-20261026T103203-611205 PASS. Extras (bash, logs under .mpd/verify/evidence/): verify-no-host-override exit 0 (0 of 0 collide with 214 host ids; log w3-t3-no-host-override.log); install-profile --dry-run exit 0 (w3-t3-install-profile-dryrun.log); bun run test:qa exit 0 (w3-t3-test-qa.log — both new cases' self-tests ran and passed: cellwork-command 7 arms incl. negative controls, cellwork-mount 21 arms incl. negative controls).",
+    "C1 — REQUIRED ARMS ALL PRESENT AND PASSING (flow.test.ts block of the tests gate log): 'C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row'; 'C1: work a later revision drops is marked cancelled, never deleted, and never dispatched'; 'activate: a STALE split is refused unless its revision is passed explicitly'; 'split: graph refusals name the rule (cycle, self-review, overlap, unknown role, no answer) and the revision mismatch'. Supporting: 'activate: contracts → members → tasks → verify loop BEFORE dispatch, owner-only, never a second activation'; 'Amendment 5a: a requirements update re-dispatches the SAME split task with the new revision'; 'requirements: incomplete refused, complete finalized, a changed finalize refused, update bumps and marks stale'. UNPROVEN at arm granularity (NOT a finding): C1's prose 'acceptance records it and marks the previous revision superseded' has no arm NAME carrying the word 'superseded'; the revision machinery is exercised (bump+stale, stale activation refused, second activation on the same team) and the contract's required-arm list does not name that marker.",
+    "C2 — ALL THREE T6-LOW ITEMS CLOSED BY ARMS (same block, all pass): 'C2.1: the compaction barrier classifies busy, error and no-engine after the retry budget' (the old arm named only null; it now names busy, error AND no-engine); 'C2.2: mail addresses a member, `captain` and a cross-subcell recipient, and the journal carries the cell stamp'; 'C2.3: an UNDELIVERED mail row is surfaced by cellwork_supervise, not only by the pending board'. The package README pair carries the matching sentences in both languages (journaled reason set compacted|no-safe-range|busy|aborted|failed|no-engine; cross-cell form \"<cellId>/<captain|member>\", recipient-cell log, fromCell mirrored, durable-only, that cell's supervise; undelivered on supervise kept). Package tests alone: 46 pass / 0 fail / 575 expect / 3 files = the Wave-2 41 + exactly 5 new arms (C1×2, C2.1, C2.2, C2.3).",
+    "C3 — REAL RUN exit 0: `bun skills/dsh-qa/scripts/cellwork-command.ts` -> evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command/ (result.json ok=true; install ok; boot ok stubRequests=3; listing from the LIVE commands registry includes `cellwork`; usage kind=error on empty; activation kind=success; exactly one cell cell-20261026T103430663Z; directive ok; commandLifecycle [cellwork,cellwork]; sandbox cwd; isolation checked on the sandbox workspace key). I re-inspected the HARNESS artifact myself: raw/cellwork-command.session.decoded.jsonl has TWO `command/run` frames for name `cellwork` (args '' and ' qa-cellwork-objective-command') and a `user/message` frame (role user, seq 29) carrying the '[mpd-cellwork] CELLWORK MODE IS ACTIVE — cell cell-20261026T103430663Z' directive with the objective and the cellwork_start first-step instruction — harness evidence, not prose. Isolated DSH_HOME + sandboxed HOME + sandbox workspace, offline install, no SKIP; missing-prerequisite failure is declared in the SKILL.md row and covered by the 7 self-test arms with negative controls.",
+    "C4 — REAL RUN exit 0: `bun skills/dsh-qa/scripts/cellwork-mount.ts` -> evidence/cellwork/qa/2026-10-26T10-34-37.048Z-mount/ (install ok; rowRemoved=1 so the installed row is gone and the --patch overlay is the ONLY row source; ARM A real boot: row log sink carries '[mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none', bootExit=0, no loader-failure/apply-crash in the main boot — the only loader failure in output.log is the NEGATIVE CONTROL's no-such-row-module ERR_MODULE_NOT_FOUND; ARM B dump-config composes the row at the absolute module path, reported COMPOSITION ONLY; ARM C the missing-module overlay produced the real loader failure; isolation checked 2 sandbox keys). The declared overlay bound is stated in the case header/SKILL row and in result.json's doesNotProve[] (bundle-row source rests on verify:rows/verify:manifest). 21 self-test arms incl. negative controls.",
+    "DOCS-GATE CONFIRMATION owed from T4 (inside this batch's docs gate ev-20261026T103212-73153a): the gated hashes are exactly the four authorized ones (docs 9e5935f9…/82168717…, README 577fedd5…/f4de77ee…); the NIT fix sentence survives in ORIGINAL and translation ('…plus that lane's own artifacts: a report for a read-only spike, logs for a run.' / '…该条线自己的产物：只读尖刺是一份报告，一次运行则是一批日志。'); the new C2 vocabulary is present in both READMEs (compaction reason set; cross-cell addressing form; recipient-cell log; fromCell; durable-only; that cell's supervise; undelivered kept); '### Re-split in detail' / '### 重切分的细节' is in the same structural slot (EN 19-line insertion after 'The four phases', ZH 14-line); heading trees identical; user-guide pair and CHANGELOG unchanged since T4; verify:docs PASS. Nothing else moved.",
+    "CROSS-ROW, NOT T3 FINDINGS: (a) the captain ruled a DOCS-ONLY contradiction — the docs/README sentence placing cell mail in `<ws>/.mpd/team/mailbox.jsonl` with a cell stamp, whereas the implementation appends to the TARGET cell's own mail.jsonl and journals the send in the sender's journal with cell:<cellId> + toCell:<target>; the correction is held until after T3 and I will confirm the corrected four-file batch inside T6's docs check (T6 is a new record). (b) Amendment 6's R1 (dispatch contract path from board id) and R2 (refused same-revision resubmission overwriting the accepted verdict) are frozen as T5/T6 items and are explicitly outside the T3 verdict. (c) DECLARED, not run: verify:vendor is red on the skills/** change (single per-wave re-pin at commit) and verify-pack-closure stays red (PACKED-MISSING) until Wave 5 — both contract-declared bounds.",
+    "DECLINED TO JUDGE: the 'superseded' ledger marker (see C1 note — no arm name, not in the required-arm list); the QA cases' internal failure branches (blind on scripts/**.ts until a FAIL; their real-run evidence shows the normal path and the self-test arms cover the negative controls); external URLs in docs (verify:docs ignores them by design); the docs' estimator formula's shape for non-default ratios (mirrors plan §4.5 verbatim, T4-scoped)."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/cellwork",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "cell-work mode: the /cellwork command, the dispatch-only captain guard, the cell record and its tools",
+  "scripts": {
+    "test": "bun test"
+  }
+}

@@ -1,0 +1,8 @@
+DAG_GROUP_CHARS      13
+DAG_CHARS_ONE_CELL   1
+collapsedGroups      3
+halfGroupCells       2
+hitTestGroup         2
+GraphGroupHit        0
+DagRowClick          0
+groupId              5

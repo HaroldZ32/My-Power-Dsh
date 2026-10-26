@@ -1,0 +1,26 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/dag-groups.test.ts:
+(pass) D3 · the group frame's glyph family > every glyph is exactly ONE CELL, and the family is DISJOINT from the node family [0.10ms]
+(pass) D3 · the group frame's glyph family > the frame is DOUBLE-LINED while the node box stays the rounded single-line set
+(pass) D3 · the group frame's glyph family > the two edge roles are DIFFERENT glyphs, and each is the box-drawing character for its role
+(pass) D3 · a nested model draws its frame > the frame is drawn around its interior, and it spans EVERY interior row [1.50ms]
+(pass) D3 · a nested model draws its frame > the frame's interior is the subcell's OWN DAG: its tasks and its arrows are inside the box [0.42ms]
+(pass) D3 · a nested model draws its frame > a NESTED frame stands strictly INSIDE its parent, and the two never exchange a cell [0.34ms]
+(pass) D3 · a nested model draws its frame > a group the tree cannot place is COLLAPSED and reported, never drawn as a half box [0.35ms]
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > an outside dependency TERMINATES on the box: the port glyph, and the arrow above it [0.33ms]
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > a dependency LEAVING the box PASSES THROUGH its side: the crossing glyph, not a port [0.23ms]
+(pass) D3 · an edge CROSSES or TERMINATES, and the picture says which > a board with NO groups draws exactly the flat picture, byte for byte [0.34ms]
+(pass) D3 · the group hit identity > a cell on or inside a frame resolves to the INNERMOST group that holds it [0.24ms]
+(pass) D3 · the group hit identity > outside every frame it resolves to nothing, and a task still outranks its frame [0.21ms]
+(pass) D3 · the group hit identity > the panel's click handler names the group when the pointer lands on a frame [0.25ms]
+(pass) D3 · never half a GROUP > a frame the window would CUT loses its own cells and keeps the interior's text [0.23ms]
+(pass) D3 · never half a GROUP > a frame WHOLLY inside the window, or wholly outside it, is left alone [0.17ms]
+(pass) D3 · the width guard degrades by COLLAPSING the group > a narrow panel falls back to the rail/list and NAMES every group collapsed [0.43ms]
+(pass) D3 · the width guard degrades by COLLAPSING the group > a panel with room draws the BOXES, and reports no collapse [0.17ms]
+(pass) D3 · the width guard degrades by COLLAPSING the group > a board with NO groups keeps the pre-group fallback exactly [0.25ms]
+
+ 18 pass
+ 0 fail
+ 146 expect() calls
+Ran 18 tests across 1 file. [126.00ms]

@@ -1,0 +1,6 @@
+docs/cellwork.md: OK
+docs/cellwork.zh-CN.md: OK
+docs/tui-dag-renderer.md: OK
+docs/tui-dag-renderer.zh-CN.md: OK
+packages/mpd-cellwork-plugin/README.md: OK
+packages/mpd-cellwork-plugin/README.zh-CN.md: OK

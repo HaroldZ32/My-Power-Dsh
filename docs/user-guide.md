@@ -408,6 +408,10 @@ interrupt_agent { "agent_id": "senior-1" }     # Lead only: stop the turn, keep 
 finishing a wave. The `session-watchdog-*` tools are a separate, internal stall-detection layer (see
 §12 and [`tui.md`](tui.md)).
 
+For very large work, [`cellwork.md`](cellwork.md) documents the command-triggered **cell-work mode**:
+a planner settles the requirements with you, a splitter prices every task against the executing
+model's own window, and the captain only dispatches, relays and records.
+
 ## 7. DSH-TUI edition (the terminal UI)
 
 The same bundle runs as a **TUI edition** under the host's `dsh-tui` profile: the profile's own
@@ -803,9 +807,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**six commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+**seven commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
 `mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd` and the model pick-list
-`/mpd-model`, and the team row registers `/agent-teams`), and the **two HOST-provided commands the
+`/mpd-model`, the team row registers `/agent-teams`, and `mpd-cellwork` registers `/cellwork`), and
+the **two HOST-provided commands the
 bundle only documents** — `/settings`, the
 host's TUI settings screen (whose MPD section the bundle extends), and `/goal`, the host goal command
 the `mpd` preset mounts. Nothing else exists — in particular **there is no `/roster` command** (the
@@ -815,6 +820,7 @@ roster is reached with the `mpd_roles_list` tool).
 |---|---|---|
 | `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
 | `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
+| `/cellwork <objective>` | starts the dispatch-only cell-work mode: the command writes one cell record and submits the activation directive as your own next turn — the mode, its tools and its bounds are in [`cellwork.md`](cellwork.md) | Web + TUI |
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
 | `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |

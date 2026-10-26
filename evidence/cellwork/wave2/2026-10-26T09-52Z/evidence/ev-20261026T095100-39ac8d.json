@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "evidenceId": "ev-20261026T095100-39ac8d",
+  "loopId": "loop-20261026T082259-e95a90",
+  "kind": "gate",
+  "cmd": "bun run verify:docs",
+  "exit": 0,
+  "at": "2026-10-26T09:51:00.518Z",
+  "logPath": ".mpd/verify/evidence/ev-20261026T095100-39ac8d.log",
+  "logSha256": "2b158d4f2fe8af5a64fa4c582f122be6d86d71f03016244d573282949c303565"
+}
