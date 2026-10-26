@@ -356,10 +356,12 @@ describe("llm catalog plane", () => {
               description: "fast",
               efforts: [{ id: "high", name: "High" }, { id: "max", name: "Max", description: "deepest" }],
               defaultEffort: "high",
+              contextWindow: null,
+              maxOutputTokens: null,
             },
-            // No reasoning block: the model still appears, with an EMPTY efforts array
-            // and no defaultEffort key at all.
-            { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", efforts: [] },
+            // No reasoning block: the model still appears, with an EMPTY efforts array,
+            // no defaultEffort key at all, and both limits explicitly null.
+            { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", efforts: [], contextWindow: null, maxOutputTokens: null },
           ],
         },
         { id: "pi-ai", name: "pi-ai", models: [] },
@@ -447,7 +449,7 @@ describe("llm catalog plane", () => {
     /** The surviving catalog, degraded but not empty. */
     const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
     expect(catalog.degraded).toBe(true)
-    expect(catalog.providers).toEqual([{ id: "ok", name: "OK", models: [{ id: "m1", name: "M1", efforts: [] }] }])
+    expect(catalog.providers).toEqual([{ id: "ok", name: "OK", models: [{ id: "m1", name: "M1", efforts: [], contextWindow: null, maxOutputTokens: null }] }])
   })
 
   test("a model whose resolveModelInfo rejects is skipped, not fatal", async () => {
@@ -463,7 +465,7 @@ describe("llm catalog plane", () => {
     /** The catalog with the bad model skipped. */
     const catalog = await createDshAdapter(llmOnlyCtx(llm)).llmCatalog()
     expect(catalog.degraded).toBe(true)
-    expect(catalog.providers).toEqual([{ id: "p", name: "P", models: [{ id: "good", name: "Good", efforts: [] }] }])
+    expect(catalog.providers).toEqual([{ id: "p", name: "P", models: [{ id: "good", name: "Good", efforts: [], contextWindow: null, maxOutputTokens: null }] }])
   })
 
   test("a throwing listProviders degrades instead of rejecting", async () => {

@@ -523,3 +523,43 @@ describe("the seam is total", () => {
     }
   })
 })
+
+describe("the depth cap (capability fact F1)", () => {
+  test("a supplied maxDepth is forwarded on the activation request", async () => {
+    /** The harness whose native backend records the activation spec. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST, maxDepth: 3 })
+    /** The activation request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    // The harness's own `request.maxDepth` field, exactly as the caller supplied it.
+    expect(request.maxDepth).toBe(3)
+  })
+
+  test("an absent maxDepth stays ABSENT, never `undefined`", async () => {
+    /** The harness under test. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST })
+    /** The activation request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    // Absence is the contract: a written `maxDepth: undefined` is indistinguishable to some
+    // serializers from a caller-supplied value and could defeat the service default.
+    expect("maxDepth" in request).toBe(false)
+    expect(Object.hasOwn(request, "maxDepth")).toBe(false)
+  })
+
+  test("the OFFICIAL backend IGNORES a supplied cap without throwing", async () => {
+    process.env[OVERRIDE] = "official"
+    /** The harness whose official backend records its own request. */
+    const h = harness()
+    /** The spawn result, which proves the call completed on that backend. */
+    const result = await h.executor.spawn(h.lead, { ...REQUEST, maxDepth: 2 })
+    expect(result.executor).toBe("official")
+    /** The official spawn call the double recorded. */
+    const call = h.calls.find((entry) => entry.seam === "spawnTeammate")
+    expect(call).toBeDefined()
+    /** The official spawn request, in that service's own vocabulary. */
+    const request = call?.args[1] as Record<string, unknown>
+    // The official service has no per-call depth channel: the cap must not leak into its vocabulary.
+    expect("maxDepth" in request).toBe(false)
+  })
+})
