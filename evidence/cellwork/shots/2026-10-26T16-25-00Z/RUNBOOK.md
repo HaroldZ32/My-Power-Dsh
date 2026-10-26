@@ -1,7 +1,9 @@
 # Nested-DAG captures (cellwork wave 4) — the reproducible recipe
 
-The four committed images (`docs/assets/images/{,zh-CN/}web-team-dag-groups.png` and
-`tui-team-dag-groups.png`) were produced from the fixture below, NOT by hand.
+The THREE committed images (`docs/assets/images/web-team-dag-groups.png`,
+`docs/assets/images/zh-CN/web-team-dag-groups.png` and `docs/assets/images/tui-team-dag-groups.png`)
+were produced from the fixture below, NOT by hand. There is deliberately no `zh-CN/` TUI twin: see the
+locale bound at the end of this file.
 
 ## The served model (asserted BEFORE any capture)
 
@@ -37,5 +39,13 @@ Sandbox DSH_HOME from `node scripts/install-profile.ts --yes --profile mpd --dsh
 `env -i DSH_HOME=… HOME=… DSH_TUI_LANG=en|zh-CN DSH_TUI_NO_LAUNCHPAD=1 DSH_TUI_WORKSPACE_TARGET=<ws> dsh-tui`,
 then `/mpd dag`, an SGR mouse click on the page's `⤢` cell (full screen), `tmux capture-pane -e -p -J`,
 and the TRACKED `docker/ui/tui-render.py --scale 2` (byte copy in this directory; the older `.mpd/readme-ref/tui-render.py` variant was NOT used — it lacks the tracked renderer's wide-glyph split). The frame assertion: the pane carries
-`╔ subcell-auth ═…╧…╗` and the interior cards (`team-nested-sub::C1..C3`). A CLICK is required because the
+`╔ subcell-auth ═…╧…╗` and the interior cards (`team-nested-sub::C1..C4`). A CLICK is required because the
 narrow sidebar collapses the group (contract D3's declared bound).
+
+## Locale bound (why no zh-CN TUI twin ships)
+
+`DSH_TUI_LANG=en`, `=zh` and `=zh-CN` produce a BYTE-IDENTICAL DAG pane (the scene's chrome is English by
+design; the three committed `tui-pane-{en,zh,zh-lang}.txt` files prove it with the same sha256). A
+`zh-CN/` TUI twin would therefore be the same render relabelled, which the zh asset set forbids; the zh
+README cites this shared English-body capture with an explicit note instead. The zh WEB capture
+(`docs/assets/images/zh-CN/web-team-dag-groups.png`) IS its own Chinese-locale run.
