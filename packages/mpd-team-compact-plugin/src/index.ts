@@ -485,6 +485,27 @@ export function readAudits(workspace: string, teamId: string): CompactAudit[] {
 // ── failure classification ───────────────────────────────────────────────────
 
 /**
+ * Whether a rejected drive is an ABORT-SIGNAL rejection rather than a compaction failure.
+ *
+ * `compactNow`'s FIRST statement is `signal.throwIfAborted()`, so an aborted signal rejects with
+ * the signal's own reason — by default a `DOMException` named `AbortError` — before the engine does
+ * any work. Recognising that shape is what keeps a cancellation from being recorded as an
+ * unclassified failure; the pre-fix call passed `undefined` instead, which crashed as a raw
+ * `TypeError` inside the engine and never looked like an abort at all.
+ *
+ * @param error - the value the drive rejected with; any value may be thrown.
+ * @returns true when the value is an abort rejection.
+ */
+function isAbortRejection(error: unknown): boolean {
+  if (error === null || typeof error !== "object") return false
+  /** The thrown object's `name`/`code`, read defensively because any value may be thrown. */
+  const shaped = error as { name?: unknown; code?: unknown }
+  // `AbortError` is the standard DOMException that `throwIfAborted()` raises; `ABORT_ERR` (and its
+  // legacy numeric `code`) is the same class reached through a code instead of a name.
+  return shaped.name === "AbortError" || shaped.code === "ABORT_ERR" || shaped.code === 20
+}
+
+/**
  * Classify a thrown error from a compaction drive.
  *
  * The point of this function is the HINGE-F5 rule: a concurrent drive does NOT
@@ -492,10 +513,21 @@ export function readAudits(workspace: string, teamId: string): CompactAudit[] {
  * `cannot get required service "tokenMeter" in inactive context` — a Cordis
  * lifecycle failure. Those two families are recorded separately so a reader can tell
  * "the engine refused this compaction" from "we drove from a context that had moved on".
+ *
+ * A CANCELLATION is a third family and is classified FIRST: when the caller's pass signal is
+ * aborted, or the rejection is an abort, the drive is recorded with the engine's own `cancelled`
+ * code rather than as an unclassified failure.
+ *
+ * @param error - the value the drive rejected with.
+ * @param signal - the drive's own signal, when the caller can observe its aborted state.
+ * @returns our outcome token, the engine's failure code when one was carried, and the raw message.
  */
-export function classifyCompactionError(error: unknown): { outcome: CompactOutcome; failureCode?: string; error: string } {
+export function classifyCompactionError(error: unknown, signal?: AbortSignal): { outcome: CompactOutcome; failureCode?: string; error: string } {
   /** The thrown value's message, which is what the classification regexes below read. */
   const text = error instanceof Error ? error.message : String(error)
+  // A CANCELLED DRIVE IS A CANCELLATION, whatever it was reported as: an aborted signal must never
+  // reach the audit as an unclassified failure, and it must never surface as a TypeError either.
+  if (signal?.aborted === true || isAbortRejection(error)) return { outcome: "failed", failureCode: "cancelled", error: text }
   /** A machine-readable code carried by the thrown value, when it carries one. */
   const code = (error as { code?: unknown } | undefined)?.code
   /** The engine's failure code, taken from the error's own `code` first and only then from its message text. */
@@ -517,6 +549,12 @@ export function classifyCompactionError(error: unknown): { outcome: CompactOutco
 export interface CompactPassOptions {
   /** The terminal vocabulary the OWNER plugin exports. Defaults to the imported constant. */
   terminal: readonly string[]
+  /**
+   * Cancellation scoped to this pass. Every drive receives it COMBINED with the drive's own
+   * `AbortController` signal, so an aborted pass stops inside the engine instead of being reported
+   * as an unclassified failure. Omitted means nothing outside this module can cancel the pass.
+   */
+  signal?: AbortSignal
   /** Barrier: how long to wait for every member to reach idle. */
   idleWaitMs?: number
   /** How often the barrier re-reads the roster while it waits; defaults to the constant below. */
@@ -667,9 +705,18 @@ export async function compactTeamPass(
       records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "the member's scoped context exposes no compaction engine" })
       continue
     }
+    // F9: `compactNow`'s FIRST statement is `signal.throwIfAborted()`, so its second argument is
+    // MANDATORY. Passing `undefined` (the measured defect) threw a raw TypeError before any
+    // compaction work ran, so every drive looked like an unclassifiable failure. Each drive now
+    // receives a REAL signal from its own AbortController — combined with the pass's cancellation
+    // when the caller supplied one — and never `undefined`.
+    /** The controller whose signal scopes this ONE drive. */
+    const controller = new AbortController()
+    /** The signal the engine receives: this drive's own, plus the pass's when a caller supplied one. */
+    const signal = options.signal === undefined ? controller.signal : AbortSignal.any([options.signal, controller.signal])
     try {
       /** The engine's answer: a null/undefined result means "no safely compactable range" — a FACT, not a failure. */
-      const result = await engine.compactNow(entry.agent, undefined) as { shadowedTokenCount?: number; summarySeq?: number } | null | undefined
+      const result = await engine.compactNow(entry.agent, signal) as { shadowedTokenCount?: number; summarySeq?: number } | null | undefined
       if (result === null || result === undefined) {
         // Documented meaning: "no safe useful range exists". A FACT, not a failure.
         records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "no-safe-range" })
@@ -683,8 +730,8 @@ export async function compactTeamPass(
         })
       }
     } catch (error) {
-      /** The thrown error split into our outcome plus the engine's own code when it carried one. */
-      const classified = classifyCompactionError(error)
+      /** The thrown error split into our outcome plus the engine's own code when it carried one; an aborted drive is a cancellation. */
+      const classified = classifyCompactionError(error, signal)
       records.push({
         member: entry.member.name,
         sessionId: entry.member.id,
