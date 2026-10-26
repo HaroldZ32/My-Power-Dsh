@@ -164,7 +164,7 @@ accept  iff  estimate <= floor(window * windowFraction)
 ```
 
 The "grab real data, compute it in the program" rule is the second line: a task that declares a 2 MB
-file is refused with the number in front of it — `file X = 2,097,152 bytes ≈ 349,525 tokens > budget
+file is refused with the number in front of it — `file X = 2,097,152 bytes ≈ 699,051 tokens > budget
 250,000` — instead of a hand-wave, and an accepted task is priced against files that were really
 `stat`-ed.
 

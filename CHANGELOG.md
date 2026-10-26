@@ -85,21 +85,23 @@ handoff. Depth is capped at three, and the nesting capability rides the adapter'
 with an absolute `maxDepth`.
 
 Cell mail is cell-aware: `cellwork_send` resolves a member name, `captain` or a recipient in another
-sub-cell, journals the row in `<ws>/.mpd/team/mailbox.jsonl` with a `cell:<cellId>` stamp, and treats
-delivery as durable while the wake-up is best-effort — an UNDELIVERED row is surfaced by
-`cellwork_supervise`, not only on the pending board. The cell record is versioned, written through a
-temporary file plus a rename, refuses a corrupt or future-version state by absolute path, and is
-archived (never deleted) by `cellwork_stop`. Every number is a `cellwork.<key>` knob, with project
-file > row config > shipped default precedence.
+sub-cell, appends the row to the TARGET cell's `mail.jsonl` (the recipient cell's file for a cross-cell
+send) and records the send in the sender's journal under a `cell:<cellId>` stamp with
+`toCell:<target>`; delivery is durable while the wake-up is best-effort — an UNDELIVERED row is
+surfaced by `cellwork_supervise`, not only on the pending board. The cell record is versioned, written
+through a temporary file plus a rename, refuses a corrupt or future-version state by absolute path,
+and is archived (never deleted) by `cellwork_stop`. Every number is a `cellwork.<key>` knob, with
+project file > row config > shipped default precedence.
 
 Docs ship as a bilingual pair: `docs/cellwork.md` + `docs/cellwork.zh-CN.md` (switch link under the
 title, identical heading tree) plus pointers from `docs/user-guide{,.zh-CN}.md` §6 and §12, and the
 package README pair. **Declared bounds, stated in both languages:** the mount proof supplies the row
 through a `--patch` overlay with an absolute module path because this machine resolves a stale
-`@mpd-dsh/mpd` (the bundle wiring itself rests on `verify:rows`/`verify:manifest`);
-`verify-pack-closure` stays red (`PACKED-MISSING`) until the Wave-5 re-pack; mail wake-up and reseed
-are best-effort; checkpoints require an OBSERVED window; `parent_team_id` and nested DAG groups are
-deferred to Wave 4; no live-LLM end-to-end cell run is claimed.
+`@mpd-dsh/mpd` (the bundle wiring itself rests on `verify:rows`/`verify:manifest`); the Wave-5 re-pack
+closed `verify-pack-closure` (622/622 files identical, 0 drift); mail wake-up and reseed are
+best-effort; checkpoints require an OBSERVED window; the parent-team link is IMPLICIT (derived at
+approval, not a knob); nested DAG groups ship for the shared model, the team projection and the TUI,
+while the WEB nested frame is a declared follow-up; no live-LLM end-to-end cell run is claimed.
 
 **Fixed — `mpd-team-compact` passes a real `AbortSignal` to `compactNow`.** The call passed
 `undefined`, and `compactNow`'s first statement (`signal.throwIfAborted()`, outside its own try

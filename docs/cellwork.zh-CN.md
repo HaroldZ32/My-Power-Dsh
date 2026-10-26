@@ -123,9 +123,9 @@ team id 与 cell id 都不变，因此 cell 的 journal、邮件与看板始终�
 部署里没有分词器，所以插件用实测字节与可配置比率算一个刻意保守的估算：
 
 ```text
-estimate = fixedOverhead[route]                    # 配置项，以一次实测的 28,544 token 会话为种子
-         + ceil(asciiChars  / asciiCharsPerToken)  # 随包默认 32,000
-         + ceil(cjkChars    / cjkCharsPerToken)    # 英文 3 字符/token，CJK 1 字符/token
+estimate = fixedOverhead[route]                    # 配置项：以一次实测的 28,544 token 会话为种子，随包默认 32,000
+         + ceil(asciiChars  / asciiCharsPerToken)  # 英文默认 3 字符/token
+         + ceil(cjkChars    / cjkCharsPerToken)    # CJK 1 字符/token
          + 4 * contentBlocks + 4                   # 宿主的框架性开销
          + measuredInputs
          + ceil(toolSchemaChars / asciiCharsPerToken) + 4
@@ -140,7 +140,7 @@ accept  iff  estimate <= floor(window * windowFraction)
 ```
 
 「抓真实数据、在程序里算」这条规则就落在第二行：一个声明了 2 MB 文件的任务会被**带着数字**拒绝——
-`file X = 2,097,152 bytes ≈ 349,525 tokens > budget 250,000`——而不是含糊带过；被接受的任务则是按真正
+`file X = 2,097,152 bytes ≈ 699,051 tokens > budget 250,000`——而不是含糊带过；被接受的任务则是按真正
 `stat` 过的文件计价的。
 
 第二条接受条件为模型的最大输出与宿主的压缩预留（默认 65,536 token）留出空间，因此一个被接受的任务不会
