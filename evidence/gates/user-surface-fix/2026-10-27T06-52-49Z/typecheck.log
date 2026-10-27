@@ -1,0 +1,3 @@
+$ tsgo --noEmit
+skills/dsh-qa/scripts/lib/user-surface-probe.ts(269,32): error TS2339: Property 'ticks' does not exist on type 'ProbeConfig'.
+error: script "typecheck" exited with code 1
