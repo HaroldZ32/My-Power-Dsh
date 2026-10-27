@@ -1,0 +1,43 @@
+== environment ==
+sandbox root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify
+DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome
+HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+session workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws
+launcher on PATH: /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui
+launcher version: @deepseek-harness-tui/dsh-tui 0.17.0 (launcher)
+profile: 0.17.0  /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+dsh on PATH: /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh (version 0.2.1-rc.3)
+global @mpd-dsh/mpd present: false
+profile cordis.patch.yml sha256=0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca
+profile package.json sha256=7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f
+cellwork module exists=true bytes=277374
+cellwork row at cordis.patch.yml:510
+== HOME fixture ==
+wrote .tmp-cellwork-reverify/home/.dsh-tui/onboarding.json preset=mpd
+wrote .tmp-cellwork-reverify/home/.dsh-tui/agent-preset.json preset=mpd
+== boot (no --patch, no absolute row path) ==
+the child env carries: DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+the boot command is the launcher alone: env -i <sandbox vars> dsh-tui   (no --patch, no module path)
+boot failures=[]
+crashSignatures=[]
+pane boot -> evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/boot.pane.txt
+pane live -> evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/live.pane.txt
+== live processes carrying dsh ==
+    492     282       00:10 node /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui
+    499     492       00:10 /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js
+    507     499       00:10 /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-entry.js
+    577     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js
+    583     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js
+    584     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/launch.js
+    606     584       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph/npm-shim.js serve --mcp
+    613     606       00:07 /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/node --liftoff-only --disable-warning=ExperimentalWarning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/lib/dist/bin/codegraph.js serve --mcp
+    624     613       00:07 /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/node -e  const fs = require('fs'); const parentPid = Number(process.argv[1]); const timeoutMs = Number(process.argv[2]); const capMs = Number(process.argv[3]); const progressPaths = process.argv.slice(4); const secs = Math.round(timeoutMs / 1000); function kill(extra) {   try { fs.writeSync(2, Buffer.from('[CodeGraph] Main thread unresponsive for ~' + secs + 's' + (extra || '') + ' — killing the wedged process so a fresh one can start (#850). Disable with CODEGRAPH_NO_WATCHDOG=1.\n')); } catch (e) {}   try { process.kill(parentPid, 'SIGKILL'); } catch (e) {}   process.exit(0); } // Fingerprint of the watched files (size + mtime). A change between checks is // forward disk progress — a slow synchronous SQLite statement, not a wedge. function snap() {   let s = '';   for (const p of progressPaths) {     try { const st = fs.statSync(p); s += st.size + ':' + st.mtimeMs + ';'; } catch (e) { s += 'x;'; }   }   return s; } let lastSnap = progressPaths.length ? snap() : ''; let lastSnapAt = Date.now(); let silentSince = null; // start of the current continuous-silence episode function onTimeout() {   if (!progressPaths.length) return kill('');   const now = Date.now();   if (silentSince === null) silentSince = now - timeoutMs; // silence began ~one timeout ago   const cur = snap();   if (cur !== lastSnap && now - silentSince < capMs) {     // The event loop is blocked but the DB files are advancing: a legitimate     // long store on slow storage. Defer, re-baseline, keep watching.     lastSnap = cur;     timer = setTimeout(onTimeout, timeoutMs);     return;   }   kill(cur !== lastSnap ? ' despite ongoing disk activity (hard cap ' + Math.round(capMs / 1000) + 's reached)' : ''); } let timer = setTimeout(onTimeout, timeoutMs); process.stdin.on('data', () => {   silentSince = null;   // Keep the baseline fresh while healthy (throttled — a stat per second).   if (progressPaths.length) {     const t = Date.now();     if (t - lastSnapAt >= 1000) { lastSnap = snap(); lastSnapAt = t; }   }   clearTimeout(timer); timer = setTimeout(onTimeout, timeoutMs); }); process.stdin.on('end', () => process.exit(0));   // parent closed the pipe (exited) -> no orphan process.stdin.on('error', () => process.exit(0)); // pipe broke -> parent gone process.stdin.resume();  613 60000 600000
+== boot face (context line) ==
+▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 18 段 · 运行时上下文 3 项 · 技能 20 · 工具 117                                                       │
+== log sinks: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/logs ==
+sinks present (18): mpd-bootstrap.log, mpd-cellwork.log, mpd-codegraph.log, mpd-config.log, mpd-dsh-adapter.log, mpd-ext.log, mpd-goal.log, mpd-mcp-astgrep.log, mpd-mcp-codegraph.log, mpd-mcp-lsp.log, mpd-patch-guards.log, mpd-roles.log, mpd-roster.log, mpd-team-core.log, mpd-team-watchdog.log, mpd-tui-panels.json, mpd-tui.log, mpd-verify.log
+mpd-cellwork.log exists=true
+--- mpd-cellwork.log ---
+[2026-10-27T02:18:49.638Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none
+== session headers ==
+raw terminal log bytes=3585745 gzip=1580864 (full log kept as tui-pane.log.gz)

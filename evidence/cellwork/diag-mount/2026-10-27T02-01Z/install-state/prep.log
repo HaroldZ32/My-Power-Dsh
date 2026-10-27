@@ -1,0 +1,83 @@
+# install-state + copy fidelity — 2026-10-27T02:18:43Z
+workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify
+DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome
+HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+session workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws
+
+== 1. global npm state (the removal is the change under test) ==
+$ npm ls -g --depth=0
+/home/haroldzhao/.nvm/versions/node/v24.21.0/lib
+├── @deepseek-ai/dsh@0.2.1-rc.3
+├── @deepseek-harness-tui/dsh-tui@0.17.0
+├── corepack@0.36.0
+└── npm@11.19.0
+
+[exit=0]
+
+== 1b. global @mpd-dsh directory ==
+npm root -g=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules
+$ ls -la /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh
+total 8
+drwxrwxr-x 2 haroldzhao haroldzhao 4096 Oct 27 09:58 .
+drwxr-xr-x 7 haroldzhao haroldzhao 4096 Oct 26 11:15 ..
+[exit=0]
+
+== 2. what the loader's install anchor resolves for @mpd-dsh/mpd ==
+INSTALL_ANCHOR=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/node_modules/@mpd-dsh/mpd
+miss /home/node_modules/@mpd-dsh/mpd
+miss /node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.node_libraries/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node/@mpd-dsh/mpd
+== 3. profile bundle under the sandbox copy ==
+bundle version=0.16.1
+cellwork module=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js
+0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml
+019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/package.json
+c3f2358eb308837c761d5842d681fe2043bef0b2ca50eb974dee025ec1b0f98f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js
+7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/package.json
+33155529ce3d7ff221aaa18fb5badc45c1236a1033723106e664f33bc5d54333  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml
+-- cellwork row in the bundle patch --
+510:    - id: mpd-cellwork
+511-      name: '@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js'
+512-      config: {}
+513-    # Bundle asset provisioning (no home writes since 0.3.0): registers the
+-- cellwork tools in the installed module bytes --
+cellwork_activate
+cellwork_context
+cellwork_dispatch
+cellwork_handoff
+cellwork_inbox
+cellwork_recon
+cellwork_requirements
+cellwork_send
+cellwork_split
+cellwork_start
+cellwork_status
+cellwork_stop
+cellwork_subteam
+cellwork_supervise
+count=14
+== 4. copy fidelity: per-file sha256 manifest, source vs copy ==
+reset+recopy: profile dir replaced, ws/.mpd + sessions cleared, credentials + agent-preset refreshed
+source files=18721 bytes=434882598
+copy   files=18721 bytes=434882598
+MANIFEST IDENTICAL: every one of the 18721 files has the same sha256
+da43b6df8422c94b9c8433cc92e522ea303588afffb3c2f2ed68b41facb93746  evidence/cellwork/diag-mount/2026-10-27T02-01Z/install-state/manifest-copy.txt
+== 5. HOME fixture + credentials ==
+agent-preset.json (copied from $HOME/.dsh-tui): {
+  "preset": "mpd"
+}
+onboarding.json written: {"completed": true, "version": 1} (the host's wizard-skip schema; the real HOME has no such file because onboarding is already done)
+credentials copied once into the sandbox: 600 711 bytes (values never printed)
+
+DONE

@@ -1,0 +1,21 @@
+# Bundle-patch provenance (read-only inspection; nothing written outside the workspace)
+
+installed profile bundle (0.16.1)  cordis.patch.yml sha256 0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca
+sandbox copy of the same file      cordis.patch.yml sha256 0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca
+GLOBAL installation bundle         cordis.patch.yml sha256 8f7f0a293907275c066fc1869a7489f67f3a76ab5f5054999f568d76a46519d3
+installed profile bundle  package.json sha256 019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff
+sandbox copy              package.json sha256 019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff
+profile manifest (installed) sha256 7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f
+profile manifest (copy)      sha256 7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f
+installed cellwork module bytes 277374 sha256 c3f2358eb308837c761d5842d681fe2043bef0b2ca50eb974dee025ec1b0f98f
+
+global bundle version 0.15.5; mpd-cellwork-plugin present in its packages/: false
+profile bundle version 0.16.1; mpd-cellwork-plugin present in its packages/: true
+
+row ids in the GLOBAL bundle patch: 35
+row ids in the PROFILE bundle patch: 36
+in PROFILE only: [{"line":510,"id":"mpd-cellwork"}]
+in GLOBAL only: []
+
+COMPOSED dump (profile: dsh-tui, NO overlay) row ids: 189
+rows in the PROFILE bundle patch but ABSENT from the composed tree: [[510,"mpd-cellwork"]]

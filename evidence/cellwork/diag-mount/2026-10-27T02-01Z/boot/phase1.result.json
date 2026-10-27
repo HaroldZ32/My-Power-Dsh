@@ -1,0 +1,37 @@
+{
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify",
+  "outDir": "evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot",
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui",
+  "dsh": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "profileDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui",
+  "patchSha256": "0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca",
+  "cellworkModuleBytes": 277374,
+  "failures": [],
+  "crashSignatures": [],
+  "sinks": [
+    "mpd-bootstrap.log",
+    "mpd-cellwork.log",
+    "mpd-codegraph.log",
+    "mpd-config.log",
+    "mpd-dsh-adapter.log",
+    "mpd-ext.log",
+    "mpd-goal.log",
+    "mpd-mcp-astgrep.log",
+    "mpd-mcp-codegraph.log",
+    "mpd-mcp-lsp.log",
+    "mpd-patch-guards.log",
+    "mpd-roles.log",
+    "mpd-roster.log",
+    "mpd-team-core.log",
+    "mpd-team-watchdog.log",
+    "mpd-tui-panels.json",
+    "mpd-tui.log",
+    "mpd-verify.log"
+  ],
+  "cellworkSink": true,
+  "panes": [
+    "evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/boot.pane.txt",
+    "evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/live.pane.txt"
+  ],
+  "rawLogBytes": 3585745
+}

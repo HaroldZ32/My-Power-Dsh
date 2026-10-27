@@ -1,0 +1,127 @@
+== sandbox ==
+root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui
+profileDir exists=true
+bundle cordis.patch.yml sha256=0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca
+cellwork module exists=true bytes=277374
+cellwork row at cordis.patch.yml:510
+  510:     - id: mpd-cellwork
+  511:       name: '@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js'
+  512:       config: {}
+== HOME fixture ==
+wrote .tmp-mount-check/tui/home/.dsh-tui/onboarding.json preset=mpd
+wrote .tmp-mount-check/tui/home/.dsh-tui/agent-preset.json preset=mpd
+== boot ==
+DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/home
+DSH_TUI_NO_LAUNCHPAD=1
+boot failures=[]
+crashSignatures=[]
+pane boot -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/diag-mount/2026-10-27T01-50-mount/boot.pane.txt
+pane slash -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/diag-mount/2026-10-27T01-50-mount/slash.pane.txt
+pane escape -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/diag-mount/2026-10-27T01-50-mount/escape.pane.txt
+== log sinks: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws/.mpd/logs ==
+--- mpd-bootstrap.log ---
+[2026-10-27T01:50:30.743Z] [mpd-bootstrap] skill corpus served from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/skills (provider mpd-bundle, bundle 0.16.1)
+--- mpd-codegraph.log ---
+[2026-10-27T01:50:30.739Z] [mpd-codegraph] init status=ok binary=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph/npm-shim.js cwd=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws
+--- mpd-config.log ---
+[2026-10-27T01:50:30.883Z] [mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[2026-10-27T01:50:31.001Z] [mpd-config] entry-config update: state re-loaded from the "mpd-config" document (4 knob(s) in force) — no restart needed
+--- mpd-dsh-adapter.log ---
+[2026-10-27T01:50:28.892Z] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[2026-10-27T01:50:28.893Z] [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+[2026-10-27T01:50:28.895Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.899Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.904Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.905Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.914Z] [mpd-verify] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.918Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.919Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.920Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:28.921Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:30.740Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:30.742Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:30.743Z] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:30.744Z] [mpd-project-init] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+--- mpd-ext.log ---
+[2026-10-27T01:50:28.907Z] [mpd-ext] ADAPTER NOT YET ACTIVE: mpdDsh is registered in this composition but its provider fiber is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).
+[2026-10-27T01:50:30.835Z] [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+--- mpd-goal.log ---
+[2026-10-27T01:50:28.899Z] mounted: enabled=true autoAnchor=true autoRounds=32
+--- mpd-mcp-astgrep.log ---
+
+--- mpd-mcp-codegraph.log ---
+[2026-10-27T01:50:31.397Z] [mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[2026-10-27T01:50:31.719Z] [mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+--- mpd-mcp-lsp.log ---
+[2026-10-27T01:50:31.392Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T01:50:31.400Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-27T01:50:31.429Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws/.mpd/lsp/cclsp.json
+[2026-10-27T01:50:31.430Z] Loaded 2 server configurations from env
+[2026-10-27T01:50:31.430Z] CCLSP Server running on stdio
+[2026-10-27T01:50:31.430Z] Scanning configured server directories for supported file types
+[2026-10-27T01:50:31.430Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T01:50:31.434Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws for extensions: rs
+[2026-10-27T01:50:31.435Z] Starting 0 LSP servers...
+[2026-10-27T01:50:31.435Z] LSP server preloading completed
+[2026-10-27T01:50:31.712Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T01:50:31.719Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-27T01:50:31.730Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws/.mpd/lsp/cclsp.json
+[2026-10-27T01:50:31.730Z] Loaded 2 server configurations from env
+[2026-10-27T01:50:31.730Z] CCLSP Server running on stdio
+[2026-10-27T01:50:31.730Z] Scanning configured server directories for supported file types
+[2026-10-27T01:50:31.730Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T01:50:31.737Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/ws for extensions: rs
+[2026-10-27T01:50:31.738Z] Starting 0 LSP servers...
+[2026-10-27T01:50:31.738Z] LSP server preloading completed
+--- mpd-patch-guards.log ---
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)
+--- mpd-roles.log ---
+[2026-10-27T01:50:31.347Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy
+[2026-10-27T01:50:31.347Z] [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[2026-10-27T01:50:35.817Z] [mpd-roles] roster section registered for agent "f7d1a599-7cb8-4a92-8e05-8d6dc9c483e8" agentPreset=mpd — mpd:roster order=605
+[2026-10-27T01:50:35.818Z] [mpd-roles] session gate listener registered for agent "f7d1a599-7cb8-4a92-8e05-8d6dc9c483e8" agentPreset=mpd
+--- mpd-roster.log ---
+[2026-10-27T01:50:31.351Z] [mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+--- mpd-team-core.log ---
+[2026-10-27T01:50:30.869Z] [mpd-team-core] team workflow plane: staged=0 hold=none registrations=9 (5 tools + the /agent-teams command + the team-door guard)
+[2026-10-27T01:50:30.869Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no team service is mounted either — every team call will refuse)
+[2026-10-27T01:50:30.870Z] [mpd-team-core] team web routes: /plugins/mpd-team/state /plugins/mpd-team/plan /plugins/mpd-team/task /plugins/mpd-team/mail /plugins/mpd-team/events
+[2026-10-27T01:50:31.225Z] [mpd-team-core] team executor: native (native: the default backend — bound startActivation() on the harness subagent seam, and it needs nothing from the official plugin)
+--- mpd-team-watchdog.log ---
+[2026-10-27T01:50:28.903Z] [mpd-team-watchdog] applied: enabled=true warnSilenceMs=600000 tickIntervalMs=15000 warnStreakToEscalate=6 actionOnEscalate=warn-only stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+--- mpd-tui-panels.json ---
+{
+  "version": 3,
+  "panelIds": [
+    "session:act1:team",
+    "session:act1:workmate",
+    "session:act1:watchdog"
+  ],
+  "slugs": [
+    "act1:team",
+    "act1:workmate",
+    "act1:watchdog"
+  ],
+  "updatedAt": "2026-10-27T01:50:32.494Z",
+  "provenance": {
+    "hostRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "hostVersion": "0.17.0",
+    "readBack": "tuiPanels.list",
+    "activation": "session"
+  },
+  "history": []
+}
+--- mpd-tui.log ---
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui] decision-event seam: no intercept point attempted — the mediated plugin host was not injected (read at apply time; the seam discloses its own verdict once it binds)
+[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped
+[mpd-tui-adapter] host contact bound: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui (lib/types/ui.js)
+[mpd-tui] settings section mpd route options: provider=live(4) model=declared(4) reasoningEffort=declared(4) catalog=live
+[mpd-tui] decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused (first refusal: the calling activation has no verified dsh-plugin.json Component identity). No input/rewind/session-switch/compact interception is claimed.
+mpd-tui panel enable keeper: standing down READ-ONLY on host 0.17.0 — the host owns the sidebar enable list (>= 0.16.1); this keeper never writes it again
+--- mpd-verify.log ---
+[2026-10-27T01:50:28.917Z] [mpd-verify] verifySeam=present (the harness tools.guard SEAM — NOT an installed gate: the write guard is WITHDRAWN; the mpd-roles row reports its own state) loops=0 installedAt=2026-10-27T01:50:28.916Z delegationObserver=installed tools=5 mode=hard guard=seam-present bootMarker=written
+== session headers ==

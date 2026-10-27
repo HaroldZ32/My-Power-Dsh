@@ -1,0 +1,485 @@
+[
+  {
+    "id": "mpd-better-sidebar",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+    "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+  },
+  {
+    "id": "mcp-astgrep",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mcp-git",
+    "ok": true,
+    "witness": "disabled-by-design",
+    "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+    "raw": "disabled=true in both the patch and the boot (state=null)"
+  },
+  {
+    "id": "mcp-shell",
+    "ok": true,
+    "witness": "disabled-by-design",
+    "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+    "raw": "disabled=true in both the patch and the boot (state=null)"
+  },
+  {
+    "id": "mcp-lsp",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mcp-codegraph",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-web-compat",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-dsh-adapter",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-dsh-adapter.log bytes>0"
+  },
+  {
+    "id": "mpd-config",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-config.log bytes>0"
+  },
+  {
+    "id": "mpd-goal",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-goal.log bytes>0"
+  },
+  {
+    "id": "mpd-team-watchdog",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-team-watchdog.log bytes>0"
+  },
+  {
+    "id": "mpd-tools",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-modelchain",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_modelchain_resolve,mpd_memory_save,mpd_memory_recall"
+  },
+  {
+    "id": "mpd-ext",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-ext.log bytes>0"
+  },
+  {
+    "id": "mpd-roles",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-roles.log bytes>0"
+  },
+  {
+    "id": "mpd-verify",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-verify.log bytes>0"
+  },
+  {
+    "id": "mpd-ulw",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-hashline",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_hashline_read,mpd_hashline_edit,mpd_hashline_format,mpd_hashline_restore"
+  },
+  {
+    "id": "mpd-boulder",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_boulder_status,mpd_boulder_start,mpd_boulder_complete,mpd_boulder_task_timer,mpd_boulder_plan_progress,mpd_boulder_plans"
+  },
+  {
+    "id": "mpd-comment-checker",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_comment_check"
+  },
+  {
+    "id": "mpd-codegraph",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-codegraph.log bytes>0"
+  },
+  {
+    "id": "mpd-memory",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_memory_write,mpd_memory_read,mpd_memory_reflect,mpd_memory_reflect_complete,mpd_memory_status"
+  },
+  {
+    "id": "mpd-workmate",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-team-core",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-team-core.log bytes>0"
+  },
+  {
+    "id": "mpd-team-compact",
+    "ok": true,
+    "witness": "registration",
+    "reason": "a name the row's own module declares is live in the boot's registry",
+    "raw": "live=mpd_team_compact_run,mpd_team_compact_status"
+  },
+  {
+    "id": "mpd-cellwork",
+    "ok": false,
+    "witness": "none",
+    "reason": "the row is declared by the release artifact but the real boot's loader holds NO entry for it — the boot did not compose this row",
+    "raw": "patch=cordis.patch.yml:510 name=@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js; loader entries=154"
+  },
+  {
+    "id": "mpd-bootstrap",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-bootstrap.log bytes>0"
+  },
+  {
+    "id": "mpd-project-init",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-tui-adapter",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-tui",
+    "ok": true,
+    "witness": "sink",
+    "reason": "the row's own log sink exists and is non-empty after the boot",
+    "raw": "sink=<ws>/.mpd/logs/mpd-tui.log bytes>0"
+  },
+  {
+    "id": "mpd-agent-team",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+    "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+  },
+  {
+    "id": "mpd-roster-provider",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mpd-tool-agent-team",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+    "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+  },
+  {
+    "id": "mpd-ui-agent-team",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mcp-context7",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "mcp-grepapp",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "preset-mpd",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "persona",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:95 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "agent-instructions",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "time-context",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:172 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "tool-bash",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-pwsh",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-fs",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-fs-search",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-jobs",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-schedule",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:219 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "skill-filesystem",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-skill",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "command-goal",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+    "raw": "state=null runtime=false disabled=false patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-goal",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "planning",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:257 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "plan-mode",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "compaction",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:290 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "compaction-basic",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "command-compact",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-result-pruner",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "delegation",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:327 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "tool-subagent-control",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-subagent-list-agents",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-subagent",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-subagent-fork",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "workflow-ptc",
+    "ok": true,
+    "witness": "loader-active",
+    "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+    "raw": "state=2 runtime=true disabled=false"
+  },
+  {
+    "id": "tool-workflow",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-ask-user",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:361 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "tool-todo",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "tool-web",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+  },
+  {
+    "id": "present",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:381 agentPreset=mpd loaderEntries=154"
+  },
+  {
+    "id": "tool-plugin-manager",
+    "ok": true,
+    "witness": "disabled-by-design",
+    "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+    "raw": "disabled=true in both the patch and the boot (state=null)"
+  },
+  {
+    "id": "tool-plugin-market",
+    "ok": null,
+    "witness": "declared-bound",
+    "reason": "preset-owned row declared DISABLED: the preset carries it as data and this plane exposes no entry — composed, NOT individually proven",
+    "raw": "patch=presets/mpd.patch.yml:393 declared disabled=true; loader entry absent"
+  }
+]

@@ -1,0 +1,18 @@
+=== install-anchor (global dsh CLI) ===
+anchor=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+resolveBundleDir-like pick=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd version=0.15.5
+layer @deepseek-ai/dsh-base packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"]
+layer @deepseek-harness-tui/dsh-tui packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+composed rows=152 mpd-cellwork present=false mpd-bootstrap present=true
+=== profile-anchor ===
+anchor=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/package.json
+resolveBundleDir-like pick=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd version=0.16.1
+layer @deepseek-harness-tui/dsh-tui packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+composed rows=57 mpd-cellwork present=true mpd-bootstrap present=true
+=== arm 3: install anchor for in-box bundles, profile anchor for @mpd-dsh/mpd ===
+layer @deepseek-ai/dsh-base packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base
+layer @deepseek-harness-tui/dsh-tui packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui
+layer @mpd-dsh/mpd packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-mount-check/tui/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+composed rows=153 mpd-cellwork present=true

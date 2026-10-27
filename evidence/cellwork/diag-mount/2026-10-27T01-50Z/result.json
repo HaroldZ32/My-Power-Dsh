@@ -1,0 +1,65 @@
+{
+  "case": "cellwork-row-not-mounted-in-installed-dsh-tui-profile",
+  "date": "2026-10-27T01:47Z..02:12Z",
+  "verdict": "REPRODUCED: the mpd-cellwork row is NEVER COMPOSED into the tree, so apply() never runs and none of the 14 tools or /cellwork is registered. Root cause: bundle-layer resolution is install-anchor-first and the machine global @mpd-dsh/mpd is a stale 0.15.5 whose cordis.patch.yml has no mpd-cellwork row.",
+  "reproduction": "real dsh-tui boot, isolated DSH_HOME+HOME+workspace, NO --patch overlay, copied profile (byte-identical)",
+  "observations": {
+    "composedRowsToday": 152,
+    "composedRowsWithProfileBundle": 153,
+    "modelFacingTools": 103,
+    "cellworkTools": 0,
+    "registeredCommands": 94,
+    "cellworkCommand": false,
+    "cellworkLogSink": false,
+    "loaderOrApplyCrashSignatures": []
+  },
+  "mechanism": [
+    "@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js:857 spawn(dsh --profile dsh-tui)",
+    "@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:119 INSTALL_ANCHOR = <global dsh>/package.json",
+    "@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:218 loadProfile(NAME, name, INSTALL_ANCHOR, ...)",
+    "@deepseek-ai/dsh-app-boot/lib/index.js:995-1001 resolveBundleDir tries installAnchor BEFORE the profile",
+    "@deepseek-ai/dsh-app-boot/lib/index.js:976-982 packageDirFromAnchor walks createRequire(anchor).resolve.paths",
+    "global @mpd-dsh/mpd = 0.15.5, 35 rows, no mpd-cellwork, no packages/mpd-cellwork-plugin",
+    "profile @mpd-dsh/mpd = 0.16.1, 36 rows, mpd-cellwork at cordis.patch.yml:510",
+    "@deepseek-ai/dsh-app-boot/lib/index.js:4125-4135 row modules resolve via bareModuleBaseUrl (profile) -> 0.15.5 row LIST + 0.16.1 module bytes"
+  ],
+  "ruledOut": {
+    "a": "module resolves and imports (exports apply,inject,name; no Config)",
+    "b": "apply never runs; zero loader/crash signatures",
+    "c": "no later layer mentions or disables mpd-cellwork",
+    "d": "no Config export, so config:{} cannot be rejected"
+  },
+  "evidence": {
+    "noOverlayBoot": "no-overlay-boot/",
+    "registrationSurface": "registration-surface/",
+    "composition": "composition/",
+    "scripts": "scripts/"
+  },
+  "commands": [
+    {
+      "cmd": "bun .tmp-mount-check/phase1.ts <sandbox> <out>",
+      "exit": 0
+    },
+    {
+      "cmd": "bun .tmp-mount-check/phase2.ts <sandbox> <out> --append-route",
+      "exit": 0
+    },
+    {
+      "cmd": "bun .tmp-mount-check/phase3.ts <sandbox> <out>",
+      "exit": 0
+    },
+    {
+      "cmd": "node .tmp-mount-check/probe-anchor.mjs <sandboxProfile>",
+      "exit": 0
+    },
+    {
+      "cmd": "DSH_HOME=<sandbox> HOME=<sandboxHome> node scripts/dump-config.ts --profile dsh-tui --json",
+      "exit": 0
+    }
+  ],
+  "notProven": [
+    "the historical 14 sessions themselves (today boot + the captain measured 103 tools match exactly)",
+    "a live boot of the remedied machine (removing the stale global 0.15.5 is outside this write scope)",
+    "the model turn itself: the stub received 0 requests, so the request/header is the last recorded evidence, not an answer"
+  ]
+}

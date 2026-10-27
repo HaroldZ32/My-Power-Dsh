@@ -1,0 +1,126 @@
+{
+  "case": "cellwork-mounts-on-real-dsh-tui-path-after-global-mpd-removal",
+  "date": "2026-10-27T02:01Z..02:20Z",
+  "verdict": "PASS — all three criteria met on a real no-overlay dsh-tui boot after the global @mpd-dsh/mpd@0.15.5 removal",
+  "changeUnderTest": "captain ran `npm rm -g @mpd-dsh/mpd`; the install anchor no longer resolves a bundle, so the loader falls through to the profile copy (0.16.1)",
+  "criteria": {
+    "composition": {
+      "required": "153 rows, mpd-cellwork in the tree",
+      "observed": {
+        "bootCallPathRows": 153,
+        "bundleLayerRows": 153,
+        "dumpConfigTopLevelRows": 153,
+        "mpdCellworkPresent": true,
+        "mpdCellworkComposedIndex": 141,
+        "bundleLayerResolvedTo": "<sandbox DSH_HOME>/profiles/dsh-tui/node_modules/@mpd-dsh/mpd (0.16.1)",
+        "previousRound": "152 rows, row absent (install anchor picked the global 0.15.5)"
+      },
+      "pass": true,
+      "bound": "a boot prints no row count; 153 is measured at the loader layer by replaying the boot's own loadProfile call, and independently by --dump-config (COMPOSITION ONLY). The boot itself proves presence and apply()."
+    },
+    "toolRegistration": {
+      "required": "the 14 cellwork_* names on the model-facing tool list (at least cellwork_status/start/stop)",
+      "observed": {
+        "recordedToolNames": 117,
+        "cellworkNames": ["cellwork_activate", "cellwork_context", "cellwork_dispatch", "cellwork_handoff", "cellwork_inbox", "cellwork_recon", "cellwork_requirements", "cellwork_send", "cellwork_split", "cellwork_start", "cellwork_status", "cellwork_stop", "cellwork_subteam", "cellwork_supervise"],
+        "stubWireOfferedTools": 117,
+        "requestHeaderRecords": 1,
+        "realToolCall": "tool/call cellwork_status { } -> tool/result (structured refusal: no cell active in this workspace)",
+        "previousRound": "103 tools, 0 cellwork_*"
+      },
+      "pass": true,
+      "surface": "the harness's own request/header record + the loopback model's wire tools[]; --dump-config was NOT used"
+    },
+    "commandRegistration": {
+      "required": "cellwork in the command palette, /agent-teams as the positive control, with the item counts and matched text",
+      "observed": {
+        "emptyQueryItems": 95,
+        "controlAgentTeams": { "items": 1, "row": "agent-teams     [what the team is for] Stage a team for the current goal: /agent-teams <what the team is for>" },
+        "treatmentCellwork": { "items": 1, "row": "cellwork     [objective] Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatche…" },
+        "previousRound": "94 items; control hit, /cellwork no match"
+      },
+      "pass": true
+    }
+  },
+  "environment": {
+    "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui (@deepseek-harness-tui/dsh-tui 0.17.0)",
+    "dsh": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh (0.2.1-rc.3)",
+    "dshHome": "<ws>/.tmp-cellwork-reverify/dshhome",
+    "home": "<ws>/.tmp-cellwork-reverify/home",
+    "workspace": "<ws>/.tmp-cellwork-reverify/ws",
+    "profileSource": "~/.dsh/profiles/dsh-tui (copied with cp -a)",
+    "overlay": "NONE — no --patch, no absolute module path",
+    "profileCopy": {
+      "files": 18721,
+      "bytes": 434882598,
+      "manifestIdentical": true,
+      "manifestSha256": "da43b6df8422c94b9c8433cc92e522ea303588afffb3c2f2ed68b41facb93746",
+      "postBootManifestIdentical": true,
+      "sha256": {
+        "bundleCordisPatch": "0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca",
+        "bundlePackageJson": "019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff",
+        "cellworkModule": "c3f2358eb308837c761d5842d681fe2043bef0b2ca50eb974dee025ec1b0f98f",
+        "profilePackageJson": "7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f",
+        "profileUserLayer": "33155529ce3d7ff221aaa18fb5badc45c1236a1033723106e664f33bc5d54333"
+      }
+    },
+    "deviations": [
+      "the home/profile dirs are a sandbox (workspace-write policy); the profile is a byte-identical copy at the same profiles/dsh-tui relative path",
+      "<HOME>/.dsh-tui/agent-preset.json copied from the real ~/.dsh-tui/agent-preset.json ({\"preset\":\"mpd\"}); onboarding.json written by the lane (the real HOME has none — onboarding already completed)",
+      "<DSH_HOME>/.credentials.yaml copied once into the sandbox (values never printed); the only endpoint used is the loopback model stub",
+      "phase 2 adds two env keys only: DEEPSEEK_BASE_URL=http://127.0.0.1:<stub> + a dummy DEEPSEEK_API_KEY; the profile is not edited"
+    ]
+  },
+  "commands": [
+    { "cmd": "bash .tmp-cellwork-reverify/prep.sh", "exit": 0 },
+    { "cmd": "bun .tmp-cellwork-reverify/phase1.ts <sandbox> <ev>/boot", "exit": 0 },
+    { "cmd": "bun .tmp-cellwork-reverify/phase2-registration.ts <sandbox> <ev>/registration", "exit": 0 },
+    { "cmd": "node .tmp-cellwork-reverify/probe-composition.mjs <profileDir> <ev>/composition <dshhome>", "exit": 0 },
+    { "cmd": "DSH_HOME=<sb>/dshhome HOME=<sb>/home node scripts/dump-config.ts --profile dsh-tui --json", "exit": 0 },
+    { "cmd": "bun .tmp-cellwork-reverify/extract-header.ts <sandbox> <ev>/registration", "exit": 0 }
+  ],
+  "bootFacts": {
+    "failures": [],
+    "crashSignatures": [],
+    "modelFacingToolsOnBootLine": 117,
+    "rowLogSinks": 18,
+    "cellworkMountLine": "[2026-10-27T02:18:49.638Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none",
+    "launcherChain": [
+      "node /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui",
+      "node <SB>/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js",
+      "node <SB>/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-entry.js"
+    ]
+  },
+  "proven": [
+    "the composition the boot loads is 153 rows with mpd-cellwork at index 141, resolved from the profile copy 0.16.1 (harness loadProfile + composeEntries; independently --dump-config)",
+    "a real no-overlay dsh-tui boot applies the row: [mpd-cellwork] mounted: ... in its log sink, 18 sinks, 117 model-facing tools",
+    "the harness's request/header lists 117 tools with all 14 cellwork_* names, and the stub's wire tools[] agrees",
+    "cellwork_status is callable: tool/call + tool/result were recorded",
+    "/cellwork matches in the command palette (95 items empty), /agent-teams matches as the control",
+    "the profile copy is byte-identical before and after the boots; no --patch and no absolute module path were used"
+  ],
+  "notProven": [
+    "an exact row count printed by a boot — 153 is a loader-layer measurement replayed through the boot's own call path, plus a COMPOSITION-ONLY dump; the boot proves presence/apply",
+    "the real ~/.dsh execution: the run is a byte-identical copy under an isolated DSH_HOME, and the global removal itself is the captain's machine change",
+    "a live model turn: the model is a loopback stub (real request shape, not a real model)",
+    "the other 13 cellwork tools are proven registered/offered, not proven callable (one tool was exercised)",
+    "the historical 14 sessions themselves"
+  ],
+  "findingsOutOfScope": [
+    {
+      "symptom": "the harness --dump-config prints: dsh: [@deepseek-harness-tui/dsh-tui] patch: entry \"tool-ralph\" not found",
+      "where": "composition/dump-config-banner.log:11",
+      "scope": "the dsh-tui HOST layer, not this bundle; absent from both real boots (grep count 0), boot failures=[]",
+      "action": "reported, not fixed — outside this task's scope"
+    }
+  ],
+  "evidence": {
+    "root": "evidence/cellwork/diag-mount/2026-10-27T02-01Z",
+    "transcript": "run.log",
+    "boot": "boot/",
+    "registration": "registration/",
+    "composition": "composition/",
+    "installState": "install-state/",
+    "scripts": "scripts/"
+  }
+}
