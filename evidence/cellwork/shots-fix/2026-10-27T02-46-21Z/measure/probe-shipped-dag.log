@@ -1,0 +1,44 @@
+{
+ "png": "docs/assets/images/tui-team-dag.png",
+ "size": [
+  3120,
+  1330
+ ],
+ "topBorderY": 232,
+ "borderX": [
+  88,
+  265
+ ],
+ "barClusters": [
+  [
+   88,
+   91
+  ],
+  [
+   130,
+   135
+  ],
+  [
+   158,
+   189
+  ],
+  [
+   262,
+   265
+  ],
+  [
+   268,
+   271
+  ]
+ ],
+ "leftBarX": [
+  88,
+  91
+ ],
+ "rightBarX": [
+  268,
+  271
+ ],
+ "leftDeltaPx": 0,
+ "rightDeltaPx": 6
+}

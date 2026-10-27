@@ -62,7 +62,7 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 
 ![DSH Web GUI 的 Team 视图：团队头部与进度、成员各自的模型路由，以及嵌套任务图——子单元画成 subcell-auth 的**分组框**（`.mpd-dag-group`），外部依赖落在框的边框上，框内是它自己的四任务 DAG，父团队的任务在框外侧流动。](./docs/assets/images/zh-CN/web-team-dag-groups.png)
 
-![DSH-TUI 的 DAG 页，同一个嵌套团队：subcell-auth 分组帧框用第二套边框字形（╔ ╗ ╚ ╝ ║ ═），外部依赖落在 ╧ 端口上，子单元自己的任务卡画在框内，下面是按键提示（TUI 场景正文按设计保持英文，故此图与英文版共用同一次渲染）。](./docs/assets/images/tui-team-dag-groups.png)
+![DSH-TUI 的**全屏团队场景**（`/mpd team` 场景，不是 DAG 页），同一个嵌套团队：subcell-auth 分组帧框用第二套边框字形（╔ ╗ ╚ ╝ ║ ═），外部依赖落在 ╧ 端口上，子单元自己的任务卡画在框内，下面是场景自己的图例与按键提示。画面从场景自身的上边框行一直取到下边框行，宽度截到 158 列中的 102 列，使本页显示宽度下每个字符格仍不小于 8 px（TUI 场景正文按设计保持英文，故此图与英文版共用同一次渲染）。](./docs/assets/images/tui-team-dag-groups.png)
 
 ## 特性
 

@@ -1,0 +1,3 @@
+docs/assets/images/web-team-dag-groups.png 2608x1094 RGB
+docs/assets/images/zh-CN/web-team-dag-groups.png 2608x1094 RGB
+docs/assets/images/tui-team-dag.png 2180x1330 RGB

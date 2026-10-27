@@ -1,0 +1,10 @@
+[selftest] grid: cell_w=10px cell_h=19px (DejaVuSansMono@16, advance 10px after rounding)
+[selftest] arm 1: the last glyph of a row of 40 '═' is painted on cell 39's origin
+[selftest]   reference: one '═' at cell 4 -> ink right edge x=49, cell origin x=40, glyph right inset 9px
+[selftest]   fixed:     ink right edge x=399 -> cell origin x=390 (want 390) -> PASS
+[selftest]   reverse:   the pre-fix one-run drawing of the same row -> ink right edge x=385 -> cell origin x=376, off by 14px = 1.40 cell(s) -> FAILS as required (needs >= 1.00 cell)
+[selftest] arm 2: a frame's top-right corner and its right side share one x
+[selftest]   fixed:     corner stroke x=244.0, side stroke x=244.0 -> |delta|=0.0px -> PASS (<= 1px)
+[selftest]   reverse:   the pre-fix run drawing -> corner stroke x=235.0, side stroke x=244.0 -> |delta|=9.0px = 0.90 cell(s) -> FAILS as required (> 1px)
+[selftest] PASS: 2 arms, both reverse controls went red
+EXIT=0

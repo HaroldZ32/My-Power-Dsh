@@ -69,7 +69,7 @@ recorded deviations. Read the ledger before you rely on the TUI for a Web capabi
 
 ![The Team view in the DSH Web GUI: the team header and progress, the roster with each member's model route, and the nested task graph — a subcell drawn as the subcell-auth FRAME (a .mpd-dag-group box) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it.](./docs/assets/images/web-team-dag-groups.png)
 
-![The DSH-TUI's DAG page for the same nested team: the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═) with a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the key hints.](./docs/assets/images/tui-team-dag-groups.png)
+![The DSH-TUI's full-screen team SCENE for the same nested team — the `/mpd team` scene, not the DAG page — with the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═), a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the scene's legend and key hints. The window runs from the scene's own top border row to its bottom border row and stops at 102 of its 158 columns, which keeps one character cell at least 8 px wide at this page's display width.](./docs/assets/images/tui-team-dag-groups.png)
 
 ## Features
 

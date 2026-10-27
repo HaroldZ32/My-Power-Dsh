@@ -1,0 +1,83 @@
+### 2026-10-27T07:25:15Z — final run
+
+## measure-shots.py --self-test
+== self-test tui pass: /tmp/tmpyevoh4l2/good.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> PASS
+== self-test tui red: /tmp/tmpyevoh4l2/bad.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=3.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 3.0px (worst: 8,1-12,3.top-left); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+   [self-test band red] a band narrower than the picture was refused, as designed
+== self-test tui hole red: /tmp/tmpyevoh4l2/holed.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 11 missing / 11 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 11; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+== self-test web pass: /tmp/tmpyevoh4l2/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 314x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 326 (capture 400, headroom 74px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 62px horizontal, 78px vertical
+   -> PASS
+== self-test web red: /tmp/tmpyevoh4l2/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 1144x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 1156 (capture 400, headroom -756px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: -768px horizontal, 78px vertical
+   !! content width 1144 exceeds the graph viewport 376
+   !! box 1000,0,144,42 is cut: its capture rect is 1012,40,144,42 against 400x200
+   -> FAIL
+== self-test web scrolled red: /tmp/tmpyevoh4l2/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(200,0)
+   boxes: 1; rightmost content x = 156 (capture 400, headroom 244px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 232px horizontal, 78px vertical
+   !! the view is not at scroll origin: (200, 0)
+   -> FAIL
+--self-test PASS (tui arms: good/pass, corner-drift>=1px/red, side-hole/red, band-narrow/red; web arms: fits/pass, cut/red, scrolled/red)
+EXIT=0
+
+## web (EN)
+== web-team-dag-groups.png: docs/assets/images/web-team-dag-groups.png 2608x1094px @ 2.0x -> captured 1304x547 CSS px; box origin (12,419)
+   graph viewport 1280x114 CSS px; content 1234x104 CSS px; scroll=(0,0)
+   boxes: 10; rightmost content x = 1246 (capture 1304, headroom 58px); bottom = 523 (capture 547, headroom 24px)
+   graph headroom: 46px horizontal, 10px vertical
+   -> PASS
+EXIT=0
+
+## web (zh-CN)
+== web-team-dag-groups.png: docs/assets/images/zh-CN/web-team-dag-groups.png 2608x1094px @ 2.0x -> captured 1304x547 CSS px; box origin (12,419)
+   graph viewport 1280x114 CSS px; content 1234x104 CSS px; scroll=(0,0)
+   boxes: 10; rightmost content x = 1246 (capture 1304, headroom 58px); bottom = 523 (capture 547, headroom 24px)
+   graph headroom: 46px horizontal, 10px vertical
+   -> PASS
+EXIT=0
+
+## tui
+== tui-team-dag.png: docs/assets/images/tui-team-dag.png 2180x1330 cell=20x38px crop=rows 1:36 cols 0:109
+   frames detected inside the crop: 6; cut by the crop: 1
+   frame   4, 6 ..  13, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame  17, 6 ..  26, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame  30, 6 ..  39, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,12 ..  13,14  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,18 ..  13,20  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,24 ..  13,26  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 1)
+   -> PASS
+EXIT=0
