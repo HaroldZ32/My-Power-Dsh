@@ -68,12 +68,12 @@ import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import {
-  CONTRIBUTED_COMMANDS, NON_GATING_COMMANDS, TUI_ONLY_COMMANDS, commandGates, corpusProblems,
+  CONTRIBUTED_COMMANDS, NON_GATING_COMMANDS, TUI_ONLY_COMMANDS, classifyExpectRed, commandGates, corpusProblems,
   enumerateArtifactRows, evaluateCommand, evaluateNegativeControl, evaluateProfileRowList, evaluateRows,
   moduleNameCandidates, paletteCount, paletteCommandRows, parsePatchRows, replayBundleResolution,
-  resolveRowModule, scanModule, sinkRows,
+  resolveRowModule, scanModule, sinkRows, unappliedLabel,
 } from "./lib/user-surface-eval.ts"
-import type { PatchRow, RowContext, RowObservation, RowVerdict } from "./lib/user-surface-eval.ts"
+import type { ExpectRedTarget, PatchRow, RedAssertion, RowContext, RowObservation, RowVerdict } from "./lib/user-surface-eval.ts"
 import { readSessionEvents, recordedToolNames } from "./lib/session-evidence.ts"
 import { assertSessionsSandboxed } from "./lib/workspace-isolation.ts"
 import { provisionTuiHome, runTuiSession, tmuxPresent, tuiBinaryPresent } from "./lib/tui-lane.ts"
@@ -383,6 +383,30 @@ function selfTestArms(): SelfTestArm[] {
     "a DISPOSED (4) fiber with a live module-declared registration is not a pass either")
   arm("rows.deadFibreQuotesEveryWitnessItRefused", deadFibreVerdict.raw.includes("state=3") && deadFibreVerdict.raw.includes("sink=true") && deadFibreVerdict.raw.includes("tool_a"),
     "the evidence keeps the refused sink and registration beside the dead state: " + deadFibreVerdict.raw)
+  // 3b-2. THE TWO BYPASSES N1 NAMES (CodeRabbit N1, PR #75). Both arms are REVERSE CONTROLS: each one
+  //       is a false pass the pre-N1 ladder granted (it only refused states 3/4), and each must now be
+  //       FALSE with the refused witness quoted. (a) an ENABLED row still PENDING (1) that had already
+  //       written its log sink; (b) a row the boot holds DISABLED whose bundle module declares a name
+  //       the live registry answers to. A third arm covers the remaining half of the same rule: an
+  //       ACTIVE fiber with NO runtime is not a mounted row either.
+  /** The pending-fiber subject: enabled, still loading, no runtime yet, but its sink already exists. */
+  const pendingSunkRow: RowObservation = { id: "row-a", state: 1, hasRuntime: false, disabled: false }
+  /** That row's verdict, read once so both of its arms grade the same object. */
+  const pendingSunkVerdict = evaluateRows(declared, [pendingSunkRow], ["row-a"], new Map(), ctx)[0] as RowVerdict
+  arm("rows.pendingSinkReddens", pendingSunkVerdict.ok === false && pendingSunkVerdict.witness === "none",
+    "a PENDING (1) fiber that already wrote its log sink is not a pass: ok=" + String(pendingSunkVerdict.ok) + " witness=" + pendingSunkVerdict.witness)
+  arm("rows.pendingSinkQuotesTheRefusedWitness", pendingSunkVerdict.raw.includes("state=1") && pendingSunkVerdict.raw.includes("unapplied=state=1") && pendingSunkVerdict.raw.includes("sink=true"),
+    "the refused sink stays in the evidence: " + pendingSunkVerdict.raw)
+  /** The disabled-with-a-live-name subject: the loader never applied it, yet its module's name is live. */
+  const disabledRegisteredVerdict = evaluateRows(declared, [{ ...activeRow, state: null, hasRuntime: false, disabled: true }], [], new Map([["row-a", ["tool_a"]]]), ctx)[0] as RowVerdict
+  arm("rows.disabledRegistrationReddens", disabledRegisteredVerdict.ok === false && disabledRegisteredVerdict.witness === "none",
+    "a DISABLED row whose name is live in the registry is not a pass: ok=" + String(disabledRegisteredVerdict.ok) + " witness=" + disabledRegisteredVerdict.witness)
+  arm("rows.disabledRegistrationQuotesIt", disabledRegisteredVerdict.raw.includes("disabled=true") && disabledRegisteredVerdict.raw.includes("unapplied=disabled") && disabledRegisteredVerdict.raw.includes("tool_a"),
+    "the live registration is quoted beside disabled=true: " + disabledRegisteredVerdict.raw)
+  arm("rows.activeWithoutRuntimeReddens", evaluateRows(declared, [{ ...activeRow, hasRuntime: false }], ["row-a"], new Map(), ctx)[0]?.ok === false,
+    "an ACTIVE (2) fiber with NO runtime cannot witness its own sink")
+  arm("rows.unappliedLabelOrder", unappliedLabel(activeRow) === "" && unappliedLabel({ ...activeRow, disabled: true }) === "disabled" && unappliedLabel(deadFibreRow) === "state=3" && unappliedLabel({ ...activeRow, hasRuntime: false }) === "no-runtime",
+    "the three facts are read in one order: disabled -> state -> runtime, and only an applied row labels empty")
   arm("rows.disabledByDesign", evaluateRows([{ ...(declared[0] as PatchRow), disabled: true }], [{ ...activeRow, disabled: true }], [], new Map(), ctx)[0]?.witness === "disabled-by-design", "a declared-disabled row is green only when the loader agrees")
   arm("rows.disabledCameUpEnabled", evaluateRows([{ ...(declared[0] as PatchRow), disabled: true }], [activeRow], [], new Map(), ctx)[0]?.ok === false, "a disabled row that came up ENABLED FAILS")
   // The declared bound: a preset-scoped row that the root tree holds disabled is NULL, never true —
@@ -516,6 +540,75 @@ function selfTestArms(): SelfTestArm[] {
     "an alternative binary with an unresolved anchor is refused too: " + staleAnchorRefusal("/usr/local/bin/dsh", "", ""))
   arm("staleAnchor.acceptsResolvedAnchor", staleAnchorRefusal("/usr/local/bin/dsh", join(REPO, "package.json"), REPO) === "",
     "a resolved anchor whose package dir holds package.json is accepted")
+
+  // 11. THE `--expect-red` NAMED-CAUSE GATE (CodeRabbit N3, PR #75). THE DEMO IS ARM ONE: a boot that
+  //     SUCCEEDED (probe true, both root assertions true) but whose palette capture failed used to be
+  //     accepted as "the stale anchor was detected", because the old branch only read `green`. These
+  //     arms drive the very function the CLI calls, with hand-built assertion rows, and each refusal
+  //     arm is a red that must NOT be read as proof.
+  /** One assertion row as the expect-red classifier reads it. */
+  const redRow = (name: string, ok: boolean, raw: string): RedAssertion => ({ name, ok, reason: ok ? "held" : "failed", raw })
+  /** The stale version the demo stages; the anchor must report exactly this for the cause to hold. */
+  const stagedVersion = "0.15.5"
+  /** What the real `--expect-red` run declares it is staging. */
+  const expectTarget: ExpectRedTarget = { staleVersion: stagedVersion, expectedRow: "mpd-cellwork" }
+  /** The bundle-resolution row of a correctly reproduced stale anchor. */
+  const anchorRed = redRow("userSurface.bundleResolution", false, "source=install-anchor dir=/tmp/anchor/lib/node_modules/@mpd-dsh/mpd version=" + stagedVersion + " profileVersion=0.16.1 sameCopyDigests=false")
+  /** The row-list row of the same reproduction: the anchored list omits the profile's newer row. */
+  const rowListRed = redRow("userSurface.profileRowListWins", false, "profileRows=36 bootEntries=154 missing=mpd-cellwork")
+  /** A healthy boot's rows, so a demo assertion set can carry the REAL surrounding assertions. */
+  const healthyRows: RedAssertion[] = [
+    redRow("userSurface.probe", true, "loaderEntries=155 commands=33 tools=117"),
+    redRow("userSurface.bundleResolution", true, "source=profile dir=/p version=0.16.1 profileVersion=0.16.1 sameCopyDigests=true"),
+    redRow("userSurface.profileRowListWins", true, "profileRows=36 bootEntries=155 missing=-"),
+    redRow("userSurface.rowsWitness", true, "failed=-"),
+    redRow("userSurface.negativeControl", true, "aliveBefore=95 aliveAfter=95"),
+  ]
+  /** THE DEMO: a boot that SUCCEEDED but whose palette capture failed — no named cause, so inconclusive. */
+  const paletteBroken: RedAssertion[] = [
+    ...healthyRows.filter((row) => row.name !== "userSurface.negativeControl"),
+    redRow("userSurface.negativeControl", false, "aliveBefore=null aliveAfter=null"),
+    redRow("userSurface.command.mpd", false, "registry=no palette=none (no palette box in the capture)"),
+    redRow("userSurface.command.ulw", false, "registry=no palette=none (no palette box in the capture)"),
+  ]
+  /** That demo's verdict, read once so its three arms grade the same object. */
+  const paletteBrokenVerdict = classifyExpectRed(paletteBroken, [], expectTarget)
+  arm("expectRed.paletteFailureIsInconclusive", paletteBrokenVerdict.ok === false,
+    "a SUCCESSFUL boot whose palette capture failed is INCONCLUSIVE, not a detected anchor: " + paletteBrokenVerdict.sentence)
+  arm("expectRed.paletteFailureNamesTheUnrelatedReds", paletteBrokenVerdict.unexplained.includes("userSurface.negativeControl"),
+    "the refusal names the structural red the cause does not explain: " + paletteBrokenVerdict.unexplained.join(","))
+  /** The same demo with a crashed boot: the probe never wrote its record. */
+  const bootCrash: RedAssertion[] = [
+    redRow("userSurface.probe", false, "the instrumentation row wrote no record"),
+    ...healthyRows.filter((row) => row.name !== "userSurface.probe" && row.name !== "userSurface.rowsWitness"),
+    redRow("userSurface.rowsWitness", false, "failed=every-declared-row"),
+  ]
+  arm("expectRed.bootCrashIsInconclusive", classifyExpectRed(bootCrash, [], expectTarget).ok === false,
+    "a red boot with no probe record is INCONCLUSIVE: " + classifyExpectRed(bootCrash, [], expectTarget).sentence)
+  /** The real reproduction: the named anchor cause AND an incomplete composition, all downstream. */
+  const namedRed: RedAssertion[] = [
+    redRow("userSurface.probe", true, "loaderEntries=154 commands=33 tools=117"),
+    redRow("userSurface.command.mpd", true, "registry+palette"),
+    redRow("userSurface.rowsWitness", false, "failed=mpd-cellwork"),
+    redRow("userSurface.row.mpd-cellwork", false, "the boot's loader holds NO entry for it"),
+    redRow("userSurface.command.cellwork", false, "neither the registry nor the palette carries it"),
+    rowListRed,
+    anchorRed,
+  ]
+  arm("expectRed.namedAnchorCauseHolds", classifyExpectRed(namedRed, [], expectTarget).ok === true,
+    "the reproduced stale anchor IS conclusive: " + classifyExpectRed(namedRed, [], expectTarget).sentence)
+  arm("expectRed.rowListCauseAloneHolds", classifyExpectRed(namedRed.filter((row) => row.name !== "userSurface.bundleResolution"), [], expectTarget).ok === true,
+    "the SECOND named cause (profileRowListWins naming mpd-cellwork) is enough on its own")
+  arm("expectRed.greenIsVacuous", classifyExpectRed(healthyRows, [], expectTarget).ok === false,
+    "a run that never reddened proves nothing: " + classifyExpectRed(healthyRows, [], expectTarget).sentence)
+  arm("expectRed.anchorOutOfVersionIsInconclusive", classifyExpectRed([...namedRed.filter((row) => row.name !== "userSurface.bundleResolution" && row.name !== "userSurface.profileRowListWins"), redRow("userSurface.bundleResolution", false, "source=install-anchor version=0.16.0 profileVersion=0.16.1 sameCopyDigests=false")], [], expectTarget).ok === false,
+    "an anchor red at a version this run did not stage is NOT the named cause")
+  arm("expectRed.identicalCopiesAreInconclusive", classifyExpectRed([...namedRed.filter((row) => row.name !== "userSurface.bundleResolution" && row.name !== "userSurface.profileRowListWins"), redRow("userSurface.bundleResolution", false, "source=install-anchor version=0.15.5 profileVersion=0.16.1 sameCopyDigests=true")], [], expectTarget).ok === false,
+    "source+version without sameCopyDigests=false is not the stale-anchor shape")
+  arm("expectRed.unexpectedMissingRowIsInconclusive", classifyExpectRed([...namedRed.filter((row) => row.name !== "userSurface.profileRowListWins" && row.name !== "userSurface.bundleResolution" && row.name !== "userSurface.row.mpd-cellwork"), redRow("userSurface.profileRowListWins", false, "profileRows=36 bootEntries=154 missing=mpd-roles")], [], expectTarget).ok === false,
+    "a row-list red that does not name mpd-cellwork is not the named cause")
+  arm("expectRed.structuralProblemIsInconclusive", classifyExpectRed(namedRed, ["the installed artifact has no rows"], expectTarget).ok === false,
+    "a structural problem outranks a matching cause: the run never enumerated its subject")
   return arms
 }
 
@@ -1036,9 +1129,19 @@ async function runReal(options: CaseOptions): Promise<number> {
   /** True when the run should be reported GREEN: every expectation held. */
   const green = failed.length === 0 && problems.length === 0
   if (options.expectRed) {
-    // The falsification arm: this run only passes by PROVING the assertions can redden.
-    say("expect-red: " + (green ? "the arm did NOT redden — the assertions are vacuous" : "the arm reddened as required"))
-    return green ? 1 : 0
+    // The falsification arm REDUCED TO A NAMED CAUSE (CodeRabbit N3, PR #75). A bare `green === false`
+    // also accepted a crashed boot, a palette that never captured and a structural enumeration failure
+    // as "the stale install anchor was detected". The classifier reads the SAME assertion rows this
+    // run just recorded and only accepts the two named causes, refusing any red outside their
+    // downstream family; `expect-red.json` keeps the verdict beside the record it graded.
+    /** The version the staged stale bundle carries, i.e. what the install anchor had to resolve; "" when none was staged. */
+    const staleVersion = options.staleBundle === "" ? "" : readVersion(options.staleBundle)
+    /** The named-cause verdict over this run's own assertions. */
+    const expectation = classifyExpectRed(assertions, problems, { staleVersion, expectedRow: "mpd-cellwork" })
+    say("expect-red: " + expectation.sentence)
+    if (!expectation.ok) console.error("[mpd-qa] INCONCLUSIVE case=" + SLUG + " lane=real reason=expect-red-not-the-named-cause cause=" + (expectation.cause === "" ? "-" : expectation.cause) + " unexplained=" + (expectation.unexplained.join(",") || "-"))
+    writeFileSync(join(evidenceDir, "expect-red.json"), JSON.stringify({ case: SLUG, stagedStaleVersion: staleVersion, expectedRow: "mpd-cellwork", green, ...expectation }, null, 2) + "\n")
+    return expectation.ok ? 0 : 1
   }
   return green ? 0 : 1
 }

@@ -7,6 +7,8 @@
 # graph content does not fit its viewport, or whose view starts off scroll origin. A future re-shoot is
 # therefore never "looks fine": it is measured, the exit status is the measurement's, and a rejected
 # capture is DELETED before this script exits (an unmeasured PNG must not survive in the deliverable).
+# The same holds when the FACTS file cannot be copied back: nothing could measure that PNG, so it is
+# deleted before the exit (CodeRabbit N2, PR #75).
 #
 # WHY A WRAPPER AT ALL. The browser, the Chromium build and the profile under test live INSIDE the
 # UI-VIEW container; the rasterizer-independent measurement lives on the host (Pillow). The wrapper is
@@ -57,7 +59,15 @@ if [ "$status" -ne 0 ]; then
   exit "$status"
 fi
 docker cp "$CONTAINER:$RUN/capture.png" "$OUT" >/dev/null || exit 2
-docker cp "$CONTAINER:$RUN/shot-facts.json" "$FACTS" >/dev/null || exit 2
+# N2 (CodeRabbit, PR #75): the facts file is copied AFTER the PNG, and the measurement below reads it.
+# A failure here would otherwise leave an UNMEASURED PNG in the deliverable path, so the PNG is deleted
+# before the script exits with the same code (2) this step has always used.
+docker cp "$CONTAINER:$RUN/shot-facts.json" "$FACTS" >/dev/null || {
+  facts_status=$?
+  rm -f "$OUT"
+  printf '[shoot-team-dag] the facts file could not be copied (exit %s); the unmeasured PNG was deleted\n' "$facts_status" >&2
+  exit 2
+}
 
 printf '[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)\n'
 python3 "$HERE/measure-shots.py" web --facts "$FACTS" --png "$OUT" --json "${FACTS%.json}.measure.json" --label "$(basename "$OUT")"

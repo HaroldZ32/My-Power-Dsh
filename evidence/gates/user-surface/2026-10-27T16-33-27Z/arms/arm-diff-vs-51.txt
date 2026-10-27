@@ -1,0 +1,20 @@
+# arm diff vs ../2026-10-27T15-11-19Z/arms/user-surface-selftest.log (51 arms)
+# this stamp: 67 arms, 0 failed (see user-surface-selftest.log)
+added=16 removed=0
+
+expectRed.anchorOutOfVersionIsInconclusive
+expectRed.bootCrashIsInconclusive
+expectRed.greenIsVacuous
+expectRed.identicalCopiesAreInconclusive
+expectRed.namedAnchorCauseHolds
+expectRed.paletteFailureIsInconclusive
+expectRed.paletteFailureNamesTheUnrelatedReds
+expectRed.rowListCauseAloneHolds
+expectRed.structuralProblemIsInconclusive
+expectRed.unexpectedMissingRowIsInconclusive
+rows.activeWithoutRuntimeReddens
+rows.disabledRegistrationQuotesIt
+rows.disabledRegistrationReddens
+rows.pendingSinkQuotesTheRefusedWitness
+rows.pendingSinkReddens
+rows.unappliedLabelOrder

@@ -236,6 +236,62 @@ export interface RowContext {
 }
 
 /**
+ * Why one live loader entry may NOT ride a surface witness, or `""` when the row is genuinely applied.
+ *
+ * THE RULE (CodeRabbit N1, PR #75): a log sink proves a line was written and a registration proves a
+ * name exists somewhere in the boot; neither proves THIS row's fiber ever reached ACTIVE. Only an entry
+ * that is not `disabled`, whose fiber state is `FIBER_ACTIVE` (2) and that carries a runtime is an
+ * applied row, so every witness is admitted against those three facts FIRST. F9's dead-fiber rule
+ * (FAILED 3 / DISPOSED 4) is the `state=` case of the same check, kept because its measurement showed a
+ * sink surviving an `apply()` that threw.
+ * @param seen The live loader entry the boot recorded for one row.
+ * @returns A short label naming the first failed fact (`disabled`, `state=<n>`, `no-runtime`), or `""` when the row is applied.
+ */
+export function unappliedLabel(seen: RowObservation): string {
+  if (seen.disabled) return "disabled"
+  if (seen.state === null) return "state=null"
+  if (seen.state !== FIBER_ACTIVE) return "state=" + String(seen.state)
+  if (!seen.hasRuntime) return "no-runtime"
+  return ""
+}
+
+/**
+ * The clause naming what the loader actually held for a row whose surface witness is refused.
+ * @param seen The live loader entry the boot recorded for it (never an applied one here).
+ * @returns One clause, spelling the exact non-applied shape the entry had.
+ */
+function loaderHeldClause(seen: RowObservation): string {
+  if (seen.disabled) return "the boot holds this row DISABLED, so it was never applied by design"
+  if (seen.state === null) return "the boot holds NO fiber for this row at all"
+  if (FIBER_DEAD.includes(seen.state)) return "its fiber is in state " + String(seen.state) + " (FAILED or DISPOSED): its apply() threw or it was torn down"
+  if (seen.state !== FIBER_ACTIVE) return "its fiber is still in state " + String(seen.state) + " (pending or loading), so its apply() has not completed"
+  return "its fiber is ACTIVE but carries no runtime, so the plugin instance it would host does not exist"
+}
+
+/**
+ * The FALSE verdict for a row that OFFERS a surface witness its loader entry contradicts.
+ *
+ * The evidence keeps the refused witness beside the loader facts (`sink=`, `registrations=`) and the
+ * disqualifying one (`unapplied=`), so a reader sees the contradiction the old ladder laundered into a
+ * pass: a pending row that had already written its log line, or a disabled row whose name another
+ * apply left live in the registry.
+ * @param id The patch row's id.
+ * @param seen The live loader entry the boot recorded for it (never an applied one here).
+ * @param sunk True when the row's own `<id>.log` is non-empty.
+ * @param registrations The live names the row's module declares, already resolved.
+ * @returns The FAILING verdict, with witness `none`.
+ */
+export function refusedSurfaceVerdict(id: string, seen: RowObservation, sunk: boolean, registrations: readonly string[]): RowVerdict {
+  return {
+    id,
+    ok: false,
+    witness: "none",
+    reason: "the row offers a surface witness (" + (sunk ? "a non-empty log sink" : "") + (sunk && registrations.length > 0 ? " plus " : "") + (registrations.length > 0 ? "a live registration " + registrations.join(",") : "") + ") but " + loaderHeldClause(seen) + " — only an ACTIVE (2), non-disabled entry with a runtime is a mounted row, so neither witness can prove this one",
+    raw: "state=" + String(seen.state) + " runtime=" + String(seen.hasRuntime) + " disabled=" + String(seen.disabled) + " unapplied=" + unappliedLabel(seen) + " sink=" + String(sunk) + " registrations=" + (registrations.join(",") || "-"),
+  }
+}
+
+/**
  * Grade every declared row against the real boot's observations.
  *
  * The witness preference is the one the task fixes: (a) the row's OWN log sink
@@ -245,10 +301,12 @@ export interface RowContext {
  * A row declared `disabled: true` is graded `disabled-by-design` when the loader confirms the flag,
  * because non-activation there is the CORRECT outcome, not a defect.
  *
- * THE FIBER STATE IS READ FIRST (CodeRabbit F9, PR #75). A row whose fiber is FAILED (3) or DISPOSED
- * (4) is FALSE no matter what its sink or its module-declared names look like: a log line written
- * before `apply()` threw is not a mount, and a registration can outlive the row that contributed it.
- * Only an ACTIVE (2), pending/loading (0/1) or absent (null) fiber reaches the witness ladder below.
+ * THE LOADER FACTS ARE READ FIRST (CodeRabbit F9 then N1, PR #75). A row that offers a sink or a
+ * registration is FALSE unless its entry is non-disabled, its fiber is ACTIVE (2) AND it carries a
+ * runtime: a log line written by a fiber still pending (state 1) is not a mount, a name a bundle module
+ * declares can be live for a row the loader never applied (a disabled one included), and a dead fiber
+ * (FAILED 3 / DISPOSED 4) can leave both behind. Only rows with NO surface witness reach the
+ * disabled/bound ladder below, which still grades a disabled row as a named bound.
  *
  * @param rows The rows the artifact declares.
  * @param observations The loader's per-row observations from the boot.
@@ -292,28 +350,27 @@ export function evaluateRows(
       }
       return { id: row.id, ok: false, witness: "none", reason: "the row is declared by the release artifact but the real boot's loader holds NO entry for it — the boot did not compose this row", raw: "patch=" + row.patch + ":" + String(row.line) + " name=" + row.name + "; loader entries=" + String(observations.length) }
     }
-    // A DEAD FIBER OUTRANKS EVERY SURFACE WITNESS (CodeRabbit F9, PR #75): a row whose fiber is FAILED
-    // (3) or DISPOSED (4) is NOT mounted, and neither witness below can say otherwise — a log sink
-    // survives an `apply()` that wrote a line and then threw, and a name a module declares can be held
-    // live by ANOTHER row's apply (or by an earlier boot in the same workspace). The state is therefore
-    // read BEFORE any witness is accepted; a dead row is FALSE with every witness it tried to offer
-    // quoted in `raw`, so the record shows the contradiction instead of laundering it into a pass.
-    if (seen.state !== null && FIBER_DEAD.includes(seen.state)) {
-      /** True when the row wrote a sink anyway: exactly the false pass this check removes. */
-      const sunkAnyway = sinkNames.includes(row.id)
-      /** The live names a registration would have passed the row with. */
-      const registeredAnyway = registrationHits.get(row.id) ?? []
-      return { id: row.id, ok: false, witness: "none", reason: "the boot's loader holds this row's fiber in state " + String(seen.state) + " (FAILED or DISPOSED): its apply() threw or it was torn down, so the row is NOT mounted and neither a sink nor a registration it left behind can witness it", raw: "state=" + String(seen.state) + " runtime=" + String(seen.hasRuntime) + " disabled=false sink=" + String(sunkAnyway) + " registrations=" + (registeredAnyway.join(",") || "-") }
-    }
-    if (sinkNames.includes(row.id)) {
-      return { id: row.id, ok: true, witness: "sink", reason: "the row's own log sink exists and is non-empty after the boot", raw: "sink=<ws>/.mpd/logs/" + row.id + ".log bytes>0 state=" + String(seen.state) }
-    }
+    // A SURFACE WITNESS IS ADMITTED ONLY FOR A ROW THE LOADER REALLY APPLIED (CodeRabbit N1, PR #75,
+    // which GENERALISES F9). A log sink proves a line was written and a registration proves a name is
+    // live somewhere in the boot; neither proves THIS row's fiber ever became ACTIVE. So the three
+    // loader facts are read BEFORE either witness is accepted: a `disabled` entry, a fiber that is not
+    // ACTIVE (2) — FAILED 3 / DISPOSED 4 from F9, but also pending 0 / loading 1 / absent null — and an
+    // ACTIVE entry that carries no runtime are all FALSE, with every witness the row tried to offer
+    // quoted in `raw` so the record shows the contradiction instead of laundering it into a pass.
+    /** True when the row's own log sink is non-empty: a surface witness, never a verdict by itself. */
+    const sunk = sinkNames.includes(row.id)
     /** The tool/command names this row's module declares that the live registry answered to. */
     const hits = registrationHits.get(row.id) ?? []
+    /** Why this entry may not ride a surface witness; "" when the row is genuinely applied. */
+    const unapplied = unappliedLabel(seen)
+    if (unapplied !== "" && (sunk || hits.length > 0)) return refusedSurfaceVerdict(row.id, seen, sunk, hits)
+    if (sunk) {
+      return { id: row.id, ok: true, witness: "sink", reason: "the row's own log sink exists and is non-empty after the boot", raw: "sink=<ws>/.mpd/logs/" + row.id + ".log bytes>0 state=" + String(seen.state) }
+    }
     if (hits.length > 0) {
       return { id: row.id, ok: true, witness: "registration", reason: "a name the row's own module declares is live in the boot's registry", raw: "live=" + hits.join(",") + " state=" + String(seen.state) }
     }
-    if (seen.state === FIBER_ACTIVE && seen.hasRuntime) {
+    if (unapplied === "") {
       return { id: row.id, ok: true, witness: "loader-active", reason: "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink", raw: "state=" + String(seen.state) + " runtime=true disabled=false" }
     }
     // THE DECLARED BOUND: a row that is DISABLED in the boot while the artifact declares it ENABLED,
@@ -516,6 +573,118 @@ export function evaluateProfileRowList(rows: readonly PatchRow[], observations: 
  */
 export function contributedCommands(): readonly string[] {
   return CONTRIBUTED_COMMANDS
+}
+
+/** One assertion as the `--expect-red` classifier reads it: structurally the case's own row. */
+export interface RedAssertion {
+  /** Stable assertion name, e.g. `userSurface.bundleResolution`. */
+  readonly name: string
+  /** true pass, false fail, null not evaluated. */
+  readonly ok: boolean | null
+  /** The failure sentence, quoted in the classifier's own sentence when relevant. */
+  readonly reason: string
+  /** The verbatim observation the verdict came from (the classifier parses its named fields). */
+  readonly raw: string
+}
+
+/** What a `--expect-red` run DECLARED it was staging, so the red can be matched by name. */
+export interface ExpectRedTarget {
+  /** The stale bundle's version the install anchor was supposed to carry; "" when none was staged. */
+  readonly staleVersion: string
+  /** The profile row the stale anchor's row list is expected to omit (`mpd-cellwork`). */
+  readonly expectedRow: string
+}
+
+/** The `--expect-red` verdict: conclusive only when the NAMED cause is what reddened. */
+export interface ExpectRedVerdict {
+  /** true only when a named cause held AND no assertion outside its downstream family failed. */
+  readonly ok: boolean
+  /** The named cause(s) that held, `+`-joined; "" when none did. */
+  readonly cause: string
+  /** One sentence for the console: why this red is (or is not) the expected one. */
+  readonly sentence: string
+  /** The failed assertion names the named cause does NOT explain, in report order. */
+  readonly unexplained: readonly string[]
+}
+
+/** The assertion families a named expected red may legitimately pull down with it (rows and commands). */
+export const EXPECT_RED_DOWNSTREAM_PREFIXES: readonly string[] = ["userSurface.row.", "userSurface.command."]
+
+/** The two ROOT assertions that carry a named expected cause; either one may be the red by name. */
+export const EXPECT_RED_ROOTS: readonly string[] = ["userSurface.bundleResolution", "userSurface.profileRowListWins"]
+
+/** The exact `source=` a stale install anchor reports in `userSurface.bundleResolution`. */
+export const EXPECT_RED_ANCHOR_SOURCE: string = "install-anchor"
+
+/**
+ * Read one `key=value` field out of an assertion's `raw` observation.
+ * @param raw The verbatim observation (`source=… version=… sameCopyDigests=…`).
+ * @param key The field name to read.
+ * @returns The field's value, or "" when the raw text does not carry it.
+ */
+function rawField(raw: string, key: string): string {
+  /** The field as it appears in the observation, never spanning whitespace. */
+  const match = new RegExp("(?:^|\\s)" + key + "=([^\\s]*)").exec(raw)
+  return match === null ? "" : String(match[1])
+}
+
+/**
+ * Decide whether a RED run reddened for the cause `--expect-red` named, and for nothing else.
+ *
+ * THE N3 RULE (CodeRabbit, PR #75). `green === false` is not a proof of anything: a boot that crashed,
+ * a command palette that never opened or a structural enumeration failure all redden too, and the old
+ * branch accepted every one of them as "the stale anchor was detected". This function therefore
+ * demands a NAMED root cause — `userSurface.bundleResolution` FALSE with `source=install-anchor`,
+ * the staged stale `version=…` and `sameCopyDigests=false`, OR `userSurface.profileRowListWins` FALSE
+ * with `missing=` naming the expected row — and then refuses the verdict if ANY failed assertion falls
+ * outside that cause's downstream family (`userSurface.row.*`, `userSurface.command.*`). Structural
+ * failures (the probe, the palette's live negative control, the artifact enumeration, isolation) are
+ * never downstream, so a red that includes one is INCONCLUSIVE rather than a success.
+ * @param assertions The run's assertion rows, exactly as recorded.
+ * @param problems The run's structural problems (a non-empty list makes any red inconclusive).
+ * @param target What the run declared it was staging (the stale version, the omitted row).
+ * @returns The verdict plus the failed names the named cause does not explain.
+ */
+export function classifyExpectRed(assertions: readonly RedAssertion[], problems: readonly string[], target: ExpectRedTarget): ExpectRedVerdict {
+  /** Every assertion that FAILED, in report order. */
+  const failed = assertions.filter((assertion) => assertion.ok === false)
+  /** Their names, which is what the refusal reports. */
+  const failedNames = failed.map((assertion) => assertion.name)
+  if (problems.length > 0) {
+    return { ok: false, cause: "", sentence: "the run carries structural problem(s) (" + problems.join("; ") + "), so a red here cannot prove the named cause", unexplained: [...problems] }
+  }
+  if (failed.length === 0) return { ok: false, cause: "", sentence: "the arm did NOT redden — nothing was proven, the assertions are vacuous", unexplained: [] }
+  /** The bundle-resolution assertion, when the run reached it. */
+  const bundle = assertions.find((assertion) => assertion.name === "userSurface.bundleResolution")
+  /** The profile-row-list assertion, when the run reached it. */
+  const rowList = assertions.find((assertion) => assertion.name === "userSurface.profileRowListWins")
+  /** True when bundleResolution is FALSE for exactly the stale-anchor reason. */
+  const anchorCause = bundle !== undefined && bundle.ok === false && target.staleVersion !== ""
+    && rawField(bundle.raw, "source") === EXPECT_RED_ANCHOR_SOURCE
+    && rawField(bundle.raw, "version") === target.staleVersion
+    && rawField(bundle.raw, "sameCopyDigests") === "false"
+  /** True when profileRowListWins is FALSE and its `missing=` list names the expected row. */
+  const rowCause = rowList !== undefined && rowList.ok === false && rawField(rowList.raw, "missing").split(",").includes(target.expectedRow)
+  /** The named causes that held, in the order the rule names them. */
+  const matched: string[] = []
+  if (anchorCause) matched.push("stale-install-anchor:source=" + EXPECT_RED_ANCHOR_SOURCE + ",version=" + target.staleVersion + ",sameCopyDigests=false")
+  if (rowCause) matched.push("profile-row-list-missing:" + target.expectedRow)
+  if (matched.length === 0) {
+    return {
+      ok: false,
+      cause: "",
+      sentence: "the run reddened, but NOT for a named expected cause: bundleResolution needs source=" + EXPECT_RED_ANCHOR_SOURCE + ", version=" + (target.staleVersion === "" ? "(no --stale-bundle staged)" : target.staleVersion) + ", sameCopyDigests=false, and profileRowListWins must name " + target.expectedRow + " — a red anywhere else (boot crash, palette capture, structural failure) is NOT evidence that the stale install anchor was detected",
+      unexplained: failedNames,
+    }
+  }
+  /** True when one failed name is a downstream consequence of a named root cause. */
+  const explained = (name: string): boolean => EXPECT_RED_ROOTS.includes(name) || name === "userSurface.rowsWitness" || name === "userSurface.findings" || EXPECT_RED_DOWNSTREAM_PREFIXES.some((prefix) => name.startsWith(prefix))
+  /** The failed names no named cause explains. */
+  const unexplained = failedNames.filter((name) => !explained(name))
+  if (unexplained.length > 0) {
+    return { ok: false, cause: matched.join("+"), sentence: "the named cause held (" + matched.join("+") + "), but this red is NOT only that one: " + unexplained.join(",") + " failed for reasons it does not explain — inconclusive, NOT a proof of the stale install anchor", unexplained }
+  }
+  return { ok: true, cause: matched.join("+"), sentence: "the named expected cause held (" + matched.join("+") + "): every red in this run is its downstream consequence", unexplained: [] }
 }
 
 /** One shipped module's bytes as a name source: the row it belongs to plus the file it was read from. */
