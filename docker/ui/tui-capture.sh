@@ -245,14 +245,20 @@ measure_band() {
   return 1
 }
 
-# The FIRST row of the pane that carries the team scene's own top border. It is FOUND, not assumed: the
-# 0.17.0 scene draws its frame one row down, and a window anchored on row 0 therefore shipped a blank
-# row above the border. Falls back to 0 when the border is not on the pane (a marker hit that changes).
+# The FIRST row of the SAVED pane text that carries the team scene's own top border. It is FOUND, not
+# assumed: the 0.17.0 scene draws its frame one row down, and a window anchored on row 0 therefore
+# shipped a blank row above the border. It reads the SAME file `measure_band` measures against — never a
+# fresh `capture-pane`: a redraw or a scroll between the capture and this call would otherwise anchor the
+# crop on a different screen than the one the measurement checks. Falls back to 0 when the border is not
+# in the file (a marker hit that changes).
+# $1 the saved pane text written by `pane_joined` for this scene.
 team_top_row() {
-  pane_rows | python3 -c 'import sys
-rows = [line.rstrip("\n") for line in sys.stdin]
+  local pane="$1"
+  [ -s "$pane" ] || { printf '0\n'; return 0; }
+  python3 -c 'import sys
+rows = [line.rstrip("\n") for line in open(sys.argv[1], encoding="utf-8", errors="replace")]
 hits = [index for index, line in enumerate(rows) if "\u250c" in line and "MPD team" in line]
-print(hits[0] if hits else 0)'
+print(hits[0] if hits else 0)' "$pane"
 }
 
 # ── THE MARKERS ───────────────────────────────────────────────────────────────
@@ -354,7 +360,7 @@ capture_scenes() {
     pane_joined >"$EVIDENCE_DIR/tui-team-dag.pane.txt"
     pane_ansi >"$ansi"; cp -f "$ansi" "$EVIDENCE_DIR/tui-team-dag.ansi"
     local team_top
-    team_top="$(team_top_row)"
+    team_top="$(team_top_row "$EVIDENCE_DIR/tui-team-dag.pane.txt")"
     band_rows="$team_top:$((team_top + team_rows))"; band_cols="0:$team_cols"
     if render_band "$ansi" "tui-team-dag" "$band_rows" "$band_cols" >/dev/null; then
       if measure_band "$OUT_DIR/tui-team-dag.png" "$EVIDENCE_DIR/tui-team-dag.pane.txt" "$band_rows" "$band_cols"; then

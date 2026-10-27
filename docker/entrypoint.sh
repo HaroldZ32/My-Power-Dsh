@@ -2056,15 +2056,17 @@ log "===== STEP 14b-user-surface ====="
 USER_SURFACE_PROFILE="$DSH_HOME/profiles/dsh-tui"
 if [ -f "$USER_SURFACE_PROFILE/package.json" ]; then
   fact obs.userSurfaceProfile "$USER_SURFACE_PROFILE (the dsh-tui profile step 14 installed; the case copies it into its own sandbox and boots it, never editing this one)"
+  # NO append_step HERE: `run_step` appends this step's own row (it ends with `append_step "$id" …`), so
+  # appending again put step 14b in steps.tsv — and therefore in the report — TWICE (PR #75, F2).
   run_step 14b-user-surface node "$APP_DIR/skills/dsh-qa/scripts/user-surface-mount.ts" \
     --profile "$USER_SURFACE_PROFILE" \
     --evidence "$OUT_DIR/user-surface" \
     --json-out "$OUT_DIR/user-surface/result.json" \
     --ndjson-out "$STATE_FILE"
-  append_step 14b-user-surface "$STEP_CODE" "$STEP_SECONDS" "14b-user-surface.log" "node skills/dsh-qa/scripts/user-surface-mount.ts --profile <installed dsh-tui profile>"
 else
   # A MISSING PROFILE IS NOT A SKIP: the case's own rows stay unreached, the driver's required-arm gate
-  # turns them into exit 3, and this row says why in one line.
+  # turns them into exit 3, and this row says why in one line. This arm DOES append by hand — the one
+  # legitimate manual row in the step — because it never calls `run_step`.
   record userSurface.probe false "the dsh-tui profile step 14 should have installed is absent, so no user-surface assertion could run" "profile=$USER_SURFACE_PROFILE"
   append_step 14b-user-surface 1 0 "14b-user-surface.log" "node skills/dsh-qa/scripts/user-surface-mount.ts (profile absent)"
   : >"$STEPS_DIR/14b-user-surface.log"

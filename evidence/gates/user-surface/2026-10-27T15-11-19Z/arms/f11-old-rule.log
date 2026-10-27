@@ -1,0 +1,52 @@
+[user-surface self-test] ok  layers.enumerate — rows=69 mpd-cellwork=true
+[user-surface self-test] ok  layers.disabledFlags — disabled=mcp-git,mcp-shell,tool-plugin-manager,tool-plugin-market
+[user-surface self-test] ok  layers.followsTheArtifact — base=row-a,row-b mutated=row-a,row-c (no hardcoded row count anywhere)
+[user-surface self-test] ok  rows.sinkPreferred — sink wins over registration
+[user-surface self-test] ok  rows.registration — a live module-declared name is a witness
+[user-surface self-test] ok  rows.loaderActive — an ACTIVE fiber with a runtime is the fallback
+[user-surface self-test] ok  rows.missingIsRed — a row the loader never composed FAILS
+[user-surface self-test] ok  rows.inactiveIsRed — a composed row that never activated FAILS
+[user-surface self-test] ok  rows.deadFibreSinkReddens — a FAILED (3) fiber that WROTE A LOG SINK is not a pass: ok=false witness=none
+[user-surface self-test] ok  rows.deadFibreRegistrationReddens — a DISPOSED (4) fiber with a live module-declared registration is not a pass either
+[user-surface self-test] ok  rows.deadFibreQuotesEveryWitnessItRefused — the evidence keeps the refused sink and registration beside the dead state: state=3 runtime=false disabled=false sink=true registrations=tool_a
+[user-surface self-test] ok  rows.disabledByDesign — a declared-disabled row is green only when the loader agrees
+[user-surface self-test] ok  rows.disabledCameUpEnabled — a disabled row that came up ENABLED FAILS
+[user-surface self-test] ok  rows.presetBoundIsNull — a preset-materialised row is NOT PROVEN (null), never a pass
+[user-surface self-test] ok  rows.selfDisabledIsNull — a row its mount guard disabled is a bound too (the web sidebar row on a TUI-only profile)
+[user-surface self-test] ok  bound.markerEmitted — a declared bound also writes userSurface.bound.row-a
+[user-surface self-test] ok  bound.markerIsTrue — the marker is a TRUE assertion; the row it marks stays NULL
+[user-surface self-test] ok  bound.markerKeepsTheRowNull — the row itself is NEVER rewritten to true by the marker
+[user-surface self-test] ok  bound.noMarkerOnWitnessed — a witnessed row carries no marker, so the lane reads its own TRUE verdict
+[user-surface self-test] ok  bound.noMarkerOnFailed — a FAILED row carries no marker: it must redden on its own row
+[user-surface self-test] ok  corpus.complete — the published seven are asserted: ulw,ultrawork,cellwork,mpd-codegraph,agent-teams,mpd,mpd-model
+[user-surface self-test] ok  corpus.droppedNameReddens — dropping cellwork -> the expected command set omits the published command `/cellwork`, so this run would not assert it
+[user-surface self-test] ok  corpus.duplicateReddens — a duplicate hides a dropped name
+[user-surface self-test] ok  corpus.unknownReddens — a command the bundle does not contribute reddens
+[user-surface self-test] ok  palette.parses — count=1 rows=agent-teams
+[user-surface self-test] ok  command.sharedGreen — registry + palette
+[user-surface self-test] ok  command.registryOnlyReddens — a command missing from the palette is NOT a pass
+[user-surface self-test] ok  command.paletteOnlyReddens — a command missing from the registry on the shared plane is NOT a pass
+[user-surface self-test] ok  command.tuiOnlyPaletteGreen — a documented TUI-only command needs the palette, not the registry
+[user-surface self-test] ok  command.tuiOnlyNoPaneReddens — the TUI-only exemption is not a hole
+[user-surface self-test] ok  command.fabricatedReddens — asserting a nonexistent command FAILS
+[user-surface self-test] ok  command.passGates — a pass rides as a gating assertion
+[user-surface self-test] FAIL  command.failureGates — an UNDOCUMENTED failure on a complete composition GATES (the old rule recorded it as a finding)
+[user-surface self-test] ok  command.nonGatingIsExactlyCodegraph — the whitelist is exactly one id: mpd-codegraph
+[user-surface self-test] FAIL  command.everyOtherCommandGates — all six other contributed commands gate a failure: ulw,ultrawork,cellwork,agent-teams,mpd,mpd-model
+[user-surface self-test] ok  command.whitelistDoesNotExcuseABrokenComposition — the one exception still gates on the stale-anchor arm
+[user-surface self-test] FAIL  command.unknownNameGates — a name this bundle does not contribute is never excused
+[user-surface self-test] ok  negativeControl.absentGreen — an absent control is green while the palette is alive either side
+[user-surface self-test] ok  negativeControl.presentReddens — a control that IS present is not a control
+[user-surface self-test] ok  negativeControl.deadPaletteReddens — an aimless capture (no box on either side) proves nothing
+[user-surface self-test] ok  upgrade.profileWins — every profile row is in the boot
+[user-surface self-test] ok  upgrade.staleAnchorReddens — a profile row the boot never composed is named (the 0.16.1 shape)
+[user-surface self-test] ok  resolution.anchorWins — source=install-anchor version=0.0.1-stale
+[user-surface self-test] ok  resolution.profileWhenAnchorClean — source=profile version=9.9.9-profile
+[user-surface self-test] ok  resolution.globalPrefixLayout — source=install-anchor version=0.0.1-stale dir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface-fixture-wKvGQp/prefix/lib/node_modules/@mpd-dsh/mpd
+[user-surface self-test] ok  sinks.nonEmptyOnly — found=mpd-roles:10
+[user-surface self-test] ok  modules.candidates — extracts both shapes once
+[user-surface self-test] ok  staleAnchor.hazardIsReal — dirname("") === "." — the source an unresolved anchor would have copied recursively into the sandbox
+[user-surface self-test] ok  staleAnchor.refusesUnresolvedDsh — `command -v dsh` empty -> refused: --stale-bundle needs a `dsh` on PATH: `command -v dsh` answered nothing, so there is no installed harness package to copy beside the stale bundle — refusing instead of copying the current directory
+[user-surface self-test] ok  staleAnchor.refusesEmptyAnchor — an alternative binary with an unresolved anchor is refused too: --stale-bundle could not resolve the install anchor of /usr/local/bin/dsh: no anchor package.json was found, and dirname of an empty anchor is the current directory, so there is no safe source to copy beside the stale bundle
+[user-surface self-test] ok  staleAnchor.acceptsResolvedAnchor — a resolved anchor whose package dir holds package.json is accepted
+[user-surface self-test] arms=51 failed=3

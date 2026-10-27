@@ -109,9 +109,8 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-ulw-循环与它的关卡) | 一次 ultrawork 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝 —— 仅在 OFFICIAL 平面上才是提示）。 |
 | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
-| [`web-team-board-v2.png`](./assets/images/zh-CN/web-team-board-v2.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册、毛玻璃任务图与悬浮信息卡的 Team 视图。 |
-| [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。此图引用与英文版**共用**的英文体截图（TUI 场景正文按设计保持英文）；原先的 `zh-CN/` 图是修复前的栅格化产物（角偏 6.0px / 102 个缺失竖边像素），已撤下。 |
 | [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |
+| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个嵌套团队在 DSH-TUI 的**全屏团队场景**（`/mpd team` 场景，不是 DAG 页）：分组帧框使用第二套边框字形（`╔ ╗ ╚ ╝ ║ ═`），外部依赖落在 `╧` 端口上，子单元自己的任务卡片画在框内。此图与英文版**共用**同一次渲染（TUI 场景正文按设计保持英文）。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
 | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
 | [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮。 |

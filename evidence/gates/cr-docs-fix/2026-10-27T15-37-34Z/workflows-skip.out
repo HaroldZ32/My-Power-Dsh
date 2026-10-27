@@ -1,0 +1,12 @@
+### verify-workflows — SKIPPED
+reason: this lane did not touch .github/**; the gate's subject is unchanged.
+command: git status --porcelain .github
+(empty output above = no .github change)
+
+### repin status — NOT RUN (captain's step)
+command: git diff --name-only | grep '^skills/'
+skills/dsh-qa/SKILL.md
+skills/dsh-qa/scripts/lib/user-surface-eval.ts
+skills/dsh-qa/scripts/user-surface-mount.ts
+These skills/** edits belong to another lane; this lane changed no skills/** path.
+repin still needed by captain.

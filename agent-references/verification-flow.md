@@ -81,6 +81,16 @@ PR #62). `--live` without a key in the environment is a
 hard exit 3 BEFORE the build. Exit 3 therefore means any of: no usable Docker under `--require-docker`,
 a required arm unmeasured, or `--live` without a key.
 
+### The user-surface arm (step 14b, REQUIRED in every mode)
+
+Step 14b of the Docker lane (`docker/entrypoint.sh`) runs
+`skills/dsh-qa/scripts/user-surface-mount.ts` against the `dsh-tui` profile step 14 installed. It grades
+EVERY row id the INSTALLED artifact's own patch layers declare on a real `dsh-tui` boot, and records a
+witness per row: its own log sink, a live registration, an ACTIVE loader fibre, or a NAMED bound. It
+also asserts the seven documented slash commands on the live registry AND the command palette. Every
+`userSurface.*` row is REQUIRED in EVERY mode, so a lane that never ran this arm exits 3 — a missing
+profile is NOT a skip.
+
 ### Rootless, skip, and when the step is fatal
 
 The policy is measured, printed and falsifiable (the driver's `--self-test` carries one arm per branch):
@@ -179,7 +189,7 @@ here for the full body; where the two differ, the manual wins.
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable), or the `full-profile-boot.sh` / `mount-proof.sh` pattern with registration instrumentation | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner in its own output and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass — the steps ABOVE it carry the wave | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass — the steps ABOVE it carry the wave. **The lane ALSO requires the USER-SURFACE arm (step 14b)** — `userSurface.*` rows are required in EVERY mode; the witness and slash-command rules are in "The user-surface arm (step 14b, REQUIRED in every mode)" above | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
 **The pack-closure bound (T-91):** a green `node scripts/verify-pack-closure.ts` certifies COMPLETENESS
 plus the BYTE IDENTITY of every file whose source did not move; **freshness is NOT what the exit code

@@ -55,16 +55,34 @@ FAMILIES = [
 ]
 # The corner limit the task fixes, in pixels.
 CORNER_LIMIT_PX = 1.0
+# The failures that mean "the invocation or an INPUT was unusable" rather than "the figure failed":
+# a missing/unreadable file (OSError, including Pillow's own open errors), malformed JSON or a bad
+# number (ValueError), a facts block missing a key the measurement needs (KeyError), an argv list
+# that stops mid-flag (IndexError), a facts ROOT that is not an object (AttributeError) and a
+# wrong-typed JSON leaf fed to int()/float() (TypeError). Exit 1 is reserved for a figure that was
+# measured and FAILED.
+UNUSABLE_INPUT_ERRORS = (KeyError, ValueError, OSError, IndexError, TypeError, AttributeError)
+
+
+def refuse(message):
+    """Report an unusable invocation or input and exit 2, the code this module documents.
+
+    A bare `raise SystemExit("text")` exits with status 1 in Python, which is this script's code for
+    "measured and FAILED" — so every refusal goes through this one helper (PR #75, F3). Raising
+    `SystemExit` (not returning a code) keeps `--self-test` able to catch it as it always has.
+    """
+    print(f"measure-shots.py: {message}", file=sys.stderr)
+    raise SystemExit(2)
 
 
 def parse_band(text, flag):
     """Parse an `A:B` half-open band, refusing anything malformed."""
     parts = text.split(":")
     if len(parts) != 2:
-        raise SystemExit(f"{flag} wants A:B (half-open), got {text!r}")
+        refuse(f"{flag} wants A:B (half-open), got {text!r}")
     lo, hi = int(parts[0]), int(parts[1])
     if hi <= lo:
-        raise SystemExit(f"{flag} wants hi > lo, got {text!r}")
+        refuse(f"{flag} wants hi > lo, got {text!r}")
     return lo, hi
 
 
@@ -212,9 +230,9 @@ def measure_tui(pane_path, png_path, rows_band, cols_band, scale, cell_w, cell_h
     band_w = (cols_band[1] - cols_band[0]) * cw
     band_h = (rows_band[1] - rows_band[0]) * ch
     if image.size[1] != band_h or image.size[0] > band_w or image.size[0] <= 0:
-        raise SystemExit(f"the PNG is {image.size[0]}x{image.size[1]} px but the band rows "
-                         f"{rows_band[0]}:{rows_band[1]} cols {cols_band[0]}:{cols_band[1]} at {cw}x{ch} px "
-                         f"describes at most {band_w}x{band_h} px — the window does not cover the picture")
+        refuse(f"the PNG is {image.size[0]}x{image.size[1]} px but the band rows "
+               f"{rows_band[0]}:{rows_band[1]} cols {cols_band[0]}:{cols_band[1]} at {cw}x{ch} px "
+               f"describes at most {band_w}x{band_h} px — the window does not cover the picture")
     boxes, outside = find_boxes(lines, rows_band, cols_band)
     record = {
         "mode": "tui", "label": label, "pane": pane_path, "png": png_path, "size": list(image.size),
@@ -297,18 +315,18 @@ def measure_web(facts, png_path, label, key="web"):
     """
     web = facts.get(key)
     if not isinstance(web, dict):
-        raise SystemExit("the facts file carries no `web` object")
+        refuse("the facts file carries no `web` object")
     capture = web.get("capture")
     if not isinstance(capture, dict):
-        raise SystemExit("web.capture is missing — a capture that records no framing cannot be measured")
+        refuse("web.capture is missing — a capture that records no framing cannot be measured")
     boxes = []
     for raw in web.get("boxes", []):
         parts = [int(p) for p in str(raw).split(",")]
         if len(parts) != 4:
-            raise SystemExit(f"web.boxes entry is not left,top,width,height: {raw!r}")
+            refuse(f"web.boxes entry is not left,top,width,height: {raw!r}")
         boxes.append(parts)
     if not boxes:
-        raise SystemExit("web.boxes is empty — nothing to measure")
+        refuse("web.boxes is empty — nothing to measure")
     captured_w = int(capture["capturedWidth"])
     captured_h = int(capture["capturedHeight"])
     origin_x, origin_y = [int(v) for v in capture["boxOrigin"]]
@@ -431,8 +449,14 @@ def self_test():
         try:
             measure_tui(pane, good, (0, 6), (0, 10), 2, cell_w, cell_h, "self-test band red")
             failures.append("the tui arm accepted a measurement band narrower than the picture")
-        except SystemExit:
-            print("   [self-test band red] a band narrower than the picture was refused, as designed")
+        except SystemExit as refusal:
+            # THE CODE IS THE CONTRACT, so it is asserted here rather than assumed: a bare
+            # `raise SystemExit("text")` would report 1 — the code this script reserves for a figure
+            # that was measured and FAILED (PR #75, F3).
+            if refusal.code != 2:
+                failures.append(f"the band-narrow refusal exited {refusal.code}, not 2")
+            print(f"   [self-test band red] a band narrower than the picture was refused "
+                  f"(exit {refusal.code}), as designed")
         holed = os.path.join(tmp, "holed.png")
         image = Image.open(good).convert("RGB")
         draw = ImageDraw.Draw(image)
@@ -461,23 +485,26 @@ def self_test():
         record = measure_web(scrolled, png, "self-test web scrolled red")
         if record["ok"]:
             failures.append("the web arm accepted a capture that is not at scroll origin")
+        scrolled_y = facts(["0,0,144,42"], (400, 200), scroll=(0, 120))
+        record = measure_web(scrolled_y, png, "self-test web scrolled-y red")
+        if record["ok"]:
+            failures.append("the web arm accepted a capture that is not at VERTICAL scroll origin")
     if failures:
         for failure in failures:
             print(f"  !! {failure}")
         print("--self-test FAIL")
         return 1
     print("--self-test PASS (tui arms: good/pass, corner-drift>=1px/red, side-hole/red, band-narrow/red; "
-          "web arms: fits/pass, cut/red, scrolled/red)")
+          "web arms: fits/pass, cut/red, scrolled/red, scrolled-y/red)")
     return 0
 
 
-def main(argv):
-    """Entry point: dispatch on the first argument, always printing the numbers it judged."""
-    if not argv:
-        print(__doc__)
-        return 2
-    if argv[0] == "--self-test":
-        return self_test()
+def dispatch(argv):
+    """Run ONE mode and return its exit code: 0 the figure passes, 1 it was measured and FAILED.
+
+    A refusal raises out of here through `refuse` (2), and an unusable input raises an ordinary
+    exception that `main` maps onto the same 2 — so this function only ever RETURNS 0 or 1.
+    """
     mode = argv[0]
     options = {"rows": "0:10", "cols": "0:10", "scale": "2", "cell-w": "0", "cell-h": "0",
                "label": "", "json": "", "facts": "", "facts-key": "web", "pane": "", "png": ""}
@@ -485,7 +512,7 @@ def main(argv):
     while i < len(argv):
         key = argv[i].lstrip("-")
         if key not in options:
-            raise SystemExit(f"unknown option {argv[i]!r}")
+            refuse(f"unknown option {argv[i]!r}")
         options[key] = argv[i + 1]
         i += 2
     label = options["label"] or os.path.basename(options["png"] or options["facts"] or mode)
@@ -499,12 +526,28 @@ def main(argv):
                              parse_band(options["cols"], "--cols"), int(options["scale"]),
                              int(options["cell-w"]), int(options["cell-h"]), label)
     else:
-        raise SystemExit(f"unknown mode {mode!r} (expected web | tui | --self-test)")
+        refuse(f"unknown mode {mode!r} (expected web | tui | --self-test)")
     if options["json"]:
         with open(options["json"], "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=1)
             handle.write("\n")
     return 0 if record["ok"] else 1
+
+
+def main(argv):
+    """Entry point: dispatch on the first argument, and map unusable input onto exit 2."""
+    if not argv:
+        print(__doc__)
+        return 2
+    if argv[0] == "--self-test":
+        return self_test()
+    try:
+        return dispatch(argv)
+    except UNUSABLE_INPUT_ERRORS as error:
+        # The traceback is deliberately NOT printed: the contract is one line on stderr plus exit 2.
+        # `SystemExit` is not an `Exception`, so a refusal keeps the code `refuse` chose.
+        print(f"measure-shots.py: unusable input ({type(error).__name__}): {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

@@ -4,8 +4,9 @@
 // than the graph it draws: the boxes span 0..1234 CSS px, the captured viewport was 1034, and the panel
 // cannot scroll (scrollWidth == clientWidth), so both ends of the drawing were clipped and the facts
 // file recorded the false sentence "graph scrolled right". A wider window makes the panel wider (the
-// host gives it 45% of the viewport), so the WHOLE graph fits at scroll origin; this script refuses to
-// write a PNG unless that is measurably true, and it writes the numbers into the facts file.
+// host gives it 45% of the viewport), so the WHOLE graph fits at scroll origin; this script writes the
+// PNG plus the framing numbers the gate needs, and `shoot-team-dag.sh` then MEASURES those numbers and
+// deletes the PNG on failure — the wrapper, not this file, owns "never ship an unfit capture".
 //
 // WHAT IT TOUCHES. The profile it captures is a CONTAINER's copy (`/data/dsh-web`), never the host's
 // `~/.dsh`: the bundle under test is the checkout's `mpd-team-core-plugin/dist` +
@@ -18,16 +19,30 @@
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { chromium, type Page } from "playwright"
+import type { Page } from "playwright"
 
-const [BASE, OUT_PNG, OUT_FACTS, WIDTH_ARG, HEIGHT_ARG, LOCALE_ARG] = process.argv.slice(2)
-if (BASE === undefined || OUT_PNG === undefined || OUT_FACTS === undefined) {
-  throw new Error("usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]")
+/** The invocation line printed with every argument refusal. */
+const USAGE = "usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]"
+/** The exit status the header reserves for unusable arguments; 1 stays "a precondition failed". */
+const EXIT_UNUSABLE_ARGS = 2
+/** Refuse an unusable argument with the usage line and exit 2 (never `throw`, which would exit 1). */
+function refuseArgs(message: string): never {
+  console.error(`[shoot] ${message}`)
+  console.error(USAGE)
+  process.exit(EXIT_UNUSABLE_ARGS)
 }
+/** Parse a viewport dimension: a positive integer — never NaN, a fraction or a non-positive width. */
+function positiveInt(raw: string, flag: string): number {
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value <= 0) refuseArgs(`${flag} must be a positive integer, got ${JSON.stringify(raw)}`)
+  return value
+}
+const [BASE, OUT_PNG, OUT_FACTS, WIDTH_ARG, HEIGHT_ARG, LOCALE_ARG] = process.argv.slice(2)
+if (BASE === undefined || OUT_PNG === undefined || OUT_FACTS === undefined) refuseArgs("missing required arguments")
 /** The window to photograph. 2900 CSS px gives the host's 45% right sidebar 1304 px, which holds the
  * 1234 px graph plus its 24 px padding; a narrower window cannot fit the drawing and is refused below. */
-const WIDTH = Number(WIDTH_ARG ?? 2900)
-const HEIGHT = Number(HEIGHT_ARG ?? 1500)
+const WIDTH = positiveInt(WIDTH_ARG ?? "2900", "width")
+const HEIGHT = positiveInt(HEIGHT_ARG ?? "1500", "height")
 /** The browser locale: `en-US` for the English asset, `zh-CN` for the Chinese twin. */
 const LOCALE = LOCALE_ARG ?? "en-US"
 /** The nested fixture's parent team, written by `.mpd/readme-ref/nested/nested-fixture.ts --write`. */
@@ -78,7 +93,7 @@ interface PanelFacts {
   frames: number
   panel: number[]
   graph: number[]
-  scroll: { rect: number[]; clientWidth: number; scrollWidth: number; scrollLeft: number; clientHeight: number; scrollHeight: number }
+  scroll: { rect: number[]; clientWidth: number; scrollWidth: number; scrollLeft: number; scrollTop: number; clientHeight: number; scrollHeight: number }
   contentWidth: number
   contentHeight: number
 }
@@ -105,9 +120,9 @@ async function readPanel(page: Page): Promise<PanelFacts> {
       frames: document.querySelectorAll(".mpd-dag-group").length,
       panel: rect(panel),
       graph: rect(graph),
-      scroll: scroll === null ? { rect: [0, 0, 0, 0], clientWidth: 0, scrollWidth: 0, scrollLeft: 0, clientHeight: 0, scrollHeight: 0 } : {
+      scroll: scroll === null ? { rect: [0, 0, 0, 0], clientWidth: 0, scrollWidth: 0, scrollLeft: 0, scrollTop: 0, clientHeight: 0, scrollHeight: 0 } : {
         rect: rect(scroll), clientWidth: scroll.clientWidth, scrollWidth: scroll.scrollWidth, scrollLeft: scroll.scrollLeft,
-        clientHeight: scroll.clientHeight, scrollHeight: scroll.scrollHeight,
+        scrollTop: scroll.scrollTop, clientHeight: scroll.clientHeight, scrollHeight: scroll.scrollHeight,
       },
       contentWidth,
       contentHeight,
@@ -115,6 +130,9 @@ async function readPanel(page: Page): Promise<PanelFacts> {
   })
 }
 
+/** Loaded only AFTER the arguments pass: an unusable invocation must exit 2 even on a host without the
+ *  browser package, and a missing Playwright stays a precondition failure (exit 1), not an argument one. */
+const { chromium } = await import("playwright")
 const bound = bindEverySession()
 console.log(`[shoot] bound ${bound} web session(s) to ${TEAM_ID}`)
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] })
@@ -181,7 +199,7 @@ const capture = {
   boxOrigin: [framed.graph[0] - Math.round(clip.x), framed.graph[1] - Math.round(clip.y)],
   graphViewport: [framed.graph[2], framed.graph[3]],
   scrollX: framed.scroll.scrollLeft,
-  scrollY: 0,
+  scrollY: framed.scroll.scrollTop,
   contentWidth: framed.contentWidth,
   contentHeight: framed.contentHeight,
 }

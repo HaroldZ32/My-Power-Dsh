@@ -22,11 +22,16 @@
 //                            surface and writes no sink;
 //        · `disabled-by-design` the artifact declares `disabled: true` and the loader agrees.
 //      A row the loader never composed, a row whose fiber never became ACTIVE, and a disabled row
-//      that came up ENABLED are all failures.
+//      that came up ENABLED are all failures — and so is a row whose fiber is FAILED (3) or DISPOSED
+//      (4), EVEN when it left a non-empty sink or a live registration behind: the fiber state is read
+//      before any surface witness is accepted (CodeRabbit F9, PR #75).
 //   2. COMMAND REGISTRATION — the seven commands this bundle contributes (`docs/user-guide.md` §12)
 //      are asserted on the LIVE `commands` registry AND on the command palette a user sees, one
 //      palette capture each. `/mpd` and `/mpd-model` are documented TUI-ONLY, so the PALETTE is their
-//      required surface and a registry listing is recorded without being required. The corpus guard
+//      required surface and a registry listing is recorded without being required. A command failure
+//      GATES unless the command is the ONE documented exception (`NON_GATING_COMMANDS`, today
+//      `/mpd-codegraph`) and every declared row mounted in the same boot (CodeRabbit F11, PR #75), so
+//      an undocumented command nobody has seen fail yet can never ride a green run. The corpus guard
 //      (`corpusProblems`) fails the run if the expected set is not exactly the published seven, which
 //      is the negative control requirement 2 asks for: drop one and the arm reddens.
 //   3. UPGRADE PATH — the profile's row list must be the one the boot composed, and the bundle the
@@ -63,9 +68,10 @@ import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import {
-  CONTRIBUTED_COMMANDS, TUI_ONLY_COMMANDS, corpusProblems, enumerateArtifactRows, evaluateCommand,
-  evaluateNegativeControl, evaluateProfileRowList, evaluateRows, moduleNameCandidates, paletteCount,
-  paletteCommandRows, parsePatchRows, replayBundleResolution, resolveRowModule, scanModule, sinkRows,
+  CONTRIBUTED_COMMANDS, NON_GATING_COMMANDS, TUI_ONLY_COMMANDS, commandGates, corpusProblems,
+  enumerateArtifactRows, evaluateCommand, evaluateNegativeControl, evaluateProfileRowList, evaluateRows,
+  moduleNameCandidates, paletteCount, paletteCommandRows, parsePatchRows, replayBundleResolution,
+  resolveRowModule, scanModule, sinkRows,
 } from "./lib/user-surface-eval.ts"
 import type { PatchRow, RowContext, RowObservation, RowVerdict } from "./lib/user-surface-eval.ts"
 import { readSessionEvents, recordedToolNames } from "./lib/session-evidence.ts"
@@ -80,8 +86,8 @@ const SELF = fileURLToPath(import.meta.url)
 const REPO = dirname(dirname(dirname(dirname(SELF))))
 /** The command a user could never have: the live negative control's subject. */
 const NEGATIVE_CONTROL = "mpd-qa-no-such-command"
-/** Where the boot's specks and captures land by default (the dsh-qa evidence band). */
-const DEFAULT_EVIDENCE_ROOT = join(REPO, "evidence", "dsh-qa", "user-surface")
+/** Where the boot's specks and captures land by default (the release-gate evidence band). */
+const DEFAULT_EVIDENCE_ROOT = join(REPO, "evidence", "gates", "user-surface")
 /** The scratch root of this case; `/.qa-*` in `.gitignore` covers it (AGENTS.md §7 / T-77). */
 const SCRATCH_ROOT = join(REPO, ".qa-user-surface")
 /** The probe row's module, mounted as instrumentation into the sandbox profile's user layer. */
@@ -181,7 +187,7 @@ interface CaseOptions {
   readonly selfTest: boolean
   /** The installed profile whose bundle is the subject. */
   readonly profile: string
-  /** Where the evidence lands; `""` means a timestamped directory under the dsh-qa band. */
+  /** Where the evidence lands; `""` means a timestamped directory under `evidence/gates/user-surface`. */
   readonly evidence: string
   /** Where to write the whole record; `""` skips it. */
   readonly jsonOut: string
@@ -364,6 +370,19 @@ function selfTestArms(): SelfTestArm[] {
   arm("rows.loaderActive", evaluateRows(declared, [activeRow], [], new Map(), ctx)[0]?.witness === "loader-active", "an ACTIVE fiber with a runtime is the fallback")
   arm("rows.missingIsRed", evaluateRows(declared, [], [], new Map(), ctx)[0]?.ok === false, "a row the loader never composed FAILS")
   arm("rows.inactiveIsRed", evaluateRows(declared, [{ ...activeRow, state: 1, hasRuntime: false }], [], new Map(), ctx)[0]?.ok === false, "a composed row that never activated FAILS")
+  // 3b. A DEAD FIBER OUTRANKS THE SURFACE WITNESSES (CodeRabbit F9, PR #75). THE REVERSE CONTROL is the
+  //     first arm: a row whose fiber is FAILED (3) but which WROTE A LOG SINK used to be accepted as a
+  //     `sink` pass, and the second covers the same hole through `registration` on a DISPOSED fiber.
+  /** The reverse control's subject: an enabled row whose fiber FAILED after writing its sink. */
+  const deadFibreRow: RowObservation = { id: "row-a", state: 3, hasRuntime: false, disabled: false }
+  /** That row's verdict, read once so every arm below grades the same object. */
+  const deadFibreVerdict = evaluateRows(declared, [deadFibreRow], ["row-a"], new Map([["row-a", ["tool_a"]]]), ctx)[0] as RowVerdict
+  arm("rows.deadFibreSinkReddens", deadFibreVerdict.ok === false && deadFibreVerdict.witness === "none",
+    "a FAILED (3) fiber that WROTE A LOG SINK is not a pass: ok=" + String(deadFibreVerdict.ok) + " witness=" + deadFibreVerdict.witness)
+  arm("rows.deadFibreRegistrationReddens", evaluateRows(declared, [{ ...activeRow, state: 4, hasRuntime: false }], [], new Map([["row-a", ["tool_a"]]]), ctx)[0]?.ok === false,
+    "a DISPOSED (4) fiber with a live module-declared registration is not a pass either")
+  arm("rows.deadFibreQuotesEveryWitnessItRefused", deadFibreVerdict.raw.includes("state=3") && deadFibreVerdict.raw.includes("sink=true") && deadFibreVerdict.raw.includes("tool_a"),
+    "the evidence keeps the refused sink and registration beside the dead state: " + deadFibreVerdict.raw)
   arm("rows.disabledByDesign", evaluateRows([{ ...(declared[0] as PatchRow), disabled: true }], [{ ...activeRow, disabled: true }], [], new Map(), ctx)[0]?.witness === "disabled-by-design", "a declared-disabled row is green only when the loader agrees")
   arm("rows.disabledCameUpEnabled", evaluateRows([{ ...(declared[0] as PatchRow), disabled: true }], [activeRow], [], new Map(), ctx)[0]?.ok === false, "a disabled row that came up ENABLED FAILS")
   // The declared bound: a preset-scoped row that the root tree holds disabled is NULL, never true —
@@ -415,6 +434,16 @@ function selfTestArms(): SelfTestArm[] {
   arm("command.tuiOnlyNoPaneReddens", evaluateCommand("mpd-model", [], emptyPane).ok === false, "the TUI-only exemption is not a hole")
   // The requirement's other negative-control spelling: assert a command that does not exist.
   arm("command.fabricatedReddens", evaluateCommand(NEGATIVE_CONTROL, ["cellwork"], emptyPane).ok === false, "asserting a nonexistent command FAILS")
+  // 5b. THE COMMAND GATE (CodeRabbit F11, PR #75): a FAILURE on a fully mounted boot GATES for every
+  //     command except the ONE documented id, and even that one gates while the composition is broken.
+  arm("command.passGates", commandGates("ulw", true, true), "a pass rides as a gating assertion")
+  arm("command.failureGates", commandGates("cellwork", false, true), "an UNDOCUMENTED failure on a complete composition GATES (the old rule recorded it as a finding)")
+  arm("command.nonGatingIsExactlyCodegraph", NON_GATING_COMMANDS.length === 1 && NON_GATING_COMMANDS[0] === "mpd-codegraph" && commandGates("mpd-codegraph", false, true) === false,
+    "the whitelist is exactly one id: " + NON_GATING_COMMANDS.join(","))
+  arm("command.everyOtherCommandGates", CONTRIBUTED_COMMANDS.filter((name) => name !== "mpd-codegraph").every((name) => commandGates(name, false, true)),
+    "all six other contributed commands gate a failure: " + CONTRIBUTED_COMMANDS.filter((name) => name !== "mpd-codegraph").join(","))
+  arm("command.whitelistDoesNotExcuseABrokenComposition", commandGates("mpd-codegraph", false, false), "the one exception still gates on the stale-anchor arm")
+  arm("command.unknownNameGates", commandGates("roster", false, true), "a name this bundle does not contribute is never excused")
   arm("negativeControl.absentGreen", evaluateNegativeControl(NEGATIVE_CONTROL, ["cellwork"], "", paneWith("cellwork"), paneWith("cellwork")).ok, "an absent control is green while the palette is alive either side")
   arm("negativeControl.presentReddens", evaluateNegativeControl(NEGATIVE_CONTROL, [NEGATIVE_CONTROL], "", paneWith("cellwork"), paneWith("cellwork")).ok === false, "a control that IS present is not a control")
   arm("negativeControl.deadPaletteReddens", evaluateNegativeControl(NEGATIVE_CONTROL, [], "", "", "").ok === false, "an aimless capture (no box on either side) proves nothing")
@@ -476,6 +505,17 @@ function selfTestArms(): SelfTestArm[] {
 
   // 9. The module-name extractor: registration candidates only, de-duplicated.
   arm("modules.candidates", moduleNameCandidates('{ name: "cellwork_status" } { name: "cellwork_status" } { toolName: "mpd_ext_list" }').join(",") === "cellwork_status,mpd_ext_list", "extracts both shapes once")
+
+  // 10. THE STALE-ANCHOR GUARD (CodeRabbit F10, PR #75): with no `dsh` on PATH the anchor is "",
+  //     `dirname("")` is ".", and the unguarded path handed `cpSync` the whole process CWD. The first
+  //     arm proves the hazard is real, the next two that the guard refuses it, and the last that a
+  //     REAL resolved anchor is still accepted (the guard is not a blanket refusal).
+  arm("staleAnchor.hazardIsReal", dirname("") === ".", 'dirname("") === "." — the source an unresolved anchor would have copied recursively into the sandbox')
+  arm("staleAnchor.refusesUnresolvedDsh", staleAnchorRefusal("", "", "") !== "", "`command -v dsh` empty -> refused: " + staleAnchorRefusal("", "", ""))
+  arm("staleAnchor.refusesEmptyAnchor", staleAnchorRefusal("/usr/local/bin/dsh", "", "") !== "" && staleAnchorRefusal("/usr/local/bin/dsh", "", "").includes("anchor"),
+    "an alternative binary with an unresolved anchor is refused too: " + staleAnchorRefusal("/usr/local/bin/dsh", "", ""))
+  arm("staleAnchor.acceptsResolvedAnchor", staleAnchorRefusal("/usr/local/bin/dsh", join(REPO, "package.json"), REPO) === "",
+    "a resolved anchor whose package dir holds package.json is accepted")
   return arms
 }
 
@@ -526,6 +566,26 @@ function appendProbeRow(profileDir: string, probeOut: string): string {
   if (existsSync(patchFile)) appendFileSync(patchFile, block)
   else writeFileSync(patchFile, block)
   return block
+}
+
+/**
+ * Why a `--stale-bundle` run cannot build its install anchor, or "" when it can.
+ *
+ * The anchor layout copies the RUNNING harness package beside the stale bundle, so it needs a resolved
+ * harness install to copy FROM. When `command -v dsh` answers nothing the anchor is "", `dirname("")`
+ * is ".", and the copy would recursively clone the process CWD into the sandbox before dying as an
+ * opaque boot-crash (CodeRabbit F10, PR #75). Pure on purpose: the offline arms can then prove the
+ * refusal exists, and `runReal` turns a non-empty answer into exit 2 plus this sentence.
+ * @param pathDsh What `command -v dsh` answered ("" when the binary is absent).
+ * @param pathAnchor The anchor `package.json` that `dsh` belongs to ("" when unresolved).
+ * @param harnessDir The harness package directory to copy ("" when unresolved; never ".").
+ * @returns One readable sentence naming what is missing, or "" when the copy is possible.
+ */
+export function staleAnchorRefusal(pathDsh: string, pathAnchor: string, harnessDir: string): string {
+  if (pathDsh === "") return "--stale-bundle needs a `dsh` on PATH: `command -v dsh` answered nothing, so there is no installed harness package to copy beside the stale bundle — refusing instead of copying the current directory"
+  if (pathAnchor === "" || harnessDir === "" || harnessDir === ".") return "--stale-bundle could not resolve the install anchor of " + pathDsh + ": no anchor package.json was found, and dirname of an empty anchor is the current directory, so there is no safe source to copy beside the stale bundle"
+  if (!existsSync(join(harnessDir, "package.json"))) return "--stale-bundle resolved the anchor to " + pathAnchor + ", but no package.json sits in " + harnessDir + ", so the harness copy would be empty"
+  return ""
 }
 
 /**
@@ -668,13 +728,28 @@ async function runReal(options: CaseOptions): Promise<number> {
   const pathDsh = String(spawnSync("sh", ["-c", "command -v dsh"], { encoding: "utf8" }).stdout).trim()
   /** The anchor `package.json` of the dsh this machine's PATH resolves, i.e. the one that will boot. */
   const pathAnchor = pathDsh === "" ? "" : installAnchorOf(pathDsh)
-  /** The harness package the stale anchor's copy is made from; it must be the SAME harness build. */
-  const harnessSource = dirname(pathAnchor)
+  // The harness package the stale anchor's copy is made from. "" when no anchor resolved — NEVER
+  // `dirname("")`, which is "." and would hand `cpSync` the whole process CWD (CodeRabbit F10).
+  const harnessSource = pathAnchor === "" ? "" : dirname(pathAnchor)
+  // Why a stale-anchor run must refuse BEFORE anything is copied, or "" when it can build one.
+  const staleRefusal = options.staleBundle === "" ? "" : staleAnchorRefusal(pathDsh, pathAnchor, harnessSource)
   /** The environment the TUI boot inherits (PATH possibly redirected at the stale anchor). */
   let bootEnv: Record<string, string | undefined> = {}
   /** The anchor `package.json` the boot will derive its bundle resolution from. */
   let anchorPackageJson = pathAnchor
   if (options.staleBundle !== "") {
+    if (staleRefusal !== "") {
+      // EXIT 2, ONE READABLE SENTENCE, NO PARTIAL SANDBOX: a refused prerequisite is not a case
+      // failure (exit 1), never a silent ".". Before F10 this path threw out of `cpSync(".")` and the
+      // entry point reported an opaque `reason=boot-crash`.
+      say("REFUSED: " + staleRefusal)
+      writeFileSync(join(evidenceDir, "run.log"), log.join("\n") + "\n")
+      writeFileSync(join(evidenceDir, "refused.json"), JSON.stringify({ case: SLUG, refused: true, exitCode: 2, reason: staleRefusal, pathDsh, pathAnchor, harnessSource, staleBundle: options.staleBundle }, null, 2) + "\n")
+      console.error("[mpd-qa] FAIL case=" + SLUG + " lane=real reason=absent-dsh-binary prereq=\"command -v dsh\" remedy=\"install @deepseek-ai/dsh so the stale anchor has a harness package to copy, or drop --stale-bundle\"")
+      console.error(staleRefusal)
+      if (!options.keepSandbox) rmSync(sandbox, { recursive: true, force: true })
+      return 2
+    }
     /** The stale-anchor prefix this run boots through. */
     const stale = buildStaleAnchor(sandbox, options.staleBundle, harnessSource)
     anchorPackageJson = stale.anchorPackageJson
@@ -774,15 +849,15 @@ async function runReal(options: CaseOptions): Promise<number> {
   const assertions: UserSurfaceAssertion[] = []
   /** Record one assertion. */
   const push = (assertion: UserSurfaceAssertion): void => { assertions.push(assertion) }
-  // THE GATING RULE, declared here because it is the one place this case decides NOT to redden:
-  // a command failure is GATING unless EVERY declared row of the artifact was witnessed in the same
-  // boot. In a fully-mounted boot a command that no surface carries can only be a product-level gap
-  // (the row applied, its registration never reached the user), and reddening the release gate for it
-  // would conflate "this bundle does not mount" with "this documented command is unreachable". Such a
-  // row is recorded as a NON-GATING FINDING — `ok:null` plus the surfaces that answered "no" — so it
-  // is visible on the record, listed in `userSurface.findings`, and never read as a pass. On the
-  // stale-anchor arm (rows missing) the SAME commands stay FALSE, which is what makes the B
-  // regression red.
+  // THE GATING RULE (CodeRabbit F11, PR #75): a command failure GATES unless the command is named in
+  // `NON_GATING_COMMANDS` — today exactly one id, `/mpd-codegraph` — AND every declared row of the
+  // artifact was witnessed in the same boot. The previous rule ("non-gating whenever every row
+  // mounted") excused ANY undocumented command failure, so a fully mounted boot could ship with
+  // `/cellwork` unreachable and still read green. The whitelist keeps the exception explicit, one id,
+  // and reviewable: everything else gates, including a command whose failure nobody has seen yet.
+  // A command failure on an INCOMPLETE composition always gates, which is what makes the stale-anchor
+  // regression red. A whitelisted finding is recorded as `ok:null` plus the surfaces that answered
+  // "no": visible on the record, listed in `userSurface.findings`, and never read as a pass.
   /** True when NO declared row failed — a declared bound is allowed here (it is not a defect). */
   const compositionComplete = rowVerdicts.every((verdict) => verdict.ok !== false)
   /** The findings this run tracks instead of gating on. */
@@ -838,7 +913,7 @@ async function runReal(options: CaseOptions): Promise<number> {
     paletteCounts[name] = paletteCount(panes.get(name) ?? "")
     /** This command's verdict. */
     const verdict = evaluateCommand(name, registryCommands, panes.get(name) ?? "")
-    if (verdict.ok || !compositionComplete) {
+    if (commandGates(name, verdict.ok, compositionComplete)) {
       push({ name: "userSurface.command." + name, ok: verdict.ok, reason: verdict.reason, raw: verdict.raw, gating: true })
     } else {
       /** The finding's id, stable and greppable in the evidence and the report. */

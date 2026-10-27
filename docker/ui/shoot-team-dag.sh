@@ -5,7 +5,8 @@
 # (the graph's own CSS coordinates) plus the rect that was photographed; this wrapper then runs
 # `docker/ui/measure-shots.py web`, which refuses a capture whose boxes fall outside the image, whose
 # graph content does not fit its viewport, or whose view starts off scroll origin. A future re-shoot is
-# therefore never "looks fine": it is measured, and the exit status is the measurement's.
+# therefore never "looks fine": it is measured, the exit status is the measurement's, and a rejected
+# capture is DELETED before this script exits (an unmeasured PNG must not survive in the deliverable).
 #
 # WHY A WRAPPER AT ALL. The browser, the Chromium build and the profile under test live INSIDE the
 # UI-VIEW container; the rasterizer-independent measurement lives on the host (Pillow). The wrapper is
@@ -52,7 +53,7 @@ docker exec -e "PLAYWRIGHT_BROWSERS_PATH=/data/pw-browsers" "$CONTAINER" \
   bash -lc "cd /data && node $RUN/shoot-team-dag.mts '$MPD_UI_URL' $RUN/capture.png $RUN/shot-facts.json $WIDTH $HEIGHT $LOCALE"
 status=$?
 if [ "$status" -ne 0 ]; then
-  printf '[shoot-team-dag] the capture refused to write a PNG (exit %s)\n' "$status" >&2
+  printf '[shoot-team-dag] the capture script failed (exit %s); no PNG was copied\n' "$status" >&2
   exit "$status"
 fi
 docker cp "$CONTAINER:$RUN/capture.png" "$OUT" >/dev/null || exit 2
@@ -60,3 +61,9 @@ docker cp "$CONTAINER:$RUN/shot-facts.json" "$FACTS" >/dev/null || exit 2
 
 printf '[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)\n'
 python3 "$HERE/measure-shots.py" web --facts "$FACTS" --png "$OUT" --json "${FACTS%.json}.measure.json" --label "$(basename "$OUT")"
+measure_status=$?
+if [ "$measure_status" -ne 0 ]; then
+  rm -f "$OUT"
+  printf '[shoot-team-dag] the measurement REJECTED %s (exit %s) — the PNG was deleted\n' "$(basename "$OUT")" "$measure_status" >&2
+  exit "$measure_status"
+fi

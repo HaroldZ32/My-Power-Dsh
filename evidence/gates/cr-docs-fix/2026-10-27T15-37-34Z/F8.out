@@ -1,0 +1,35 @@
+=== EN asset rows (docs/index.md) ===
+  architecture.svg             -> ./assets/images/architecture.svg              exists=true
+  ulw-loop.svg                 -> ./assets/images/ulw-loop.svg                  exists=true
+  team-lifecycle.svg           -> ./assets/images/team-lifecycle.svg            exists=true
+  hero-web-tui-v2.png          -> ./assets/images/hero-web-tui-v2.png           exists=true
+  web-team-dag-groups.png      -> ./assets/images/web-team-dag-groups.png       exists=true
+  tui-team-dag-groups.png      -> ./assets/images/tui-team-dag-groups.png       exists=true
+  web-plugins-installed.png    -> ./assets/images/web-plugins-installed.png     exists=true
+  web-agent-presets.png        -> ./assets/images/web-agent-presets.png         exists=true
+  web-settings-mpd.png         -> ./assets/images/web-settings-mpd.png          exists=true
+  tui-status-line.png          -> ./assets/images/tui-status-line.png           exists=true
+  tui-workmates.png            -> ./assets/images/tui-workmates.png             exists=true
+  zh-CN/                       -> ./assets/images/zh-CN                         exists=true
+
+=== ZH asset rows (docs/index.zh-CN.md) ===
+  architecture.svg             -> ./assets/images/architecture.svg              exists=true
+  ulw-loop.svg                 -> ./assets/images/ulw-loop.svg                  exists=true
+  team-lifecycle.svg           -> ./assets/images/team-lifecycle.svg            exists=true
+  hero-web-tui-v2.png          -> ./assets/images/zh-CN/hero-web-tui-v2.png     exists=true
+  web-team-dag-groups.png      -> ./assets/images/zh-CN/web-team-dag-groups.png exists=true
+  tui-team-dag-groups.png      -> ./assets/images/tui-team-dag-groups.png       exists=true
+  web-plugins-installed.png    -> ./assets/images/zh-CN/web-plugins-installed.png exists=true
+  web-agent-presets.png        -> ./assets/images/zh-CN/web-agent-presets.png   exists=true
+  web-settings-mpd.png         -> ./assets/images/zh-CN/web-settings-mpd.png    exists=true
+  tui-status-line.png          -> ./assets/images/zh-CN/tui-status-line.png     exists=true
+  tui-workmates.png            -> ./assets/images/zh-CN/tui-workmates.png       exists=true
+
+EN basenames: ['architecture.svg', 'hero-web-tui-v2.png', 'team-lifecycle.svg', 'tui-status-line.png', 'tui-team-dag-groups.png', 'tui-workmates.png', 'ulw-loop.svg', 'web-agent-presets.png', 'web-plugins-installed.png', 'web-settings-mpd.png', 'web-team-dag-groups.png']
+ZH basenames: ['architecture.svg', 'hero-web-tui-v2.png', 'team-lifecycle.svg', 'tui-status-line.png', 'tui-team-dag-groups.png', 'tui-workmates.png', 'ulw-loop.svg', 'web-agent-presets.png', 'web-plugins-installed.png', 'web-settings-mpd.png', 'web-team-dag-groups.png']
+only in EN: []; only in ZH: []
+stale row tui-team-dag.png: absent from both indexes
+stale row web-team-board-v2.png: absent from both indexes
+
+F8 PASS — rows exist, raster rows are README-referenced, EN/ZH sets match, stale rows gone
+exit=0

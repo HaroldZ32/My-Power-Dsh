@@ -59,6 +59,37 @@ export const TUI_ONLY_COMMANDS: readonly string[] = ["mpd", "mpd-model"]
 export const HOST_PROVIDED_COMMANDS: readonly string[] = ["settings", "goal"]
 
 /**
+ * The ONLY contributed command whose unreachability is a RECORDED FINDING instead of a gate.
+ *
+ * `/mpd-codegraph` answers on NEITHER surface on a fully mounted 0.16.1 boot (measured 2026-10-27: its
+ * row is ACTIVE and its own log sink shows the codegraph init running, while the command reaches neither
+ * the agent's `commands` registry nor the palette — a product-source defect outside this corpus' write
+ * scope). Keeping the exception EXPLICIT here is the point: everything not named in this list gates,
+ * including a command whose failure nobody has seen yet, so a new undocumented gap can never inherit the
+ * exemption by accident (CodeRabbit F11, PR #75).
+ */
+export const NON_GATING_COMMANDS: readonly string[] = ["mpd-codegraph"]
+
+/**
+ * Decide whether one command's assertion GATES the run.
+ *
+ * Three rules, in order: a PASS always rides as a gating assertion; a FAILURE while the composition is
+ * incomplete always gates (the stale-anchor arm — a command missing because its row never mounted must
+ * redden the release gate); and on a FULLY mounted boot only an id in `NON_GATING_COMMANDS` may be
+ * recorded as a non-gating finding. Everything else, including a name this bundle does not contribute,
+ * gates.
+ * @param name The command name, without the leading slash.
+ * @param ok The command's own verdict.
+ * @param compositionComplete True when no declared row of the artifact failed in the same boot.
+ * @returns True when this command's assertion gates the run.
+ */
+export function commandGates(name: string, ok: boolean, compositionComplete: boolean): boolean {
+  if (ok) return true
+  if (!compositionComplete) return true
+  return !NON_GATING_COMMANDS.includes(name)
+}
+
+/**
  * Parse the `- id:` rows out of one patch layer's bytes.
  *
  * A line scanner rather than a YAML parse on purpose: the patch layers carry long comment blocks,
@@ -214,6 +245,11 @@ export interface RowContext {
  * A row declared `disabled: true` is graded `disabled-by-design` when the loader confirms the flag,
  * because non-activation there is the CORRECT outcome, not a defect.
  *
+ * THE FIBER STATE IS READ FIRST (CodeRabbit F9, PR #75). A row whose fiber is FAILED (3) or DISPOSED
+ * (4) is FALSE no matter what its sink or its module-declared names look like: a log line written
+ * before `apply()` threw is not a mount, and a registration can outlive the row that contributed it.
+ * Only an ACTIVE (2), pending/loading (0/1) or absent (null) fiber reaches the witness ladder below.
+ *
  * @param rows The rows the artifact declares.
  * @param observations The loader's per-row observations from the boot.
  * @param sinkNames Row ids that wrote a non-empty `<row>.log` in the session workspace.
@@ -256,13 +292,26 @@ export function evaluateRows(
       }
       return { id: row.id, ok: false, witness: "none", reason: "the row is declared by the release artifact but the real boot's loader holds NO entry for it — the boot did not compose this row", raw: "patch=" + row.patch + ":" + String(row.line) + " name=" + row.name + "; loader entries=" + String(observations.length) }
     }
+    // A DEAD FIBER OUTRANKS EVERY SURFACE WITNESS (CodeRabbit F9, PR #75): a row whose fiber is FAILED
+    // (3) or DISPOSED (4) is NOT mounted, and neither witness below can say otherwise — a log sink
+    // survives an `apply()` that wrote a line and then threw, and a name a module declares can be held
+    // live by ANOTHER row's apply (or by an earlier boot in the same workspace). The state is therefore
+    // read BEFORE any witness is accepted; a dead row is FALSE with every witness it tried to offer
+    // quoted in `raw`, so the record shows the contradiction instead of laundering it into a pass.
+    if (seen.state !== null && FIBER_DEAD.includes(seen.state)) {
+      /** True when the row wrote a sink anyway: exactly the false pass this check removes. */
+      const sunkAnyway = sinkNames.includes(row.id)
+      /** The live names a registration would have passed the row with. */
+      const registeredAnyway = registrationHits.get(row.id) ?? []
+      return { id: row.id, ok: false, witness: "none", reason: "the boot's loader holds this row's fiber in state " + String(seen.state) + " (FAILED or DISPOSED): its apply() threw or it was torn down, so the row is NOT mounted and neither a sink nor a registration it left behind can witness it", raw: "state=" + String(seen.state) + " runtime=" + String(seen.hasRuntime) + " disabled=false sink=" + String(sunkAnyway) + " registrations=" + (registeredAnyway.join(",") || "-") }
+    }
     if (sinkNames.includes(row.id)) {
-      return { id: row.id, ok: true, witness: "sink", reason: "the row's own log sink exists and is non-empty after the boot", raw: "sink=<ws>/.mpd/logs/" + row.id + ".log bytes>0" }
+      return { id: row.id, ok: true, witness: "sink", reason: "the row's own log sink exists and is non-empty after the boot", raw: "sink=<ws>/.mpd/logs/" + row.id + ".log bytes>0 state=" + String(seen.state) }
     }
     /** The tool/command names this row's module declares that the live registry answered to. */
     const hits = registrationHits.get(row.id) ?? []
     if (hits.length > 0) {
-      return { id: row.id, ok: true, witness: "registration", reason: "a name the row's own module declares is live in the boot's registry", raw: "live=" + hits.join(",") }
+      return { id: row.id, ok: true, witness: "registration", reason: "a name the row's own module declares is live in the boot's registry", raw: "live=" + hits.join(",") + " state=" + String(seen.state) }
     }
     if (seen.state === FIBER_ACTIVE && seen.hasRuntime) {
       return { id: row.id, ok: true, witness: "loader-active", reason: "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink", raw: "state=" + String(seen.state) + " runtime=true disabled=false" }
