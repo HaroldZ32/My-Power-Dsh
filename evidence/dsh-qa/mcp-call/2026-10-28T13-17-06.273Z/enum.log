@@ -1,0 +1,47 @@
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+dsh: reasoning:
+The user asks to list all available tool names starting with mcp__ prefix, one per line, no tool calls. I need to look at the tools available in my session and list those with mcp__ prefix.
+
+From the function list:
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__grep_app__searchGitHub
+- mcp__lsp__find_definition
+- mcp__lsp__find_implementation
+- mcp__lsp__find_references
+- mcp__lsp__find_workspace_symbols
+- mcp__lsp__get_diagnostics
+- mcp__lsp__get_hover
+- mcp__lsp__get_incoming_calls
+- mcp__lsp__get_outgoing_calls
+- mcp__lsp__prepare_call_hierarchy
+- mcp__lsp__rename_symbol
+- mcp__lsp__rename_symbol_strict
+- mcp__lsp__restart_server
+
+Also note: MCP servers listed: ast_grep, codegraph, context7, grep_app, lsp. So all tools from those.
+
+Just list them one per line, no tool calls.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server
