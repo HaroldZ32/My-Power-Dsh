@@ -1,0 +1,21 @@
+== nested layout ==
+root=/tmp/mpd-r3-nested-CKhZfj
+bin link=/tmp/mpd-r3-nested-CKhZfj/node_modules/.bin/codegraph -> /tmp/mpd-r3-nested-CKhZfj/vendor/@colbymchenry/codegraph/npm-shim.js
+.bin's node_modules entries=[".bin"]
+PASS nested: the link's realpath is the vendor shim :: observed="/tmp/mpd-r3-nested-CKhZfj/vendor/@colbymchenry/codegraph/npm-shim.js" expected="/tmp/mpd-r3-nested-CKhZfj/vendor/@colbymchenry/codegraph/npm-shim.js"
+PASS nested: the platform package is NOT under .bin's node_modules :: observed=false expected=false
+PASS nested: repaired default (anchored at the link target) ACCEPTS the healthy shim :: observed=true expected=true
+PASS nested: identity anchor (pre-repair search from .bin) REJECTS it — the false REJECT :: observed=false expected=false
+PASS nested: the PRE-REPAIR resolver REJECTS the healthy shim (the arm fails on old behaviour) :: observed=false expected=false
+== flat layout (the accidental-green shape) ==
+PASS flat: repaired default accepts :: observed=true expected=true
+PASS flat: identity anchor ALSO accepts (the bug hid here) :: observed=true expected=true
+PASS flat: pre-repair resolver accepts :: observed=true expected=true
+== broken nested layout (no platform package) ==
+PASS broken: repaired default REJECTS the unusable shim (no false ACCEPT) :: observed=false expected=false
+== F1 win32 two-file rule (injected platform; BOUND: no Windows host) ==
+PASS win32: runtime only -> repaired false :: observed=false expected=false
+PASS win32: app entry only -> repaired false :: observed=false expected=false
+PASS win32: both -> repaired true :: observed=true expected=true
+PASS win32: runtime only -> PRE-REPAIR true (the false ACCEPT F1 closes) :: observed=true expected=true
+R3/R4 REPRODUCTION: PASS
