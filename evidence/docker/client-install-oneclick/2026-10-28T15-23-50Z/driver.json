@@ -1,0 +1,38 @@
+{
+  "startedAt": "2026-10-28T15:23:50.022Z",
+  "finishedAt": "2026-10-28T15:43:20.725Z",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "compose": "Docker Compose version v5.6.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 501,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-dqRZw2",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "userSurface.",
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-oneclick",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=false passed=202 failed=0 null=39 NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,ui.teamBoard,userSurface.row.mpd-better-sidebar,userSurface.row.mpd-agent-team,userSurface.row.mpd-tool-agent-team,userSurface.row.persona,userSurface.row.agent-instructions,userSurface.row.time-context,userSurface.row.tool-bash,userSurface.row.tool-pwsh,userSurface.row.tool-fs,userSurface.row.tool-fs-search,userSurface.row.tool-jobs,userSurface.row.tool-schedule,userSurface.row.skill-filesystem,userSurface.row.tool-skill,userSurface.row.command-goal,userSurface.row.tool-goal,userSurface.row.planning,userSurface.row.plan-mode,userSurface.row.compaction,userSurface.row.compaction-basic,userSurface.row.command-compact,userSurface.row.tool-result-pruner,userSurface.row.delegation,userSurface.row.tool-subagent-control,userSurface.row.tool-subagent-list-agents,userSurface.row.tool-subagent,userSurface.row.tool-subagent-fork,userSurface.row.tool-workflow,userSurface.row.tool-ask-user,userSurface.row.tool-todo,userSurface.row.tool-web,userSurface.row.present,userSurface.row.tool-plugin-market]",
+  "exitCode": 0
+}
