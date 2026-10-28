@@ -28,10 +28,11 @@
 //   2. COMMAND REGISTRATION — the seven commands this bundle contributes (`docs/user-guide.md` §12)
 //      are asserted on the LIVE `commands` registry AND on the command palette a user sees, one
 //      palette capture each. `/mpd` and `/mpd-model` are documented TUI-ONLY, so the PALETTE is their
-//      required surface and a registry listing is recorded without being required. A command failure
-//      GATES unless the command is the ONE documented exception (`NON_GATING_COMMANDS`, today
-//      `/mpd-codegraph`) and every declared row mounted in the same boot (CodeRabbit F11, PR #75), so
-//      an undocumented command nobody has seen fail yet can never ride a green run. The corpus guard
+//      required surface and a registry listing is recorded without being required. EVERY command
+//      failure GATES: the D-1 fix made `/mpd-codegraph` reachable, so the old one-id exemption
+//      (`NON_GATING_COMMANDS`) is EMPTY and pinned empty by `--self-test` — a command nobody has seen
+//      fail yet can never ride a green run, and a full mount whose command reaches neither surface
+//      reddens (CodeRabbit F11, PR #75; AC-3 of the codegraph wave). The corpus guard
 //      (`corpusProblems`) fails the run if the expected set is not exactly the published seven, which
 //      is the negative control requirement 2 asks for: drop one and the arm reddens.
 //   3. UPGRADE PATH — the profile's row list must be the one the boot composed, and the bundle the
@@ -458,15 +459,20 @@ function selfTestArms(): SelfTestArm[] {
   arm("command.tuiOnlyNoPaneReddens", evaluateCommand("mpd-model", [], emptyPane).ok === false, "the TUI-only exemption is not a hole")
   // The requirement's other negative-control spelling: assert a command that does not exist.
   arm("command.fabricatedReddens", evaluateCommand(NEGATIVE_CONTROL, ["cellwork"], emptyPane).ok === false, "asserting a nonexistent command FAILS")
-  // 5b. THE COMMAND GATE (CodeRabbit F11, PR #75): a FAILURE on a fully mounted boot GATES for every
-  //     command except the ONE documented id, and even that one gates while the composition is broken.
+  // 5b. THE COMMAND GATE (CodeRabbit F11, PR #75; AC-3): a FAILURE on a fully mounted boot GATES for
+  //     EVERY command. The old one-id whitelist (`/mpd-codegraph`) is retired by the D-1 fix, and the
+  //     empty list is pinned here, so re-opening an exemption breaks an arm instead of the gate.
   arm("command.passGates", commandGates("ulw", true, true), "a pass rides as a gating assertion")
   arm("command.failureGates", commandGates("cellwork", false, true), "an UNDOCUMENTED failure on a complete composition GATES (the old rule recorded it as a finding)")
-  arm("command.nonGatingIsExactlyCodegraph", NON_GATING_COMMANDS.length === 1 && NON_GATING_COMMANDS[0] === "mpd-codegraph" && commandGates("mpd-codegraph", false, true) === false,
-    "the whitelist is exactly one id: " + NON_GATING_COMMANDS.join(","))
-  arm("command.everyOtherCommandGates", CONTRIBUTED_COMMANDS.filter((name) => name !== "mpd-codegraph").every((name) => commandGates(name, false, true)),
-    "all six other contributed commands gate a failure: " + CONTRIBUTED_COMMANDS.filter((name) => name !== "mpd-codegraph").join(","))
-  arm("command.whitelistDoesNotExcuseABrokenComposition", commandGates("mpd-codegraph", false, false), "the one exception still gates on the stale-anchor arm")
+  arm("command.whitelistIsEmpty", NON_GATING_COMMANDS.length === 0, "the exemption list is EMPTY after the D-1 fix (it was exactly mpd-codegraph)")
+  // The deliberate BROKEN COMPOSITION, in pure form: the name the whitelist used to excuse, with no
+  // registry listing and no palette row, must FAIL and must GATE. The live lane repeats it on a real
+  // bundle whose codegraph plugin is the pre-fix build.
+  arm("command.codegraphUnreachableGates", evaluateCommand("mpd-codegraph", [], emptyPane).ok === false && commandGates("mpd-codegraph", false, true),
+    "an unreachable /mpd-codegraph FAILS on a complete composition AND gates")
+  arm("command.everyContributedCommandGates", CONTRIBUTED_COMMANDS.every((name) => commandGates(name, false, true)),
+    "all seven contributed commands gate a failure: " + CONTRIBUTED_COMMANDS.join(","))
+  arm("command.anyFailureGatesOnBrokenComposition", CONTRIBUTED_COMMANDS.every((name) => commandGates(name, false, false)), "every contributed command also gates on the stale-anchor arm")
   arm("command.unknownNameGates", commandGates("roster", false, true), "a name this bundle does not contribute is never excused")
   arm("negativeControl.absentGreen", evaluateNegativeControl(NEGATIVE_CONTROL, ["cellwork"], "", paneWith("cellwork"), paneWith("cellwork")).ok, "an absent control is green while the palette is alive either side")
   arm("negativeControl.presentReddens", evaluateNegativeControl(NEGATIVE_CONTROL, [NEGATIVE_CONTROL], "", paneWith("cellwork"), paneWith("cellwork")).ok === false, "a control that IS present is not a control")
@@ -942,15 +948,12 @@ async function runReal(options: CaseOptions): Promise<number> {
   const assertions: UserSurfaceAssertion[] = []
   /** Record one assertion. */
   const push = (assertion: UserSurfaceAssertion): void => { assertions.push(assertion) }
-  // THE GATING RULE (CodeRabbit F11, PR #75): a command failure GATES unless the command is named in
-  // `NON_GATING_COMMANDS` — today exactly one id, `/mpd-codegraph` — AND every declared row of the
-  // artifact was witnessed in the same boot. The previous rule ("non-gating whenever every row
-  // mounted") excused ANY undocumented command failure, so a fully mounted boot could ship with
-  // `/cellwork` unreachable and still read green. The whitelist keeps the exception explicit, one id,
-  // and reviewable: everything else gates, including a command whose failure nobody has seen yet.
-  // A command failure on an INCOMPLETE composition always gates, which is what makes the stale-anchor
-  // regression red. A whitelisted finding is recorded as `ok:null` plus the surfaces that answered
-  // "no": visible on the record, listed in `userSurface.findings`, and never read as a pass.
+  // THE GATING RULE (CodeRabbit F11, PR #75; AC-3 of the codegraph wave): a command failure GATES on
+  // ANY composition, complete or not. The original rule ("non-gating whenever every row mounted")
+  // excused ANY undocumented command failure; F11 narrowed that to one whitelisted id; the D-1 fix
+  // made `/mpd-codegraph` reachable, so `NON_GATING_COMMANDS` is EMPTY and every contributed command is
+  // held to its own surface. A command that answers "no" is recorded as a FAILED, gating assertion —
+  // never as an `ok:null` finding — so a fully mounted boot whose command is unreachable reddens.
   /** True when NO declared row failed — a declared bound is allowed here (it is not a defect). */
   const compositionComplete = rowVerdicts.every((verdict) => verdict.ok !== false)
   /** The findings this run tracks instead of gating on. */
