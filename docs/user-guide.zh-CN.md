@@ -728,7 +728,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 命令名之后是自由文本形式的目标。不带目标的裸 `/ulw` 会打印用法、不会启动任何东西；在无法裁决命令
 的表面（headless 运行）上，同样的文本会作为指令提交。
 
-**`可用位置` 一列以什么为测量基准（0.16.1）。** 本次发布唯一的一手见证是 harness 自己的 `commands`
+**`可用位置` 一列以什么为测量基准（0.16.2）。** 本次发布唯一的一手见证是 harness 自己的 `commands`
 注册表 —— 针对 `mpd` 会话的 agent 读取 —— 加上 **TUI** 命令面板：QA 用例对这两者断言
 `userSurface.command.<name>`，它看到的每一行面板都抓取在
 `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`（`result.json`、`palette/`）里。本次

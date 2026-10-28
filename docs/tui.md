@@ -965,7 +965,7 @@ part of a shipped session), and the bundle mounts the three OFFICIAL Agent Teams
 (`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`). Read that one row as history, not
 as a current capability.
 
-**A 0.16.1 delta on this table (2026-10-28) — one witness was WRONG, and it was the blind spot that
+**A 0.16.2 delta on this table (2026-10-28) — one witness was WRONG, and it was the blind spot that
 hid a defect:** the `mpd-codegraph-plugin` row's recorded live witness was the apply-time log line
 `[mpd-codegraph] init status=marker …`. That line is a LOG-SINK marker: it proves the row applied, and
 it was green while the plugin's ONE contributed command reached NO command registry at all (the 0.16.1

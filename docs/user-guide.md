@@ -832,7 +832,7 @@ The objective is free text after the command name. A bare `/ulw` with no objecti
 starts nothing; on surfaces without command adjudication (a headless run) the same text is submitted
 as a directive instead.
 
-**What the `Where` column is measured against (0.16.1).** The only live witness this release carries is
+**What the `Where` column is measured against (0.16.2).** The only live witness this release carries is
 the harness's own `commands` registry — read for the `mpd` session's agent — together with the **TUI**
 command palette: the QA case asserts `userSurface.command.<name>` against both, and every palette row
 it saw is captured in `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`
