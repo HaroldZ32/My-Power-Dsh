@@ -9,6 +9,12 @@
 // - a pin already present in process.env wins untouched;
 // - resolution failure is NOT fatal: with the env untouched the adopted resolver
 //   runs its own bundled -> provisioned -> PATH -> download chain;
+// - a resolved candidate is pinned only when it can actually SERVE (D-3, 2026-10-28): the shared
+//   resolver's codegraph acceptance now requires the per-platform bundle to resolve beside the shim,
+//   because upstream ships `codegraph` as a thin shim plus a per-platform OPTIONAL dependency and npm
+//   counts an unfetchable optional dependency as success. Pinning such a shim is fatal rather than
+//   degraded — the adopted resolver honours `MPD_CODEGRAPH_BIN` unconditionally — so the rule and its
+//   two-way measurement live in `../../mpd-mcp-shared/bin-resolve.ts`;
 // - `runCodegraphServe()` MUST be called here: serve.js self-starts only when it
 //   is argv[1] (isDirectInvocation), which the launcher is, not serve.js;
 // - never throw, and never write to stdout (it carries the MCP protocol).

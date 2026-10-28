@@ -1,0 +1,18 @@
+### arm armD0-prefix-head-launcher
+$ node probe.mjs /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/cg-repro/prefix-tree/packages/mpd-mcp-codegraph/dist/launch.js 20000   # cwd=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+VERDICT=timeout
+TOOLS=0
+TOOL_NAMES=
+DETAIL=no tools/list answer within 20000ms; stdoutBytes=0
+EXIT=1
+--- sink (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/mcp-codegraph/d3-oneclick-2of3/2026-10-28T09-59-11Z/arms/armD0/.mpd/logs/mpd-mcp-codegraph.log) ---
+[2026-10-28T10:02:08.938Z] [mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+codegraph: no prebuilt bundle for linux-x64.
+codegraph: the network fallback is disabled (CODEGRAPH_NO_DOWNLOAD is set).
+Expected the optional package @colbymchenry/codegraph-linux-x64 to be installed.
+A registry mirror (e.g. npmmirror/cnpm) that did not mirror the per-platform
+package is the usual cause. Fixes:
+  - install from the official registry:
+      npm i -g @colbymchenry/codegraph --registry=https://registry.npmjs.org
+  - or use the standalone installer (no Node required):
+      curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh

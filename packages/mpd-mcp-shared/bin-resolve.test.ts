@@ -11,7 +11,8 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { resolveAstGrepBinary, resolveCodegraphBinary, probeAstGrep, bundleRootFrom } from "./bin-resolve.ts"
+import { resolveAstGrepBinary, resolveCodegraphBinary, probeAstGrep, bundleRootFrom, codegraphPlatformPackage, hasCodegraphPlatformBundle } from "./bin-resolve.ts"
+import type { ResolvedBinary } from "./bin-resolve.ts"
 import type { ResolverOptions } from "./bin-resolve.ts"
 
 /** A fresh temp tree that already carries the `<bundle>/.toolchain/.../.bin` layout. */
@@ -123,8 +124,8 @@ test("codegraph: <bundle>/.toolchain tier resolves the link: checkout layout", (
   const s = sandbox()
   /** The linker's own `.bin` entry under the installer's private toolchain prefix. */
   const bin = touch(join(s, "bundle", ".toolchain", "node_modules", ".bin", "codegraph"))
-  /** The resolution that must report the toolchain tier. */
-  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", { bundleRoot: join(s, "bundle") })
+  /** The resolution that must report the toolchain tier (the bundle probe is pinned: this case is about precedence). */
+  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", { bundleRoot: join(s, "bundle"), platformBundle: () => true })
   expect(r).not.toBeNull()
   expect(r!.source).toBe("toolchain")
   expect(r!.binary).toBe(bin)
@@ -137,14 +138,95 @@ test("codegraph: createRequire tier reads the package's own bin entry", () => {
   const pkg = join(s, "profile", "node_modules", "@colbymchenry", "codegraph")
   touch(join(pkg, "npm-shim.js"))
   writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@colbymchenry/codegraph", bin: { codegraph: "npm-shim.js" } }))
-  /** The resolution through the injected require tier. */
+  /** The resolution through the injected require tier (the bundle probe is pinned: this case is about precedence). */
   const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", {
     bundleRoot: join(s, "bundle"),
+    platformBundle: () => true,
     requireResolve: (spec) => (spec === "@colbymchenry/codegraph/package.json" ? join(pkg, "package.json") : null),
   })
   expect(r).not.toBeNull()
   expect(r!.source).toBe("require")
   expect(r!.binary).toBe(join(pkg, "npm-shim.js"))
+})
+
+// --- D-3 (measured 2026-10-28): a codegraph shim is accepted only when its PER-PLATFORM bundle
+// resolves. Upstream ships the executable as a thin `npm-shim.js` plus a per-platform OPTIONAL
+// dependency, and npm counts an unfetchable optional dependency as success — so a registry mirror that
+// skipped it leaves an existing shim that cannot start. Pinning such a shim is worse than a missing
+// engine: the adopted resolver honours MPD_CODEGRAPH_BIN unconditionally and never reaches its own
+// chain, so the row serves ZERO tools. The three one-click stamps whose npm toolchain install reported
+// `added 4 packages` (instead of five) each lost `mcp__codegraph__codegraph_explore`; every
+// `added 5` stamp kept it.
+/** The per-platform package name this host's install would carry, split for a `node_modules` path. */
+const platformParts = codegraphPlatformPackage(process.platform, process.arch).split("/")
+
+/**
+ * One install state: the main package (with its shim) present, the per-platform package present only
+ * when `withBundle`. A FRESH tree per state, because resolution answers are memoised per directory —
+ * a tree mutated between two calls would measure the memo, not the install state.
+ *
+ * @param withBundle - Whether the per-platform package (and its launcher file) is installed.
+ * @returns The resolution, from the inputs a real launcher would hand the resolver.
+ */
+function resolveFromInstallState(withBundle: boolean): ResolvedBinary | null {
+  /** The temp tree this state lives in. */
+  const s = sandbox()
+  /** The main package's directory, where upstream's shim sits. */
+  const pkg = join(s, "profile", "node_modules", "@colbymchenry", "codegraph")
+  touch(join(pkg, "npm-shim.js"))
+  writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "@colbymchenry/codegraph", bin: { codegraph: "npm-shim.js" } }))
+  if (withBundle) touch(join(s, "profile", "node_modules", ...platformParts, "bin", "codegraph"))
+  return resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", {
+    bundleRoot: join(s, "bundle"),
+    requireResolve: (spec: string) => (spec === "@colbymchenry/codegraph/package.json" ? join(pkg, "package.json") : null),
+  })
+}
+
+test("codegraph: a shim whose per-platform bundle is missing is skipped, never pinned (the D-3 state)", () => {
+  // `added 4 packages` in the one-click lane: NOTHING may be pinned, so the adopted chain can answer.
+  expect(resolveFromInstallState(false)).toBeNull()
+  // `added 5 packages` in the same lane: the identical inputs now accept the shim.
+  /** The resolution of the complete install state. */
+  const healthy = resolveFromInstallState(true)
+  expect(healthy).not.toBeNull()
+  expect(healthy!.source).toBe("require")
+})
+
+test("codegraph: an unusable first candidate falls THROUGH to the next usable tier", () => {
+  /** The temp tree this case resolves inside. */
+  const s = sandbox()
+  /** The healthy linker tier, which must answer once the broken require tier is refused. */
+  const bin = touch(join(s, "bundle", ".toolchain", "node_modules", ".bin", "codegraph"))
+  /** A require tier that proposes a candidate the probe will refuse. */
+  const broken = touch(join(s, "profile", "node_modules", "@colbymchenry", "codegraph", "npm-shim.js"))
+  writeFileSync(join(s, "profile", "node_modules", "@colbymchenry", "codegraph", "package.json"), JSON.stringify({ name: "@colbymchenry/codegraph", bin: { codegraph: "npm-shim.js" } }))
+  /** The resolution: only the toolchain candidate may be accepted. */
+  const r = resolveCodegraphBinary("/nowhere/packages/mpd-mcp-codegraph/dist/launch.js", {
+    bundleRoot: join(s, "bundle"),
+    requireResolve: (spec) => (spec === "@colbymchenry/codegraph/package.json" ? join(s, "profile", "node_modules", "@colbymchenry", "codegraph", "package.json") : null),
+    platformBundle: (shim) => shim !== broken,
+  })
+  expect(r).not.toBeNull()
+  expect(r!.source).toBe("toolchain")
+  expect(r!.binary).toBe(bin)
+})
+
+test("codegraph platform bundle: the package name and the per-platform file are upstream's own", () => {
+  expect(codegraphPlatformPackage("linux", "x64")).toBe("@colbymchenry/codegraph-linux-x64")
+  expect(codegraphPlatformPackage("darwin", "arm64")).toBe("@colbymchenry/codegraph-darwin-arm64")
+  expect(codegraphPlatformPackage("win32", "x64")).toBe("@colbymchenry/codegraph-win32-x64")
+  /** The specifiers each platform's question uses, captured instead of resolved. */
+  const asked: string[] = []
+  /** A resolver that records the specifier and answers "installed". */
+  const resolveUsable = (spec: string): string | null => {
+    asked.push(spec)
+    return "/pretend/installed"
+  }
+  expect(hasCodegraphPlatformBundle("/pretend/npm-shim.js", { platform: "win32", arch: "x64", resolve: resolveUsable })).toBe(true)
+  expect(hasCodegraphPlatformBundle("/pretend/npm-shim.js", { platform: "linux", arch: "x64", resolve: resolveUsable })).toBe(true)
+  expect(asked).toEqual(["@colbymchenry/codegraph-win32-x64/node.exe", "@colbymchenry/codegraph-linux-x64/bin/codegraph"])
+  // An absent shim is not an error: the question answers false and never throws.
+  expect(hasCodegraphPlatformBundle(join(sandbox(), "absent", "npm-shim.js"))).toBe(false)
 })
 
 // --- win32 name expansion -------------------------------------------------

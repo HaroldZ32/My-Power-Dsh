@@ -322,6 +322,22 @@ function firstAccepted(candidates, exists, probe) {
   }
   return null;
 }
+function codegraphPlatformPackage(platform, arch) {
+  return `@colbymchenry/codegraph-${platform}-${arch}`;
+}
+function hasCodegraphPlatformBundle(shimPath, opts = {}) {
+  const platform = opts.platform ?? process.platform;
+  const arch = opts.arch ?? process.arch;
+  const resolveFromShim = opts.resolve ?? ((spec) => {
+    try {
+      return createRequire(resolve2(shimPath)).resolve(spec);
+    } catch {
+      return null;
+    }
+  });
+  const entrySpec = platform === "win32" ? `${codegraphPlatformPackage(platform, arch)}/node.exe` : `${codegraphPlatformPackage(platform, arch)}/bin/codegraph`;
+  return resolveFromShim(entrySpec) !== null;
+}
 function resolveCodegraphBinary(launcherUrl, opts = {}) {
   try {
     const env = opts.env ?? process.env;
@@ -349,7 +365,8 @@ function resolveCodegraphBinary(launcherUrl, opts = {}) {
       candidates.push({ path: join2(bundleRoot, "node_modules", ".bin", s), source: "bundle-bin" });
     }
     const seen = new Set;
-    return firstAccepted(candidates.filter((c) => seen.has(c.path) ? false : (seen.add(c.path), true)), exists, null);
+    const usable = opts.platformBundle ?? ((shim) => hasCodegraphPlatformBundle(shim, platform === process.platform ? {} : { platform }));
+    return firstAccepted(candidates.filter((c) => seen.has(c.path) ? false : (seen.add(c.path), true)), exists, usable);
   } catch {
     return null;
   }
