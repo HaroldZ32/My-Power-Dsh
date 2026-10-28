@@ -182,8 +182,9 @@ staged**；captain 只在工作确实需要团队时自行用官方
 当时禁止重命名下列名称；**允许新增**。下面的团队条目描述的是已退役的插件，作为该波次的记录保留。
 
 - 斜杠指令：`/agent-teams`、`/agent-teams-mpd`（来自 `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  与 `profileCommandName('mpd')`，`lib/command.ts:3,24-34,95-111`）—— **随插件退役；随包会话中
-  不存在 `/agent-teams` 命令**
+  与 `profileCommandName('mpd')`，`lib/command.ts:3,24-34,95-111`）—— 已退役插件的名字：
+  `/agent-teams-mpd` 在任何随包会话中都不存在，而 `/agent-teams` 这个名字今天由 `mpd-team-core`
+  行为官方团队流程注册（[`user-guide.md`](user-guide.zh-CN.md) §12，2026-10-28 实测）
 - 工具：团队工具全套 —— **随插件退役；团队工作跑在官方的 `spawn_teammate` / `team_*`
   工具上**
 - 键：`profiles.mpd`（随插件退役）；preset id `mpd`（**仍然随包提供**，现在由

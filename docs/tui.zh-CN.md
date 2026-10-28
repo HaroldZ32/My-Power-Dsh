@@ -788,6 +788,16 @@ harness 上，entry-config 保存**不会执行任何 `<workspace>/.mpd/mpd.json
 **官方** Agent Teams 包（`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`）。请把
 那一行读作历史，而不是当前能力。
 
+**这张表在 0.16.1 上有一处变化（2026-10-28）—— 有一条见证是错的，而它正是掩盖了缺陷的盲区：**
+`mpd-codegraph-plugin` 那一行原先记录的实测见证是应用期日志行
+`[mpd-codegraph] init status=marker …`。那只是一条**日志汇标记**：它证明该行执行过，而且在它全绿的同时，
+该插件贡献的**唯一一条**命令根本没进任何命令注册表（0.16.1 的缺陷 —— 该行在 loader 第一轮并发 apply
+中就执行了，此时命令注册表尚不存在，它那一次注册被无声丢弃）。该行的见证现在是**可达的命令本身** ——
+harness 针对 `mpd` 会话 agent 的 `commands` 注册表清单 **加上** TUI 面板抓取
+（`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/result.json` 中
+`userSurface.command.mpd-codegraph` 为 PASS，面板行在该戳的 `palette/` 里）—— 而 init 日志行只保留为
+初始化本身的副作用见证。分类不变（`usable`）。其余各行的见证未改动。
+
 | 包 | 角色 | 分类 | 实测见证 |
 |---|---|---|---|
 | `mpd-bundle` | 组合层（bundle patch 本身） | usable | 组合配置含 `mpd-tui`；真实启动 0 崩溃特征。本行曾记录的 `agent-preset-registry` id-target 已于 2026-10-02 按"严格零覆盖"决定移除 —— 以 §2 为准 |
@@ -801,7 +811,7 @@ harness 上，entry-config 保存**不会执行任何 `<workspace>/.mpd/mpd.json
 | `mpd-hashline-plugin` | 锚点编辑纪律 | usable | 4 个 `mpd_hashline_*` 工具 |
 | `mpd-boulder-plugin` | 持久工作台账 | usable | 6 个 `mpd_boulder_*` 工具 |
 | `mpd-comment-checker-plugin` | 注释/文档串检测（可选二进制） | usable | 工具 `mpd_comment_check` |
-| `mpd-codegraph-plugin` | codegraph 项目初始化 + 二进制解析 | usable | 应用期 `[mpd-codegraph] init status=marker …` |
+| `mpd-codegraph-plugin` | codegraph 项目初始化 + 二进制解析 | usable | 2026-10-28 重新测量：命令 `mpd-codegraph` 既在 `mpd` 会话的 harness 注册表里，也画在 TUI 面板上（`userSurface.command.mpd-codegraph` PASS，`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`）；应用期 `[mpd-codegraph] init status=…` 行只是初始化本身的副作用见证 |
 | `mpd-memory-plugin` | git/svn 支撑的记忆 + 反思 | usable | 7 个 `mpd_memory_*` 工具 |
 | `mpd-workmate-plugin` | 持久演化型智能体库 | usable | 7 个 `mpd_workmate_*` 工具 |
 | `mpd-team-compact-plugin` | 已结束团队的压缩 | usable | 工具 `mpd_team_compact_run`、`mpd_team_compact_status` |
