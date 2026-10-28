@@ -1,0 +1,149 @@
+{
+  "ok": true,
+  "stage": "boot",
+  "bootOk": true,
+  "stamp": "2026-10-28T09-50-58.042Z",
+  "isolation": {
+    "sandbox": "/tmp/mpd-codegraph-d1-ORpH2R",
+    "realHomeUntouched": true
+  },
+  "arms": {
+    "early": {
+      "inject": [],
+      "applyAt": "2026-10-28T09:51:00.135Z",
+      "commandsRead": {
+        "strict": false,
+        "loose": false,
+        "error": ""
+      },
+      "register": {
+        "phase": "apply-register",
+        "ordinal": 0,
+        "at": "2026-10-28T09:51:00.135Z",
+        "sinceApplyMs": 0,
+        "command": "qa-cg-early",
+        "outcome": {
+          "ok": false,
+          "reason": "strict read answered undefined (no ACTIVE provider) — the adapter returns noop",
+          "disposer": "noop"
+        }
+      },
+      "landed": false,
+      "lateRegister": {
+        "phase": "late-register",
+        "ordinal": 1,
+        "at": "2026-10-28T09:51:00.679Z",
+        "sinceApplyMs": 544,
+        "command": "qa-cg-late",
+        "outcome": {
+          "ok": true,
+          "reason": "registered",
+          "disposer": "effect"
+        }
+      },
+      "lateLanded": true,
+      "finalRegister": {
+        "phase": "final-register",
+        "ordinal": 600,
+        "at": "2026-10-28T09:51:06.148Z",
+        "sinceApplyMs": 6013,
+        "command": "qa-cg-early-final",
+        "outcome": {
+          "ok": false,
+          "reason": "strict read answered undefined (no ACTIVE provider) — the adapter returns noop",
+          "disposer": "noop"
+        }
+      }
+    },
+    "late": {
+      "inject": [
+        "commands"
+      ],
+      "applyAt": "2026-10-28T09:51:00.266Z",
+      "commandsRead": {
+        "strict": true,
+        "loose": true,
+        "error": ""
+      },
+      "register": {
+        "ok": true,
+        "reason": "registered",
+        "disposer": "effect"
+      },
+      "landed": true
+    },
+    "rowCtx": {}
+  },
+  "listing": {
+    "count": 13,
+    "names": [
+      "agent-teams",
+      "cellwork",
+      "compact",
+      "feedback",
+      "goal",
+      "mpd",
+      "mpd-model",
+      "permission",
+      "plan",
+      "qa-cg-inject",
+      "qa-cg-late",
+      "ultrawork",
+      "ulw"
+    ],
+    "workingContributedPresent": [
+      "ulw",
+      "ultrawork",
+      "cellwork",
+      "agent-teams"
+    ],
+    "lateArmCount": 13
+  },
+  "settledState": {
+    "earlyCommandsAtHorizon": null,
+    "earlyRowsAtApply": {
+      "commands": {
+        "state": null,
+        "disabled": false,
+        "runtime": false
+      },
+      "tools": {
+        "state": null,
+        "disabled": false,
+        "runtime": false
+      },
+      "preset-mpd": {
+        "state": null,
+        "disabled": false,
+        "runtime": false
+      },
+      "mpd-codegraph": {
+        "state": 1,
+        "disabled": false,
+        "runtime": true
+      },
+      "mpd-ulw": {
+        "state": 0,
+        "disabled": false,
+        "runtime": true
+      },
+      "mpd-dsh-adapter": {
+        "state": 1,
+        "disabled": false,
+        "runtime": true
+      },
+      "mpd-team-core": {
+        "state": 0,
+        "disabled": false,
+        "runtime": true
+      },
+      "mpd-cellwork": {
+        "state": 0,
+        "disabled": false,
+        "runtime": true
+      }
+    },
+    "codegraphSink": null,
+    "loaderEntries": 138
+  }
+}

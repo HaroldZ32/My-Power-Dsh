@@ -1,0 +1,14 @@
+- insert:
+    - id: qa-cg-probe-early
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-early.ts"
+      config:
+        outDir: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/2026-10-28T09-50-58.042Z"
+        ws: "/tmp/mpd-codegraph-d1-ORpH2R/ws"
+        horizonMs: 6000
+        pollMs: 10
+    - id: qa-cg-probe-late
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-late.ts"
+      config:
+        outDir: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/2026-10-28T09-50-58.042Z"
+        horizonMs: 5000
+        pollMs: 10
