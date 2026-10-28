@@ -59,29 +59,31 @@ export const TUI_ONLY_COMMANDS: readonly string[] = ["mpd", "mpd-model"]
 export const HOST_PROVIDED_COMMANDS: readonly string[] = ["settings", "goal"]
 
 /**
- * The ONLY contributed command whose unreachability is a RECORDED FINDING instead of a gate.
+ * The contributed commands whose unreachability is a RECORDED FINDING instead of a gate: **none**.
  *
- * `/mpd-codegraph` answers on NEITHER surface on a fully mounted 0.16.1 boot (measured 2026-10-27: its
- * row is ACTIVE and its own log sink shows the codegraph init running, while the command reaches neither
- * the agent's `commands` registry nor the palette — a product-source defect outside this corpus' write
- * scope). Keeping the exception EXPLICIT here is the point: everything not named in this list gates,
- * including a command whose failure nobody has seen yet, so a new undocumented gap can never inherit the
- * exemption by accident (CodeRabbit F11, PR #75).
+ * This list carried `/mpd-codegraph` while its command answered on NEITHER surface of a fully mounted
+ * 0.16.1 boot (measured 2026-10-27: the row ACTIVE, the command in neither the agent's `commands`
+ * registry nor the palette). The D-1 fix made it reachable — re-measured 2026-10-28 in
+ * `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1` with `registry=true paletteCount=1`
+ * — so the exemption is RETIRED and every contributed command now gates its own failure.
+ *
+ * The MECHANISM is kept on purpose: it is EMPTY, and `--self-test` pins it empty (`command.whitelistIsEmpty`),
+ * so re-opening an exemption has to break an arm instead of silently reopening the hole (CodeRabbit
+ * F11, PR #75).
  */
-export const NON_GATING_COMMANDS: readonly string[] = ["mpd-codegraph"]
+export const NON_GATING_COMMANDS: readonly string[] = []
 
 /**
  * Decide whether one command's assertion GATES the run.
  *
- * Three rules, in order: a PASS always rides as a gating assertion; a FAILURE while the composition is
- * incomplete always gates (the stale-anchor arm — a command missing because its row never mounted must
- * redden the release gate); and on a FULLY mounted boot only an id in `NON_GATING_COMMANDS` may be
- * recorded as a non-gating finding. Everything else, including a name this bundle does not contribute,
- * gates.
+ * Two rules, in order: a PASS always rides as a gating assertion, and a FAILURE always gates — on an
+ * INCOMPLETE composition (the stale-anchor arm: a command missing because its row never mounted) and on
+ * a FULLY mounted boot alike. `NON_GATING_COMMANDS` is EMPTY since the D-1 fix, so nothing is excused;
+ * the list survives only as the arm-pinned escape hatch described at its declaration.
  * @param name The command name, without the leading slash.
  * @param ok The command's own verdict.
  * @param compositionComplete True when no declared row of the artifact failed in the same boot.
- * @returns True when this command's assertion gates the run.
+ * @returns True when this command's assertion gates the run (always true while the list is empty).
  */
 export function commandGates(name: string, ok: boolean, compositionComplete: boolean): boolean {
   if (ok) return true

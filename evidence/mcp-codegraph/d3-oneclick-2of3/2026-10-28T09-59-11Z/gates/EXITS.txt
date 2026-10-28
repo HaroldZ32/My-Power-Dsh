@@ -1,0 +1,8 @@
+tests-shared exit=0 :: bun test packages/mpd-mcp-shared
+tests-codegraph-astgrep exit=0 :: bun test packages/mpd-mcp-codegraph packages/mpd-mcp-astgrep
+tests-lsp-gitbash exit=0 :: bun test packages/mpd-mcp-lsp packages/mpd-mcp-gitbash
+tests-coupling-inventory exit=0 :: bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+typecheck exit=0 :: bun run typecheck
+comments exit=0 :: bun run verify:comments
+docs exit=0 :: bun run verify:docs
+dist-fresh exit=0 :: node scripts/verify-dist-fresh.ts

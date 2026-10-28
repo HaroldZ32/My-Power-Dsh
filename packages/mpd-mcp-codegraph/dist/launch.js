@@ -271,7 +271,7 @@ function installTerminalSilence(name, options = {}) {
 }
 
 // packages/mpd-mcp-shared/bin-resolve.ts
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -297,6 +297,13 @@ function bundleRootFrom(launcherUrl) {
   }
   return resolve2(dirname(fileURLToPath(launcherUrl)), "..", "..");
 }
+function realpathIfPossible(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
 function packageJsonFor(launcherUrl, spec, opts) {
   try {
     if (typeof opts.requireResolve === "function")
@@ -321,6 +328,24 @@ function firstAccepted(candidates, exists, probe) {
     return { binary: c.path, source: c.source };
   }
   return null;
+}
+function codegraphPlatformPackage(platform, arch) {
+  return `@colbymchenry/codegraph-${platform}-${arch}`;
+}
+function hasCodegraphPlatformBundle(shimPath, opts = {}) {
+  const platform = opts.platform ?? process.platform;
+  const arch = opts.arch ?? process.arch;
+  const anchor = opts.anchor ?? realpathIfPossible;
+  const resolveFromShim = opts.resolve ?? ((spec) => {
+    try {
+      return createRequire(resolve2(anchor(shimPath))).resolve(spec);
+    } catch {
+      return null;
+    }
+  });
+  const platformPackage = codegraphPlatformPackage(platform, arch);
+  const requiredSpecs = platform === "win32" ? [`${platformPackage}/node.exe`, `${platformPackage}/lib/dist/bin/codegraph.js`] : [`${platformPackage}/bin/codegraph`];
+  return requiredSpecs.every((spec) => resolveFromShim(spec) !== null);
 }
 function resolveCodegraphBinary(launcherUrl, opts = {}) {
   try {
@@ -349,7 +374,8 @@ function resolveCodegraphBinary(launcherUrl, opts = {}) {
       candidates.push({ path: join2(bundleRoot, "node_modules", ".bin", s), source: "bundle-bin" });
     }
     const seen = new Set;
-    return firstAccepted(candidates.filter((c) => seen.has(c.path) ? false : (seen.add(c.path), true)), exists, null);
+    const usable = opts.platformBundle ?? ((shim) => hasCodegraphPlatformBundle(shim, platform === process.platform ? {} : { platform }));
+    return firstAccepted(candidates.filter((c) => seen.has(c.path) ? false : (seen.add(c.path), true)), exists, usable);
   } catch {
     return null;
   }

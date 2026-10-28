@@ -15,6 +15,19 @@
   `runCodegraphServe()`。
 - 为什么使用 launcher 而不是 row env：上游解析器对**错误**的 `MPD_CODEGRAPH_BIN` 即使在
   文件不存在时也会直接返回，从而硬性阻断其 bundled → provisioned → PATH → download 链路。
+- **候选必须真的能服务（D-3，2026-10-28 实测）**：上游把 `codegraph` 发布为一个薄壳
+  `npm-shim.js` 加一个按平台的**可选依赖**（`@colbymchenry/codegraph-<platform>-<arch>`），而 npm
+  把**取不到**的可选依赖当作成功——所以没镜像该包的 registry 镜像源会留下一个「文件存在但起不来」的
+  壳（壳自己会打印：“no prebuilt bundle for linux-x64 … a registry mirror … is the usual cause”）。
+  由于上游解析器**无条件**采信 `MPD_CODEGRAPH_BIN`，把这种壳钉住会赔掉整条 row 的工具面。因此
+  `resolveCodegraphBinary` 只有在能从候选**真实所在位置**解析出 `<pkg>/bin/codegraph`（POSIX）；在
+  win32 上则必须**同时**解析出 `<pkg>/node.exe` 与它的应用入口 `<pkg>/lib/dist/bin/codegraph.js`
+  （上游在启动内置进程前两者都解析）时才接受它——`.bin` 软链会锚定到其链接目标，因此未提升的
+  `nested`/`linked` 布局不会被误判为损坏——**跳过**不可用的候选，让下一层——或上游自己的链路——来回答。
+  实测：npm 工具链安装报 `added 4 packages` 的那三个 one-click 戳各自丢失了
+  `mcp__codegraph__codegraph_explore`（`MCP_TOOLS=2/3`），而每个 `added 5` 的戳都保住了它（`3/3`）；
+  在本机上，同一个 launcher 钉住不完整的壳时不回答任何 MCP 帧，钉住完整的壳时 `tools/list` 返回
+  `codegraph_explore`。
 - **降级（F-B8-1，wave 3）**：若 `runCodegraphServe()` **抛出异常**——已测量的情形是二进制
   无法解析且状态目录不可写：此时 `ensureCodegraphProvisioned` 在自身 try/catch **之前**调用了
   `acquireLock(...)`，而 `mkdir(<home>/.mdp/codegraph/.locks)` 失败——launcher 会把错误写到

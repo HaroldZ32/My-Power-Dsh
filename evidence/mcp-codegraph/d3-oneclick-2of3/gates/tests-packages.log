@@ -1,0 +1,51 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-mcp-shared/log-sink.test.ts:
+(pass) root resolution and writability > the documented env keys come first, in order [0.30ms]
+(pass) root resolution and writability > blank and duplicate candidates are dropped [0.03ms]
+(pass) root resolution and writability > the first WRITABLE root wins and the log file appears under it [0.66ms]
+(pass) root resolution and writability > an unwritable candidate falls through to the next one [0.15ms]
+(pass) when no root is writable > the sink goes to the ring: no file, no throw, and the lines are kept in memory [0.08ms]
+(pass) size cap and rotation > the log rotates to a single `.1` generation once the cap is crossed [0.36ms]
+(pass) size cap and rotation > a line longer than the per-line cap is truncated with a marker [0.23ms]
+(pass) capture and restore > stderr and the five console methods are replaced, stdout is NOT touched, restore puts them back [4.41ms]
+(pass) the descriptor rebind (POSIX) > a GRANDCHILD's inherited stderr lands in the log, and zero bytes reach the parent's file [32.79ms]
+
+packages/mpd-mcp-shared/bin-resolve.test.ts:
+(pass) ast-grep: $MPD_AST_GREP_BIN_DIR tier wins and prefers ast-grep over sg [0.45ms]
+(pass) ast-grep: a candidate that fails the ast-grep probe is skipped, never accepted by name [0.13ms]
+(pass) ast-grep: createRequire tier resolves the packed optionalDependency [0.13ms]
+(pass) ast-grep: <bundle>/.toolchain tier resolves the link: checkout layout [0.11ms]
+(pass) ast-grep: precedence is bin-dir > require > toolchain [0.27ms]
+(pass) ast-grep: nothing resolvable returns null and never throws [0.15ms]
+(pass) codegraph: <bundle>/.toolchain tier resolves the link: checkout layout [0.27ms]
+(pass) codegraph: createRequire tier reads the package's own bin entry [0.25ms]
+(pass) codegraph: a shim whose per-platform bundle is missing is skipped, never pinned (the D-3 state) [0.55ms]
+(pass) codegraph: an unusable first candidate falls THROUGH to the next usable tier [0.22ms]
+(pass) codegraph platform bundle: the package name and the per-platform file are upstream's own [0.12ms]
+(pass) ast-grep: win32 resolves the .exe spelling of a candidate [0.21ms]
+(pass) ast-grep: win32 honours the caller's own PATHEXT order [0.15ms]
+(pass) ast-grep: win32 never offers a .cmd/.bat candidate (a shell-less spawn cannot start one) [0.23ms]
+(pass) ast-grep: POSIX keeps the bare name as the only spelling [0.12ms]
+(pass) ast-grep: <bundle>/node_modules/.bin tier resolves a bundle-root install [0.16ms]
+(pass) ast-grep: .toolchain still wins over the bundle-root tier [0.14ms]
+(pass) bundleRootFrom: the BUILT <bundle>/packages/<pkg>/dist/launch.js -> <bundle> [0.34ms]
+(pass) bundleRootFrom: the older <bundle>/packages/<pkg>/launch.ts depth still answers <bundle> [0.13ms]
+(pass) bundleRootFrom: a launcher outside any bundle falls back to two hops [0.04ms]
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [3.95ms]
+
+packages/mpd-mcp-codegraph/test/daemon-policy.test.ts:
+(pass) parseDaemonSetting: truthy, falsy, unset and invalid stay distinguishable [0.04ms]
+(pass) default (no env): serve in-process, and the reason names the measured failure [0.02ms]
+(pass) MPD_CODEGRAPH_DAEMON=1 keeps upstream's shared daemon (no opt-out pinned) [0.02ms]
+(pass) MPD_CODEGRAPH_DAEMON=0 pins the opt-out explicitly [0.01ms]
+(pass) an explicit CODEGRAPH_NO_DAEMON=1 is respected and never overridden
+(pass) an unrecognized value warns and falls back to the safe default [0.02ms]
+(pass) the default emits exactly ONE informational line (never stdout) [0.01ms]
+(pass) launch.ts applies the policy before importing the vendored serve.js [0.04ms]
+(pass) the vendored bridge forwards CODEGRAPH_NO_DAEMON to the child env [0.53ms]
+
+ 39 pass
+ 0 fail
+ 129 expect() calls
+Ran 39 tests across 3 files. [176.00ms]

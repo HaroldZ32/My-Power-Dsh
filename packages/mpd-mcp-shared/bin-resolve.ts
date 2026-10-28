@@ -29,7 +29,7 @@
 //
 // Never throws: a launcher failure would take its MCP row's startup down.
 import { execFileSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, isAbsolute, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -62,6 +62,11 @@ export interface ResolverOptions {
   bundleRoot?: string
   /** `createRequire` replacement; returns the resolved package.json path, or null when absent. */
   requireResolve?: (spec: string) => string | null
+  /**
+   * Codegraph acceptance probe: whether the shim at this path can reach the per-platform bundle it
+   * execs. Defaults to {@link hasCodegraphPlatformBundle}; null/absent means the default.
+   */
+  platformBundle?: ((shimPath: string) => boolean) | null
 }
 
 /** One candidate before it is probed: a path plus the tier that proposed it. */
@@ -160,6 +165,21 @@ export function bundleRootFrom(launcherUrl: string): string {
     dir = parent
   }
   return resolve(dirname(fileURLToPath(launcherUrl)), "..", "..")
+}
+
+/**
+ * A path's real location, or the path itself when it cannot be resolved (a missing path is a normal
+ * answer for this resolver, never an error): the anchor `hasCodegraphPlatformBundle` searches from.
+ *
+ * @param path - The candidate path, normally a `node_modules/.bin` symlink.
+ * @returns The link target's real path, or the input unchanged when `realpath` fails.
+ */
+function realpathIfPossible(path: string): string {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
 }
 
 /** A trimmed non-empty string, or null when the value is absent/blank/not a string. */
@@ -267,11 +287,118 @@ export function resolveAstGrepBinary(launcherUrl: string, opts: ResolverOptions 
   }
 }
 
+/** The injection points of the per-platform bundle question; every one is optional. */
+export interface PlatformBundleOptions {
+  /** Platform whose per-platform package name is asked for (defaults to `process.platform`). */
+  platform?: string
+  /** Architecture whose per-platform package name is asked for (defaults to `process.arch`). */
+  arch?: string
+  /** Resolver replacement: returns the resolved file, or null when the package is not installed. */
+  resolve?: (spec: string) => string | null
+  /**
+   * Real-path resolver the DEFAULT resolver anchors at, so the question is asked from the shim's own
+   * on-disk location rather than from a `.bin` symlink's directory. Defaults to `fs.realpathSync`;
+   * irrelevant when `resolve` is injected.
+   */
+  anchor?: (path: string) => string
+}
+
+/**
+ * The npm package upstream publishes for one platform/architecture pair.
+ *
+ * The name is derived mechanically because that is how upstream's own shim derives it
+ * (`"@colbymchenry/codegraph-" + process.platform + "-" + process.arch`); the per-platform packages
+ * declare `os`/`cpu`, so only the matching one installs.
+ *
+ * @param platform - The platform segment, e.g. `linux`, `darwin` or `win32`.
+ * @param arch - The architecture segment, e.g. `x64` or `arm64`.
+ * @returns The per-platform package name, e.g. `@colbymchenry/codegraph-linux-x64`.
+ */
+export function codegraphPlatformPackage(platform: string, arch: string): string {
+  return `@colbymchenry/codegraph-${platform}-${arch}`
+}
+
+/**
+ * Whether the codegraph shim at `shimPath` can reach the per-platform bundle it execs.
+ *
+ * WHY THE CODEGRAPH TIERS ARE PROBED AT ALL (defect D-3, measured 2026-10-28). Upstream publishes the
+ * executable as a THIN SHIM (`npm-shim.js`, the package's `bin`) plus a per-platform OPTIONAL
+ * dependency, `@colbymchenry/codegraph-<platform>-<arch>`, which carries a bundled Node runtime and
+ * the app. npm counts an UNFETCHABLE optional dependency as SUCCESS, so a registry mirror that did
+ * not mirror that package leaves a complete-looking install whose `codegraph` shim cannot start —
+ * the shim says so itself: "codegraph: no prebuilt bundle for linux-x64 … A registry mirror (e.g.
+ * npmmirror/cnpm) that did not mirror the per-platform package is the usual cause."
+ *
+ * A missing ENGINE would be survivable, but a WRONG PIN is not, because the adopted resolver honours
+ * `MPD_CODEGRAPH_BIN` unconditionally: its `resolveCodegraphCommand` returns `source: "env"` for any
+ * NON-EMPTY value and its only later guard refuses a pin whose path does NOT exist. A pin to an
+ * existing-but-unusable shim therefore bypasses the adopted chain (bundled → provisioned → PATH →
+ * download) and the MCP row serves ZERO tools, silently.
+ *
+ * MEASURED in both directions, twice over. The three one-click stamps whose npm toolchain install
+ * reported `added 4 packages` (one fewer than the five this toolchain has) each lost
+ * `mcp__codegraph__codegraph_explore` (`MCP_TOOLS=2/3`), while every `added 5` stamp in the same lane
+ * kept it (`3/3`). Locally, same launcher, two pins: the shim installed WITHOUT its per-platform
+ * package answers no MCP frame at all (`tools/list` never arrives, 0 tools) and prints the message
+ * quoted above, while the shim installed WITH it answers `tools/list` with `codegraph_explore`.
+ *
+ * The question asked here is EXACTLY the shim's own, in BOTH of the places upstream asks it, and from
+ * the shim's own REAL location:
+ *
+ * - POSIX: `require.resolve("<pkg>/bin/codegraph")` — the launcher script the shim execs.
+ * - win32: `require.resolve("<pkg>/node.exe")` **and** `require.resolve("<pkg>/lib/dist/bin/codegraph.js")`
+ *   — upstream resolves BOTH before it starts the bundled process, so a package carrying only the
+ *   runtime (or only the app) cannot start. Probing just `node.exe` would accept a half-installed
+ *   Windows bundle and pin a shim that dies, which is the very failure this predicate exists to
+ *   prevent. The app entry was measured present in the 1.5.0 per-platform layout
+ *   (`lib/dist/bin/codegraph.js`, 114680 B on this host).
+ * - The location is the shim's `realpath`, not the path it was named by. npm's hoisted layout puts
+ *   `.bin/codegraph` beside the package, but the `nested`/`linked` layouts leave the platform package
+ *   under the link TARGET's own `node_modules`; and Node itself resolves a required module by its real
+ *   path, so anchoring at the symlink's directory would ask a question the shim never asks — and could
+ *   reject a usable shim, which is worse than the miss it is here to catch.
+ *
+ * Nothing is spawned and nothing is downloaded, which is what makes it safe on every launcher start.
+ *
+ * @param shimPath - Absolute path of the candidate executable the resolver accepted by existence.
+ * @param opts - Optional platform/arch/resolver/anchor overrides; each defaults to this host's answer.
+ * @returns `true` only when every file upstream's shim needs resolves from the shim's real location.
+ */
+export function hasCodegraphPlatformBundle(shimPath: string, opts: PlatformBundleOptions = {}): boolean {
+  /** The platform segment the package name is built from. */
+  const platform = opts.platform ?? process.platform
+  /** The architecture segment the package name is built from. */
+  const arch = opts.arch ?? process.arch
+  /** Real-path resolver for the anchor: a `.bin` symlink must not decide where the search starts. */
+  const anchor = opts.anchor ?? realpathIfPossible
+  /** Resolution anchored at the shim's REAL location, so the answer is the shim's own view. */
+  const resolveFromShim = opts.resolve ?? ((spec: string): string | null => {
+    try {
+      // `createRequire` needs an absolute path or a file URL; a relative candidate is anchored at the
+      // process cwd, which is the only meaning a relative executable path could have had anyway.
+      return createRequire(resolve(anchor(shimPath))).resolve(spec)
+    } catch {
+      return null
+    }
+  })
+  /** The platform package whose files upstream's shim resolves before it can start. */
+  const platformPackage = codegraphPlatformPackage(platform, arch)
+  /** Every file upstream's shim needs on THIS platform; win32 needs its runtime AND its app entry. */
+  const requiredSpecs = platform === "win32"
+    ? [`${platformPackage}/node.exe`, `${platformPackage}/lib/dist/bin/codegraph.js`]
+    : [`${platformPackage}/bin/codegraph`]
+  return requiredSpecs.every((spec: string): boolean => resolveFromShim(spec) !== null)
+}
+
 /**
  * Resolve the codegraph binary for an MCP launcher.
  * The require tier reads the package's own `bin` entry (1.5.0 ships
  * `bin: { codegraph: "npm-shim.js" }`), falling back to the adopted code's known
  * shim names.
+ *
+ * A candidate is accepted only when it EXISTS **and** its per-platform bundle resolves
+ * ({@link hasCodegraphPlatformBundle}); an unusable candidate is SKIPPED so the next tier answers,
+ * because pinning it would take the row's whole tool surface down (D-3, measured 2026-10-28).
  * @returns {{binary:string, source:"require"|"toolchain"|"bundle-bin"}|null}
  */
 export function resolveCodegraphBinary(launcherUrl: string, opts: ResolverOptions = {}): ResolvedBinary | null {
@@ -311,7 +438,9 @@ export function resolveCodegraphBinary(launcherUrl: string, opts: ResolverOption
 
     /** Paths already offered, so a candidate reachable through two tiers is probed once. */
     const seen = new Set<string>()
-    return firstAccepted(candidates.filter((c) => (seen.has(c.path) ? false : (seen.add(c.path), true))), exists, null)
+    /** Acceptance probe: the per-platform bundle must resolve from the candidate's own location. */
+    const usable = opts.platformBundle ?? ((shim: string): boolean => hasCodegraphPlatformBundle(shim, platform === process.platform ? {} : { platform }))
+    return firstAccepted(candidates.filter((c) => (seen.has(c.path) ? false : (seen.add(c.path), true))), exists, usable)
   } catch {
     return null
   }

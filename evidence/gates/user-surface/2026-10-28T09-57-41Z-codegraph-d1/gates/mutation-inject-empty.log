@@ -1,0 +1,38 @@
+27:export const inject: string[] = []
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-codegraph-plugin/src/index.test.ts:
+(pass) O-1 apply-time project root > no session and no override falls back to process.cwd() [2.01ms]
+(pass) O-1 apply-time project root > a session workspace (exec-less DSH_WORKSPACE_ROOT) beats the process cwd [0.51ms]
+(pass) O-1 apply-time project root > the explicit project-cwd override wins over the session workspace [0.43ms]
+(pass) O-1 apply-time project root > the status line names the session workspace, and the home skip still applies [0.27ms]
+(pass) O-1 call-time /mpd-codegraph handler > resolves the invocation's session workspace, not the apply-time root [0.44ms]
+(pass) O-1 call-time /mpd-codegraph handler > returns the harness CommandResult shape (kind), never the legacy success flag [0.19ms]
+(pass) O-1 call-time /mpd-codegraph handler > re-resolves per invocation: two sessions, two targets [0.22ms]
+(pass) command registration goes through the adapter (AGENTS.md §6) > the standalone adapter registers the command and survives a stub register returning no disposer [0.29ms]
+(pass) command registration goes through the adapter (AGENTS.md §6) > apply never throws when the composition has no command registry at all [0.28ms]
+(pass) S8: a blank-but-SET env value does not suppress its documented alias > a blank MPD_CODEGRAPH_BIN still lets MPD_DSH_CODEGRAPH_BIN resolve the binary [0.32ms]
+(pass) S8: a blank-but-SET env value does not suppress its documented alias > a blank MPD_CODEGRAPH_PROJECT_CWD still lets its alias resolve the project root [0.35ms]
+(pass) S8: a blank-but-SET env value does not suppress its documented alias > NEGATIVE CONTROL: a non-blank primary still wins, and two blanks fall back to the session [0.38ms]
+304 | describe("D-1: the row declares the seam its one registration needs", () => {
+305 |   test("the shipped declaration covers the command registry, and it is the harness's own id", () => {
+306 |     // The regression guard for D-1: `inject = []` let cordis apply this row in the loader's first
+307 |     // concurrent pass, before the registry had a provider fiber, and the adapter's strict
+308 |     // `ctx.get("commands")` turned that absence into a permanent silent no-op.
+309 |     expect(waitsForCommandRegistry(inject)).toBe(true)
+                                                  ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-codegraph-plugin/src/index.test.ts:309:45)
+(fail) D-1: the row declares the seam its one registration needs > the shipped declaration covers the command registry, and it is the harness's own id [0.24ms]
+(pass) D-1: the row declares the seam its one registration needs > NEGATIVE CONTROL: the guard reddens on the inject-less declaration this defect shipped with [0.02ms]
+(pass) D-1: the row declares the seam its one registration needs > apply itself is single-shot: a registry appearing later is never picked up (why the declaration is the fix) [0.20ms]
+
+ 14 pass
+ 1 fail
+ 31 expect() calls
+Ran 15 tests across 1 file. [204.00ms]
+MUTANT_TEST_EXIT=1

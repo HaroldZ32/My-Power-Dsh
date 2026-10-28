@@ -15,6 +15,13 @@
 // a recorded `tool/call` for the tool name plus a non-error `tool/result`, whose
 // returned text must carry the indexed source. The prose checks stay in result.json
 // as informational fields only.
+//
+// DEFECT (measured 2026-10-14, evidence/dsh-qa/codegraph/2026-10-14T08-40-39.630Z): the
+// apply-time status line LEFT the boot stdout when R5 (lane F) routed it through the shared
+// log sink, so grepping the boot log for `init status=` could never match again — the case
+// stayed red while the call was recorded and its result carried the indexed source
+// (`resultChars` 502, `resultHasNorm: true`). D-2: the marker is read from the row's own
+// sink (`<workspace>/.mpd/logs/mpd-codegraph.log`); an absent marker still fails the case.
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, closeSync, rmSync, mkdtempSync } from "node:fs"
 import { tmpdir, homedir } from "node:os"
@@ -39,6 +46,12 @@ const TOOLCHAIN_BIN = join(repoRoot, ".toolchain/node_modules/.bin/codegraph")
 const TOOL_NAME = "mcp__codegraph__codegraph_explore"
 /** The `serverName` the bundle patch's row declares, from which the tool name above is derived. */
 const SERVER_NAME = "codegraph"
+/** The log-sink name the `mpd-codegraph` row opens; the shared sink writes `<root>/.mpd/logs/<name>.log`. */
+const SINK_NAME = "mpd-codegraph"
+/** The literal the row writes into its sink before the status word (see `logLine` in the plugin). */
+const INIT_MARKER = "[" + SINK_NAME + "] init status="
+/** The initialized/marked status line, derived from the sink name so a row rename cannot leave a dead marker here. */
+const INIT_LINE = new RegExp("\\[" + SINK_NAME + "\\] init status=(ok|marker)")
 
 /** The session-log evidence a failed or not-yet-attempted read leaves behind: fewer fields than
  *  `ToolCallEvidence` because no call id or tool name is known before the pairing runs. */
@@ -82,7 +95,22 @@ function selfTest(): void {
   if (row === undefined) { console.error("[codegraph-smoke self-test] FAIL: no mcp-codegraph row in the bundle patch"); process.exit(1) }
   if (!row.includes("serverName: " + SERVER_NAME)) { console.error("[codegraph-smoke self-test] FAIL: the mcp-codegraph row does not declare serverName: " + SERVER_NAME); process.exit(1) }
   if (TOOL_NAME !== "mcp__" + SERVER_NAME + "__codegraph_explore") { console.error("[codegraph-smoke self-test] FAIL: the asserted tool name does not match the composed server name"); process.exit(1) }
-  console.log("[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (" + TOOL_NAME + ") verified on fixtures")
+  // D-2: the live arm reads the apply-time marker from the ROW'S sink, so this offline arm pins
+  // both shipped halves of that contract — the sink name the row opens and the status literal it
+  // writes. A row that renames either would otherwise leave the case asserting a marker nothing
+  // writes: exactly the drift that made it red on a recorded, successful tool call.
+  /** The codegraph row's source, the writer half of the sink contract the live arm reads. */
+  const pluginSrc = readFileSync(join(repoRoot, "packages/mpd-codegraph-plugin/src/index.ts"), "utf8")
+  if (!pluginSrc.includes('openLogSink("' + SINK_NAME + '"')) { console.error("[codegraph-smoke self-test] FAIL: the mpd-codegraph row does not open the " + SINK_NAME + " sink"); process.exit(1) }
+  if (!pluginSrc.includes(INIT_MARKER)) { console.error("[codegraph-smoke self-test] FAIL: the mpd-codegraph row does not write the marker " + INIT_MARKER); process.exit(1) }
+  // Falsifiability (AC-4): the SAME predicate the live arm applies must accept the two initialized
+  // statuses and REJECT both an absent sink and every other status word, so "the marker was not
+  // written" can never pass this case. The empty string is the exact text an absent sink yields.
+  if (!INIT_LINE.test("[2026-10-28T00:00:00.000Z] [mpd-codegraph] init status=ok binary=- cwd=/w")) { console.error("[codegraph-smoke self-test] FAIL: the sink predicate rejects init status=ok"); process.exit(1) }
+  if (!INIT_LINE.test("[2026-10-28T00:00:00.000Z] [mpd-codegraph] init status=marker binary=- cwd=/w")) { console.error("[codegraph-smoke self-test] FAIL: the sink predicate rejects init status=marker"); process.exit(1) }
+  if (INIT_LINE.test("[2026-10-28T00:00:00.000Z] [mpd-codegraph] init status=no-binary binary=- cwd=/w")) { console.error("[codegraph-smoke self-test] FAIL: the sink predicate accepts a non-initialized status"); process.exit(1) }
+  if (INIT_LINE.test("")) { console.error("[codegraph-smoke self-test] FAIL: the sink predicate accepts an absent sink"); process.exit(1) }
+  console.log("[codegraph-smoke self-test] ok: project-path precondition + composed codegraph server name (" + TOOL_NAME + ") + sink marker contract verified on fixtures")
 }
 
 /** The live arm: index a temp project, boot the MCP server and assert the harness-recorded tool call. */
@@ -161,6 +189,13 @@ function runReal(): void {
   assertSessionsSandboxed(sandbox, sandbox, { label: "codegraph-smoke" })
   /** The boot log, read back from the fd's file after the child closed it. */
   const out = readFileSync(join(sandbox, "run.log"), "utf8")
+  // D-2: the apply-time status line is NOT on that boot log any more — the row writes it
+  // through the shared sink at `<workspace>/.mpd/logs/<name>.log` (R5, lane F), and the
+  // workspace plane is the session's own root, which this boot sets to its spawn cwd `ws`.
+  /** The row's log sink inside the sandbox workspace: where the apply-time status line lands. */
+  const sinkPath = join(ws, ".mpd", "logs", SINK_NAME + ".log")
+  /** The sink's content, or `""` when the row never wrote it (which keeps the case falsifiable). */
+  const sink = existsSync(sinkPath) ? readFileSync(sinkPath, "utf8") : ""
   // Harness-side tool evidence (the assertion that actually decides the case).
   /** The paired tool evidence, or the placeholder until the session store is read. */
   let tool: ToolCallEvidence | ToolEvidencePlaceholder = { called: false, succeeded: false, reason: "the session log could not be read", resultText: "", calls: [] }
@@ -180,8 +215,8 @@ function runReal(): void {
     sessionError = error instanceof Error ? error.message : String(error)
     tool = { called: false, succeeded: false, reason: sessionError, resultText: "", calls: [] }
   }
-  /** Whether the boot reported the codegraph index as initialized (or already present). */
-  const initOk = /init status=(ok|marker)/.test(out)
+  /** Whether the ROW reported the codegraph index as initialized (or already present), read from its sink. */
+  const initOk = INIT_LINE.test(sink)
   /** Whether the recorded result actually carried the indexed source (the `norm` fixture). */
   const resultHasNorm = tool.succeeded && /norm/.test(tool.resultText)
   /** Informational only: whether the model echoed the tool name in its prose. */
@@ -197,6 +232,7 @@ function runReal(): void {
     // The deciding evidence, spelled out so a red is diagnosable from the file alone.
     assertion: "harness-recorded tool/call + non-error tool/result whose returned text carries the indexed source",
     initOk,
+    initSink: { path: sinkPath, chars: sink.length },
     tool: { name: TOOL_NAME, called: tool.called, succeeded: tool.succeeded, calls: tool.calls, resultChars: tool.resultText.length, reason: tool.reason || null },
     resultHasNorm,
     sessionFile,
@@ -206,6 +242,9 @@ function runReal(): void {
     outHasToolName,
   }, null, 2))
   writeFileSync(join(outDir, "output.log"), out)
+  // D-2: the apply-time marker's SOURCE is filed with the verdict, so a red is diagnosable
+  // from the evidence dir alone (the sink was absent, or it carried another status word).
+  if (sink !== "") writeFileSync(join(outDir, "codegraph-sink.log"), sink)
   // The session log IS the verdict's evidence, so it is filed WITH the verdict:
   // the raw artifact plus a decoded JSONL copy (readable without a zstd tool). A red
   // is then diagnosable from the evidence dir alone — which records existed, and what

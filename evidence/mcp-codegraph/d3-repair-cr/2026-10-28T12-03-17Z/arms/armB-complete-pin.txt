@@ -1,0 +1,9 @@
+### arm armB-complete-pin (repaired launcher)
+$ node probe.mjs /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-codegraph/dist/launch.js 45000
+VERDICT=ok
+TOOLS=1
+TOOL_NAMES=codegraph_explore
+EXIT=0
+--- sink ---
+[2026-10-28T12:05:34.813Z] [mpd-mcp-codegraph] serving codegraph in-process (no shared daemon): default: one engine per session (the shared daemon's lockfile arbitration is unreliable in sandboxed/namespaced hosts and upstream reaps it after 30 idle minutes, which is what logged "Shared daemon connection lost … serving this session in-process"; set MPD_CODEGRAPH_DAEMON=1 to share one daemon per project root)
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes

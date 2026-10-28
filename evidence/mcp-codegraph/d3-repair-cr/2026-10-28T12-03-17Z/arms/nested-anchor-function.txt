@@ -1,0 +1,7 @@
+### real unhoisted (nested) install: the .bin symlink target carries the platform bundle
+$ node /tmp/nestedfn-yTw888/check.mts
+link: /tmp/nestedfn-yTw888/node_modules/.bin/codegraph
+anchored (default, realpath): true
+unanchored (identity anchor): false
+link target: /tmp/nestedfn-yTw888/vendor/@colbymchenry/codegraph/npm-shim.js
+EXIT=0

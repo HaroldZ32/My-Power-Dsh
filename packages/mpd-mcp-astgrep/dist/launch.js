@@ -272,7 +272,7 @@ function installTerminalSilence(name, options = {}) {
 
 // packages/mpd-mcp-shared/bin-resolve.ts
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";

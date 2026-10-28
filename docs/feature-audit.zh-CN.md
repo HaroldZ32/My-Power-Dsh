@@ -29,7 +29,7 @@
 | Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev` —— 后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
 | Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
 | 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git（28 工具）+ shell（`run_process`，两行均 `disabled: true`）、lsp（12 个 cclsp 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
-| Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + `/mpd-codegraph`、ULW 命令对 `/ulw` + `/ultrawork`（等价；目标即参数）+ TUI 的 `/mpd` 命令树；ULW 引擎同时以工具交付（`mpd_ultrawork`、`mpd_ulw` 轻量别名）。没有 `/team`，也没有 `/agent-teams` —— 团队工作由官方工具驱动 |
+| Slash commands | /goal /ultrawork /team /hyperplan … | 🟡 | DSH 原生命令 + 本 bundle 贡献的七条 —— `/mpd-codegraph`、ULW 命令对 `/ulw` + `/ultrawork`（等价；目标即参数）、`/agent-teams`、`/cellwork` —— 再加仅 TUI 的 `/mpd` 与 `/mpd-model` 命令树；带**测量口径**的完整清单见 [`user-guide.md`](user-guide.zh-CN.md) §12。ULW 引擎同时以工具交付（`mpd_ultrawork`、`mpd_ulw` 轻量别名）。没有 `/team` 命令 —— 团队工作由官方工具驱动 |
 | hashline 哈希编辑 | 保持哈希的编辑纪律 | ✅ | mpd_hashline_read/edit/format/restore + 注册文件 post-edit guard（vendor hashline-core；evidence/plan-c/plan-c-smoke + 单元测试） |
 | comment-checker | post-edit 注释检查 | ✅ | mpd_comment_check（opt-in 二进制 @code-yeongyu/comment-checker，MIT；installer --with-comment-checker；autoCheck 默认关闭；单元测试 + plan-c-smoke） |
 | monitor / toast / TUI sidebar | 会话监视器 + UI | ➖ | 由 DSH session telemetry（otel）、token-meter、web GUI 取代 |

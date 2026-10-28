@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "task": "T6 / AC-6 — bilingual docs describe the MEASURED reachability",
+  "stamp": "2026-10-28T10-08-56Z-codegraph-d1",
+  "gate": {
+    "command": ".toolchain/node_modules/.bin/bun run verify:docs  (== node scripts/verify-docs-parity.ts)",
+    "exit": 0,
+    "observed": "pairs=52 failed=0 violations=0 exempt=24 derived=3 links=471 dead=0 — PASS",
+    "log": "output.log"
+  },
+  "measuredEvidence": "evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/result.json",
+  "measuredClaim": {
+    "assertion": "userSurface.command.mpd-codegraph",
+    "ok": true,
+    "gating": true,
+    "raw": "registry=true paletteCount=1 paletteRows=mpd-codegraph plane=shared plane",
+    "registryListing": "probe.json tick-14: commands=34, mpd-codegraph present",
+    "paletteArtifact": "palette/cmd-mpd-codegraph.pane.txt",
+    "bundleResolution": "source=profile version=0.16.1 profileVersion=0.16.1 sameCopyDigests=true"
+  },
+  "surfacesWrittenAsUnmeasured": [
+    {
+      "surface": "Web command palette",
+      "why": "no Web client was booted in this release for either the baseline or the fixed tree; the QA case's own doesNotProve says 'the Web plane: the palette witness is the TUI'",
+      "where": "docs/user-guide.md §12 scope note + the /mpd-codegraph cell; docs/user-guide.zh-CN.md twin; docs/design.md + zh twin row cell"
+    },
+    {
+      "surface": "the feature behind the command (a real codegraph index run driven through the palette)",
+      "why": "the case proves the row is mounted and its command is registered/reachable, not that the feature works (its doesNotProve #4); the init side-effect is witnessed by the row's own sink line only",
+      "where": "docs/tui.md + zh twin: the init log line is labelled a side-effect witness, never reachability"
+    }
+  ],
+  "edits": [
+    "docs/user-guide.md — §12 table `/mpd-codegraph` `Where` cell + a new scope note under the table",
+    "docs/user-guide.zh-CN.md — the same cell and note, parallel wording",
+    "docs/tui.md — the `mpd-codegraph-plugin` live-witness cell RE-MEASURED, plus a dated 0.16.1 delta note above the table",
+    "docs/tui.zh-CN.md — the same cell and note, parallel wording",
+    "docs/design.md — the plugin-inventory row's Tools/service cell",
+    "docs/design.zh-CN.md — the same cell, parallel wording",
+    "docs/feature-audit.md — the Slash-commands row: the seven contributed commands incl. `/agent-teams` + `/cellwork`, pointer to the measured list",
+    "docs/feature-audit.zh-CN.md — the same row, parallel wording",
+    "docs/upstream-parity-ledger.md — §5: `no /agent-teams command exists` corrected to the measured truth (`/agent-teams-mpd` is the retired name)",
+    "docs/upstream-parity-ledger.zh-CN.md — the same correction, parallel wording"
+  ],
+  "bounds": [
+    "The docs cite the evidence stamp by path; `evidence/` is not shipped in the packed artifact, so a packed-install reader cannot open it (this matches the existing documentation practice in docs/design.md).",
+    "No Web run exists to cite, which is exactly why the Web half of every reachability cell is written as unmeasured.",
+    "The commit is the captain's: the ten files are staged in the working tree as five EN/zh pairs and must land together."
+  ]
+}
