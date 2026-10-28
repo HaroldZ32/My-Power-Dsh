@@ -26,8 +26,11 @@ Offline-built MCP server that serves the CodeGraph tool surface
   own message: "no prebuilt bundle for linux-x64 … a registry mirror … is the usual cause"). Because
   the adopted resolver honours `MPD_CODEGRAPH_BIN` unconditionally, pinning such a shim costs the row
   its whole tool surface. `resolveCodegraphBinary` therefore accepts a candidate only when
-  `<pkg>/bin/codegraph` (POSIX) or `<pkg>/node.exe` (win32) resolves from that candidate's own
-  location, and SKIPS an unusable one so the next tier — or the adopted chain — answers instead.
+  `<pkg>/bin/codegraph` (POSIX) — or, on win32, BOTH `<pkg>/node.exe` and its app entry
+  `<pkg>/lib/dist/bin/codegraph.js`, which upstream resolves before it starts the bundled process —
+  resolves from that candidate's REAL location (a `.bin` symlink is anchored at its link target, so an
+  unhoisted `nested`/`linked` install is not mistaken for a broken one), and SKIPS an unusable one so
+  the next tier — or the adopted chain — answers instead.
   Measured: the three one-click stamps whose npm toolchain install reported `added 4 packages` each
   lost `mcp__codegraph__codegraph_explore` (`MCP_TOOLS=2/3`), while every `added 5` stamp kept it
   (`3/3`); locally, the same launcher pins the incomplete shim and answers no MCP frame, and pins the

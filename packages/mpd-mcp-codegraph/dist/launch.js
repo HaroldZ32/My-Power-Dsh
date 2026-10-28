@@ -271,7 +271,7 @@ function installTerminalSilence(name, options = {}) {
 }
 
 // packages/mpd-mcp-shared/bin-resolve.ts
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute as isAbsolute2, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -296,6 +296,13 @@ function bundleRootFrom(launcherUrl) {
     dir = parent;
   }
   return resolve2(dirname(fileURLToPath(launcherUrl)), "..", "..");
+}
+function realpathIfPossible(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
 }
 function packageJsonFor(launcherUrl, spec, opts) {
   try {
@@ -328,15 +335,17 @@ function codegraphPlatformPackage(platform, arch) {
 function hasCodegraphPlatformBundle(shimPath, opts = {}) {
   const platform = opts.platform ?? process.platform;
   const arch = opts.arch ?? process.arch;
+  const anchor = opts.anchor ?? realpathIfPossible;
   const resolveFromShim = opts.resolve ?? ((spec) => {
     try {
-      return createRequire(resolve2(shimPath)).resolve(spec);
+      return createRequire(resolve2(anchor(shimPath))).resolve(spec);
     } catch {
       return null;
     }
   });
-  const entrySpec = platform === "win32" ? `${codegraphPlatformPackage(platform, arch)}/node.exe` : `${codegraphPlatformPackage(platform, arch)}/bin/codegraph`;
-  return resolveFromShim(entrySpec) !== null;
+  const platformPackage = codegraphPlatformPackage(platform, arch);
+  const requiredSpecs = platform === "win32" ? [`${platformPackage}/node.exe`, `${platformPackage}/lib/dist/bin/codegraph.js`] : [`${platformPackage}/bin/codegraph`];
+  return requiredSpecs.every((spec) => resolveFromShim(spec) !== null);
 }
 function resolveCodegraphBinary(launcherUrl, opts = {}) {
   try {
