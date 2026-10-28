@@ -788,7 +788,7 @@ harness 上，entry-config 保存**不会执行任何 `<workspace>/.mpd/mpd.json
 **官方** Agent Teams 包（`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`）。请把
 那一行读作历史，而不是当前能力。
 
-**这张表在 0.16.1 上有一处变化（2026-10-28）—— 有一条见证是错的，而它正是掩盖了缺陷的盲区：**
+**这张表在 0.16.2 上有一处变化（2026-10-28）—— 有一条见证是错的，而它正是掩盖了缺陷的盲区：**
 `mpd-codegraph-plugin` 那一行原先记录的实测见证是应用期日志行
 `[mpd-codegraph] init status=marker …`。那只是一条**日志汇标记**：它证明该行执行过，而且在它全绿的同时，
 该插件贡献的**唯一一条**命令根本没进任何命令注册表（0.16.1 的缺陷 —— 该行在 loader 第一轮并发 apply

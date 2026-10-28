@@ -14,6 +14,54 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.16.2 — 2026-10-28 — `/mpd-codegraph` is reachable again, and the packed `files` list stops repeating a patch layer
+
+**A command that was documented but did not exist.** `/mpd-codegraph` was published as working on
+"Web + TUI" while two independent measurements showed it reached **neither** surface: the row was
+mounted and its index init ran, but it declared `inject = []`, so cordis applied it in the loader's
+first concurrent pass while the `commands` row had no provider fibre yet. The adapter's
+`registerCommand` reads that service strictly and returns a **silent no-op** when it is absent, and
+nothing retried — a boot-order race with a permanent consequence. Declaring the seam through the
+adapter's own constant (`dshSeamInject(DSH_SEAM_COMMANDS)`, the idiom `mpd-cellwork` and
+`mpd-team-core` already use) removes the race: `userSurface.command.mpd-codegraph` now passes with
+`registry=true` and a palette row, and the observed command count moves 33 → 34.
+
+**The defect could not redden the gate.** `NON_GATING_COMMANDS` carried exactly one exemption —
+`mpd-codegraph` — so the QA corpus recorded the loss as a FINDING instead of a failure and a release
+could ship over it. The exemption is gone. A deliberately-broken composition (the same pack with the
+pre-fix plugin build) now fails on that one assertion and nothing else, and the same pre-fix
+composition under the old case had read `ok: true`.
+
+**The one-click lane served no codegraph tools at all.** `@colbymchenry/codegraph@1.5.0` publishes a
+thin `npm-shim.js` plus a per-platform **optional** dependency, and npm counts an unfetchable optional
+package as success. When the mirror missed the platform bundle, our resolver accepted the shim on
+**existence alone** and pinned `MPD_CODEGRAPH_BIN`; the server honours an environment pin
+unconditionally, so the bundled → provisioned → PATH → download chain was bypassed and the server
+answered no MCP frames: zero tools, which is one defect, not two. The resolver now probes acceptance the
+way the shim itself does — anchored on the shim's **real path**, never on `.bin`, and requiring both the
+runtime and the app entry on Windows — and **skips** an unusable candidate so the next tier answers. A
+false reject is the dangerous direction (it silently discards a healthy candidate), so both directions
+are exercised, including a real unhoisted install with a symlinked `.bin`.
+
+**Two QA defects, fixed rather than excused.** `codegraph-smoke` asserted the apply-time marker against
+the boot STDOUT after that marker had moved into a log sink, so its criterion was met while it exited 1;
+it reads the sink now and still fails when the marker is absent. And `docs/user-guide.md`, `docs/tui.md`,
+`docs/design.md`, `docs/feature-audit.md` and `docs/upstream-parity-ledger.md` — with their `zh-CN`
+twins — no longer take an apply-time log line as proof of reachability: they state what was measured and
+mark the Web plane **unmeasured**.
+
+**The packed `files` list no longer repeats a patch layer.** 0.16.1 shipped 26 entries with
+`cordis.patch.yml` at two indices: the patch targets and the root `files` allowlist both name it, and
+nothing required the two derivations to be disjoint. `verify:manifest` and the closure gate both read
+only SET semantics, so neither could see the repeat. The packer now de-duplicates order-preservingly —
+25 entries, zero duplicates, no admission lost or added, and no tarball content moved.
+
+Verified by a full static gate sweep plus two **independent** verifications recorded before either
+implementer's reasoning was read; the Docker one-click lane exercises the resolver code on the release
+sweep. Known bounds are stated in the pull request, not smoothed here: the Web plane is unmeasured, and
+one follow-up is filed rather than absorbed — the adapter's silent no-op in `registerCommand` is the
+general defect, and fixing it would change the contract for every contributed command.
+
 ## 0.16.1 — 2026-10-27 — the packed artifact's root assets
 
 The relocatable `dist/mpd-package` was assembled from a hand-kept list of eight prose docs while
