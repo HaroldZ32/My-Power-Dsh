@@ -1,0 +1,512 @@
+{
+ "png": "evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/measure/after-s1.png",
+ "label": "after (fixed renderer, scale 1)",
+ "size": [
+  1020,
+  1140
+ ],
+ "cell": [
+  10,
+  19
+ ],
+ "rowOrigin": 2,
+ "colOrigin": 0,
+ "boxes": [
+  {
+   "name": "group-frame",
+   "rect": [
+    4,
+    28,
+    58,
+    46
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 44.0,
+     "sideX": 44.0,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 584.0,
+     "sideX": 584.0,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 44.0,
+     "sideX": 44.0,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 584.0,
+     "sideX": 584.0,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-T1",
+   "rect": [
+    4,
+    7,
+    28,
+    9
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-T2",
+   "rect": [
+    4,
+    14,
+    28,
+    16
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-T3",
+   "rect": [
+    32,
+    14,
+    56,
+    16
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 324.5,
+     "sideX": 324.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 564.5,
+     "sideX": 564.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 324.5,
+     "sideX": 324.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 564.5,
+     "sideX": 564.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-T4",
+   "rect": [
+    4,
+    21,
+    28,
+    23
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-C1",
+   "rect": [
+    5,
+    29,
+    29,
+    31
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-C2",
+   "rect": [
+    5,
+    36,
+    29,
+    38
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-C3",
+   "rect": [
+    33,
+    36,
+    57,
+    38
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 334.5,
+     "sideX": 334.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 574.5,
+     "sideX": 574.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 334.5,
+     "sideX": 334.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 574.5,
+     "sideX": 574.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-C4",
+   "rect": [
+    5,
+    43,
+    29,
+    45
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 54.5,
+     "sideX": 54.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 294.5,
+     "sideX": 294.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "name": "card-T5",
+   "rect": [
+    4,
+    51,
+    28,
+    53
+   ],
+   "corners": {
+    "top-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "top-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    },
+    "bottom-left": {
+     "cornerX": 44.5,
+     "sideX": 44.5,
+     "delta": 0.0
+    },
+    "bottom-right": {
+     "cornerX": 284.5,
+     "sideX": 284.5,
+     "delta": 0.0
+    }
+   },
+   "sides": {
+    "left": [
+     0,
+     0
+    ],
+    "right": [
+     0,
+     0
+    ],
+    "top": [
+     0,
+     0
+    ],
+    "bottom": [
+     0,
+     0
+    ]
+   }
+  }
+ ],
+ "bounds": {
+  "maxCornerDeltaPx": 0.0,
+  "worstCorner": "",
+  "missingSidePixels": 0,
+  "cornerDeltaLimitPx": 1.0
+ }
+}

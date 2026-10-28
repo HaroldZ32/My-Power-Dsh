@@ -1,0 +1,149 @@
+{
+  "task": "T3",
+  "wave": "fix/codegraph-reachability",
+  "version_under_test": "0.16.1",
+  "subject": "D-3 \u2014 the one-click lane's boot.mcpTools 3/3 -> 2/3 (MISSING=mcp__codegraph__codegraph_explore)",
+  "verdict": "SETTLED \u2014 mechanism diagnosed, reproduced in both directions, fixed in packages/mpd-mcp-shared/bin-resolve.ts",
+  "mechanism": [
+    "@colbymchenry/codegraph@1.5.0 ships bin=npm-shim.js plus a per-platform OPTIONAL dependency; npm counts an unfetchable optional dependency as success",
+    "the lane's 09d staging npm-installs the toolchain into the INSTALLED tree, creating the .toolchain/.bin/codegraph candidate",
+    "resolveCodegraphBinary accepted that candidate on existence alone and the launcher pinned MPD_CODEGRAPH_BIN to it",
+    "dist/serve.js resolveCodegraphCommand honours an env pin unconditionally and shouldSkipResolvedCommand only refuses a NON-EXISTENT path, so the shim's failure bypassed bundled -> provisioned -> PATH -> download",
+    "the shim answered no MCP frame, so the codegraph server registered ZERO tool names: boot.mcpTools and boot.mcpToolNaming are ONE defect"
+  ],
+  "discriminator": {
+    "statement": "boot.mcpTools tracks the npm toolchain install's package count exactly",
+    "red_stamps": [
+      "2026-10-09T14-22-26Z",
+      "2026-10-09T14-41-54Z",
+      "2026-10-09T15-10-21Z"
+    ],
+    "red_toolchain_install": "added 4 packages",
+    "green_stamps": [
+      "2026-10-09T00-14-36Z",
+      "2026-10-09T00-37-00Z",
+      "2026-10-14T14-56-53Z"
+    ],
+    "green_toolchain_install": "added 5 packages",
+    "the_five_packages": [
+      "@ast-grep/cli",
+      "@ast-grep/cli-linux-x64-gnu",
+      "detect-libc",
+      "@colbymchenry/codegraph",
+      "@colbymchenry/codegraph-linux-x64"
+    ],
+    "measured_today": "both registry.npmmirror.com and the default registry delivered all five (npm ls verified)"
+  },
+  "arms": {
+    "armA-incomplete-pin": {
+      "VERDICT": "timeout",
+      "TOOLS": "0",
+      "TOOL_NAMES": "",
+      "DETAIL": "no tools/list answer within 20000ms; stdoutBytes=0",
+      "has_shim_message": true
+    },
+    "armB-complete-pin": {
+      "VERDICT": "ok",
+      "TOOLS": "1",
+      "TOOL_NAMES": "codegraph_explore",
+      "has_shim_message": false
+    },
+    "armC-checkout-no-pin": {
+      "VERDICT": "ok",
+      "TOOLS": "1",
+      "TOOL_NAMES": "codegraph_explore",
+      "has_shim_message": false
+    },
+    "armD0-prefix-head-launcher": {
+      "VERDICT": "timeout",
+      "TOOLS": "0",
+      "TOOL_NAMES": "",
+      "DETAIL": "no tools/list answer within 20000ms; stdoutBytes=0",
+      "has_shim_message": true
+    },
+    "armD-gate-falls-through": {
+      "VERDICT": "ok",
+      "TOOLS": "1",
+      "TOOL_NAMES": "codegraph_explore",
+      "has_shim_message": false
+    },
+    "armE-negative-control": {
+      "VERDICT": "timeout",
+      "TOOLS": "0",
+      "TOOL_NAMES": "",
+      "DETAIL": "no tools/list answer within 20000ms; stdoutBytes=0",
+      "has_shim_message": true
+    }
+  },
+  "gates": {
+    "tests-shared": {
+      "exit": 0,
+      "command": "bun test packages/mpd-mcp-shared"
+    },
+    "tests-codegraph-astgrep": {
+      "exit": 0,
+      "command": "bun test packages/mpd-mcp-codegraph packages/mpd-mcp-astgrep"
+    },
+    "tests-lsp-gitbash": {
+      "exit": 0,
+      "command": "bun test packages/mpd-mcp-lsp packages/mpd-mcp-gitbash"
+    },
+    "tests-coupling-inventory": {
+      "exit": 0,
+      "command": "bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts"
+    },
+    "typecheck": {
+      "exit": 0,
+      "command": "bun run typecheck"
+    },
+    "comments": {
+      "exit": 0,
+      "command": "bun run verify:comments"
+    },
+    "docs": {
+      "exit": 0,
+      "command": "bun run verify:docs"
+    },
+    "dist-fresh": {
+      "exit": 0,
+      "command": "node scripts/verify-dist-fresh.ts"
+    }
+  },
+  "fan_out": {
+    "rebuilt_with_pinned_bun_1_4_0": [
+      "packages/mpd-mcp-astgrep/dist/launch.js",
+      "packages/mpd-mcp-astgrep/dist/cli.js",
+      "packages/mpd-mcp-codegraph/dist/launch.js"
+    ],
+    "consumers": [
+      "packages/mpd-mcp-astgrep/src/launch.ts",
+      "packages/mpd-mcp-astgrep/src/server.ts",
+      "packages/mpd-mcp-codegraph/src/launch.ts",
+      "scripts/mpd-doctor.ts (run as TypeScript, no dist)"
+    ],
+    "not_a_consumer": "packages/mpd-mcp-lsp (imports dependency-entry + log-sink only)",
+    "byte_identical_after_rebuild": [
+      "packages/mpd-mcp-astgrep/dist/launch.js (sha256 prefix 3f02e8507b3503ae; fresh == committed == HEAD)",
+      "packages/mpd-mcp-astgrep/dist/cli.js (sha256 prefix f11d1d0c501aba6e; fresh == committed == HEAD)"
+    ],
+    "only_changed_dist": "packages/mpd-mcp-codegraph/dist/launch.js"
+  },
+  "ast_grep_behaviour": "unchanged \u2014 the new predicate is installed only by resolveCodegraphBinary (ResolverOptions.platformBundle); resolveAstGrepBinary keeps its own --version probe",
+  "bounds": [
+    "the 2026-10-09 mirror state was NOT re-created in a container: both registries deliver 5 packages today, so the red state is reproduced as the filesystem shape an incomplete install leaves",
+    "no Docker lane ran for this task: --mode oneclick installs the DEFAULT branch and therefore cannot exercise an uncommitted fix; the release sweep must run `node scripts/docker-e2e.ts --mode source --require-docker --no-browser` then `--mode oneclick --require-docker --no-browser`",
+    "the durable apparatus repair (verify + retry the platform package inside scripts/install-mcp.ts ensureNpmToolchain) is a recommended follow-up OUTSIDE T3's declared scope",
+    "a SKIP of the Docker lane is not a pass; this host's Docker is rootless, so the lane is expected to RUN"
+  ],
+  "files_changed": [
+    "packages/mpd-mcp-shared/bin-resolve.ts",
+    "packages/mpd-mcp-shared/bin-resolve.test.ts",
+    "packages/mpd-mcp-codegraph/src/launch.ts",
+    "packages/mpd-mcp-codegraph/README.md",
+    "packages/mpd-mcp-codegraph/README.zh-CN.md",
+    "packages/mpd-mcp-codegraph/dist/launch.js",
+    "packages/mpd-mcp-astgrep/dist/launch.js",
+    "packages/mpd-mcp-astgrep/dist/cli.js"
+  ],
+  "recorded_at_utc": "2026-10-28T10:04:18Z"
+}

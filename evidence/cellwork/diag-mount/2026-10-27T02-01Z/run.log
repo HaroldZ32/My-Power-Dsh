@@ -1,0 +1,247 @@
+=== 0 prep: sandbox, byte-identical profile copy, install state ===
+$ bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/prep.sh
+# install-state + copy fidelity — 2026-10-27T02:18:43Z
+workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify
+DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome
+HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+session workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws
+
+== 1. global npm state (the removal is the change under test) ==
+$ npm ls -g --depth=0
+/home/haroldzhao/.nvm/versions/node/v24.21.0/lib
+├── @deepseek-ai/dsh@0.2.1-rc.3
+├── @deepseek-harness-tui/dsh-tui@0.17.0
+├── corepack@0.36.0
+└── npm@11.19.0
+
+[exit=0]
+
+== 1b. global @mpd-dsh directory ==
+npm root -g=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules
+$ ls -la /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh
+total 8
+drwxrwxr-x 2 haroldzhao haroldzhao 4096 Oct 27 09:58 .
+drwxr-xr-x 7 haroldzhao haroldzhao 4096 Oct 26 11:15 ..
+[exit=0]
+
+== 2. what the loader's install anchor resolves for @mpd-dsh/mpd ==
+INSTALL_ANCHOR=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/node_modules/@mpd-dsh/mpd
+miss /home/node_modules/@mpd-dsh/mpd
+miss /node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.node_modules/@mpd-dsh/mpd
+miss /home/haroldzhao/.node_libraries/@mpd-dsh/mpd
+miss /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node/@mpd-dsh/mpd
+== 3. profile bundle under the sandbox copy ==
+bundle version=0.16.1
+cellwork module=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js
+0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml
+019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/package.json
+c3f2358eb308837c761d5842d681fe2043bef0b2ca50eb974dee025ec1b0f98f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js
+7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/package.json
+33155529ce3d7ff221aaa18fb5badc45c1236a1033723106e664f33bc5d54333  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml
+-- cellwork row in the bundle patch --
+510:    - id: mpd-cellwork
+511-      name: '@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js'
+512-      config: {}
+513-    # Bundle asset provisioning (no home writes since 0.3.0): registers the
+-- cellwork tools in the installed module bytes --
+cellwork_activate
+cellwork_context
+cellwork_dispatch
+cellwork_handoff
+cellwork_inbox
+cellwork_recon
+cellwork_requirements
+cellwork_send
+cellwork_split
+cellwork_start
+cellwork_status
+cellwork_stop
+cellwork_subteam
+cellwork_supervise
+count=14
+== 4. copy fidelity: per-file sha256 manifest, source vs copy ==
+reset+recopy: profile dir replaced, ws/.mpd + sessions cleared, credentials + agent-preset refreshed
+source files=18721 bytes=434882598
+copy   files=18721 bytes=434882598
+MANIFEST IDENTICAL: every one of the 18721 files has the same sha256
+da43b6df8422c94b9c8433cc92e522ea303588afffb3c2f2ed68b41facb93746  evidence/cellwork/diag-mount/2026-10-27T02-01Z/install-state/manifest-copy.txt
+== 5. HOME fixture + credentials ==
+agent-preset.json (copied from $HOME/.dsh-tui): {
+  "preset": "mpd"
+}
+onboarding.json written: {"completed": true, "version": 1} (the host's wizard-skip schema; the real HOME has no such file because onboarding is already done)
+credentials copied once into the sandbox: 600 711 bytes (values never printed)
+
+DONE
+[exit=0]
+
+manifests gzipped: boot-mechanism.txt cellwork-tools-expected.txt manifest-after-boots.txt.gz manifest-copy.txt.gz manifest-source.txt.gz post-boot-mutations.txt prep.log profile-sha256.txt 
+=== 1 real boot, no overlay ===
+$ bun /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/phase1.ts /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot
+== environment ==
+sandbox root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify
+DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome
+HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+session workspace=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws
+launcher on PATH: /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui
+launcher version: @deepseek-harness-tui/dsh-tui 0.17.0 (launcher)
+profile: 0.17.0  /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+dsh on PATH: /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh (version 0.2.1-rc.3)
+global @mpd-dsh/mpd present: false
+profile cordis.patch.yml sha256=0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca
+profile package.json sha256=7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f
+cellwork module exists=true bytes=277374
+cellwork row at cordis.patch.yml:510
+== HOME fixture ==
+wrote .tmp-cellwork-reverify/home/.dsh-tui/onboarding.json preset=mpd
+wrote .tmp-cellwork-reverify/home/.dsh-tui/agent-preset.json preset=mpd
+== boot (no --patch, no absolute row path) ==
+the child env carries: DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/home
+the boot command is the launcher alone: env -i <sandbox vars> dsh-tui   (no --patch, no module path)
+boot failures=[]
+crashSignatures=[]
+pane boot -> evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/boot.pane.txt
+pane live -> evidence/cellwork/diag-mount/2026-10-27T02-01Z/boot/live.pane.txt
+== live processes carrying dsh ==
+    492     282       00:10 node /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh-tui
+    499     492       00:10 /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js
+    507     499       00:10 /home/haroldzhao/.nvm/versions/node/v24.21.0/bin/node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-entry.js
+    577     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js
+    583     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js
+    584     507       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/dist/launch.js
+    606     584       00:07 node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph/npm-shim.js serve --mcp
+    613     606       00:07 /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/node --liftoff-only --disable-warning=ExperimentalWarning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/lib/dist/bin/codegraph.js serve --mcp
+    624     613       00:07 /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@colbymchenry/codegraph-linux-x64/node -e  const fs = require('fs'); const parentPid = Number(process.argv[1]); const timeoutMs = Number(process.argv[2]); const capMs = Number(process.argv[3]); const progressPaths = process.argv.slice(4); const secs = Math.round(timeoutMs / 1000); function kill(extra) {   try { fs.writeSync(2, Buffer.from('[CodeGraph] Main thread unresponsive for ~' + secs + 's' + (extra || '') + ' — killing the wedged process so a fresh one can start (#850). Disable with CODEGRAPH_NO_WATCHDOG=1.\n')); } catch (e) {}   try { process.kill(parentPid, 'SIGKILL'); } catch (e) {}   process.exit(0); } // Fingerprint of the watched files (size + mtime). A change between checks is // forward disk progress — a slow synchronous SQLite statement, not a wedge. function snap() {   let s = '';   for (const p of progressPaths) {     try { const st = fs.statSync(p); s += st.size + ':' + st.mtimeMs + ';'; } catch (e) { s += 'x;'; }   }   return s; } let lastSnap = progressPaths.length ? snap() : ''; let lastSnapAt = Date.now(); let silentSince = null; // start of the current continuous-silence episode function onTimeout() {   if (!progressPaths.length) return kill('');   const now = Date.now();   if (silentSince === null) silentSince = now - timeoutMs; // silence began ~one timeout ago   const cur = snap();   if (cur !== lastSnap && now - silentSince < capMs) {     // The event loop is blocked but the DB files are advancing: a legitimate     // long store on slow storage. Defer, re-baseline, keep watching.     lastSnap = cur;     timer = setTimeout(onTimeout, timeoutMs);     return;   }   kill(cur !== lastSnap ? ' despite ongoing disk activity (hard cap ' + Math.round(capMs / 1000) + 's reached)' : ''); } let timer = setTimeout(onTimeout, timeoutMs); process.stdin.on('data', () => {   silentSince = null;   // Keep the baseline fresh while healthy (throttled — a stat per second).   if (progressPaths.length) {     const t = Date.now();     if (t - lastSnapAt >= 1000) { lastSnap = snap(); lastSnapAt = t; }   }   clearTimeout(timer); timer = setTimeout(onTimeout, timeoutMs); }); process.stdin.on('end', () => process.exit(0));   // parent closed the pipe (exited) -> no orphan process.stdin.on('error', () => process.exit(0)); // pipe broke -> parent gone process.stdin.resume();  613 60000 600000
+== boot face (context line) ==
+▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 18 段 · 运行时上下文 3 项 · 技能 20 · 工具 117                                                       │
+== log sinks: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/logs ==
+sinks present (18): mpd-bootstrap.log, mpd-cellwork.log, mpd-codegraph.log, mpd-config.log, mpd-dsh-adapter.log, mpd-ext.log, mpd-goal.log, mpd-mcp-astgrep.log, mpd-mcp-codegraph.log, mpd-mcp-lsp.log, mpd-patch-guards.log, mpd-roles.log, mpd-roster.log, mpd-team-core.log, mpd-team-watchdog.log, mpd-tui-panels.json, mpd-tui.log, mpd-verify.log
+mpd-cellwork.log exists=true
+--- mpd-cellwork.log ---
+[2026-10-27T02:18:49.638Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none
+== session headers ==
+raw terminal log bytes=3585745 gzip=1580864 (full log kept as tui-pane.log.gz)
+[exit=0]
+
+=== 2 registration surfaces (stub route, palette, one real tool call) ===
+$ bun /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/phase2-registration.ts /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify evidence/cellwork/diag-mount/2026-10-27T02-01Z/registration
+stub child listening on 127.0.0.1:40101 (pid 675)
+the ONLY extra env: DEEPSEEK_BASE_URL=http://127.0.0.1:40101 and a dummy DEEPSEEK_API_KEY
+== boot: palette (empty -> control -> treatment), then one stub-answered turn ==
+boot failures=[]
+crashSignatures=[]
+== model-facing tool list: the stub's wire view ==
+stub requests=3
+request 1 path=/v1/messages offered=0 decision=plain text (no tools offered)
+request 2 path=/v1/messages offered=117 decision=tool call cellwork_status
+request 3 path=/v1/messages offered=117 decision=final text
+main request (request 2) offered 117 tools
+main request cellwork_* (14): cellwork_activate, cellwork_context, cellwork_dispatch, cellwork_handoff, cellwork_inbox, cellwork_recon, cellwork_requirements, cellwork_send, cellwork_split, cellwork_start, cellwork_status, cellwork_stop, cellwork_subteam, cellwork_supervise
+== model-facing tool list: the harness's own request/header ==
+session store=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.tmp-cellwork-reverify-ws--/44b0315a-c0ed-421c-86d8-58cf455f6fea/session.v4.jsonl.zstd frames=9 records=30
+recordedToolNames 117 tools; cellwork_* = ["cellwork_activate","cellwork_context","cellwork_dispatch","cellwork_handoff","cellwork_inbox","cellwork_recon","cellwork_requirements","cellwork_send","cellwork_split","cellwork_start","cellwork_status","cellwork_stop","cellwork_subteam","cellwork_supervise"]
+tool/call + tool/result records (2):
+tool/call {"turn":1,"step":1,"callId":"call_cellwork-reverify_0","name":"cellwork_status","arguments":"{}"}
+tool/result {"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call_cellwork-reverify_0"},"toolCallId":"call_cellwork-reverify_0","content":[{"type":"text","text":"cellwork refused: cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`"}],"isError":false,"id":"d4a8aa8c-d26c-48ed-ac4b-e187d9f85ce6"}}
+== command palette ==
+--- palette-open ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 95 项 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ new                   新开会话                                                                                                               ││
+  ⌸ ❯ /                                                                                                                                            ⛶│
+--- control-agent-teams ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 1 项 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ agent-teams     [what the team is for] Stage a team for the current goal: /agent-teams <what the team is for>                                ││
+  ⌸ ❯ /agent-teams                                                                                                                                 ⛶│
+--- treatment-cellwork ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 1 项 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ cellwork     [objective] Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatche…  ││
+  ⌸ ❯ /cellwork                                                                                                                                    ⛶│
+== row sink ==
+mpd-cellwork.log exists=true
+[2026-10-27T02:18:49.638Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none
+[2026-10-27T02:19:02.062Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none
+[exit=0]
+
+=== 3 composition probe (the host's own loadProfile call + install anchor) ===
+$ node /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/probe-composition.mjs /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui evidence/cellwork/diag-mount/2026-10-27T02-01Z/composition /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome
+== the anchor the real dsh-tui host uses ==
+profileBoot module=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot.js
+INSTALL_ANCHOR=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+profileDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui
+the profile carries no @deepseek-ai/dsh of its own: true
+
+=== real-install-anchor ===
+installAnchor=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+layer @deepseek-ai/dsh-base version=0.2.1-rc.3
+  packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base
+  patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"]
+layer @deepseek-harness-tui/dsh-tui version=0.17.0
+  packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui
+  patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd version=0.16.1
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+skippedBundles=[]
+user layer patch=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml entries=3
+composed bundle-layer rows=153
+mpd-cellwork present=true
+mpd-cellwork at composed index 141 name="@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js" config={}
+composed rows INCLUDING the profile user layer=153 mpd-cellwork present=true
+
+=== boot-call-path (appBoot.loadProfile, exactly what prepareProfile runs) ===
+layer @deepseek-ai/dsh-base packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base
+layer @deepseek-harness-tui/dsh-tui packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui
+layer @mpd-dsh/mpd packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+loadProfile+composeEntries rows=153 mpd-cellwork present=true
+
+=== profile-anchor-control ===
+installAnchor=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/package.json
+layer @deepseek-harness-tui/dsh-tui version=0.17.0
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd version=0.16.1
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+skippedBundles=[{"packageName":"@deepseek-ai/dsh-base","reason":"Error: dsh: cannot resolve profile bundle \"@deepseek-ai/dsh-base\" from the dsh installation or /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui; run 'dsh plugin --profile dsh-tui install' if its dependency is not installed"}]
+user layer patch=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml entries=3
+composed bundle-layer rows=57
+mpd-cellwork present=true
+mpd-cellwork at composed index 45 name="@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js" config={}
+composed rows INCLUDING the profile user layer=57 mpd-cellwork present=true
+
+== verdict ==
+real arm (install anchor, bundle layers) rows=153 cellwork=true
+boot-call-path (the host's own loadProfile call) rows=153 cellwork=true
+profile-anchor CONTROL rows=57 — invalid by construction (dsh-base is installation-owned)
+[exit=0]
+
+=== 4 repo wrapper dump-config (COMPOSITION ONLY) ===
+$ DSH_HOME=$SB/dshhome HOME=$SB/home node scripts/dump-config.ts --profile dsh-tui --json
+[exit=0]
+child exit=0 source=child stdoutBytes=62587 bannerEmitted=true
+top-level `- id: ` rows=153
+mpd-cellwork present=true (dump line 937)
+
+=== 5 extract the harness request/header record ===
+$ bun /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/extract-header.ts /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify evidence/cellwork/diag-mount/2026-10-27T02-01Z/registration
+session store=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.tmp-cellwork-reverify-ws--/44b0315a-c0ed-421c-86d8-58cf455f6fea/session.v4.jsonl.zstd
+request/header records=1
+tools=117 cellwork_*=["cellwork_activate","cellwork_context","cellwork_dispatch","cellwork_handoff","cellwork_inbox","cellwork_recon","cellwork_requirements","cellwork_send","cellwork_split","cellwork_start","cellwork_status","cellwork_stop","cellwork_subteam","cellwork_supervise"]
+[exit=0]
+
+=== 6 profile copy after the boots: which bytes moved ===
+da43b6df8422c94b9c8433cc92e522ea303588afffb3c2f2ed68b41facb93746  -
+post-boot manifest IDENTICAL to the copy-time manifest

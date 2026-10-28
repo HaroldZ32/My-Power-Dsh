@@ -1,0 +1,10 @@
+{
+  "case": "user-surface-mount",
+  "stagedStaleVersion": "",
+  "expectedRow": "mpd-cellwork",
+  "green": true,
+  "ok": false,
+  "cause": "",
+  "sentence": "the arm did NOT redden — nothing was proven, the assertions are vacuous",
+  "unexplained": []
+}

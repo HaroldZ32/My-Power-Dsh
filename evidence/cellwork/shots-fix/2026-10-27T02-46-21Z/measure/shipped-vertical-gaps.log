@@ -1,0 +1,4 @@
+shipped (2026-10-26) card T1 left side bar x=88..91: ink row ranges [[183, 202], [219, 278]]
+gaps (px, scale 2): [(203, 218)] -> at 100%: [(101.5, 109.0)]
+re-rendered (2026-10-27) card T1 left side cell x=80..99: ink row ranges [[206, 287]]
+gaps (px, scale 2): [] -> at 100%: []

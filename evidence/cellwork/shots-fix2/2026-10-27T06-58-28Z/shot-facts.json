@@ -1,0 +1,366 @@
+{
+  "case": "cellwork-w4-nested-dag-shots",
+  "task": "T29 + T33 (README nested-DAG captures) + shots-fix2 (the Web Team figure re-shot to fit, the TUI team tile re-captured on a real PTY)",
+  "servedModel": {
+    "source": "mpdTeams.graph(workspace, team-nested-parent) via GraphModels, asserted by nested-fixture.ts --verify",
+    "groups": 1,
+    "groupIds": [
+      "team-nested-sub"
+    ],
+    "groupMemberIds": [
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "nodes": 11,
+    "boxNode": {
+      "id": "team-nested-sub",
+      "visual": "group",
+      "depth": 3,
+      "blockers": [
+        "T4"
+      ]
+    },
+    "edgesAnchored": [
+      "T4 -> team-nested-sub",
+      "team-nested-sub -> T5"
+    ]
+  },
+  "web": {
+    "surface": "dsh web, Team view (mpd-bundle-plugin client.js), locale en-US",
+    "bundle": "the CURRENT checkout's mpd-team-core-plugin/dist + mpd-bundle-plugin/{dist,client.js} patched into the container profile (the image ships 0.15.1, which has no group input)",
+    "team": "team-nested-parent",
+    "frames": 1,
+    "groupRects": [
+      "team-nested-sub,510,0,384,114"
+    ],
+    "cards": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "boxes": [
+      "0,0,144,42",
+      "170,0,144,42",
+      "170,52,144,42",
+      "340,0,144,42",
+      "920,0,144,42",
+      "1090,0,144,42",
+      "520,10,104,42",
+      "650,10,104,42",
+      "650,62,104,42",
+      "780,10,104,42"
+    ],
+    "capture": {
+      "image": "docs/assets/images/web-team-dag-groups.png",
+      "imagePx": [
+        2608,
+        1094
+      ],
+      "deviceScaleFactor": 2,
+      "capturedWidth": 1304,
+      "capturedHeight": 547,
+      "boxOrigin": [
+        12,
+        419
+      ],
+      "graphViewport": [
+        1280,
+        114
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "contentWidth": 1234,
+      "contentHeight": 104
+    },
+    "viewport": "2900x1500 @ deviceScaleFactor 2, locale en-US \u2014 fits: scrollX=0, captured 1304x547 CSS px at origin (12,419), graph viewport 1280x114 CSS px vs content 1234x104 CSS px (headroom 46x10 px)",
+    "asset": {
+      "path": "docs/assets/images/web-team-dag-groups.png",
+      "size": [
+        2608,
+        1094
+      ],
+      "sha256": "9f5826ee9be9fc3a620c6516a11cc0146c7543d13f9141accb679276bc6f7b83"
+    },
+    "measured": {
+      "tool": "docker/ui/measure-shots.py web (--self-test: fits/pass, cut/red, scrolled/red)",
+      "command": "python3 docker/ui/measure-shots.py web --facts <facts> --png docs/assets/images/web-team-dag-groups.png",
+      "result": "PASS",
+      "capturedWidth": 1304,
+      "capturedHeight": 547,
+      "contentWidth": 1234,
+      "contentHeight": 104,
+      "headroomPx": [
+        46,
+        10
+      ],
+      "boxesOutsideCapture": 0
+    },
+    "previousCapture": {
+      "asset": "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/before/web-team-dag-groups.png",
+      "size": [
+        2068,
+        1169
+      ],
+      "sha256": "072c7b0882eb623a522e529a41a23c61cd0039252872194d1bc0ae7ed22304bf",
+      "capturedWidthCss": 1034,
+      "graphContentWidthCss": 1234,
+      "why": "the shipped image was 2068x1169 px at deviceScaleFactor 2 = 1034 CSS px wide against a 1234 CSS px graph, and it was taken with the view scrolled to the right end: the group frame's left border (content x=510) sits at image x=298 CSS, so the window started about 212 CSS px into the drawing. T1's whole card and the left parts of T2/T3 were outside the picture, and a 1034 px window cannot hold a 1234 px graph at any scroll offset - the right side was complete (T6's frame ends 12 CSS px inside the edge). The facts file recorded the camera's position ('graph scrolled right') but no captured rect, so nothing in it could show that content was missing.",
+      "viewOffsetCss": 212,
+      "leftmostVisibleContentCss": 212,
+      "rightmostVisibleContentCss": 1246
+    }
+  },
+  "webZh": {
+    "surface": "dsh web, Team view (mpd-bundle-plugin client.js), locale zh-CN",
+    "bundle": "the CURRENT checkout's mpd-team-core-plugin/dist + mpd-bundle-plugin/{dist,client.js} patched into the container profile (the image ships 0.15.1, which has no group input)",
+    "team": "team-nested-parent",
+    "frames": 1,
+    "groupRects": [
+      "team-nested-sub,510,0,384,114"
+    ],
+    "cards": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "boxes": [
+      "0,0,144,42",
+      "170,0,144,42",
+      "170,52,144,42",
+      "340,0,144,42",
+      "920,0,144,42",
+      "1090,0,144,42",
+      "520,10,104,42",
+      "650,10,104,42",
+      "650,62,104,42",
+      "780,10,104,42"
+    ],
+    "capture": {
+      "image": "docs/assets/images/zh-CN/web-team-dag-groups.png",
+      "imagePx": [
+        2608,
+        1094
+      ],
+      "deviceScaleFactor": 2,
+      "capturedWidth": 1304,
+      "capturedHeight": 547,
+      "boxOrigin": [
+        12,
+        419
+      ],
+      "graphViewport": [
+        1280,
+        114
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "contentWidth": 1234,
+      "contentHeight": 104
+    },
+    "viewport": "2900x1500 @ deviceScaleFactor 2, locale zh-CN \u2014 fits: scrollX=0, captured 1304x547 CSS px at origin (12,419), graph viewport 1280x114 CSS px vs content 1234x104 CSS px (headroom 46x10 px)",
+    "asset": {
+      "path": "docs/assets/images/zh-CN/web-team-dag-groups.png",
+      "size": [
+        2608,
+        1094
+      ],
+      "sha256": "014a88566f8e9d5e0ff5fc43d7de633d4e445d98d0b795b8b259aa5f0b8b9296"
+    },
+    "measured": {
+      "tool": "docker/ui/measure-shots.py web (--self-test: fits/pass, cut/red, scrolled/red)",
+      "command": "python3 docker/ui/measure-shots.py web --facts <facts> --png docs/assets/images/zh-CN/web-team-dag-groups.png",
+      "result": "PASS",
+      "capturedWidth": 1304,
+      "capturedHeight": 547,
+      "contentWidth": 1234,
+      "contentHeight": 104,
+      "headroomPx": [
+        46,
+        10
+      ],
+      "boxesOutsideCapture": 0
+    },
+    "previousCapture": {
+      "asset": "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/before/web-team-dag-groups.zh-CN.png",
+      "size": [
+        2068,
+        1169
+      ],
+      "sha256": "3a927fdd76530d01b857db55f5280a0a37e742efe2b5a3e61827f57750891c57",
+      "capturedWidthCss": 1034,
+      "graphContentWidthCss": 1234,
+      "why": "the shipped image was 2068x1169 px at deviceScaleFactor 2 = 1034 CSS px wide against a 1234 CSS px graph, and it was taken with the view scrolled to the right end: the group frame's left border (content x=510) sits at image x=298 CSS, so the window started about 212 CSS px into the drawing. T1's whole card and the left parts of T2/T3 were outside the picture, and a 1034 px window cannot hold a 1234 px graph at any scroll offset - the right side was complete (T6's frame ends 12 CSS px inside the edge). The facts file recorded the camera's position ('graph scrolled right') but no captured rect, so nothing in it could show that content was missing.",
+      "viewOffsetCss": 212,
+      "leftmostVisibleContentCss": 212,
+      "rightmostVisibleContentCss": 1246
+    }
+  },
+  "tui": {
+    "surface": "DSH-TUI 0.17.0 full-screen team SCENE at a 160x62 PTY \u2014 the surface the DAG page's `\u2922` control OPENS (`openFullscreenScene: () => scene.openTeam()`, mpd-tui-plugin/src/index.ts) \u2014 NOT the DAG page itself. The pane's own hints row ('esc/q close \u00b7 \u2191\u2193 focus \u00b7 click pins \u00b7 hover previews \u00b7 \u21e7\u2191\u2193 scroll \u00b7 r refresh \u00b7 a plan \u00b7 p board') is scenes.ts surfaceHints; the DAG page's own footer prints '\u2922 full \u00b7 \u2191\u2193/jk \u00b7 \u23ce pin \u00b7 esc \u00b7 \u21e7\u2191\u2193\u2190\u2192' (panel-dag.ts dagFooterText)",
+    "renderer": "docker/ui/tui-render.py (TRACKED; sha256 9ee69b3b14f75788...) --scale 2, --rows 2:62 --cols 0:102 (pane rows/cols, half-open)",
+    "frameGlyphsPresent": [
+      "\u2554",
+      "\u2557",
+      "\u255a",
+      "\u255d",
+      "\u2551",
+      "\u2550",
+      "\u2567",
+      "\u256b"
+    ],
+    "frameClosed": true,
+    "interiorCards": [
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "topBorder": "\u2554 subcell-auth \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2567\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557",
+    "bottomBorder": "\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u256b\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d",
+    "rendererBefore": "docker/ui/tui-render.py sha256 81c968312f3c... drew a same-style run as ONE string and rode the ink top; re-rendered 2026-10-27, see evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/",
+    "renderSource": {
+      "pane": "evidence/cellwork/shots/2026-10-26T16-25-00Z/tui-pane-en.txt",
+      "paneSha256": "e94ff9d89de121db2fa79936c8cd8744a7b60bf52c5fb936aecf96e99c3020",
+      "crop": "rows 2..61 and columns 0..101 of the 158x62 pane (the scene's own top border down to its bottom border; the width is the scene's widest text line + 1 column, so the README's display width keeps 1 cell >= 8 px)",
+      "sgr": "none -- the archived capture is 'tmux capture-pane -p -J', so every glyph is drawn in the page foreground; the glyph GRID is exact, the host's colour tones are not recoverable from this archive"
+    },
+    "measured": {
+      "cornerVsSideMaxDeltaPx": 0.0,
+      "cornerVsSideLimitPx": 1.0,
+      "missingSidePixels": 0,
+      "boxesMeasured": 10,
+      "tool": "evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/measure.py",
+      "scales": "0.0 px at scale 1 (100%) and at scale 2 (the shipped PNG at 100% zoom)",
+      "shippedBefore": "right side bar 18 px past its card's top border end (0.90 cell at 20 px/cell); the same probe on the re-rendered PNG reads 0 px"
+    }
+  },
+  "tuiTeamDag": {
+    "surface": "the /mpd team SCENE on a real PTY, 158x45, DSH_TUI_LANG=en, team-2026-10-05T22-30-00.000Z (board=normal: 6 tasks, 5 members)",
+    "asset": {
+      "path": "docs/assets/images/tui-team-dag.png",
+      "size": [
+        2180,
+        1330
+      ],
+      "sha256": "29d2d6a26322216a6e288ba1b9b31173b2a58ca8bc7903d3f2704cfdb96e7488"
+    },
+    "capture": "docker/ui/tui-capture.sh --lang en: restart-tui.sh restarts the session at 158x45, the script materializes a session with /mpd board, seeds the fixture with docker/ui/team-fixture.mts for the materialized id, then reads the pane with `tmux capture-pane -e -p -J`",
+    "crop": "rows 1:36, cols 0:109 of the 158x45 pane (the scene's own top border row through six rows below the hint row); 109 columns because the widest text row (the roster) ends at cell 107",
+    "pane": {
+      "path": "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/tui/tui-team-dag.wired.pane.txt",
+      "sha256": "f715698860a8735a89b139691a4ed149f3139d430635313f7a729c6dab2216d5"
+    },
+    "measured": {
+      "tool": "docker/ui/measure-shots.py tui (--self-test: good/pass, corner-drift/red, side-hole/red)",
+      "command": "python3 docker/ui/measure-shots.py tui --pane <pane> --png docs/assets/images/tui-team-dag.png --rows 1:36 --cols 0:109 --scale 2",
+      "result": "PASS",
+      "framesMeasured": 6,
+      "maxCornerDeltaPx": 0.0,
+      "cornerDeltaLimitPx": 1.0,
+      "missingSidePixels": 0,
+      "cardsCutByCrop": 0
+    },
+    "reproduced": "a full run of the WIRED script (measurement inside the lane) produced a byte-identical PNG: sha256 29d2d6a26322216a6e288ba1b9b31173b2a58ca8bc7903d3f2704cfdb96e7488 ; manifest note rows=1:36 cols=0:109 ... measure=pass",
+    "previousCapture": {
+      "size": [
+        3120,
+        1330
+      ],
+      "sha256": "e4c808036da0fe287693a68fbcb2ffdc32227095ac80b535a7380eaeb3bf1dd8",
+      "measured": {
+        "tool": "docker/ui/measure-shots.py tui on the shipped file, with the six card rectangles transcribed from its own border positions",
+        "maxCornerDeltaPx": 6.0,
+        "missingSidePixels": 102,
+        "result": "FAIL"
+      },
+      "why": "the shipped tile was rendered by the pre-fix rasterizer (one draw call per same-style run + anchor=lt): its card top borders drifted up to 6 px off their own side bars and 102 side pixels were missing; it also carried 156 columns for a scene whose widest row ends at 107."
+    }
+  },
+  "assets": {
+    "docs/assets/images/web-team-dag-groups.png": "2608x1094 (1304x547 CSS px at dsf 2) \u2014 EN web, the WHOLE graph, ten cards inside the frame",
+    "docs/assets/images/zh-CN/web-team-dag-groups.png": "2608x1094 (1304x547 CSS px at dsf 2) \u2014 zh-CN web, its own run in the app's Chinese locale",
+    "docs/assets/images/tui-team-dag.png": "2180x1330 (109x35 cells at 20x38 px) \u2014 EN TUI team scene, re-captured on a real PTY 2026-10-27",
+    "docs/assets/images/tui-team-dag-groups.png": "2040x2280 (102x60 cells at 20x38 px) \u2014 EN TUI team scene, CLOSED group frame; re-rendered 2026-10-27 from the archived pane (was 3160x2107 \u2014 EN TUI, CLOSED frame)",
+    "docs/assets/images/zh-CN/tui-team-dag-groups.png": "WITHDRAWN \u2014 see bounds"
+  },
+  "bounds": [
+    "The zh-CN images are their OWN runs, not renamed copies: the WEB twin renders in the app's Chinese locale (browser context locale zh-CN, body text verified Chinese), and the TUI twin is a separate PTY capture. MEASURED: the TUI DAG page's chrome is English in BOTH locales (DSH_TUI_LANG=zh-CN left the pane byte-identical), which matches the established zh-CN set policy that 'the TUI scene bodies stay English by design'; the zh-CN TUI file is therefore the same scene from its own run, not a Chinese-chrome image.",
+    "The zh-CN TUI twin was WITHDRAWN after measurement: DSH_TUI_LANG=en / zh / zh-CN all produce a byte-identical DAG pane (the page's chrome is English in every locale, matching the established 'TUI scene bodies stay English by design' policy), so a zh-CN copy would be a byte-identical duplicate. The zh README + zh docs row cite the SHARED English-body TUI capture and say so in the caption; the three panes are kept here as the measurement.",
+    "The TUI capture is the team SCENE, the panel's own full-screen surface: it draws the group frame at the scene's full width, so the sidebar's narrow-width collapse bound (D3) never applies here and the frame is not half-drawn.",
+    "The web crop keeps the panel header + roster + the whole task graph; the empty space below the graph is dropped, not painted over.",
+    "The frame is CLOSED: the bottom border carries a crossing glyph (U+256B) where the outgoing edge leaves the box, and all four interior cards sit inside it.",
+    "The re-rendered PNG is MONOCHROME by force of its archive: the capture that was committed is 'tmux capture-pane -p -J' (no SGR escapes, 0 ESC bytes in the file), so the renderer has no colour tones to paint and every glyph uses the page foreground. The grid -- which is what this figure is about -- is exact; the host's tones would need the ANSI stream, which this archive does not carry.",
+    "The frame's four sides are measured CLOSED on the shipped pixels: every corner's own vertical stroke shares its x with the adjacent side's stroke to 0.0 px, and no pixel row or column between the corners is left unpainted (evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/measure/after-s2.log).",
+    "The Web figure's framing is CHECKED, not asserted: docker/ui/measure-shots.py web reads web.boxes + web.capture and refuses a box whose capture rect falls outside capturedWidth x capturedHeight, a content width larger than the graph viewport, or a scroll origin other than 0. Every future Web capture goes through docker/ui/shoot-team-dag.sh, which runs that gate and exits with its status.",
+    "The TUI figure is CHECKED the same way in its own mode: docker/ui/measure-shots.py tui detects the frames in the pane text, walks the shipped pixels, and refuses a corner whose vertical stroke is more than 1 px from its side's stroke or a vertical side with an unpainted pixel row. docker/ui/tui-capture.sh runs it after rendering scene 1 and deletes the PNG on failure.",
+    "The scene's OWN panel frame running off the window's right edge is not a defect: the figure is a documented WINDOW (cols 0:109 of 158), exactly as tui-team-dag-groups.png stops at 102 of 158. The tool reports that frame separately from a cut CARD.",
+    "docs/assets/images/zh-CN/tui-team-dag.png (4320x1520) was NOT re-shot in this cell: it is the same pre-fix render at the zh geometry and docs/index.zh-CN.md still cites it. Out of this cell's two-image scope; see the recommendation in evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/README.md."
+  ],
+  "corrections": [
+    {
+      "at": "2026-10-27T02:46:21Z",
+      "field": "tui.surface",
+      "was": "DSH-TUI 0.17.0 DAG page, full screen (the page's own fullscreen control), 160x62 PTY",
+      "now": "DSH-TUI 0.17.0 full-screen team SCENE at a 160x62 PTY \u2014 the surface the DAG page's `\u2922` control OPENS (`openFullscreenScene: () => scene.openTeam()`, mpd-tui-plugin/src/index.ts) \u2014 NOT the DAG page itself. The pane's own hints row ('esc/q close \u00b7 \u2191\u2193 focus \u00b7 click pins \u00b7 hover previews \u00b7 \u21e7\u2191\u2193 scroll \u00b7 r refresh \u00b7 a plan \u00b7 p board') is scenes.ts surfaceHints; the DAG page's own footer prints '\u2922 full \u00b7 \u2191\u2193/jk \u00b7 \u23ce pin \u00b7 esc \u00b7 \u21e7\u2191\u2193\u2190\u2192' (panel-dag.ts dagFooterText)",
+      "why": "the capture lands on the team SCENE, not the DAG page: its last chrome row carries 'hover previews', which only scenes.ts surfaceHints prints, while panel-dag.ts dagFooterText prints 'full / pin'. The RUNBOOK's route (open `/mpd dag`, click the page's \u2922) is right \u2014 the \u2922 is the DAG page's control that OPENS this scene \u2014 but the SURFACE the pixels show is the scene. The README caption and docs/index.md carried the same wrong surface and were corrected with it."
+    },
+    {
+      "at": "2026-10-27T02:46:21Z",
+      "field": "tui.renderer",
+      "was": "docker/ui/tui-render.py (TRACKED; sha256 81c968312f3c...) --scale 2",
+      "now": "docker/ui/tui-render.py (TRACKED; sha256 42fdcd9e509f...) --scale 2, --rows 2:62 --cols 0:102 (pane rows/cols, half-open)",
+      "why": "render() drew a same-style run as one string, so every glyph of a run landed 0.359375 px left of its cell (DejaVuSansMono@16 advance 9.640625 vs the 10 px grid step): a 55-cell group border drifted 2 cells. Fixed to one draw call per glyph at col*cell_w."
+    },
+    {
+      "at": "2026-10-27T02:46:21Z",
+      "field": "assets['docs/assets/images/tui-team-dag-groups.png']",
+      "was": "3160x2107 \u2014 EN TUI, CLOSED frame",
+      "now": "2040x2280 (102x60 cells at 20x38 px) -- EN TUI team scene, CLOSED group frame, re-rendered 2026-10-27 from the archived pane; was 3160x2107 \u2014 EN TUI, CLOSED frame",
+      "why": "the shipped PNG was re-rendered from the archived pane with the fixed renderer and the documented crop; the dimensions and the file's sha256 changed with it."
+    },
+    {
+      "at": "2026-10-27T06:58:28Z",
+      "field": "web.capture / web.viewport",
+      "was": "2300x1500 @ deviceScaleFactor 2, graph scrolled right (no capturing rect, no captured width)",
+      "now": "2900x1500 @ deviceScaleFactor 2 \u2014 fits: scrollX=0, captured 1304x547 CSS px at box origin (12,419), graph viewport 1280x114 CSS px vs content 1234x104 CSS px; image 2608x1094 px",
+      "why": "the old image was 1034 CSS px wide against a 1234 CSS px graph and was taken scrolled ~212 CSS px to the right, so the leftmost 212 CSS px of the drawing (T1's card and the left parts of T2/T3) were outside it; the sentence 'graph scrolled right' described where the camera stood, not what the picture contained, and no captured rect was recorded to check it against. The re-shoot widens the window so the panel (1304 CSS px) is wider than the content (1234 CSS px) at scroll origin, and records the numbers the gate checks."
+    },
+    {
+      "at": "2026-10-27T06:58:28Z",
+      "field": "assets['docs/assets/images/web-team-dag-groups.png']",
+      "was": "2068x1169 \u2014 EN web, four interior cards (ends clipped)",
+      "now": "2608x1094 (1304x547 CSS px at dsf 2) \u2014 EN web, the whole graph, ten cards inside the frame",
+      "why": "re-shot with docker/ui/shoot-team-dag.sh at a 2900x1500 window; the measurement gate reports 0 boxes outside the capture and 46x10 CSS px of graph headroom."
+    },
+    {
+      "at": "2026-10-27T06:58:28Z",
+      "field": "assets['docs/assets/images/zh-CN/web-team-dag-groups.png']",
+      "was": "2068x1169 \u2014 zh-CN web (same clipped framing)",
+      "now": "2608x1094 \u2014 zh-CN web, its own zh-CN locale run of the same script",
+      "why": "the twin had the same clipping; it was re-shot in the same way so the bilingual pair stays one figure."
+    },
+    {
+      "at": "2026-10-27T06:58:28Z",
+      "field": "assets['docs/assets/images/tui-team-dag.png']",
+      "was": "3120x1330 (156x35 cells) \u2014 the pre-fix rasterizer's full-pane window; max corner |dx| 6.0 px, 102 missing side pixels",
+      "now": "2180x1330 (109x35 cells) \u2014 re-captured on a real PTY through the fixed renderer; max |dx| 0.0 px, 0 missing side pixels",
+      "why": "the producing round archived only a manifest (no pane text), so the tile could not be re-rendered; it was re-shot from the same fixture (team-2026-10-05T22-30-00.000Z, board=normal) with docker/ui/tui-capture.sh, whose measurement step now runs automatically."
+    }
+  ]
+}

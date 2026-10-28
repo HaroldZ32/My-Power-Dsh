@@ -1,0 +1,24 @@
+### F1 — AGENTS.md instruction budget
+63482 AGENTS.md
+maxBytes=65536 measured=63482 margin=2054 required_margin>=2048 -> PASS
+
+=== the shortened Docker row (AGENTS.md) ===
+216:| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass. **The lane ALSO requires the USER-SURFACE arm (14b)**: `userSurface.*` rows are required in EVERY mode (witness/slash-command rules: `agent-references/verification-flow.md`); a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+
+=== the moved full detail now lives in agent-references/verification-flow.md ===
+84:### The user-surface arm (step 14b, REQUIRED in every mode)
+192:| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT — rows activating, tools registering, the TUI booting on a real PTY, `agentPreset=mpd` in the session store — never merely "the install exited 0". **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass — the steps ABOVE it carry the wave. **The lane ALSO requires the USER-SURFACE arm (step 14b)** — `userSurface.*` rows are required in EVERY mode; the witness and slash-command rules are in "The user-surface arm (step 14b, REQUIRED in every mode)" above | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+### The user-surface arm (step 14b, REQUIRED in every mode)
+
+Step 14b of the Docker lane (`docker/entrypoint.sh`) runs
+`skills/dsh-qa/scripts/user-surface-mount.ts` against the `dsh-tui` profile step 14 installed. It grades
+EVERY row id the INSTALLED artifact's own patch layers declare on a real `dsh-tui` boot, and records a
+witness per row: its own log sink, a live registration, an ACTIVE loader fibre, or a NAMED bound. It
+also asserts the seven documented slash commands on the live registry AND the command palette. Every
+`userSurface.*` row is REQUIRED in EVERY mode, so a lane that never ran this arm exits 3 — a missing
+profile is NOT a skip.
+
+### Rootless, skip, and when the step is fatal
+
+=== the hard requirement kept in AGENTS.md ===
+userSurface.*` rows are required in EVERY mode (witness/slash-command rules: `agent-references/verification-flow.md`); a lane that never ran them exits 3 

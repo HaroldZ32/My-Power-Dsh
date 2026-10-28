@@ -211,8 +211,10 @@ Renaming any of these WAS forbidden at the time; **adding** names was allowed. T
 describe the retired plugin and are kept as the wave's record.
 
 - Slash commands: `/agent-teams`, `/agent-teams-mpd` (from `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`) — **retired with the plugin; no
-  `/agent-teams` command exists in a shipped session**
+  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`) — the retired plugin's names:
+  `/agent-teams-mpd` exists in no shipped session, and the NAME `/agent-teams` is registered today by
+  the `mpd-team-core` row for the official team flow ([`user-guide.md`](user-guide.md) §12, measured
+  2026-10-28)
 - Tools: the full team-tool set — **retired with the plugin; team work runs on the official
   `spawn_teammate` / `team_*` tools**
 - Keys: `profiles.mpd` (retired with the plugin); preset id `mpd` (**still shipped**, now declared by

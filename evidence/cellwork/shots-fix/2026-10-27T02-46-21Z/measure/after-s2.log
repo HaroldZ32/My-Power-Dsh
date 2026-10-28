@@ -1,0 +1,23 @@
+== after (fixed renderer, scale 2 = the shipped PNG, 100% zoom): evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/after/tui-team-dag-groups.png 2040x2280 cell=20x38px origin=(col 0, row 2)
+  group-frame  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-T1      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-T2      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-T3      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-T4      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-C1      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-C2      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-C3      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-C4      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  card-T5      corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+               sides: left:0px missing/0px longest, right:0px missing/0px longest, top:0px missing/0px longest, bottom:0px missing/0px longest
+  -> max corner |dx| = 0.0px (worst: ); missing side pixels = 0; limits: <= 1px and 0 missing
+  -> PASS

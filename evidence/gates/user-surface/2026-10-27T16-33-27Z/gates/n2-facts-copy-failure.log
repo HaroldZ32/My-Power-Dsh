@@ -1,0 +1,47 @@
+# N2 (CodeRabbit, PR #75) — docker/ui/shoot-team-dag.sh: the facts-copy failure path
+# measured 2026-10-27T16:40:46Z on Linux 7.0.0-38-generic x86_64
+
+## The stub (offline: no docker daemon, no container, no browser)
+```bash
+#!/usr/bin/env bash
+# Offline stub: succeeds on everything except the shots-facts.json copy, which is the N2 failure path.
+case "$1" in
+  cp)
+    src="${2:-}"; dst="${3:-}"
+    case "$src" in
+      *capture.png) mkdir -p "$(dirname "$dst")"; printf 'PNG-BYTES' > "$dst"; exit 0 ;;
+      *shot-facts.json) exit 1 ;;
+      *) exit 0 ;;
+    esac ;;
+  *) exit 0 ;;
+esac
+```
+The python3 stub exits 0 so the ONLY status under test is the facts-copy path.
+
+## A. PRE-FIX script (git show HEAD:docker/ui/shoot-team-dag.sh) with the facts copy failing
+$ bash <pre-fix copy> --out .qa-tmp/.../work-prefix/out.png --facts .qa-tmp/.../work-prefix/facts.json
+[shoot-team-dag] capturing 2900x1500 en-US
+[exit=2]
+$ ls -l .qa-tmp/n2-facts-fail/work-prefix/
+total 4
+-rw-rw-r-- 1 haroldzhao haroldzhao 9 Oct 28 00:40 out.png
+-> DEFECT REPRODUCED: exit 2 and out.png SURVIVES, unmeasured
+
+## B. FIXED script with the same failure
+$ bash docker/ui/shoot-team-dag.sh --out .qa-tmp/.../work/out.png --facts .qa-tmp/.../work/facts.json
+[shoot-team-dag] capturing 2900x1500 en-US
+[shoot-team-dag] the facts file could not be copied (exit 1); the unmeasured PNG was deleted
+[exit=2]
+$ ls -l .qa-tmp/n2-facts-fail/work/
+total 0
+-> FIXED: same exit code 2, and $OUT is ABSENT
+
+## C. Positive control: BOTH copies succeed (the deletion is confined to the failure path)
+[shoot-team-dag] capturing 2900x1500 en-US
+[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)
+[exit=0]
+$ ls -l .qa-tmp/n2-facts-fail/work-ok/
+total 8
+-rw-rw-r-- 1 haroldzhao haroldzhao 2 Oct 28 00:40 facts.json
+-rw-rw-r-- 1 haroldzhao haroldzhao 9 Oct 28 00:40 out.png
+-> exit 0, both files present: the fix deletes on the failure path only

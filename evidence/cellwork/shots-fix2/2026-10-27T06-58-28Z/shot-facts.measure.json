@@ -1,0 +1,190 @@
+{
+ "mode": "web",
+ "label": "web-team-dag-groups.png",
+ "png": "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/web-team-dag-groups.png",
+ "imagePx": [
+  2608,
+  1094
+ ],
+ "deviceScaleFactor": 2.0,
+ "capturedWidth": 1304,
+ "capturedHeight": 547,
+ "boxOrigin": [
+  12,
+  419
+ ],
+ "graphViewport": [
+  1280,
+  114
+ ],
+ "scrollX": 0,
+ "scrollY": 0,
+ "contentWidth": 1234,
+ "contentHeight": 104,
+ "boxes": [
+  {
+   "box": [
+    0,
+    0,
+    144,
+    42
+   ],
+   "inCapture": [
+    12,
+    419,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    170,
+    0,
+    144,
+    42
+   ],
+   "inCapture": [
+    182,
+    419,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    170,
+    52,
+    144,
+    42
+   ],
+   "inCapture": [
+    182,
+    471,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    340,
+    0,
+    144,
+    42
+   ],
+   "inCapture": [
+    352,
+    419,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    920,
+    0,
+    144,
+    42
+   ],
+   "inCapture": [
+    932,
+    419,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    1090,
+    0,
+    144,
+    42
+   ],
+   "inCapture": [
+    1102,
+    419,
+    144,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    520,
+    10,
+    104,
+    42
+   ],
+   "inCapture": [
+    532,
+    429,
+    104,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    650,
+    10,
+    104,
+    42
+   ],
+   "inCapture": [
+    662,
+    429,
+    104,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    650,
+    62,
+    104,
+    42
+   ],
+   "inCapture": [
+    662,
+    481,
+    104,
+    42
+   ],
+   "inside": true
+  },
+  {
+   "box": [
+    780,
+    10,
+    104,
+    42
+   ],
+   "inCapture": [
+    792,
+    429,
+    104,
+    42
+   ],
+   "inside": true
+  }
+ ],
+ "bounds": {
+  "failures": [],
+  "headroom": {
+   "right": 58,
+   "bottom": 24,
+   "graphRight": 46,
+   "graphBottom": 10
+  },
+  "captureLimit": [
+   1304,
+   547
+  ]
+ },
+ "ok": true
+}

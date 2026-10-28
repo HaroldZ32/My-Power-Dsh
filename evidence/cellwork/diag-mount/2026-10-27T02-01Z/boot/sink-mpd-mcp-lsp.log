@@ -1,0 +1,20 @@
+[2026-10-27T02:18:50.133Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T02:18:50.140Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-27T02:18:50.151Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/lsp/cclsp.json
+[2026-10-27T02:18:50.151Z] Loaded 2 server configurations from env
+[2026-10-27T02:18:50.152Z] CCLSP Server running on stdio
+[2026-10-27T02:18:50.152Z] Scanning configured server directories for supported file types
+[2026-10-27T02:18:50.152Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T02:18:50.155Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws for extensions: rs
+[2026-10-27T02:18:50.157Z] Starting 0 LSP servers...
+[2026-10-27T02:18:50.157Z] LSP server preloading completed
+[2026-10-27T02:18:50.446Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T02:18:50.454Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-27T02:18:50.464Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws/.mpd/lsp/cclsp.json
+[2026-10-27T02:18:50.464Z] Loaded 2 server configurations from env
+[2026-10-27T02:18:50.465Z] CCLSP Server running on stdio
+[2026-10-27T02:18:50.465Z] Scanning configured server directories for supported file types
+[2026-10-27T02:18:50.465Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T02:18:50.471Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws for extensions: rs
+[2026-10-27T02:18:50.472Z] Starting 0 LSP servers...
+[2026-10-27T02:18:50.472Z] LSP server preloading completed

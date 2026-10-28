@@ -1,0 +1,17 @@
+{
+  "filesLength": 25,
+  "duplicates": [],
+  "rootDeclaredEntries": 24,
+  "rootDeclaredNotAdmitted": [],
+  "patchTargetsPresent": true,
+  "localePatternAdmits": [
+    "en.json",
+    "zh.json"
+  ],
+  "localeFilesInArtifact": [
+    "en.json",
+    "zh.json"
+  ],
+  "requiredPathsChecked": 19,
+  "requiredPathsAbsentFromArtifact": []
+}

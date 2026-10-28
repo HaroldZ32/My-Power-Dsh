@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.16.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.16.2-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#致谢)
@@ -62,7 +62,7 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 
 ![DSH Web GUI 的 Team 视图：团队头部与进度、成员各自的模型路由，以及嵌套任务图——子单元画成 subcell-auth 的**分组框**（`.mpd-dag-group`），外部依赖落在框的边框上，框内是它自己的四任务 DAG，父团队的任务在框外侧流动。](./docs/assets/images/zh-CN/web-team-dag-groups.png)
 
-![DSH-TUI 的 DAG 页，同一个嵌套团队：subcell-auth 分组帧框用第二套边框字形（╔ ╗ ╚ ╝ ║ ═），外部依赖落在 ╧ 端口上，子单元自己的任务卡画在框内，下面是按键提示（TUI 场景正文按设计保持英文，故此图与英文版共用同一次渲染）。](./docs/assets/images/tui-team-dag-groups.png)
+![DSH-TUI 的**全屏团队场景**（`/mpd team` 场景，不是 DAG 页），同一个嵌套团队：subcell-auth 分组帧框用第二套边框字形（╔ ╗ ╚ ╝ ║ ═），外部依赖落在 ╧ 端口上，子单元自己的任务卡画在框内，下面是场景自己的图例与按键提示。画面从场景自身的上边框行一直取到下边框行，宽度截到 158 列中的 102 列，使本页显示宽度下每个字符格仍不小于 8 px（TUI 场景正文按设计保持英文，故此图与英文版共用同一次渲染）。](./docs/assets/images/tui-team-dag-groups.png)
 
 ## 特性
 
@@ -139,7 +139,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.16.1 | 0.2.1-rc.3 | 0.17.0 | 本次发布 —— 可从 registry 安装 |
+| 0.16.2 | 0.2.1-rc.3 | 0.17.0 | 本次发布 |
+| 0.16.1 | 0.2.1-rc.3 | 0.17.0 | `previous` |
 | 0.15.4 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.15.2 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | `previous` |
@@ -250,7 +251,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.16.1**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.16.2**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

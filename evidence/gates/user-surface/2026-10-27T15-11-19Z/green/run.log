@@ -1,0 +1,32 @@
+== user-surface-mount ==
+startedAt=2026-10-27T15:20:03.107Z
+profile=/home/haroldzhao/.dsh/profiles/dsh-tui
+staleBundle=(none)
+evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/user-surface/2026-10-27T15-11-19Z/green
+bundleDir=/home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+artifact version=0.16.1 layers=2 rows=69
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] declared spec="0.16.1"
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-rrm9ot (DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-rrm9ot/dshhome, ws=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-rrm9ot/ws)
+profile copied into the sandbox (source untouched, read-only)
+probe row appended to the SANDBOX profile's user layer:
+
+# QA instrumentation (user-surface-mount): mounted so the case can read the LIVE loader and the
+# harness command registry from inside the real boot. This row is not a product row and is never
+# one of the rows under assertion.
+- insert:
+    - id: qa-user-surface-probe
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/user-surface-probe.ts"
+      config:
+        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/user-surface/2026-10-27T15-11-19Z/green/probe.json"
+        settleMs: 6000
+        ticks: 22
+
+HOME fixture written: .qa-user-surface/user-surface-mount-rrm9ot/home/.dsh-tui/onboarding.json, .qa-user-surface/user-surface-mount-rrm9ot/home/.dsh-tui/agent-preset.json preset=mpd
+dsh on PATH=/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh anchor=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+== boot + palette (8 captures) + one turn (no credential: the call is expected to fail) ==
+boot failures=[]
+== observations ==
+session-log tools=117 (request/header, the agent's own offer)
+probe phase=tick-14 loaderEntries=155 commands=33 tools=117 agentPreset=mpd
+sinks=16 (mpd-bootstrap,mpd-cellwork,mpd-codegraph,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-mcp-codegraph,mpd-mcp-lsp,mpd-patch-guards,mpd-roles,mpd-roster,mpd-team-core,mpd-team-watchdog,mpd-tui,mpd-verify)
+modules scanned=62/69 rows with a live registration witness=23

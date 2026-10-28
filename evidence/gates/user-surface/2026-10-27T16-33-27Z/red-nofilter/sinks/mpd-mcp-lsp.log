@@ -1,0 +1,20 @@
+[2026-10-27T16:38:27.879Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T16:38:27.888Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-27T16:38:27.912Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws/.mpd/lsp/cclsp.json
+[2026-10-27T16:38:27.912Z] Loaded 2 server configurations from env
+[2026-10-27T16:38:27.912Z] CCLSP Server running on stdio
+[2026-10-27T16:38:27.912Z] Scanning configured server directories for supported file types
+[2026-10-27T16:38:27.913Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T16:38:27.916Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws for extensions: rs
+[2026-10-27T16:38:27.917Z] Starting 0 LSP servers...
+[2026-10-27T16:38:27.917Z] LSP server preloading completed
+[2026-10-27T16:38:28.195Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/dshhome/profiles/dsh-tui/node_modules/cclsp/dist/index.js
+[2026-10-27T16:38:28.203Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-27T16:38:28.214Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws/.mpd/lsp/cclsp.json
+[2026-10-27T16:38:28.214Z] Loaded 2 server configurations from env
+[2026-10-27T16:38:28.214Z] CCLSP Server running on stdio
+[2026-10-27T16:38:28.214Z] Scanning configured server directories for supported file types
+[2026-10-27T16:38:28.214Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-27T16:38:28.221Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-X1bzoh/ws for extensions: rs
+[2026-10-27T16:38:28.222Z] Starting 0 LSP servers...
+[2026-10-27T16:38:28.222Z] LSP server preloading completed

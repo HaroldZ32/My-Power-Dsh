@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { apply } from "./index"
+import { apply, inject } from "./index"
+import { DSH_SEAM_COMMANDS } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** One command definition as the plugin registers it, reduced to the fields these arms assert on. */
 type Registered = { name: string; description: string; handler: (invocation?: unknown) => Promise<{ kind: string; text?: string }> }
@@ -283,5 +284,65 @@ describe("S8: a blank-but-SET env value does not suppress its documented alias",
     process.env.MPD_CODEGRAPH_PROJECT_CWD = ""
     process.env.MPD_DSH_CODEGRAPH_PROJECT_CWD = ""
     expect(captureCwd(session, () => apply({ get: () => undefined }))).toBe(session)
+  })
+})
+
+/**
+ * Whether a declared dependency list makes this row's apply wait for the human-command registry.
+ *
+ * The seam id comes from the ADAPTER's exported constant and never a literal: the id belongs to the
+ * harness, and `packages/mpd-dsh-adapter-plugin/src/index.ts` is the one file allowed to name it
+ * (AGENTS.md §6). A predicate rather than a bare `toContain` so the negative control below can drive
+ * it with the historical declaration.
+ * @param declared the row's `inject` array exactly as the loader will read it.
+ * @returns true when the declaration covers the registry the one registration needs.
+ */
+function waitsForCommandRegistry(declared: readonly string[]): boolean {
+  return declared.includes(DSH_SEAM_COMMANDS)
+}
+
+describe("D-1: the row declares the seam its one registration needs", () => {
+  test("the shipped declaration covers the command registry, and it is the harness's own id", () => {
+    // The regression guard for D-1: `inject = []` let cordis apply this row in the loader's first
+    // concurrent pass, before the registry had a provider fiber, and the adapter's strict
+    // `ctx.get("commands")` turned that absence into a permanent silent no-op.
+    expect(waitsForCommandRegistry(inject)).toBe(true)
+    expect(inject).toEqual([DSH_SEAM_COMMANDS])
+    // The literal is the harness's contract; a renamed service in the adapter must redden HERE.
+    expect(DSH_SEAM_COMMANDS).toBe("commands")
+  })
+
+  test("NEGATIVE CONTROL: the guard reddens on the inject-less declaration this defect shipped with", () => {
+    // The exact shape 0.16.1 mounted. If this arm ever passes with `true`, the guard above is vacuous.
+    expect(waitsForCommandRegistry([])).toBe(false)
+  })
+
+  test("apply itself is single-shot: a registry appearing later is never picked up (why the declaration is the fix)", () => {
+    // This is NOT a reproduction of the boot-order race — a unit test cannot schedule cordis's loader.
+    // It pins the PROPERTY that makes the declaration load-bearing: `apply` registers once, holds no
+    // pending queue and never retries, so a missing registry at apply time loses the command for good.
+    /** Every command definition the late registry would have received. */
+    const late: Registered[] = []
+    /** Whether the registry exists yet: false during the apply below, true afterwards. */
+    let registryExists = false
+    /** The row context: no mounted adapter, and no registry until the flag flips. */
+    const ctx: Ctx = {
+      /**
+       * Answer the command-registry lookup ONLY once `registryExists` is set, so the apply below sees
+       * the exact absence the defective boot saw.
+       * @param key the harness service name the plugin asks for.
+       * @returns a recording registry after the flip, and `undefined` for every other read.
+       */
+      get(key: string): unknown {
+        if (key !== "commands" || !registryExists) return undefined
+        return { register: (definition: unknown) => { late.push(definition as Registered); return () => { /* nothing */ } } }
+      },
+    }
+    apply(ctx, { autoInit: false })
+    // The registry now exists and answers the same strict lookup the adapter makes...
+    registryExists = true
+    expect(ctx.get?.("commands")).toBeDefined()
+    // ...and the command is still nowhere, because the ONE registration already happened and was lost.
+    expect(late).toHaveLength(0)
   })
 })

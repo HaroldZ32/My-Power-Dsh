@@ -1,0 +1,23 @@
+== before (pre-fix renderer, scale 1): evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/measure/before-s1.png 1020x1140 cell=10x19px origin=(col 0, row 2)
+  group-frame  corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:0px missing/0px longest, right:345px missing/345px longest, top:20px missing/20px longest, bottom:20px missing/20px longest
+  card-T1      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-T2      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-T3      corners |dx|: top-left=4.0px, top-right=Nonepx, bottom-left=4.0px, bottom-right=Nonepx
+               sides: left:28px missing/15px longest, right:41px missing/41px longest, top:20px missing/20px longest, bottom:20px missing/20px longest
+  card-T4      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-C1      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-C2      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-C3      corners |dx|: top-left=3.5px, top-right=Nonepx, bottom-left=3.5px, bottom-right=Nonepx
+               sides: left:26px missing/14px longest, right:41px missing/41px longest, top:15px missing/10px longest, bottom:15px missing/10px longest
+  card-C4      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  card-T5      corners |dx|: top-left=0.0px, top-right=Nonepx, bottom-left=0.0px, bottom-right=Nonepx
+               sides: left:1px missing/1px longest, right:41px missing/41px longest, top:10px missing/10px longest, bottom:10px missing/10px longest
+  -> max corner |dx| = 4.0px (worst: card-T3.top-left); missing side pixels = 1025; limits: <= 1px and 0 missing
+  -> FAIL

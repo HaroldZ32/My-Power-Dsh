@@ -213,7 +213,7 @@ recorded in `agent-references/context-discipline.md`.
 | Extension CLI | `bun scripts/mpd-ext.ts --self-test` + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension MUST exit 1 with per-item errors) | any extension-interface/manifest/CLI change |
 | Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME` — e.g. `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) and `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount + every harness-owned row config; its negative control proves the assertion is falsifiable) | any patch change, any preset/row change, and REQUIRED for any tool-schema change |
 | Composition only | `node scripts/dump-config.ts --profile <p>` (repo wrapper around the raw harness flag: prints the composition-only banner itself and propagates the child's exit code) | whenever a row/preset composition question is asked |
-| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; `--mode source` = checkout, `--mode oneclick` = the PUBLISHED package, `--spec <install-spec>` = any spec including the live `github:` one). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, the TUI on a real PTY, `agentPreset=mpd`). **A machine without a ROOTLESS Docker PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
+| **Docker real-machine (LAST step)** | `bun run verify:docker` (`node scripts/docker-e2e.ts`; flags: `agent-references/verification-flow.md`). Builds a real `ubuntu:24.04` and asserts the INSTALL then the MOUNT (rows activating, tools registering, TUI, `agentPreset=mpd`). **Without a ROOTLESS Docker it PRINTS A NOTICE AND SKIPS (exit 0)**: rootless runs, rootful skips unless `--allow-rootful-docker`, an absent daemon skips, `--require-docker` makes any skip exit 3. A SKIP is not a pass. **The lane ALSO requires the USER-SURFACE arm (14b)**: `userSurface.*` rows are required in EVERY mode (witness/slash-command rules: `agent-references/verification-flow.md`); a lane that never ran them exits 3 | every release sweep, and any install/mount-path change (`files`/`dsh.*`, a patch row, `docker/**`) |
 
 The full former §4 body — the same table with its long per-row measurements and reasoning, and why the
 Docker lane is LAST — is in `agent-references/verification-flow.md`.
@@ -504,7 +504,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.16.1` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.16.2` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the

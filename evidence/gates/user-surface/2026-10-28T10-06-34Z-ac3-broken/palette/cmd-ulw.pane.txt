@@ -1,0 +1,50 @@
+
+                                                                                                                                                    │ ◀     ?    ♥    ❖    ⬢    ⚠   待办   ▸    ◆    ⓘ    ∿    ⌗      ▶
+                                            ✦ dsh-TUI  v0.17.0                                                                                      ├─────────────────────────────────────────────────────────────────────
+                                            ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▄▄ ██▀▀▀▀ ██▀▀▀▀ ██▀▀▀▀ ██  ██                                                 │
+                                            ██  ██ ██     ██     ██  ██ ██     ██     ██     ██ ██                                                  │
+                                            ██  ██ ██▀▀▀  ██▀▀▀  ██▄▄▀▀  ▀▀▀▀▄ ██▀▀▀  ██▀▀▀  ███                                                    │
+                                            ██  ██ ██     ██     ██         ██ ██     ██     ██ ██                                                  │
+                                            ██▄▄▀▀ ██▄▄▄▄ ██▄▄▄▄ ██     ██▄▄▄▀ ██▄▄▄▄ ██▄▄▄▄ ██  ██                                                 │
+                                                                                                                                                    │
+                                            ██  ██   ▄▀▀▄   ██▀▀▄▄  ██  ██  ██▀▀▀▀  ██▀▀▀▀  ██▀▀▀▀                                                  │
+                                            ██  ██  ██  ██  ██  ██  ███ ██  ██      ██      ██                                                      │
+                                            ██▀▀██  ██▀▀██  ██▄▄▀▀  ██ ███  ██▀▀▀    ▀▀▀▀▄   ▀▀▀▀▄                                                  │
+                                            ██  ██  ██  ██  ██ ██   ██  ██  ██          ██      ██                                                  │
+                                            ██  ██  ██  ██  ██  ██  ██  ██  ██▄▄▄▄  ██▄▄▄▀  ██▄▄▄▀                                                  │
+                                            deepseek-flash · Max effort                                                                             │
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-z9oOhS/ws              │
+                                            提示：回复里的 ```mermaid 代码块直接画成字符图，/settings 里可关 · /tips 更多技巧                       │
+                                                                                                                                                    │
+               探索未至之境！                                                                                                                       │
+                                                                                                                                                    │
+                                                                                                                                                    │
+   ▶ （Ctrl+P 展开） 已加载上下文 · 系统提示词 18 段 · 运行时上下文 3 项 · 技能 20 · 工具 117                                                       │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+                                                                                                                                                    │
+  ╭─ 命令 · 共 4 项 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ ulw              [objective] Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)                       ││
+  │   ulw-execute      Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, serial roster consults, …  ││
+  │   ulw-plan         ACTIVATES ONLY on an explicit user request for the ulw-plan workflow: the user themselves saying ulw-plan, ulw plan, /ski…  ││
+  │   ulw-research     Maximum-saturation research orchestration: ALWAYS proposes the final materials first (PDF+DOCX default), then parallel Ex…  ││
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  ⌸ ❯ /ulw                                                                                                                                         ⛶│
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+   deepseek-flash · max · ws                                                                                                                        ├─────────────────────────────────────────────────────────────────────
+                                                                                                                                                    │ Ctrl+B 聚焦侧栏
+

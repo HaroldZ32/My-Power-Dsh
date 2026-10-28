@@ -1,0 +1,17 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-mcp-codegraph/test/daemon-policy.test.ts:
+(pass) parseDaemonSetting: truthy, falsy, unset and invalid stay distinguishable [0.06ms]
+(pass) default (no env): serve in-process, and the reason names the measured failure [0.03ms]
+(pass) MPD_CODEGRAPH_DAEMON=1 keeps upstream's shared daemon (no opt-out pinned) [0.03ms]
+(pass) MPD_CODEGRAPH_DAEMON=0 pins the opt-out explicitly [0.02ms]
+(pass) an explicit CODEGRAPH_NO_DAEMON=1 is respected and never overridden [0.01ms]
+(pass) an unrecognized value warns and falls back to the safe default [0.03ms]
+(pass) the default emits exactly ONE informational line (never stdout)
+(pass) launch.ts applies the policy before importing the vendored serve.js [0.10ms]
+(pass) the vendored bridge forwards CODEGRAPH_NO_DAEMON to the child env [0.52ms]
+
+ 9 pass
+ 0 fail
+ 42 expect() calls
+Ran 9 tests across 1 file. [121.00ms]

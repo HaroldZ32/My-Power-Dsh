@@ -1,0 +1,17 @@
+### F3 — docker/ui/measure-shots.py exit-code contract (0 pass, 1 measured FAIL, 2 unusable input)
+no args                            exit=2
+missing facts file                 exit=2
+malformed JSON                     exit=2
+facts root is an array             exit=2
+capturedWidth is null              exit=2
+empty boxes                        exit=2
+missing --pane                     exit=2
+bad --rows                         exit=2
+measured FAIL (box cut)            exit=1
+measured PASS                      exit=0
+
+=== contract implemented by ===
+64:UNUSABLE_INPUT_ERRORS = (KeyError, ValueError, OSError, IndexError, TypeError, AttributeError)
+67:def refuse(message):
+537:def main(argv):
+546:    except UNUSABLE_INPUT_ERRORS as error:

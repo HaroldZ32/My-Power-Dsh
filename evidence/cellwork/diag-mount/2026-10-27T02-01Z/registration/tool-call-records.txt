@@ -1,0 +1,2 @@
+tool/call {"turn":1,"step":1,"callId":"call_cellwork-reverify_0","name":"cellwork_status","arguments":"{}"}
+tool/result {"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call_cellwork-reverify_0"},"toolCallId":"call_cellwork-reverify_0","content":[{"type":"text","text":"cellwork refused: cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`"}],"isError":false,"id":"d4a8aa8c-d26c-48ed-ac4b-e187d9f85ce6"}}

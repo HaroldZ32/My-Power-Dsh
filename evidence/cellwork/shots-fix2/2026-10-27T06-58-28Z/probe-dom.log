@@ -1,0 +1,33 @@
+{
+ "url": "http://127.0.0.1:3080/",
+ "title": "DeepSeek Harness",
+ "text": "New Session\nPlugins\nAutomation tasks\nMore\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nGet started\n\nSign in to your DeepSeek account or add an API Key to get started. Your projects and files are stored locally.\n\nAdd API Key\nSign in",
+ "buttons": [
+  "New session|",
+  "Collapse sidebar|",
+  "New session|New Session",
+  "Plugins|Plugins",
+  "Automation tasks|Automation tasks",
+  "More|More",
+  "Search sessions|",
+  "View options|",
+  "Add workspace|",
+  "Workspace actions for ws|",
+  "New session in ws|",
+  "Account menu|More",
+  "Open right sidebar|",
+  "Choose workspace|ws",
+  "|Standard mode",
+  "Add files or run commands|",
+  "Access mode, current: Workspace Write|Workspace Write",
+  "Select model|Select model",
+  "Send message|",
+  "New tab|",
+  "Split|",
+  "Fullscreen|",
+  "Collapse right sidebar|",
+  "Close|",
+  "|Add API Key",
+  "|Sign in"
+ ]
+}

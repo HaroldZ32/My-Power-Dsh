@@ -1,0 +1,30 @@
+
+===== fail: FACTS=cut-facts.json =====
+[shoot-team-dag] capturing 2900x1500 en-US
+[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)
+== fail.png: /tmp/tmp.TGe4Ci3fS7/out/fail.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 1144x42 CSS px; scroll=(0,0)
+   boxes: 1; rightmost content x = 1156 (capture 400, headroom -756px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: -768px horizontal, 78px vertical
+   !! content width 1144 exceeds the graph viewport 376
+   !! box 1000,0,144,42 is cut: its capture rect is 1012,40,144,42 against 400x200
+   -> FAIL
+[shoot-team-dag] the measurement REJECTED fail.png (exit 1) — the PNG was deleted
+[fail] wrapper exit=1
+[fail] $OUT exists: no
+[fail] PASS — a rejected capture was deleted and the exit code propagated
+
+===== pass: FACTS=good-facts.json =====
+[shoot-team-dag] capturing 2900x1500 en-US
+[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)
+== pass.png: /tmp/tmp.TGe4Ci3fS7/out/pass.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(0,0)
+   boxes: 1; rightmost content x = 156 (capture 400, headroom 244px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 232px horizontal, 78px vertical
+   -> PASS
+[pass] wrapper exit=0
+[pass] $OUT exists: yes (741 bytes)
+[pass] PASS — a measured capture survives (cleanup is conditional)
+
+[verdict] PASS — failure deletes $OUT + propagates the code; success keeps it
+exit=0

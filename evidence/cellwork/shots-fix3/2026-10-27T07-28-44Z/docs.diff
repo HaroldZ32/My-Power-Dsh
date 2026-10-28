@@ -1,0 +1,60 @@
+diff --git a/docs/index.md b/docs/index.md
+index a35c4e48..ee9582ab 100644
+--- a/docs/index.md
++++ b/docs/index.md
+@@ -113,9 +113,9 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
+ | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [user guide §6](user-guide.md#6-team-mode) | One team wave end to end, plus the guardrails (read-only tool denial, durable mailbox, compare-and-set board, unordered overlapping write scopes REFUSED at `approve` on the mpd record plane — advisory only on the OFFICIAL plane). |
+ | [`hero-web-tui-v2.png`](./assets/images/hero-web-tui-v2.png) | [README](../README.md) | The same bundle on both surfaces, side by side: the Web GUI's own Team view with a frosted-glass task graph and a hover card, and the DSH-TUI team scene, each cropped to the plugin's content. |
+ | [`web-team-board-v2.png`](./assets/images/web-team-board-v2.png) | [README](../README.md#one-plugin-two-surfaces) | The bundle's own **Team** view in a sidebar, with a populated roster, a frosted-glass task graph and a hover card showing the pinned task's details. |
+-| [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.md#one-plugin-two-surfaces) | The same team as a full-screen DSH-TUI scene, DAG drawn with box characters. |
++| [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.md#one-plugin-two-surfaces) | The same team as a full-screen DSH-TUI scene, DAG drawn with box characters, windowed to 109 of the scene's 158 columns — the roster's own width — so a character cell stays at least 8 px wide at this page's display width. The 简体中文 page shares this render — the TUI scene body stays English by design. |
+ | [`web-team-dag-groups.png`](./assets/images/web-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | A subcell drawn as a GROUP BOX in the Web Team view: the `subcell-auth` frame (`.mpd-dag-group`) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it. |
+-| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | The same nested team on the DSH-TUI's DAG page: the group frame in the second border-glyph family (`╔ ╗ ╚ ╝ ║ ═`) with a `╧` port where the outside dependency attaches, and the subcell's cards drawn inside it. |
++| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | The same nested team in the DSH-TUI's full-screen team scene (not the DAG page): the group frame in the second border-glyph family (`╔ ╗ ╚ ╝ ║ ═`) with a `╧` port where the outside dependency attaches, and the subcell's cards drawn inside it. |
+ | [`web-plugins-installed.png`](./assets/images/web-plugins-installed.png) | [README](../README.md#install) | The Plugins page after the one install: `@mpd-dsh/mpd` under **Installed**, enabled. |
+ | [`web-agent-presets.png`](./assets/images/web-agent-presets.png) | [README](../README.md#usage) | The Agent presets page: the `mpd` preset listed under CUSTOM, with the new-task-default badge on the host's Standard mode. |
+ | [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page — the same knobs as `.mpd/mpd.jsonc`. |
+@@ -127,8 +127,13 @@ Every capture above is produced by the Docker lanes under [`docker/ui/`](../dock
+ hand and not authored in a drawing tool: the Web tiles by headless Chromium driving the real app, the
+ terminal tiles by a real terminal emulator rendering the real TUI on a real PTY. The lane is
+ documented in [`docker/ui/`](../docker/ui) and its raw output lands in `docker/ui/out/`, which is
+-gitignored — only the curated images are committed here. The SVG diagrams are authored in this
+-repository.
++gitignored — only the curated images are committed here. **A capture is measured before it ships**:
++[`docker/ui/measure-shots.py`](../docker/ui/measure-shots.py) reads a Web figure's `data-mpd-box`
++values and the rect that was photographed and refuses a box outside that rect, content wider than the
++graph viewport, or a non-zero scroll origin; its `tui` mode measures the terminal figures on the PNG
++itself (every corner's vertical stroke within 1 px of its side's stroke, no unpainted pixel on a
++vertical side). A figure that fails the measurement is not committed. The SVG diagrams are authored in
++this repository.
+ 
+ ## Extension assets
+ 
+diff --git a/docs/index.zh-CN.md b/docs/index.zh-CN.md
+index ceb9c0a7..7c1e718c 100644
+--- a/docs/index.zh-CN.md
++++ b/docs/index.zh-CN.md
+@@ -110,7 +110,7 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在
+ | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝 —— 仅在 OFFICIAL 平面上才是提示）。 |
+ | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
+ | [`web-team-board-v2.png`](./assets/images/zh-CN/web-team-board-v2.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册、毛玻璃任务图与悬浮信息卡的 Team 视图。 |
+-| [`tui-team-dag.png`](./assets/images/zh-CN/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。 |
++| [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。此图引用与英文版**共用**的英文体截图（TUI 场景正文按设计保持英文）；原先的 `zh-CN/` 图是修复前的栅格化产物（角偏 6.0px / 102 个缺失竖边像素），已撤下。 |
+ | [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |
+ | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
+ | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
+@@ -121,8 +121,12 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在
+ 上面每一张截图都由 [`docker/ui/`](../docker/ui) 下的 Docker 通道产出，不是手工截的、也不是在绘图
+ 工具里画的：Web 图由无头 Chromium 驱动真实应用取得，终端图由真实终端模拟器在真实 PTY 上渲染真实
+ TUI 取得。简体中文这一套是**同一批通道在中文 locale 下的另一次运行**产出的独立渲染结果，不是把英文
+-PNG 改个名。通道的原始输出落在 `docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
+-SVG 示意图则是在本仓库中编写的。
++PNG 改个名（TUI 任务图例外：场景正文按设计保持英文，故与英文版共用同一张图）。通道的原始输出落在
++`docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
++**每张截图在提交前都会被实测**：[`docker/ui/measure-shots.py`](../docker/ui/measure-shots.py) 会读
++Web 图的 `data-mpd-box` 与当时的取景矩形，只要有盒子落在矩形外、内容宽于图的视口、或滚动位置不为
++原点就拒绝；它的 `tui` 模式直接在 PNG 上量终端图（每个角的竖笔画与其相邻竖边相差不超过 1 px、竖边
++上没有未着墨的像素）。测量不通过的图不会被提交。SVG 示意图则是在本仓库中编写的。
+ 
+ ## 扩展资产
+ 

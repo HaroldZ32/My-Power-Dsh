@@ -1,0 +1,110 @@
+== D-1 diagnosis probe — stamp 2026-10-28T09-50-58.042Z
+repo=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+checkout codegraph dist sha256=8b13219fbaf1f8e49889df201a5b78d6f66f0768a4874e3a83f547c1ce2dfce2
+installed copy      sha256=8b13219fbaf1f8e49889df201a5b78d6f66f0768a4874e3a83f547c1ce2dfce2
+probe-early=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-early.ts exists=true
+probe-late =/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-late.ts exists=true
+sandbox=/tmp/mpd-codegraph-d1-ORpH2R
+DSH_HOME=/tmp/mpd-codegraph-d1-ORpH2R/dsh-home
+HOME    =/tmp/mpd-codegraph-d1-ORpH2R/run-home
+ws      =/tmp/mpd-codegraph-d1-ORpH2R/ws
+isolation: dshHomeStartsWithRealHome=false
+[install-profile] exit=0
+/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-goal-plugin/dist/index.js"
+    config:
+      enabled: true
+      autoAnchor: true
+      autoRounds: 32
+  - id: mpd-comment-checker
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-verify
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-verify-plugin/dist/index.js"
+    config:
+      mode: "hard"
+      escapeUses: 1
+  - id: mpd-workmate
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-roster-provider
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roster-provider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-core
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-cellwork
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-project-init
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-project-init-plugin/dist/index.js"
+  - id: mpd-tui-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (37 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+[stub] listening on 127.0.0.1:43469
+overlay=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/2026-10-28T09-50-58.042Z/overlay.yml
+- insert:
+    - id: qa-cg-probe-early
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-early.ts"
+      config:
+        outDir: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/2026-10-28T09-50-58.042Z"
+        ws: "/tmp/mpd-codegraph-d1-ORpH2R/ws"
+        horizonMs: 6000
+        pollMs: 10
+    - id: qa-cg-probe-late
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/probe/probe-late.ts"
+      config:
+        outDir: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/codegraph-d1/2026-10-28T09-50-58.042Z"
+        horizonMs: 5000
+        pollMs: 10
+
+[boot] exit=0 durationMs=8109 stubRequests=2
+[boot] out tail:
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+probe-ok
+
+== RESULT
+early(mpd-codegraph shape): apply commandsRead={"strict":false,"loose":false,"error":""} registerOk=false
+late(inject commands)     : apply commandsRead={"strict":true,"loose":true,"error":""} registerOk=true
+settled listing (13): agent-teams,cellwork,compact,feedback,goal,mpd,mpd-model,permission,plan,qa-cg-inject,qa-cg-late,ultrawork,ulw
+working contributed present: ulw,ultrawork,cellwork,agent-teams
+early landed=false lateLanded=true injectedLanded=true

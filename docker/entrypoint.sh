@@ -2033,6 +2033,47 @@ cat "$STEPS_DIR/14-tui.log" || true
 [ "$TUI_STEP" -eq 124 ] && log "[step 14-tui] KILLED BY THE ${TUI_TIMEOUT}s TUI TIMEOUT (a stalled install inside the lane, not a verdict from it)"
 append_step 14-tui "$TUI_STEP" "$TUI_SECONDS" "14-tui.log" "bash docker/tui-lane.sh"
 
+# ── 14b. the USER SURFACE of the INSTALLED artifact: every row, every command ──
+#
+# WHY THIS STEP EXISTS (two shipped green lights): the 2026-10-26 lane scored 122 assertions ok=true
+# while it asserted ZERO slash commands, and 0.16.1 shipped with `mpd-cellwork` never mounting in a
+# real session because a stale global `@mpd-dsh/mpd@0.15.5` owned the loader's install anchor. Neither
+# class is visible from `--dump-config`, and neither was covered by any row above: `compose.mpdRows`
+# checks a ZERO-OVERRIDE contract over five named rows, and `boot.mpdTools` checks six tool names.
+#
+# The case does the two things those rows cannot: it enumerates EVERY row id the INSTALLED artifact
+# declares (its own `dsh.bundle.patch` layers — never a hardcoded list, so a new row joins the
+# assertion set by itself) and grades each one against a real `dsh-tui` boot, then it drives the
+# command palette and the live command registry for the seven commands `docs/user-guide.md` §12
+# publishes. Its verdicts ride into this run's report as `userSurface.*` rows, which the driver
+# REQUIRES (scripts/docker-e2e.ts `requiredPrefixesFor`): a step that never ran leaves them null and
+# the lane exits 3 instead of passing on an absent measurement.
+#
+# It runs on the profile STEP 14 installed — the same artifact a user would boot — and writes its own
+# evidence under $OUT_DIR/user-surface (result.json, rows.json, palette captures, log sinks, run log).
+log "===== STEP 14b-user-surface ====="
+# The profile the TUI lane installed from THIS build: the artifact under assertion.
+USER_SURFACE_PROFILE="$DSH_HOME/profiles/dsh-tui"
+if [ -f "$USER_SURFACE_PROFILE/package.json" ]; then
+  fact obs.userSurfaceProfile "$USER_SURFACE_PROFILE (the dsh-tui profile step 14 installed; the case copies it into its own sandbox and boots it, never editing this one)"
+  # NO append_step HERE: `run_step` appends this step's own row (it ends with `append_step "$id" …`), so
+  # appending again put step 14b in steps.tsv — and therefore in the report — TWICE (PR #75, F2).
+  run_step 14b-user-surface node "$APP_DIR/skills/dsh-qa/scripts/user-surface-mount.ts" \
+    --profile "$USER_SURFACE_PROFILE" \
+    --evidence "$OUT_DIR/user-surface" \
+    --json-out "$OUT_DIR/user-surface/result.json" \
+    --ndjson-out "$STATE_FILE"
+else
+  # A MISSING PROFILE IS NOT A SKIP: the case's own rows stay unreached, the driver's required-arm gate
+  # turns them into exit 3, and this row says why in one line. This arm DOES append by hand — the one
+  # legitimate manual row in the step — because it never calls `run_step`.
+  record userSurface.probe false "the dsh-tui profile step 14 should have installed is absent, so no user-surface assertion could run" "profile=$USER_SURFACE_PROFILE"
+  append_step 14b-user-surface 1 0 "14b-user-surface.log" "node skills/dsh-qa/scripts/user-surface-mount.ts (profile absent)"
+  : >"$STEPS_DIR/14b-user-surface.log"
+  printf '[14b] no dsh-tui profile at %s\n' "$USER_SURFACE_PROFILE" >"$STEPS_DIR/14b-user-surface.log"
+fi
+fact obs.userSurfaceEvidence "$OUT_DIR/user-surface (the case's own result.json, per-row rows.json, palette captures, the boot's log sinks and run.log — every userSurface.* row quotes its raw witness here)"
+
 # ── 15. a LIVE LLM turn on the HEADLESS plane (opt-in) ────────────────────────
 # THE CREDENTIAL IS NEVER LOGGED OR ECHOED (AGENTS.md §10). It was staged ONCE before the boot
 # (step 9b) so the Web, TUI and headless planes can all use it; this step deliberately does NOT stage

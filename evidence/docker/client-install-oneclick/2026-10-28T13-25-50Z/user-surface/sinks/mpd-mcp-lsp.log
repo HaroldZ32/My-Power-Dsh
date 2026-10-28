@@ -1,0 +1,4 @@
+[2026-10-28T13:32:43.291Z] [mpd-mcp-lsp] unavailable fallback: the declared dependency cclsp is not installed in this profile
+[2026-10-28T13:32:43.291Z] [mpd-mcp-lsp] unavailable fallback: this row exposes NO tools until the dependency loads; fix the cause and restart the session — install the bundle's dependency closure (npm/pnpm install) and restart the session
+[2026-10-28T13:32:43.598Z] [mpd-mcp-lsp] unavailable fallback: the declared dependency cclsp is not installed in this profile
+[2026-10-28T13:32:43.598Z] [mpd-mcp-lsp] unavailable fallback: this row exposes NO tools until the dependency loads; fix the cause and restart the session — install the bundle's dependency closure (npm/pnpm install) and restart the session

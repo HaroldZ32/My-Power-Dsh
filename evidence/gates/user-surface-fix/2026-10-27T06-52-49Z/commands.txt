@@ -1,0 +1,6 @@
+user-surface exit=0
+docker-e2e exit=0
+verify:comments exit=0
+test:qa exit=0 (log: test-qa.log)
+typecheck exit=1 (pre-existing, file outside this change; log: typecheck.log)
+verify:vendor exit=1

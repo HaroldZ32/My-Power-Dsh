@@ -1,0 +1,7 @@
+tag=v0.15.5 tagObject=864d611e16a71e3c61944466301e25f518e89342 commit=d28cc68c2241c8081059a8ace7ff6eaf9fc48f3b
+fixture=.qa-tmp/stale-0.15.5 (re-measured 2026-10-27T16:40:15Z by this run's evidence pass)
+run=node skills/dsh-qa/scripts/user-surface-mount.ts --profile ~/.dsh/profiles/dsh-tui --stale-bundle <fixture> --expect-red --evidence evidence/gates/user-surface/2026-10-27T16-33-27Z/red
+bound=the copy carries the patch layers plus a 0.15.5-stamped reduced manifest, NOT the tag's dist modules; the measured defect came from the ROW LIST on the install anchor while the row MODULES already resolved from the profile
+byte-identity vs tag:
+  cordis.patch.yml: IDENTICAL to v0.15.5
+  presets/mpd.patch.yml: IDENTICAL to v0.15.5

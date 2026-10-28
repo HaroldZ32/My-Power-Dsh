@@ -1,0 +1,34 @@
+{
+  "lang": "en",
+  "out": "/data/shots-fix2/run/en",
+  "method": "dsh-tui pane bytes (tmux capture-pane -e -p -J) rasterized by docker/ui/tui-render.py; the page background is the lane's stated choice (#22262E)",
+  "captured": 3,
+  "expected": 3,
+  "failed": 0,
+  "items": [
+    {
+      "name": "tui-team-dag",
+      "ok": true,
+      "marker": "task dependency graph",
+      "matchedLine": "  │ task dependency graph                                                                                                                                  │",
+      "file": "/data/shots-fix2/run/en/tui-team-dag.png",
+      "note": "rows=1:36 cols=0:109 scale=2 lang=en geometry=158x45 measure=pass"
+    },
+    {
+      "name": "tui-workmates",
+      "ok": true,
+      "marker": "┌MPD workmate",
+      "matchedLine": "   ██████╗    ███████╗   ███████╗   ██████╗    ███████╗   ███████╗   ███████╗   ██╗  ██╗                  │┌MPD workmate───────────────────────────────────┐",
+      "file": "/data/shots-fix2/run/en/tui-workmates.png",
+      "note": "rows=0:20 cols=107:158 scale=2 sidebar_left=107 lang=en"
+    },
+    {
+      "name": "tui-status-line",
+      "ok": true,
+      "marker": "^[[:space:]]*mpd: ",
+      "matchedLine": "mpd: unknown action \"board/mpd\" — usage: /mpd [board|team|plan|subagents|panel|dag|workmate|workmates|status]",
+      "file": "/data/shots-fix2/run/en/tui-status-line.png",
+      "note": "rows=36:39 cols=0:111 scale=2 status_row=38 lang=en"
+    }
+  ]
+}

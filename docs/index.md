@@ -112,10 +112,8 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
 | [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [user guide §13.2](user-guide.md#132-the-ulw-loop-and-its-gates) | One ultrawork run: triage, optional plan, round-by-round execution through `pin → red → green → surface → clean`, the verification gate and the quality gate. |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [user guide §6](user-guide.md#6-team-mode) | One team wave end to end, plus the guardrails (read-only tool denial, durable mailbox, compare-and-set board, unordered overlapping write scopes REFUSED at `approve` on the mpd record plane — advisory only on the OFFICIAL plane). |
 | [`hero-web-tui-v2.png`](./assets/images/hero-web-tui-v2.png) | [README](../README.md) | The same bundle on both surfaces, side by side: the Web GUI's own Team view with a frosted-glass task graph and a hover card, and the DSH-TUI team scene, each cropped to the plugin's content. |
-| [`web-team-board-v2.png`](./assets/images/web-team-board-v2.png) | [README](../README.md#one-plugin-two-surfaces) | The bundle's own **Team** view in a sidebar, with a populated roster, a frosted-glass task graph and a hover card showing the pinned task's details. |
-| [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.md#one-plugin-two-surfaces) | The same team as a full-screen DSH-TUI scene, DAG drawn with box characters. |
 | [`web-team-dag-groups.png`](./assets/images/web-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | A subcell drawn as a GROUP BOX in the Web Team view: the `subcell-auth` frame (`.mpd-dag-group`) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it. |
-| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | The same nested team on the DSH-TUI's DAG page: the group frame in the second border-glyph family (`╔ ╗ ╚ ╝ ║ ═`) with a `╧` port where the outside dependency attaches, and the subcell's cards drawn inside it. |
+| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | The same nested team in the DSH-TUI's full-screen team scene (not the DAG page): the group frame in the second border-glyph family (`╔ ╗ ╚ ╝ ║ ═`) with a `╧` port where the outside dependency attaches, and the subcell's cards drawn inside it. |
 | [`web-plugins-installed.png`](./assets/images/web-plugins-installed.png) | [README](../README.md#install) | The Plugins page after the one install: `@mpd-dsh/mpd` under **Installed**, enabled. |
 | [`web-agent-presets.png`](./assets/images/web-agent-presets.png) | [README](../README.md#usage) | The Agent presets page: the `mpd` preset listed under CUSTOM, with the new-task-default badge on the host's Standard mode. |
 | [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page — the same knobs as `.mpd/mpd.jsonc`. |
@@ -127,8 +125,13 @@ Every capture above is produced by the Docker lanes under [`docker/ui/`](../dock
 hand and not authored in a drawing tool: the Web tiles by headless Chromium driving the real app, the
 terminal tiles by a real terminal emulator rendering the real TUI on a real PTY. The lane is
 documented in [`docker/ui/`](../docker/ui) and its raw output lands in `docker/ui/out/`, which is
-gitignored — only the curated images are committed here. The SVG diagrams are authored in this
-repository.
+gitignored — only the curated images are committed here. **A capture is measured before it ships**:
+[`docker/ui/measure-shots.py`](../docker/ui/measure-shots.py) reads a Web figure's `data-mpd-box`
+values and the rect that was photographed and refuses a box outside that rect, content wider than the
+graph viewport, or a non-zero scroll origin; its `tui` mode measures the terminal figures on the PNG
+itself (every corner's vertical stroke within 1 px of its side's stroke, no unpainted pixel on a
+vertical side). A figure that fails the measurement is not committed. The SVG diagrams are authored in
+this repository.
 
 ## Extension assets
 

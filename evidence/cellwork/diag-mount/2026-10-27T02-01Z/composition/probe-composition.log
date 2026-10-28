@@ -1,0 +1,49 @@
+== the anchor the real dsh-tui host uses ==
+profileBoot module=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot.js
+INSTALL_ANCHOR=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+profileDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui
+the profile carries no @deepseek-ai/dsh of its own: true
+
+=== real-install-anchor ===
+installAnchor=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/package.json
+layer @deepseek-ai/dsh-base version=0.2.1-rc.3
+  packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base
+  patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base/cordis.patch.yml"]
+layer @deepseek-harness-tui/dsh-tui version=0.17.0
+  packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui
+  patchPaths=["/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd version=0.16.1
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+skippedBundles=[]
+user layer patch=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml entries=3
+composed bundle-layer rows=153
+mpd-cellwork present=true
+mpd-cellwork at composed index 141 name="@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js" config={}
+composed rows INCLUDING the profile user layer=153 mpd-cellwork present=true
+
+=== boot-call-path (appBoot.loadProfile, exactly what prepareProfile runs) ===
+layer @deepseek-ai/dsh-base packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base
+layer @deepseek-harness-tui/dsh-tui packageDir=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui
+layer @mpd-dsh/mpd packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+loadProfile+composeEntries rows=153 mpd-cellwork present=true
+
+=== profile-anchor-control ===
+installAnchor=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/package.json
+layer @deepseek-harness-tui/dsh-tui version=0.17.0
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/cordis.patch.yml"]
+layer @mpd-dsh/mpd version=0.16.1
+  packageDir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+  patchPaths=["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"]
+skippedBundles=[{"packageName":"@deepseek-ai/dsh-base","reason":"Error: dsh: cannot resolve profile bundle \"@deepseek-ai/dsh-base\" from the dsh installation or /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui; run 'dsh plugin --profile dsh-tui install' if its dependency is not installed"}]
+user layer patch=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml entries=3
+composed bundle-layer rows=57
+mpd-cellwork present=true
+mpd-cellwork at composed index 45 name="@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js" config={}
+composed rows INCLUDING the profile user layer=57 mpd-cellwork present=true
+
+== verdict ==
+real arm (install anchor, bundle layers) rows=153 cellwork=true
+boot-call-path (the host's own loadProfile call) rows=153 cellwork=true
+profile-anchor CONTROL rows=57 — invalid by construction (dsh-base is installation-owned)

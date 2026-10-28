@@ -965,6 +965,18 @@ part of a shipped session), and the bundle mounts the three OFFICIAL Agent Teams
 (`mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team`). Read that one row as history, not
 as a current capability.
 
+**A 0.16.2 delta on this table (2026-10-28) — one witness was WRONG, and it was the blind spot that
+hid a defect:** the `mpd-codegraph-plugin` row's recorded live witness was the apply-time log line
+`[mpd-codegraph] init status=marker …`. That line is a LOG-SINK marker: it proves the row applied, and
+it was green while the plugin's ONE contributed command reached NO command registry at all (the 0.16.1
+defect — the row applies in the loader's first concurrent pass, before the command registry exists, and
+its single registration was dropped without an error). The witness for that row is now the reachable
+command itself — the harness's `commands` registry listing for the `mpd` session's agent PLUS the TUI
+palette capture (`userSurface.command.mpd-codegraph` PASS in
+`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/result.json`, palette rows in that
+stamp's `palette/`) — and the init line is retained only as the side-effect witness for the
+initialisation. Class unchanged (`usable`). Every other row's witness is untouched.
+
 | Package | Role | Class | Live witness |
 |---|---|---|---|
 | `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui`; live boot with 0 crash signatures. The `agent-preset-registry` id-target this row once recorded was REMOVED on 2026-10-02 under the strict zero-override decision — superseded by §2 |
@@ -978,7 +990,7 @@ as a current capability.
 | `mpd-hashline-plugin` | anchored edit discipline | usable | 4 `mpd_hashline_*` tools |
 | `mpd-boulder-plugin` | durable work ledger | usable | 6 `mpd_boulder_*` tools |
 | `mpd-comment-checker-plugin` | comment/docstring detector (opt-in binary) | usable | tool `mpd_comment_check` |
-| `mpd-codegraph-plugin` | codegraph project init + binary resolve | usable | apply-time `[mpd-codegraph] init status=marker …` |
+| `mpd-codegraph-plugin` | codegraph project init + binary resolve | usable | RE-MEASURED 2026-10-28: command `mpd-codegraph` is in the harness registry for the `mpd` session AND drawn in the TUI palette (`userSurface.command.mpd-codegraph` PASS, `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`); the apply-time `[mpd-codegraph] init status=…` line is the init side-effect witness only |
 | `mpd-memory-plugin` | git/svn-backed memory + reflection | usable | 7 `mpd_memory_*` tools |
 | `mpd-workmate-plugin` | durable evolving agent library | usable | 7 `mpd_workmate_*` tools |
 | `mpd-team-compact-plugin` | finished-team compaction | usable | tools `mpd_team_compact_run`, `mpd_team_compact_status` |

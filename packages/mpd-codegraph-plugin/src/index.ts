@@ -7,14 +7,24 @@ import { homedir } from "node:os"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { bundleRootOf, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_COMMANDS, bundleRootOf, dshSeamInject, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { openLogSink } from "../../mpd-mcp-shared/log-sink"
 import type { LogSink } from "../../mpd-mcp-shared/log-sink"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-codegraph"
-/** No declared dependencies: the plugin applies against zero harness services and only logs a status line. */
-export const inject = []
+// The row's one declared dependency: the human-command registry it registers `/mpd-codegraph` into.
+//
+// `inject = []` WAS THE DEFECT (D-1): with no declared dependency, cordis applied this row in the
+// loader's FIRST concurrent pass, while the `commands` service had no provider fiber yet. The
+// adapter's `registerCommand` reads `ctx.get("commands")` STRICTLY and turns that momentary absence
+// into a silent no-op, and nothing retried — so the command sat in no registry for the whole boot
+// while the row itself reported ACTIVE and its init log line looked healthy. The gap is a BOOT-ORDER
+// RACE (the service appeared a fraction of a second later), not a fixed duration, so it can be lost
+// on any machine and won for the wrong reason on a fast one; declaring the dependency is what makes
+// cordis defer this apply until the service is ACTIVE (the same idiom as mpd-cellwork and
+// mpd-team-core). Do NOT "simplify" this back to `inject = []`.
+export const inject: string[] = dshSeamInject(DSH_SEAM_COMMANDS)
 
 /** The slice of the row context this plugin reads: only the service lookup the adapter resolves through. */
 type Ctx = { get?(key: string): unknown; [k: string]: unknown }

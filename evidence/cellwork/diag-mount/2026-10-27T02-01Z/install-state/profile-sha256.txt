@@ -1,0 +1,5 @@
+0ef73e7d775ea1eb81ef20c5f88ddb7b107f4a507289fff1bf97f84ca607dfca  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml
+019741abb302525c9eafb9ba641315f6db139ffe0ba3e501e6b265ad0628a8ff  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/package.json
+c3f2358eb308837c761d5842d681fe2043bef0b2ca50eb974dee025ec1b0f98f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/packages/mpd-cellwork-plugin/dist/index.js
+7094cf610dd3d3dc9d8d3c78211036b3701089ef023ddbd02231232f0df8705f  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/package.json
+33155529ce3d7ff221aaa18fb5badc45c1236a1033723106e664f33bc5d54333  /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/profiles/dsh-tui/cordis.patch.yml

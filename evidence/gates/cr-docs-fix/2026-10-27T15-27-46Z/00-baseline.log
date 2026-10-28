@@ -1,0 +1,89 @@
+### BASELINE (before edits)
+--- wc -c AGENTS.md
+63898 AGENTS.md
+--- python3 docker/ui/measure-shots.py --self-test
+== self-test tui pass: /tmp/tmpe6g7gqzk/good.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> PASS
+== self-test tui red: /tmp/tmpe6g7gqzk/bad.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=3.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 3.0px (worst: 8,1-12,3.top-left); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+   [self-test band red] a band narrower than the picture was refused, as designed
+== self-test tui hole red: /tmp/tmpe6g7gqzk/holed.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 11 missing / 11 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 11; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+== self-test web pass: /tmp/tmpe6g7gqzk/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 314x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 326 (capture 400, headroom 74px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 62px horizontal, 78px vertical
+   -> PASS
+== self-test web red: /tmp/tmpe6g7gqzk/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 1144x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 1156 (capture 400, headroom -756px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: -768px horizontal, 78px vertical
+   !! content width 1144 exceeds the graph viewport 376
+   !! box 1000,0,144,42 is cut: its capture rect is 1012,40,144,42 against 400x200
+   -> FAIL
+== self-test web scrolled red: /tmp/tmpe6g7gqzk/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(200,0)
+   boxes: 1; rightmost content x = 156 (capture 400, headroom 244px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 232px horizontal, 78px vertical
+   !! the view is not at scroll origin: (200, 0)
+   -> FAIL
+--self-test PASS (tui arms: good/pass, corner-drift>=1px/red, side-hole/red, band-narrow/red; web arms: fits/pass, cut/red, scrolled/red)
+exit=0
+--- bash -n
+exit=0
+--- bun run verify:docs
+exit=0
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=473 checked=441 resolved=441 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=125
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=473 dead=0 — PASS
+--- bun run verify:manifest
+exit=0
+ok    row-module-paths: 29 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1087 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+--- bun run verify:comments
+exit=0
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 479 TypeScript file(s) of 479 in the source set; inspected 43506 declaration(s); skipped 20409 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+--- node scripts/verify-manual-paths.ts
+exit=0
+[verify-manual-paths] under-report:placeholder AGENTS.md:535 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:548 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] under-report:placeholder AGENTS.md:676 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:682 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:683 -> <ws>/.mpd/model-config-seed.json
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:18 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=73 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=83 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=153 over-report=73 under-report=83 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)

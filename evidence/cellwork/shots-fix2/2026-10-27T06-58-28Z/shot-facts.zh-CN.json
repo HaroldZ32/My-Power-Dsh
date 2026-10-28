@@ -1,0 +1,58 @@
+{
+  "web": {
+    "surface": "dsh web, Team view (mpd-bundle-plugin client.js), locale zh-CN",
+    "bundle": "the CURRENT checkout's mpd-team-core-plugin/dist + mpd-bundle-plugin/{dist,client.js} patched into the container profile (the image ships 0.15.1, which has no group input)",
+    "team": "team-nested-parent",
+    "frames": 1,
+    "groupRects": [
+      "team-nested-sub,510,0,384,114"
+    ],
+    "cards": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "team-nested-sub::C1",
+      "team-nested-sub::C2",
+      "team-nested-sub::C3",
+      "team-nested-sub::C4"
+    ],
+    "boxes": [
+      "0,0,144,42",
+      "170,0,144,42",
+      "170,52,144,42",
+      "340,0,144,42",
+      "920,0,144,42",
+      "1090,0,144,42",
+      "520,10,104,42",
+      "650,10,104,42",
+      "650,62,104,42",
+      "780,10,104,42"
+    ],
+    "capture": {
+      "image": "capture.png",
+      "imagePx": [
+        2608,
+        1094
+      ],
+      "deviceScaleFactor": 2,
+      "capturedWidth": 1304,
+      "capturedHeight": 547,
+      "boxOrigin": [
+        12,
+        419
+      ],
+      "graphViewport": [
+        1280,
+        114
+      ],
+      "scrollX": 0,
+      "scrollY": 0,
+      "contentWidth": 1234,
+      "contentHeight": 104
+    },
+    "viewport": "2900x1500 @ deviceScaleFactor 2, locale zh-CN — fits: scrollX=0, captured 1304x547 CSS px at origin (12,419), graph viewport 1280x114 CSS px vs content 1234x104 CSS px (headroom 46x10 px)"
+  }
+}

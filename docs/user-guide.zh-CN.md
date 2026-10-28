@@ -718,7 +718,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 | `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
 | `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
 | `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交 —— 模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
-| `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
+| `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | 共享命令平面：agent 注册表 + **TUI 面板已测量**；Web 未测量 |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
 | `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
 | `/mpd-model` | 打开宿主的选项列表式模型菜单：依次选择分组 → 范围（整组，或单个 agent）→ 提供商 → 模型 → 推理强度，并把 `agentRoutes.<Agent>.<leaf>` 写入 `/settings` 编辑的同一个配置条目；整组写入会先显示确认面板，点名每个受影响的 agent 及其当前路由，单个 agent 的写入会标明目标，清除分支只删除一个条目，在任一面板取消都不写入；没有对话框接缝的组合会说明这一点、不打开菜单 | **仅 TUI** |
@@ -727,6 +727,15 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 命令名之后是自由文本形式的目标。不带目标的裸 `/ulw` 会打印用法、不会启动任何东西；在无法裁决命令
 的表面（headless 运行）上，同样的文本会作为指令提交。
+
+**`可用位置` 一列以什么为测量基准（0.16.2）。** 本次发布唯一的一手见证是 harness 自己的 `commands`
+注册表 —— 针对 `mpd` 会话的 agent 读取 —— 加上 **TUI** 命令面板：QA 用例对这两者断言
+`userSurface.command.<name>`，它看到的每一行面板都抓取在
+`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`（`result.json`、`palette/`）里。本次
+发布没有启动任何 Web 客户端，所以单元格里的 `Web` 指的是两个表面共用的**共享命令平面** —— 本次**未测量、
+不等于已验证** —— 而 `TUI` 一侧才是用例真正观察到的。`/mpd-codegraph` 是本次修复并重新测量的那一行：
+修复前它在两个表面都无法到达，因为该行在 loader 第一轮并发 apply 时就执行了，此时命令注册表还不存在，
+它唯一的一次注册被无声丢弃；现在它既在注册表清单里，也画在面板上。
 
 ## 13. 配方：可直接照抄的调用
 

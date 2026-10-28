@@ -1,0 +1,44 @@
+{
+ "png": "evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/after/tui-team-dag-groups.png",
+ "size": [
+  2040,
+  2280
+ ],
+ "topBorderY": 210,
+ "borderX": [
+  88,
+  571
+ ],
+ "barClusters": [
+  [
+   88,
+   91
+  ],
+  [
+   122,
+   137
+  ],
+  [
+   160,
+   179
+  ],
+  [
+   182,
+   197
+  ],
+  [
+   568,
+   571
+  ]
+ ],
+ "leftBarX": [
+  88,
+  91
+ ],
+ "rightBarX": [
+  568,
+  571
+ ],
+ "leftDeltaPx": 0,
+ "rightDeltaPx": 0
+}

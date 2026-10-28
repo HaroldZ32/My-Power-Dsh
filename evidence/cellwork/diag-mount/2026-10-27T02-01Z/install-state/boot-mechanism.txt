@@ -1,0 +1,80 @@
+# the exact chain the user's `dsh-tui` run takes (quoted, with file:line)
+
+## 1) the launcher prefers the in-package host entry (default on 0.17.0)
+$ sed -n '1717,1730p' /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/bin/dsh-tui.js
+    1717	  // 判定内核（src/hostEntryRoute.ts）。DSH_TUI_HOST_ENTRY=0 让所有内核回到
+    1718	  // `dsh --profile`；dsh 自己的 hostArgs（--version、--dump-config* 等）始终交给 dsh。
+    1719	  const hostEntry = join(ownDir, 'lib', 'types', 'dsh-adapter', 'host-entry.js')
+    1720	  const hostEntryEnabled = process.env.DSH_TUI_HOST_ENTRY !== '0' && existsSync(hostEntry)
+    1721	  // 必须在首次 spawn 之前：本次启动的 TUI 写的记录都晚于这个时刻。
+    1722	  noteLaunchChain()
+    1723	  if (hostEntryEnabled && hostArgs.length === 0) {
+    1724	    // 替身进程经它重起（src/update.ts restartArgv）。只在入口路线设置：带 hostArgs
+    1725	    // （如 --patch）的 `dsh --profile` 启动重起时须原样重放整条 dsh argv。
+    1726	    process.env.DSH_TUI_HOST_ENTRY_PATH = hostEntry
+    1727	    process.env.DSH_TUI_PROFILE ??= PROFILE
+    1728	    // The in-process DSH kernel reads the bundled guide skills like `dsh` does.
+    1729	    const result = await startEntrySession(hostEntry, args, withGuideSkillDir(process.env))
+    1730	    // 没有 dsh CLI：安全模式与排查提示都指向不存在的 `dsh --profile`（DSH 内核下
+
+## 2) the host entry loads the profile through profileBoot and passes INSTALL_ANCHOR
+$ sed -n '225,232p' /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui/lib/types/dsh-adapter/host-dsh.js
+     225	    const { appBoot, profileBoot } = host;
+     226	    // bin.js: the `.env` layers fill unset variables before anything reads them
+     227	    // (the dsh-tui row's `!!js process.env.DSH_TUI_*` included).
+     228	    const environment = appBoot.loadLayeredEnv(BIN_NAME);
+     229	    // 1–2. composeProfile (no `--patch` overlays from the launcher).
+     230	    const profile = profileBoot.prepareProfile(options.profile, true, undefined);
+     231	    const resolution = await appBoot.createRuntimeResolution({ installAnchor: profileBoot.INSTALL_ANCHOR, profile });
+     232	    const rootConfig = join(profile.dir, profileBoot.PROFILE_ROOT_FILENAME);
+
+## 3) prepareProfile IS loadProfile(name, INSTALL_ANCHOR, ...)
+$ sed -n '216,222p' /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js
+     216	function prepareProfile(name, userLayer = true, fromDefaultProfile) {
+     217		if (fromDefaultProfile !== void 0) initializeProfileFromDefault(name, fromDefaultProfile);
+     218		const profile = loadProfile(NAME, name, INSTALL_ANCHOR, void 0, { userLayer });
+     219		reportSkippedBundles(NAME, profile);
+     220		writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG);
+     221		return profile;
+     222	}
+
+## 4) loadProfile -> loadProfileDirectory(bin, dir, installAnchor, options)
+$ sed -n '1065,1075p' /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
+    1065	function loadProfile(binName, name, installAnchor, home = resolveDshHome(), options = {}) {
+    1066		const dir = resolveProfileDir(name, home);
+    1067		if (!existsSync(join(dir, "package.json"))) {
+    1068			const template = PROFILE_TEMPLATES[name];
+    1069			if (template === void 0) throw new Error(`${binName}: profile ${JSON.stringify(name)} does not exist; create it with 'dsh plugin --profile ${name} add <package>'`);
+    1070			initProfile(dir, template.bundles);
+    1071		}
+    1072		removeLinkProjections(dir);
+    1073		normalizeShippedProfile(name, dir, readProfileManifest(binName, dir));
+    1074		return loadProfileDirectory(binName, dir, installAnchor, options);
+    1075	}
+
+## 5) resolveBundleDir: INSTALL anchor first, then the profile
+$ sed -n '988,1004p' /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
+     988	* Resolution does not require the package to export `./package.json`.
+     989	* @param binName - the diagnostic prefix on the thrown error.
+     990	* @param packageName - the bundle's package name from `dsh.profile.bundles`.
+     991	* @param installAnchor - absolute path of a file inside the dsh app package (its package.json).
+     992	* @param profileDir - the profile directory (second anchor).
+     993	* @returns the bundle package's absolute directory.
+     994	*/
+     995	function resolveBundleDir(binName, packageName, installAnchor, profileDir) {
+     996		for (const anchor of [installAnchor, join(profileDir, "package.json")]) {
+     997			const dir = packageDirFromAnchor(anchor, packageName);
+     998			if (dir !== void 0) return dir;
+     999		}
+    1000		throw new Error(`${binName}: cannot resolve profile bundle ${JSON.stringify(packageName)} from the dsh installation or ${profileDir}; run 'dsh plugin --profile ${basename(profileDir)} install' if its dependency is not installed`);
+    1001	}
+    1002	/**
+    1003	* Load an already initialized profile directory without resolving it through
+    1004	* the shared Harness home. This is used by application-owned profiles whose
+
+## 6) composeEntries: the composition the probe replays
+$ sed -n '1084,1087p' /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
+    1084	function composeEntries(layers, warn = () => {}) {
+    1085		return applyEntryPatches([], structuredClone(layers.flat()), (message, ...args) => {
+    1086			let index = 0;
+    1087			warn(message.replace(/%C/g, () => JSON.stringify(args[index++])));

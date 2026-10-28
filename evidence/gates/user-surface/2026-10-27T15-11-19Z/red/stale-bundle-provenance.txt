@@ -1,0 +1,4 @@
+tag=v0.15.5 commit=d28cc68c2241c8081059a8ace7ff6eaf9fc48f3b
+fixture=.qa-tmp/stale-0.15.5 (pre-existing scratch copy; layers verified BYTE-IDENTICAL to the tag by git show | diff, measured 2026-10-27T15:11:24Z)
+run=node skills/dsh-qa/scripts/user-surface-mount.ts --profile ~/.dsh/profiles/dsh-tui --stale-bundle <fixture> --expect-red --evidence evidence/gates/user-surface/2026-10-27T15-11-19Z/red
+bound=the copy carries the patch layers plus a 0.15.5-stamped reduced manifest, NOT the tag's dist modules; the measured defect came from the ROW LIST on the install anchor while the row MODULES already resolved from the profile

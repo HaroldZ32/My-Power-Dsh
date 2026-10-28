@@ -1,0 +1,17 @@
+== docs/assets/images/tui-team-dag.png (shared, zh page references it): docs/assets/images/tui-team-dag.png 2180x1330 cell=20x38px crop=rows 1:36 cols 0:109
+   frames detected inside the crop: 6; cut by the crop: 1
+   frame   4, 6 ..  13, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame  17, 6 ..  26, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame  30, 6 ..  39, 8  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,12 ..  13,14  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,18 ..  13,20  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   4,24 ..  13,26  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 1)
+   -> PASS
+exit=0

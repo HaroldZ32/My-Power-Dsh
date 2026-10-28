@@ -1,0 +1,1205 @@
+{
+  "phase": "tick-14",
+  "tick": 14,
+  "at": "2026-10-28T09:44:23.049Z",
+  "loaderRows": [
+    {
+      "id": "include",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-plugin-manager",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "plugin-manager",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "timer",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "hmr",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "llm",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "deepseek-llm-api-extensions",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-log-deepseek",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "typert",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "typert-loader",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "typert-gateway",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "remote-access",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-title",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-title-llm",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "user-questions",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "agent",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "plugin-package-inventory-deepseek",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "agent-default-model",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "jobs",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "llm-retry",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "config-editor",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "settings",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "authorization",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "deepseek-account",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "credentials",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "llm-pi-ai",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-persistence-jsonl",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "attachment-local",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-query-sqlite",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "working-directory",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-working-directory",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-projection",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "storage",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "storage-json",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "storage-domain",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-projection-cache",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "otel",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-telemetry-otel",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "subprocess",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "sandbox",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "sandbox-policy",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "bash-sandbox",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "pwsh-sandbox",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "approval",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "permission",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "shell-env",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-bash",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-pwsh",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-jobs",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "fs-observation-policy",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-fs",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-fs-search",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "agent-instructions",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "skill",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "skill-filesystem",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-skill",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "commands",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "command-feedback",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "goal",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "goal-round-driver",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "command-goal",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "plan-mode",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "token-meter",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "compaction-basic",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "command-compact",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "subagent",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "subagent-spawn-in-process",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "subagent-fork-in-process",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-subagent-control",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-subagent-list-agents",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-subagent",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-subagent-fork",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "ptc-runtime",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "workflow-ptc",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-workflow",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "timeout-policy",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "spill-local",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "spill-policy",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "session-checkpoint-policy",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-result-pruner",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "image-offload",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-todo",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "tool-goal",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "repeat-tool-reminder",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "web",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "web-search-deepseek",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "web-deepseek-api",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "web-fetch-http",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tool-web",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-resources",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "tools",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "system-prompt",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "agent-loop",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "fs-sandbox",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "llm-deepseek",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "llm-deepseek-account",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-storage",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-storage-json",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-storage-domain",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-workspace",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-code-runtime",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-subagent-model-selection-settings",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-workspaces",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-command-trees",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-settings-sections",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-scenes",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-panels",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-plugin-host",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-extensions",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-agent-presets",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-agent-preset-registry",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-cordis-host-runner",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-webserver",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui-auth",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "dsh-tui",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "working-activity",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-better-sidebar",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-astgrep",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-git",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-shell",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": true,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-lsp",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-codegraph",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-web-compat",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-dsh-adapter",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-config",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-goal",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-team-watchdog",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-tools",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-modelchain",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-ext",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-roles",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-verify",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-ulw",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-hashline",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-boulder",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-comment-checker",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-codegraph",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-memory",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-workmate",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-team-core",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-team-compact",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-cellwork",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-bootstrap",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-project-init",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-tui-adapter",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-tui",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-agent-team",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-roster-provider",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-tool-agent-team",
+      "state": null,
+      "hasRuntime": false,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mpd-ui-agent-team",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-context7",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "mcp-grepapp",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "preset-mpd",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    },
+    {
+      "id": "qa-user-surface-probe",
+      "state": 2,
+      "hasRuntime": true,
+      "disabled": false,
+      "scope": "root"
+    }
+  ],
+  "commands": [
+    "agent-teams",
+    "ast-grep",
+    "auth",
+    "cellwork",
+    "compact",
+    "cordis-dev",
+    "data-scientist",
+    "debug-prompt",
+    "debugging",
+    "dsh-qa",
+    "dsh-tui-guide",
+    "feedback",
+    "frontend",
+    "git-master",
+    "goal",
+    "init-deep",
+    "lsp-setup",
+    "mpd",
+    "mpd-model",
+    "permission",
+    "plan",
+    "programming",
+    "refactor",
+    "remove-ai-slops",
+    "review-work",
+    "svn-master",
+    "ultimate-browsing",
+    "ultrawork",
+    "ulw",
+    "ulw-execute",
+    "ulw-plan",
+    "ulw-research",
+    "visual-qa"
+  ],
+  "agentPreset": "mpd",
+  "agentCount": 1,
+  "tools": [
+    "mpd_config_get",
+    "mpd_config_reload",
+    "mpd_goal_status",
+    "mpd_goal_anchor",
+    "mpd_goal_finish",
+    "session-watchdog-hold",
+    "session-watchdog-resume",
+    "session-watchdog-status",
+    "mpd_modelchain_resolve",
+    "mpd_memory_save",
+    "mpd_memory_recall",
+    "mpd_ext_list",
+    "mpd_ext_show",
+    "mpd_flow_list",
+    "mpd_flow_show",
+    "mpd_verify_open",
+    "mpd_verify_escape",
+    "mpd_verify_seat",
+    "mpd_verify_evidence",
+    "mpd_verify_record",
+    "mpd_hashline_read",
+    "mpd_hashline_edit",
+    "mpd_hashline_format",
+    "mpd_hashline_restore",
+    "mpd_boulder_status",
+    "mpd_boulder_start",
+    "mpd_boulder_complete",
+    "mpd_boulder_task_timer",
+    "mpd_boulder_plan_progress",
+    "mpd_boulder_plans",
+    "mpd_comment_check",
+    "mpd_memory_write",
+    "mpd_memory_read",
+    "mpd_memory_reflect",
+    "mpd_memory_reflect_complete",
+    "mpd_memory_status",
+    "mpd_team_compact_run",
+    "mpd_team_compact_status",
+    "agent_teams_plan",
+    "agent_teams_task",
+    "agent_teams_dispatch",
+    "agent_teams_mail",
+    "agent_teams_control",
+    "cellwork_status",
+    "cellwork_start",
+    "cellwork_stop",
+    "cellwork_requirements",
+    "cellwork_recon",
+    "cellwork_split",
+    "cellwork_activate",
+    "cellwork_dispatch",
+    "cellwork_supervise",
+    "cellwork_context",
+    "cellwork_handoff",
+    "cellwork_subteam",
+    "cellwork_send",
+    "cellwork_inbox"
+  ],
+  "services": {
+    "mpdConfig": true,
+    "mpdDsh": true,
+    "mpdTui": true,
+    "mpdTeams": true,
+    "mpdGoal": true,
+    "mpdExtensions": true,
+    "mpdBoulder": false,
+    "mpdMemory": false,
+    "mpdHashline": false,
+    "mpdRoles": false,
+    "tuiPanels": false,
+    "tuiCommands": false,
+    "commands": true,
+    "tools": true
+  },
+  "problems": []
+}

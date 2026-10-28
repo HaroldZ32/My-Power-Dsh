@@ -215,6 +215,10 @@ function capLine(body, maxLineBytes) {
   return kept + truncationMarker(Buffer.byteLength(body, "utf8") - Buffer.byteLength(kept, "utf8"));
 }
 // packages/mpd-dsh-adapter-plugin/src/index.ts
+var DSH_SEAM_COMMANDS = "commands";
+function dshSeamInject(...names) {
+  return [...names];
+}
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
@@ -1993,7 +1997,7 @@ function probeMpdDsh(ctx, strict) {
 
 // packages/mpd-codegraph-plugin/src/index.ts
 var name = "mpd-codegraph";
-var inject = [];
+var inject = dshSeamInject(DSH_SEAM_COMMANDS);
 function bundleRoot() {
   return bundleRootOf(import.meta.url);
 }

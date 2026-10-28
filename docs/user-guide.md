@@ -821,7 +821,7 @@ roster is reached with the `mpd_roles_list` tool).
 | `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
 | `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
 | `/cellwork <objective>` | starts the dispatch-only cell-work mode: the command writes one cell record and submits the activation directive as your own next turn — the mode, its tools and its bounds are in [`cellwork.md`](cellwork.md) | Web + TUI |
-| `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
+| `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | shared command plane: agent registry + **TUI palette measured**; Web unmeasured |
 | `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
 | `/mpd-model` | opens the host's pick-list model menu: walks group → scope (the whole group, or one agent) → provider → model → reasoning effort and writes `agentRoutes.<Agent>.<leaf>` into the same config entry `/settings` edits; a whole-group write first shows a confirmation panel naming every affected agent and its current route, an individual write names its target, a clear branch removes exactly one entry, and a cancel at any panel writes nothing — a composition with no dialogs seam says so instead of opening a menu | **TUI only** |
@@ -831,6 +831,17 @@ roster is reached with the `mpd_roles_list` tool).
 The objective is free text after the command name. A bare `/ulw` with no objective prints usage and
 starts nothing; on surfaces without command adjudication (a headless run) the same text is submitted
 as a directive instead.
+
+**What the `Where` column is measured against (0.16.2).** The only live witness this release carries is
+the harness's own `commands` registry — read for the `mpd` session's agent — together with the **TUI**
+command palette: the QA case asserts `userSurface.command.<name>` against both, and every palette row
+it saw is captured in `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`
+(`result.json`, `palette/`). **No** Web client was booted in this release, so the `Web` in a cell names
+the SHARED command plane both surfaces read — it is **unmeasured here, not verified** — while the `TUI`
+half is what the case actually observed. `/mpd-codegraph` is the row this release repaired and
+re-measured: before the fix it reached NEITHER surface, because the row applied in the loader's first
+concurrent pass, before the command registry existed, and its one registration was dropped without an
+error; it is now listed by the registry and drawn in the palette.
 
 ## 13. Recipes: literal calls
 
