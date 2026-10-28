@@ -1,0 +1,10 @@
+{
+  "case": "user-surface-mount",
+  "stagedStaleVersion": "0.15.5",
+  "expectedRow": "mpd-cellwork",
+  "green": false,
+  "ok": true,
+  "cause": "stale-install-anchor:source=install-anchor,version=0.15.5,sameCopyDigests=false+profile-row-list-missing:mpd-cellwork",
+  "sentence": "the named expected cause held (stale-install-anchor:source=install-anchor,version=0.15.5,sameCopyDigests=false+profile-row-list-missing:mpd-cellwork): every red in this run is its downstream consequence",
+  "unexplained": []
+}

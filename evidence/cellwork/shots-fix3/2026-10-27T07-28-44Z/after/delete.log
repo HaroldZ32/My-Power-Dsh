@@ -1,0 +1,4 @@
+# rm docs/assets/images/zh-CN/tui-team-dag.png (file deletion, no git command)
+observed: removed 'docs/assets/images/zh-CN/tui-team-dag.png'
+sha256 (before delete): 0e07c9c02369dcbe829de9c8dc8d2ed22805372449cc94e4c012cf124312a2bd
+post-check: ABSENT

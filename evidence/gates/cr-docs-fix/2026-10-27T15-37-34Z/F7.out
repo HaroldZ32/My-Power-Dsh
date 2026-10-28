@@ -1,0 +1,8 @@
+saved-file top row  (the code under test): 3
+live-screen top row (the old behaviour):    0
+missing saved file  (fallback):             0
+function body reads a live capture:         no
+call site passes the saved pane file:       yes
+
+[verdict] PASS — the top row is derived from the saved pane; a moved live border cannot shift the crop
+exit=0

@@ -109,8 +109,8 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-ulw-循环与它的关卡) | 一次 ultrawork 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝 —— 仅在 OFFICIAL 平面上才是提示）。 |
 | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
-| [`web-team-board-v2.png`](./assets/images/zh-CN/web-team-board-v2.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册、毛玻璃任务图与悬浮信息卡的 Team 视图。 |
-| [`tui-team-dag.png`](./assets/images/zh-CN/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。 |
+| [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |
+| [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个嵌套团队在 DSH-TUI 的**全屏团队场景**（`/mpd team` 场景，不是 DAG 页）：分组帧框使用第二套边框字形（`╔ ╗ ╚ ╝ ║ ═`），外部依赖落在 `╧` 端口上，子单元自己的任务卡片画在框内。此图与英文版**共用**同一次渲染（TUI 场景正文按设计保持英文）。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
 | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
 | [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮。 |
@@ -120,8 +120,12 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 上面每一张截图都由 [`docker/ui/`](../docker/ui) 下的 Docker 通道产出，不是手工截的、也不是在绘图
 工具里画的：Web 图由无头 Chromium 驱动真实应用取得，终端图由真实终端模拟器在真实 PTY 上渲染真实
 TUI 取得。简体中文这一套是**同一批通道在中文 locale 下的另一次运行**产出的独立渲染结果，不是把英文
-PNG 改个名。通道的原始输出落在 `docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
-SVG 示意图则是在本仓库中编写的。
+PNG 改个名（TUI 任务图例外：场景正文按设计保持英文，故与英文版共用同一张图）。通道的原始输出落在
+`docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
+**每张截图在提交前都会被实测**：[`docker/ui/measure-shots.py`](../docker/ui/measure-shots.py) 会读
+Web 图的 `data-mpd-box` 与当时的取景矩形，只要有盒子落在矩形外、内容宽于图的视口、或滚动位置不为
+原点就拒绝；它的 `tui` 模式直接在 PNG 上量终端图（每个角的竖笔画与其相邻竖边相差不超过 1 px、竖边
+上没有未着墨的像素）。测量不通过的图不会被提交。SVG 示意图则是在本仓库中编写的。
 
 ## 扩展资产
 

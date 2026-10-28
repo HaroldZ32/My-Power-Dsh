@@ -1,0 +1,10 @@
+{
+ "tabCount": 0,
+ "tabs": [],
+ "mpdElements": 0,
+ "matching": [
+  "New tab|"
+ ],
+ "sidebarText": "",
+ "html": "<div class=\"_surface_6nhg2_125\" data-dockkit-surface=\"true\" data-dockkit-drop-zones=\"horizontal\"><div class=\"_tabLayout_6nhg2_134\" style=\"grid-template-columns: minmax(0px, 1fr);\"><div class=\"_emptyTabHost_6nhg2_143\" data-dockkit-empty=\"true\" style=\"grid-area: 1 / 1;\"><section class=\"_pane_6nhg2_209\" data-dockkit-pane=\"pane1\" tabindex=\"-1\" data-dockkit-pane-active=\"true\"><div class=\"_tabStrip_6nhg2_237\" role=\"tablist\" data-dockkit-strip=\"pane1\" data-window-drag=\"true\"><div class=\"_stripTabs_6nhg2_257\" role=\"presentation\" data-dockkit-strip-tabs=\"pane1\"></div><button type=\"button\" class=\"_addTab_6nhg2_449\" aria-label=\"New tab\" data-dockkit-add-tab=\"pane1\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" aria-hidden=\"true\" stroke-width=\"1\"><path d=\"M8 2V14\" stroke=\"currentColor\"></path><path d=\"M2 8H14\" stroke=\"currentColor\"></path></svg></button><div class=\"_stripFill_6nhg2_288\" data-dockkit-strip-fill=\"true\"></div><span><button type=\"button\" class=\"_iconButton_6nhg2_511\" aria-label=\"Split\" data-dockkit-split-button=\"pane1\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" aria-hidden=\"true\"><path d=\"M13.5 1.5H2.5C1.94772 1.5 1"
+}

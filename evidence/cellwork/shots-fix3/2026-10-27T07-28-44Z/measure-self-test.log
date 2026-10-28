@@ -1,0 +1,45 @@
+== self-test tui pass: /tmp/tmpaa4antz5/good.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> PASS
+== self-test tui red: /tmp/tmpaa4antz5/bad.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=3.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 3.0px (worst: 8,1-12,3.top-left); missing vertical-side pixels = 0; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+   [self-test band red] a band narrower than the picture was refused, as designed
+== self-test tui hole red: /tmp/tmpaa4antz5/holed.png 320x228 cell=20x38px crop=rows 0:6 cols 0:16
+   frames detected inside the crop: 2; cut by the crop: 0
+   frame   2, 1 ..   6, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 11 missing / 11 px longest, right 0 missing / 0 px longest
+   frame   8, 1 ..  12, 3  corners |dx|: top-left=0.0px, top-right=0.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 0 missing / 0 px longest, right 0 missing / 0 px longest
+   -> max corner |dx| = 0.0px (worst: n/a); missing vertical-side pixels = 11; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL
+== self-test web pass: /tmp/tmpaa4antz5/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 314x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 326 (capture 400, headroom 74px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 62px horizontal, 78px vertical
+   -> PASS
+== self-test web red: /tmp/tmpaa4antz5/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 1144x42 CSS px; scroll=(0,0)
+   boxes: 2; rightmost content x = 1156 (capture 400, headroom -756px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: -768px horizontal, 78px vertical
+   !! content width 1144 exceeds the graph viewport 376
+   !! box 1000,0,144,42 is cut: its capture rect is 1012,40,144,42 against 400x200
+   -> FAIL
+== self-test web scrolled red: /tmp/tmpaa4antz5/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(200,0)
+   boxes: 1; rightmost content x = 156 (capture 400, headroom 244px); bottom = 82 (capture 200, headroom 118px)
+   graph headroom: 232px horizontal, 78px vertical
+   !! the view is not at scroll origin: (200, 0)
+   -> FAIL
+--self-test PASS (tui arms: good/pass, corner-drift>=1px/red, side-hole/red, band-narrow/red; web arms: fits/pass, cut/red, scrolled/red)
+exit=0

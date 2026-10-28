@@ -1,0 +1,10 @@
+docs/assets/images/hero-web-tui-v2.png
+docs/assets/images/tui-status-line.png
+docs/assets/images/tui-team-dag-groups.png
+docs/assets/images/tui-team-dag.png
+docs/assets/images/tui-workmates.png
+docs/assets/images/web-agent-presets.png
+docs/assets/images/web-plugins-installed.png
+docs/assets/images/web-settings-mpd.png
+docs/assets/images/web-team-board-v2.png
+docs/assets/images/web-team-dag-groups.png

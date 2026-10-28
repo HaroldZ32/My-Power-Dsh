@@ -1,0 +1,34 @@
+[user-surface self-test] ok  layers.enumerate — rows=69 mpd-cellwork=true
+[user-surface self-test] ok  layers.disabledFlags — disabled=mcp-git,mcp-shell,tool-plugin-manager,tool-plugin-market
+[user-surface self-test] ok  layers.followsTheArtifact — base=row-a,row-b mutated=row-a,row-c (no hardcoded row count anywhere)
+[user-surface self-test] ok  rows.sinkPreferred — sink wins over registration
+[user-surface self-test] ok  rows.registration — a live module-declared name is a witness
+[user-surface self-test] ok  rows.loaderActive — an ACTIVE fiber with a runtime is the fallback
+[user-surface self-test] ok  rows.missingIsRed — a row the loader never composed FAILS
+[user-surface self-test] ok  rows.inactiveIsRed — a composed row that never activated FAILS
+[user-surface self-test] ok  rows.disabledByDesign — a declared-disabled row is green only when the loader agrees
+[user-surface self-test] ok  rows.disabledCameUpEnabled — a disabled row that came up ENABLED FAILS
+[user-surface self-test] ok  rows.presetBoundIsNull — a preset-materialised row is NOT PROVEN (null), never a pass
+[user-surface self-test] ok  rows.selfDisabledIsNull — a row its mount guard disabled is a bound too (the web sidebar row on a TUI-only profile)
+[user-surface self-test] ok  corpus.complete — the published seven are asserted: ulw,ultrawork,cellwork,mpd-codegraph,agent-teams,mpd,mpd-model
+[user-surface self-test] ok  corpus.droppedNameReddens — dropping cellwork -> the expected command set omits the published command `/cellwork`, so this run would not assert it
+[user-surface self-test] ok  corpus.duplicateReddens — a duplicate hides a dropped name
+[user-surface self-test] ok  corpus.unknownReddens — a command the bundle does not contribute reddens
+[user-surface self-test] ok  palette.parses — count=1 rows=agent-teams
+[user-surface self-test] ok  command.sharedGreen — registry + palette
+[user-surface self-test] ok  command.registryOnlyReddens — a command missing from the palette is NOT a pass
+[user-surface self-test] ok  command.paletteOnlyReddens — a command missing from the registry on the shared plane is NOT a pass
+[user-surface self-test] ok  command.tuiOnlyPaletteGreen — a documented TUI-only command needs the palette, not the registry
+[user-surface self-test] ok  command.tuiOnlyNoPaneReddens — the TUI-only exemption is not a hole
+[user-surface self-test] ok  command.fabricatedReddens — asserting a nonexistent command FAILS
+[user-surface self-test] ok  negativeControl.absentGreen — an absent control is green while the palette is alive either side
+[user-surface self-test] ok  negativeControl.presentReddens — a control that IS present is not a control
+[user-surface self-test] ok  negativeControl.deadPaletteReddens — an aimless capture (no box on either side) proves nothing
+[user-surface self-test] ok  upgrade.profileWins — every profile row is in the boot
+[user-surface self-test] ok  upgrade.staleAnchorReddens — a profile row the boot never composed is named (the 0.16.1 shape)
+[user-surface self-test] ok  resolution.anchorWins — source=install-anchor version=0.0.1-stale
+[user-surface self-test] ok  resolution.profileWhenAnchorClean — source=profile version=9.9.9-profile
+[user-surface self-test] ok  resolution.globalPrefixLayout — source=install-anchor version=0.0.1-stale dir=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface-fixture-gfJQir/prefix/lib/node_modules/@mpd-dsh/mpd
+[user-surface self-test] ok  sinks.nonEmptyOnly — found=mpd-roles:10
+[user-surface self-test] ok  modules.candidates — extracts both shapes once
+[user-surface self-test] arms=33 failed=0

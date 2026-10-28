@@ -1,0 +1,24 @@
+### F7 — top row comes from the saved pane file
+
+=== the saved pane file is written by pane_joined ===
+360:    pane_joined >"$EVIDENCE_DIR/tui-team-dag.pane.txt"
+=== and measured by measure_band ===
+366:      if measure_band "$OUT_DIR/tui-team-dag.png" "$EVIDENCE_DIR/tui-team-dag.pane.txt" "$band_rows" "$band_cols"; then
+=== team_top_row reads that file (no live capture) ===
+255:team_top_row() {
+363:    team_top="$(team_top_row "$EVIDENCE_DIR/tui-team-dag.pane.txt")"
+team_top_row() {
+  local pane="$1"
+  [ -s "$pane" ] || { printf '0\n'; return 0; }
+  python3 -c 'import sys
+rows = [line.rstrip("\n") for line in open(sys.argv[1], encoding="utf-8", errors="replace")]
+hits = [index for index, line in enumerate(rows) if "\u250c" in line and "MPD team" in line]
+print(hits[0] if hits else 0)' "$pane"
+}
+
+=== HEAD took a THIRD live capture ===
+251:team_top_row() {
+252-  pane_rows | python3 -c 'import sys
+253-rows = [line.rstrip("\n") for line in sys.stdin]
+254-hits = [index for index, line in enumerate(rows) if "\u250c" in line and "MPD team" in line]
+255-print(hits[0] if hits else 0)'

@@ -1,0 +1,36 @@
+### F6 — a rejected capture is deleted, and the header says who owns the gate
+
+=== working tree: the header no longer claims this script refuses to write a PNG ===
+// docker/ui/shoot-team-dag.mts — capture the Web Team view of the NESTED fixture, framing the WHOLE graph.
+//
+// WHY THIS SCRIPT EXISTS. The published `web-team-dag-groups.png` was captured from a panel narrower
+// than the graph it draws: the boxes span 0..1234 CSS px, the captured viewport was 1034, and the panel
+// cannot scroll (scrollWidth == clientWidth), so both ends of the drawing were clipped and the facts
+// file recorded the false sentence "graph scrolled right". A wider window makes the panel wider (the
+// host gives it 45% of the viewport), so the WHOLE graph fits at scroll origin; this script writes the
+// PNG plus the framing numbers the gate needs, and `shoot-team-dag.sh` then MEASURES those numbers and
+// deletes the PNG on failure — the wrapper, not this file, owns "never ship an unfit capture".
+//
+// WHAT IT TOUCHES. The profile it captures is a CONTAINER's copy (`/data/dsh-web`), never the host's
+// `~/.dsh`: the bundle under test is the checkout's `mpd-team-core-plugin/dist` +
+
+=== HEAD: the old claim ===
+// docker/ui/shoot-team-dag.mts — capture the Web Team view of the NESTED fixture, framing the WHOLE graph.
+//
+// WHY THIS SCRIPT EXISTS. The published `web-team-dag-groups.png` was captured from a panel narrower
+// than the graph it draws: the boxes span 0..1234 CSS px, the captured viewport was 1034, and the panel
+// cannot scroll (scrollWidth == clientWidth), so both ends of the drawing were clipped and the facts
+// file recorded the false sentence "graph scrolled right". A wider window makes the panel wider (the
+// host gives it 45% of the viewport), so the WHOLE graph fits at scroll origin; this script refuses to
+// write a PNG unless that is measurably true, and it writes the numbers into the facts file.
+//
+// WHAT IT TOUCHES. The profile it captures is a CONTAINER's copy (`/data/dsh-web`), never the host's
+
+=== wrapper cleanup branch ===
+62:printf '[shoot-team-dag] measuring the framing (docker/ui/measure-shots.py web)\n'
+63-python3 "$HERE/measure-shots.py" web --facts "$FACTS" --png "$OUT" --json "${FACTS%.json}.measure.json" --label "$(basename "$OUT")"
+64-measure_status=$?
+65-if [ "$measure_status" -ne 0 ]; then
+66-  rm -f "$OUT"
+67-  printf '[shoot-team-dag] the measurement REJECTED %s (exit %s) — the PNG was deleted\n' "$(basename "$OUT")" "$measure_status" >&2
+68-  exit "$measure_status"

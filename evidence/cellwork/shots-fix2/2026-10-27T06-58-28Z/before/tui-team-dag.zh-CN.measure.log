@@ -1,0 +1,16 @@
+== tui-team-dag.png.zh-CN.before: docs/assets/images/zh-CN/tui-team-dag.png 4320x1520 cell=20x38px crop=rows 0:40 cols 0:216
+   frames detected inside the crop: 6; cut by the crop: 0
+   frame   4, 6 ..  13, 8  corners |dx|: top-left=0.0px, top-right=6.0px, bottom-left=0.0px, bottom-right=3.0px
+        vertical sides: left 16 missing / 16 px longest, right 16 missing / 16 px longest
+   frame  17, 6 ..  26, 8  corners |dx|: top-left=0.0px, top-right=6.0px, bottom-left=0.0px, bottom-right=3.0px
+        vertical sides: left 16 missing / 16 px longest, right 16 missing / 16 px longest
+   frame  30, 6 ..  39, 8  corners |dx|: top-left=0.0px, top-right=6.0px, bottom-left=0.0px, bottom-right=3.0px
+        vertical sides: left 16 missing / 16 px longest, right 16 missing / 16 px longest
+   frame   4,12 ..  13,14  corners |dx|: top-left=0.0px, top-right=3.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 1 missing / 1 px longest, right 1 missing / 1 px longest
+   frame   4,18 ..  13,20  corners |dx|: top-left=0.0px, top-right=3.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 1 missing / 1 px longest, right 1 missing / 1 px longest
+   frame   4,24 ..  13,26  corners |dx|: top-left=0.0px, top-right=3.0px, bottom-left=0.0px, bottom-right=0.0px
+        vertical sides: left 1 missing / 1 px longest, right 1 missing / 1 px longest
+   -> max corner |dx| = 6.0px (worst: 4,6-13,8.top-right); missing vertical-side pixels = 102; frames cut = 0 (the scene's own frame running off the window edge: 0)
+   -> FAIL

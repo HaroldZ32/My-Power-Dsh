@@ -1,0 +1,14 @@
+# mutation proof ledger (2026-10-27T16:34:00Z)
+
+Each mutation was applied to the WORKING TREE, the self-test run, and the file restored from a copy; the sha256 below is the file BEFORE the mutation and is re-checked AFTER the restore.
+
+2d16e14e283b29a5703058258cb7fc6fe64704be749b1034420fffa69a43ecc7  skills/dsh-qa/scripts/lib/user-surface-eval.ts
+  -> n1 mutation: gate line reduced to the pre-N1 dead-fiber condition; 5 arms FAILed (pendingSinkReddens, pendingSinkQuotesTheRefusedWitness, disabledRegistrationReddens, disabledRegistrationQuotesIt, activeWithoutRuntimeReddens); restored: sha256sum -c = OK
+2d16e14e283b29a5703058258cb7fc6fe64704be749b1034420fffa69a43ecc7  skills/dsh-qa/scripts/lib/user-surface-eval.ts
+  -> n3 mutation: classifyExpectRed short-circuited to the pre-N3 rule (any red accepted); 7 arms FAILed (the palette/boot-crash/version/copy-digest/missing-row/structural refusals); restored: sha256sum -c = OK
+
+MUTATION TRACE CHECK: `grep -rn MUTATED skills/dsh-qa/scripts/ docker/ui/shoot-team-dag.sh` finds NO marker
+introduced by this wave. It does match two PRE-EXISTING prose lines (`preset-conformance.ts:858`,
+`software-smoke.ts:22`, both describing their own fixture mutations and untouched here), and it matches
+nothing in `user-surface-eval.ts`, `user-surface-mount.ts` or `shoot-team-dag.sh` — the two mutated files
+carry no trace, and `sha256sum -c` above is the byte-identity proof of the restore.

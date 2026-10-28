@@ -1,0 +1,23 @@
+### F5 — vertical scroll is read from the graph container and measured
+
+=== the working tree reads scrollTop (never a literal 0) ===
+96:  scroll: { rect: number[]; clientWidth: number; scrollWidth: number; scrollLeft: number; scrollTop: number; clientHeight: number; scrollHeight: number }
+123:      scroll: scroll === null ? { rect: [0, 0, 0, 0], clientWidth: 0, scrollWidth: 0, scrollLeft: 0, scrollTop: 0, clientHeight: 0, scrollHeight: 0 } : {
+125:        scrollTop: scroll.scrollTop, clientHeight: scroll.clientHeight, scrollHeight: scroll.scrollHeight,
+180:    if (el.scrollHeight > el.clientHeight) el.scrollTop = 0
+202:  scrollY: framed.scroll.scrollTop,
+
+=== HEAD had the hardcoded 0 ===
+184:  scrollY: 0,
+
+=== the measurement reacts to a non-zero scrollY ===
+359:        failures.append(f"the view is not at scroll origin: ({capture.get('scrollX')}, {capture.get('scrollY')})")
+
+=== self-test arms: scroll (0,0) PASS, scroll (0,120) FAIL ===
+== self-test web pass: /tmp/tmp6da5ekom/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 314x42 CSS px; scroll=(0,0)
+   graph viewport 376x120 CSS px; content 1144x42 CSS px; scroll=(0,0)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(200,0)
+== self-test web scrolled-y red: /tmp/tmp6da5ekom/web.png 400x200px @ 1.0x -> captured 400x200 CSS px; box origin (12,40)
+   graph viewport 376x120 CSS px; content 144x42 CSS px; scroll=(0,120)
+--self-test PASS (tui arms: good/pass, corner-drift>=1px/red, side-hole/red, band-narrow/red; web arms: fits/pass, cut/red, scrolled/red, scrolled-y/red)

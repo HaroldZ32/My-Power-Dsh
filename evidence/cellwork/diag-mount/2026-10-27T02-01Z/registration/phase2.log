@@ -1,0 +1,38 @@
+stub child listening on 127.0.0.1:40101 (pid 675)
+the ONLY extra env: DEEPSEEK_BASE_URL=http://127.0.0.1:40101 and a dummy DEEPSEEK_API_KEY
+== boot: palette (empty -> control -> treatment), then one stub-answered turn ==
+boot failures=[]
+crashSignatures=[]
+== model-facing tool list: the stub's wire view ==
+stub requests=3
+request 1 path=/v1/messages offered=0 decision=plain text (no tools offered)
+request 2 path=/v1/messages offered=117 decision=tool call cellwork_status
+request 3 path=/v1/messages offered=117 decision=final text
+main request (request 2) offered 117 tools
+main request cellwork_* (14): cellwork_activate, cellwork_context, cellwork_dispatch, cellwork_handoff, cellwork_inbox, cellwork_recon, cellwork_requirements, cellwork_send, cellwork_split, cellwork_start, cellwork_status, cellwork_stop, cellwork_subteam, cellwork_supervise
+== model-facing tool list: the harness's own request/header ==
+session store=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/dshhome/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.tmp-cellwork-reverify-ws--/44b0315a-c0ed-421c-86d8-58cf455f6fea/session.v4.jsonl.zstd frames=9 records=30
+recordedToolNames 117 tools; cellwork_* = ["cellwork_activate","cellwork_context","cellwork_dispatch","cellwork_handoff","cellwork_inbox","cellwork_recon","cellwork_requirements","cellwork_send","cellwork_split","cellwork_start","cellwork_status","cellwork_stop","cellwork_subteam","cellwork_supervise"]
+tool/call + tool/result records (2):
+tool/call {"turn":1,"step":1,"callId":"call_cellwork-reverify_0","name":"cellwork_status","arguments":"{}"}
+tool/result {"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call_cellwork-reverify_0"},"toolCallId":"call_cellwork-reverify_0","content":[{"type":"text","text":"cellwork refused: cellwork_status: no cell is active in this workspace — start one with `/cellwork <objective>`"}],"isError":false,"id":"d4a8aa8c-d26c-48ed-ac4b-e187d9f85ce6"}}
+== command palette ==
+--- palette-open ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 95 项 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ new                   新开会话                                                                                                               ││
+  ⌸ ❯ /                                                                                                                                            ⛶│
+--- control-agent-teams ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 1 项 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ agent-teams     [what the team is for] Stage a team for the current goal: /agent-teams <what the team is for>                                ││
+  ⌸ ❯ /agent-teams                                                                                                                                 ⛶│
+--- treatment-cellwork ---
+                                            /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.tmp-cellwork-reverify/ws                                  │
+  ╭─ 命令 · 共 1 项 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  │ ❯ cellwork     [objective] Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatche…  ││
+  ⌸ ❯ /cellwork                                                                                                                                    ⛶│
+== row sink ==
+mpd-cellwork.log exists=true
+[2026-10-27T02:18:49.638Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none
+[2026-10-27T02:19:02.062Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none

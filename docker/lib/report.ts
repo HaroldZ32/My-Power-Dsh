@@ -196,6 +196,50 @@ const EXPECTED: readonly string[] = [
   "pack.rebuildToolchain",
   "pack.distFreshRebuildControl",
   //   · the MCP surface: the naming convention, the exact enabled server set, and a live call.
+  // ── THE USER-SURFACE ARMS (step 14b), and why they are named here rather than left dynamic ─────
+  // Every one of these is written by `skills/dsh-qa/scripts/user-surface-mount.ts` from a REAL
+  // `dsh-tui` boot of the INSTALLED artifact. They are declared so a run that never reached the step
+  // reports them as `null` "not reached" instead of dropping them: the 2026-10-26 lane scored 122/122
+  // while asserting no slash command at all, which is the shape this list exists to make impossible.
+  //   · the row arm: the artifact's own layers enumerated at run time (never a hardcoded row list),
+  //     one assertion per declared row (`userSurface.row.<id>`, appended dynamically), and the
+  //     aggregate verdict plus the ids that are composed-but-not-individually-proven on this plane.
+  //     DECLARED BOUNDS ARE MARKED, NOT DESCRIBED (measured 2026-10-27): a `userSurface.row.<id>` this
+  //     plane cannot prove is `null`, which is ALSO the shape of a step that never ran, so the case
+  //     writes one companion row per bound — `userSurface.bound.<id>`, verdict TRUE — and
+  //     `scripts/docker-e2e.ts` excuses a null row ONLY for the id that carries that marker. Those
+  //     marker names cannot live in this list (there is one per artifact row, enumerated at run time),
+  //     so they reach the report through the dynamic pass-through below: a marker is an ordinary
+  //     TRUE assertion with no special handling here, and it is never a canonical "not reached" row.
+  //     The aggregate `userSurface.rowsDeclaredBound` stays the human-auditable index of the same ids.
+  "userSurface.probe",
+  "userSurface.rowsEnumerated",
+  "userSurface.rowsWitness",
+  "userSurface.rowsDeclaredBound",
+  //   · the command arm: the corpus guard plus one row per contributed command. `/mpd` and
+  //     `/mpd-model` are documented TUI-ONLY, so the palette is THEIR required surface; the other
+  //     five need the live `commands` registry AND the palette.
+  "userSurface.commandCorpus",
+  "userSurface.command.ulw",
+  "userSurface.command.ultrawork",
+  "userSurface.command.cellwork",
+  "userSurface.command.agent-teams",
+  "userSurface.command.mpd",
+  "userSurface.command.mpd-model",
+  //     NOTE: `userSurface.command.mpd-codegraph` is deliberately NOT listed. Measured 2026-10-27 on
+  //     a fully-mounted 0.16.1 boot, `/mpd-codegraph` answers on NEITHER surface (its row applies —
+  //     its own log sink proves that — and the command never reaches the registry or the palette).
+  //     That is a PRODUCT finding, recorded as a NON-GATING `userSurface.findings` entry rather than
+  //     laundered into a green command row or hidden behind an exclusion list here; the moment it is
+  //     repaired the same case records the row as TRUE and this comment stops being true.
+  "userSurface.findings",
+  //   · the negative control (a fabricated command must be absent while the palette is demonstrably
+  //     alive either side of it), the upgrade path (the PROFILE's row list is the one the boot
+  //     composed) and the isolation arm.
+  "userSurface.negativeControl",
+  "userSurface.profileRowListWins",
+  "userSurface.bundleResolution",
+  "userSurface.isolation",
   "boot.mcpToolNaming",
   "boot.mcpLiveSearch",
   //   · the three RESTORED capabilities.
@@ -381,6 +425,10 @@ const assertions: ReportAssertion[] = EXPECTED.map((name) => {
   if (row !== undefined) return { name, ok: row.ok ?? null, reason: redact(String(row.reason ?? "")), raw: redact(String(row.raw ?? "")) }
   return { name, ok: null, reason: "not reached: the run stopped before this assertion (see the steps in output.log)", raw: "" }
 })
+// Every name this list does not carry — one `userSurface.row.<id>` AND its `userSurface.bound.<id>`
+// marker per artifact row, plus the case's own helper rows — is appended AFTER the canonical block with
+// the verdict the run recorded. They are recorded, never synthesised: a marker the case never wrote is
+// simply absent, which is why the lane treats an unmarked null as a missing prerequisite.
 for (const [name, row] of recorded) {
   if (!EXPECTED.includes(name)) assertions.push({ name: redact(name), ok: row.ok ?? null, reason: redact(String(row.reason ?? "")), raw: redact(String(row.raw ?? "")) })
 }

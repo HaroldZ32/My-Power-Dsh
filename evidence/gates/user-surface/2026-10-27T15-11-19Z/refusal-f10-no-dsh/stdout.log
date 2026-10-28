@@ -1,0 +1,27 @@
+== user-surface-mount ==
+startedAt=2026-10-27T15:23:45.148Z
+profile=/home/haroldzhao/.dsh/profiles/dsh-tui
+staleBundle=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/stale-0.15.5
+evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/user-surface/2026-10-27T15-11-19Z/refusal-f10-no-dsh
+bundleDir=/home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+artifact version=0.16.1 layers=2 rows=69
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] declared spec="0.16.1"
+sandbox=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-wsGbYa (DSH_HOME=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-wsGbYa/dshhome, ws=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-user-surface/user-surface-mount-wsGbYa/ws)
+profile copied into the sandbox (source untouched, read-only)
+probe row appended to the SANDBOX profile's user layer:
+
+# QA instrumentation (user-surface-mount): mounted so the case can read the LIVE loader and the
+# harness command registry from inside the real boot. This row is not a product row and is never
+# one of the rows under assertion.
+- insert:
+    - id: qa-user-surface-probe
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/user-surface-probe.ts"
+      config:
+        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/user-surface/2026-10-27T15-11-19Z/refusal-f10-no-dsh/probe.json"
+        settleMs: 6000
+        ticks: 22
+
+HOME fixture written: .qa-user-surface/user-surface-mount-wsGbYa/home/.dsh-tui/onboarding.json, .qa-user-surface/user-surface-mount-wsGbYa/home/.dsh-tui/agent-preset.json preset=mpd
+REFUSED: --stale-bundle needs a `dsh` on PATH: `command -v dsh` answered nothing, so there is no installed harness package to copy beside the stale bundle — refusing instead of copying the current directory
+[mpd-qa] FAIL case=user-surface-mount lane=real reason=absent-dsh-binary prereq="command -v dsh" remedy="install @deepseek-ai/dsh so the stale anchor has a harness package to copy, or drop --stale-bundle"
+--stale-bundle needs a `dsh` on PATH: `command -v dsh` answered nothing, so there is no installed harness package to copy beside the stale bundle — refusing instead of copying the current directory

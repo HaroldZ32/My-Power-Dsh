@@ -1,0 +1,1 @@
+docs/assets/images/zh-CN/tui-team-dag.png 4320x1520 RGB

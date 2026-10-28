@@ -1,0 +1,37 @@
+=== BEFORE: the sequence at HEAD (git show HEAD:docker/entrypoint.sh) ===
+  run_step 14b-user-surface node "$APP_DIR/skills/dsh-qa/scripts/user-surface-mount.ts" \
+    --profile "$USER_SURFACE_PROFILE" \
+    --evidence "$OUT_DIR/user-surface" \
+    --json-out "$OUT_DIR/user-surface/result.json" \
+    --ndjson-out "$STATE_FILE"
+  append_step 14b-user-surface "$STEP_CODE" "$STEP_SECONDS" "14b-user-surface.log" "node skills/dsh-qa/scripts/user-surface-mount.ts --profile <installed dsh-tui profile>"
+=== AFTER: the sequence in the working tree (docker/entrypoint.sh) ===
+  run_step 14b-user-surface node "$APP_DIR/skills/dsh-qa/scripts/user-surface-mount.ts" \
+    --profile "$USER_SURFACE_PROFILE" \
+    --evidence "$OUT_DIR/user-surface" \
+    --json-out "$OUT_DIR/user-surface/result.json" \
+    --ndjson-out "$STATE_FILE"
+
+[before] STEPS_INDEX rows=2
+[before stdout] [mpd-qa] FAIL case=user-surface-mount lane=real reason=absent-fixture prereq="/tmp/tmp.EMIEdPLvpX/before/profile" remedy="dsh plugin --profile dsh-tui add ."
+[before] step ids in order: 14b-user-surface,14b-user-surface
+[before] counted: 14b-user-surface x2; 
+[before] raw steps.tsv (id<TAB>exit<TAB>seconds<TAB>log<TAB>cmd):
+[before row] 14b-user-surface	1
+[before row] 14b-user-surface	1
+
+[after] STEPS_INDEX rows=1
+[after stdout] [mpd-qa] FAIL case=user-surface-mount lane=real reason=absent-fixture prereq="/tmp/tmp.EMIEdPLvpX/after/profile" remedy="dsh plugin --profile dsh-tui add ."
+[after] step ids in order: 14b-user-surface
+[after] counted: 14b-user-surface x1; 
+[after] raw steps.tsv (id<TAB>exit<TAB>seconds<TAB>log<TAB>cmd):
+[after row] 14b-user-surface	1
+
+[after_else_arm] STEPS_INDEX rows=1
+[after_else_arm] step ids in order: 14b-user-surface
+[after_else_arm] counted: 14b-user-surface x1; 
+[after_else_arm] raw steps.tsv (id<TAB>exit<TAB>seconds<TAB>log<TAB>cmd):
+[after_else_arm row] 14b-user-surface	1
+
+[verdict] before=2 after=1 else-arm=1
+[verdict] PASS — the duplicate row is gone and the non-`run_step` else arm still writes its own row

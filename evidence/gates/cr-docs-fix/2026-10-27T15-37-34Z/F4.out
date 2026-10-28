@@ -1,0 +1,31 @@
+### F4 — docker/ui/shoot-team-dag.mts argument contract
+
+== missing all required args ==
+[shoot] missing required arguments
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2
+
+== WIDTH=abc (three required args present) ==
+[shoot] width must be a positive integer, got "abc"
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2
+
+== HEIGHT=abc ==
+[shoot] height must be a positive integer, got "abc"
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2
+
+== WIDTH=0 ==
+[shoot] width must be a positive integer, got "0"
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2
+
+== WIDTH=1.5 ==
+[shoot] width must be a positive integer, got "1.5"
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2
+
+== WIDTH=-20 ==
+[shoot] width must be a positive integer, got "-20"
+usage: shoot-team-dag.mts <url> <out.png> <out-facts.json> [width] [height] [locale]
+exit=2

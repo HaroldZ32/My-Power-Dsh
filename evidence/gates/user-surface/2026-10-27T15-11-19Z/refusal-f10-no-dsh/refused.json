@@ -1,0 +1,10 @@
+{
+  "case": "user-surface-mount",
+  "refused": true,
+  "exitCode": 2,
+  "reason": "--stale-bundle needs a `dsh` on PATH: `command -v dsh` answered nothing, so there is no installed harness package to copy beside the stale bundle — refusing instead of copying the current directory",
+  "pathDsh": "",
+  "pathAnchor": "",
+  "harnessSource": "",
+  "staleBundle": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/stale-0.15.5"
+}

@@ -1,0 +1,16 @@
+== A-1 palette-capture-failed (boot SUCCEEDED) -> expect ok=false got ok=false :: HELD
+   cause=-
+   sentence=the run reddened, but NOT for a named expected cause: bundleResolution needs source=install-anchor, version=0.15.5, sameCopyDigests=false, and profileRowListWins must name mpd-cellwork — a red anywhere else (boot crash, palette capture, structural failure) is NOT evidence that the stale install anchor was detected
+   unexplained=userSurface.negativeControl,userSurface.command.mpd,userSurface.command.ulw
+   exit-code-as---expect-red=1
+== A-2 boot-crash (no probe record) -> expect ok=false got ok=false :: HELD
+   cause=-
+   sentence=the run reddened, but NOT for a named expected cause: bundleResolution needs source=install-anchor, version=0.15.5, sameCopyDigests=false, and profileRowListWins must name mpd-cellwork — a red anywhere else (boot crash, palette capture, structural failure) is NOT evidence that the stale install anchor was detected
+   unexplained=userSurface.probe,userSurface.rowsWitness
+   exit-code-as---expect-red=1
+== B named stale-anchor cause -> expect ok=true got ok=true :: HELD
+   cause=stale-install-anchor:source=install-anchor,version=0.15.5,sameCopyDigests=false+profile-row-list-missing:mpd-cellwork
+   sentence=the named expected cause held (stale-install-anchor:source=install-anchor,version=0.15.5,sameCopyDigests=false+profile-row-list-missing:mpd-cellwork): every red in this run is its downstream consequence
+   unexplained=-
+   exit-code-as---expect-red=0
+scenarios=3 failed=0

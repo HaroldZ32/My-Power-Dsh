@@ -252,19 +252,91 @@ export function decideExit(result: ResultBody | null | undefined): number {
  * for an arm the caller explicitly asked for — with `--live` (or the browser lane on by default) a
  * null means the thing under test was never driven, and a run that greens through that is exactly how
  * the 2026-10-03 `MALFORMED_RESPONSE` defect stayed invisible: 52 of 53 assertions passed while no
- * model token had ever been produced. PURE, so `--self-test` exercises every arm without Docker.
+ * model token had ever been produced.
+ *
+ * THE DECLARED-BOUND EXCEPTION (measured 2026-10-27, the first real container run of step 14b): a
+ * `userSurface.row.<id>` the case could only prove COMPOSED — a preset-materialised row this plane
+ * cannot witness — is NULL by design, and requiring the whole prefix turned all 33 of them into
+ * "MISSING PREREQUISITE (exit 3)" even though the step had run and passed everything it could measure.
+ * The case therefore DECLARES each bound per id in a companion TRUE row, `userSurface.bound.<id>`
+ * (`declaredBoundMarker` in `skills/dsh-qa/scripts/user-surface-mount.ts`), and this reader excuses
+ * exactly those rows. The exception is deliberately narrow — nothing here reads a reason sentence:
+ * an UNMARKED null (the step never ran), a marker that is null or false (a declaration that was not
+ * made), a marker for a DIFFERENT id, and a marker on any prefix but `userSurface.row.` are all still
+ * unmeasured arms.
+ *
+ * PURE, so `--self-test` exercises every arm without Docker.
  *
  * @param result - The result.json body, or null/undefined when none was produced.
  * @param prefixes - Assertion-name prefixes whose `null` rows are fatal (e.g. `live.`, `ui.`).
+ * @param excluded - Names excused by mode, whatever their prefix.
  * @returns The names of the unevaluated assertions inside a required arm, in report order.
  */
 export function unmeasuredRequired(result: ResultBody | null | undefined, prefixes: readonly string[], excluded: readonly string[] = []): string[] {
   if (result === null || result === undefined || prefixes.length === 0) return []
+  /** The ids this body DECLARED bound, read once for the whole assertion list. */
+  const bound = declaredBoundIds(result)
   return (result.assertions ?? [])
     .filter((assertion: ResultAssertion) => assertion.ok === null
       && prefixes.some((prefix) => assertion.name.startsWith(prefix))
-      && !excluded.includes(assertion.name))
+      && !excluded.includes(assertion.name)
+      && !isDeclaredBoundRow(assertion.name, bound))
     .map((assertion) => assertion.name)
+}
+
+/** The name shape of one enumerated user-surface row: `userSurface.row.<id>`. */
+const USER_SURFACE_ROW_PREFIX = "userSurface.row."
+
+/** The name shape of the companion marker a declared bound writes: `userSurface.bound.<id>`, verdict TRUE. */
+const DECLARED_BOUND_PREFIX = "userSurface.bound."
+
+/**
+ * The ids a user-surface run DECLARED as composed-but-not-individually-proven on this plane.
+ *
+ * The declaration is a SEPARATE TRUE assertion per id, written by the case beside the row it belongs
+ * to. It is read here instead of being inferred from a `reason` sentence on purpose: prose cannot be
+ * audited or falsified by a self-test, an id can.
+ *
+ * @param result - The result.json body, or null/undefined when none was produced.
+ * @returns The declared ids; empty when the body carries no marker at all.
+ */
+export function declaredBoundIds(result: ResultBody | null | undefined): Set<string> {
+  /** The ids collected while reading the body's markers. */
+  const ids = new Set<string>()
+  for (const assertion of result?.assertions ?? []) {
+    if (assertion.name.startsWith(DECLARED_BOUND_PREFIX) && assertion.ok === true) ids.add(assertion.name.slice(DECLARED_BOUND_PREFIX.length))
+  }
+  return ids
+}
+
+/**
+ * Whether one null row is a DECLARED BOUND rather than a required arm this run never reached.
+ *
+ * ONLY a `userSurface.row.<id>` row can be excused, and only by a TRUE marker for the SAME id: the
+ * marker names one row, so it can never blanket-excuse another id, another prefix, or a FALSE row.
+ *
+ * @param name - The assertion name being read.
+ * @param bound - The ids this body declared, from {@link declaredBoundIds}.
+ * @returns True when this row's own id carries a declared-bound marker.
+ */
+function isDeclaredBoundRow(name: string, bound: ReadonlySet<string>): boolean {
+  return name.startsWith(USER_SURFACE_ROW_PREFIX) && bound.has(name.slice(USER_SURFACE_ROW_PREFIX.length))
+}
+
+/**
+ * The exit code a run reports once the required-arm gate has been applied.
+ *
+ * Stated ONCE so the driver's own verdict and the `--self-test` fixture arms cannot drift apart: a
+ * required arm that came back unmeasured is exit 3, and only a run whose required arms were all
+ * measured is judged by its own `ok` (0 pass, 1 fail, 2 no verdict).
+ *
+ * @param result - The result.json body, or null/undefined when none was produced.
+ * @param unmeasured - The required-arm gaps, as {@link unmeasuredRequired} returned them.
+ * @param missingRequired - Required names the body did not carry at all.
+ * @returns 3 when a required arm is missing, otherwise the body's own exit code.
+ */
+export function requiredArmExit(result: ResultBody | null | undefined, unmeasured: readonly string[], missingRequired: readonly string[]): number {
+  return unmeasured.length > 0 || missingRequired.length > 0 ? 3 : decideExit(result)
 }
 
 /** The rows a TEAM-PROJECT run must RECORD, per plane, in the order a reader checks them. */
@@ -307,12 +379,20 @@ export function missingOrNull(result: ResultBody | null | undefined, names: read
  * names would turn each mode's honest `null` into a false red. Team mode also REQUIRES the two
  * `teamproject.record.*` rows, so a verdict that never ran cannot pass by writing nothing.
  *
+ * `userSurface.` is REQUIRED in every mode and is never excluded: the user-surface arm (step 14b)
+ * asserts the installed artifact's rows and contributed commands on a real boot, which is the one
+ * class neither the composition rows nor the tool-presence rows can see.
+ *
  * @param opts - which arms this invocation asked for: live, the browser lane, the team project.
  * @returns the prefixes whose NULLs are fatal, and the exact names excused.
  */
 export function requiredPrefixesFor(opts: { live: boolean; browser: boolean; team: boolean }): { prefixes: readonly string[]; excluded: readonly string[] } {
   return {
     prefixes: [
+      // ALWAYS REQUIRED, in every mode: the user-surface arm is not opt-in (step 14b). A release whose
+      // rows or commands were never asserted is exactly the green light the 0.16.1 defect shipped
+      // through, so a null/missing `userSurface.*` row is a required-arm gap in every invocation.
+      "userSurface.",
       ...(opts.live ? ["live.", "boot.llmTurn"] : []),
       ...(opts.browser ? ["ui."] : []),
       ...(opts.team ? ["teamproject.record.web", "teamproject.record.tui"] : []),
@@ -562,6 +642,170 @@ function selfTest(): void {
   check("a passed row is never an unmeasured one", unmeasuredRequired(mixedArms, ["live."]).every((name) => name !== "live.web.toolCallsParsed"))
   check("no required arms means no gap", unmeasuredRequired(mixedArms, []).length === 0)
   check("a missing body has no required-arm gap", unmeasuredRequired(null, ["live."]).length === 0)
+
+  // 3b-bis. THE USER-SURFACE ARM IS REQUIRED IN EVERY MODE, and it has its own two falsifiers: a row
+  // recorded NULL and a row never recorded at all must both be caught. Both are arms of the gate the
+  // 0.16.1 defect needed — a lane that simply never ran the step left no row behind, and `ok` (which
+  // is "no assertion failed") then read the ABSENCE as a pass.
+  /** A body that ran every arm except the user-surface one. */
+  const noUserSurface: ResultBody = { ok: true, assertions: [{ name: "boot.rows", ok: true, reason: "ok" }] }
+  check("a body with no userSurface rows is missing them", missingOrNull(noUserSurface, ["userSurface.rowsWitness", "userSurface.command.ulw"]).join(",") === "userSurface.rowsWitness,userSurface.command.ulw")
+  /** A body whose user-surface step ran but could not evaluate its aggregate. */
+  const nullUserSurface: ResultBody = { ok: true, assertions: [{ name: "userSurface.rowsWitness", ok: null, reason: "not reached" }, { name: "userSurface.command.ulw", ok: true, reason: "ok" }] }
+  check("a null userSurface row is an unmeasured required arm", unmeasuredRequired(nullUserSurface, ["userSurface."]).join(",") === "userSurface.rowsWitness")
+  check("a null userSurface row is also caught by the presence reader", missingOrNull(nullUserSurface, ["userSurface.command.ulw", "userSurface.negativeControl"]).join(",") === "userSurface.negativeControl")
+  check("the userSurface prefix is required with NO flag at all", requiredPrefixesFor({ live: false, browser: false, team: false }).prefixes.includes("userSurface."))
+  check("the userSurface prefix is required in every mode", ["userSurface."].every((prefix) => [0, 1].every((live) => [0, 1].every((browser) => [0, 1].every((team) => requiredPrefixesFor({ live: live === 1, browser: browser === 1, team: team === 1 }).prefixes.includes(prefix))))))
+  check("the userSurface prefix is never in the exclusion list", !requiredPrefixesFor({ live: true, browser: true, team: true }).excluded.some((name) => name.startsWith("userSurface.")))
+
+  // 3b-ter. THE DECLARED-BOUND MARKER: what it MAY excuse, and what it may NEVER excuse. The rule lives
+  // in `unmeasuredRequired`; these arms fix its narrowness, because a blanket "bound" switch is exactly
+  // the softening this gate must not gain.
+  /** One declared-bound row, its marker, and a witnessed row beside them. */
+  const boundBody: ResultBody = {
+    ok: true,
+    assertions: [
+      { name: "userSurface.row.tool-fs", ok: null, reason: "declared bound", raw: "state=null" },
+      { name: "userSurface.bound.tool-fs", ok: true, reason: "declared bound", raw: "state=null" },
+      { name: "userSurface.row.mpd-cellwork", ok: true, reason: "sink", raw: "sink=mpd-cellwork" },
+    ],
+  }
+  check("a marker excuses the null row of ITS OWN id", unmeasuredRequired(boundBody, ["userSurface."]).length === 0)
+  check("the marker reader collects TRUE marker ids only", [...declaredBoundIds(boundBody)].join(",") === "tool-fs")
+  /** The same row with no marker at all: the case never declared this bound. */
+  const unmarkedBound: ResultBody = { ok: true, assertions: [{ name: "userSurface.row.tool-fs", ok: null, reason: "declared bound", raw: "" }] }
+  check("an UNMARKED null is still a missing prerequisite", unmeasuredRequired(unmarkedBound, ["userSurface."]).join(",") === "userSurface.row.tool-fs")
+  /** A marker recorded null: a declaration that was never made — and an unmeasured arm ITSELF. */
+  const nullMarker: ResultBody = { ok: true, assertions: [{ name: "userSurface.row.tool-fs", ok: null, reason: "" }, { name: "userSurface.bound.tool-fs", ok: null, reason: "not reached" }] }
+  check("a marker that is itself null declares nothing AND is an unmeasured arm", unmeasuredRequired(nullMarker, ["userSurface."]).join(",") === "userSurface.row.tool-fs,userSurface.bound.tool-fs")
+  /** A marker recorded false: same, and its own false is read by no null path. */
+  const falseMarker: ResultBody = { ok: false, assertions: [{ name: "userSurface.row.tool-fs", ok: null, reason: "" }, { name: "userSurface.bound.tool-fs", ok: false, reason: "declaration failed" }] }
+  check("a marker that is FALSE declares nothing", unmeasuredRequired(falseMarker, ["userSurface."]).join(",") === "userSurface.row.tool-fs")
+  /** A marker for a DIFFERENT id must not travel to this row. */
+  const otherMarker: ResultBody = { ok: true, assertions: [{ name: "userSurface.row.tool-fs", ok: null, reason: "" }, { name: "userSurface.bound.tool-jobs", ok: true, reason: "" }] }
+  check("a marker never excuses a DIFFERENT id", unmeasuredRequired(otherMarker, ["userSurface."]).join(",") === "userSurface.row.tool-fs")
+  /** A same-id marker outside the row prefix must not travel either. */
+  const wrongPrefix: ResultBody = { ok: true, assertions: [{ name: "userSurface.command.cellwork", ok: null, reason: "" }, { name: "userSurface.bound.cellwork", ok: true, reason: "" }] }
+  check("a marker never excuses a non-row prefix", unmeasuredRequired(wrongPrefix, ["userSurface."]).join(",") === "userSurface.command.cellwork")
+  /** The bound body with its bound row turned FALSE: the marker must not reach a FALSE verdict. */
+  const boundRowFalse: ResultBody = { ok: false, assertions: [{ name: "userSurface.row.tool-fs", ok: false, reason: "a declared bound that turned out DEFECTIVE" }, { name: "userSurface.bound.tool-fs", ok: true, reason: "" }] }
+  check("a FALSE user-surface row is never excused by its marker", requiredArmExit(boundRowFalse, unmeasuredRequired(boundRowFalse, ["userSurface."]), []) === 1)
+  check("an unmarked null is exit 3 in the shared exit composition", requiredArmExit(unmarkedBound, unmeasuredRequired(unmarkedBound, ["userSurface."]), []) === 3)
+  check("a fully measured body keeps its own exit code", requiredArmExit(boundBody, unmeasuredRequired(boundBody, ["userSurface."]), []) === 0)
+
+  // 3b-quater. THE FIXTURE REGRESSION on the REAL container report of 2026-10-27T03-58-45Z: 207
+  // assertions, 128 true / 1 false / 78 null, and those nulls include the 33 `userSurface.row.*`
+  // declared bounds that made the FIRST real run of step 14b exit 3 although it had passed every arm it
+  // could measure (52 true / 0 false / 33 null). The frozen body is replayed through the container's OWN
+  // reporter (`docker/lib/report.ts`) and read by the same `requiredArmExit` the driver uses, so this
+  // class of wiring defect is caught offline from now on instead of by running a container.
+  /** The frozen report this regression replays — the run whose driver exitCode was 3. */
+  const frozenPath = join(REPO, "evidence", "docker", "client-install", "2026-10-27T03-58-45Z", "result.json")
+  check("the frozen container report is present to replay", existsSync(frozenPath), frozenPath)
+  /** The frozen body, or null when the file is absent (the arms below then report the absence). */
+  const frozenReport = existsSync(frozenPath) ? readJson<ResultBody>(frozenPath) : null
+  /** The frozen report's assertion rows, in report order. */
+  const fixtureRows: readonly ResultAssertion[] = frozenReport?.assertions ?? []
+  /** The frozen report's user-surface rows. */
+  const fixtureUserRows = fixtureRows.filter((row) => row.name.startsWith("userSurface."))
+  /** The ids of its NULL `userSurface.row.*` rows: the declared bounds this defect was made of. */
+  const fixtureBoundIds = fixtureRows.filter((row) => row.name.startsWith(USER_SURFACE_ROW_PREFIX) && row.ok === null).map((row) => row.name.slice(USER_SURFACE_ROW_PREFIX.length))
+  /** The frozen report's OWN audit row — the bound list the case published so it stays auditable. */
+  const fixtureAudit = fixtureRows.find((row) => row.name === "userSurface.rowsDeclaredBound")
+  /** The ids that audit row lists, read off its `bound=<id>(<witness>),…` raw list. */
+  const fixtureAuditIds = String(fixtureAudit?.raw ?? "")
+    .replace(/^bound=/, "")
+    .split(",")
+    .filter((part) => part !== "" && part !== "-")
+    .map((part) => part.replace(/\(.*$/, ""))
+  check("the fixture is the 207-row report with its 33 declared bounds",
+    fixtureRows.length === 207 && fixtureUserRows.length === 85 && fixtureBoundIds.length === 33,
+    `rows=${String(fixtureRows.length)} userSurface=${String(fixtureUserRows.length)} bound=${String(fixtureBoundIds.length)}`)
+  check("its own rowsDeclaredBound row lists exactly those 33 ids",
+    fixtureAudit?.ok === true && fixtureAuditIds.length === fixtureBoundIds.length && fixtureAuditIds.every((id) => fixtureBoundIds.includes(id)),
+    `audit=${String(fixtureAuditIds.length)} nulls=${String(fixtureBoundIds.length)}`)
+  /** The companion markers the FIXED case emits for that audited list: ONE TRUE row per id. */
+  const fixtureMarkers: readonly ResultAssertion[] = fixtureAuditIds.map((id) => ({
+    name: DECLARED_BOUND_PREFIX + id,
+    ok: true,
+    reason: "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL",
+    raw: "marker replayed from the frozen report's rowsDeclaredBound audit row",
+  }))
+  /**
+   * Run the container's own reporter over one replay's rows and read the body it publishes.
+   * @param label The replay's scratch-directory name.
+   * @param rows The assertion rows the entrypoint would have recorded for this run.
+   * @returns The published result.json body, or null when the reporter wrote none.
+   */
+  const replayThroughReporter = (label: string, rows: readonly ResultAssertion[]): ResultBody | null => {
+    /** The state directory the entrypoint would have written for this replay. */
+    const work = join(SELFTEST_DIR, "user-surface-fix", label, "work")
+    /** The evidence directory the reporter publishes into. */
+    const out = join(SELFTEST_DIR, "user-surface-fix", label, "out")
+    mkdirSync(join(work, "steps"), { recursive: true })
+    mkdirSync(out, { recursive: true })
+    writeFileSync(join(work, "assertions.ndjson"), rows.map((row) => JSON.stringify({ name: row.name, ok: row.ok, reason: row.reason ?? "", raw: row.raw ?? "" })).join("\n") + "\n")
+    spawnSync(process.execPath, [join(DOCKER_DIR, "lib", "report.ts"), "--work", work, "--out", out], { encoding: "utf8", env: { ...process.env, MPD_E2E_FORCE_LEAK: "" } })
+    return existsSync(join(out, "result.json")) ? readJson<ResultBody>(join(out, "result.json")) : null
+  }
+  /** The requirement lists the CREDENTIAL-FREE invocation that produced the fixture used. */
+  const replayPrefixes = requiredPrefixesFor({ live: false, browser: false, team: false })
+  /**
+   * The required-arm gaps of one replay, read exactly as the driver reads them.
+   * @param body The replay's published body.
+   * @returns The unmeasured names, in report order.
+   */
+  const replayGaps = (body: ResultBody | null): string[] => unmeasuredRequired(body, replayPrefixes.prefixes, replayPrefixes.excluded)
+  /**
+   * Read one replay the way the driver does, print the reading for the evidence log, and answer its code.
+   * @param label The reading's name, printed verbatim.
+   * @param body The replay's published body.
+   * @returns The exit code the driver would report for this body.
+   */
+  const readReplay = (label: string, body: ResultBody | null): number => {
+    /** The required-arm gaps this reading found. */
+    const gaps = replayGaps(body)
+    /** The exit code the driver would report for this body. */
+    const exitCode = requiredArmExit(body, gaps, [])
+    /** The names the reporter recorded FALSE, so a reading can be quoted whole. */
+    const falses = (body?.assertions ?? []).filter((row) => row.ok === false).map((row) => row.name)
+    console.log(`[self-test] replay ${label}: rows=${String((body?.assertions ?? []).length)} exit=${String(exitCode)} unmeasured=${String(gaps.length)} false=[${falses.join(",")}]`)
+    return exitCode
+  }
+  /** The frozen rows with the artifact-freshness row flipped green: isolates the bound wiring from that real drift. */
+  const greenRows: readonly ResultAssertion[] = fixtureRows.map((row) => (row.name === "pack.staticCoherence" ? { ...row, ok: true, reason: "replay: the artifact-freshness drift set aside" } : row))
+  /** BEFORE: the report exactly as the container recorded it — no marker anywhere. */
+  const beforeReplay = replayThroughReporter("before", fixtureRows)
+  /** AFTER: the same report plus the markers the fixed case emits for its own audited bound ids. */
+  const afterReplay = replayThroughReporter("after", [...fixtureRows, ...fixtureMarkers])
+  check("BEFORE the fix the frozen report is exit 3 with 33 unmeasured rows",
+    readReplay("before (as recorded)", beforeReplay) === 3 && replayGaps(beforeReplay).length === 33)
+  check("AFTER the fix the SAME report is no longer exit 3 — it is exit 1 for the one real false",
+    readReplay("after (markers)", afterReplay) === 1 && replayGaps(afterReplay).length === 0)
+  check("the reporter carries every marker through and the one false is still the real freshness row",
+    (afterReplay?.assertions ?? []).filter((row) => row.name.startsWith(DECLARED_BOUND_PREFIX)).length === 33
+      && (afterReplay?.assertions ?? []).length === 240
+      && (afterReplay?.assertions ?? []).filter((row) => row.ok === false).map((row) => row.name).join(",") === "pack.staticCoherence")
+  check("with that drift aside the same body is exit 0",
+    readReplay("after (drift aside)", replayThroughReporter("after-green", [...greenRows, ...fixtureMarkers])) === 0)
+  /** The first audited bound id: the id both falsifier arms act on. */
+  const falsifiedId = fixtureAuditIds[0] ?? ""
+  /** GREEN + that bound row turned FALSE, its marker still present. */
+  const boundFalse = replayThroughReporter("bound-false", [
+    ...greenRows.map((row) => (row.name === USER_SURFACE_ROW_PREFIX + falsifiedId ? { ...row, ok: false, reason: "replay: a declared bound recorded FALSE" } : row)),
+    ...fixtureMarkers,
+  ])
+  check("a bound row turned FALSE reddens the run (exit 1, never 0 and never 3)",
+    readReplay("falsifier: bound row FALSE", boundFalse) === 1
+      && (boundFalse?.assertions ?? []).filter((row) => row.ok === false).map((row) => row.name).join(",") === USER_SURFACE_ROW_PREFIX + falsifiedId)
+  /** GREEN + every marker except that one id's: a bound that was never declared. */
+  const markerDropped = replayThroughReporter("marker-dropped", [...greenRows, ...fixtureMarkers.filter((row) => row.name !== DECLARED_BOUND_PREFIX + falsifiedId)])
+  check("dropping ONE marker puts exactly that row back into exit 3",
+    readReplay("falsifier: marker dropped", markerDropped) === 3 && replayGaps(markerDropped).join(",") === USER_SURFACE_ROW_PREFIX + falsifiedId)
+  /** GREEN + markers minus one canonical, NON-bound row: a verdict that never wrote its row at all. */
+  const rowDeleted = replayThroughReporter("row-deleted", [...greenRows.filter((row) => row.name !== "userSurface.command.ulw"), ...fixtureMarkers])
+  check("deleting a non-bound row reddens the run with exit 3",
+    readReplay("falsifier: non-bound row deleted", rowDeleted) === 3 && replayGaps(rowDeleted).join(",") === "userSurface.command.ulw")
 
   // 3c. the arm-selecting flags: `--require-live` is the long spelling of `--live`, and
   // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).
@@ -1380,8 +1624,6 @@ async function main(): Promise<void> {
   }
   if (!existsSync(join(evidence, "output.log"))) writeFileSync(join(evidence, "output.log"), readFileSync(consoleLog, "utf8"))
 
-  /** The process exit code this run will report (0 pass, 1 fail, 2 no verdict). */
-  const exitCode = decideExit(result)
   // THE REQUIRED-ARM GATE. An arm the caller asked for that came back unevaluated is a MISSING
   // PREREQUISITE, not a pass — exit 3, the same code `--require-docker` uses for a skipped lane. This
   // is what makes `--live` and the browser lane unfakeable: the run cannot green by not running them.
@@ -1391,6 +1633,10 @@ async function main(): Promise<void> {
   // two `teamproject.record.*` rows become REQUIRED. Outside team mode the reverse holds: `ui.teamBoard`
   // is not attempted, and the rest of the `ui.` arm stays required. `requiredPrefixesFor` is the ONE
   // place both lists live, so a mode cannot quietly stop requiring an arm.
+  // A DECLARED BOUND IS NOT A MISSING PREREQUISITE: the user-surface arm excuses a null row only when
+  // the case ALSO declared that same id bound in a TRUE `userSurface.bound.<id>` row — the marker, never
+  // a reason sentence. `unmeasuredRequired` is the ONE place that rule lives, and `requiredArmExit` is
+  // the ONE place the resulting exit code is computed (the offline fixture arms call it too).
   // TEAM MODE'S PREFLIGHT ALREADY RAN before the build (see `teamProjectRequested` above), so the
   // requirement lists below are built without a second, late refusal.
   /** The prefixes whose NULLs are fatal here, and the exact names each mode may honestly leave NULL. */
@@ -1405,8 +1651,8 @@ async function main(): Promise<void> {
   // `unmeasuredRequired` and to `ok`, so the required names are checked against the body directly.
   /** The required team rows absent or null in this run's result. */
   const teamRowsMissing = teamProjectRequested ? missingOrNull(result, requiredTeamNames()) : []
-  /** The verdict after the requirement gate. */
-  const finalExit = unmeasured.length > 0 || teamRowsMissing.length > 0 ? 3 : exitCode
+  /** The verdict after the requirement gate (3 when a required arm is missing, else the run's own code). */
+  const finalExit = requiredArmExit(result, unmeasured, teamRowsMissing)
   writeFileSync(driverLog, JSON.stringify({
     startedAt,
     finishedAt: new Date().toISOString(),

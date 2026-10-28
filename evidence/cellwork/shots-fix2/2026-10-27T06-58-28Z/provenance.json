@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-27T06-58-28Z",
+  "subject": "the two remaining DAG figures: re-shot to fit (web) and re-captured on a real PTY (tui), plus a measurement gate",
+  "files": {
+    "docker/ui/measure-shots.py": {
+      "sha256": "0871f0c1f9fac1f6094bd7c978633c16291d8bb32ca33edd182ec770f4b423e2",
+      "bytes": 27473
+    },
+    "docker/ui/shoot-team-dag.mts": {
+      "sha256": "64f4aa705c1bc795221841e4b8b88f6b01e73ab4452dd1e48bfb5d7476090b4d",
+      "bytes": 11767
+    },
+    "docker/ui/shoot-team-dag.sh": {
+      "sha256": "3d82e9805a38042ffe098eadb805dc2aff48a10406a60b2ed90045b120036d30",
+      "bytes": 3625
+    },
+    "docker/ui/tui-capture.sh": {
+      "sha256": "067d3ee724c418aedbaa7c19e39f34bb3952bfc424694f1005aca517887948e6",
+      "bytes": 35047
+    },
+    "docs/assets/images/web-team-dag-groups.png": {
+      "sha256": "9f5826ee9be9fc3a620c6516a11cc0146c7543d13f9141accb679276bc6f7b83",
+      "bytes": 203831,
+      "size": [
+        2608,
+        1094
+      ]
+    },
+    "docs/assets/images/zh-CN/web-team-dag-groups.png": {
+      "sha256": "014a88566f8e9d5e0ff5fc43d7de633d4e445d98d0b795b8b259aa5f0b8b9296",
+      "bytes": 201644,
+      "size": [
+        2608,
+        1094
+      ]
+    },
+    "docs/assets/images/tui-team-dag.png": {
+      "sha256": "29d2d6a26322216a6e288ba1b9b31173b2a58ca8bc7903d3f2704cfdb96e7488",
+      "bytes": 61518,
+      "size": [
+        2180,
+        1330
+      ]
+    },
+    "docs/index.md": {
+      "sha256": "0ceed644ecef13e0b4864398b8322fdc9035794c7d8900aac3e0b2b15c7b3f8d",
+      "bytes": 14544
+    },
+    "docs/index.zh-CN.md": {
+      "sha256": "2ea62b8ad2c425827c7cf329945374a9b36214750b2489bd4664b9283da941e0",
+      "bytes": 13810
+    },
+    "evidence/cellwork/shots/2026-10-26T16-25-00Z/shot-facts.json": {
+      "sha256": "4e85d9b332acd2b8cd3bb52fa108f1354019f2614df9b504d49d16f49d2cc985",
+      "bytes": 22186
+    }
+  },
+  "before": {
+    "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/before/web-team-dag-groups.png": {
+      "sha256": "072c7b0882eb623a522e529a41a23c61cd0039252872194d1bc0ae7ed22304bf",
+      "bytes": 189652,
+      "size": [
+        2068,
+        1169
+      ]
+    },
+    "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/before/web-team-dag-groups.zh-CN.png": {
+      "sha256": "3a927fdd76530d01b857db55f5280a0a37e742efe2b5a3e61827f57750891c57",
+      "bytes": 185616,
+      "size": [
+        2068,
+        1169
+      ]
+    },
+    "evidence/cellwork/shots-fix2/2026-10-27T06-58-28Z/before/tui-team-dag.png": {
+      "sha256": "e4c808036da0fe287693a68fbcb2ffdc32227095ac80b535a7380eaeb3bf1dd8",
+      "bytes": 68668,
+      "size": [
+        3120,
+        1330
+      ]
+    }
+  },
+  "container": {
+    "name": "ui-ui-1",
+    "image": "mpd-ui-view:latest",
+    "dsh_tui": "0.17.0 (launcher)",
+    "node": "v24.21.0",
+    "web_profile": "DSH_HOME=/data/dsh-web, the checkout's mpd-team-core-plugin/dist + mpd-bundle-plugin/{dist,client.js} sha256-compared equal to the checkout before the capture",
+    "tui_home": "DSH_HOME=/data/dsh-tui, HOME=/data/home-tui, workspace /data/ws"
+  },
+  "fixtures": {
+    "web": "team-nested-parent + team-nested-sub (nested-fixture.ts)",
+    "tui": "team-2026-10-05T22-30-00.000Z / webui-tui-i18n, board=normal (6 tasks, 5 members, team-fixture.mts)"
+  }
+}

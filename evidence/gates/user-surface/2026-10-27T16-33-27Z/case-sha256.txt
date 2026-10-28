@@ -1,0 +1,15 @@
+# case-sha256 — measured 2026-10-27T16:44:04Z
+# edited files (the wave's whole source diff)
+0e066fb72cd65ee9fea157b0bf3122c01a595323a9e5f2ec848d0007b88d8ef9  docker/ui/shoot-team-dag.sh
+67a25b98be72c27341183b68ca40e668921f0d8708513212c643e6b82c3a1098  skills/dsh-qa/SKILL.md
+2d16e14e283b29a5703058258cb7fc6fe64704be749b1034420fffa69a43ecc7  skills/dsh-qa/scripts/lib/user-surface-eval.ts
+418c05de237d55514f1094895efa66885b4c9b078c958acf261132613cdf9a1b  skills/dsh-qa/scripts/user-surface-mount.ts
+# records
+6768d69c705d5c0f7a283444bd9d47ed6db3e41133e9bfb37d08e0ec2d9c1e0c  evidence/gates/user-surface/2026-10-27T16-33-27Z/red/result.json
+b7c9467dd6a1688165bbd91d4d08ac170b5c1b730909c31c6c198da7e187cbdd  evidence/gates/user-surface/2026-10-27T16-33-27Z/red/expect-red.json
+606fb38f238a2b73ae16f01a5f763b43313f89dfe345ef57be623bb689bdbd35  evidence/gates/user-surface/2026-10-27T16-33-27Z/green/result.json
+78056e9a2fcb7ed479123b0dafc4b78424dd2e4431cd1092f7adfd22f592f5aa  evidence/gates/user-surface/2026-10-27T16-33-27Z/red-nofilter/result.json
+3a1806a2a0f289173ec32e746e2bce5821c08af1c9e27bd26e72f373f5d6f84e  evidence/gates/user-surface/2026-10-27T16-33-27Z/red-vacuous/result.json
+f5f0860ca00e431df4610c86668cbd398abe538897ebc71d3bf24776e97b42e4  evidence/gates/user-surface/2026-10-27T16-33-27Z/red-vacuous/expect-red.json
+213c6909130e5b6899881c5fe097eb718a8064c3c0c48c371223b1cc3ec72d55  evidence/gates/user-surface/2026-10-27T16-33-27Z/README.md
+17002ed4bec1b13b269bbe2743c13ae800785c6eec95029278aed1acb3cf1bf8  evidence/gates/user-surface/2026-10-27T16-33-27Z/arms/expect-red-unit-demo.mjs

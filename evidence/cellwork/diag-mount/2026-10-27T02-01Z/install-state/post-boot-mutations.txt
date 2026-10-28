@@ -1,0 +1,2 @@
+# files whose bytes the boots changed or created (copy-time manifest vs post-boot manifest)
+# NONE: the 18721-file manifest is byte-identical after the boots.

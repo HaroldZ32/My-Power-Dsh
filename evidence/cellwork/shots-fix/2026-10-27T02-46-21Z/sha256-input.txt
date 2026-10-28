@@ -1,0 +1,7 @@
+81c968312f3c54bfee1de726627d24df255d10c930894a491f69ff288722c97d  evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/renderer-before.py
+9ee69b3b14f75788e80fe871651cbf1abb2e538708ff86070011f720a4dd016d  evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/renderer-after.py
+9ee69b3b14f75788e80fe871651cbf1abb2e538708ff86070011f720a4dd016d  docker/ui/tui-render.py
+e94ff9d89de121db2fa79936c8cd8744a7b60bf52c5fb936aec15f96e99c3020  evidence/cellwork/shots/2026-10-26T16-25-00Z/tui-pane-en.txt
+8511d26ddf5af43f8b5af5d4a6f84f141fa2a86a229db99009a38fd3eca25fc4  evidence/cellwork/shots-fix/2026-10-27T02-46-21Z/before/shipped-tui-team-dag-groups.png
+426a748799aa1cfccfd84f35456f2a08aa27c69aa503213cc3e89e2361815655  docs/assets/images/tui-team-dag-groups.png
+e4c808036da0fe287693a68fbcb2ffdc32227095ac80b535a7380eaeb3bf1dd8  docs/assets/images/tui-team-dag.png

@@ -58,6 +58,9 @@ SESSION="${MPD_UI_TUI_SESSION:-tui}"
 # caller invokes it.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RENDER="$HERE/tui-render.py"
+# The SAME measurement tool the Web capture lane runs (`docker/ui/shoot-team-dag.sh`), in its `tui` mode:
+# one rule — "a screenshot must be measured" — with a mode per surface instead of two hand-made checks.
+MEASURE="$HERE/measure-shots.py"
 # Scratch inside the container's writable volume, never in the deliverable directory: a reader must never
 # have to ask which of two files beside a PNG is the figure.
 SCRATCH="${MPD_UI_TUI_SCRATCH:-/data/tui-scratch}"
@@ -86,14 +89,21 @@ BOARD_KIND="${MPD_UI_TUI_BOARD:-normal}"
 #
 # AS FRACTIONS, NOT COLUMN NUMBERS, deliberately: a fraction survives an overridden geometry.
 #
-# THE WIDTH IS THE FULL PANE, and the previous 0.614 was a MEASURED MISTAKE. The shipped
-# `tui-team-dag.png` is a FULL-WIDTH window — its own capture carried the whole 156 cells of a
-# 158-wide pane, key-hint line included — while 0.614 reproduced 97 cells and cut every long row
-# mid-word (`4 lin`, `ui-re`, `p bo`). Reproduced 2026-10-20 and read back off the tiles: the team
-# figure is the panel's own width, so the width fraction is 1 and the DAG's right-hand columns and the
-# hint line underneath stay in the picture. The HEIGHT covers the header, the roster line, the DAG and
-# the three hint lines (35 rows of a 45-row pane).
-TEAM_WIN_W_FRAC="1"
+# THE WIDTH IS 109 OF 158 COLUMNS, MEASURED OFF THE SCENE'S OWN TEXT — not the full pane, and not
+# 102/158 either. Three numbers decide it, all re-read on the 2026-10-27 capture of the normal fixture:
+#   · the full 158-column window produced the 3120 px tile that was shipped: its widest text row ends
+#     at cell 107, so 47 of its 156 columns carry nothing but padding between that row and the panel
+#     border, and at the README's display width a 20 px cell is 5.6 px — the unreadable crop the
+#     102/158 rule was written to replace;
+#   · the widest TEXT row is the roster line, which ends at cell 107 (`…○ui-reviewer 0/1`), and the
+#     hint row ends at cell 100 — so a 102-column window would cut the roster mid-word, the exact
+#     `4 lin` / `ui-re` / `p bo` defect the previous 0.614 reproduced;
+#   · 109 columns keeps that roster plus two cells of margin, and 109 x 20 px = 2180 px is 8.1 px per
+#     cell at the README's display width — the published readability rule (>= 8 px per cell).
+# 109/158 = 0.6899. The HEIGHT covers the header, the progress row, the roster, the DAG and the three
+# hint lines (35 rows of a 45-row pane), and the band now starts at the SCENE'S OWN top border row
+# (computed per run below) instead of assuming row 0, because the 0.17.0 scene draws one row down.
+TEAM_WIN_W_FRAC="0.6899"
 TEAM_WIN_H_FRAC="0.78"
 SIDEBAR_WIN_H_FRAC="0.45"
 # Cells of headroom a text-anchored window keeps past the text it frames.
@@ -219,6 +229,38 @@ render_band() {
   python3 "$RENDER" "$ansi" "$OUT_DIR/$name.png" "--rows=$rows_band" "--cols=$cols_band" "--scale=$SCALE"
 }
 
+# Measure a rendered band against the SAME pane text it was cropped from, and refuse it when a frame's
+# corners or its vertical sides disagree. The numbers land in the run's measure.log so a reviewer reads
+# them instead of trusting the picture; a FAIL removes the PNG, because an unmeasured figure must not
+# reach the deliverable directory at all.
+# $1 the PNG, $2 the pane text, $3 the row band, $4 the column band.
+measure_band() {
+  local png="$1" pane="$2" rows_band="$3" cols_band="$4"
+  printf '== %s (rows %s, cols %s)\n' "$(basename "$png")" "$rows_band" "$cols_band" >>"$EVIDENCE_DIR/measure.log"
+  if python3 "$MEASURE" tui --pane "$pane" --png "$png" --rows "$rows_band" --cols "$cols_band" \
+      --scale "$SCALE" --label "$(basename "$png")" >>"$EVIDENCE_DIR/measure.log" 2>&1; then
+    return 0
+  fi
+  rm -f "$png"
+  return 1
+}
+
+# The FIRST row of the SAVED pane text that carries the team scene's own top border. It is FOUND, not
+# assumed: the 0.17.0 scene draws its frame one row down, and a window anchored on row 0 therefore
+# shipped a blank row above the border. It reads the SAME file `measure_band` measures against — never a
+# fresh `capture-pane`: a redraw or a scroll between the capture and this call would otherwise anchor the
+# crop on a different screen than the one the measurement checks. Falls back to 0 when the border is not
+# in the file (a marker hit that changes).
+# $1 the saved pane text written by `pane_joined` for this scene.
+team_top_row() {
+  local pane="$1"
+  [ -s "$pane" ] || { printf '0\n'; return 0; }
+  python3 -c 'import sys
+rows = [line.rstrip("\n") for line in open(sys.argv[1], encoding="utf-8", errors="replace")]
+hits = [index for index, line in enumerate(rows) if "\u250c" in line and "MPD team" in line]
+print(hits[0] if hits else 0)' "$pane"
+}
+
 # ── THE MARKERS ───────────────────────────────────────────────────────────────
 # Each names the surface that emits it and NOTHING else, so a hit is evidence that the surface opened
 # rather than evidence that the app is alive.
@@ -282,6 +324,7 @@ for tool in tmux node python3; do
   command -v "$tool" >/dev/null 2>&1 || { log "FATAL: $tool is not on PATH (the entrypoint installs it)"; exit 3; }
 done
 [ -s "$RENDER" ] || { log "FATAL: $RENDER is missing — the rasterizer ships beside this script"; exit 3; }
+[ -s "$MEASURE" ] || { log "FATAL: $MEASURE is missing — every figure must be measured before it ships"; exit 3; }
 
 # ── the session, in the requested language ────────────────────────────────────
 # The restart is DELEGATED to restart-tui.sh — THE one place that knows how to start this session
@@ -316,10 +359,16 @@ capture_scenes() {
   if wait_marker "$TEAM_MARKER"; then
     pane_joined >"$EVIDENCE_DIR/tui-team-dag.pane.txt"
     pane_ansi >"$ansi"; cp -f "$ansi" "$EVIDENCE_DIR/tui-team-dag.ansi"
-    band_rows="0:$team_rows"; band_cols="0:$team_cols"
+    local team_top
+    team_top="$(team_top_row "$EVIDENCE_DIR/tui-team-dag.pane.txt")"
+    band_rows="$team_top:$((team_top + team_rows))"; band_cols="0:$team_cols"
     if render_band "$ansi" "tui-team-dag" "$band_rows" "$band_cols" >/dev/null; then
-      record "tui-team-dag" true "$TEAM_MARKER" "$(line_of "$TEAM_MARKER")" "$OUT_DIR/tui-team-dag.png" \
-        "rows=$band_rows cols=$band_cols scale=$SCALE lang=$LANG_KIND geometry=${COLS}x${height}"
+      if measure_band "$OUT_DIR/tui-team-dag.png" "$EVIDENCE_DIR/tui-team-dag.pane.txt" "$band_rows" "$band_cols"; then
+        record "tui-team-dag" true "$TEAM_MARKER" "$(line_of "$TEAM_MARKER")" "$OUT_DIR/tui-team-dag.png" \
+          "rows=$band_rows cols=$band_cols scale=$SCALE lang=$LANG_KIND geometry=${COLS}x${height} measure=pass"
+      else
+        record "tui-team-dag" false "$TEAM_MARKER" "" "" "measurement failed — see measure.log"; failed=1
+      fi
     else
       record "tui-team-dag" false "$TEAM_MARKER" "" "" "renderer failed"; failed=1
     fi

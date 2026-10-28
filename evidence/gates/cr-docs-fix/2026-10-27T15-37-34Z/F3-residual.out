@@ -1,0 +1,6 @@
+== facts root is a JSON array ==
+measure-shots.py: unusable input (AttributeError): 'list' object has no attribute 'get'
+exit=2
+== capturedWidth is null ==
+measure-shots.py: unusable input (TypeError): int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+exit=2

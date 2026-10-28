@@ -1,0 +1,22 @@
+{
+ "info": {
+  "found": false
+ }
+}
+{
+ "targetCount": 0,
+ "after": {
+  "tabs": [],
+  "mpd": 0,
+  "text": "New Session\nPlugins\nAutomation tasks\nMore\nWorkspaces\nws\nNew Session\nMore\nOpen sidebar\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model"
+ },
+ "logs": [
+  "log [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+  "error Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "log [mpd] settings section: form updated status=ready value=present",
+  "error Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "log [mpd] settings section: form updated status=ready value=present",
+  "error Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+  "warning [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)"
+ ]
+}

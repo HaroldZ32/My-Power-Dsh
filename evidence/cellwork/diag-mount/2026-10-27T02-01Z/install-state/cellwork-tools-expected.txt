@@ -1,0 +1,14 @@
+cellwork_activate
+cellwork_context
+cellwork_dispatch
+cellwork_handoff
+cellwork_inbox
+cellwork_recon
+cellwork_requirements
+cellwork_send
+cellwork_split
+cellwork_start
+cellwork_status
+cellwork_stop
+cellwork_subteam
+cellwork_supervise

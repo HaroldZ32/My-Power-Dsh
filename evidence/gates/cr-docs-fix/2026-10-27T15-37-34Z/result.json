@@ -1,0 +1,73 @@
+{
+  "role": "Senior Engineer",
+  "branch": "fix/user-surface-closure",
+  "timestamp_utc": "2026-10-27T15-37-34Z",
+  "findings": {
+    "F1": {
+      "status": "FIXED",
+      "file": "AGENTS.md:216",
+      "moved_to": "agent-references/verification-flow.md:84-91,192",
+      "criterion": "wc -c AGENTS.md = 63482 bytes; 65536-63482 = 2054 >= 2048 margin (PASS)",
+      "evidence": "F1.out"
+    },
+    "F2": {
+      "status": "VERIFIED — no defect",
+      "file": "docker/entrypoint.sh:2059-2072",
+      "criterion": "executable repro: before=2 append_step rows, after=1, else-arm=1; PASS",
+      "evidence": "F2.out"
+    },
+    "F3": {
+      "status": "FIXED (landed) + 1 residual patched",
+      "file": "docker/ui/measure-shots.py:64,67-73,537-550",
+      "criterion": "matrix: no args/missing file/malformed JSON/array root/null width/empty boxes/missing --pane/bad --rows -> exit 2; measured FAIL -> 1; PASS -> 0",
+      "evidence": "F3.out, F3-residual.out"
+    },
+    "F4": {
+      "status": "FIXED",
+      "file": "docker/ui/shoot-team-dag.mts:24-41,135",
+      "criterion": "no args -> exit 2; WIDTH=abc/HEIGHT=abc/0/1.5/-20 -> exit 2 (usage printed)",
+      "evidence": "F4.out"
+    },
+    "F5": {
+      "status": "FIXED",
+      "file": "docker/ui/shoot-team-dag.mts:96,123-125,202; docker/ui/measure-shots.py:488-489,498",
+      "criterion": "self-test exit 0; scroll=(0,0) PASS; scroll=(0,120) FAIL (not at vertical scroll origin)",
+      "evidence": "F5.out, F5-self-test.out"
+    },
+    "F6": {
+      "status": "FIXED",
+      "file": "docker/ui/shoot-team-dag.sh:62-69; docker/ui/shoot-team-dag.mts:7-9",
+      "criterion": "real wrapper + docker stub: rejected measure -> exit 1 and $OUT absent; passing measure -> exit 0 and $OUT present (741 bytes)",
+      "evidence": "F6.out, F6-header.out"
+    },
+    "F7": {
+      "status": "FIXED",
+      "file": "docker/ui/tui-capture.sh:248-262,360,363,366",
+      "criterion": "saved-file border row 3 -> 3; old live screen border row 0 -> 0; function body has no pane_rows/capture-pane; call site passes tui-team-dag.pane.txt",
+      "evidence": "F7.out, F7-source.out"
+    },
+    "F8": {
+      "status": "FIXED",
+      "file": "docs/index.md:114-121; docs/index.zh-CN.md:111-118",
+      "criterion": "EN/ZH asset basename sets equal; every raster row README-referenced; stale rows tui-team-dag.png and web-team-board-v2.png absent; verify:docs PASS",
+      "evidence": "F8.out, verify-docs.out"
+    }
+  },
+  "gates": {
+    "measure_self_test": {"command": "python3 docker/ui/measure-shots.py --self-test", "exit": 0, "evidence": "F5-self-test.out"},
+    "bash_n": {"command": "bash -n docker/entrypoint.sh docker/ui/shoot-team-dag.sh docker/ui/tui-capture.sh", "exit": 0, "evidence": "bash-n.out"},
+    "verify_docs": {"command": "bun run verify:docs", "exit": 0, "evidence": "verify-docs.out"},
+    "verify_manual_paths": {"command": "node scripts/verify-manual-paths.ts", "exit": 0, "evidence": "verify-manual-paths.out"},
+    "verify_manifest": {"command": "bun run verify:manifest", "exit": 0, "evidence": "verify-manifest.out"},
+    "verify_comments": {"command": "bun run verify:comments", "exit": 0, "evidence": "verify-comments.out"},
+    "verify_workflows": {"status": "SKIPPED", "reason": ".github/** untouched", "evidence": "workflows-skip.out"}
+  },
+  "repin": "repin still needed by captain (skills/** dirty from another lane; node scripts/repin-vendor.ts NOT run)",
+  "bounds": [
+    "Docker real-machine lane not run; no UI-VIEW container on this host (F6 uses a docker stub; measurement and cleanup are real)",
+    "Playwright happy path of shoot-team-dag.mts not executed (browser package absent); argument refusals run on the real file",
+    "F7 uses synthetic pane files; tmux/real TUI not run",
+    "verify-workflows skipped because .github/** is untouched",
+    "no git commit was made"
+  ]
+}
