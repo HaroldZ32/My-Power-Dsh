@@ -1,0 +1,41 @@
+{
+  "filesLength": 26,
+  "duplicates": [
+    {
+      "path": "cordis.patch.yml",
+      "count": 2,
+      "indices": [
+        8,
+        21
+      ]
+    }
+  ],
+  "files": [
+    "packages/**",
+    "skills/**",
+    "presets/**",
+    "extensions/**",
+    "templates/**",
+    "docs/**",
+    "agent-references/**",
+    "scripts/**",
+    "cordis.patch.yml",
+    "presets/mpd.patch.yml",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.zh-CN.md",
+    "EXTENSIONS-FOR-AGENTS.md",
+    "LICENSE-NOTICES.md",
+    "LICENSE.md",
+    "PLAN.md",
+    "README.md",
+    "README.zh-CN.md",
+    "VENDOR_LOCK.json",
+    "cordis.patch.yml",
+    "dsh-distribution.json",
+    "dsh-plugin.json",
+    "icon.svg",
+    "locale/*.json"
+  ]
+}
