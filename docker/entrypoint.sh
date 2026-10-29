@@ -1903,6 +1903,24 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
     node "$UI_DIR/browser-lane.ts" --base "http://127.0.0.1:$PORT" --token "$TOKEN" \
       --out "$OUT_DIR/ui-shots" --state "$STATE_FILE" --budget-ms "$BROWSER_BUDGET" \
       "${BROWSER_TEAM_ARGS[@]}" >>"$BROWSER_LOG" 2>&1 || BROWSER_STEP=$?
+    # NEGATIVE CONTROL for `ui.mpdSettingsSection` (2026-10-29). The row's READ moved from a 4000-char
+    # slice of the page body to the SETTINGS DIALOG because a content-heavy team transcript pushed the
+    # card past that slice (a false red). A repair that only MOVES the goalposts could make the row
+    # unable to fail, so this second lane run activates a HOST section on the SAME dialog (the MPD nav
+    # entry must still exist) and MUST redden the row: the lane exits 0 only when exactly that expected
+    # red was recorded. A green here means the row is unfalsifiable — a worse defect than the false red.
+    FALSIFIER_STATE="$OUT_DIR/ui-falsifier.ndjson"
+    rm -f "$FALSIFIER_STATE"
+    FALSIFIER_CODE=0
+    node "$UI_DIR/browser-lane.ts" --base "http://127.0.0.1:$PORT" --token "$TOKEN" \
+      --out "$OUT_DIR/ui-shots-negative" --state "$FALSIFIER_STATE" \
+      --negative-control-section General >>"$BROWSER_LOG" 2>&1 || FALSIFIER_CODE=$?
+    FALSIFIER_ROW="$(grep -m1 '"name":"ui.mpdSettingsSection"' "$FALSIFIER_STATE" 2>/dev/null || true)"
+    if [ "$FALSIFIER_CODE" = "0" ] && grep -q '"ok":false' <<<"$FALSIFIER_ROW" && grep -q 'card text is absent' <<<"$FALSIFIER_ROW"; then
+      record ui.mpdSettingsSectionNegativeControl true "the repaired card-text read CAN FAIL: with the MPD section registered but a HOST section active, the same dialog-scoped predicate reported the card text absent and the row reddened (falsifier exit 0 = expected red observed)" "${FALSIFIER_ROW:-<no row>}"
+    else
+      record ui.mpdSettingsSectionNegativeControl false "the negative control did NOT observe the expected red, so the repaired card row may be unable to fail (falsifier exit=$FALSIFIER_CODE; row=$FALSIFIER_ROW)" "$(tail -2 "$BROWSER_LOG" 2>/dev/null | tr '\n\t' '  ' | cut -c1-160)"
+    fi
   fi
   # A LANE THAT CRASHED BEFORE RECORDING leaves the reporter's "not reached" NULLs, which say nothing
   # about WHY. This net turns that silent hole into an explicit "not attempted (node exit N)" row set,
