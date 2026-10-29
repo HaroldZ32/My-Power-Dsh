@@ -1,0 +1,18 @@
+[2026-10-29T01:33:14.385Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /opt/mpd/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-29T01:33:14.390Z] [mpd-mcp-lsp] cclsp config: /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws/.mpd/lsp/cclsp.json (generated, 1 language server(s))
+[2026-10-29T01:33:14.414Z] Loading config from CCLSP_CONFIG_PATH: /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws/.mpd/lsp/cclsp.json
+[2026-10-29T01:33:14.414Z] Loaded 1 server configurations from env
+[2026-10-29T01:33:14.415Z] CCLSP Server running on stdio
+[2026-10-29T01:33:14.415Z] Scanning configured server directories for supported file types
+[2026-10-29T01:33:14.415Z] Scanning /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-29T01:33:14.418Z] Starting 0 LSP servers...
+[2026-10-29T01:33:14.418Z] LSP server preloading completed
+[2026-10-29T01:33:14.664Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /opt/mpd/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-29T01:33:14.670Z] [mpd-mcp-lsp] cclsp config: /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws/.mpd/lsp/cclsp.json (generated, 1 language server(s), unchanged)
+[2026-10-29T01:33:14.679Z] Loading config from CCLSP_CONFIG_PATH: /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws/.mpd/lsp/cclsp.json
+[2026-10-29T01:33:14.679Z] Loaded 1 server configurations from env
+[2026-10-29T01:33:14.680Z] CCLSP Server running on stdio
+[2026-10-29T01:33:14.680Z] Scanning configured server directories for supported file types
+[2026-10-29T01:33:14.680Z] Scanning /opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-29T01:33:14.686Z] Starting 0 LSP servers...
+[2026-10-29T01:33:14.686Z] LSP server preloading completed

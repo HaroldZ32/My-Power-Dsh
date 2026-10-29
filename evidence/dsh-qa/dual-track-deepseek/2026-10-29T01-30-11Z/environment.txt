@@ -1,0 +1,59 @@
+# environment snapshot 2026-10-29T01:35:25Z
+dsh_launcher=/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh
+dsh_version=0.2.1-rc.3
+node=v24.21.0
+harness_root=/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh
+dsh-base=0.2.1-rc.3
+dsh-headless=0.2.1-rc.3
+dsh-llm=0.2.1-rc.3
+dsh-llm-deepseek=0.2.1-rc.3
+dsh-llm-deepseek-api-key=0.2.1-rc.3
+dsh-llm-pi-ai=0.2.1-rc.3
+dsh-agent-default-model=0.2.1-rc.3
+dsh-settings=0.2.1-rc.3
+dsh-app-boot=0.2.1-rc.3
+pi_ai_version=1.4.0
+
+## ~/.dsh top level
+total 40
+drwx------  8 haroldzhao haroldzhao 4096 Oct 10 09:55 .
+drwxr-x--- 30 haroldzhao haroldzhao 4096 Oct 29 06:14 ..
+-rw-rw-r--  1 haroldzhao haroldzhao   37 Oct  2 20:58 .anonymous-user-id
+-rw-------  1 haroldzhao haroldzhao  711 Oct 10 09:55 .credentials.yaml
+drwx------  3 haroldzhao haroldzhao 4096 Oct  4 01:08 attachments
+drwx------  3 haroldzhao haroldzhao 4096 Oct  5 22:20 cache
+drwx------  2 haroldzhao haroldzhao 4096 Oct 27 15:21 llm-deepseek
+drwxrwxr-x  4 haroldzhao haroldzhao 4096 Oct  2 20:58 profiles
+drwx------  6 haroldzhao haroldzhao 4096 Oct 20 09:38 sessions
+drwx------  3 haroldzhao haroldzhao 4096 Oct 28 17:35 storages
+
+## settings.yaml presence
+settings.yaml=ABSENT
+settings.yaml.imported=ABSENT
+
+## profiles
+dsh-tui
+web
+
+## llm-pi-ai rows in real profile patches
+22:- id: llm-pi-ai
+23-  name: "@deepseek-ai/dsh-llm-pi-ai"
+24-  config:
+25-    providers:
+26-      zai-coding-cn:
+27-        apiKeyEnv: ZAI_CODING_CN_API_KEY
+28-        models:
+29-          - id: glm-5.3
+30-          - id: glm-5.3-flash
+31-          - id: glm-5.3-highspeed
+32-      kimi-coding:
+33-        apiKeyEnv: KIMI_CODING_API_KEY
+34-        models:
+-- web:
+(no llm-pi-ai row)
+
+## credential presence (never the value)
+19: <redacted hit>
+
+## pi-ai installed deepseek catalog model ids
+deepseek-flash,deepseek-v4-pro

@@ -1,0 +1,3 @@
+**Tools called:** `bash` (twice — first `pwd && ls -a`, then a count pass with `ls -A | wc -l`). No other tools were used.
+
+**Files in the directory:** 3 entries total — `.codegraph/` (directory), `.mpd/` (directory), and `AGENT.md` (file). If you count only regular files, it's 1 (`AGENT.md`); including the dot-directories, it's 3.

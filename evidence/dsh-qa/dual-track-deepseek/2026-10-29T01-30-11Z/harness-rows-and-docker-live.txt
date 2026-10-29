@@ -1,0 +1,31 @@
+# Docker lane live rows (SAME credential; provider = deepseek-official, NOT pi-ai deepseek)
+# source: evidence/release/v0.13.2/gates/docker-oneclick.log
+2636:[record] live.credentialStaged=true — the provider credential was staged ONCE into the SANDBOX home (mode 0600) so every plane can run a real turn; the value is never recorded
+2690:[record] live.web.turnCompleted=true — the web turn reached turn/end reason=completed
+3386:[record] live.tui.turnCompleted=true — the tui turn reached turn/end reason=completed
+3423:[record] live.headless.turnCompleted=true — the headless turn reached turn/end reason=completed
+
+# dsh-base bundle patch: agent-default-model route and the dormant llm-pi-ai row
+90:    - id: agent-default-model
+91-      name: '@deepseek-ai/dsh-agent-default-model'
+92-      config:
+93-        provider: deepseek-official
+94-        model: deepseek-flash
+95-
+125-    - id: credentials
+126-      name: '@deepseek-ai/dsh-credentials-local'
+127-
+128-    # The pi-ai multi-provider twin, mounted dormant: zero routes (and no extra
+129:    # models in the picker) until a `llm-pi-ai:` settings section supplies provider
+130-    # profiles — then those routes register live, keys resolving per request
+131-    # through their apiKeyEnv references, and drop again when the section empties.
+132-    # Supplying those profiles is exactly what the web Models page does. Which
+133-    # adapters exist is composition; which providers run is the user's settings
+134-    # document.
+135:    - id: llm-pi-ai
+136:      name: '@deepseek-ai/dsh-llm-pi-ai'
+137-
+138-    - id: session-persistence-jsonl
+
+# dsh-llm-deepseek-api-key: PROVIDER constant
+47:const PROVIDER = "deepseek-official";

@@ -1,0 +1,7 @@
+# Diagnostic-only overlay (NOT applied): re-selects the same `deepseek` route with a model
+# id the INSTALLED pi-ai catalog actually describes, to separate "no route" from "bad model id".
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek
+    model: deepseek-flash
