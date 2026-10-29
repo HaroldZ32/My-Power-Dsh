@@ -605,7 +605,7 @@ lane hold this line.
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no
      `skills/**` change is committed without it.
 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
-4. Push master + tag; announce with evidence links.
+4. Push master + tag; GitHub Release; announce.
 5. **Publish — a human step.** The `v*` tag push STAGES the release on npm; nothing is public and
    `latest` does not move until a human runs `npm stage approve <stage-id>`. Runbook:
    `agent-references/installer-and-profiles.md`, "Publishing to npm".
