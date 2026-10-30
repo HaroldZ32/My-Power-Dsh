@@ -1,14 +1,20 @@
 {
   "domain": "release",
   "slug": "v0.16.3",
-  "generatedAt": "2026-10-30T15:47:05.402Z",
+  "generatedAt": "2026-10-30T16:01:11.901Z",
   "branch": "release/v0.16.3",
   "releaseCommit": "8a24e96937d6922cc370656b2d88d7a3d56aa9ff",
   "summary": {
     "gates": 18,
-    "dockerLanes": 3,
-    "totalPassed": 570,
-    "totalFailed": 0
+    "gatesWithNonZeroExit": [
+      "dual-track-smoke (deepseek track only — pre-existing NO_ADAPTER; official track PASS)"
+    ],
+    "docker": {
+      "lanes": 3,
+      "passed": 570,
+      "failed": 0,
+      "declaredNulls": 156
+    }
   },
   "gates": [
     {
@@ -139,8 +145,51 @@
   ],
   "credentialHandling": "DEEPSEEK_API_KEY staged into the sandbox credential store only for --live, mode 0600, deleted before the report (live.credentialStaged/Scoped/Removed all true); no secret appears in any log.",
   "bounds": [
-    "dual-track-smoke deepseek track is red: NO_ADAPTER (no route for provider deepseek in this environment), the same failure recorded in EVERY run of that case since 2026-10-20; this release touches no provider routing.",
-    "The credentialed lanes require a model key; they were run with the operator-provided key in the sandbox only.",
-    "ui.teamBoard is a declared optional arm (not required unless MPD_E2E_TEAM_PROJECT=1); the required-arm gate reports unmeasured=[] for both credentialed runs."
-  ]
+    "dual-track-smoke deepseek track is red: NO_ADAPTER (no route for provider deepseek in this environment), the same failure recorded in EVERY run of that case since 2026-10-20; this release touches no provider routing. A recorded red, never counted as a pass.",
+    "The credentialed lanes used the operator-provided key only inside the sandbox credential store (mode 0600), deleted before the report (live.credentialStaged/Scoped/Removed all true). The secret scan covered THIS release evidence directory and the three release Docker evidence dirs; no secret material found.",
+    "Secret-scan scope (independent review F3): pre-existing key-shaped literals in older evidence fixtures (e.g. evidence/review/t15-lane-d/** fixtures, evidence/fix/readonly-deny/**) are outside this release and are NOT covered by the scan above; they are unchanged by this branch and look synthetic, but are not proven non-secret here.",
+    "Pack-closure coverage (independent review F1): 629/629 byte-identical over the declared source set; the packer own NOTE lists seven packed ROOT files the closure gate ROOT_FILES anchor omits (AGENTS.md, PLAN.md, VENDOR_LOCK.json, cordis.patch.yml, dsh-distribution.json, dsh-plugin.json, icon.svg). They are presence-checked by verify:manifest, not byte-checked by pack-closure. Extending the anchor is a source change outside the release branch.",
+    "ui.teamBoard is a declared optional arm (MPD_E2E_TEAM_PROJECT=1 not set); the required-arm gate reports unmeasured=[] for both credentialed runs.",
+    "Declared-null taxonomy (reviewer F7): the 38/39/79 nulls comprise oneclick rows in source mode, the oneclick lane five source-mode build/pack rows (build.bunInstall, build.dists, pack.distFreshRebuild, pack.rebuildToolchain, pack.distFreshRebuildControl), preset-scoped userSurface.row.* rows the root plane cannot individually prove, the no-browser lane qa.mcpCall, and the optional ui.teamBoard — each read with its printed reason.",
+    "typecheck.log records the command exit status on its last line (independent review F5)."
+  ],
+  "independentReview": {
+    "agent": "Reviewer",
+    "verdict": "PASS",
+    "risk": "Medium",
+    "at": "2026-10-30T16:01:11.901Z",
+    "scope": "contract (AGENTS.md §4/§5/§11), human-facing docs and the committed evidence artifacts; no implementation read",
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "Medium",
+        "disposition": "DISCLOSED as a bound; extending ROOT_FILES is a source change outside the release branch"
+      },
+      {
+        "id": "F2",
+        "severity": "Medium",
+        "disposition": "FIXED — summary totals re-scoped to summary.docker"
+      },
+      {
+        "id": "F3",
+        "severity": "Medium",
+        "disposition": "FIXED — the secret-scan statement is narrowed to this release evidence; pre-existing fixtures named out of scope"
+      },
+      {
+        "id": "F4",
+        "severity": "Medium",
+        "disposition": "ACCEPTED — pre-existing environment red recorded, no written exception exists"
+      },
+      {
+        "id": "F5",
+        "severity": "Low",
+        "disposition": "FIXED — typecheck.log now carries exit=0"
+      },
+      {
+        "id": "F7",
+        "severity": "Nit",
+        "disposition": "FIXED — null taxonomy enumerated"
+      }
+    ]
+  }
 }
