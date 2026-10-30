@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "slug": "team-idle-member-guard-writer",
+  "row": "T6",
+  "phase": "P2a",
+  "boardName": "dispatch-engine",
+  "sampledAt": "2026-10-30T10:21:43Z",
+  "contract": ".mpd/plans/team-idle-member-guard.md (+ §8 Amendment 1)",
+  "branch": "fix/team-idle-member-guard",
+  "changed": {
+    "new": [
+      "packages/mpd-team-core-plugin/src/idle-guard.ts",
+      "packages/mpd-team-core-plugin/test/idle-guard.test.ts",
+      "skills/dsh-qa/scripts/team-idle-member-guard.ts",
+      "skills/dsh-qa/scripts/lib/team-idle-member-guard-probe.ts"
+    ],
+    "modified": [
+      "packages/mpd-team-core-plugin/src/index.ts",
+      "packages/mpd-team-core-plugin/test/team-record.test.ts",
+      "packages/mpd-team-core-plugin/test/team-door-guard.test.ts",
+      "skills/dsh-qa/SKILL.md"
+    ]
+  },
+  "amendments": {
+    "A1": "per-agent registerAgentPreStep + liveAgents + agent/created/agent/disposed",
+    "A2": "pre-step re-evaluates both ways; an open task clears the mark",
+    "A3": "executorRef only; owner name|executorRef; declared-verifier clause dropped",
+    "A4": "completed|cancelled|failed are idle-terminal",
+    "A5": "team-core API + unregistered cell-* arm; cellwork callers are P2",
+    "A6": "preamble applied at the executor spawn hand-off",
+    "A7": "live case written with two-member approve; real run left to the verifier"
+  },
+  "gates": {
+    "teamCoreTests": { "pass": 384, "fail": 0, "exit": 0 },
+    "typecheck": { "exit": 0, "diagnostics": 0 },
+    "comments": { "exit": 0, "verdict": "PASS" },
+    "qaSelfTest": { "arms": 10, "exit": 0 },
+    "testQaAggregate": { "exit": 0, "caseDiscovered": true },
+    "docs": { "exit": 0, "verdict": "PASS" },
+    "distFresh": { "exit": 1, "reason": "packages/mpd-team-core-plugin/dist/index.js stale; the captain rebuilds dist (contract §5)" },
+    "vendor": { "exit": 1, "reason": "skills treeSha mismatch; the captain's single repin-vendor is the integration step" }
+  },
+  "redFirst": {
+    "observed": "2 pre-existing arms reddened on the first run (team-record prompt; team-door-guard guard count) and were updated to the new contract behaviour",
+    "negativeControls": ["idle: a tool call", "idle: no directive", "idle: two directives", "owner: errored result", "owner: prose only", "literal pins against the plugin source"]
+  },
+  "notProven": [
+    "the live QA case was not run by the writer (T8 runs it after the captain rebuilds dist)",
+    "dist freshness until the captain rebuilds",
+    "vendor gate until the captain's single re-pin",
+    "lazy spawn (not claimed; the one-turn bound stands)",
+    "no bundle-row mount re-proof (no row change)",
+    "pre-step disk cost on a large board not measured"
+  ]
+}

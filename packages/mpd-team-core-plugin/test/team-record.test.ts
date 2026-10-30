@@ -11,6 +11,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
+import { IDLE_PREAMBLE_TEXT } from "../src/idle-guard"
 import { createDshAdapter, type DshTeamSpawnRequest } from "../../mpd-dsh-adapter-plugin/src/index"
 import { listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
 import { ledgerKey, type DispatchLedger } from "../src/dispatch"
@@ -326,8 +327,10 @@ describe("approval builds an mpd-owned team record", () => {
     expect(specs[0].provider).toBe("spawn")
     expect(specs[0].label).toBe("Senior Engineer · " + listTeams(h.workspace)[0].teamId)
     expect(specs[0].request.parent).toEqual({ session: { id: "sess-1" } })
-    // The prompt travels as content blocks, which is what the continuation manager takes.
-    expect(specs[0].request.prompt[0].text).toBe("You implement.")
+    // The prompt travels as content blocks, which is what the continuation manager takes — and the
+    // idle-guard preamble is FIRST (contract `.mpd/plans/team-idle-member-guard.md` §3.3: the spawn
+    // prompt's prose layer, applied where the prompt is handed to the executor).
+    expect(specs[0].request.prompt[0].text).toBe(IDLE_PREAMBLE_TEXT + "\n\nYou implement.")
   })
 
   test("approval forwards each member's ROLE, and never a provider", async () => {

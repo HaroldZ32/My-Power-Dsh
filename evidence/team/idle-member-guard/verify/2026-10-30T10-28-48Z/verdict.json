@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "recordId": "rec-20261030T103226-0e7ad4",
+  "loopId": "loop-20261030T100405-801842",
+  "taskId": "T8",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "dispatch-engine",
+  "verifierId": "57361810-9a0c-408b-b1a6-28666fe555cc",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/team-idle-member-guard.md",
+      "sha256": "e3995f868dc669521a399689e4544280eaac587fcc0ee8425164aaf5e119477f"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/team-idle-member-guard.md",
+        "sha256": "e3995f868dc669521a399689e4544280eaac587fcc0ee8425164aaf5e119477f"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/tests.log",
+        "bytes": 54114,
+        "sha256": "b39f6c9d6e0cae932774da0fbba3fdc74ae81d9d7f9a517f3faa9a5b3cc6d2db",
+        "mtime": "2026-10-30T10:28:49.968Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/typecheck.log",
+        "bytes": 16,
+        "sha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+        "mtime": "2026-10-30T10:29:01.663Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/comments.log",
+        "bytes": 307,
+        "sha256": "6fa4ecf371fc4da85dd89228fee55f48d9ccdb9b768dc416a60f6aefc0a3e621",
+        "mtime": "2026-10-30T10:29:04.545Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/docs.log",
+        "bytes": 5695,
+        "sha256": "3977fb712e7666e0787ce05af16131ad69b36f6588b0eeb2866214adcf6bc5af",
+        "mtime": "2026-10-30T10:29:04.634Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/dist-fresh.log",
+        "bytes": 4932,
+        "sha256": "f19bde5ecc420365e63ce068137a380c58fc7f1b0758e9f081886e29e1c1cf11",
+        "mtime": "2026-10-30T10:29:05.538Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/qa-self-test.log",
+        "bytes": 545,
+        "sha256": "ec4ce4c347b349ac54f0994aa292444c88967e0293ae50274845da7e88f040b1",
+        "mtime": "2026-10-30T10:29:11.901Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/test-qa.log",
+        "bytes": 43212,
+        "sha256": "8cfa204eaa0dc6513da1f0105b8db3312d7d8f5013c1a0363e01bce7926a8e23",
+        "mtime": "2026-10-30T10:31:21.669Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/verify/2026-10-30T10-28-48Z/live-case.log",
+        "bytes": 948,
+        "sha256": "478300d76bf61a7ac0f16acf92468b2504a98cf709d249a615db9b66c4c4c773",
+        "mtime": "2026-10-30T10:29:30.646Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T10-29-17.693Z/result.json",
+        "bytes": 11185,
+        "sha256": "b204d2681d715c61613530cb118175a69c8d76a453d2661e07cdc15afba85f2a",
+        "mtime": "2026-10-30T10:29:30.636Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T10-29-17.693Z/probe.json",
+        "bytes": 7648,
+        "sha256": "cafa28f41c8a22060929dcac11d71b5086e355680f8dd4ac39ff1def6758501d",
+        "mtime": "2026-10-30T10:29:30.395Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T10-29-17.693Z/output.log",
+        "bytes": 4154,
+        "sha256": "fe5cf1373a550443fdae1a86ccc081d752ab92ddb042684c2d106156c75f17c8",
+        "mtime": "2026-10-30T10:29:30.636Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/team-idle-member-guard.md",
+      "sha256": "e3995f868dc669521a399689e4544280eaac587fcc0ee8425164aaf5e119477f"
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/README.md",
+      "sha256": "d9ad1b6fff68e9ad10b342804d62a07a3c90b2119d75be8e3012ba2d19d40b19"
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/README.zh-CN.md",
+      "sha256": "87149e49594801e18b20db757b1c3479cabd98c62778ab45f583ce734ac323a9"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261030T102931-a9a313",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T102931-a9a313.log",
+      "logSha256": "ad8940c3ed4b771817d62efc933f2fa33474ece6b8be9593f08f8952fb8d3da8"
+    },
+    {
+      "evidenceId": "ev-20261030T102922-ebeb47",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T102922-ebeb47.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261030T102925-1c67a1",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T102925-1c67a1.log",
+      "logSha256": "ea9261bc13370c84a94814d0fa14563ab038fca21fabfbd788e141ee8d7bfd9f"
+    },
+    {
+      "evidenceId": "ev-20261030T102928-ec14ab",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T102928-ec14ab.log",
+      "logSha256": "0f24691b9184fc0ecce03ecb9885214d488590983f74e35224101fe0715faa72"
+    },
+    {
+      "evidenceId": "ev-20261030T102930-39df2f",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T102930-39df2f.log",
+      "logSha256": "a96ccb207dca65a998c79cb544937a8be5c1bf1fe7019f0de894255de5c835f1"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-30T10:32:26.607Z",
+  "notes": [
+    "REQUIRED PASS STATEMENT: section 3.4 lazy spawn did NOT land; the section 6.1 one-turn bound is declared (README 'Known limits' final bullet; live result.json doesNotProve[0]). The guard makes the spawn turn one directive with zero tool calls, not a free turn.",
+    "Live merge gate (skills/dsh-qa/scripts/team-idle-member-guard.ts) ran green on a real boot: exit 0, problems=[], sessions {logs:3, owners:1, idle:1}; the case asserts from the harness session log that the owner records an agent_teams_task call with a non-error result, the taskless member records ZERO tool/call rows and exactly ONE idle directive, and both members carry executor handles (probe.json approve record M1 executorRef db17a7e9-c65e-4aac-9bb6-8bd6e844c231, M2 3ae71d2b-932d-418d-992b-44ed9e08886a). Its --self-test passes 10 arms incl. negative controls (a tool call, missing directive, doubled directive, errored result, prose-only narration).",
+    "BOUND: the live sandbox (/tmp/mpd-team-idle-member-guard-Gd26tc) was removed with the run, so I did not independently re-decode the raw session store; the live assertions above are the case's own harness-session-log read (result.json proves/problems), not my re-derivation.",
+    "A3: the contract's declared-verifier clause is dropped because the board carries no separate declared-verifier field; README states this and A3 explicitly permits the drop.",
+    "Gates: bun test packages/mpd-team-core-plugin 384 pass/0 fail; bun run typecheck exit 0; verify:comments PASS; verify:docs PASS (52 pairs, 0 violations, 0 dead links); bun run test:qa all self-tests passed; verify-dist-fresh 34/34 fresh incl. packages/mpd-team-core-plugin/dist (captain's rebuild); verify-vendor PASS after the single repin. No row/manifest change.",
+    "Observation (fail-safe, not a finding): the README's conservative branch 'a session whose team record cannot be read is never marked' has no dedicated unit arm in the gate output; the contract section 4 list does not require one, and the failure direction is fail-safe (no tools), so it stays an unproven branch bound rather than a FAIL."
+  ]
+}

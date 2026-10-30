@@ -216,6 +216,50 @@ Cellwork records the parent CELL's team id on the sub-cell (`parentTeamId`) when
 registers it, so the cell log can be read against the nesting; the sub-team's own link is still the team
 plane's derivation, never a second copy.
 
+## The idle-member guard — a member with no board task acts
+
+A team member's only authority is a board task, and this row enforces that at the TOOL BOUNDARY, not by
+prompt wording. A session that is a live team's member and owns no OPEN task — no task whose `owner` is
+its member name or its executor handle and whose status is `pending`, `claimed` or `in_progress` — is
+MARKED idle by a per-agent `agent/pre-step` listener. It receives exactly ONE directive — "You have no
+board task. Do not read, run, write, message or claim. End your turn now." — and every tool call it
+attempts is DENIED with `[mpd-team] no board task is assigned to you; end your turn and wait for a
+dispatch`. The denial is a tool RESULT, so a taskless member cannot read source, run a shell, write a
+file, mail, claim, complete or reopen anything until the board gives it work.
+
+- **The mark is re-evaluated on BOTH sides at every pre-step.** An open task CLEARS it — including a task
+  delivered by a path this row never observes as a tool call (a cellwork dispatch arrives through
+  `TeamExecutor.send`) — and no open task re-marks it. A terminal team record (stopped/archived) or a
+  session no longer on the roster also clears it. The pre-step is the reliable clear, not a
+  dispatch/claim hook.
+- **A member being DISPATCHED is never marked.** The pass that wakes a member opens a counted DISPATCH
+  WINDOW around the whole pairing — send, re-read, compare-and-set — because the native executor
+  cold-resumes an absent child during the send and that child's first `agent/pre-step` can run BEFORE the
+  owner is written. Inside the window the guard neither marks nor denies (a claim denied there would drop
+  the very work being handed over); the window closes in the pass's `finally`, after which the
+  re-evaluation finds the claimed task. A genuinely taskless member never enters a window and keeps the
+  hard denial.
+- **Conservative by construction.** A session in no live team, a session whose team record cannot be
+  read, the team's Lead, and an explicitly registered CONTROL SEAT are never marked. The control seat is
+  `registerControlSeat(sessionId)` on the `mpdTeams` service — the registration a cell's dispatcher or a
+  promoted subcaptain needs while it owns no board task (the cellwork call sites land with the
+  dispatcher); an ordinary member merely named `cell-*` inherits nothing, because the exemption is a
+  registration and never a name prefix.
+- **An ASSIGNED but unclaimed task keeps the tools open.** `pending` is an open state; the asymmetry is
+  deliberate, because the dispatch turn has to call `agent_teams_task claim`. A member whose only tasks
+  are `completed`, `cancelled` or `failed` is idle. A `review` task counts through its own `owner`: the
+  board carries no separate "declared verifier" field.
+- **The spawn preamble is the prose layer.** Every prompt handed to the executor at `approve` and at a
+  mid-run `add_member` raise is prefixed with the same rule — "You are a team member. You have NO board
+  task yet unless this spawn carries one…" — so a spawn-time turn starts with it in view. The tool
+  denial is the guarantee; the preamble is the cheaper first layer.
+- **Registered per agent, not on the row's context.** `agent/pre-step` is dispatched through the agent's
+  own scope carrier: a listener installed on the ROW's context was measured SILENT on six live boots
+  (2026-09-27). The guard therefore registers on every `liveAgents()` entry, re-arms on `agent/created`
+  and releases on `agent/disposed`, and injects one directive per turn (once per marking when the
+  harness reports no turn ordinal), so a repeated step never appends a second. A missing live registry,
+  event bus or `tools.guard` seam degrades to a reported absence instead of failing the boot.
+
 ## Configuration
 
 None. The plugin declares `tools` and `commands` and resolves both through the adapter.
@@ -245,3 +289,10 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   That is a limit of the official plane only: the mpd mailbox counts unread (`unreadOf`, `summarise`
   → `MailSummary.unread`, computed oldest-first) and `agent_teams_mail {action:"unread"|"summary"}`
   reports it.
+- **The idle mark is process-local and re-detected, never persisted.** A restart re-detects on each
+  member's next pre-step; a task dispatched while the mark is set clears it at that member's next
+  pre-step; a crash between the dispatch and the clear re-detects the same way.
+- **A composition without this row has no guard.** Detection and denial live in this plugin; a team
+  composed without `mpd-team-core` keeps only the spawn preamble's prose.
+- **Without a lazy spawn the spawn turn still costs one model turn.** The guard makes it a
+  one-directive, zero-tool turn, not a free one; lazy spawn is not implemented.

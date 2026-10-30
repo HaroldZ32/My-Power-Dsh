@@ -1,0 +1,244 @@
+{
+  "lead": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+  "started": true,
+  "calls": [
+    {
+      "label": "create",
+      "ok": true,
+      "value": {
+        "plan": {
+          "version": 1,
+          "planId": "plan-20261030123549441-7vj3-001",
+          "sessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "approval": "required",
+          "members": [],
+          "tasks": [],
+          "stagedAt": "2026-10-30T12:35:49.441Z"
+        }
+      },
+      "error": ""
+    },
+    {
+      "label": "add-owner",
+      "ok": true,
+      "value": {
+        "plan": {
+          "version": 1,
+          "planId": "plan-20261030123549441-7vj3-001",
+          "sessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "approval": "required",
+          "members": [
+            {
+              "name": "cell-owner",
+              "description": "owns the one board task",
+              "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+              "role": "Senior Engineer"
+            }
+          ],
+          "tasks": [],
+          "stagedAt": "2026-10-30T12:35:49.441Z"
+        }
+      },
+      "error": ""
+    },
+    {
+      "label": "add-idle",
+      "ok": true,
+      "value": {
+        "plan": {
+          "version": 1,
+          "planId": "plan-20261030123549441-7vj3-001",
+          "sessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "approval": "required",
+          "members": [
+            {
+              "name": "cell-owner",
+              "description": "owns the one board task",
+              "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+              "role": "Senior Engineer"
+            },
+            {
+              "name": "cell-idle",
+              "description": "a member with no board task",
+              "prompt": "You are the taskless member of this live QA team.",
+              "role": "Senior Engineer"
+            }
+          ],
+          "tasks": [],
+          "stagedAt": "2026-10-30T12:35:49.441Z"
+        }
+      },
+      "error": ""
+    },
+    {
+      "label": "create-task",
+      "ok": true,
+      "value": {
+        "plan": {
+          "version": 1,
+          "planId": "plan-20261030123549441-7vj3-001",
+          "sessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "approval": "required",
+          "members": [
+            {
+              "name": "cell-owner",
+              "description": "owns the one board task",
+              "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+              "role": "Senior Engineer"
+            },
+            {
+              "name": "cell-idle",
+              "description": "a member with no board task",
+              "prompt": "You are the taskless member of this live QA team.",
+              "role": "Senior Engineer"
+            }
+          ],
+          "tasks": [
+            {
+              "subject": "the one task",
+              "description": "The only task on this board.",
+              "blockedBy": [],
+              "writeScopes": [],
+              "owner": "cell-owner"
+            }
+          ],
+          "stagedAt": "2026-10-30T12:35:49.441Z"
+        }
+      },
+      "error": ""
+    },
+    {
+      "label": "approve",
+      "ok": true,
+      "value": {
+        "plan": {
+          "version": 1,
+          "planId": "plan-20261030123549441-7vj3-001",
+          "sessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "approval": "required",
+          "members": [
+            {
+              "name": "cell-owner",
+              "description": "owns the one board task",
+              "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+              "role": "Senior Engineer"
+            },
+            {
+              "name": "cell-idle",
+              "description": "a member with no board task",
+              "prompt": "You are the taskless member of this live QA team.",
+              "role": "Senior Engineer"
+            }
+          ],
+          "tasks": [
+            {
+              "subject": "the one task",
+              "description": "The only task on this board.",
+              "blockedBy": [],
+              "writeScopes": [],
+              "owner": "cell-owner"
+            }
+          ],
+          "stagedAt": "2026-10-30T12:35:49.441Z",
+          "approvedAt": "2026-10-30T12:35:49.484Z",
+          "created": {
+            "members": [
+              {
+                "name": "cell-owner",
+                "id": "c6b6306a-754e-437d-b0a5-d3ac9305dd40"
+              },
+              {
+                "name": "cell-idle",
+                "id": "2dc4670d-3760-4d61-a600-b5c74e2c861e"
+              }
+            ],
+            "tasks": [
+              {
+                "subject": "the one task",
+                "id": "T1"
+              }
+            ]
+          }
+        },
+        "team": {
+          "version": 1,
+          "teamId": "team-20261030123549450-7vj3-002",
+          "name": "idle-guard-live",
+          "description": "P2a live QA: one task, two members",
+          "leadSessionId": "session-d298bd10-72e9-468a-bd0e-a5f08a60eb65",
+          "planId": "plan-20261030123549441-7vj3-001",
+          "phase": "active",
+          "createdAt": "2026-10-30T12:35:49.450Z",
+          "members": [
+            {
+              "id": "M1",
+              "name": "cell-owner",
+              "description": "owns the one board task",
+              "status": "running",
+              "spawnedAt": "2026-10-30T12:35:49.451Z",
+              "role": "Senior Engineer",
+              "executorRef": "c6b6306a-754e-437d-b0a5-d3ac9305dd40"
+            },
+            {
+              "id": "M2",
+              "name": "cell-idle",
+              "description": "a member with no board task",
+              "status": "running",
+              "spawnedAt": "2026-10-30T12:35:49.451Z",
+              "role": "Senior Engineer",
+              "executorRef": "2dc4670d-3760-4d61-a600-b5c74e2c861e"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "T1",
+              "subject": "the one task",
+              "description": "The only task on this board.",
+              "kind": "work",
+              "status": "pending",
+              "blockedBy": [],
+              "writeScopes": [],
+              "createdAt": "2026-10-30T12:35:49.451Z",
+              "updatedAt": "2026-10-30T12:35:49.451Z",
+              "revision": 1,
+              "owner": "cell-owner"
+            }
+          ],
+          "nextMemberNumber": 3,
+          "nextTaskNumber": 2,
+          "approvedAt": "2026-10-30T12:35:49.484Z"
+        },
+        "created": {
+          "members": [
+            {
+              "name": "cell-owner",
+              "id": "c6b6306a-754e-437d-b0a5-d3ac9305dd40"
+            },
+            {
+              "name": "cell-idle",
+              "id": "2dc4670d-3760-4d61-a600-b5c74e2c861e"
+            }
+          ],
+          "tasks": [
+            {
+              "subject": "the one task",
+              "id": "T1"
+            }
+          ]
+        }
+      },
+      "error": ""
+    }
+  ],
+  "errors": []
+}

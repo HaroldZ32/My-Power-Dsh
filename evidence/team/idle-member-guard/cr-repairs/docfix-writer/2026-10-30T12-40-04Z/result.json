@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "slug": "team-idle-member-guard-cr-docfix",
+  "row": "T14",
+  "kind": "repair",
+  "file": "skills/dsh-qa/SKILL.md",
+  "caseEdited": false,
+  "changedClauses": [
+    "ZERO tool/call rows -> exactly one denied tool attempt (error result carrying DENIAL_TEXT) + one directive",
+    "zero calls rationale -> the denial is about a spawned member",
+    "every other request is plain text -> issues the read attempt then text",
+    "idle negatives: tool call -> missing attempt / succeeded attempt / wrong denial text"
+  ],
+  "selfTest": {
+    "command": "bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test",
+    "arms": 12,
+    "exit": 0
+  },
+  "tableShape": {
+    "cells": 4
+  },
+  "notRun": [
+    "repin-vendor (captain)",
+    "live QA case (verifier-b after the dist rebuild)"
+  ],
+  "crossCutting": {
+    "vendorRepinInTreeAt": "20:33:20 local",
+    "thisRowEditAt": "20:39:54 local",
+    "verifyVendor": {
+      "exit": 1,
+      "reason": "asset skills treeSha mismatch \u2014 the re-pin predates this row's SKILL.md bytes"
+    },
+    "action": "the captain's single final repin must run after this row is tracked; no repin was run by the writer"
+  }
+}

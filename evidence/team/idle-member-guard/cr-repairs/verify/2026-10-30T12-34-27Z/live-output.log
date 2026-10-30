@@ -1,0 +1,68 @@
+# team-idle-member-guard — live case
+sandbox=/tmp/mpd-team-idle-member-guard-PxgDQi
+DSH_HOME=/tmp/mpd-team-idle-member-guard-PxgDQi/dsh-home
+ws=/tmp/mpd-team-idle-member-guard-PxgDQi/ws
+
+
+[install] node scripts/install-profile.ts --yes --dsh-home <sandbox> --profile mpd-headless --skip-toolchain
+
+[[install exit=0]]
+[install-profile] dshHome=/tmp/mpd-team-idle-member-guard-PxgDQi/dsh-home profile=mpd-headless write=true
+[install-profile] profileDir=/tmp/mpd-team-idle-member-guard-PxgDQi/dsh-home/profiles/mpd-headless
+[install-profile] homePatch=/tmp/mpd-team-idle-member-guard-PxgDQi/dsh-home/cordis.patch.yml
+[install-profile] preset row <- /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml (verbatim preset-mpd block; NO $DSH_HOME/.agent-presets copy — the row model has no preset root)
+[install-profile] toolchain missing=false (use --skip-toolchain to skip)
+[install-profile] rows about to be written to home patch: 37 (id-target=0, insert=37)
+- insert:
+  - id: preset-mpd
+    name: '@deepseek-ai/dsh-agent-preset'
+    config:
+      id: mpd
+      order: 1
+      name: "MPD (Main Working Agent)"
+      description: "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin."
+      plugins:
+        # The `mpd` agent preset: the bundle's main working agent (derived from the
+        # shipped `standard` preset). Conventions carried by this preset:
+        #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
+        #     injected for every project session (see the agent-instructions row below);
+        #  2) tool presentation is native (every row tool exposed directly to the model);
+        #  3) the specialist roster's 11 specialists are NOT presets: they are specialist
+        #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
+        #     templates for the OFFICIAL Agent Teams plugin (staged through
+        #     `agent_teams_plan`; the captain takes a member's persona text from
+        #     mpd_role_persona, and the roster is also
+        #     served as an agent-scoped prompt section by mpd-roles-plugin);
+        #  4) ROW SET = the shipped `standard` preset's. The harness moves capabilities
+        #     between the host plane and the preset plane between releases (the Web
+        #     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
+        #     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
+        #     step with `standard` — a missing row is a missing capability for every mpd
+        #     session. `skills/dsh-qa/scripts/preset-conformance.ts` checks both the
+        #     row set and every row config against the INSTALLED harness at gate time.
+        #
+        # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+        # standing scope; every session naming it joins by scope parentage, so the
+        # tools and prompt sections registered here cover each joined agent while a
+        # session's own sta
+
+[stub] listening on 127.0.0.1:33023
+
+[overlay] /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/probe-overlay.yml
+- insert:
+    - id: team-idle-member-guard-probe
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/team-idle-member-guard-probe.ts"
+      config:
+        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/probe.json"
+
+
+[boot] dsh --profile mpd-headless --patch <overlay> "Stage and approve the idle-guard live QA team, then reply with one line."
+[[exit=0]]
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+QA-STUB-IDLE-LEAD-OK
+
+
+[session] logs=3 records=98
+
+[verdict] problems=0

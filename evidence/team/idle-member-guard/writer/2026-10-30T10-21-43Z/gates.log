@@ -1,0 +1,42 @@
+=== P2a writer gates — sampled 2026-10-30T10:21:43Z ===
+
+$ bun test packages/mpd-team-core-plugin
+ 384 pass
+ 0 fail
+ 1725 expect() calls
+Ran 384 tests across 26 files. [1.79s]
+
+$ bun run typecheck
+$ tsgo --noEmit
+
+$ bun run verify:comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test
+[self-test] PASS overlay names the probe and its record file
+[team-idle-member-guard] self-test PASS — 10 arms incl. negative controls
+exit=0
+
+$ bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=471 dead=0 — PASS
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 1 of 34 targets not fresh (STALE: 1) — 690ms
+
+$ node scripts/verify-vendor.ts
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+exit=0
+
+=== CORRECTION: the two RED gates with their OWN exit codes (the piped lines above report tail's status) ===
+$ node scripts/verify-dist-fresh.ts
+exit=1
+[verify-dist-fresh] FAIL - 1 of 34 targets not fresh (STALE: 1) — 709ms
+
+$ node scripts/verify-vendor.ts
+exit=1
+[verify-vendor] FAIL - asset skills treeSha mismatch
