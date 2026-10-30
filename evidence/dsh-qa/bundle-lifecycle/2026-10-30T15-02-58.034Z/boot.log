@@ -1,0 +1,16 @@
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_RESOLVE_POLLS=2 id=mpd
+[roles-probe] PRESET_PATH=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml trust=bundle
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals ABSENT=turnSubmit,compaction,compactionForAgent,agentScope,agentTurnStart,agentTurnCancel,agentTurnSteer,agentTurnInject,agentPromptSection,agentPreStepScope,goalTools
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+[llm-deepseek-account] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+[roles-probe] AGENT_TEAMS_TOOLS=2/7 MISSING=agent_teams_interject_request,agent_teams_interject_decide,agent_teams_mailbox_clear,agent_teams_send_message,agent_teams_update_task
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=false
+[roles-probe] TEAM_COMPACT_TOOLS=2/2
+[roles-probe] TOOL_PARAM_SCHEMAS=52/52
+[roles-probe] SKILLS=19 BUNDLED=19 SKILL_FIXTURES=5/5
+[roles-probe] SKILL_FIXTURE=ok name=svn-master base=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/svn-master bytes=5210
+[roles-probe] PASS

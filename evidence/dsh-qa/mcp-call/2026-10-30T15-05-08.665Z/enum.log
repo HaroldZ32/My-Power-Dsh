@@ -1,0 +1,32 @@
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+dsh: reasoning:
+The user asks: list all available tool names starting with mcp__ prefix, one per line. Do not call any tools.
+
+From the tool list, the mcp__ prefixed tools:
+
+ast_grep: mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__ast_grep__search
+codegraph: mcp__codegraph__codegraph_explore
+context7: mcp__context7__query-docs, mcp__context7__resolve-library-id
+grep_app: mcp__grep_app__searchGitHub
+lsp: mcp__lsp__find_definition, mcp__lsp__find_implementation, mcp__lsp__find_references, mcp__lsp__find_workspace_symbols, mcp__lsp__get_diagnostics, mcp__lsp__get_hover, mcp__lsp__get_incoming_calls, mcp__lsp__get_outgoing_calls, mcp__lsp__prepare_call_hierarchy, mcp__lsp__rename_symbol, mcp__lsp__rename_symbol_strict, mcp__lsp__restart_server
+
+Just list them.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server

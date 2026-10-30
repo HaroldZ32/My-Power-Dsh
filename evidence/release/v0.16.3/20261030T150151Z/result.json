@@ -1,0 +1,146 @@
+{
+  "domain": "release",
+  "slug": "v0.16.3",
+  "generatedAt": "2026-10-30T15:47:05.402Z",
+  "branch": "release/v0.16.3",
+  "releaseCommit": "8a24e96937d6922cc370656b2d88d7a3d56aa9ff",
+  "summary": {
+    "gates": 18,
+    "dockerLanes": 3,
+    "totalPassed": 570,
+    "totalFailed": 0
+  },
+  "gates": [
+    {
+      "gate": "pack",
+      "exit": "exit 0",
+      "observed": "staged dist/mpd-package; 649 files normalized"
+    },
+    {
+      "gate": "pack-closure",
+      "exit": "exit 0",
+      "observed": "629/629 files identical, 0 drift, 0 absent (1 declared exemption)"
+    },
+    {
+      "gate": "dist-fresh",
+      "exit": "exit 0",
+      "observed": "34/34 targets fresh (pinned bun 1.4.0), 1 NOT COVERED listed"
+    },
+    {
+      "gate": "verify:gates",
+      "exit": "exit 0",
+      "observed": "9/9 member gates green"
+    },
+    {
+      "gate": "no-host-override",
+      "exit": "exit 0",
+      "observed": "0 id-targets collide with 214 host-declared ids"
+    },
+    {
+      "gate": "manual-paths",
+      "exit": "exit 0",
+      "observed": "resolved=153; over-report=73 under-report=83 declared=2"
+    },
+    {
+      "gate": "tests",
+      "exit": "exit 0",
+      "observed": "2705 pass / 6 skip / 0 fail; 2711 tests, 162 files"
+    },
+    {
+      "gate": "typecheck",
+      "exit": "exit 0",
+      "observed": "tsgo --noEmit"
+    },
+    {
+      "gate": "test:qa",
+      "exit": "exit 0",
+      "observed": "all self-tests passed"
+    },
+    {
+      "gate": "manifest",
+      "exit": "exit 0",
+      "observed": "PASS; npm pack --dry-run lists 1094 files"
+    },
+    {
+      "gate": "docs",
+      "exit": "exit 0",
+      "observed": "pairs=52 failed=0 links=471 dead=0"
+    },
+    {
+      "gate": "vendor",
+      "exit": "exit 0",
+      "observed": "7 shipped assets fingerprinted"
+    },
+    {
+      "gate": "installer-dry-run",
+      "exit": "exit 0",
+      "observed": "nothing written"
+    },
+    {
+      "gate": "ext-cli",
+      "exit": "exit 0",
+      "observed": "53 checks; validate extensions/mpd-ext-example ok"
+    },
+    {
+      "gate": "bundle-lifecycle",
+      "exit": "exit 0",
+      "observed": "PASS; install/composed/boot/uninstall/noHomeCopy/layerDurability ok"
+    },
+    {
+      "gate": "preset-conformance",
+      "exit": "exit 0",
+      "observed": "PASS; 32 row configs checked, negative control refused"
+    },
+    {
+      "gate": "mcp-call",
+      "exit": "exit 0",
+      "observed": "PASS; 122 tools, ast_grep+lsp calls recorded"
+    },
+    {
+      "gate": "dual-track-smoke",
+      "exit": "exit 1",
+      "observed": "official PASS; deepseek FAIL pre-existing NO_ADAPTER (same in every recorded run since 2026-10-20)"
+    }
+  ],
+  "docker": [
+    {
+      "mode": "source",
+      "flags": "--live --require-docker (browser + live)",
+      "live": true,
+      "browser": true,
+      "passed": 204,
+      "failed": 0,
+      "nulls": 38,
+      "unmeasured": [],
+      "evidence": "evidence/docker/client-install/2026-10-30T15-05-49Z"
+    },
+    {
+      "mode": "oneclick",
+      "flags": "--live --require-docker --spec github:HaroldZ32/My-Power-Dsh#release/v0.16.3",
+      "live": true,
+      "browser": true,
+      "passed": 203,
+      "failed": 0,
+      "nulls": 39,
+      "unmeasured": [],
+      "evidence": "evidence/docker/client-install-oneclick/2026-10-30T15-21-30Z"
+    },
+    {
+      "mode": "source",
+      "flags": "--no-browser --require-docker (credential-free regression)",
+      "live": false,
+      "browser": false,
+      "passed": 163,
+      "failed": 0,
+      "nulls": 79,
+      "unmeasured": [],
+      "evidence": "evidence/docker/client-install/2026-10-30T15-39-12Z"
+    }
+  ],
+  "credentialHandling": "DEEPSEEK_API_KEY staged into the sandbox credential store only for --live, mode 0600, deleted before the report (live.credentialStaged/Scoped/Removed all true); no secret appears in any log.",
+  "bounds": [
+    "dual-track-smoke deepseek track is red: NO_ADAPTER (no route for provider deepseek in this environment), the same failure recorded in EVERY run of that case since 2026-10-20; this release touches no provider routing.",
+    "The credentialed lanes require a model key; they were run with the operator-provided key in the sandbox only.",
+    "ui.teamBoard is a declared optional arm (not required unless MPD_E2E_TEAM_PROJECT=1); the required-arm gate reports unmeasured=[] for both credentialed runs."
+  ]
+}
