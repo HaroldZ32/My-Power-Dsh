@@ -14,6 +14,51 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.16.3 — 2026-10-30 — a taskless teammate can no longer touch a tool, and a failed cell activation resumes
+
+**An approved team plan spawns every member, and a member with no board task could still work.**
+Before this release such a member could read source, run commands, write files or send mail; on
+2026-10-30 one workspace burned four of those turns (one wrote four cellwork doc twins ahead of a
+blocked row, one ran a seam probe, two drafted or pre-read a contract). The fix is at the tool
+boundary: a per-agent `agent/pre-step` registration re-evaluates both ways on every step and marks a
+session with no open board task, and a process-wide `tools.guard` denies **every** tool for a marked
+session with one directive. Assignment, claim and a terminal team clear the mark as optimisations —
+the re-evaluation is the guarantee. The only exemption is an explicitly registered control seat
+(`registerControlSeat`); a `cell-*` name prefix is **not** exempt. A live QA case drives a real
+isolated boot with a model stub through the real `agent_teams_plan` tool and asserts an ERROR tool
+result carrying the denial text and exactly one idle directive. Bounds, stated in the pull request: a
+member is still spawned by `approve` (the guard makes that turn zero-tool, not zero-cost), and the
+mark is process-local.
+
+**A failed cell activation no longer wedges the cell.** `cellwork_activate` now persists an
+incremental activation checkpoint, and a retry of the SAME accepted revision resumes it: members
+reconcile by name, recorded board ids are reused, a verify loop is opened for every code task missing
+one, and `activatedRevision` is set only after a successful dispatch. The fabricated
+`cellwork:<cellId>` verify producer is gone — the loop is opened as the captain's live session and the
+cell id survives only as data on the contract. `cellwork_supervise` is lossless (optional keys are
+omitted, never `undefined`). Three review findings were repaired too: a pre-upgrade cell whose frozen
+contract already names a loop is skipped, a strictly greater accepted revision supersedes an older
+in-flight activation, and `reused` is declared on the tool's output schema.
+
+**A release-lane false red, fixed at the read.** The Docker browser lane asserted
+`ui.mpdSettingsSection` on the first 4000 characters of the page body. In team mode the prompt alone is
+2070 characters plus ~23 tool calls, so the settings card fell outside the slice and the row failed
+2/2 while the failing runs' own screenshots showed the card rendered. The row now reads the settings
+dialog itself (no slice) with the predicate unchanged, and a permanent negative control against a host
+section proves the assertion can still fail honestly. Measured on the real lane: team mode exit 0,
+`total=259 passed=220 failed=0`.
+
+**The GitHub Release page is a release step now.** §11 step 4 names it, and the long form — the
+`--verify-tag` create command, neither draft nor prerelease, bilingual notes, the backfill rule and the
+npm stage caveat — lives in `agent-references/installer-and-profiles.md`. The gap was measurable:
+`v0.16.0` and `v0.16.1` shipped with tags and no Release page, so `Latest` still read `v0.15.5` two
+releases later. The manual got 4 bytes smaller.
+
+**Verification.** The release sweep is recorded in the pull request: the nine-member static aggregate,
+the packed-artifact closure, the Docker install-and-mount lanes (both modes) and the credential-free
+regression arm. Where a lane was skipped, the pull request and the Release page state it — a skip is
+never counted as a pass.
+
 ## 0.16.2 — 2026-10-28 — `/mpd-codegraph` is reachable again, and the packed `files` list stops repeating a patch layer
 
 **A command that was documented but did not exist.** `/mpd-codegraph` was published as working on
