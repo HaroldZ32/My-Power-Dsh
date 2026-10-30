@@ -1,0 +1,184 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/supervise-lossless.test.ts:
+406 |   ]
+407 |   /** The captain's sweep. */
+408 |   const swept = await runTool(harness, "cellwork_supervise", {})
+409 |   expect(swept.ok).toBe(true)
+410 |   // THE WHOLE RESULT SURVIVES THE WALK: no `undefined` own key anywhere.
+411 |   expect(losslessViolation(swept)).toBeUndefined()
+                                         ^
+error: expect(received).toBeUndefined()
+
+Received: "$.tasks[0].owner is undefined, which JSON cannot represent losslessly"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/supervise-lossless.test.ts:411:36)
+(fail) B1: cellwork_supervise walks losslessly with a task row that has no owner [5.47ms]
+(pass) B2: the walk holds over every cellwork tool result the harness can invoke [9.59ms]
+
+packages/mpd-cellwork-plugin/test/cellwork.test.ts:
+(pass) the plugin declares the tool and command seams and registers exactly one /cellwork command [0.41ms]
+(pass) an empty or whitespace /cellwork answers usage and writes NO cell state [0.28ms]
+(pass) a non-empty /cellwork writes the cell record and submits exactly ONE directive [0.52ms]
+(pass) a second /cellwork while one cell is active REFUSES and names the active cell [0.43ms]
+(pass) /cellwork with no live turn surface archives the cell it just wrote instead of fencing a captain [0.51ms]
+(pass) the pure guard decision: no seat allows, and each mode refuses exactly its own surface [0.28ms]
+428 | 
+429 | test("A5: the captain may open a verify loop BY EXACT NAME, and every other mpd_verify_* call stays refused", () => {
+430 |   /** The captain's seat. */
+431 |   const captain: CellworkSeat = { cellId: "cell-x", name: "captain", mode: "captain" }
+432 |   // THE CAPTAIN'S ONE VERIFY VERB: opening a loop is what an activation does, so it is admitted.
+433 |   expect(CAPTAIN_TOOL_NAMES).toContain("mpd_verify_open")
+                                   ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "mpd_verify_open"
+Received: [ "ask_user_question", "todo_write" ]
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/cellwork.test.ts:433:30)
+(fail) A5: the captain may open a verify loop BY EXACT NAME, and every other mpd_verify_* call stays refused [0.19ms]
+(pass) the installed guard fences the captain of the ACTIVE cell and leaves every other session alone [0.62ms]
+(pass) a composition without the tools.guard seam installs nothing and says so [0.22ms]
+(pass) the installed guard fences a SUBCAPTAIN seat as a mini-captain, while the captain keeps start/stop [0.78ms]
+(pass) a record round-trips through an atomic write and leaves no temporary file behind [0.22ms]
+(pass) a corrupt state is REFUSED with its path, never reset, and the command refuses on it [0.48ms]
+(pass) an unreadable schema VERSION is refused and named, not migrated or reset [0.10ms]
+(pass) cellwork_status reports the cell, the live team's counts and the caller's own seat [0.51ms]
+(pass) cellwork_start is captain-only, idempotent, and NEVER creates a cell [1.02ms]
+(pass) cellwork_stop archives the cell, refuses live work unless forced, and gives the captain its tools back [0.83ms]
+(pass) after a stop a NEW cell can be started, which is what 'archived, not deleted' is for [0.72ms]
+(pass) no context-window literal is baked into the package, and the row names no harness seam itself [0.59ms]
+(pass) CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all [0.21ms]
+(pass) CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch` [0.02ms]
+(pass) CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits [0.04ms]
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+476 |   expect(String(first.error)).toContain("could not open the verify loop")
+477 |   // THE PARTIAL RECORD: phase stays split, the revision is IN FLIGHT, and every artifact so far is on it.
+478 |   /** The record as written by the failing pass. */
+479 |   const partial = readStateJson(harness.workspace, cellId)
+480 |   expect(partial.phase).toBe("split")
+481 |   expect(partial.activationInFlight).toBe(1)
+                                           ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:481:38)
+(fail) A1–A3: a verify-loop failure records the partial in-flight state, and the retry resumes it [3.19ms]
+538 |   expect(first.ok).toBe(false)
+539 |   expect(String(first.error)).toContain("could not raise")
+540 |   /** The record as written by the failing pass. */
+541 |   const partial = readStateJson(harness.workspace, cellId)
+542 |   expect(partial.phase).toBe("split")
+543 |   expect(partial.activationInFlight).toBe(1)
+                                           ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:543:38)
+(fail) A2/A3: a member-raise failure records the member, and the retry reuses it instead of re-raising [1.65ms]
+580 |   expect(first.ok).toBe(false)
+581 |   expect(String(first.error)).toContain("could not append task")
+582 |   /** The record as written by the failing pass. */
+583 |   const partial = readStateJson(harness.workspace, cellId)
+584 |   expect(partial.phase).toBe("split")
+585 |   expect(partial.activationInFlight).toBe(1)
+                                           ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:585:38)
+(fail) A2/A3: a task-creation failure records the minted id, and the retry reuses it [1.62ms]
+277 |        * @returns the record, or undefined.
+278 |        */
+279 |       get: (_workspace: string, teamId: string): unknown => {
+280 |         if (injection.dispatchReadThrows && !dispatchReadThrown && loopSeq >= 2 && sends.length === 0) {
+281 |           dispatchReadThrown = true
+282 |           throw new Error("the injected dispatch-stage team read failed")
+                          ^
+error: the injected dispatch-stage team read failed
+      at get (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:282:21)
+      at recordOf (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/src/flow.ts:152:24)
+      at materializeSplit (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/src/activate.ts:428:23)
+      at async <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/src/flow.ts:747:47)
+(fail) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [1.70ms]
+664 |   expect(activated.ok).toBe(true)
+665 |   // EVERY opener call ran under the captain's OWN session, never a fabricated `cellwork:` one.
+666 |   /** The opener calls. */
+667 |   const opens = openCalls(harness)
+668 |   expect(opens.length).toBe(2)
+669 |   for (const call of opens) expect(sessionIdOf(call.agent)).toBe("session-captain")
+                                                                  ^
+error: expect(received).toBe(expected)
+
+Expected: "session-captain"
+Received: "cellwork:cell-20261030T095557167Z"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:669:61)
+(fail) A4: the verify-loop opener is the captain's live agent, and the producer survives only as data [2.21ms]
+740 |     checkpoint: (): void => {},
+741 |     now: new Date(),
+742 |   }
+743 |   /** The materialisation. */
+744 |   const result = await materializeSplit(deps)
+745 |   expect(result.ok).toBe(true)
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:745:21)
+(fail) A3: a duplicate-roster answer is resolved from the live roster, never fatal [1.68ms]
+764 |   /** The record before the refused call. */
+765 |   const before = readStateJson(harness.workspace, cellId)
+766 |   /** The activation attempted with a handle that carries NO session id. */
+767 |   const refused = await runTool(harness, "cellwork_activate", {}, {})
+768 |   expect(refused.ok).toBe(false)
+769 |   expect(String(refused.error).toLowerCase()).toContain("live caller agent")
+                                                    ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "live caller agent"
+Received: "cellwork_activate is captain-only: the captain of cell-20261030t095557170z is session session-captain, which is not this caller"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:769:47)
+(fail) A4: activation without a live caller agent refuses before any write [1.35ms]
+793 |   writeFileSync(statePath(harness.workspace, cellId), JSON.stringify(raw, null, 2) + "\n")
+794 |   /** The tolerated read. */
+795 |   const read = readCell(harness.workspace, cellId)
+796 |   expect(read.ok).toBe(true)
+797 |   if (!read.ok) return
+798 |   expect(read.state.activatedLoops).toEqual({})
+                                          ^
+error: expect(received).toEqual(expected)
+
+Expected: {}
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-red-27216/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:798:37)
+(fail) A1: a record written before the in-flight fields existed still reads [0.80ms]
+
+10 tests failed:
+(fail) B1: cellwork_supervise walks losslessly with a task row that has no owner [5.47ms]
+(fail) A5: the captain may open a verify loop BY EXACT NAME, and every other mpd_verify_* call stays refused [0.19ms]
+(fail) A1–A3: a verify-loop failure records the partial in-flight state, and the retry resumes it [3.19ms]
+(fail) A2/A3: a member-raise failure records the member, and the retry reuses it instead of re-raising [1.65ms]
+(fail) A2/A3: a task-creation failure records the minted id, and the retry reuses it [1.62ms]
+(fail) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [1.70ms]
+(fail) A4: the verify-loop opener is the captain's live agent, and the producer survives only as data [2.21ms]
+(fail) A3: a duplicate-roster answer is resolved from the live roster, never fatal [1.68ms]
+(fail) A4: activation without a live caller agent refuses before any write [1.35ms]
+(fail) A1: a record written before the in-flight fields existed still reads [0.80ms]
+
+ 21 pass
+ 10 fail
+ 346 expect() calls
+Ran 31 tests across 3 files. [59.00ms]
+RED_EXIT:1

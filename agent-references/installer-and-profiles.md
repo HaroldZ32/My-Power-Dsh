@@ -117,3 +117,29 @@ side. The package is bound to a TRUSTED PUBLISHER whose workflow path is exactly
 `.github/workflows/publish.yml`, so a hand-run `npm publish` has no valid credential anyway — a local
 `~/.npmrc` token is 401 and no `NPM_TOKEN` is stored.
 
+### The GitHub Release page — the announcement §11 step 4 asks for
+
+**The annotated tag is a git object, not an announcement.** §11 step 4 is satisfied only by a GitHub
+Release for that tag, and `Latest` on the Releases page follows the newest RELEASE PAGE, never the newest
+tag. Measured 2026-10-29: `v0.16.0` and `v0.16.1` both shipped with tags and **no Release page**, so the
+badge still read `v0.15.5` and the Releases page jumped from 0.15.5 straight to 0.16.2 — two releases
+were invisible to anyone who reads that page instead of the tag list.
+
+Create it with the record, not with a one-liner:
+
+- `gh release create vX.Y.Z --verify-tag --title "vX.Y.Z — <the one-line subject>" --notes-file <file>`;
+  leave it neither draft nor prerelease, because either flag suppresses the `Latest` marker. Needs a
+  writable `gh` cache: in a read-only sandbox export `XDG_CACHE_HOME=/tmp/ghcache` first, or the command
+  fails with "creating cache directory: read-only file system".
+- The notes are **BILINGUAL** like the changelog band: the English body, `---`, then the 简体中文 body.
+- They carry what §11 makes every release carry: what changed, the measured evidence (paths under
+  `evidence/`), the gates with their OBSERVED results, and the honest bounds — plus the npm status
+  verbatim (staged, with its stage id, or published), because that is the first thing a reader landing
+  on the page asks. Never state a fact the evidence does not carry.
+- A SKIP that belongs to the record ships as a stated bound; a skipped lane is never written as a pass.
+
+If a version shipped without a page, **backfill it** rather than leaving a hole, and say so on the first
+line: the creation date GitHub displays is the BACKFILL date, not the ship date. Then restore the marker
+with `gh release edit vX.Y.Z --latest`, because creating an older page afterwards moves `Latest`
+backwards.
+

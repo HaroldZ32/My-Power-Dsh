@@ -24,7 +24,7 @@
 
 | 调用者 | 被拒绝的调用 |
 |---|---|
-| 队长 | 除 `cellwork_*`（但**不含** `cellwork_handoff`）、`agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*` 之外的全部 |
+| 队长 | 除 `cellwork_*`（但**不含** `cellwork_handoff`）、`agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*`，以及唯一的验证循环开启器 `mpd_verify_open`（**精确名字**；其余 `mpd_verify_*` 一律仍被拒绝）之外的全部 |
 | 验证者 | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` |
 | 处于上下文检查点的成员 | 除 `cellwork_handoff`、`cellwork_context`、`cellwork_status` 之外的全部 |
 | 副队长 | **迷你队长**：队长白名单**去掉** `cellwork_start`/`cellwork_stop`，再加上四个子 cell 动词 `cellwork_subteam`、`cellwork_activate`、`cellwork_dispatch`、`cellwork_supervise`；完全没有文件工作工具 |
@@ -53,7 +53,8 @@
   就**拒绝**，除非 `force:true`；强制停止会被如实记入 journal。
 
 flow 工具：`cellwork_requirements`（规划器的 finalize/update）、`cellwork_recon`（规划器的一次性只读咨询）、
-`cellwork_split`（切分器的按度量图）、`cellwork_activate`（队长的物化）。
+`cellwork_split`（切分器的按度量图）、`cellwork_activate`（队长的物化，其返回的 `reused` 列出从 cell 记录或活跃
+名册解析、而不是新拉起的成员名）。
 
 协议工具：`cellwork_dispatch`（一次仅声明所有者的派发）、`cellwork_supervise`（队长的只读巡检）、
 `cellwork_context`（成员自己的占用）、`cellwork_handoff`（检查点交接文档）、`cellwork_subteam`（子队长的子
@@ -86,11 +87,29 @@ cell 登记）、`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件）�
   **带着**字节 → token 的明细被拒绝。
 - **B7 仅声明的所有者派发。** 就绪任务**只**配给它声明的所有者；所有者忙或不存在时如实报告、任务保持
   待派发——绝不替换。每个代码任务的验证循环在派发之前打开。
+- **激活可续做。** `cellwork_activate` 每创建一个产物就立即检查点——在飞修订号（`activationInFlight`）、已拉起的
+  每个成员、已铸出的每个看板 id、已打开的每个循环（`activatedLoops`）——记在 `cell-activation-partial`
+  journal 事件下；阶段绝不回退——首次激活仍是 `split`，对已在执行的 cell 做局部重切分则保持 `executing`。
+  用**同一个**被接受的修订号重试会从这份记录续做：成员按名字与活跃名册对账
+  （重复的 `add_member` 直接复用，绝不致命）、每个切分键复用已记录的看板 id、为**每个**还没有循环的代码任务补开
+  验证循环——**例外**是升级前的 cell 里保留下来的任务：它的 `activatedLoops` 没有条目，但冻结合约上已经写明循环
+  id，因此合约**不会**被重写，也不会再开第二条循环。只有在派发成功之后才写入 `activatedRevision`。**更新的**被
+  接受修订号会**取代**更旧的在飞部分激活——记入 journal（`activation-in-flight-superseded`），更旧的部分产物被
+  放弃，其已记录的行被核对（保留的 id 复用、被去掉的工作标记 `cancelled`）——而**更低**的修订号、激活已物化的
+  修订号与激活过期切分，仍按既有教学式错误拒绝。返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的
+  成员名。续做不是事务：残余窗口是一次看板/验证调用加一次 cell 记录写入，该窗口可能留下的重复看板行是可检出但
+  不可删除的（团队平面没有取消动词）。
+- **无损的工具结果。** cellwork 的每个工具结果都能通过 harness 的无损 JSON 走查：任务投影绝不带 `undefined`
+  自有键（可选的 `owner` 直接省略，绝不写成 `undefined`），结果里也没有非有限数、负零或环。
 - **B5 侦察边界。** `cellwork_recon` 用精确的 `Explorer`/`Researcher` 标签与绝对深度上限启动只读子代理，
   因此子代理人格接缝会施加名册的拒权清单。若该接缝不存在，只读仅由**提示词**保证，结果会报告
   `personaInjected:false`。
-- **验证循环的生产者。** `mpd_verify_open` 以声明的生产者身份 `cellwork:<cellId>`（会话头带 workspace）调用：
-  队长会话被守卫围栏，而激活时验证者还不是活代理。
+- **验证循环的生产者。** `mpd_verify_open` 用队长**活着**的 agent 与其本人 session id 调用，并如实记录在循环上；
+  cell id 只作为**数据**出现在冻结合约上（`producer: cellwork:<cellId>`），绝不伪造 session。`mpd_verify_open`
+  这个**精确名字**是队长白名单上**唯一**的 `mpd_verify_*` 条目：`mpd_verify_seat`、`mpd_verify_evidence`、
+  `mpd_verify_record` 与 `mpd_verify_escape` 对队长仍被拒绝，因此队长打开的 `writer:"self"` 循环是惰性的
+  （`mpd_verify_seat` 拒绝该循环自己的写作者）。没有活着的调用方 agent 时，`cellwork_activate` 在写入任何内容
+  之前就拒绝。
 - **一个 override、一个身份。** `windowOverride` 是单值：它认证**任何**目录读不到窗口的 route，并记录为
   `override`。规划任务由**调用者自己的身份**（规划器/切分器）关闭，关闭失败只记入 journal，绝不影响修订。
 - **压缩结果必须分类。** 屏障先等该 agent 空闲（`compactionRetries` 次有界重试，间隔 `idleBarrierDelayMs`），

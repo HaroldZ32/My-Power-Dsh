@@ -1,0 +1,33 @@
+=== T14 docfix — sampled 2026-10-30T12:40:04Z ===
+
+--- BEFORE (committed HEAD; T12 did not touch this row) ---
+| team-idle-member-guard | team-plane idle-member guard (P2a) | the §3.1-3.3 + Amendment 1 guard on a REAL boot: the Lead's plan (TWO members, ONE task) is staged and approved through the REAL `agent_teams_plan` tool by a mounted probe row (`lib/team-idle-member-guard-probe.ts`), the team executor raises BOTH members, and the verdicts come from the HARNESS session log only — the task owner's session must record an `agent_teams_task` call WITH a non-error result, while the TASKLESS member's session must record ZERO `tool/call` rows and EXACTLY ONE idle directive (the user-role message the per-agent pre-step injects); both members must carry an executor handle in the team record, so "zero calls" is about a spawned member and never an absent one. The model step is a local stub: its child script (selected by a marker in the owner's spawn prompt) drives the owner's claim, while every other request is plain text. `--self-test` is the offline falsifier — each detector against a POSITIVE and a NEGATIVE fixture (an errored result and a prose-only narration both REDDEN the owner verdict; a tool call, a missing directive and a doubled directive each REDDEN the idle verdict), plus two pins that the directive and denial literals this case asserts are the plugin's own source text. §3.4 lazy spawn is NOT claimed: the §6.1 one-turn bound stays declared. Evidence → evidence/team/idle-member-guard/live/&lt;ts&gt;/ | P2a/idle-member-guard |
+
+--- AFTER (working tree) ---
+| team-idle-member-guard | team-plane idle-member guard (P2a) | the §3.1-3.3 + Amendment 1 guard on a REAL boot: the Lead's plan (TWO members, ONE task) is staged and approved through the REAL `agent_teams_plan` tool by a mounted probe row (`lib/team-idle-member-guard-probe.ts`), the team executor raises BOTH members, and the verdicts come from the HARNESS session log only — the task owner's session must record an `agent_teams_task` call WITH a non-error result, while the TASKLESS member's session must record EXACTLY ONE idle directive (the user-role message the per-agent pre-step injects) AND exactly ONE registered tool attempt whose paired `tool/result` is an ERROR carrying the guard's one-line `DENIAL_TEXT` — the member really calls `read`, so the denial itself is the proof (a quiet member would pass even with the guard removed); both members must carry an executor handle in the team record, so the denial is about a spawned member and never an absent one. The model step is a local stub: its child script (selected by a marker in the owner's spawn prompt) drives the owner's claim, while every other request issues the `read` attempt and then answers in plain text. `--self-test` is the offline falsifier — each detector against a POSITIVE and a NEGATIVE fixture (an errored result and a prose-only narration both REDDEN the owner verdict; for the idle verdict a MISSING attempt, an attempt that SUCCEEDED, a denial text that is not the guard's, a missing directive and a doubled directive each REDDEN it), plus two pins that the directive and denial literals this case asserts are the plugin's own source text. §3.4 lazy spawn is NOT claimed: the §6.1 one-turn bound stays declared. Evidence → evidence/team/idle-member-guard/live/&lt;ts&gt;/ | P2a/idle-member-guard |
+
+--- table shape: 4 cells, no stray pipe in the cell text ---
+cells=4
+
+$ bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test
+[self-test] PASS pin: the denial is the plugin's literal
+[self-test] PASS overlay names the probe and its record file
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls
+exit=0
+
+=== CORRECTION: the self-test's OWN exit code (the piped line above reports tail's status) ===
+$ bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test
+exit=0
+[self-test] PASS overlay names the probe and its record file
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls
+
+=== CROSS-CUTTING FACT for the captain: this row edits skills/** AFTER the VENDOR_LOCK re-pin present in the tree ===
+$ node scripts/verify-vendor.ts
+exit=1
+[verify-vendor] FAIL - asset skills treeSha mismatch
+
+(The captain's single re-pin must run AFTER this row's SKILL.md edit is tracked; the current VENDOR_LOCK predates it.)
+
+=== timestamps (local +08:00) ===
+VENDOR_LOCK.json + team-core dist: 20:33:20
+this row's SKILL.md edit:       20:39:54

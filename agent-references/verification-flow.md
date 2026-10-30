@@ -62,6 +62,7 @@ on a session that actually died.
 | `--live` | stage the provider credential in the SANDBOX home **before the boot** and run the live arms on all three planes. The key is forwarded by NAME (`docker compose run -e DEEPSEEK_API_KEY`) and deleted before the report is written. Asking for `--live` without a key in the environment is a **hard error (exit 3)**, never a silent null |
 | `--no-browser` | skip the Chromium lane (it downloads a browser). Its `ui.*` rows then record NULL with the reason |
 | `--require-docker` | a skipped lane exits 3 instead of 0 |
+| `MPD_E2E_TEAM_PROJECT=1` | env var, exact literal `1`, needs `--live` and the browser lane: stages a REAL team build through the composer and requires `ui.teamBoard` + all 17 `teamproject.*` rows; companion `MPD_E2E_TEAM_BUDGET_MS` bounds that turn. A mistyped CLI flag is silently ignored (no driver-level unknown-flag rejection yet — declared follow-up) |
 
 **The required-arm gate.** A NULL row means "not attempted", which is the honest shape for an OPTIONAL
 arm. It is the wrong shape for an arm the caller asked for: after the run, every `null` whose name starts

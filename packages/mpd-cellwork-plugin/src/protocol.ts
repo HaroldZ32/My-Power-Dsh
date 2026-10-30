@@ -91,6 +91,26 @@ function memberOf(caller: CallerContext): CellMemberRecord | undefined {
 }
 
 /**
+ * One board row as `cellwork_supervise` reports it, with NO own key holding `undefined`.
+ *
+ * The live record's rows are `Record<string, unknown>`: any field may be ABSENT (a task with no owner is
+ * legal), and the harness REFUSES a tool result carrying an `undefined` own key — so this projection is a
+ * conditional spread. Absence stays absence, never an undefined value.
+ *
+ * @param task - the raw board row.
+ * @returns the lossless projection.
+ */
+function superviseTaskRow(task: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...(typeof task.id === "string" ? { id: task.id } : {}),
+    ...(typeof task.subject === "string" ? { subject: task.subject } : {}),
+    ...(typeof task.status === "string" ? { status: task.status } : {}),
+    ...(typeof task.owner === "string" ? { owner: task.owner } : {}),
+    ...(typeof task.kind === "string" ? { kind: task.kind } : {}),
+  }
+}
+
+/**
  * Install the seven protocol tools and the two protocol listeners.
  *
  * @param deps - the adapter, the host context, the knobs and the log sink.
@@ -278,7 +298,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         cellId: cell.cellId,
         phase: cell.phase,
         members,
-        tasks: tasks.map((task) => ({ id: task.id, subject: task.subject, status: task.status, owner: task.owner, kind: task.kind })),
+        tasks: tasks.map((task) => superviseTaskRow(task)),
         staleSplit: cell.splitStale,
         splitRevision: cell.splitRevision,
         requirementsRevision: cell.requirementsRevision,

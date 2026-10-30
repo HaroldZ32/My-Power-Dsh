@@ -1,0 +1,2 @@
+[mpd-better-sidebar] mount guard: DISABLED - no enabled @deepseek-ai/dsh-host-webserver entry in this composition
+[mpd-agent-team] DISABLED in a dsh-tui composition: the official team plugin registers its session projection through a ROOT-bound sessionProjections proxy, and the dsh-tui host refuses root.effect from a plugin activation - mpd-agent-team and mpd-tool-agent-team stay unmounted. THE MPD TEAM IS UNAFFECTED: since the team-plane split (W2) it runs on the NATIVE executor over ctx.subagents, which needs nothing from this row (see cordis.patch.yml TUI PLANE / W5)

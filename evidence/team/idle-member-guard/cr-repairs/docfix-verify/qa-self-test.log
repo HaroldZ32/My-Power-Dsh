@@ -1,0 +1,13 @@
+[self-test] PASS owner positive
+[self-test] PASS owner negative: errored result
+[self-test] PASS owner negative: prose only
+[self-test] PASS idle positive: one directive + a refused attempt
+[self-test] PASS idle negative: no tool attempt (the guard could be absent)
+[self-test] PASS idle negative: the attempt SUCCEEDED
+[self-test] PASS idle negative: the denial text is not the guard's
+[self-test] PASS idle negative: no directive
+[self-test] PASS idle negative: two directives
+[self-test] PASS pin: the directive is the plugin's literal
+[self-test] PASS pin: the denial is the plugin's literal
+[self-test] PASS overlay names the probe and its record file
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls

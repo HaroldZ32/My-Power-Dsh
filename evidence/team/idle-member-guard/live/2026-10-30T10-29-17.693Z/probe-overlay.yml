@@ -1,0 +1,5 @@
+- insert:
+    - id: team-idle-member-guard-probe
+      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/team-idle-member-guard-probe.ts"
+      config:
+        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/team/idle-member-guard/live/2026-10-30T10-29-17.693Z/probe.json"

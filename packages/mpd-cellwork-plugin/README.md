@@ -25,7 +25,7 @@ about. A session in no cell is untouched, which is what makes the mode free whil
 
 | Caller | Refused |
 |---|---|
-| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*` |
+| captain | everything except `cellwork_*` (but NOT `cellwork_handoff`), `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the one verify-loop opener `mpd_verify_open` (that EXACT name; every other `mpd_verify_*` stays refused) |
 | verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` |
 | member at its context checkpoint | everything except `cellwork_handoff`, `cellwork_context`, `cellwork_status` |
 | subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`. No file-work tool at all |
@@ -59,7 +59,8 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 
 The flow tools: `cellwork_requirements` (the planner's finalize/update), `cellwork_recon` (the planner's
 one-shot read-only consult), `cellwork_split` (the splitter's measured graph), `cellwork_activate` (the
-captain's materialisation).
+captain's materialisation, whose answer's `reused` list names the members resolved from the cell record or
+the live roster instead of raised).
 
 The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass), `cellwork_supervise` (the
 captain's read-only sweep), `cellwork_context` (a member's own occupancy), `cellwork_handoff` (the
@@ -95,12 +96,35 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 - **B7 owner-only dispatch.** A ready task is paired ONLY with its declared owner; a busy or absent owner
   is reported and the task left pending — never substituted. The verify loop for every code task is opened
   BEFORE the dispatch pass that hands the work out.
+- **Resumable activation.** `cellwork_activate` checkpoints each artifact the moment it creates it — the
+  in-flight revision (`activationInFlight`), every member raised, every board id minted and every loop opened
+  (`activatedLoops`) — under the `cell-activation-partial` journal event; the phase never regresses, so it
+  stays `split` for a first activation and stays `executing` for a partial RE-SPLIT of an executing cell. A
+  retry of the SAME accepted revision resumes from that record: members are reconciled against the live
+  roster (a duplicate `add_member` is reused, never fatal), a recorded board id is reused per split key, and
+  a verify loop is opened for every code task whose split key has none yet — EXCEPT a KEPT task from a
+  pre-upgrade cell whose frozen contract already names a loop id (its `activatedLoops` entry is absent): that
+  contract is not rewritten and no second loop is opened. `activatedRevision` is set only after the dispatch
+  pass succeeds. A NEWER accepted revision SUPERSEDES an older in-flight partial — journaled
+  (`activation-in-flight-superseded`), the older partial abandoned, its recorded rows reconciled (kept ids
+  reused, dropped work cancelled) — while a LOWER revision, an already-materialised revision and a stale
+  split are refused with the existing teaching errors. The answer's `reused` list names the members resolved
+  from the cell record or the live roster instead of raised. The resume is not a transaction: the residual
+  window is one board/verify call plus one cell-record write, and a duplicate board row that window leaves
+  behind is detectable but not deletable (the team plane has no cancel verb).
+- **Lossless tool results.** Every cellwork tool result survives the harness's lossless-JSON walk: a task
+  projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
+  and no result carries a non-finite number, a negative zero or a cycle.
 - **B5 recon bound.** `cellwork_recon` raises the read-only child with the exact `Explorer`/`Researcher`
   label and an absolute depth cap, so the child-persona seam applies the roster deny list. On a composition
   WITHOUT that seam the child is read-only by PROMPT only, and the result reports `personaInjected:false`.
-- **Verify-loop producer.** `mpd_verify_open` is called under the declared producer identity
-  `cellwork:<cellId>` (with the workspace in its session header), because the captain session is fenced by
-  the guard and the verifier is not a live agent yet at activation.
+- **Verify-loop producer.** `mpd_verify_open` is called with the captain's LIVE agent and its own session id,
+  recorded truthfully on the loop; the cell id appears only as DATA on the frozen contract
+  (`producer: cellwork:<cellId>`), never as a fabricated session. `mpd_verify_open` — that exact name — is the
+  ONE `mpd_verify_*` entry on the captain allowlist: `mpd_verify_seat`, `mpd_verify_evidence`,
+  `mpd_verify_record` and `mpd_verify_escape` stay refused for the captain, so a `writer:"self"` loop it opens
+  is inert (`mpd_verify_seat` refuses the loop's own writer). With no live caller agent, `cellwork_activate`
+  refuses before any write.
 - **One override, one identity.** `windowOverride` is a single value: it certifies ANY route the catalog
   cannot report, recorded as `override`. The planning tasks are closed under the CALLER's own identity
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.

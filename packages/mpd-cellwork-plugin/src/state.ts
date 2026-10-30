@@ -144,6 +144,22 @@ export interface CellState {
    */
   activatedTasks: Record<string, string>
   /**
+   * Split task key → verify-loop id, for every loop an ACTIVATION has opened.
+   *
+   * OPTIONAL AND ADDITIVE: a record written before this field existed reads as `{}`. The resume path
+   * reads it to open only the loops a failed pass did NOT open, and the success transition MERGES it
+   * (never replaces it), so a re-split keeps the loops its earlier revision armed.
+   */
+  activatedLoops?: Record<string, string>
+  /**
+   * The split revision whose materialisation is IN PROGRESS, or null when none is.
+   *
+   * OPTIONAL AND ADDITIVE. A partial activation records the accepted revision here, so a retry of the
+   * SAME revision resumes; {@link CellState.activatedRevision} stays null until the WHOLE
+   * materialisation succeeds, because that field is the refusal condition for a second activation.
+   */
+  activationInFlight?: number | null
+  /**
    * Split keys an activation CANCELLED, mapped to the board id their row still carries.
    *
    * Work a later revision DROPS is marked cancelled on the cell record and never deleted: the board
@@ -331,6 +347,8 @@ export function newCellState(input: NewCellInput): CellState {
     splitRevision: null,
     activatedRevision: null,
     activatedTasks: {},
+    activatedLoops: {},
+    activationInFlight: null,
     cancelledTasks: {},
     splitStale: false,
     startedAt: "",
@@ -619,6 +637,10 @@ function normalizeCellState(raw: unknown): CellState | null {
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
     activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
     activatedTasks: stringMap(raw.activatedTasks),
+    // TOLERANT READ: old cells carry neither key, and a null/absent in-flight revision is "no
+    // activation is running" — never a reason to refuse the record.
+    activatedLoops: stringMap(raw.activatedLoops),
+    activationInFlight: typeof raw.activationInFlight === "number" ? raw.activationInFlight : null,
     cancelledTasks: stringMap(raw.cancelledTasks),
     splitStale: raw.splitStale === true,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",

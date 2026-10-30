@@ -1,0 +1,14 @@
+863c2c3222bdc0c02a58a577e051341036eae61a
+ M docs/cellwork.md
+ M docs/cellwork.zh-CN.md
+ M packages/mpd-cellwork-plugin/README.md
+ M packages/mpd-cellwork-plugin/README.zh-CN.md
+ M packages/mpd-cellwork-plugin/dist/index.js
+ M packages/mpd-cellwork-plugin/src/activate.ts
+ M packages/mpd-cellwork-plugin/src/flow.ts
+ M packages/mpd-cellwork-plugin/src/guard.ts
+ M packages/mpd-cellwork-plugin/src/protocol.ts
+ M packages/mpd-cellwork-plugin/src/state.ts
+ M packages/mpd-cellwork-plugin/test/cellwork.test.ts
+?? packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+?? packages/mpd-cellwork-plugin/test/supervise-lossless.test.ts

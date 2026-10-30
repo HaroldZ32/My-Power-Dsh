@@ -504,7 +504,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.16.2` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.16.3` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -605,7 +605,7 @@ lane hold this line.
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no
      `skills/**` change is committed without it.
 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
-4. Push master + tag; announce with evidence links.
+4. Push master + tag; GitHub Release; announce.
 5. **Publish — a human step.** The `v*` tag push STAGES the release on npm; nothing is public and
    `latest` does not move until a human runs `npm stage approve <stage-id>`. Runbook:
    `agent-references/installer-and-profiles.md`, "Publishing to npm".

@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "slug": "team-idle-member-guard-req",
+  "row": "T5",
+  "kind": "requirement",
+  "phase": "P2a",
+  "boardName": "dispatch-engine",
+  "sampledAt": "2026-10-30T10:06:51Z",
+  "contract": ".mpd/plans/team-idle-member-guard.md",
+  "verdict": "ACCEPT with amendments; no blocker",
+  "executability": {
+    "settleMember": "EXISTS — team-store.ts :: settleMember resolves by executorRef and accepts owner name|executorRef",
+    "guardTool": "EXISTS — adapter guardTool -> tools.guard(ToolGuard): () => void; multiple hooks coexist",
+    "agent_pre_step": "EXISTS but must be registered PER AGENT (A1)",
+    "agent_teams_plan_add_member_and_approve": "EXISTS",
+    "mpdTeams_service": "EXISTS — registerControlSeat is additive (A5)",
+    "task_statuses": "EXISTS — pending|claimed|in_progress|completed|failed|cancelled",
+    "live_qa_apparatus": "EXISTS — offline real boot with a local model stub (cellwork-command precedent)"
+  },
+  "amendments": {
+    "A1": "Pre-step must be registered per agent (registerAgentPreStep + liveAgents + agent/created/disposed), not on a row ctx: adapter MEASURED note says a row-ctx agent/pre-step listener can be silent; the bundle's session-gate.ts is the precedent.",
+    "A2": "The idle mark must be re-evaluated BOTH ways each pre-step (an assigned task CLEARS it). The cellwork path delivers via TeamExecutor.send, which team-core never sees, so a marked member could be denied agent_teams_task claim — deadlock.",
+    "A3": "Member rows carry executorRef only (no sessionId); settleMember matches executorRef and accepts owner name|executorRef. The 'declared verifier' clause names no board field — reviewer is the review task's owner.",
+    "A4": "Add failed to the idle-terminal set (completed/cancelled only today).",
+    "A5": "§3.5 acceptance is the team-core API + the unregistered-cell-* arm; the cellwork call sites land in P2 (no code yet).",
+    "A6": "Name the spawn-preamble site (approve/spawn), not add_member storage.",
+    "A7": "Live case must raise TWO members via a real approve; confirm the local model stub serves both, early."
+  },
+  "constraintsHonoured": "No code/test/skill/doc edit; implementation not read for design.",
+  "evidence": [
+    "evidence/team/idle-member-guard/req/2026-10-30T10-06-51Z/report.md",
+    "evidence/team/idle-member-guard/req/2026-10-30T10-06-51Z/result.json"
+  ]
+}

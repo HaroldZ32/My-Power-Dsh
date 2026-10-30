@@ -1,0 +1,59 @@
+# verifier-a P1 verdict evidence — 2026-10-30T09:59:15Z
+## tree (HEAD + changed paths)
+863c2c3222bdc0c02a58a577e051341036eae61a
+ M docs/cellwork.md
+ M docs/cellwork.zh-CN.md
+ M packages/mpd-cellwork-plugin/README.md
+ M packages/mpd-cellwork-plugin/README.zh-CN.md
+ M packages/mpd-cellwork-plugin/dist/index.js
+ M packages/mpd-cellwork-plugin/src/activate.ts
+ M packages/mpd-cellwork-plugin/src/flow.ts
+ M packages/mpd-cellwork-plugin/src/guard.ts
+ M packages/mpd-cellwork-plugin/src/protocol.ts
+ M packages/mpd-cellwork-plugin/src/state.ts
+ M packages/mpd-cellwork-plugin/test/cellwork.test.ts
+?? packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+?? packages/mpd-cellwork-plugin/test/supervise-lossless.test.ts
+
+## package tests
+(pass) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [3.41ms]
+ 71 pass
+ 0 fail
+Ran 71 tests across 5 files. [232.00ms]
+TESTS_EXIT:0
+
+## typecheck
+$ tsgo --noEmit
+TYPECHECK_EXIT:0
+
+## comments
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+COMMENTS_EXIT:0
+
+## docs
+DOCS_EXIT:0
+
+## independent red-first replication (pre-fix src + current tests)
+10 tests failed:
+ 21 pass
+RED_EXIT:1
+unique failing arms: 10
+
+## pre-fix arm baseline (pre-fix src + pre-fix tests)
+ 60 pass
+ 0 fail
+BASELINE_EXIT:0
+
+## arm delta
+pre-existing arms missing from current run: 0
+new arms: 11
+
+## gate evidence ids
+ev-20261030T095614-a8f262 tests | ev-20261030T095652-41cc8f typecheck | ev-20261030T095655-c32acb comments | ev-20261030T095657-1b1e0c docs | ev-20261030T095704-cbe36c dist
+
+## hashes
+d0f06ab18a5d39ead4a7ce934e01c5ede9c175c7ee747fa3cb73eb20ef6137b2  evidence/cellwork/fix-activate/verifier/20261030T095541Z/cellwork-remediation-p1.md
+5e88217c1ffd971139c5576fecb0f0b484986807db1c4917c735cb85037b008b  packages/mpd-cellwork-plugin/README.md
+3d6962b06debe7a7154faa1494beb91534f2d685e8fb5aa451b1df074450d44b  packages/mpd-cellwork-plugin/README.zh-CN.md
+80ee4c14e958d2a48860aeb0312ae3f122789f756df9215876773810bda94049  docs/cellwork.md
+45f988a210286b832da7ccd7a524db3dbf97252de51fdd2c7b2c31a9fcabaff9  docs/cellwork.zh-CN.md

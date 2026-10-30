@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "recordId": "rec-20261030T123729-6131af",
+  "loopId": "loop-20261030T122451-4b74d7",
+  "taskId": "T13",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "dispatch-engine",
+  "verifierId": "57361810-9a0c-408b-b1a6-28666fe555cc",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+      "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+        "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/tests.log",
+        "bytes": 55314,
+        "sha256": "62104672c686130eea524592774e623d8025bac6b2ce93693d4f6f421a01ffc2",
+        "mtime": "2026-10-30T12:35:26.002Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/typecheck.log",
+        "bytes": 16,
+        "sha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+        "mtime": "2026-10-30T12:35:26.034Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/comments.log",
+        "bytes": 307,
+        "sha256": "d11e3aa7957bcbf5a82c5e119374b6411de105feeeffa1de90232ad454195255",
+        "mtime": "2026-10-30T12:35:29.016Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/docs.log",
+        "bytes": 5695,
+        "sha256": "3977fb712e7666e0787ce05af16131ad69b36f6588b0eeb2866214adcf6bc5af",
+        "mtime": "2026-10-30T12:35:29.103Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/dist-fresh.log",
+        "bytes": 4932,
+        "sha256": "168a15047c652016d8559076c44084914e13bc1f47a71f25bbc95d15c9843325",
+        "mtime": "2026-10-30T12:35:30.014Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/vendor.log",
+        "bytes": 708,
+        "sha256": "ded5138a9f5555a4223615ab0ccf81510ff8754f1fe9e5bc263fbe7631da6c10",
+        "mtime": "2026-10-30T12:35:30.133Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/qa-self-test.log",
+        "bytes": 733,
+        "sha256": "ee625dc2791bc462edc95c3612489cf9f261bb6d43fbde869cdb9afcd4e5ff82",
+        "mtime": "2026-10-30T12:35:33.081Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/test-qa.log",
+        "bytes": 43400,
+        "sha256": "e1c9f3a47d2bed3f201bb2c7796a81011f5b345d32c2df16a3b69602ed1454c0",
+        "mtime": "2026-10-30T12:35:57.754Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/live-case.log",
+        "bytes": 948,
+        "sha256": "44bd020030fd644f5b61c37118b02a211ad003d7f996a5bbc9d0a5e91fdfd5e4",
+        "mtime": "2026-10-30T12:35:49.787Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/pr81-seven-findings.json",
+        "bytes": 32464,
+        "sha256": "3c490c6c64ae34857c66abffaa22f0cfd51966f6f3d87d4ce69de275cbd62734",
+        "mtime": "2026-10-30T12:34:33.722Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/result.json",
+        "bytes": 11251,
+        "sha256": "268094d1ec5dbdc98d646e10c7fefcbabe8c302ce88e16aedd303b73d8ded1ca",
+        "mtime": "2026-10-30T12:35:49.777Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/probe.json",
+        "bytes": 7648,
+        "sha256": "ed717377a0782e55b18ea18d1b56ff6c31f668560a04127879299829126c6eb3",
+        "mtime": "2026-10-30T12:35:49.491Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/output.log",
+        "bytes": 4154,
+        "sha256": "83f6ab9fda0d6e2da2bd484f1c86cd091ff2950f559dbe1fe8ad7b5013e06e35",
+        "mtime": "2026-10-30T12:35:49.777Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/writer/2026-10-30T12-31-09Z/report.md",
+        "bytes": 7598,
+        "sha256": "3fd226068a482b6ddbadcc6cecead8234ad7e82b8bed6a7154e7207baf6a13b0",
+        "mtime": "2026-10-30T12:32:25.756Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/writer/2026-10-30T12-31-09Z/result.json",
+        "bytes": 3653,
+        "sha256": "29a29d51b0b50d7a97d6017d6e6654c931cfd38d9024d2667edeca588302bef0",
+        "mtime": "2026-10-30T12:32:25.794Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+      "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/README.md",
+      "sha256": "42f1954903a2684f57ea1c53ff5da6c43589000c8d9f2309b07883bad56ecfbc"
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/README.zh-CN.md",
+      "sha256": "e5f8af784e36fab98d70c67748f5086a46879d27b793afeaf19783befa71de17"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261030T123629-b2e6c5",
+      "cmd": "bun test packages",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123629-b2e6c5.log",
+      "logSha256": "1f81e552231e147d44e12f44c0003c1504dc3ace2e34cd466540a8d929be60cf"
+    },
+    {
+      "evidenceId": "ev-20261030T123659-c102ef",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123659-c102ef.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261030T123702-4edb7e",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123702-4edb7e.log",
+      "logSha256": "b3cff6f872313c10d6c53a7789945b31c0d16b167da6ee56cc49d4cbf161c9f3"
+    },
+    {
+      "evidenceId": "ev-20261030T123705-3e5d16",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123705-3e5d16.log",
+      "logSha256": "0f24691b9184fc0ecce03ecb9885214d488590983f74e35224101fe0715faa72"
+    },
+    {
+      "evidenceId": "ev-20261030T123705-bcb439",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123705-bcb439.log",
+      "logSha256": "3b78919b743feb01baefc641c1c770854f6ad10e975dcabdd400a6ce85e4b5fb"
+    },
+    {
+      "evidenceId": "ev-20261030T123706-f8e707",
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T123706-f8e707.log",
+      "logSha256": "ded5138a9f5555a4223615ab0ccf81510ff8754f1fe9e5bc263fbe7631da6c10"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-30T12:37:29.929Z",
+  "notes": [
+    "D1 (4423513833, idle-guard.ts imports) STALE: AGENTS.md section 6 states packages/*/src is bun-build output using extensionless specifiers (the .ts rule differs in FORM only); the contract pre-authorises STALE with that citation, the writer changed nothing, and the package's neighbours follow the same convention. D4 (4423513905, index.ts import) STALE for the same citation.",
+    "D2 (4423513857, Major) FIXED: a counted beginDispatch window opens before the executor send and holds around send -> re-read -> casClaimTask, released in finally; inside it the pre-step neither marks nor injects and the tool guard does not deny; a genuinely taskless member never enters one and keeps the hard denial; both-way re-evaluation unchanged. Arms observed green: 3 unit window arms (basic / overlapping counts / pre-marked cleared) plus 3 row-level dispatch-idle-order arms (cold-resumed first pre-step not marked / genuinely taskless still directed+denied / aftermath clear). The real live case still passes. BOUND: the live case does not cold-resume an absent child (the owner session was already raised), so the send-before-owner ordering is modelled by the row-level arm, not observed live; the writer declares this too.",
+    "D3 (4423513869) FIXED: a downstream kind:reject is returned unchanged with no directive injected into a refused step; a kind-less decision still becomes an enter carrying the directive. Both arms green.",
+    "D5 (4423513922) FIXED as coverage: the throwing guardTool arm asserts installation does not throw, the warning names the tool guard, and the guard stays usable; honestly green before and after (the catch pre-existed) - a falsifier, not a behaviour change.",
+    "D6 (4423513932) FIXED: the live stub's main script now issues a read attempt before its text step; evaluateIdle asserts the paired result is an ERROR carrying the guard's one-line denial plus exactly ONE idle directive (the zero-tool/call requirement is gone). Self-test is 12 arms incl. three new negatives (no attempt / attempt succeeded / wrong denial text). My real run: exit 0, problems=[], sessions {logs:3, owners:1, idle:1}, stubRequests=9, records=98; both members spawned with executorRefs; result proves the owner's non-error agent_teams_task call and the taskless member's ONE denied tool attempt + ONE directive.",
+    "D7a (4423513946) FIXED per the writer evidence: the two credential-path references SkillSpector named now read the <credentials-file> placeholder with a never-a-real-credential note. Not read before this record per the contract's blindness rule; the post-record file check is reported to the Lead. D7b STALE as a HISTORY suggestion: the branch is published and AGENTS.md section 5 forbids rewriting it; no rebase/squash was attempted, the captain records the disposition in the PR, and the final tree's single repin-vendor is green (vendor gate PASS).",
+    "Gates: bun test packages/mpd-team-core-plugin 393 pass/0 fail (27 files, +6 idle-guard arms, +3 new row-level file); bun run typecheck exit 0; verify:comments PASS; verify:docs PASS (52 pairs, 0 violations, 0 dead links); bun run test:qa all self-tests passed (case self-test 12 arms runs inside); verify-dist-fresh 34/34 fresh incl. team-core dist after the captain's rebuild; verify-vendor PASS after the single repin. No row/manifest change.",
+    "BOUNDS: the live sandbox was removed with the run, so I did not independently re-decode the raw session store; the live assertions are the QA case's own harness-session-log read (result.json proves/problems), falsified by its 12-arm self-test. D5 is coverage only. The D2 window is process-local (bridges this row's send->claim gap; cellwork deliveries rely on the unchanged both-way re-evaluation). D1/D4 are STALE by the repository convention, not by judgement. Not judged: the Docker lane and the PR #81 reconciliation comment (captain)."
+  ]
+}

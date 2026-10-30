@@ -1,0 +1,72 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) A1–A3: a verify-loop failure records the partial in-flight state, and the retry resumes it [11.95ms]
+(pass) A2/A3: a member-raise failure records the member, and the retry reuses it instead of re-raising [3.26ms]
+(pass) A2/A3: a task-creation failure records the minted id, and the retry reuses it [3.12ms]
+(pass) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [3.32ms]
+(pass) A4: the verify-loop opener is the captain's live agent, and the producer survives only as data [2.72ms]
+(pass) A3: a duplicate-roster answer is resolved from the live roster, never fatal [1.72ms]
+(pass) A4: activation without a live caller agent refuses before any write [1.10ms]
+(pass) A1: a record written before the in-flight fields existed still reads [0.69ms]
+869 |   expect(resplit.ok).toBe(true)
+870 |   expect(resplit.revision).toBe(2)
+871 |   // ONLY the task whose contract still carried the placeholder is armed; the armed kept task is skipped.
+872 |   /** The loop opens this re-split made. */
+873 |   const opensAfter = openCalls(harness).slice(opensBefore)
+874 |   expect(opensAfter.length).toBe(1)
+                                  ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-cr-25002/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:874:29)
+(fail) F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten [4.04ms]
+918 |   expect(rev2.revision).toBe(2)
+919 |   // SUPERSESSION, NOT A REFUSAL: the newer revision materialises over the recorded partial.
+920 |   harness.injection.openFailAt = 0
+921 |   /** The superseding activation. */
+922 |   const superseded = await runTool(harness, "cellwork_activate", {})
+923 |   expect(superseded.ok).toBe(true)
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-cr-25002/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:923:25)
+(fail) F2: a newer accepted revision supersedes an older in-flight partial and journals it [2.93ms]
+962 |   expect(partial.activationInFlight).toBe(1)
+963 |   writeFileSync(statePath(harness.workspace, cellId), JSON.stringify({ ...partial, activationInFlight: 2 }, null, 2) + "\n")
+964 |   /** The refused activation of the lower accepted revision. */
+965 |   const refused = await runTool(harness, "cellwork_activate", {})
+966 |   expect(refused.ok).toBe(false)
+967 |   expect(String(refused.error)).toContain("OLDER than the in-flight revision")
+                                      ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "OLDER than the in-flight revision"
+Received: "cellwork_activate: split revision 2 is IN FLIGHT (a previous activation of it failed part-way), so revision 1 cannot be materialised now — resume revision 2 while it is still the accepted split, or stop the cell. Activating a different revision would duplicate its board rows."
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-cr-25002/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:967:33)
+(fail) F2: a LOWER accepted revision still cannot supersede an in-flight one [2.22ms]
+977 |   if (definition === undefined) throw new Error("cellwork_activate is not registered")
+978 |   /** The schema properties the result declares. */
+979 |   const properties = definition.output?.schema?.properties ?? {}
+980 |   /** The `reused` declaration. */
+981 |   const reused = properties.reused
+982 |   expect(reused).toBeDefined()
+                       ^
+error: expect(received).toBeDefined()
+
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/verifier-cr-25002/pre/packages/mpd-cellwork-plugin/test/activate-resume.test.ts:982:18)
+(fail) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours [0.27ms]
+
+ 8 pass
+ 4 fail
+ 146 expect() calls
+Ran 12 tests across 1 file. [55.00ms]
+RED_EXIT:1

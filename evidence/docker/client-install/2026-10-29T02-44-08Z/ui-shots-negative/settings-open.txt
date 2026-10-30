@@ -1,0 +1,2 @@
+Account menu: dialog=General shots=/out/ui-shots-negative/ui-04-open-00-account-menu-before.png,/out/ui-shots-negative/ui-04-open-00-account-menu-after.png
+(open markers probed: General, Built-in plugins, Agent presets)

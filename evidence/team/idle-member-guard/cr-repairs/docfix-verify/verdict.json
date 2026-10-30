@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "recordId": "rec-20261030T124246-066ff6",
+  "loopId": "loop-20261030T122451-4b74d7",
+  "taskId": "T15",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "writerId": "dispatch-engine",
+  "verifierId": "57361810-9a0c-408b-b1a6-28666fe555cc",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+      "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+        "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+      }
+    ],
+    "probe": [
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-verify/qa-self-test.log",
+        "bytes": 733,
+        "sha256": "ee625dc2791bc462edc95c3612489cf9f261bb6d43fbde869cdb9afcd4e5ff82",
+        "mtime": "2026-10-30T12:42:08.689Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-verify/vendor.log",
+        "bytes": 708,
+        "sha256": "ded5138a9f5555a4223615ab0ccf81510ff8754f1fe9e5bc263fbe7631da6c10",
+        "mtime": "2026-10-30T12:42:08.811Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-verify/docs.log",
+        "bytes": 5695,
+        "sha256": "3977fb712e7666e0787ce05af16131ad69b36f6588b0eeb2866214adcf6bc5af",
+        "mtime": "2026-10-30T12:42:08.879Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-writer/2026-10-30T12-40-04Z/report.md",
+        "bytes": 6610,
+        "sha256": "791a0f5f27b645d546ca3fa044d938bc4e0c8b498e506062760a8d8df468eb59",
+        "mtime": "2026-10-30T12:40:55.382Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-writer/2026-10-30T12-40-04Z/change.log",
+        "bytes": 4491,
+        "sha256": "6c9b80c50dfd2e8aaf8bfaa54a2c5cf5aab73df71f91582735756994dea03a6e",
+        "mtime": "2026-10-30T12:40:55.379Z"
+      },
+      {
+        "path": "evidence/team/idle-member-guard/cr-repairs/docfix-writer/2026-10-30T12-40-04Z/result.json",
+        "bytes": 1182,
+        "sha256": "1e186661ea9dd1e09962cf68ed6fcb03b4aa8a9866fce24d58bac5500c5edb8a",
+        "mtime": "2026-10-30T12:40:55.395Z"
+      },
+      {
+        "path": "skills/dsh-qa/SKILL.md",
+        "bytes": 82902,
+        "sha256": "cf74efba2b7a55f2b30703fb8e13d7f5f7ec1958407459510fa985a8743bfa6a",
+        "mtime": "2026-10-30T12:39:54.270Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "evidence/team/idle-member-guard/cr-repairs/verify/2026-10-30T12-34-27Z/verdict.md",
+      "sha256": "918da1b184d56c388c669517f06247100c67b6c73a48d6cdcbded5d109f980b6"
+    },
+    {
+      "path": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+      "sha256": "27477e4779bd52f36dfa81c6982311600e3967bd70d38c320980b673d21c8b92"
+    },
+    {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "cf74efba2b7a55f2b30703fb8e13d7f5f7ec1958407459510fa985a8743bfa6a"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261030T124231-5aa1dc",
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T124231-5aa1dc.log",
+      "logSha256": "ded5138a9f5555a4223615ab0ccf81510ff8754f1fe9e5bc263fbe7631da6c10"
+    },
+    {
+      "evidenceId": "ev-20261030T124238-b01aac",
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261030T124238-b01aac.log",
+      "logSha256": "0f24691b9184fc0ecce03ecb9885214d488590983f74e35224101fe0715faa72"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-30T12:42:46.962Z",
+  "notes": [
+    "PASS SCOPE: the single SKILL.md case row for team-idle-member-guard (T14 docfix) against the T13 Medium finding and the frozen repair contract D6. The row now states EXACTLY ONE idle directive AND exactly ONE registered tool attempt whose paired tool/result is an ERROR carrying the guard's one-line DENIAL_TEXT; the member really calls read and the denial is the proof; the ZERO tool/call claim and the 'a tool call reddens' negative are gone. Its self-test sentence names the five idle negatives actually shipped (missing attempt, succeeded attempt, wrong denial text, missing directive, doubled directive) and the model-step description matches the [read, text] stub. Lazy spawn remains NOT claimed (section 6.1 one-turn bound).",
+    "GATES: bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test PASS, 12 arms incl. negative controls (exit 0); node scripts/verify-vendor.ts PASS (exit 0) with VENDOR_LOCK.json mtime 20:41:19 AFTER the SKILL.md edit at 20:39:54, i.e. the captain's final re-pin covers the docfix (the T14 writer's pre-re-pin mismatch warning is resolved); bun run verify:docs PASS (52 pairs, 0 violations, 0 dead links). Evidence ids: vendor ev-20261030T124231-5aa1dc, docs ev-20261030T124238-b01aac.",
+    "ROW SHAPE: one table row, four cells (the writer's change.log pins cells=4); the diff is the single row replacement (the other SKILL.md hunk in the working tree is the T12 D7a mcp-call credential placeholder already verdict-verified in T13, not this row).",
+    "BOUNDS: documentation-only; runtime behaviour is covered by the T13 live verdict (rec-20261030T123729-6131af) and this PASS makes no runtime claim. I did not read the case script or implementation/tests (the D6 assertions were judged from the contract, the T13 live result proves, and the observed 12-arm self-test output). The one-re-pin-per-wave history remains the captain's PR disposition; this verdict only confirms the current tree's single re-pin is green after the edit. No code/test/dist change is in this row."
+  ]
+}
