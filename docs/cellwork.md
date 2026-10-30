@@ -48,13 +48,32 @@ task-oriented account: how to drive the mode, what it measures, and what it does
 3. **executing** — `cellwork_activate` adds the split's members and tasks to the live team record,
    writes one frozen contract per code task, opens one verify loop per code task **before** the
    dispatch pass, and dispatches. Members receive their persona text in the member prompt; the team
-   itself provides no roster persona. The captain supervises on every wake-up.
+   itself provides no roster persona. The captain supervises on every wake-up. A failure part-way does
+   not wedge the cell: the artifacts already created are checkpointed and the phase is left as it was —
+   `split` for a first activation, still `executing` for a partial re-split — so the SAME accepted
+   revision resumes (below).
 4. **re-split** — `cellwork_requirements {action:"update"}` bumps the requirements revision and marks
    the split stale. The planner re-settles what changed, the splitter re-submits a revision, and
    `cellwork_activate` adds only the new or changed work to the SAME team: the team id and the cell id
    do not change, work the new revision drops is marked `cancelled` (never deleted), and the split
    task is re-dispatched rather than duplicated. Activating a stale split is REFUSED unless the caller
    names the revision explicitly.
+
+### A failed activation resumes
+
+Activation is a sequence of mutations, not one transaction: contracts, members, board tasks, verify loops,
+then the dispatch pass. Each artifact is checkpointed as it is created — the in-flight revision
+(`activationInFlight`), the members raised, the board ids minted and the loop ids opened — under the
+`cell-activation-partial` journal event, and the phase is left where it was: `split` for an activation
+that began from `split`, while a partial RE-SPLIT of an executing cell keeps `executing`, because the
+phase never regresses. A run that fails part-way is therefore resumable, not a wedge.
+
+A retry of the SAME accepted revision resumes from that record: members are reconciled against the live team
+roster (a name already on the roster is reused instead of re-raised), a recorded board id is reused per split
+key, and a verify loop is opened for every code task that does not have one yet — not only for the tasks the
+retry newly creates. `activatedRevision` is set only after the dispatch pass succeeds, so another failure
+leaves another resumable record. A call naming a DIFFERENT revision, an already-materialised revision and a
+stale split are refused with the existing teaching errors.
 
 ### Re-split in detail
 
@@ -85,9 +104,9 @@ history.
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it — an update bumps the revision and marks the split stale |
 | `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it, or `show` the last verdict |
-| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts, open verify loops, dispatch |
+| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it |
 | `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board |
-| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, and every UNDELIVERED mail row |
+| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, and every UNDELIVERED mail row; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
 | `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready |
 | `cellwork_subteam` | promoted subcaptain | register a sub-cell, enforce the depth cap, return the sub-captain directive |
@@ -106,7 +125,7 @@ is off. The predicate fires at **dispatch** time only.
 
 | Caller | Allowed | Refused |
 |---|---|---|
-| captain | `cellwork_*` except `cellwork_handoff`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*` | everything else — no file edit, no shell, no `read`/`grep`/`glob`, no verification |
+| captain | `cellwork_*` except `cellwork_handoff`, plus `agent_teams_*`, `ask_user_question`, `todo_write`, `mpd_memory_*`, and the ONE loop opener `mpd_verify_open` (exact name only) | everything else — no file edit, no shell, no `read`/`grep`/`glob`, and no verification beyond opening a loop: binding a seat, recording a verdict, evidence and escape stay refused |
 | verifier | `read`, `grep`, `glob`, `bash` (the gates), `mpd_verify_*` | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` |
 | member at its context checkpoint | `cellwork_handoff`, `cellwork_context`, `cellwork_status` | everything else — the agent cannot keep working even if it ignores the prose |
 | subcaptain | the captain allowlist MINUS `cellwork_start` / `cellwork_stop`, PLUS `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise` | every file-work tool: a subcaptain is a mini-captain and dispatches, it does not implement |
@@ -281,7 +300,7 @@ Everything lives under the workspace, in gitignored runtime state:
 
 | Path | Content |
 |---|---|
-| `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, members and their modes, split revision, checkpoints, journal cursor |
+| `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, members and their modes, split revision, checkpoints, journal cursor, and the two optional in-flight activation fields — `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
 | `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal |
 | `mail.jsonl` | the cell's own mail rows — a same-cell send, or a cross-cell send addressed to this cell; written by the sender, read here by `cellwork_inbox` |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
@@ -365,6 +384,15 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   (the flat path keeps its own relaxation). (3) The hover halo covers the ROOT frame's cards; an
   interior card keeps its own tone. The `nestedBackEdges` witness list is wired and documented but no
   arm populates a witness yet: the bound is DECLARED, and a cyclic-interior arm would seal it.
+- **The verify-loop producer is the captain's own live session.** The loop records that session truthfully;
+  the cell id survives only as DATA on the frozen contract (a `producer: cellwork:<cellId>` line), never as a
+  fabricated session. `mpd_verify_open` — that exact name — is the ONLY `mpd_verify_*` entry on the captain
+  allowlist: binding a seat, recording a verdict, taking evidence and escaping stay refused, so a
+  `writer:"self"` loop the captain opens is inert (`mpd_verify_seat` refuses the loop's own writer). With no
+  live caller agent, activation refuses before writing anything.
+- **The resume is not a transaction.** The per-artifact checkpoint shrinks the residual window to one
+  board/verify call plus one cell-record write. A duplicate board row is possible only if the task was created
+  and its checkpoint write failed; it is detectable but not deletable — the team plane has no cancel verb.
 - **Blindness stays prose**, exactly as this repository states it: cellwork wires the contract, the
   loop and the verdict, and does not pretend to observe what a verifier read.
 
@@ -372,7 +400,9 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 
 - `bun test packages/mpd-cellwork-plugin` — offline, no harness, no network; every arm runs through
   the adapter entry points the host uses (`apply`, the captured command definition, the captured tool
-  definitions and the ONE installed guard predicate) in a fresh temporary workspace.
+  definitions and the ONE installed guard predicate) in a fresh temporary workspace. The suite also
+  exercises activation resume: a failure injected after the second member, the second task and the second
+  loop, and at dispatch, each followed by a retry that reuses the recorded artifacts.
 - The mount proof, the capability spike and the wave verdicts live under
   `evidence/cellwork/` — each directory carries its `result.json` plus that lane's own artifacts: a
   report for a read-only spike, logs for a run.

@@ -11,13 +11,13 @@
 // read-only services (`mpdTeams`, `mpdRoles`) and the config service are declared STRUCTURALLY, because
 // the cross-package coupling inventory is frozen and may only shrink.
 import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type CellReadFailure, type CellState, type CellMemberRecord } from "./state"
-import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
+import { callerContext, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
 import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
 import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
-import { materializeSplit, type ActivateResult } from "./activate"
+import { materializeSplit, type ActivatePartial, type ActivateResult } from "./activate"
 import { PLANNER_MEMBER, SPLITTER_MEMBER } from "./staging"
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 
@@ -716,6 +716,11 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       if (caller.workspace === "" || caller.cell === null) return { ok: false, error: "cellwork_activate: no active cell in this workspace" }
       /** The active cell's record. */
       const state = caller.cell
+      // THE PRODUCER MUST BE A LIVE SESSION (contract A4): the verify loops are opened under the caller's
+      // OWN agent, so a dispatch carrying no live caller refuses BEFORE any write.
+      if (sessionIdOf(exec.agent) === "") {
+        return { ok: false, error: "cellwork_activate: this dispatch carries no LIVE caller agent (no session id), so the verify loops cannot be opened under a real session — nothing was materialised. Call this tool from a live agent session; a detached or synthetic handle is not accepted." }
+      }
       if (caller.sessionId === "" || caller.sessionId !== state.captainSessionId) return { ok: false, error: "cellwork_activate is CAPTAIN-ONLY: the captain of " + state.cellId + " is session " + state.captainSessionId + ", which is not this caller" }
       if (state.phase === "stopped") return { ok: false, error: "cellwork_activate: cell " + state.cellId + " is stopped and archived" }
       if (state.teamId === "") return { ok: false, error: "cellwork_activate: no planning team is recorded on " + state.cellId + " — run `cellwork_start` first" }
@@ -739,10 +744,36 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the materialised revision " + String(state.activatedRevision) + " — revisions only move forward; accept a newer split instead" }
         }
       }
+      // A PARTIAL ACTIVATION IS RESUMABLE WITH THE SAME REVISION (contract A3): `activatedRevision` is
+      // still null, and `activationInFlight` names the revision a failed pass owns. A DIFFERENT revision
+      // is refused, because appending a second materialisation would duplicate its board rows.
+      if (state.activationInFlight !== null && state.activationInFlight !== undefined && state.activationInFlight !== acceptedRevision) {
+        return { ok: false, error: "cellwork_activate: split revision " + String(state.activationInFlight) + " is IN FLIGHT (a previous activation of it failed part-way), so revision " + String(acceptedRevision) + " cannot be materialised now — resume revision " + String(state.activationInFlight) + " while it is still the accepted split, or stop the cell. Activating a different revision would duplicate its board rows." }
+      }
       /** The stored verdict of the revision being activated (not "the latest": a stale one may be activated on purpose). */
       const stored = readSplit(caller.workspace, state.cellId, acceptedRevision)
       if (!stored.ok) return { ok: false, error: "cellwork_activate: " + stored.detail, path: stored.path }
       if (!stored.verdict.accepted) return { ok: false, error: "cellwork_activate: revision " + String(acceptedRevision) + " was REFUSED by the measured verdict — the splitter must fix the findings and resubmit" }
+      /**
+       * Persist one partial activation on the cell record (contract A2).
+       *
+       * The phase STAYS `split` and `activatedRevision` stays null: a partial pass must never look like a
+       * materialised revision. `activationInFlight` is the one marker a retry may resume from.
+       *
+       * @param partial - the artifacts created so far.
+       * @param error - the failure sentence, on the final write for a failed pass.
+       */
+      const persistPartial = (partial: ActivatePartial, error?: string): void => {
+        /** The record after the partial checkpoint. */
+        const next: CellState = {
+          ...state,
+          activationInFlight: acceptedRevision,
+          members: { ...state.members, ...partial.members },
+          activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
+          activatedLoops: { ...(state.activatedLoops ?? {}), ...partial.loopIds },
+        }
+        transition(caller.workspace, next, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...(error === undefined ? {} : { error }) }, new Date())
+      }
       /** The materialisation. */
       const activated: ActivateResult = await materializeSplit({
         dsh: dsh as unknown as Parameters<typeof materializeSplit>[0]["dsh"],
@@ -757,23 +788,36 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         // whose workspace differs from the process cwd would read another tree's board (or none at all)
         // for the dispatch pass and for closing the open splitter row.
         recordFor: (teamId: string) => recordOf(teams(), caller.workspace, teamId),
+        checkpoint: (partial: ActivatePartial): void => { persistPartial(partial) },
         now: new Date(),
       })
-      if (!activated.ok) return { ok: false, error: activated.error }
+      if (!activated.ok) {
+        // THE FAILURE IS ITSELF A RESUMABLE STATE: persist the FINAL partial (the last checkpoint may
+        // predate an artifact the failure left behind) together with the sentence that stopped the pass.
+        if (activated.partial !== undefined) persistPartial(activated.partial, activated.error)
+        return { ok: false, error: activated.error }
+      }
       /** The cancellations this activation recorded, keyed by split key for the cell record. */
       const cancelledNow: Record<string, string> = {}
       for (const entry of activated.outcome.cancelled) cancelledNow[entry.key] = entry.boardId
+      // THE LOOP TABLE IS MERGED, NEVER REPLACED: a re-split keeps the loops an earlier revision armed,
+      // while this pass's (and a resumed pass's) ids are recorded by split key.
+      /** The verify-loop ids the cell records after this activation. */
+      const loopTable: Record<string, string> = { ...(state.activatedLoops ?? {}) }
+      for (const loop of activated.outcome.loops) loopTable[loop.taskKey] = loop.loopId
       /** The record after activation: the raised members, the live board mapping and the executing phase. */
       const next: CellState = {
         ...state,
         phase: "executing",
         activatedRevision: acceptedRevision,
+        activationInFlight: null,
         activatedTasks: { ...activated.outcome.boardIds },
+        activatedLoops: loopTable,
         cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
         splitStale: false,
         members: { ...state.members, ...activated.outcome.members },
       }
-      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length }, new Date())
+      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused }, new Date())
       return {
         ok: true,
         cellId: state.cellId,
@@ -781,6 +825,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         revision: acceptedRevision,
         contracts: activated.outcome.contracts,
         membersRaised: Object.keys(activated.outcome.members),
+        reused: activated.outcome.reused,
         tasks: activated.outcome.tasks,
         kept: activated.outcome.kept,
         cancelled: activated.outcome.cancelled,
