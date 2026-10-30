@@ -183,13 +183,16 @@ describe("the refusal is the product", () => {
   })
 })
 
-describe("the registration is ONE guard, released on teardown", () => {
-  test("exactly one guard is installed and the row's dispose runs the registry's disposer", () => {
+describe("every guard the row installs is released on teardown", () => {
+  test("TWO guards are installed — the team door and the idle-member guard — and dispose runs both", () => {
     /** A second, independent `apply` so the teardown arm cannot disturb the arms above. */
     const reloadable = openDoor()
-    expect(reloadable.guards.length).toBe(1)
+    // TWO registrations since `.mpd/plans/team-idle-member-guard.md`: the team door (every official
+    // authoring verb) and the idle-member guard (the tool boundary that denies a taskless member). A
+    // single-guard count here would silently drop one of them from the teardown contract.
+    expect(reloadable.guards.length).toBe(2)
     expect(reloadable.released.count).toBe(0)
     reloadable.teardown()
-    expect(reloadable.released.count).toBe(1)
+    expect(reloadable.released.count).toBe(2)
   })
 })

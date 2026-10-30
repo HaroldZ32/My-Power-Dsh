@@ -78,6 +78,7 @@ import {
 import { boardDependencyEdges, dependencyCycle, dependencyPath, planDependencyEdges, planGraphDefect, planReferenceTarget, planTaskId, scopeClashes } from "./dependency-guard.ts"
 import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
+import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
@@ -193,6 +194,18 @@ export interface MpdTeamsService {
   subscribe: (workspace: string, listener: () => void) => () => void
   /** A monotonically increasing revision of one workspace's team state; 0 before any change is seen. */
   revision: (workspace: string) => number
+  /**
+   * Exempt ONE session from the idle-member guard — the explicit registration a cell's dispatcher or a
+   * promoted subcaptain needs (never a name prefix, so an ordinary member cannot inherit it by being
+   * named `cell-*`).
+   *
+   * The caller is the row that OWNS the seat (cellwork registers its dispatcher at staging and its
+   * promoted subcaptain at promotion) and must call the returned release when the seat ends. Idempotent:
+   * registering the same session twice leaves one exemption.
+   * @param sessionId - the exempt session's id.
+   * @returns the release for that exemption.
+   */
+  registerControlSeat: (sessionId: string) => () => void
 }
 
 /** A tool result narrow enough for the adapter's renderer. */
@@ -1277,6 +1290,23 @@ export function apply(ctx: any): void {
     }
   }
 
+  // ── THE IDLE-MEMBER GUARD (contract `.mpd/plans/team-idle-member-guard.md`) ──
+  // A team member with NO board task performs ZERO tool calls: the per-agent pre-step marks it and
+  // injects one directive, the process-wide tool guard denies every call, and an open task clears the
+  // mark at the next pre-step (Amendment A2 — the cellwork dispatch sends through `TeamExecutor.send`,
+  // which this row never observes, so the pre-step is the only reliable clear). The service exposes the
+  // explicit control-seat registration a cell dispatcher/subcaptain needs; a name prefix is never an
+  // exemption. The guard's own registrations join this row's disposal list.
+  const idleGuard = installIdleGuard({
+    liveAgents: () => dsh.liveAgents(),
+    registerAgentPreStep: (agent, listener) => dsh.registerAgentPreStep(agent, listener),
+    onEvent: (event, handler) => dsh.onEvent(event, handler),
+    guardTool: (guard) => dsh.guardTool(guard),
+    workspaceRoot: (exec) => dsh.workspaceRoot(exec),
+    rowLog: (line) => { rowLogLine("mpd-team-core", line) },
+  })
+  for (const dispose of idleGuard.disposers) disposers.push(dispose)
+
   // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
   // Published before the tools so a consumer that resolves the service during this row's own
   // activation still finds it. Every member is synchronous and non-throwing: it is called from
@@ -1335,6 +1365,10 @@ export function apply(ctx: any): void {
         revision: (workspace: string) => {
           try { return feed.revision(workspace) } catch { return 0 }
         },
+        // THE CONTROL-SEAT EXEMPTION (contract §3.5): the cellwork row registers its dispatcher and a
+        // promoted subcaptain here, so those seats keep their control tools while owning no board task.
+        // Explicit registration only — an ordinary member named `cell-*` inherits nothing.
+        registerControlSeat: (sessionId: string) => idleGuard.registerControlSeat(sessionId),
       } satisfies MpdTeamsService)
     } catch (error) {
       rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
@@ -1533,7 +1567,10 @@ export function apply(ctx: any): void {
             memberId: added.id,
             name: added.name,
             description: added.description === "" ? added.name : added.description,
-            prompt: input.prompt === "" ? added.description : input.prompt,
+            // THE SPAWN PREAMBLE IS THE PROSE LAYER OF THE IDLE GUARD (§3.3): the fixed rule travels
+            // with the prompt the executor hands the member, so a spawn-time turn starts with the rule
+            // in view. The GUARANTEE is the tool-boundary denial, not this text.
+            prompt: withIdlePreamble(input.prompt === "" ? added.description : input.prompt),
             // THE SAME IDENTITY CONTRACT AS APPROVAL: the role is the executor's first roster
             // channel, so a member appended to a LIVE roster is routed by its slot — not by the
             // staging session that happens to be running this append.
@@ -1865,7 +1902,9 @@ export function apply(ctx: any): void {
               memberId: member.id,
               name: member.name,
               description: member.description === "" ? member.name : member.description,
-              prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
+              // THE SPAWN PREAMBLE (§3.3), applied where the prompt is HANDED TO THE EXECUTOR (Amendment
+              // A6), never where `add_member` stores the row: the member's first turn must carry it.
+              prompt: withIdlePreamble(plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description),
               // THE ROLE IS THE ROUTE'S FIRST IDENTITY CHANNEL, not a decoration: the native executor
               // matches it against the roster before the description's head and the name, and an
               // unmatched member inherits the staging session's route. `TeamMemberRecord.route` is

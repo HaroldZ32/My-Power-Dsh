@@ -160,6 +160,35 @@ data: {"rev":8}
 cellwork 在被晋升的副队长注册子单元时，把父**单元**的 team id 记到子单元上（`parentTeamId`），于是单元日志可以
 对照着读；子团队自身的链接仍然是团队平面的推导结果，绝不是第二份副本。
 
+## 空闲成员守卫——没有看板任务的成员不得行动
+
+团队成员唯一的授权来源是看板任务，而这一行把规则落在**工具边界**上，而不是提示词措辞里。如果一个 session 是
+某个活跃团队的成员、且**没有**处于打开状态的任务——没有哪条任务的 `owner` 等于它的成员名或 executor handle，
+且状态为 `pending`/`claimed`/`in_progress`——逐个 agent 的 `agent/pre-step` 监听就会把它标记为空闲。它只会
+收到**一条**指令——"You have no board task. Do not read, run, write, message or claim. End your turn
+now."——并且它尝试的**每一次**工具调用都会被拒绝，返回 `[mpd-team] no board task is assigned to you; end
+your turn and wait for a dispatch`。由于拒绝本身就是**工具结果**，没有任务的成员无法读源码、跑 shell、写文件、
+发邮件、claim、complete 或 reopen 任何东西，直到看板把工作交给它。
+
+- **标记在每一步 pre-step 上双向重估。** 有打开任务就**清除**标记——包括通过本行观察不到的路径送达的任务
+  （cellwork 的派发走 `TeamExecutor.send`）——没有打开任务则重新标记。团队记录进入终态（停止/归档）或
+  session 已不在名册上，同样会清除。可靠清除点是 pre-step，而不是派发/claim 钩子。
+- **保守判定。** 不在任何活跃团队里的 session、团队记录读不出来的 session、团队的 Lead，以及显式登记的
+  **控制席位**，都不会被标记。控制席位是 `mpdTeams` 服务上的 `registerControlSeat(sessionId)`——cell 的
+  dispatcher 或被晋升的副队长在没有看板任务时需要的那次登记（cellwork 的调用点随 dispatcher 落地）；一个名字
+  恰好是 `cell-*` 的普通成员不会因此获得豁免：豁免来自登记，绝不来自名字前缀。
+- **已分配但尚未 claim 的任务会保持工具开放。** `pending` 是打开状态；这个不对称是刻意的，因为派发回合必须能
+  调用 `agent_teams_task claim`。只有 `completed`、`cancelled` 或 `failed` 任务的成员算空闲。`review` 任务
+  按它自己的 `owner` 计数：看板上没有单独的"声明验证者"字段。
+- **spawn 前置语是书面层。** `approve` 以及运行中 `add_member` 拉起成员时交给执行器的每一条提示词都会加上同一
+  规则的前缀——"You are a team member. You have NO board task yet unless this spawn carries one…"——因此
+  spawn 时的回合一开头就能看到它。工具拒绝才是保证；前置语是更便宜的第一层。
+- **按 agent 注册，不挂在行上下文上。** `agent/pre-step` 通过 agent 自己的 scope 载体派发：装在**行**上下文上
+  的监听在六次真实启动里被实测为静默（2026-09-27）。因此守卫对每个 `liveAgents()` 条目注册，在
+  `agent/created` 时补挂、在 `agent/disposed` 时释放；每个回合只注入一条指令（harness 不报告回合序号时按一次
+  标记注入一条），所以同一回合里重复的 step 不会再追加第二条。活跃注册表、事件总线或 `tools.guard` 接缝缺失
+  时，会降级为一条已报告的缺失，而不是让启动失败。
+
 ## 配置
 
 无。本插件只声明 `tools` 与 `commands`，并全部经 adapter 解析。
@@ -178,3 +207,9 @@ cellwork 在被晋升的副队长注册子单元时，把父**单元**的 team i
   `idle`、压缩流程能看见"已完成的团队"的前提。它由队长或调度 lane 调用时运行，**不是一个后台定时器**。
 - `agent_teams_plan {action:"approve"}` 无法回滚。
 - **官方**收件箱没有未读数：它的持久状态是 `messages` + `delivered`，已读状态在其中任何地方都不可观测，因此从**那个**平面硬造一个计数只会报错数。这只是官方平面的限制：mpd 自己的信箱会统计未读（`unreadOf`、`summarise` → `MailSummary.unread`，按最旧优先计算），并由 `agent_teams_mail {action:"unread"|"summary"}` 报告出来。
+- **空闲标记是进程内的，靠重新检测而不是持久化。** 重启后每个成员会在下一次 pre-step 重新检测；标记期间派发的
+  任务会在该成员下一次 pre-step 时清除；派发与清除之间崩溃也会以同样方式重新检测。
+- **没有这一行的组合没有守卫。** 检测与拒绝都在本插件里；没有 `mpd-team-core` 的团队只剩下 spawn 前置语那一层
+  书面约定。
+- **没有惰性 spawn 时，spawn 回合仍要花一次模型回合。** 守卫把它变成一次只有一条指令、零工具的回合，而不是免费
+  的回合；惰性 spawn 未实现。

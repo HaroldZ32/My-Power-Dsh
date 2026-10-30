@@ -1,0 +1,315 @@
+{
+  "ok": true,
+  "slug": "team-idle-member-guard",
+  "subject": "on a real boot, a taskless team member records ZERO tool calls and one idle directive while the task owner works",
+  "case": "team-idle-member-guard",
+  "wave": "P2a/idle-member-guard",
+  "prompt": "Stage and approve the idle-guard live QA team, then reply with one line.",
+  "command": "dsh --profile mpd-headless --patch <probe-overlay> \"Stage and approve the idle-guard live QA team, then reply with one line.\"",
+  "sandbox": {
+    "root": "/tmp/mpd-team-idle-member-guard-Gd26tc",
+    "dshHome": "/tmp/mpd-team-idle-member-guard-Gd26tc/dsh-home",
+    "home": "/tmp/mpd-team-idle-member-guard-Gd26tc/run-home",
+    "ws": "/tmp/mpd-team-idle-member-guard-Gd26tc/ws"
+  },
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "boot": {
+      "ok": true,
+      "exit": 0,
+      "stubRequests": 7
+    },
+    "probe": {
+      "lead": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+      "calls": [
+        {
+          "label": "create",
+          "ok": true,
+          "value": {
+            "plan": {
+              "version": 1,
+              "planId": "plan-20261030102930347-3ugq-001",
+              "sessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "approval": "required",
+              "members": [],
+              "tasks": [],
+              "stagedAt": "2026-10-30T10:29:30.347Z"
+            }
+          },
+          "error": ""
+        },
+        {
+          "label": "add-owner",
+          "ok": true,
+          "value": {
+            "plan": {
+              "version": 1,
+              "planId": "plan-20261030102930347-3ugq-001",
+              "sessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "approval": "required",
+              "members": [
+                {
+                  "name": "cell-owner",
+                  "description": "owns the one board task",
+                  "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+                  "role": "Senior Engineer"
+                }
+              ],
+              "tasks": [],
+              "stagedAt": "2026-10-30T10:29:30.347Z"
+            }
+          },
+          "error": ""
+        },
+        {
+          "label": "add-idle",
+          "ok": true,
+          "value": {
+            "plan": {
+              "version": 1,
+              "planId": "plan-20261030102930347-3ugq-001",
+              "sessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "approval": "required",
+              "members": [
+                {
+                  "name": "cell-owner",
+                  "description": "owns the one board task",
+                  "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+                  "role": "Senior Engineer"
+                },
+                {
+                  "name": "cell-idle",
+                  "description": "a member with no board task",
+                  "prompt": "You are the taskless member of this live QA team.",
+                  "role": "Senior Engineer"
+                }
+              ],
+              "tasks": [],
+              "stagedAt": "2026-10-30T10:29:30.347Z"
+            }
+          },
+          "error": ""
+        },
+        {
+          "label": "create-task",
+          "ok": true,
+          "value": {
+            "plan": {
+              "version": 1,
+              "planId": "plan-20261030102930347-3ugq-001",
+              "sessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "approval": "required",
+              "members": [
+                {
+                  "name": "cell-owner",
+                  "description": "owns the one board task",
+                  "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+                  "role": "Senior Engineer"
+                },
+                {
+                  "name": "cell-idle",
+                  "description": "a member with no board task",
+                  "prompt": "You are the taskless member of this live QA team.",
+                  "role": "Senior Engineer"
+                }
+              ],
+              "tasks": [
+                {
+                  "subject": "the one task",
+                  "description": "The only task on this board.",
+                  "blockedBy": [],
+                  "writeScopes": [],
+                  "owner": "cell-owner"
+                }
+              ],
+              "stagedAt": "2026-10-30T10:29:30.347Z"
+            }
+          },
+          "error": ""
+        },
+        {
+          "label": "approve",
+          "ok": true,
+          "value": {
+            "plan": {
+              "version": 1,
+              "planId": "plan-20261030102930347-3ugq-001",
+              "sessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "approval": "required",
+              "members": [
+                {
+                  "name": "cell-owner",
+                  "description": "owns the one board task",
+                  "prompt": "IDLE-QA-OWNER: you own the one board task of this live QA team.",
+                  "role": "Senior Engineer"
+                },
+                {
+                  "name": "cell-idle",
+                  "description": "a member with no board task",
+                  "prompt": "You are the taskless member of this live QA team.",
+                  "role": "Senior Engineer"
+                }
+              ],
+              "tasks": [
+                {
+                  "subject": "the one task",
+                  "description": "The only task on this board.",
+                  "blockedBy": [],
+                  "writeScopes": [],
+                  "owner": "cell-owner"
+                }
+              ],
+              "stagedAt": "2026-10-30T10:29:30.347Z",
+              "approvedAt": "2026-10-30T10:29:30.389Z",
+              "created": {
+                "members": [
+                  {
+                    "name": "cell-owner",
+                    "id": "db17a7e9-c65e-4aac-9bb6-8bd6e844c231"
+                  },
+                  {
+                    "name": "cell-idle",
+                    "id": "3ae71d2b-932d-418d-992b-44ed9e08886a"
+                  }
+                ],
+                "tasks": [
+                  {
+                    "subject": "the one task",
+                    "id": "T1"
+                  }
+                ]
+              }
+            },
+            "team": {
+              "version": 1,
+              "teamId": "team-20261030102930355-3ugq-002",
+              "name": "idle-guard-live",
+              "description": "P2a live QA: one task, two members",
+              "leadSessionId": "session-607e2404-4b38-4e68-82d7-c286ba1530fb",
+              "planId": "plan-20261030102930347-3ugq-001",
+              "phase": "active",
+              "createdAt": "2026-10-30T10:29:30.355Z",
+              "members": [
+                {
+                  "id": "M1",
+                  "name": "cell-owner",
+                  "description": "owns the one board task",
+                  "status": "running",
+                  "spawnedAt": "2026-10-30T10:29:30.355Z",
+                  "role": "Senior Engineer",
+                  "executorRef": "db17a7e9-c65e-4aac-9bb6-8bd6e844c231"
+                },
+                {
+                  "id": "M2",
+                  "name": "cell-idle",
+                  "description": "a member with no board task",
+                  "status": "running",
+                  "spawnedAt": "2026-10-30T10:29:30.355Z",
+                  "role": "Senior Engineer",
+                  "executorRef": "3ae71d2b-932d-418d-992b-44ed9e08886a"
+                }
+              ],
+              "tasks": [
+                {
+                  "id": "T1",
+                  "subject": "the one task",
+                  "description": "The only task on this board.",
+                  "kind": "work",
+                  "status": "pending",
+                  "blockedBy": [],
+                  "writeScopes": [],
+                  "createdAt": "2026-10-30T10:29:30.355Z",
+                  "updatedAt": "2026-10-30T10:29:30.355Z",
+                  "revision": 1,
+                  "owner": "cell-owner"
+                }
+              ],
+              "nextMemberNumber": 3,
+              "nextTaskNumber": 2,
+              "approvedAt": "2026-10-30T10:29:30.389Z"
+            },
+            "created": {
+              "members": [
+                {
+                  "name": "cell-owner",
+                  "id": "db17a7e9-c65e-4aac-9bb6-8bd6e844c231"
+                },
+                {
+                  "name": "cell-idle",
+                  "id": "3ae71d2b-932d-418d-992b-44ed9e08886a"
+                }
+              ],
+              "tasks": [
+                {
+                  "subject": "the one task",
+                  "id": "T1"
+                }
+              ]
+            }
+          },
+          "error": ""
+        }
+      ],
+      "errors": []
+    },
+    "sessions": {
+      "logs": 3,
+      "owners": 1,
+      "idle": 1
+    },
+    "team": {
+      "teamId": "team-20261030102930355-3ugq-002",
+      "members": [
+        {
+          "name": "cell-owner",
+          "status": "running",
+          "spawned": true
+        },
+        {
+          "name": "cell-idle",
+          "status": "inactive",
+          "spawned": true
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1",
+          "owner": "db17a7e9-c65e-4aac-9bb6-8bd6e844c231",
+          "status": "in_progress"
+        }
+      ]
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-team-idle-member-guard-Gd26tc-ws--"
+      ]
+    }
+  },
+  "problems": [],
+  "proves": [
+    "The Lead's plan (two members, one task) was staged and approved through the REAL agent_teams_plan tool (the probe's own recorded answers).",
+    "Both members were raised: the team record carries an executor handle for cell-owner and cell-idle.",
+    "The task owner's session log records an `agent_teams_task` call with a non-error result.",
+    "The taskless member's session log records ZERO tool/call rows and exactly ONE idle directive (harness session log, never model prose)."
+  ],
+  "doesNotProve": [
+    "Lazy spawn: this case does not prove that no session exists before the first task dispatch, so the §6.1 one-turn bound is declared (the spawn turn still costs one model turn; the guard makes it a zero-tool turn).",
+    "The bundle row as the mount source: the profile install writes checkout-absolute rows; the bundle wiring rests on verify:rows / verify:manifest.",
+    "A TUI/web entry surface; the boot is headless."
+  ]
+}

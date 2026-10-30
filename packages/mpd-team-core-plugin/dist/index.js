@@ -3569,6 +3569,248 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   return all;
 }
 
+// packages/mpd-team-core-plugin/src/team-lifecycle.ts
+import { readFileSync as readFileSync4, readdirSync as readdirSync3 } from "node:fs";
+import { join as join5 } from "node:path";
+var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
+function isLiveTeamPhase(phase) {
+  return LIVE_TEAM_PHASES.includes(phase);
+}
+function readArchivedPlanIndex(workspace) {
+  const approved = new Set;
+  const unapproved = new Set;
+  let entries = [];
+  try {
+    entries = readdirSync3(join5(teamRoot(workspace), "archive"));
+  } catch {
+    return { approved, unapproved };
+  }
+  for (const entry of entries) {
+    try {
+      const raw = readFileSync4(join5(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
+      const plan = JSON.parse(raw);
+      const key = String(plan.planId ?? "");
+      if (key === "")
+        continue;
+      (plan.approvedAt === undefined ? unapproved : approved).add(key);
+    } catch {}
+  }
+  return { approved, unapproved };
+}
+function isLiveTeam(record, index) {
+  if (record.endedAt !== undefined)
+    return false;
+  if (!isLiveTeamPhase(record.phase))
+    return false;
+  const key = String(record.planId ?? "");
+  if (key === "")
+    return true;
+  return !(index.unapproved.has(key) && !index.approved.has(key));
+}
+function resolveTeamRecord(input) {
+  const spellings = [input.sessionId, ...input.alsoSessions ?? []].filter((value) => value !== "");
+  if (input.bound !== undefined && isLiveTeam(input.bound, input.index))
+    return { record: input.bound };
+  const live = input.teams.filter((record) => isLiveTeam(record, input.index));
+  const leading = live.find((record) => recordNamesLead(record, spellings));
+  if (leading !== undefined)
+    return { record: leading };
+  const memberOf = live.filter((record) => recordNamesMember(record, spellings));
+  if (memberOf.length === 1)
+    return { record: memberOf[0] };
+  if (memberOf.length > 1) {
+    return { refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry` };
+  }
+  return {};
+}
+function reapReapedTeams(workspace, now) {
+  const index = readArchivedPlanIndex(workspace);
+  const reaped = [];
+  for (const record of listTeams(workspace)) {
+    if (isLiveTeam(record, index))
+      continue;
+    if (record.endedAt !== undefined)
+      continue;
+    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`;
+    writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason });
+    reaped.push(record.teamId);
+  }
+  return reaped;
+}
+
+// packages/mpd-team-core-plugin/src/idle-guard.ts
+var IDLE_DIRECTIVE_TEXT = "You have no board task. Do not read, run, write, message or claim. End your turn now.";
+var IDLE_DENIAL_TEXT = "[mpd-team] no board task is assigned to you; end your turn and wait for a dispatch";
+var IDLE_PREAMBLE_TEXT = "You are a team member. You have NO board task yet unless this spawn carries one. Do not read, run, write, message or claim. Reply with one line and end your turn; the board will dispatch your task.";
+var OPEN_TASK_STATUSES = ["pending", "claimed", "in_progress"];
+function wireReason(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function sessionIdOfAgent(agent) {
+  const candidate = agent;
+  const sessionId = candidate?.session?.id;
+  if (typeof sessionId === "string" && sessionId !== "")
+    return sessionId;
+  const id = candidate?.id;
+  return typeof id === "string" ? id : "";
+}
+function memberForSession(record, sessionId) {
+  if (sessionId === "")
+    return;
+  return record.members.find((member) => member.executorRef === sessionId);
+}
+function memberHasOpenTask(record, sessionId) {
+  const member = memberForSession(record, sessionId);
+  if (member === undefined)
+    return false;
+  return record.tasks.some((task) => OPEN_TASK_STATUSES.includes(task.status) && (task.owner === member.name || member.executorRef !== undefined && task.owner === member.executorRef));
+}
+function findMemberTeam(teams, sessionId) {
+  if (sessionId === "")
+    return;
+  return teams.find((team) => isLiveTeamPhase(team.phase) && memberForSession(team, sessionId) !== undefined);
+}
+function withIdlePreamble(prompt) {
+  return IDLE_PREAMBLE_TEXT + `
+
+` + prompt;
+}
+function installIdleGuard(dsh) {
+  const marked = new Set;
+  const controlSeats = new Set;
+  const injectedTurns = new Map;
+  const disposers = [];
+  const warn = (line) => {
+    try {
+      dsh.rowLog?.(line);
+    } catch {}
+  };
+  const register = (agent) => {
+    if (agent === undefined || agent === null)
+      return;
+    if (agentDisposers.has(agent))
+      return;
+    try {
+      const dispose = dsh.registerAgentPreStep(agent, listener);
+      agentDisposers.set(agent, typeof dispose === "function" ? dispose : () => {});
+    } catch (error) {
+      warn(`[mpd-team-core] the idle-member guard could not register a pre-step listener for agent "${sessionIdOfAgent(agent)}" (${wireReason(error)})`);
+    }
+  };
+  const agentDisposers = new Map;
+  const listener = (payload, decision) => {
+    try {
+      const agent = payload?.agent ?? payload;
+      const sessionId = sessionIdOfAgent(agent);
+      if (sessionId === "")
+        return;
+      if (controlSeats.has(sessionId)) {
+        clear(sessionId);
+        return;
+      }
+      const workspace = dsh.workspaceRoot({ agent });
+      const team = workspace === "" ? undefined : findMemberTeam(listTeams(workspace), sessionId);
+      if (team === undefined) {
+        clear(sessionId);
+        return;
+      }
+      if (recordNamesLead(team, [sessionId])) {
+        clear(sessionId);
+        return;
+      }
+      if (memberHasOpenTask(team, sessionId)) {
+        clear(sessionId);
+        return;
+      }
+      const turn = typeof payload?.turn === "number" ? payload.turn : null;
+      if (turn === null && marked.has(sessionId))
+        return;
+      if (turn !== null && injectedTurns.get(sessionId) === turn && marked.has(sessionId))
+        return;
+      marked.add(sessionId);
+      if (turn !== null)
+        injectedTurns.set(sessionId, turn);
+      const carried = decision?.messages ?? payload?.messages ?? [];
+      return {
+        kind: "enter",
+        messages: [...carried, userMessage({ text: IDLE_DIRECTIVE_TEXT, source: { kind: "mpd-team", reason: "idle-member-guard" } })]
+      };
+    } catch (error) {
+      warn(`[mpd-team-core] the idle-member guard's pre-step listener failed: ${wireReason(error)}`);
+      return;
+    }
+  };
+  const clear = (sessionId) => {
+    marked.delete(sessionId);
+    injectedTurns.delete(sessionId);
+  };
+  try {
+    const offGuard = dsh.guardTool((exec) => {
+      const sessionId = sessionIdOfAgent(exec?.agent);
+      return sessionId !== "" && marked.has(sessionId) ? IDLE_DENIAL_TEXT : undefined;
+    });
+    if (typeof offGuard === "function")
+      disposers.push(offGuard);
+  } catch (error) {
+    warn(`[mpd-team-core] the idle-member guard could not install its tool guard (${wireReason(error)})`);
+  }
+  try {
+    for (const agent of dsh.liveAgents() ?? [])
+      register(agent);
+  } catch (error) {
+    warn(`[mpd-team-core] the idle-member guard could not read the live registry (${wireReason(error)})`);
+  }
+  try {
+    const offCreated = dsh.onEvent("agent/created", (payload) => {
+      register(payload?.agent ?? payload);
+      return;
+    });
+    if (typeof offCreated === "function")
+      disposers.push(offCreated);
+  } catch (error) {
+    warn(`[mpd-team-core] the idle-member guard could not subscribe to agent/created (${wireReason(error)})`);
+  }
+  try {
+    const offDisposed = dsh.onEvent("agent/disposed", (payload) => {
+      const agent = payload?.agent ?? payload;
+      const dispose = agentDisposers.get(agent);
+      if (dispose !== undefined) {
+        agentDisposers.delete(agent);
+        clear(sessionIdOfAgent(agent));
+        try {
+          dispose();
+        } catch {}
+      }
+      return;
+    });
+    if (typeof offDisposed === "function")
+      disposers.push(offDisposed);
+  } catch (error) {
+    warn(`[mpd-team-core] the idle-member guard could not subscribe to agent/disposed (${wireReason(error)})`);
+  }
+  disposers.push(() => {
+    for (const dispose of agentDisposers.values()) {
+      try {
+        dispose();
+      } catch {}
+    }
+    agentDisposers.clear();
+  });
+  return {
+    marked,
+    isMarked: (sessionId) => marked.has(sessionId),
+    clear,
+    registerControlSeat: (sessionId) => {
+      if (sessionId !== "")
+        controlSeats.add(sessionId);
+      return () => {
+        controlSeats.delete(sessionId);
+      };
+    },
+    disposers
+  };
+}
+
 // packages/mpd-graph-core/src/rank.ts
 function deriveRanks(tasks, byId) {
   const settled = new Map;
@@ -4223,10 +4465,10 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync4, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join5, resolve as resolve3 } from "node:path";
-var LEDGER_PATH = join5(".mpd", "boulder.json");
-var PLANS_DIR = join5(".mpd", "plans");
+import { readFileSync as readFileSync5, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute2, join as join6, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join6(".mpd", "boulder.json");
+var PLANS_DIR = join6(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -4238,7 +4480,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync4(join5(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync5(join6(root, LEDGER_PATH), "utf8"));
     return isRecord2(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -4266,11 +4508,11 @@ function newestPlan(root) {
   const candidates = [];
   try {
     const directory = plansDirectory(root);
-    const entries = readdirSync3(directory, { withFileTypes: true });
+    const entries = readdirSync4(directory, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join5(directory, entry.name);
+      const path = join6(directory, entry.name);
       const stats = statSync2(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
@@ -4283,7 +4525,7 @@ function newestPlan(root) {
   return candidates[0]?.path;
 }
 function plansDirectory(workspaceRoot) {
-  return join5(workspaceRoot, PLANS_DIR);
+  return join6(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -4295,14 +4537,14 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync4(path, "utf8"));
+    return parsePlanMarkdown(readFileSync5(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }
 }
 // packages/mpd-graph-core/src/watch.ts
-import { readdirSync as readdirSync4, statSync as statSync3, watch } from "node:fs";
-import { basename, dirname, join as join6 } from "node:path";
+import { readdirSync as readdirSync5, statSync as statSync3, watch } from "node:fs";
+import { basename, dirname, join as join7 } from "node:path";
 var REARM_DELAYS_MS = [25, 100, 400];
 function defaultCreateWatch(path, listener) {
   return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
@@ -4338,7 +4580,7 @@ function fileSignature(path) {
 function directorySignature(directory, accept) {
   let names;
   try {
-    names = readdirSync4(directory);
+    names = readdirSync5(directory);
   } catch {
     return "unavailable";
   }
@@ -4346,7 +4588,7 @@ function directorySignature(directory, accept) {
   for (const name of names.sort()) {
     if (!accept(name))
       continue;
-    const stats = statOrUndefined(join6(directory, name));
+    const stats = statOrUndefined(join7(directory, name));
     if (stats === undefined)
       continue;
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
@@ -4581,75 +4823,6 @@ function watchGraph(targets, options = {}) {
     }
   };
 }
-// packages/mpd-team-core-plugin/src/team-lifecycle.ts
-import { readFileSync as readFileSync5, readdirSync as readdirSync5 } from "node:fs";
-import { join as join7 } from "node:path";
-var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
-function isLiveTeamPhase(phase) {
-  return LIVE_TEAM_PHASES.includes(phase);
-}
-function readArchivedPlanIndex(workspace) {
-  const approved = new Set;
-  const unapproved = new Set;
-  let entries = [];
-  try {
-    entries = readdirSync5(join7(teamRoot(workspace), "archive"));
-  } catch {
-    return { approved, unapproved };
-  }
-  for (const entry of entries) {
-    try {
-      const raw = readFileSync5(join7(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
-      const plan = JSON.parse(raw);
-      const key = String(plan.planId ?? "");
-      if (key === "")
-        continue;
-      (plan.approvedAt === undefined ? unapproved : approved).add(key);
-    } catch {}
-  }
-  return { approved, unapproved };
-}
-function isLiveTeam(record, index) {
-  if (record.endedAt !== undefined)
-    return false;
-  if (!isLiveTeamPhase(record.phase))
-    return false;
-  const key = String(record.planId ?? "");
-  if (key === "")
-    return true;
-  return !(index.unapproved.has(key) && !index.approved.has(key));
-}
-function resolveTeamRecord(input) {
-  const spellings = [input.sessionId, ...input.alsoSessions ?? []].filter((value) => value !== "");
-  if (input.bound !== undefined && isLiveTeam(input.bound, input.index))
-    return { record: input.bound };
-  const live = input.teams.filter((record) => isLiveTeam(record, input.index));
-  const leading = live.find((record) => recordNamesLead(record, spellings));
-  if (leading !== undefined)
-    return { record: leading };
-  const memberOf = live.filter((record) => recordNamesMember(record, spellings));
-  if (memberOf.length === 1)
-    return { record: memberOf[0] };
-  if (memberOf.length > 1) {
-    return { refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry` };
-  }
-  return {};
-}
-function reapReapedTeams(workspace, now) {
-  const index = readArchivedPlanIndex(workspace);
-  const reaped = [];
-  for (const record of listTeams(workspace)) {
-    if (isLiveTeam(record, index))
-      continue;
-    if (record.endedAt !== undefined)
-      continue;
-    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`;
-    writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason });
-    reaped.push(record.teamId);
-  }
-  return reaped;
-}
-
 // packages/mpd-team-core-plugin/src/graph-model.ts
 function boardOf(record) {
   const summary = summariseTeam(record);
@@ -5381,6 +5554,18 @@ function apply(ctx) {
       return;
     }
   };
+  const idleGuard = installIdleGuard({
+    liveAgents: () => dsh.liveAgents(),
+    registerAgentPreStep: (agent, listener) => dsh.registerAgentPreStep(agent, listener),
+    onEvent: (event, handler) => dsh.onEvent(event, handler),
+    guardTool: (guard) => dsh.guardTool(guard),
+    workspaceRoot: (exec) => dsh.workspaceRoot(exec),
+    rowLog: (line) => {
+      rowLogLine("mpd-team-core", line);
+    }
+  });
+  for (const dispose of idleGuard.disposers)
+    disposers.push(dispose);
   if (typeof ctx?.provide === "function") {
     try {
       ctx.provide(TEAMS_SERVICE, {
@@ -5445,7 +5630,8 @@ function apply(ctx) {
           } catch {
             return 0;
           }
-        }
+        },
+        registerControlSeat: (sessionId) => idleGuard.registerControlSeat(sessionId)
       });
     } catch (error) {
       rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
@@ -5565,7 +5751,7 @@ function apply(ctx) {
             memberId: added.id,
             name: added.name,
             description: added.description === "" ? added.name : added.description,
-            prompt: input.prompt === "" ? added.description : input.prompt,
+            prompt: withIdlePreamble(input.prompt === "" ? added.description : input.prompt),
             ...added.role === undefined ? {} : { role: added.role },
             ...exec.signal === undefined ? {} : { signal: exec.signal }
           });
@@ -5742,7 +5928,7 @@ function apply(ctx) {
               memberId: member.id,
               name: member.name,
               description: member.description === "" ? member.name : member.description,
-              prompt: plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description,
+              prompt: withIdlePreamble(plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
               ...member.role === undefined ? {} : { role: member.role },
               ...exec.signal === undefined ? {} : { signal: exec.signal }
             });

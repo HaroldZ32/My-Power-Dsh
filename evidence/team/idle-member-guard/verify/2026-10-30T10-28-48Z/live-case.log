@@ -1,0 +1,8 @@
+[team-idle-member-guard] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/team/idle-member-guard/live/2026-10-30T10-29-17.693Z
+  install: {"ok":true,"exit":0}
+  boot: {"ok":true,"exit":0,"stubRequests":7}
+  probe: {"lead":"session-607e2404-4b38-4e68-82d7-c286ba1530fb","calls":[{"label":"create","ok":true,"value":{"plan":{"version":1,"planId":"plan-20261030102930347-3ugq-001","sessionId":"session-607e2404-4b38-4e68-82d7-c286ba1530fb","name":"idle-guard-live","description":"P2a live QA: one task, two members","
+  sessions: {"logs":3,"owners":1,"idle":1}
+  team: {"teamId":"team-20261030102930355-3ugq-002","members":[{"name":"cell-owner","status":"running","spawned":true},{"name":"cell-idle","status":"inactive","spawned":true}],"tasks":[{"id":"T1","owner":"db17a7e9-c65e-4aac-9bb6-8bd6e844c231","status":"in_progress"}]}
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-team-idle-member-guard-Gd26tc-ws--"]}
+LIVE_EXIT=0
