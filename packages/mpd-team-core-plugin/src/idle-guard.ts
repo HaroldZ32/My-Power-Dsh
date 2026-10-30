@@ -72,6 +72,16 @@ export interface IdleGuard {
   clear(sessionId: string): void
   /** Exempt one session from the guard (a cell dispatcher / promoted subcaptain); returns the release. */
   registerControlSeat(sessionId: string): () => void
+  /**
+   * Open the DISPATCH WINDOW for one member: while it is open, the guard neither marks nor denies that
+   * session, so a cold-resumed child's first `agent/pre-step` cannot be turned away before the dispatch
+   * pass has recorded the assignment (CodeRabbit #81 D2). Momentary and counted: the caller releases it
+   * in a `finally`, and the same session may open two windows without the first release closing the
+   * second.
+   * @param sessionId - the member session being dispatched.
+   * @returns the release for this window.
+   */
+  beginDispatch(sessionId: string): () => void
   /** Every registration this installer made, for the row's own disposal list. */
   readonly disposers: ReadonlyArray<() => void>
 }
@@ -167,6 +177,13 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
   const marked = new Set<string>()
   /** Sessions explicitly exempted as control seats (a cell dispatcher / promoted subcaptain). */
   const controlSeats = new Set<string>()
+  /**
+   * Open dispatch windows per session, by COUNT so overlapping windows are independent (CodeRabbit #81
+   * D2). The dispatch pass opens one BEFORE it awaits the send: the native executor cold-resumes the
+   * child, whose first pre-step would otherwise find no open task yet and mark it idle — denying the
+   * very claim that makes the task open.
+   */
+  const dispatching = new Map<string, number>()
   /** The turn number each session's directive was last injected for, so one turn gets one directive. */
   const injectedTurns = new Map<string, number>()
   /** Every registration this installation made, run together by the row's disposal path. */
@@ -206,6 +223,14 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
       /** The asking session. */
       const sessionId = sessionIdOfAgent(agent)
       if (sessionId === "") return undefined
+      // THE DISPATCH WINDOW (CodeRabbit #81 D2): the pass waking this member opens a window BEFORE it
+      // awaits the send, so the cold-resumed child's first step is never marked — the assignment it is
+      // being woken for may not be on the board yet, and denying that step would lose the claim the
+      // dispatch exists to hand over. The window is momentary (released in the pass's `finally`).
+      if (dispatching.has(sessionId)) {
+        clear(sessionId)
+        return undefined
+      }
       // A control seat keeps its tools: the exemption is an explicit registration, never a name prefix.
       if (controlSeats.has(sessionId)) {
         clear(sessionId)
@@ -240,7 +265,13 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
       if (turn !== null) injectedTurns.set(sessionId, turn)
       /** The step's existing messages, so the directive ADDS to them instead of replacing them. */
       const carried = decision?.messages ?? payload?.messages ?? []
+      // PRESERVE THE DOWNSTREAM DECISION (CodeRabbit #81 D3): a step the harness already REJECTED must
+      // stay a rejection — converting it to `enter` would run a step the loop had refused. The directive
+      // is injected only on a step that would otherwise run; the mark and its bookkeeping still stand.
+      const kind = typeof decision?.kind === "string" ? decision.kind : "enter"
+      if (kind !== "enter") return decision
       return {
+        ...decision,
         kind: "enter",
         messages: [...carried, userMessage({ text: IDLE_DIRECTIVE_TEXT, source: { kind: "mpd-team", reason: "idle-member-guard" } })],
       }
@@ -259,6 +290,29 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
     injectedTurns.delete(sessionId)
   }
 
+  /**
+   * Open one counted dispatch window for a member session (CodeRabbit #81 D2).
+   *
+   * A release is idempotent, so a caller that runs it twice cannot close another window's count. An
+   * empty session id opens nothing and returns a no-op release.
+   * @param sessionId - the member session about to be woken.
+   * @returns the release for this window.
+   */
+  const beginDispatch = (sessionId: string): (() => void) => {
+    if (sessionId === "") return (): void => { /* nothing to release */ }
+    dispatching.set(sessionId, (dispatching.get(sessionId) ?? 0) + 1)
+    /** Whether THIS release already ran, so a double release cannot steal a concurrent window. */
+    let released = false
+    return (): void => {
+      if (released) return
+      released = true
+      /** The windows still open for that session after this release. */
+      const remaining = (dispatching.get(sessionId) ?? 0) - 1
+      if (remaining > 0) dispatching.set(sessionId, remaining)
+      else dispatching.delete(sessionId)
+    }
+  }
+
   // THE TOOL BOUNDARY — the guarantee. Installed ONCE and process-wide; every marked session's every
   // tool call is refused with one line, including `agent_teams_task claim` (a taskless member has nothing
   // to claim; an assigned task clears the mark at the next pre-step, before any tool runs).
@@ -267,7 +321,8 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
     const offGuard = dsh.guardTool((exec: DshToolExec) => {
       /** The calling session, resolved the same way the rest of the row resolves it. */
       const sessionId = sessionIdOfAgent(exec?.agent)
-      return sessionId !== "" && marked.has(sessionId) ? IDLE_DENIAL_TEXT : undefined
+      // A member inside a dispatch window is being given work; denying it would drop the claim (D2).
+      return sessionId !== "" && !dispatching.has(sessionId) && marked.has(sessionId) ? IDLE_DENIAL_TEXT : undefined
     })
     if (typeof offGuard === "function") disposers.push(offGuard)
   } catch (error) {
@@ -332,6 +387,7 @@ export function installIdleGuard(dsh: IdleGuardSeams): IdleGuard {
       if (sessionId !== "") controlSeats.add(sessionId)
       return (): void => { controlSeats.delete(sessionId) }
     },
+    beginDispatch,
     disposers,
   }
 }

@@ -3678,6 +3678,7 @@ function withIdlePreamble(prompt) {
 function installIdleGuard(dsh) {
   const marked = new Set;
   const controlSeats = new Set;
+  const dispatching = new Map;
   const injectedTurns = new Map;
   const disposers = [];
   const warn = (line) => {
@@ -3704,6 +3705,10 @@ function installIdleGuard(dsh) {
       const sessionId = sessionIdOfAgent(agent);
       if (sessionId === "")
         return;
+      if (dispatching.has(sessionId)) {
+        clear(sessionId);
+        return;
+      }
       if (controlSeats.has(sessionId)) {
         clear(sessionId);
         return;
@@ -3731,7 +3736,11 @@ function installIdleGuard(dsh) {
       if (turn !== null)
         injectedTurns.set(sessionId, turn);
       const carried = decision?.messages ?? payload?.messages ?? [];
+      const kind = typeof decision?.kind === "string" ? decision.kind : "enter";
+      if (kind !== "enter")
+        return decision;
       return {
+        ...decision,
         kind: "enter",
         messages: [...carried, userMessage({ text: IDLE_DIRECTIVE_TEXT, source: { kind: "mpd-team", reason: "idle-member-guard" } })]
       };
@@ -3744,10 +3753,26 @@ function installIdleGuard(dsh) {
     marked.delete(sessionId);
     injectedTurns.delete(sessionId);
   };
+  const beginDispatch = (sessionId) => {
+    if (sessionId === "")
+      return () => {};
+    dispatching.set(sessionId, (dispatching.get(sessionId) ?? 0) + 1);
+    let released = false;
+    return () => {
+      if (released)
+        return;
+      released = true;
+      const remaining = (dispatching.get(sessionId) ?? 0) - 1;
+      if (remaining > 0)
+        dispatching.set(sessionId, remaining);
+      else
+        dispatching.delete(sessionId);
+    };
+  };
   try {
     const offGuard = dsh.guardTool((exec) => {
       const sessionId = sessionIdOfAgent(exec?.agent);
-      return sessionId !== "" && marked.has(sessionId) ? IDLE_DENIAL_TEXT : undefined;
+      return sessionId !== "" && !dispatching.has(sessionId) && marked.has(sessionId) ? IDLE_DENIAL_TEXT : undefined;
     });
     if (typeof offGuard === "function")
       disposers.push(offGuard);
@@ -3807,6 +3832,7 @@ function installIdleGuard(dsh) {
         controlSeats.delete(sessionId);
       };
     },
+    beginDispatch,
     disposers
   };
 }
@@ -6275,31 +6301,36 @@ function apply(ctx) {
       const sent = [];
       const skipped = [...plan.skipped];
       for (const pair of plan.pairs) {
-        const task = tasks.find((candidate) => candidate.id === pair.taskId);
+        const endDispatchWindow = idleGuard.beginDispatch(pair.memberId);
         try {
-          await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), exec.signal);
-          const onDisk = readTeam(workspace, opened.teamId);
-          if (onDisk === undefined) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" });
-            continue;
+          const task = tasks.find((candidate) => candidate.id === pair.taskId);
+          try {
+            await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), exec.signal);
+            const onDisk = readTeam(workspace, opened.teamId);
+            if (onDisk === undefined) {
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" });
+              continue;
+            }
+            const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision;
+            if (expected === undefined) {
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` });
+              continue;
+            }
+            const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now());
+            if (!claimed.applied) {
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
+              continue;
+            }
+            record = claimed.record;
+            record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }));
+            writeTeam(workspace, record);
+            ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now());
+            sent.push(pair);
+          } catch (error) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
           }
-          const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision;
-          if (expected === undefined) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` });
-            continue;
-          }
-          const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now());
-          if (!claimed.applied) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
-            continue;
-          }
-          record = claimed.record;
-          record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }));
-          writeTeam(workspace, record);
-          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now());
-          sent.push(pair);
-        } catch (error) {
-          skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
+        } finally {
+          endDispatchWindow();
         }
       }
       const fresh = reconcile(readLedger(workspace), opened.teamId, tasks);

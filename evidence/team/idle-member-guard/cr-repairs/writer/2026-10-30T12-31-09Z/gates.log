@@ -1,0 +1,47 @@
+=== P2a CR repair gates — sampled 2026-10-30T12:31:09Z ===
+
+$ bun test packages/mpd-team-core-plugin
+ 393 pass
+ 0 fail
+ 1759 expect() calls
+Ran 393 tests across 27 files. [1.81s]
+
+$ bun run typecheck
+$ tsgo --noEmit
+
+$ bun run verify:comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun skills/dsh-qa/scripts/team-idle-member-guard.ts --self-test
+[self-test] PASS overlay names the probe and its record file
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls
+
+$ bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=471 dead=0 — PASS
+
+$ bun run test:qa
+[test:qa] team-idle-member-guard.ts
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls
+[self-test] ok   C3: the veto signature FAILS as `veto` (veto)
+[self-test] ok   C4: an empty session log FAILS as `no-turn`
+[self-test] ok   C5: a boot without the row's apply line FAILS
+grep: write error: Broken pipe
+
+=== RED-FIRST (contract §Tests): the NEW arms run against the COMMITTED HEAD tree (git archive HEAD packages), i.e. before this repair ===
+$ git archive HEAD packages | tar -x -C <tmp>; cp <new tests>; bun test idle-guard.test.ts dispatch-idle-order.test.ts
+ 25 pass
+ 5 fail
+(fail) D2 (CodeRabbit #81): the dispatch window > a member marked BEFORE the window opens is cleared by the step inside it [0.42ms]
+(fail) D2 (CodeRabbit #81): the dispatch window > a window keeps a taskless member unmarked and undefended until it is released [0.44ms]
+(fail) D2 (CodeRabbit #81): the dispatch window > overlapping windows are counted: one release does not close the other [0.35ms]
+(fail) D2: the cold-resumed member's first pre-step inside send is NOT marked idle, and its claim is allowed [5.83ms]
+(fail) D3 (CodeRabbit #81): the downstream decision is preserved > a `reject` stays a reject and no directive is injected into a refused step [0.40ms]
+Ran 30 tests across 2 files. [76.00ms]
+
+$ bun run test:qa (re-run, final verdict captured)
+exit=0
+[test:qa] team-idle-member-guard.ts
+[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls
+[test:qa] all self-tests passed

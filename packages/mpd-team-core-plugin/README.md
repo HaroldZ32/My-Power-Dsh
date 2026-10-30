@@ -232,6 +232,13 @@ file, mail, claim, complete or reopen anything until the board gives it work.
   `TeamExecutor.send`) — and no open task re-marks it. A terminal team record (stopped/archived) or a
   session no longer on the roster also clears it. The pre-step is the reliable clear, not a
   dispatch/claim hook.
+- **A member being DISPATCHED is never marked.** The pass that wakes a member opens a counted DISPATCH
+  WINDOW around the whole pairing — send, re-read, compare-and-set — because the native executor
+  cold-resumes an absent child during the send and that child's first `agent/pre-step` can run BEFORE the
+  owner is written. Inside the window the guard neither marks nor denies (a claim denied there would drop
+  the very work being handed over); the window closes in the pass's `finally`, after which the
+  re-evaluation finds the claimed task. A genuinely taskless member never enters a window and keeps the
+  hard denial.
 - **Conservative by construction.** A session in no live team, a session whose team record cannot be
   read, the team's Lead, and an explicitly registered CONTROL SEAT are never marked. The control seat is
   `registerControlSeat(sessionId)` on the `mpdTeams` service — the registration a cell's dispatcher or a

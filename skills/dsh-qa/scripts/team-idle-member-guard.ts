@@ -49,6 +49,14 @@ const DIRECTIVE_TEXT = "You have no board task. Do not read, run, write, message
 const DENIAL_TEXT = "[mpd-team] no board task is assigned to you; end your turn and wait for a dispatch"
 /** The tool the owner's child script calls (the claim the dispatch turn needs). */
 const OWNER_TOOL = "agent_teams_task"
+/**
+ * The tool the TASKLESS member attempts, so the DENIAL itself is proven (CodeRabbit #81 D6).
+ *
+ * The point of the live case is the tool boundary, not a quiet member: a stub that only ever answers
+ * text would pass even with the guard removed, because a member that never calls a tool has nothing to
+ * deny. Every non-owner turn issues this one call; the guard's refusal is asserted from the result.
+ */
+const DENIED_TOOL = "read"
 /** The prompt the booted Lead session starts from; the stub answers every non-owner request with text. */
 const PROMPT = "Stage and approve the idle-guard live QA team, then reply with one line."
 /** One problem list, empty when every expectation held. */
@@ -84,15 +92,6 @@ export function userTexts(records: readonly SessionRecord[]): string[] {
 }
 
 /**
- * How many `tool/call` rows a log carries (any tool).
- * @param records - the decoded records.
- * @returns the count.
- */
-export function toolCallCount(records: readonly SessionRecord[]): number {
-  return records.filter((record) => (record as { type?: unknown })?.type === "tool/call").length
-}
-
-/**
  * The owner verdict: the claim was recorded AND one of its results was not an error.
  * @param records - the owner session's records.
  * @returns the verdict and the problems found.
@@ -108,22 +107,28 @@ export function evaluateOwner(records: readonly SessionRecord[]): { ok: boolean;
 }
 
 /**
- * The taskless-member verdict: zero tool calls and exactly one idle directive.
+ * The taskless-member verdict: exactly one idle directive AND a tool attempt the guard REFUSED.
  *
- * BOTH directions matter: a prose-only answer proves nothing (the harness records tool calls, not
- * narration), and a repeat of the directive would mean the one-directive rule broke.
+ * WHY THE ATTEMPT IS REQUIRED (CodeRabbit #81 D6): a member that never calls a tool would pass a
+ * "zero tool calls" assertion even with the tool guard removed. The stub therefore issues one call, and
+ * this verdict reads the harness-recorded RESULT: it must be an error carrying the guard's one-line
+ * denial. A repeat of the directive would mean the one-directive rule broke.
  * @param records - the taskless member's records.
  * @returns the verdict and the problems found.
  */
 export function evaluateIdle(records: readonly SessionRecord[]): { ok: boolean; problems: Problems } {
   /** One problem per failed expectation. */
   const problems: Problems = []
-  /** The tool calls this session recorded. */
-  const calls = toolCallCount(records)
-  if (calls !== 0) problems.push("the taskless member recorded " + String(calls) + " tool/call row(s); the guard denied nothing or the model ignored the directive")
   /** The idle directives this session recorded. */
   const directives = userTexts(records).filter((text) => text.includes(DIRECTIVE_TEXT)).length
   if (directives !== 1) problems.push("the taskless member recorded " + String(directives) + " idle directive(s), expected exactly 1")
+  /** The recorded attempt and its paired result. */
+  const attempt = findToolCall(records, DENIED_TOOL)
+  if (!attempt.called) problems.push("the taskless member never attempted a `" + DENIED_TOOL + "` call, so the tool-boundary denial is UNPROVEN")
+  else {
+    if (attempt.succeeded) problems.push("the taskless member's `" + DENIED_TOOL + "` call SUCCEEDED — the tool guard did not deny it")
+    if (!attempt.resultText.includes(DENIAL_TEXT)) problems.push("the recorded result does not carry the guard's one-line denial " + JSON.stringify(DENIAL_TEXT))
+  }
   return { ok: problems.length === 0, problems }
 }
 
@@ -220,8 +225,8 @@ function isDir(path: string): boolean {
 export function selfTest(): void {
   /** One synthetic `tool/call` record. */
   const call = (callId: string, name: string): SessionRecord => ({ type: "tool/call", data: { name, callId, arguments: {} } })
-  /** One synthetic v4 `tool/result` record. */
-  const result = (callId: string, isError: boolean): SessionRecord => ({ type: "tool/result", data: { message: { toolCallId: callId, isError, content: [{ type: "text", text: isError ? "denied" : "ok" }] } } })
+  /** One synthetic v4 `tool/result` record carrying a specific text. */
+  const result = (callId: string, isError: boolean, text: string): SessionRecord => ({ type: "tool/result", data: { message: { toolCallId: callId, isError, content: [{ type: "text", text }] } } })
   /** One synthetic user message. */
   const say = (text: string): SessionRecord => ({ type: "user/message", data: { content: [{ type: "text", text }] } })
   /** Run one expectation and report it. */
@@ -230,14 +235,18 @@ export function selfTest(): void {
     console.log("[self-test] PASS " + name)
   }
   // Owner: a call WITH a non-error result passes; an errored result and a prose-only log both fail.
-  arm("owner positive", evaluateOwner([call("c1", OWNER_TOOL), result("c1", false)]).ok)
-  arm("owner negative: errored result", !evaluateOwner([call("c1", OWNER_TOOL), result("c1", true)]).ok)
+  arm("owner positive", evaluateOwner([call("c1", OWNER_TOOL), result("c1", false, "ok")]).ok)
+  arm("owner negative: errored result", !evaluateOwner([call("c1", OWNER_TOOL), result("c1", true, "denied")]).ok)
   arm("owner negative: prose only", !evaluateOwner([say("I claimed T1")]).ok)
-  // Idle member: one directive and no calls passes; a call, no directive and a doubled directive fail.
-  arm("idle positive", evaluateIdle([say(DIRECTIVE_TEXT)]).ok)
-  arm("idle negative: a tool call", !evaluateIdle([say(DIRECTIVE_TEXT), call("c1", "read")]).ok)
-  arm("idle negative: no directive", !evaluateIdle([say("hello")]).ok)
-  arm("idle negative: two directives", !evaluateIdle([say(DIRECTIVE_TEXT), say(DIRECTIVE_TEXT)]).ok)
+  // Idle member: one directive plus a REFUSED attempt passes. Each missing piece reddens on its own —
+  // no attempt (D6's exact defect), a succeeding attempt, a denial text that is not the guard's, no
+  // directive, and a doubled directive.
+  arm("idle positive: one directive + a refused attempt", evaluateIdle([say(DIRECTIVE_TEXT), call("c2", DENIED_TOOL), result("c2", true, DENIAL_TEXT)]).ok)
+  arm("idle negative: no tool attempt (the guard could be absent)", !evaluateIdle([say(DIRECTIVE_TEXT)]).ok)
+  arm("idle negative: the attempt SUCCEEDED", !evaluateIdle([say(DIRECTIVE_TEXT), call("c2", DENIED_TOOL), result("c2", false, "file contents")]).ok)
+  arm("idle negative: the denial text is not the guard's", !evaluateIdle([say(DIRECTIVE_TEXT), call("c2", DENIED_TOOL), result("c2", true, "ENOENT: no such file")]).ok)
+  arm("idle negative: no directive", !evaluateIdle([call("c2", DENIED_TOOL), result("c2", true, DENIAL_TEXT)]).ok)
+  arm("idle negative: two directives", !evaluateIdle([say(DIRECTIVE_TEXT), say(DIRECTIVE_TEXT), call("c2", DENIED_TOOL), result("c2", true, DENIAL_TEXT)]).ok)
   // THE PINS: the directive and denial this case asserts must be the plugin's own literals, so a
   // paraphrase in either place reddens here instead of passing both sides.
   /** The guard module's source. */
@@ -247,7 +256,7 @@ export function selfTest(): void {
   /** The overlay the case writes. */
   const overlay = buildOverlay("/abs/probe.ts", "/abs/out.json")
   arm("overlay names the probe and its record file", overlay.includes("/abs/probe.ts") && overlay.includes("/abs/out.json"))
-  console.log("[team-idle-member-guard] self-test PASS — 10 arms incl. negative controls")
+  console.log("[team-idle-member-guard] self-test PASS — 12 arms incl. negative controls")
 }
 
 /**
@@ -302,7 +311,9 @@ async function live(): Promise<void> {
     /** The stub double. */
     const stub = makeStubModel({
       label: SLUG,
-      script: [{ text: "QA-STUB-IDLE-LEAD-OK" }],
+      // EVERY non-owner turn issues one `read` attempt FIRST (D6): the guard must REFUSE it, which is
+      // the evidence this case is about. The owner's child script claims the task instead.
+      script: [{ tool: DENIED_TOOL, args: { file_path: "/nonexistent/qa-idle-guard" } }, { text: "QA-STUB-IDLE-LEAD-OK" }],
       childMarker: OWNER_MARKER,
       childScript: [{ tool: OWNER_TOOL, args: { action: "claim", task_id: "T1" } }],
     })
@@ -390,7 +401,7 @@ async function live(): Promise<void> {
         "The Lead's plan (two members, one task) was staged and approved through the REAL agent_teams_plan tool (the probe's own recorded answers).",
         "Both members were raised: the team record carries an executor handle for cell-owner and cell-idle.",
         "The task owner's session log records an `agent_teams_task` call with a non-error result.",
-        "The taskless member's session log records ZERO tool/call rows and exactly ONE idle directive (harness session log, never model prose).",
+        "The taskless member's session log records exactly ONE idle directive and ONE tool attempt whose paired result is an ERROR carrying the guard's one-line denial (harness session log, never model prose).",
       ],
       doesNotProve: [
         "Lazy spawn: this case does not prove that no session exists before the first task dispatch, so the §6.1 one-turn bound is declared (the spawn turn still costs one model turn; the guard makes it a zero-tool turn).",

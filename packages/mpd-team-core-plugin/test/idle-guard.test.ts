@@ -13,6 +13,7 @@
 // (`skills/dsh-qa/scripts/team-idle-member-guard.ts`), never this file's. No arm touches the
 // repository's own `.mpd`: every workspace is a fresh temp dir.
 import { afterEach, describe, expect, test } from "bun:test"
+import type { DshLiveAgent } from "../../mpd-dsh-adapter-plugin/src/index"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -421,5 +422,114 @@ describe("the pure helpers the arms build on", () => {
     seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }, { name: "other", session: "sess-other" }], task: { owner: "other", status: "in_progress" } })
     expect(fx.step(worker, 1)?.messages?.length).toBe(1)
     expect(fx.guard.isMarked(worker.id)).toBe(true)
+  })
+})
+
+describe("D2 (CodeRabbit #81): the dispatch window", () => {
+  test("a window keeps a taskless member unmarked and undefended until it is released", () => {
+    /** The harness under test. */
+    const fx = fixture(["sess-worker"])
+    /** The member handle. */
+    const worker = fx.agent("sess-worker")
+    seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }] })
+    /** The release the dispatch pass would hold around its send + claim write. */
+    const release = fx.guard.beginDispatch(worker.id)
+    expect(fx.step(worker, 1)).toBeUndefined()
+    expect(fx.guard.isMarked(worker.id)).toBe(false)
+    expect(fx.toolAnswer(worker.id, "agent_teams_task")).toBeUndefined()
+    // The window is MOMENTARY: with no task on the board, the next step marks again.
+    release()
+    expect(fx.step(worker, 2)?.messages?.length).toBe(1)
+    expect(fx.guard.isMarked(worker.id)).toBe(true)
+  })
+
+  test("overlapping windows are counted: one release does not close the other", () => {
+    /** The harness under test. */
+    const fx = fixture(["sess-worker"])
+    /** The member handle. */
+    const worker = fx.agent("sess-worker")
+    seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }] })
+    /** The first window. */
+    const first = fx.guard.beginDispatch(worker.id)
+    /** The second window for the SAME session. */
+    const second = fx.guard.beginDispatch(worker.id)
+    first()
+    first()
+    // A double release must not steal the second window.
+    expect(fx.step(worker, 1)).toBeUndefined()
+    expect(fx.guard.isMarked(worker.id)).toBe(false)
+    second()
+    expect(fx.step(worker, 2)?.messages?.length).toBe(1)
+    expect(fx.guard.isMarked(worker.id)).toBe(true)
+  })
+
+  test("a member marked BEFORE the window opens is cleared by the step inside it", () => {
+    /** The harness under test. */
+    const fx = fixture(["sess-worker"])
+    /** The member handle. */
+    const worker = fx.agent("sess-worker")
+    seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }] })
+    expect(fx.step(worker, 1)?.messages?.length).toBe(1)
+    expect(fx.guard.isMarked(worker.id)).toBe(true)
+    /** The window a dispatch pass opens before its send. */
+    const release = fx.guard.beginDispatch(worker.id)
+    expect(fx.step(worker, 2)).toBeUndefined()
+    expect(fx.guard.isMarked(worker.id)).toBe(false)
+    expect(fx.toolAnswer(worker.id, "agent_teams_task")).toBeUndefined()
+    release()
+  })
+})
+
+describe("D3 (CodeRabbit #81): the downstream decision is preserved", () => {
+  test("a `reject` stays a reject and no directive is injected into a refused step", () => {
+    /** The harness under test. */
+    const fx = fixture(["sess-worker"])
+    /** The member handle. */
+    const worker = fx.agent("sess-worker")
+    seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }] })
+    /** The downstream decision the loop had already refused. */
+    const refused = { kind: "reject" }
+    /** The listener's answer. */
+    const answer = fx.step(worker, 1, refused)
+    // The SAME object: converting it to `enter` would run a step the harness refused.
+    expect(answer).toBe(refused)
+    expect(answer?.messages).toBeUndefined()
+    // The mark still stands — the step was not run, but the session is still idle.
+    expect(fx.guard.isMarked(worker.id)).toBe(true)
+  })
+
+  test("a decision with no `kind` still becomes an enter carrying the directive", () => {
+    /** The harness under test. */
+    const fx = fixture(["sess-worker"])
+    /** The member handle. */
+    const worker = fx.agent("sess-worker")
+    seedTeam(fx, { lead: "sess-lead", members: [{ name: "worker", session: worker.id }] })
+    /** The listener's answer for a decision the harness left kind-less. */
+    const answer = fx.step(worker, 1, { messages: [{ id: "carried" }] })
+    expect(answer?.kind).toBe("enter")
+    expect(answer?.messages?.length).toBe(2)
+  })
+})
+
+describe("D5 (CodeRabbit #81): a throwing tool-guard install", () => {
+  test("installation does not throw, the warning names the tool guard, and the guard stays usable", () => {
+    /** The warning lines the install produced. */
+    const warnings: string[] = []
+    /** The seams: everything works EXCEPT the tools registry, whose guard() throws. */
+    const dsh: IdleGuardSeams = {
+      liveAgents: (): readonly DshLiveAgent[] => [],
+      registerAgentPreStep: (): (() => void) => () => {},
+      onEvent: (): (() => void) => () => {},
+      guardTool: (): (() => void) => { throw new Error("the tools service is absent") },
+      workspaceRoot: (): string => "/nonexistent",
+      rowLog: (line: string): void => { warnings.push(line) },
+    }
+    /** The install outcome, which must not throw out of the row's apply. */
+    let installed: ReturnType<typeof installIdleGuard> | undefined
+    expect(() => { installed = installIdleGuard(dsh) }).not.toThrow()
+    expect(warnings.some((line) => line.includes("could not install its tool guard"))).toBe(true)
+    // A clean degradation: the state is still published and reportable.
+    expect(installed?.marked).toBeDefined()
+    expect(installed?.isMarked("anything")).toBe(false)
   })
 })

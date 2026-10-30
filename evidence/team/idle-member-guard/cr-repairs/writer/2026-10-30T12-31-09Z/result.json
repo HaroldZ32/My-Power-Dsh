@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "slug": "team-idle-member-guard-cr-repairs-writer",
+  "row": "T12",
+  "phase": "P2a",
+  "boardName": "dispatch-engine",
+  "sampledAt": "2026-10-30T12:31:09Z",
+  "contract": ".mpd/plans/team-idle-member-guard-cr-repairs.md",
+  "branch": "fix/team-idle-member-guard",
+  "triage": {
+    "D1-4423513833": { "verdict": "STALE", "reason": "AGENTS.md §6: packages/*/src is bun-build output and uses extensionless specifiers; neighbours do the same" },
+    "D2-4423513857": { "verdict": "FIXED", "change": "counted beginDispatch window around send -> re-read -> casClaimTask, released in finally; pre-step + tool guard honour it; hard denial kept for a taskless member", "arms": ["3 unit window arms", "3 row-level dispatch-idle-order arms"] },
+    "D3-4423513869": { "verdict": "FIXED", "change": "a downstream kind:reject is returned unchanged; the directive is injected only into an enter", "arms": ["reject preserved", "kind-less -> enter"] },
+    "D4-4423513905": { "verdict": "STALE", "reason": "same AGENTS.md §6 citation as D1" },
+    "D5-4423513922": { "verdict": "FIXED (coverage)", "change": "throwing guardTool arm: install does not throw, warning names it, guard stays usable; green before and after (catch pre-existed)" },
+    "D6-4423513932": { "verdict": "FIXED", "change": "stub attempts a read before text; evaluateIdle asserts an ERROR result carrying DENIAL_TEXT plus exactly one directive; 3 new negatives; self-test 12 arms" },
+    "D7a-4423513946": { "verdict": "FIXED", "change": "SKILL.md lines 86/130 credential paths replaced with the <credentials-file> placeholder" },
+    "D7b-4423513946": { "verdict": "STALE", "reason": "squashing would rewrite a published branch (AGENTS.md §5 forbids); the captain records the disposition and runs the single final repin-vendor" }
+  },
+  "gates": {
+    "teamCoreTests": { "pass": 393, "fail": 0, "files": 27, "exit": 0 },
+    "typecheck": { "exit": 0 },
+    "comments": { "exit": 0, "verdict": "PASS" },
+    "qaSelfTest": { "arms": 12, "exit": 0 },
+    "testQa": { "exit": 0, "verdict": "all self-tests passed" },
+    "docs": { "exit": 0, "verdict": "PASS" }
+  },
+  "redFirst": {
+    "method": "git archive HEAD packages (pre-repair source) + the new test files",
+    "result": "25 pass / 5 fail — the row-level D2 arm, the three D2 window arms and the D3 reject arm fail on HEAD and pass on the repaired tree",
+    "d5Note": "the D5 arm is green on both sides (coverage finding; the catch pre-existed)"
+  },
+  "notRun": {
+    "liveQaCase": "verifier-b runs it after the captain rebuilds dist",
+    "distFresh": "RED until the captain rebuilds packages/mpd-team-core-plugin/dist/index.js",
+    "vendor": "RED until the captain's single repin-vendor after these skills edits are tracked"
+  },
+  "bounds": [
+    "the live harness behaviour of the D2 window is modelled by the row-level arm, not observed live by the writer",
+    "D1/D4 are STALE by the repo convention, not by judgement",
+    "D5 is coverage only",
+    "the window is process-local: it bridges this row's dispatch send->claim gap; cellwork deliveries rely on the unchanged both-way re-evaluation",
+    "D7b: no rebase/squash attempted (published branch)"
+  ],
+  "changed": [
+    "packages/mpd-team-core-plugin/src/idle-guard.ts",
+    "packages/mpd-team-core-plugin/src/index.ts",
+    "packages/mpd-team-core-plugin/test/idle-guard.test.ts",
+    "packages/mpd-team-core-plugin/test/dispatch-idle-order.test.ts (new)",
+    "packages/mpd-team-core-plugin/README.md",
+    "packages/mpd-team-core-plugin/README.zh-CN.md",
+    "skills/dsh-qa/scripts/team-idle-member-guard.ts",
+    "skills/dsh-qa/SKILL.md"
+  ]
+}

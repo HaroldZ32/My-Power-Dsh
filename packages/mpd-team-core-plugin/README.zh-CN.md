@@ -173,6 +173,11 @@ your turn and wait for a dispatch`。由于拒绝本身就是**工具结果**，
 - **标记在每一步 pre-step 上双向重估。** 有打开任务就**清除**标记——包括通过本行观察不到的路径送达的任务
   （cellwork 的派发走 `TeamExecutor.send`）——没有打开任务则重新标记。团队记录进入终态（停止/归档）或
   session 已不在名册上，同样会清除。可靠清除点是 pre-step，而不是派发/claim 钩子。
+- **正在被派发的成员绝不会被标记。** 唤醒成员的派发 pass 会在整段配对——发送、重读、compare-and-set——
+  外开一个带计数的**派发窗口**：native 执行器在发送时会冷启动一个不在线的子代理，而该子代理的第一次
+  `agent/pre-step` 可能在 owner 写入之前运行。窗口内守卫既不标记也不拒绝（在这里拒绝 claim 会丢掉正要
+  交付的工作）；窗口在 pass 的 `finally` 中关闭，之后的重估就能看到已被 claim 的任务。真正没有任务的成员
+  不会进入任何窗口，硬拒绝照旧。
 - **保守判定。** 不在任何活跃团队里的 session、团队记录读不出来的 session、团队的 Lead，以及显式登记的
   **控制席位**，都不会被标记。控制席位是 `mpdTeams` 服务上的 `registerControlSeat(sessionId)`——cell 的
   dispatcher 或被晋升的副队长在没有看板任务时需要的那次登记（cellwork 的调用点随 dispatcher 落地）；一个名字

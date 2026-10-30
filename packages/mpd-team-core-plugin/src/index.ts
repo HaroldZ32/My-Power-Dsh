@@ -2494,53 +2494,63 @@ export function apply(ctx: any): void {
       /** The plan's skips plus any pairing whose message failed, so nothing is dropped silently. */
       const skipped = [...plan.skipped]
       for (const pair of plan.pairs) {
-        /** The board's own record for this pair, used for the acceptance text. */
-        const task = tasks.find((candidate) => candidate.id === pair.taskId)
+        // THE DISPATCH WINDOW (CodeRabbit #81 D2): the send below cold-resumes an absent child, whose
+        // first `agent/pre-step` runs BEFORE this pass writes the owner. The window is open around the
+        // WHOLE pairing — send, re-read and compare-and-set — so that first step is neither marked idle
+        // nor denied (the claim the dispatch exists to hand over would otherwise be lost). A genuinely
+        // taskless member never enters a window and keeps the hard denial.
+        const endDispatchWindow = idleGuard.beginDispatch(pair.memberId)
         try {
-          // DELIVERED THROUGH THE EXECUTOR, which on the native backend cold-resumes a child that
-          // is not currently live — the behaviour a dispatch pass depends on.
-          await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? "")), exec.signal)
-          // COMPARE-AND-SET (T2), AFTER the await and never before it. `opened` was read before the
-          // loop, and another caller — a member's own `agent_teams_task {action:"claim"}` — may have
-          // written the record while this pass was suspended. Re-reading here and applying the patch
-          // to the FRESH record is what keeps that write: a blind `writeTeam(record)` rewrote the
-          // whole file from the stale snapshot and silently reverted it. The pairing is still
-          // recorded in the RECORD as well as the ledger — the assignment is what makes the member
-          // non-idle on the NEXT pass, and a ledger alone would leave the record claiming the task
-          // is unowned.
-          /** The record as it stands on disk right now. */
-          const onDisk = readTeam(workspace, opened.teamId)
-          if (onDisk === undefined) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" })
-            continue
+          /** The board's own record for this pair, used for the acceptance text. */
+          const task = tasks.find((candidate) => candidate.id === pair.taskId)
+          try {
+            // DELIVERED THROUGH THE EXECUTOR, which on the native backend cold-resumes a child that
+            // is not currently live — the behaviour a dispatch pass depends on.
+            await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String((task as any).description ?? "")), exec.signal)
+            // COMPARE-AND-SET (T2), AFTER the await and never before it. `opened` was read before the
+            // loop, and another caller — a member's own `agent_teams_task {action:"claim"}` — may have
+            // written the record while this pass was suspended. Re-reading here and applying the patch
+            // to the FRESH record is what keeps that write: a blind `writeTeam(record)` rewrote the
+            // whole file from the stale snapshot and silently reverted it. The pairing is still
+            // recorded in the RECORD as well as the ledger — the assignment is what makes the member
+            // non-idle on the NEXT pass, and a ledger alone would leave the record claiming the task
+            // is unowned.
+            /** The record as it stands on disk right now. */
+            const onDisk = readTeam(workspace, opened.teamId)
+            if (onDisk === undefined) {
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" })
+              continue
+            }
+            /** The revision this pass's decision was based on, from the record it has been carrying. */
+            const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision
+            if (expected === undefined) {
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` })
+              continue
+            }
+            /** The compare-and-set outcome for this pairing. */
+            const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now())
+            if (!claimed.applied) {
+              // REPORTED, not silently dropped: the message was delivered, but the board's own record
+              // refused the claim, so the caller must see why the task is not marked in flight.
+              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` })
+              continue
+            }
+            // The FRESH record, carrying this one pairing and everything a concurrent writer added.
+            record = claimed.record
+            // THE PAIRED MEMBER IS `running` AGAIN (R2). Settlement writes `inactive` once a member owns
+            // no open task, so a pass that pairs a settled member must flip the row back — otherwise the
+            // record would report idle work and the next settlement pass could race the claim.
+            // The phase is re-derived with the claim: pairing a SETTLED member takes the team out of
+            // `idle`, and a stored phase that disagrees with the row is a ghost a reader would trust.
+            record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }))
+            writeTeam(workspace, record)
+            ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now())
+            sent.push(pair)
+          } catch (error) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
           }
-          /** The revision this pass's decision was based on, from the record it has been carrying. */
-          const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision
-          if (expected === undefined) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` })
-            continue
-          }
-          /** The compare-and-set outcome for this pairing. */
-          const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now())
-          if (!claimed.applied) {
-            // REPORTED, not silently dropped: the message was delivered, but the board's own record
-            // refused the claim, so the caller must see why the task is not marked in flight.
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` })
-            continue
-          }
-          // The FRESH record, carrying this one pairing and everything a concurrent writer added.
-          record = claimed.record
-          // THE PAIRED MEMBER IS `running` AGAIN (R2). Settlement writes `inactive` once a member owns
-          // no open task, so a pass that pairs a settled member must flip the row back — otherwise the
-          // record would report idle work and the next settlement pass could race the claim.
-          // The phase is re-derived with the claim: pairing a SETTLED member takes the team out of
-          // `idle`, and a stored phase that disagrees with the row is a ghost a reader would trust.
-          record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }))
-          writeTeam(workspace, record)
-          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now())
-          sent.push(pair)
-        } catch (error) {
-          skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
+        } finally {
+          endDispatchWindow()
         }
       }
       // MERGE (T7), never a blind overwrite. `pruned` was read BEFORE the first `await`, and the
