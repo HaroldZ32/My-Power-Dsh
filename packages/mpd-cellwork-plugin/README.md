@@ -59,7 +59,8 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 
 The flow tools: `cellwork_requirements` (the planner's finalize/update), `cellwork_recon` (the planner's
 one-shot read-only consult), `cellwork_split` (the splitter's measured graph), `cellwork_activate` (the
-captain's materialisation).
+captain's materialisation, whose answer's `reused` list names the members resolved from the cell record or
+the live roster instead of raised).
 
 The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass), `cellwork_supervise` (the
 captain's read-only sweep), `cellwork_context` (a member's own occupancy), `cellwork_handoff` (the
@@ -100,12 +101,17 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   (`activatedLoops`) — under the `cell-activation-partial` journal event; the phase never regresses, so it
   stays `split` for a first activation and stays `executing` for a partial RE-SPLIT of an executing cell. A
   retry of the SAME accepted revision resumes from that record: members are reconciled against the live
-  roster (a duplicate `add_member` is reused, never fatal), a recorded board id is reused per split key, a
-  verify loop is opened for every code task whose split key has none yet, and `activatedRevision` is set only
-  after the dispatch pass succeeds. A different revision, an already-materialised revision and a stale split
-  are refused with the existing teaching errors. The resume is not a transaction: the residual window is one
-  board/verify call plus one cell-record write, and a duplicate board row that window leaves behind is
-  detectable but not deletable (the team plane has no cancel verb).
+  roster (a duplicate `add_member` is reused, never fatal), a recorded board id is reused per split key, and
+  a verify loop is opened for every code task whose split key has none yet — EXCEPT a KEPT task from a
+  pre-upgrade cell whose frozen contract already names a loop id (its `activatedLoops` entry is absent): that
+  contract is not rewritten and no second loop is opened. `activatedRevision` is set only after the dispatch
+  pass succeeds. A NEWER accepted revision SUPERSEDES an older in-flight partial — journaled
+  (`activation-in-flight-superseded`), the older partial abandoned, its recorded rows reconciled (kept ids
+  reused, dropped work cancelled) — while a LOWER revision, an already-materialised revision and a stale
+  split are refused with the existing teaching errors. The answer's `reused` list names the members resolved
+  from the cell record or the live roster instead of raised. The resume is not a transaction: the residual
+  window is one board/verify call plus one cell-record write, and a duplicate board row that window leaves
+  behind is detectable but not deletable (the team plane has no cancel verb).
 - **Lossless tool results.** Every cellwork tool result survives the harness's lossless-JSON walk: a task
   projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
   and no result carries a non-finite number, a negative zero or a cycle.

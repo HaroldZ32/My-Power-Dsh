@@ -3135,6 +3135,9 @@ async function runRecon(deps, input) {
   }
 }
 
+// packages/mpd-cellwork-plugin/src/activate.ts
+import { existsSync as existsSync3, readFileSync as readFileSync4 } from "node:fs";
+
 // packages/mpd-cellwork-plugin/src/dispatch.ts
 function nameKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -3276,6 +3279,7 @@ function errorText4(error) {
 }
 
 // packages/mpd-cellwork-plugin/src/activate.ts
+var CONTRACT_LOOP_PLACEHOLDER = "The verification loop is opened at activation; its id is appended below before dispatch.";
 function producerIdentity(cellId) {
   return "cellwork:" + cellId;
 }
@@ -3367,12 +3371,22 @@ function buildContractDoc(deps, task, reviewer, boardId) {
     "4. On FAIL, name each finding with the document source that proves it and leave the repair to the writer.",
     "",
     "## Loop",
-    "The verification loop is opened at activation; its id is appended below before dispatch."
+    CONTRACT_LOOP_PLACEHOLDER
   ].join(`
 `);
 }
 function withLoopId(doc, loopId) {
-  return doc.replace("its id is appended below before dispatch.", "`" + loopId + '` (`mpd_verify_seat {loop_id:"' + loopId + '"}`).');
+  return doc.replace(CONTRACT_LOOP_PLACEHOLDER, "The verification loop is opened at activation; `" + loopId + '` (`mpd_verify_seat {loop_id:"' + loopId + '"}`).');
+}
+function contractAlreadyNamesLoop(deps, taskKey) {
+  const path = contractPath(deps.workspace, deps.cell.cellId, taskKey);
+  try {
+    if (!existsSync3(path))
+      return false;
+    return !readFileSync4(path, "utf8").includes(CONTRACT_LOOP_PLACEHOLDER);
+  } catch {
+    return false;
+  }
 }
 async function materializeSplit(deps) {
   const teamId = deps.cell.teamId;
@@ -3524,9 +3538,14 @@ async function materializeSplit(deps) {
   const loopIds = new Map(Object.entries(deps.cell.activatedLoops ?? {}));
   const loops = [];
   const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0);
+  const armedByContract = new Set;
   for (const task of codeTasks) {
     if (loopIds.has(task.key))
       continue;
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
+      armedByContract.add(task.key);
+      continue;
+    }
     const boardId = boardIds.get(task.key) ?? "";
     if (boardId === "")
       return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board");
@@ -3565,7 +3584,7 @@ async function materializeSplit(deps) {
   for (const task of deps.split.tasks) {
     if ((boardIds.get(task.key) ?? "") === "")
       return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to dispatch");
-    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "")
+    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "" && !armedByContract.has(task.key))
       return fail("cellwork_activate has no verify loop for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
   }
   const cancelled = [];
@@ -4339,7 +4358,7 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens one verify loop per NEW code task BEFORE dispatch, then dispatches owner-only. A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -4359,6 +4378,7 @@ missing sections: ` + result.missing.join(", ") : ""));
           revision: { type: "number" },
           contracts: { type: "array", items: { type: "string" } },
           membersRaised: { type: "array", items: { type: "string" } },
+          reused: { type: "array", items: { type: "string" }, description: "Board names reused from the cell record or the live roster instead of raised." },
           tasks: { type: "array", items: { type: "object" } },
           kept: { type: "array", items: { type: "string" }, description: "Split keys whose live board row was reused (never duplicated)." },
           cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
@@ -4410,8 +4430,11 @@ missing sections: ` + result.missing.join(", ") : ""));
           return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the materialised revision " + String(state.activatedRevision) + " — revisions only move forward; accept a newer split instead" };
         }
       }
+      if (state.activationInFlight !== null && state.activationInFlight !== undefined && acceptedRevision < state.activationInFlight) {
+        return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the in-flight revision " + String(state.activationInFlight) + " — revisions only move forward; accept a newer split instead" };
+      }
       if (state.activationInFlight !== null && state.activationInFlight !== undefined && state.activationInFlight !== acceptedRevision) {
-        return { ok: false, error: "cellwork_activate: split revision " + String(state.activationInFlight) + " is IN FLIGHT (a previous activation of it failed part-way), so revision " + String(acceptedRevision) + " cannot be materialised now — resume revision " + String(state.activationInFlight) + " while it is still the accepted split, or stop the cell. Activating a different revision would duplicate its board rows." };
+        appendJournal(caller.workspace, state.cellId, { event: "activation-in-flight-superseded", previous: state.activationInFlight, by: acceptedRevision, reason: "the accepted split moved on; the older partial is abandoned and its recorded rows are reconciled by this materialisation" }, new Date);
       }
       const stored = readSplit(caller.workspace, state.cellId, acceptedRevision);
       if (!stored.ok)
@@ -4564,7 +4587,7 @@ function writeHandoff(workspace, cellId, member, ordinal, text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/mail.ts
-import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync4 } from "node:fs";
+import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync5 } from "node:fs";
 import { join as join4 } from "node:path";
 var CELL_MAIL_FILE = "mail.jsonl";
 function cellMailPath(workspace, cellId) {
@@ -4587,7 +4610,7 @@ function appendCellMail(workspace, cellId, record) {
 function readCellMail(workspace, cellId) {
   let text2;
   try {
-    text2 = readFileSync4(cellMailPath(workspace, cellId), "utf8");
+    text2 = readFileSync5(cellMailPath(workspace, cellId), "utf8");
   } catch {
     return [];
   }
@@ -4780,7 +4803,7 @@ function nextStepOf(text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
-import { readFileSync as readFileSync5 } from "node:fs";
+import { readFileSync as readFileSync6 } from "node:fs";
 function readArgs2(args) {
   if (typeof args !== "object" || args === null || Array.isArray(args))
     return {};
@@ -5326,7 +5349,7 @@ missing sections: ` + result.missing.join(", ") : ""));
     try {
       let handoffText = "";
       try {
-        handoffText = readFileSync5(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
+        handoffText = readFileSync6(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
       } catch {
         handoffText = "(the handoff document could not be read back; the journal names its path)";
       }

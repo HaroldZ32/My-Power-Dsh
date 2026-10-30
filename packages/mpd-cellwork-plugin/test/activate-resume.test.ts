@@ -31,6 +31,10 @@ interface FakeAgent {
 interface CapturedTool {
   /** The registered name. */
   name: string
+  /** The model-facing description, as registered. */
+  description?: string
+  /** The declared output contract, as registered (the F3 pin reads its schema). */
+  output?: { schema?: { properties?: Record<string, Record<string, unknown>> } }
   /** The runner, called with `{ name, agent }` as its exec. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
 }
@@ -363,6 +367,19 @@ async function startCell(harness: Harness): Promise<string> {
   return active.cell.state.cellId
 }
 
+/**
+ * Put one frozen contract back in its PRE-ARM form: the placeholder `withLoopId` replaces.
+ *
+ * Used to simulate the crash window in which the contract was written but no loop was opened, and the
+ * pre-upgrade cell whose older contract carries no loop id at all.
+ *
+ * @param text - the contract's current markdown.
+ * @returns the document carrying the placeholder sentence again.
+ */
+function unarmContract(text: string): string {
+  return text.replace(/The verification loop is opened at activation; `[^`]+`.*/, "The verification loop is opened at activation; its id is appended below before dispatch.")
+}
+
 /** The planner agent of the harness's cell. */
 function plannerAgent(harness: Harness): FakeAgent {
   return { id: "handle-cell-planner", session: { id: "handle-cell-planner", header: { cwd: harness.workspace } } }
@@ -380,6 +397,19 @@ function twoCodeTasks(): Array<Record<string, unknown>> {
     { key: "auth-review", subject: "Review the auth core", description: "Blind review.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["auth-core"], inputs: [], verify: false },
     { key: "cli-core", subject: "Implement the CLI", description: "Add the command.", kind: "work", ownerRole: "Deep Worker", writeScopes: ["src/cli/"], blockedBy: [], inputs: [], verify: true },
     { key: "cli-review", subject: "Review the CLI", description: "Blind review.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["cli-core"], inputs: [], verify: false },
+  ]
+}
+
+/**
+ * Revision two's tasks: the auth pair is KEPT, the CLI pair is DROPPED, and a new spec pair is added.
+ * @returns the split's tasks.
+ */
+function revisionTwoTasks(): Array<Record<string, unknown>> {
+  return [
+    { key: "auth-core", subject: "Implement the auth core", description: "Add the token store.", kind: "work", ownerRole: "Senior Engineer", writeScopes: ["src/auth/"], blockedBy: [], inputs: [], verify: true },
+    { key: "auth-review", subject: "Review the auth core", description: "Blind review.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["auth-core"], inputs: [], verify: false },
+    { key: "spec-core", subject: "Implement the spec store", description: "Add the spec loader.", kind: "work", ownerRole: "Deep Worker", writeScopes: ["src/spec/"], blockedBy: [], inputs: [], verify: true },
+    { key: "spec-review", subject: "Review the spec store", description: "Blind review.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["spec-core"], inputs: [], verify: false },
   ]
 }
 
@@ -799,4 +829,166 @@ test("A1: a record written before the in-flight fields existed still reads", asy
   expect(read.state.activationInFlight).toBe(null)
   // The version is NOT bumped: old cells stay readable by this build and vice versa.
   expect(read.state.version).toBe(1)
+})
+
+// ── F1: a pre-upgrade kept task whose contract already names a loop is not re-armed ──
+
+test("F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  /** The first, successful activation. */
+  const first = await runTool(harness, "cellwork_activate", {})
+  expect(first.ok).toBe(true)
+  /** The armed contract of the first code task. */
+  const armedAuth = readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "auth-core.md"), "utf8")
+  /** The armed contract of the second code task, which is put back in its pre-arm form. */
+  const armedCli = readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "cli-core.md"), "utf8")
+  // THE PRE-UPGRADE RECORD: the loop map does not exist (an older build wrote this cell), while
+  // `activatedRevision` still says the split was materialised.
+  /** The record as the first activation left it. */
+  const legacy = readStateJson(harness.workspace, cellId)
+  expect(legacy.activatedRevision).toBe(1)
+  delete legacy.activatedLoops
+  writeFileSync(statePath(harness.workspace, cellId), JSON.stringify(legacy, null, 2) + "\n")
+  // cli-core's contract simulates the crash window: written, placeholder still there, no loop opened.
+  writeFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "cli-core.md"), unarmContract(armedCli))
+  // A NEW accepted revision over the SAME two code tasks (every key is kept).
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: twoCodeTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  /** The loop opens made before the re-split. */
+  const opensBefore = openCalls(harness).length
+  /** The re-split activation. */
+  const resplit = await runTool(harness, "cellwork_activate", {})
+  expect(resplit.ok).toBe(true)
+  expect(resplit.revision).toBe(2)
+  // ONLY the task whose contract still carried the placeholder is armed; the armed kept task is skipped.
+  /** The loop opens this re-split made. */
+  const opensAfter = openCalls(harness).slice(opensBefore)
+  expect(opensAfter.length).toBe(1)
+  expect(String(opensAfter[0].arguments.contract)).toContain("cli-core.md")
+  // THE FROZEN CONTRACT IS BYTE-IDENTICAL: a verifier may already be reading it.
+  expect(readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "auth-core.md")).equals(Buffer.from(armedAuth))).toBe(true)
+  // The placeholder task's contract now names its NEW loop, and the record only gains that entry.
+  /** The record after the re-split. */
+  const after = readStateJson(harness.workspace, cellId)
+  /** The loop id the re-split armed for the placeholder task. */
+  const cliLoop = String(after.activatedLoops?.cli ?? after.activatedLoops?.["cli-core"] ?? "")
+  expect(cliLoop).not.toBe("")
+  expect(readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "cli-core.md"), "utf8")).toContain(cliLoop)
+  expect(after.activatedLoops?.["auth-core"]).toBeUndefined()
+  // Kept rows are reused, never duplicated: two staging rows, the four split rows and the replacement
+  // splitter row the requirements update re-dispatched (the completed split task is re-opened, not reused).
+  expect(harness.teamRecords.get("team-1")?.tasks.length).toBe(7)
+})
+
+// ── F2: a newer accepted revision supersedes an older in-flight partial ─────
+
+test("F2: a newer accepted revision supersedes an older in-flight partial and journals it", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  // A FAILED REVISION ONE: members and board rows exist, the SECOND loop cannot be opened.
+  harness.injection.openFailAt = 2
+  /** The failed first pass. */
+  const failed = await runTool(harness, "cellwork_activate", {})
+  expect(failed.ok).toBe(false)
+  /** The partial record revision one left. */
+  const partial = readStateJson(harness.workspace, cellId)
+  expect(partial.activationInFlight).toBe(1)
+  expect(partial.activatedRevision).toBe(null)
+  expect(Object.keys(partial.activatedTasks).length).toBe(4)
+  expect(Object.keys(partial.activatedLoops)).toEqual(["auth-core"])
+  /** The auth-core board id the partial pass minted (it must survive as the kept row). */
+  const authBoardId = String(partial.activatedTasks["auth-core"])
+  // THE REQUIREMENTS MOVE ON, and revision two's split is accepted (the CLI pair dropped, a spec pair added).
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted revision two. */
+  const rev2 = await runTool(harness, "cellwork_split", { action: "submit", tasks: revisionTwoTasks() }, splitterAgent(harness))
+  expect(rev2.accepted).toBe(true)
+  expect(rev2.revision).toBe(2)
+  // SUPERSESSION, NOT A REFUSAL: the newer revision materialises over the recorded partial.
+  harness.injection.openFailAt = 0
+  /** The superseding activation. */
+  const superseded = await runTool(harness, "cellwork_activate", {})
+  expect(superseded.ok).toBe(true)
+  expect(superseded.revision).toBe(2)
+  // The journal names both revisions, and says the older partial was abandoned.
+  /** The supersession rows. */
+  const supersedeRows = journalEntries(harness.workspace, cellId).filter((row) => row.event === "activation-in-flight-superseded")
+  expect(supersedeRows.length).toBe(1)
+  expect(supersedeRows[0].previous).toBe(1)
+  expect(supersedeRows[0].by).toBe(2)
+  // THE OLD PARTIAL IS NOT DUPLICATED: the kept auth row keeps its id, and no row is minted twice.
+  /** The live board after the superseding pass. */
+  const tasks = harness.teamRecords.get("team-1")?.tasks ?? []
+  expect(tasks.length).toBe(8)
+  expect(new Set(tasks.map((task: Record<string, any>) => task.subject)).size).toBe(8)
+  /** The finished record. */
+  const state = readStateJson(harness.workspace, cellId)
+  expect(state.phase).toBe("executing")
+  expect(state.activatedRevision).toBe(2)
+  expect(state.activationInFlight).toBe(null)
+  expect(state.activatedTasks["auth-core"]).toBe(authBoardId)
+  expect(Object.keys(state.activatedLoops).sort()).toEqual(["auth-core", "spec-core"])
+  // The DROPPED work is cancelled on the cell record while its live rows are kept.
+  expect(Object.keys(state.cancelledTasks).sort()).toEqual(["cli-core", "cli-review"])
+  expect(tasks.some((task: Record<string, any>) => task.subject === "Implement the CLI")).toBe(true)
+})
+
+test("F2: a LOWER accepted revision still cannot supersede an in-flight one", async () => {
+  /** The harness with an accepted split. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = await startCell(harness)
+  await finalizeRequirements(harness)
+  await submitSplit(harness)
+  // A FAILED REVISION ONE, then a synthetic in-flight revision AHEAD of the accepted one: the predicate
+  // must refuse rather than materialise a lower revision over newer work.
+  harness.injection.openFailAt = 1
+  /** The failed first pass. */
+  await runTool(harness, "cellwork_activate", {})
+  /** The partial record. */
+  const partial = readStateJson(harness.workspace, cellId)
+  expect(partial.activationInFlight).toBe(1)
+  writeFileSync(statePath(harness.workspace, cellId), JSON.stringify({ ...partial, activationInFlight: 2 }, null, 2) + "\n")
+  /** The refused activation of the lower accepted revision. */
+  const refused = await runTool(harness, "cellwork_activate", {})
+  expect(refused.ok).toBe(false)
+  expect(String(refused.error)).toContain("OLDER than the in-flight revision")
+})
+
+// ── F3: the tool schema and description teach the repaired behaviour ────────
+
+test("F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours", () => {
+  /** The harness (only the registration is read; no cell is needed). */
+  const harness = makeHarness()
+  /** The captured activation tool definition. */
+  const definition = harness.tools.find((tool) => tool.name === "cellwork_activate")
+  if (definition === undefined) throw new Error("cellwork_activate is not registered")
+  /** The schema properties the result declares. */
+  const properties = definition.output?.schema?.properties ?? {}
+  /** The `reused` declaration. */
+  const reused = properties.reused
+  expect(reused).toBeDefined()
+  expect(reused?.type).toBe("array")
+  expect((reused?.items as Record<string, unknown> | undefined)?.type).toBe("string")
+  expect(typeof reused?.description).toBe("string")
+  expect(String(reused?.description).length).toBeGreaterThan(0)
+  /** The model-facing description. */
+  const description = String(definition.description ?? "")
+  // The behaviours are ASSEMBLED here so the arm pins the words the contract requires, not one pasted
+  // sentence that a reword could silently keep green.
+  expect(description).toContain(["opens a verify loop for EVERY code task", "that has none yet", "BEFORE dispatch"].join(" "))
+  expect(description).toContain(["A failed pass is checkpointed", "and the SAME accepted revision resumes it"].join(" "))
+  expect(description).toContain(["a newer accepted revision", "supersedes an older in-flight one"].join(" "))
 })

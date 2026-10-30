@@ -1,0 +1,51 @@
+# verifier-a P1-CR verdict evidence — 2026-10-30T12:18:58Z
+## tree (HEAD aa3b373a + changed paths)
+aa3b373a4a2e1dea1cc49b142217b3ccfbd2e4ad
+ M docs/cellwork.md
+ M docs/cellwork.zh-CN.md
+ M packages/mpd-cellwork-plugin/README.md
+ M packages/mpd-cellwork-plugin/README.zh-CN.md
+ M packages/mpd-cellwork-plugin/dist/index.js
+ M packages/mpd-cellwork-plugin/src/activate.ts
+ M packages/mpd-cellwork-plugin/src/flow.ts
+ M packages/mpd-cellwork-plugin/test/activate-resume.test.ts
+
+## package tests
+ 75 pass
+ 0 fail
+Ran 75 tests across 5 files. [221.00ms]
+TESTS_EXIT:0
+
+## test:qa
+[test:qa] all self-tests passed
+QA_EXIT:0
+
+## independent red-first replication (pre-repair src + current tests)
+ 8 pass
+ 4 fail
+RED_EXIT:1
+(fail) F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten
+(fail) F2: a LOWER accepted revision still cannot supersede an in-flight one
+(fail) F2: a newer accepted revision supersedes an older in-flight partial and journals it
+(fail) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours
+
+## pre-repair arm baseline
+ 71 pass
+ 0 fail
+Ran 71 tests across 5 files. [116.00ms]
+BASELINE_EXIT:0
+
+## arm delta
+baseline=71 current=75 missing=0 new=4
+
+## gate evidence ids
+ev-20261030T121643-203f14 tests | ev-20261030T121715-c550ae typecheck | ev-20261030T121716-e4321d comments | ev-20261030T121720-0fade7 docs | ev-20261030T121720-9d76f2 dist
+
+## hashes
+4ef57e8aff4cb46806137ae9bb9729d49e20ab93a9349b84ab918963ec0d3ae5  evidence/cellwork/fix-activate/cr-repairs/verify/20261030T121622Z/cellwork-p1-cr-repairs.md
+35595f7b995906335b393123a498687d342b802fb01c77c3c2a9578db8e77bdc  .mpd/plans/cellwork-remediation-p1.md
+e46c60f1d31e88664c872655e501982bb634a4e61148627a3e0c9b2166f87e72  packages/mpd-cellwork-plugin/README.md
+a879c66f994d93ff9e73f4ed5fb110b9aeed1c7228a72b3177857c1e1c32506b  packages/mpd-cellwork-plugin/README.zh-CN.md
+69f8939b4696bdb292d0163c929a69ad178bf90f2d150c5207773f8592ad33bc  docs/cellwork.md
+98e3310b5b8bcd258403c869b76fb8de1c677e1a2ababe3db2fab5ebcf5c8124  docs/cellwork.zh-CN.md
+697642657c6accab5d8ddb01a86906fa5effa6950176d810448116b8829325d4  evidence/cellwork/fix-activate/cr-repairs/verify/20261030T121622Z/findings.txt

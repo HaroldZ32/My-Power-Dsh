@@ -71,9 +71,18 @@ phase never regresses. A run that fails part-way is therefore resumable, not a w
 A retry of the SAME accepted revision resumes from that record: members are reconciled against the live team
 roster (a name already on the roster is reused instead of re-raised), a recorded board id is reused per split
 key, and a verify loop is opened for every code task that does not have one yet — not only for the tasks the
-retry newly creates. `activatedRevision` is set only after the dispatch pass succeeds, so another failure
-leaves another resumable record. A call naming a DIFFERENT revision, an already-materialised revision and a
-stale split are refused with the existing teaching errors.
+retry newly creates. A KEPT task from a cell activated before this rule existed has no `activatedLoops`
+entry, so a frozen contract that already names a loop id counts as armed: that task is skipped and its
+contract is NOT rewritten (only a task with no loop, or whose contract still carries the pre-loop
+placeholder, gets one). `activatedRevision` is set only after the dispatch pass succeeds, so another failure
+leaves another resumable record.
+
+A NEWER accepted revision SUPERSEDES an older in-flight partial: the pass is journaled
+(`activation-in-flight-superseded`, naming both revisions and stating that the older partial is abandoned),
+and the newer split's materialisation reconciles the recorded rows — a kept key reuses its board id, while
+dropped work is cancelled per the re-split rules — so the older artifacts are neither duplicated nor lost.
+Only an accepted revision LOWER than the in-flight one is refused (a lower revision cannot supersede), with
+the existing teaching error, alongside an already-materialised revision and a stale split.
 
 ### Re-split in detail
 
@@ -104,7 +113,7 @@ history.
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it — an update bumps the revision and marks the split stale |
 | `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it, or `show` the last verdict |
-| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it |
+| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised |
 | `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board |
 | `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, and every UNDELIVERED mail row; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
@@ -301,7 +310,7 @@ Everything lives under the workspace, in gitignored runtime state:
 | Path | Content |
 |---|---|
 | `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, members and their modes, split revision, checkpoints, journal cursor, and the two optional in-flight activation fields — `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
-| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal |
+| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`) |
 | `mail.jsonl` | the cell's own mail rows — a same-cell send, or a cross-cell send addressed to this cell; written by the sender, read here by `cellwork_inbox` |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |

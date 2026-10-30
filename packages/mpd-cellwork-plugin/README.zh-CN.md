@@ -53,7 +53,8 @@
   就**拒绝**，除非 `force:true`；强制停止会被如实记入 journal。
 
 flow 工具：`cellwork_requirements`（规划器的 finalize/update）、`cellwork_recon`（规划器的一次性只读咨询）、
-`cellwork_split`（切分器的按度量图）、`cellwork_activate`（队长的物化）。
+`cellwork_split`（切分器的按度量图）、`cellwork_activate`（队长的物化，其返回的 `reused` 列出从 cell 记录或活跃
+名册解析、而不是新拉起的成员名）。
 
 协议工具：`cellwork_dispatch`（一次仅声明所有者的派发）、`cellwork_supervise`（队长的只读巡检）、
 `cellwork_context`（成员自己的占用）、`cellwork_handoff`（检查点交接文档）、`cellwork_subteam`（子队长的子
@@ -91,9 +92,13 @@ cell 登记）、`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件）�
   journal 事件下；阶段绝不回退——首次激活仍是 `split`，对已在执行的 cell 做局部重切分则保持 `executing`。
   用**同一个**被接受的修订号重试会从这份记录续做：成员按名字与活跃名册对账
   （重复的 `add_member` 直接复用，绝不致命）、每个切分键复用已记录的看板 id、为**每个**还没有循环的代码任务补开
-  验证循环，并且只有在派发成功之后才写入 `activatedRevision`。指定不同修订号、激活已物化修订号、激活过期切分，
-  都按既有教学式错误拒绝。续做不是事务：残余窗口是一次看板/验证调用加一次 cell 记录写入，该窗口可能留下的重复
-  看板行是可检出但不可删除的（团队平面没有取消动词）。
+  验证循环——**例外**是升级前的 cell 里保留下来的任务：它的 `activatedLoops` 没有条目，但冻结合约上已经写明循环
+  id，因此合约**不会**被重写，也不会再开第二条循环。只有在派发成功之后才写入 `activatedRevision`。**更新的**被
+  接受修订号会**取代**更旧的在飞部分激活——记入 journal（`activation-in-flight-superseded`），更旧的部分产物被
+  放弃，其已记录的行被核对（保留的 id 复用、被去掉的工作标记 `cancelled`）——而**更低**的修订号、激活已物化的
+  修订号与激活过期切分，仍按既有教学式错误拒绝。返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的
+  成员名。续做不是事务：残余窗口是一次看板/验证调用加一次 cell 记录写入，该窗口可能留下的重复看板行是可检出但
+  不可删除的（团队平面没有取消动词）。
 - **无损的工具结果。** cellwork 的每个工具结果都能通过 harness 的无损 JSON 走查：任务投影绝不带 `undefined`
   自有键（可选的 `owner` 直接省略，绝不写成 `undefined`），结果里也没有非有限数、负零或环。
 - **B5 侦察边界。** `cellwork_recon` 用精确的 `Explorer`/`Researcher` 标签与绝对深度上限启动只读子代理，

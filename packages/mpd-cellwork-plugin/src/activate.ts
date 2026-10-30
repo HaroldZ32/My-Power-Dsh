@@ -32,12 +32,21 @@
 // `CellState.activatedLoops`, so nothing is raised, minted or armed twice: the only remaining window is
 // a crash between one artifact and its checkpoint write, and the retry reconciles that artifact from the
 // live roster/state instead of failing on a duplicate.
+import { existsSync, readFileSync } from "node:fs"
 import { atomicWriteText, appendJournal, contractPath, type CellMemberRecord, type CellState } from "./state"
 import type { CellworkConfig } from "./config"
 import type { SplitTaskVerdict, SplitVerdict } from "./split"
 import { roleKey } from "./split"
 import { contractRelativePath, dispatchOwnerOnly, sendThroughExecutor, type DispatchMemberView, type DispatchRecordView, type DispatchReport } from "./dispatch"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+
+/**
+ * The placeholder sentence a frozen contract carries until {@link withLoopId} replaces it.
+ *
+ * Its ABSENCE from an existing contract file is the durable evidence that the task is already armed: a
+ * record written before `CellState.activatedLoops` existed cannot say so itself.
+ */
+const CONTRACT_LOOP_PLACEHOLDER = "The verification loop is opened at activation; its id is appended below before dispatch."
 
 /** The DECLARED producer identity, recorded as DATA on the frozen contract and in the journal. */
 export function producerIdentity(cellId: string): string {
@@ -280,7 +289,7 @@ export function buildContractDoc(deps: Pick<ActivateDeps, "cell" | "config" | "s
     "4. On FAIL, name each finding with the document source that proves it and leave the repair to the writer.",
     "",
     "## Loop",
-    "The verification loop is opened at activation; its id is appended below before dispatch.",
+    CONTRACT_LOOP_PLACEHOLDER,
   ].join("\n")
 }
 
@@ -292,7 +301,32 @@ export function buildContractDoc(deps: Pick<ActivateDeps, "cell" | "config" | "s
  * @returns the document with the concrete loop id.
  */
 export function withLoopId(doc: string, loopId: string): string {
-  return doc.replace("its id is appended below before dispatch.", "`" + loopId + "` (`mpd_verify_seat {loop_id:\"" + loopId + "\"}`).")
+  return doc.replace(CONTRACT_LOOP_PLACEHOLDER, "The verification loop is opened at activation; `" + loopId + "` (`mpd_verify_seat {loop_id:\"" + loopId + "\"}`).")
+}
+
+/**
+ * Whether one task's FROZEN contract already names a verify loop.
+ *
+ * A cell activated before {@link CellState.activatedLoops} existed records no loop id, but the contract
+ * its activation froze does: {@link withLoopId} REPLACES {@link CONTRACT_LOOP_PLACEHOLDER} when a loop is
+ * armed, so the placeholder's absence from an existing file is the durable evidence of the arming. Used
+ * only to SKIP re-arming a KEPT task — never to rewrite that frozen contract.
+ *
+ * @param deps - the activation's workspace and cell, which resolve the contract path.
+ * @param taskKey - the split key whose contract is checked.
+ * @returns true only when the contract file exists and no longer carries the placeholder.
+ */
+function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">, taskKey: string): boolean {
+  /** The absolute path the activation writes this task's contract to. */
+  const path = contractPath(deps.workspace, deps.cell.cellId, taskKey)
+  try {
+    if (!existsSync(path)) return false
+    return !readFileSync(path, "utf8").includes(CONTRACT_LOOP_PLACEHOLDER)
+  } catch {
+    // An unreadable contract is NOT evidence of an arming: fall through to the normal open/rewrite path,
+    // which will surface the same I/O failure where it matters.
+    return false
+  }
 }
 
 /**
@@ -503,8 +537,17 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   const loops: ActivatedLoop[] = []
   /** Every split task that needs a loop (a task with no write scope produces no code to verify). */
   const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0)
+  /** Code-task keys ALREADY armed whose loop id the record cannot name (a pre-`activatedLoops` cell). */
+  const armedByContract = new Set<string>()
   for (const task of codeTasks) {
     if (loopIds.has(task.key)) continue
+    // F1: a KEPT task from a cell activated BEFORE `activatedLoops` existed has no recorded id, but its
+    // frozen contract may already name a loop. Re-opening would duplicate the loop and rewrite a contract
+    // a verifier may be reading — so such a task is skipped, and its arming satisfies the dispatch gate.
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
+      armedByContract.add(task.key)
+      continue
+    }
     /** The board id this task was materialised as. */
     const boardId = boardIds.get(task.key) ?? ""
     if (boardId === "") return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board")
@@ -547,7 +590,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   // id may the owners be woken — a dispatch that skips a loop is the disarmament this repair removes.
   for (const task of deps.split.tasks) {
     if ((boardIds.get(task.key) ?? "") === "") return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to dispatch")
-    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "") return fail("cellwork_activate has no verify loop for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work")
+    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "" && !armedByContract.has(task.key)) return fail("cellwork_activate has no verify loop for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work")
   }
   // 4b. CANCELLATION: work this revision dropped is marked on the cell record and journaled, never
   // deleted. The team plane carries the fact and the dispatch pass below refuses to wake those ids.

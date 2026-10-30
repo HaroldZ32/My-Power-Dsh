@@ -666,7 +666,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_activate ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens one verify loop per NEW code task BEFORE dispatch, then dispatches owner-only. A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -686,6 +686,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           revision: { type: "number" },
           contracts: { type: "array", items: { type: "string" } },
           membersRaised: { type: "array", items: { type: "string" } },
+          reused: { type: "array", items: { type: "string" }, description: "Board names reused from the cell record or the live roster instead of raised." },
           tasks: { type: "array", items: { type: "object" } },
           kept: { type: "array", items: { type: "string" }, description: "Split keys whose live board row was reused (never duplicated)." },
           cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
@@ -744,11 +745,16 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the materialised revision " + String(state.activatedRevision) + " — revisions only move forward; accept a newer split instead" }
         }
       }
-      // A PARTIAL ACTIVATION IS RESUMABLE WITH THE SAME REVISION (contract A3): `activatedRevision` is
-      // still null, and `activationInFlight` names the revision a failed pass owns. A DIFFERENT revision
-      // is refused, because appending a second materialisation would duplicate its board rows.
+      // A PARTIAL ACTIVATION IS RESUMABLE WITH THE SAME REVISION (contract A3), and a STRICTLY NEWER
+      // accepted revision SUPERSEDES the failed older one (contract F2) — only a LOWER revision is
+      // refused, because revisions never move backwards.
+      if (state.activationInFlight !== null && state.activationInFlight !== undefined && acceptedRevision < state.activationInFlight) {
+        return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the in-flight revision " + String(state.activationInFlight) + " — revisions only move forward; accept a newer split instead" }
+      }
+      // THE SUPERSESSION IS JOURNALED BY NAME: the older partial is abandoned, and the newer split's
+      // delta reconciles its recorded rows here (kept ids reused, dropped keys cancelled).
       if (state.activationInFlight !== null && state.activationInFlight !== undefined && state.activationInFlight !== acceptedRevision) {
-        return { ok: false, error: "cellwork_activate: split revision " + String(state.activationInFlight) + " is IN FLIGHT (a previous activation of it failed part-way), so revision " + String(acceptedRevision) + " cannot be materialised now — resume revision " + String(state.activationInFlight) + " while it is still the accepted split, or stop the cell. Activating a different revision would duplicate its board rows." }
+        appendJournal(caller.workspace, state.cellId, { event: "activation-in-flight-superseded", previous: state.activationInFlight, by: acceptedRevision, reason: "the accepted split moved on; the older partial is abandoned and its recorded rows are reconciled by this materialisation" }, new Date())
       }
       /** The stored verdict of the revision being activated (not "the latest": a stale one may be activated on purpose). */
       const stored = readSplit(caller.workspace, state.cellId, acceptedRevision)
