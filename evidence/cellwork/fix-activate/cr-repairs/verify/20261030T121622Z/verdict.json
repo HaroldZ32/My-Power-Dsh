@@ -1,0 +1,73 @@
+{
+  "reviewer": "verifier-a",
+  "loopId": "loop-20261030T120704-d6260c",
+  "taskId": "T11",
+  "contract": ".mpd/plans/cellwork-p1-cr-repairs.md",
+  "verdict": "PASS",
+  "riskLevel": "low",
+  "basis": "blind — formed from the frozen repair contract, the three PR #80 finding bodies (quoted to findings.txt as untrusted review data), the four P1 doc twins, the writer/docs/integration evidence and my own gate runs. activate.ts, flow.ts, the repaired test file and dist/index.js were never opened.",
+  "dispositions": {
+    "F1 (4422787251, Minor, activate.ts)": "FIXED — helper contractAlreadyNamesLoop + shared placeholder constant per the contract; kept armed contract skipped and not rewritten, placeholder contract still armed; arm 'F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten' is green and fails on the pre-repair source.",
+    "F2 (4422787261, Major, flow.ts)": "FIXED — refusal narrowed to acceptedRevision < activationInFlight, strictly greater revision supersedes with an activation-in-flight-superseded journal row and the existing reconciliation; arms 'F2: a newer accepted revision supersedes an older in-flight partial and journals it' and 'F2: a LOWER accepted revision still cannot supersede an in-flight one' are green and fail on the pre-repair source.",
+    "F3 (4422787295, Trivial, flow.ts)": "FIXED — output.schema.properties.reused (array of string, precise description) plus the description behaviours; literal-pin arm 'F3: the cellwork_activate schema DECLARES reused and the description names the new behaviours' is green and fails on the pre-repair source."
+  },
+  "sources": [
+    ".mpd/plans/cellwork-p1-cr-repairs.md",
+    ".mpd/plans/cellwork-remediation-p1.md",
+    "packages/mpd-cellwork-plugin/README.md",
+    "packages/mpd-cellwork-plugin/README.zh-CN.md",
+    "docs/cellwork.md",
+    "docs/cellwork.zh-CN.md",
+    "evidence/cellwork/fix-activate/cr-repairs/verify/20261030T121622Z/findings.txt"
+  ],
+  "gates": [
+    { "id": "ev-20261030T121643-203f14", "cmd": "bun test packages", "exit": 0, "observed": "2675 pass / 6 skip / 0 fail across 160 files (+4 arms vs the pre-repair 2671)" },
+    { "id": "ev-20261030T121715-c550ae", "cmd": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics" },
+    { "id": "ev-20261030T121716-e4321d", "cmd": "bun run verify:comments", "exit": 0, "observed": "VERDICT PASS (481 files / 43930 declarations per the writer; my run green)" },
+    { "id": "ev-20261030T121720-0fade7", "cmd": "bun run verify:docs", "exit": 0, "observed": "pairs=52 failed=0 violations=0 links=471 dead=0 — PASS" },
+    { "id": "ev-20261030T121720-9d76f2", "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "34/34 targets fresh with the pinned toolchain bun 1.4.0; 1 declared NOT COVERED" }
+  ],
+  "ownRuns": [
+    { "cmd": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "75 pass / 0 fail / 886 expect() across 5 files", "log": "tests.log" },
+    { "cmd": "bun run test:qa", "exit": 0, "observed": "all self-tests passed", "log": "qa.log" },
+    { "cmd": "pre-repair sources (git archive HEAD packages @ aa3b373a) + the CURRENT repaired test file", "exit": 1, "observed": "8 pass / 4 fail — exactly the four F1/F2/F3 arms fail, every pre-existing arm passes; independently reproduces the writer's red-first discriminator", "log": "red-first-verifier.log" },
+    { "cmd": "pre-repair sources + the pre-repair tests (arm baseline)", "exit": 0, "observed": "71 pass / 0 fail; current 75 = 71 + 4, 0 pre-existing arms missing", "log": "prefix-baseline.log" }
+  ],
+  "findings": [
+    {
+      "rank": "Nit",
+      "what": "The four twins narrow the F1 exception to 'a KEPT task from a cell activated before this rule existed'. Both lanes' symbol tables state the shipped predicate without an upgrade check: kept key AND the frozen contract no longer carries the placeholder. A current cell that lost the activatedLoops checkpoint after arming its loop would also be skipped, but the docs read as if only pre-upgrade cells are.",
+      "where": "docs/cellwork.md + docs/cellwork.zh-CN.md «A failed activation resumes»; packages/mpd-cellwork-plugin/README.md + README.zh-CN.md «Resumable activation» vs the writer report §1 F1 and docs-qa report §1 table",
+      "whyItMatters": "A reader could believe a crash-window kept task is re-armed (duplicate loop + rewritten contract) when the code skips it; documentation precision only, the shipped behaviour is the safer one.",
+      "direction": "State the predicate as 'a KEPT task whose frozen contract already names a loop', with the pre-upgrade cell as the motivating case (or say 'notably'), or add the activatedRevision guard the review sketch proposed. No code change demanded."
+    },
+    {
+      "rank": "Nit",
+      "what": "The P1 contract's §9 Amendment 1 resolves A2's phase wording and reads the 'already materialised' refusal as forward-only, but A3's THIRD bullet still says 'refuse with a teaching error when activationInFlight names a DIFFERENT revision'. The CR contract F2 now requires the opposite for a strictly greater revision (supersede, journal, materialise) and refuses only a LOWER one, so the P1 plan read alone still describes the pre-repair rule.",
+      "where": ".mpd/plans/cellwork-remediation-p1.md A3 + §9 Amendment 1 vs .mpd/plans/cellwork-p1-cr-repairs.md F2",
+      "whyItMatters": "Contract-plane bookkeeping: a future reader of the P1 plan alone would judge the repaired code non-conforming; the amendment covers the adjacent refusal but not this one.",
+      "direction": "The captain extends Amendment 1 (or adds a CR note) to state the in-flight rule is now forward-only: a strictly greater accepted revision supersedes the in-flight older one, only a lower one is refused. Not a repair defect."
+    }
+  ],
+  "declinedToJudge": [
+    "Whether the F2 journal row's `reason` payload literally states that the older partial is abandoned: the arm asserts previous/by (writer report), and I could not read the code blind; the writer and docs both claim the wording.",
+    "The exact skip predicate and helper body (read the arms' names and results only; the symbol tables are the two lanes' claims, not verification).",
+    "F1's decision not to back-fill the old loop id into activatedLoops: disclosed as a bound by the writer; the docs do not claim a back-fill. The frozen contract remains the durable evidence and the dispatch gate accepts it.",
+    "The Docker real-machine lane that proves the changed output schema mounts: contract §4 assigns it to PR CI after the push; not run here (no rootless Docker in this lane).",
+    "CodeRabbit's post-push re-review and the PR reconciliation comment: the captain's steps after the commit (AGENTS.md §5)."
+  ],
+  "checkedAndCleared": [
+    "The P1 contract now carries a §9 Amendment 1 added after my P1 PASS: it records A2's 'phase left unchanged' reading, the forward-only 'already materialised' refusal, the declared partial-re-split arm gap and the loop-scope audit. Only A3's THIRD bullet (refuse a different in-flight revision) remains un-amended and is superseded by this repair's F2 (finding 2 above).",
+    "The docs' journal row now names two supersession events; `split-superseded` is a REAL pre-existing event (wave-3 Amendment 6 R2 evidence pins exactly one split-superseded row), so the claim is accurate, not an invention.",
+    "No existing arm was weakened or deleted: 0 of the 71 pre-repair arm names is missing; exactly the 4 F1/F2/F3 arms are new.",
+    "The four doc twins kept the earlier P1 claims (resumable activation, live producer, lossless supervise) while adding the supersession, the loop exception and `reused`; verify:docs proves pair/link/heading parity.",
+    "The repair touched only activate.ts, flow.ts and test/activate-resume.test.ts in src/test (git status); docs are T10's, dist is the captain's integration rebuild.",
+    "No secret material in the repair evidence or the quoted findings."
+  ],
+  "bounds": [
+    "Never opened packages/mpd-cellwork-plugin/src/activate.ts, src/flow.ts, test/activate-resume.test.ts or dist/index.js (blind basis).",
+    "Did not run the Docker real-machine lane; the F3 schema's mount proof is the PR CI step.",
+    "Did not run verify:gates / verify:rows / verify:manifest — no row, manifest or patch file changed; the captain's integration log records verify:gates 9/9 PASS.",
+    "The red-first replication ran with the PATH bun 1.4.2; the dist gate ran with the pinned 1.4.0."
+  ]
+}

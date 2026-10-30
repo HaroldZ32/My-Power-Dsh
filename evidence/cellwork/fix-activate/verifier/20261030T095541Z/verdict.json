@@ -1,0 +1,77 @@
+{
+  "reviewer": "verifier-a",
+  "loopId": "loop-20261030T092754-5de4b8",
+  "taskId": "T4",
+  "contract": ".mpd/plans/cellwork-remediation-p1.md",
+  "verdict": "PASS",
+  "riskLevel": "low-medium",
+  "basis": "blind — formed from the frozen contract, the four doc twins, the writer/docs evidence artifacts and my own gate runs. The five changed src files, the three test files and dist/index.js were never opened; test NAMES and pass/fail counts come only from controlled black-box gate output.",
+  "sources": [
+    ".mpd/plans/cellwork-remediation-p1.md",
+    "packages/mpd-cellwork-plugin/README.md",
+    "packages/mpd-cellwork-plugin/README.zh-CN.md",
+    "docs/cellwork.md",
+    "docs/cellwork.zh-CN.md"
+  ],
+  "gates": [
+    { "id": "ev-20261030T095614-a8f262", "cmd": "bun test packages", "exit": 0, "observed": "2671 pass / 6 skip / 0 fail across 160 files (skips are the absent comment-checker detector binary)" },
+    { "id": "ev-20261030T095652-41cc8f", "cmd": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no diagnostics" },
+    { "id": "ev-20261030T095655-c32acb", "cmd": "bun run verify:comments", "exit": 0, "observed": "481 files / 43891 declarations — PASS" },
+    { "id": "ev-20261030T095657-1b1e0c", "cmd": "bun run verify:docs", "exit": 0, "observed": "pairs=52 failed=0 violations=0 links=471 dead=0 — PASS" },
+    { "id": "ev-20261030T095704-cbe36c", "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "34/34 targets fresh with the pinned toolchain bun 1.4.0; 1 declared NOT COVERED" }
+  ],
+  "ownRuns": [
+    { "cmd": "bun test packages/mpd-cellwork-plugin", "exit": 0, "observed": "71 pass / 0 fail / 832 expect() across 5 files", "log": "tests.log" },
+    { "cmd": "pre-fix sources (git archive HEAD packages) + the CURRENT three test files", "exit": 1, "observed": "21 pass / 10 fail — exactly the 8 resume arms, the A5 arm and the B1 lossless arm; independently reproduces the writer's red-first discriminator", "log": "red-first-verifier.log" },
+    { "cmd": "pre-fix sources + the pre-fix tests (arm baseline)", "exit": 0, "observed": "60 pass / 0 fail — the pre-existing suite had 60 arms; the current run has 71 = 60 + 8 resume + 2 lossless + 1 A5, and every pre-existing arm name appears in the current run (0 missing)", "log": "prefix-baseline.log" }
+  ],
+  "findings": [
+    {
+      "rank": "Medium",
+      "kind": "contract wording (not a work defect)",
+      "what": "The frozen contract's A2 says \"phase stays split\" and A3 says \"keep refusing when activatedRevision !== null\". The shipped behaviour (and the four doc twins) leaves the phase untouched — split for a first activation, executing for a partial re-split — and refuses a re-split only on the forward-only revision rule. Both A2's second bullet (\"activatedRevision is NOT set\") and A3's clause can only be coherent for a re-split if they mean \"unchanged\"/\"forward-only\", and the pre-existing re-split documentation already required a greater revision.",
+      "where": ".mpd/plans/cellwork-remediation-p1.md (A2, A3) vs docs/cellwork.md \"A failed activation resumes\" + packages/mpd-cellwork-plugin/README.md \"Resumable activation\"",
+      "whyItMatters": "The acceptance text and the shipped rule disagree on the re-split path; a later reader cannot tell whether the phase rule is an unstated amendment or a defect.",
+      "direction": "The captain (contract owner) amends A2 to \"phase is left unchanged (never regresses)\" and A3 to \"refuse only when the accepted revision is not greater than the recorded one\". No writer repair needed; behaviour matches the reasonable reading.",
+      "disclosed": "writer report §5.4 and docs-qa report D1"
+    },
+    {
+      "rank": "Medium",
+      "what": "No arm exercises a partial RE-SPLIT resume. The docs state the generic claim \"A retry of the SAME accepted revision resumes from that record\" and contract §1's goal is generic, but all seven §4 arms inject their failure on a FIRST activation; the re-split resume rests on the two lanes' symbol-level reading, not on P1 evidence.",
+      "where": "contract §3.1 A3 + §4 vs docs/cellwork.md \"A failed activation resumes\"",
+      "whyItMatters": "A re-split failure is the same class of wedge P1 exists to remove; if the forward-only/loop-reuse path regressed, the suite would stay green.",
+      "direction": "Add one arm next wave: a successful first activation, then a re-split whose loop-open fails after the second task, then the same-revision retry (no duplicate member/task/loop, phase unchanged, activatedRevision advances only after dispatch). Alternatively scope the docs sentence to first activation and declare the re-split path a bound.",
+      "blocking": false,
+      "reasonNotBlocking": "Contract §4's mandatory arm list is fully present and red→green; §4 defines the required evidence, and all of it is met."
+    },
+    {
+      "rank": "Nit",
+      "what": "The verify loop's declared scope lists the five src files and the two new test files only. The writer also edited packages/mpd-cellwork-plugin/test/cellwork.test.ts (the contract-required A5 arm) and the captain rebuilt packages/mpd-cellwork-plugin/dist/index.js at 17:50:06+08. Both are sanctioned by the contract (A5 \"add an arm\", §4 existing-test updates, §6 dist is the captain's integration step), so the verdict basis is unaffected.",
+      "where": ".mpd/verify/loops/loop-20261030T092754-5de4b8.json vs git status",
+      "direction": "Amend the loop's scope for the audit trail (test/cellwork.test.ts; dist as the integration step)."
+    },
+    {
+      "rank": "Nit",
+      "what": "The writer report says `git status` showed \"docs-qa's four doc twins (not mine)\", but the twins' mtimes (17:51) are later than the report (17:48). Whether the twins were already modified at report time cannot be established from artifacts.",
+      "where": "evidence/cellwork/fix-activate/writer/20261030T094745Z/report.md vs file mtimes",
+      "whyItMatters": "Evidence wording only; no claim about behaviour depends on it.",
+      "direction": "None required; noted and declined as unprovable.",
+      "declined": true
+    }
+  ],
+  "declinedToJudge": [
+    "Assertions inside the new arms (I read their names and observed pass/fail only; reading the test sources would break the blind basis).",
+    "The implementation's internal shape vs StageResult.partial / withLoopId (not observable from the docs; only the two lanes' symbol tables claim it, and those are not verification).",
+    "No live end-to-end /cellwork activation and no mounted boot of the changed row: contract §7.3 declares this out of P1; the dist gate proves freshness only.",
+    "bun run test:qa real QA cases (the writer ran the self-test lane; contract §6 allows a stated reason — no row changed, mount belongs to integration).",
+    "Preset / row / manifest / mount conformance: git status shows no row, preset, patch or manifest file changed, so the §4 rows are not applicable.",
+    "zh translation quality beyond structural and claim parity (verify:docs proves the pair, switch links, heading tree and link resolution; I compared the diffed claims)."
+  ],
+  "bounds": [
+    "Did NOT open packages/mpd-cellwork-plugin/src/{activate,state,flow,guard,protocol}.ts, test/{activate-resume,supervise-lossless,cellwork}.test.ts or dist/index.js (blind basis).",
+    "Did NOT run a real harness boot/mount of the changed row (no row changed) and did NOT run the Docker lane.",
+    "Did NOT run the two real QA cases (cellwork-mount / cellwork-command): they need the rebuilt dist and an isolated boot, which §6 assigns to the captain's integration.",
+    "Evidence artifacts inspected: writer red-first/tests/typecheck/comments/docs/qa logs + report; docs-qa docs.log + report. Secret scan of evidence/cellwork/fix-activate/** found no API key, token, secret or password material.",
+    "The red-first replication ran with the PATH bun 1.4.2; the dist gate ran with the pinned toolchain bun 1.4.0."
+  ]
+}

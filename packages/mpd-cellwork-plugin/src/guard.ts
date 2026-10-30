@@ -33,8 +33,14 @@ import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/i
 /** The prefix family the captain may call: every `cellwork_*`, `agent_teams_*` and `mpd_memory_*` tool. */
 export const CAPTAIN_TOOL_PREFIXES: readonly string[] = ["cellwork_", "agent_teams_", "mpd_memory_"]
 
-/** The two exact names the captain may call besides the prefix families. */
-export const CAPTAIN_TOOL_NAMES: readonly string[] = ["ask_user_question", "todo_write"]
+/**
+ * The exact names the captain may call besides the prefix families.
+ *
+ * `mpd_verify_open` is here BY NAME and is the ONLY `mpd_verify_*` entry (P1 A5): the captain opens the
+ * loops an activation arms, while `mpd_verify_seat`, `mpd_verify_evidence`, `mpd_verify_record` and
+ * `mpd_verify_escape` stay refused — a captain that could bind or verdict would verify its own work.
+ */
+export const CAPTAIN_TOOL_NAMES: readonly string[] = ["ask_user_question", "todo_write", "mpd_verify_open"]
 
 /**
  * Member-side tools the captain may NOT call even though they carry a `cellwork_` prefix.
@@ -172,6 +178,7 @@ export function captainRefusal(toolName: string): string {
     + "Allowed here: `cellwork_*` except `cellwork_handoff` (`cellwork_status`, `cellwork_start`, "
     + "`cellwork_dispatch`, `cellwork_supervise`, `cellwork_activate`, `cellwork_send`, `cellwork_inbox`), "
     + "`agent_teams_*` (`agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`), "
+    + "`mpd_verify_open` (opening a loop only — binding, evidence and verdict stay refused), "
     + "`ask_user_question`, `todo_write` and `mpd_memory_*`. Put the work on the team: stage or extend it "
     + "with `agent_teams_plan`, then DISPATCH WITH `cellwork_dispatch` — owner-only, and a busy or absent "
     + "owner is REPORTED and the task left pending, never substituted. (`agent_teams_dispatch` stays allowed "

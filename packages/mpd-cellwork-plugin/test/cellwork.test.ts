@@ -426,6 +426,22 @@ test("the pure guard decision: no seat allows, and each mode refuses exactly its
   expect(cellworkGuardDecision({ cellId: "cell-x", name: "worker", mode: "member" }, "write")).toBeUndefined()
 })
 
+test("A5: the captain may open a verify loop BY EXACT NAME, and every other mpd_verify_* call stays refused", () => {
+  /** The captain's seat. */
+  const captain: CellworkSeat = { cellId: "cell-x", name: "captain", mode: "captain" }
+  // THE CAPTAIN'S ONE VERIFY VERB: opening a loop is what an activation does, so it is admitted.
+  expect(CAPTAIN_TOOL_NAMES).toContain("mpd_verify_open")
+  expect(cellworkGuardDecision(captain, "mpd_verify_open")).toBeUndefined()
+  // EVERY OTHER VERIFY VERB IS REFUSED — the allowlist is one exact name, never the `mpd_verify_` prefix.
+  for (const refused of ["mpd_verify_seat", "mpd_verify_evidence", "mpd_verify_record", "mpd_verify_escape"]) {
+    /** The refusal paragraph. */
+    const decision = cellworkGuardDecision(captain, refused)
+    expect(typeof decision).toBe("string")
+    expect(decision ?? "").toContain(refused)
+    expect(decision ?? "").toContain("cellwork_stop")
+  }
+})
+
 test("the installed guard fences the captain of the ACTIVE cell and leaves every other session alone", () => {
   /** The harness. */
   const harness = makeHarness()

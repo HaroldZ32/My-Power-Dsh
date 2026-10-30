@@ -1,0 +1,60 @@
+(pass) /cellwork with no live turn surface archives the cell it just wrote instead of fencing a captain
+(pass) Amendment 5a: a requirements update re-dispatches the SAME split task with the new revision
+(pass) Amendment 5b: cellwork_recon refuses a stopped cell, and the returned report is JOURNALED
+(pass) Amendment 5c: the planner directive carries the relay protocol, and the captain authors nothing
+(pass) Amendment 6 R1: the dispatched message names the contract file the verify loop froze, and that file EXISTS
+(pass) Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and SURVIVES a refused resubmission
+(pass) B8: cellwork_handoff writes the document, marks the member ready and journals it
+(pass) B8: cellwork_subteam enforces depthMax and registers the sub-cell when it fits
+(pass) B8: handoff validation accepts both grammars and names every missing section
+(pass) B8: planCheckpoint never guesses, fires once at the ratio, and suppresses reinjection
+(pass) B8: the barrier compacts with a REAL signal, promotes on success, and reseeds from the handoff on null
+(pass) B9: cellwork_send writes a durable row and cellwork_inbox acknowledges it exactly once
+(pass) C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row
+(pass) C1: work a later revision drops is marked cancelled, never deleted, and never dispatched
+(pass) C2.1: the compaction barrier classifies busy, error and no-engine after the retry budget
+(pass) C2.2: mail addresses a member, `captain` and a cross-subcell recipient, and the journal carries the cell stamp
+(pass) C2.3: an UNDELIVERED mail row is surfaced by cellwork_supervise, not only by the pending board
+(pass) CJK bytes are priced at the punitive rate, and an unreadable or outside path is a refusal
+(pass) CR 4377306675: a promoted subcaptain resolves to ITS OWN sub-cell — dispatch/supervise/activate accepted — and the captain stays on its own cell
+(pass) CR 4377306675: the parent REFUSES a silent stop while its sub-cell is live, and the forced way is journaled
+(pass) CR 4377306686: the team record is read from the CALLER's workspace, not the process root
+(pass) CR 4377306694: a repeated finalize of the SAME content (no trailing newline) is IDEMPOTENT, not CHANGED
+(pass) CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch`
+(pass) CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all
+(pass) CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits
+(pass) CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan
+(pass) CR 4377316529: an approval that stops mid-way PERSISTS the team id and its members, and the retry reuses that team
+(pass) CR 4377316529: an approved-but-UNRECORDED team is recovered and its missing member repaired, never re-approved
+(pass) D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so
+(pass) D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own
+(pass) a composition without the tools.guard seam installs nothing and says so
+(pass) a corrupt state is REFUSED with its path, never reset, and the command refuses on it
+(pass) a declared 2 MiB input is refused with its real bytes and a bytes → tokens breakdown
+(pass) a large window accepts a normal task and enforces the whole-window condition
+(pass) a non-empty /cellwork writes the cell record and submits exactly ONE directive
+(pass) a record round-trips through an atomic write and leaves no temporary file behind
+(pass) a second /cellwork while one cell is active REFUSES and names the active cell
+(pass) activate: a STALE split is refused unless its revision is passed explicitly
+(pass) activate: contracts → members → tasks → verify loop BEFORE dispatch, owner-only, never a second activation
+(pass) after a stop a NEW cell can be started, which is what 'archived, not deleted' is for
+(pass) an INJECTED window of 123456 produces the documented budget 30864
+(pass) an empty or whitespace /cellwork answers usage and writes NO cell state
+(pass) an uncertified route is refused with NO guessed window
+(pass) an unreadable schema VERSION is refused and named, not migrated or reset
+(pass) cellwork_dispatch and cellwork_supervise are captain-only; supervise reports the pending board
+(pass) cellwork_start is captain-only, idempotent, and NEVER creates a cell
+(pass) cellwork_start stages TWO members and TWO tasks, with personas, roles and a blocked split task
+(pass) cellwork_status reports the cell, the live team's counts and the caller's own seat
+(pass) cellwork_stop archives the cell, refuses live work unless forced, and gives the captain its tools back
+(pass) no context-window literal is baked into the package, and the row names no harness seam itself
+(pass) owner-only dispatch reports a busy or absent owner and never substitutes another member
+(pass) recon: planner only, label exactly Explorer, explicit absolute maxDepth, persona in the prompt
+(pass) requirements: incomplete refused, complete finalized, a changed finalize refused, update bumps and marks stale
+(pass) split: an accepted graph is measured against the INJECTED window, and a 2 MiB input is refused with its bytes
+(pass) split: graph refusals name the rule (cycle, self-review, overlap, unknown role, no answer) and the revision mismatch
+(pass) the installed guard fences a SUBCAPTAIN seat as a mini-captain, while the captain keeps start/stop
+(pass) the installed guard fences the captain of the ACTIVE cell and leaves every other session alone
+(pass) the plugin declares the tool and command seams and registers exactly one /cellwork command
+(pass) the pure guard decision: no seat allows, and each mode refuses exactly its own surface
+(pass) the window reader takes the catalog window, then the operator override, then refuses

@@ -38,11 +38,31 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
    的图才能作为 `cellwork_activate` 的输入。拒绝时会返回逐任务明细，告诉切分器还需要砍多少。
 3. **executing（执行）**——`cellwork_activate` 把切分结果里的成员与任务加进**活跃** team 记录，为每个代码
    任务写一份冻结合约，并在派发**之前**为每个代码任务打开一条验证循环，然后派发。成员的人格文本会注入成
-   员提示词——team 本身不提供名册人格。队长在每次唤醒时巡检。
+   员提示词——team 本身不提供名册人格。队长在每次唤醒时巡检。中途失败不会把 cell 卡死：已创建的产物会被检查点
+   记录，阶段保持原样——从 `split` 发起的激活仍是 `split`，对已在执行的 cell 做局部重切分则仍是 `executing`
+   ——用**同一个**被接受的修订号即可续做（见下）。
 4. **re-split（重切分）**——`cellwork_requirements {action:"update"}` 提升需求修订号并把切分标记为过期。规划器
    重新谈定变化的部分，切分器重新提交一个修订，`cellwork_activate` 只把新增或有变化的工作**追加**到同一个
    team：team id 与 cell id 都不变，新修订中被去掉的工作标记为 `cancelled`（绝不删除），切分任务会被重新
    派发而不是被复制。用过期切分激活会被**拒绝**，除非调用者显式指定修订号。
+
+### 激活中途失败可以续做
+
+激活是一串变更，而不是一次事务：合约、成员、看板任务、验证循环，最后是派发。每个产物一创建就立即检查点——
+在飞修订号（`activationInFlight`）、已拉起的成员、已铸出的看板 id 与已打开的循环 id——记在
+`cell-activation-partial` journal 事件下，阶段保持原样：从 `split` 发起的激活仍为 `split`，而对已在执行的
+cell 的局部重切分会保持 `executing`——阶段绝不回退。因此中途失败的一轮是**可续做**的，而不是一次卡死。
+
+用**同一个**被接受的修订号重试，会从这份记录续做：成员按名字与活跃 team 名册对账（名册上已有的名字直接复用，
+不再重复拉起）、每个切分键复用已记录的看板 id、并为**每个**还没有循环的代码任务补开验证循环——不只是这次重试
+新创建的任务。早于这条规则激活的 cell 里，保留下来的任务在 `activatedLoops` 中没有条目，因此一份已经写明循环 id
+的冻结合约会被视为已武装：该任务跳过，合约**不会**被重写（只有真正没有循环、或合约仍带着开环前占位句的任务才会
+新开一条）。只有在派发成功之后才写入 `activatedRevision`，所以再次失败仍会留下新的可续做记录。
+
+**更新的**被接受修订号会**取代**更旧的在飞部分激活：这一趟会记入 journal（`activation-in-flight-superseded`，
+点名两个修订号并说明更旧的部分产物被放弃），而新切分的物化会核对已记录的行——保留下来的键复用其看板 id，被去掉
+的工作按重切分规则标记 `cancelled`——因此旧产物既不会重复，也不会丢失。只有**低于**在飞修订号的被接受修订号会被
+拒绝（更低的修订号无法取代），使用既有教学式错误；激活已物化的修订号与激活过期切分同样被拒绝。
 
 ### 重切分的细节
 
@@ -68,9 +88,9 @@ team id 与 cell id 都不变，因此 cell 的 journal、邮件与看板始终�
 | `cellwork_requirements` | 规划器 | `finalize` 需求文档，或 `update` 它——update 会提升修订号并把切分标记为过期 |
 | `cellwork_recon` | 规划器、副队长 | 一次性**只读**咨询（Explorer/Researcher）：走直接启动路径，以角色名作为标签，并给出显式的绝对深度上限，因此这次咨询是一个只读叶子；报告会返回并记入 journal |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量，或 `show` 上一次的裁定 |
-| `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约、打开验证循环、派发 |
+| `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名 |
 | `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发 |
-| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件，以及每一条**未投递**的邮件行 |
+| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件，以及每一条**未投递**的邮件行；每个投影都是无损 JSON，没有 `undefined` 自有键 |
 | `cellwork_context` | 成员 | 调用者自己的实时占用、度量所用的窗口，以及该窗口的来源 |
 | `cellwork_handoff` | 成员 | 写入并校验检查点交接文档；把检查点标记为就绪 |
 | `cellwork_subteam` | 已晋升的副队长 | 登记子 cell、执行深度上限、返回副队长指令 |
@@ -87,7 +107,7 @@ team id 与 cell id 都不变，因此 cell 的 journal、邮件与看板始终�
 
 | 调用者 | 放行 | 拒绝 |
 |---|---|---|
-| 队长 | 除 `cellwork_handoff` 之外的 `cellwork_*`，加上 `agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*` | 其余全部——不改文件、不跑 shell、不 `read`/`grep`/`glob`、不做验证 |
+| 队长 | 除 `cellwork_handoff` 之外的 `cellwork_*`，加上 `agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*`，以及**唯一**的循环开启器 `mpd_verify_open`（仅精确名字） | 其余全部——不改文件、不跑 shell、不 `read`/`grep`/`glob`，且除开循环之外不做任何验证：绑座位、记录裁决、取证与 escape 仍被拒绝 |
 | 验证者 | `read`、`grep`、`glob`、`bash`（跑关卡）、`mpd_verify_*` | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` |
 | 处于上下文检查点的成员 | `cellwork_handoff`、`cellwork_context`、`cellwork_status` | 其余全部——即使它无视书面说明，也无法继续干活 |
 | 副队长 | 队长白名单**去掉** `cellwork_start` / `cellwork_stop`，**加上** `cellwork_subteam`、`cellwork_activate`、`cellwork_dispatch`、`cellwork_supervise` | 一切文件工作工具：副队长是迷你队长，只做调度，不做实现 |
@@ -233,8 +253,8 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 
 | 路径 | 内容 |
 |---|---|
-| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id、规划器/切分器 handle、成员及其模式、切分修订号、检查点、journal 游标 |
-| `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝 |
+| `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id、规划器/切分器 handle、成员及其模式、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段——`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
+| `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`） |
 | `mail.jsonl` | 本 cell 自己的邮件行——同 cell 发送，或跨 cell 发往本 cell 的邮件；由发送方写入、本 cell 的 `cellwork_inbox` 读取 |
 | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
 | `split/<rev>.json` | 切分器的提案，加上插件的实测估算与接受/拒绝裁定 |
@@ -300,6 +320,13 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   `nestedBackEdges`，平铺路径会把它画在左侧；(2) 嵌套列按秩打包、顶部对齐，不做重心松弛（平铺路径保留
   自己的松弛）；(3) 悬停晕覆盖**根帧**的卡片，内部卡片保留自己的色调。`nestedBackEdges` 的见证列表已接线
   并写入文档，但暂无一条臂真正填充见证：边界是**已声明**的，补一条"循环内部"的臂即可钉死。
+- **验证循环的生产者是队长本人活着的 session。** 循环如实记录这个 session；cell id 只作为**数据**留在冻结
+  合约上（`producer: cellwork:<cellId>` 一行），绝不伪造 session。`mpd_verify_open` 这个**精确名字**是队长
+  白名单上**唯一**的 `mpd_verify_*` 条目：绑座位、记录裁决、取证与 escape 一律仍被拒绝，因此队长打开的
+  `writer:"self"` 循环是惰性的（`mpd_verify_seat` 会拒绝该循环自己的写作者）。没有活着的调用方 agent 时，
+  激活在写入任何内容之前就拒绝。
+- **续做不是事务。** 逐产物检查点把残余窗口缩到一次看板/验证调用加一次 cell 记录写入。只有当任务已创建、而
+  它的检查点写入失败时，才可能出现重复的看板行；这是可检出但不可删除的——团队平面没有取消动词。
 - **「盲」始终是书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到验证者
   读过什么。
 
@@ -307,7 +334,8 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 
 - `bun test packages/mpd-cellwork-plugin`——离线、无 harness、无网络；每条用例都走宿主实际使用的 adapter
   入口（`apply`、捕获到的命令定义、捕获到的工具定义，以及那**唯一一个**守卫谓词），并在全新的临时 workspace
-  里运行。
+  里运行。测试套件还覆盖激活续做：分别在第二个成员、第二个任务、第二个循环之后以及派发时注入失败，再重试并
+  确认复用了已记录的产物。
 - 挂载证明、能力尖刺与各波次的裁定都在 `evidence/cellwork/` 下——每个目录带自己的 `result.json` 以及
   该条线自己的产物：只读尖刺是一份报告，一次运行则是一批日志。
 - `bun run verify:docs`、`bun run verify:rows`、`bun run verify:manifest` 与
