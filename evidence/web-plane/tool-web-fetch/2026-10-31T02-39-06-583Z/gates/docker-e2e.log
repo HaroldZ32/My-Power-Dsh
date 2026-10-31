@@ -2600,3 +2600,293 @@ $ node /opt/mpd-e2e/lib/owed-mcp.ts --boot-log /work/steps/11-boot.log --state /
 [record] isolation.realHome=true — no harness/toolchain marker under the real home (/root)
 [record] isolation.noCredentials=true — no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)
 ===== STEP 14-tui =====
+[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH
+[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile
+[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer
+[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)
+[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.17.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd
+[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane
+[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane
+[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane
+[record] tui.teamSceneOtherSessionInvisible=true — a session with NO bound board drew the product's OWN empty-state marker, and the board a SIBLING session owns was NOT drawn in it: the marker is the exported constant NO_SESSION_TEAM_MARKER read out of its source declaration and matched as a SUBSTRING of the captured pane, and none of the 3 task id(s) the sibling's record carries appeared in that same pane as a node label
+[record] tui.teamFixtureBound=true — the seeded board is bound to the LIVE session this TUI runs as — the id discovered from the harness's OWN store (a pre-boot snapshot differenced against the store as it is now, so the id that APPEARED during this boot is the TUI's) and keyed through the PRODUCT's own rule, imported from packages/mpd-team-core-plugin/src/team-store.ts :: sessionKey. Both spellings the product's own createTeam writes are on disk: teams.json's active[<sessionKey>] = "tui-scene" AND the record's leadSessionId = <sessionKey>, because the product has two readers (the mpdTeams service answers from the index; its session-scoped degradation matches the record's leadSessionId). WITHOUT this binding the scene correctly draws its empty state and every team arm below reddens — which is exactly the F1 defect of evidence/docker/client-install/2026-10-08T08-52-23Z
+[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal (the capture waited for the scene's own header or for the product's empty-state line, so a pane still on the host's startup frame is no longer judged as a drawing)
+[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)
+[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions
+[record] tui.teamGraphContent=true — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)
+[record] tui.mergedPanelOpens=true — the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal, and the PRE-KEY capture proves the combo is what opened it: the captured pane carries the merged panel: titleHits=1 subagentHits=2 teamHits=2 subagentMarker=line 7 teamMarker=line 11 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0)
+[record] tui.mergedPanelOrder=true — the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: the captured pane carries the merged panel: titleHits=1 subagentHits=2 teamHits=2 subagentMarker=line 7 teamMarker=line 11 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0)
+[record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
+[record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
+[record] live.tui.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noPromptVariableError=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.tui.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)
+[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log
+[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)
+[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
+===== STEP 14b-user-surface =====
+===== STEP 14b-user-surface =====
+$ node /opt/mpd/skills/dsh-qa/scripts/user-surface-mount.ts --profile /root/sandbox-dsh/profiles/dsh-tui --evidence /out/user-surface --json-out /out/user-surface/result.json --ndjson-out /work/assertions.ndjson (timeout 900s)
+== user-surface-mount ==
+startedAt=2026-10-31T03:32:04.966Z
+profile=/root/sandbox-dsh/profiles/dsh-tui
+staleBundle=(none)
+evidence=/out/user-surface
+bundleDir=/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd
+artifact version=0.16.3 layers=2 rows=69
+profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] declared spec="link:/opt/mpd"
+sandbox=/opt/mpd/.qa-user-surface/user-surface-mount-wWgewx (DSH_HOME=/opt/mpd/.qa-user-surface/user-surface-mount-wWgewx/dshhome, ws=/opt/mpd/.qa-user-surface/user-surface-mount-wWgewx/ws)
+profile copied into the sandbox (source untouched, read-only)
+probe row appended to the SANDBOX profile's user layer:
+
+# QA instrumentation (user-surface-mount): mounted so the case can read the LIVE loader and the
+# harness command registry from inside the real boot. This row is not a product row and is never
+# one of the rows under assertion.
+- insert:
+    - id: qa-user-surface-probe
+      name: "/opt/mpd/skills/dsh-qa/scripts/lib/user-surface-probe.ts"
+      config:
+        outFile: "/out/user-surface/probe.json"
+        settleMs: 6000
+        ticks: 22
+
+HOME fixture written: .qa-user-surface/user-surface-mount-wWgewx/home/.dsh-tui/onboarding.json, .qa-user-surface/user-surface-mount-wWgewx/home/.dsh-tui/agent-preset.json preset=mpd
+dsh on PATH=/usr/local/bin/dsh anchor=/usr/local/lib/node_modules/@deepseek-ai/dsh/package.json
+== boot + palette (8 captures) + one turn (no credential: the call is expected to fail) ==
+boot failures=[]
+== observations ==
+session-log tools=118 (request/header, the agent's own offer)
+probe phase=tick-14 loaderEntries=155 commands=34 tools=118 agentPreset=mpd
+sinks=16 (mpd-bootstrap,mpd-cellwork,mpd-codegraph,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-mcp-codegraph,mpd-mcp-lsp,mpd-patch-guards,mpd-roles,mpd-roster,mpd-team-core,mpd-team-watchdog,mpd-tui,mpd-verify)
+modules scanned=62/69 rows with a live registration witness=23
+assertions=119 passed=86 failed=0 findings_or_bounds=33 NOT_PROVEN=[userSurface.row.mpd-better-sidebar,userSurface.row.mpd-agent-team,userSurface.row.mpd-tool-agent-team,userSurface.row.persona,userSurface.row.agent-instructions,userSurface.row.time-context,userSurface.row.tool-bash,userSurface.row.tool-pwsh,userSurface.row.tool-fs,userSurface.row.tool-fs-search,userSurface.row.tool-jobs,userSurface.row.tool-schedule,userSurface.row.skill-filesystem,userSurface.row.tool-skill,userSurface.row.command-goal,userSurface.row.tool-goal,userSurface.row.planning,userSurface.row.plan-mode,userSurface.row.compaction,userSurface.row.compaction-basic,userSurface.row.command-compact,userSurface.row.tool-result-pruner,userSurface.row.delegation,userSurface.row.tool-subagent-control,userSurface.row.tool-subagent-list-agents,userSurface.row.tool-subagent,userSurface.row.tool-subagent-fork,userSurface.row.tool-workflow,userSurface.row.tool-ask-user,userSurface.row.tool-todo,userSurface.row.tool-web,userSurface.row.present,userSurface.row.tool-plugin-market] problems=0
+evidence=/out/user-surface
+sandbox removed (pass --keep-sandbox to keep it)
+[step 14b-user-surface] exit=0 seconds=91
+[record] live.headless.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.noPromptVariableError=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] live.headless.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[record] boot.llmTurn=null — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[record] live.teamRecord=null — not attempted: no live turn ran, so no approval could materialise a record
+[record] live.nativeExecutor=null — not attempted: no live turn ran, so no member could be raised
+[record] live.headlessPresetRow=null — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+[record] live.credentialRemoved=null — not attempted: nothing was staged, so nothing needed removing
+
+----- the cases §7 owes (restored capabilities + the two live QA cases) -----
+===== STEP 16-owed-lsp =====
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind lsp --repo /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd --work /out/owed --state /work/assertions.ndjson (timeout 900s)
+[owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
+[step 16-owed-lsp] exit=0 seconds=1
+===== STEP 16b-pack-refresh =====
+$ node /opt/mpd/scripts/pack-mpd.ts (timeout 900s)
+[pack-mpd] NOTE: package.json declares root file(s) the closure gate's ROOT_FILES anchor omits: AGENTS.md, PLAN.md, VENDOR_LOCK.json, cordis.patch.yml, dsh-distribution.json, dsh-plugin.json, icon.svg — they ARE packed (the copy is the manifest's answer); extend the anchor in scripts/pack-mpd.ts so the gate byte-checks them too
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] launcher dependencies: 4 shipped launcher(s) resolve 5 npm package(s), every one declared in the packed manifest
+[pack-mpd] modes normalized: 649 files (644: 633, 755: 16)
+[pack-mpd] staged package -> /opt/mpd/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+[step 16b-pack-refresh] exit=0 seconds=0
+===== STEP 16b2-case-engine =====
+$ node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/dist/mpd-package/.toolchain (timeout 900s)
+[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
+
+added 5 packages in 15s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   @ast-grep/cli@0.51.0 (postinstall: node postinstall.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+[install-mcp] written -> /root/sandbox-home/.mpd/mcp.env
+
+# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)
+export MPD_AST_GREP_SG_PATH="/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/sg"
+export MPD_CODEGRAPH_BIN="/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/codegraph"
+export PATH="/opt/mpd/dist/mpd-package/.toolchain/bin:$PATH"   # toolchain bin dir (optional user binaries)
+
+[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.
+[step 16b2-case-engine] exit=0 seconds=15
+[record] qa.mcpCallEngine=true — the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary
+[step 16c-owed-cases] budget raised from 900s to 3600s (the case's own install budget is 1800 s; see the comment above)
+===== STEP 16c-owed-cases =====
+$ node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/owed --qa-home  --state /work/assertions.ndjson (timeout 3600s)
+[owed-cases] restore.reviewPanelSelfTest=true — the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.reviewPanelCase=true — the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] restore.hashlineRepair=true — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed
+[owed-cases] qa.mcpCall=null — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[owed-cases] qa.readonlyDeny=true — the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed
+[step 16c-owed-cases] exit=0 seconds=14
+[report] ok=false complete=false passed=162 failed=1 null=79 scrubbed=true -> /out/result.json
+[report] FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 1 differing file(s), 0 carried file(s) with no twin | raw: drifted=presets/mpd.patch.yml untwinned=none
+[report] NULL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[report] NULL oneclick.scratchRepo — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[report] NULL oneclick.requiredPaths — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[report] NULL oneclick.filesAllowlist — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[report] NULL oneclick.distByteIdentical — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[report] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+[report] NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+[report] NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[report] NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+[report] NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+[report] NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+[report] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[report] NULL ui.loads — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.workspaceSelected — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.composerPresent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.promptSent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.replyRendered — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.mpdSettingsSection — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.teamPanel — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.noConsoleErrors — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.mpdSettingsSectionNegativeControl — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL ui.teamBoard — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[report] NULL userSurface.row.mpd-better-sidebar — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[report] NULL userSurface.row.mpd-agent-team — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[report] NULL userSurface.row.mpd-tool-agent-team — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[report] NULL userSurface.row.persona — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.agent-instructions — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.time-context — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-bash — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-pwsh — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-fs — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-fs-search — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-jobs — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-schedule — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.skill-filesystem — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-skill — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.command-goal — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[report] NULL userSurface.row.tool-goal — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.planning — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.plan-mode — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.compaction — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.compaction-basic — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.command-compact — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-result-pruner — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.delegation — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-subagent-control — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-subagent-list-agents — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-subagent — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-subagent-fork — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-workflow — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-ask-user — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-todo — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-web — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.present — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[report] NULL userSurface.row.tool-plugin-market — preset-owned row declared DISABLED: the preset carries it as data and this plane exposes no entry — composed, NOT individually proven
+
+
+[driver] ok=false complete=false passed=162 failed=1 null=79 FAILED=[pack.staticCoherence] NULL=[qa.mcpCall,oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noPromptVariableError,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noPromptVariableError,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noPromptVariableError,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors,ui.mpdSettingsSectionNegativeControl,ui.teamBoard,userSurface.row.mpd-better-sidebar,userSurface.row.mpd-agent-team,userSurface.row.mpd-tool-agent-team,userSurface.row.persona,userSurface.row.agent-instructions,userSurface.row.time-context,userSurface.row.tool-bash,userSurface.row.tool-pwsh,userSurface.row.tool-fs,userSurface.row.tool-fs-search,userSurface.row.tool-jobs,userSurface.row.tool-schedule,userSurface.row.skill-filesystem,userSurface.row.tool-skill,userSurface.row.command-goal,userSurface.row.tool-goal,userSurface.row.planning,userSurface.row.plan-mode,userSurface.row.compaction,userSurface.row.compaction-basic,userSurface.row.command-compact,userSurface.row.tool-result-pruner,userSurface.row.delegation,userSurface.row.tool-subagent-control,userSurface.row.tool-subagent-list-agents,userSurface.row.tool-subagent,userSurface.row.tool-subagent-fork,userSurface.row.tool-workflow,userSurface.row.tool-ask-user,userSurface.row.tool-todo,userSurface.row.tool-web,userSurface.row.present,userSurface.row.tool-plugin-market]
+[driver] FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 1 differing file(s), 0 carried file(s) with no twin | raw: drifted=presets/mpd.patch.yml untwinned=none
+[driver] NULL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[driver] NULL oneclick.scratchRepo — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.requiredPaths — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.filesAllowlist — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.distByteIdentical — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+[driver] NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+[driver] NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+[driver] NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+[driver] NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+[driver] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[driver] NULL ui.loads — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.workspaceSelected — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.composerPresent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.promptSent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.replyRendered — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.mpdSettingsSection — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.teamPanel — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.noConsoleErrors — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.mpdSettingsSectionNegativeControl — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL ui.teamBoard — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum
+[driver] NULL userSurface.row.mpd-better-sidebar — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[driver] NULL userSurface.row.mpd-agent-team — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[driver] NULL userSurface.row.mpd-tool-agent-team — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[driver] NULL userSurface.row.persona — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.agent-instructions — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.time-context — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-bash — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-pwsh — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-fs — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-fs-search — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-jobs — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-schedule — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.skill-filesystem — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-skill — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.command-goal — composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven
+[driver] NULL userSurface.row.tool-goal — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.planning — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.plan-mode — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.compaction — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.compaction-basic — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.command-compact — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-result-pruner — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.delegation — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-subagent-control — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-subagent-list-agents — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-subagent — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-subagent-fork — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-workflow — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-ask-user — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-todo — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-web — preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.present — preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven
+[driver] NULL userSurface.row.tool-plugin-market — preset-owned row declared DISABLED: the preset carries it as data and this plane exposes no entry — composed, NOT individually proven
+[driver] evidence -> evidence/docker/client-install/2026-10-31T03-26-43Z
