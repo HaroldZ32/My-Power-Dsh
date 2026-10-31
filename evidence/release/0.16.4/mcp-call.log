@@ -1,0 +1,4 @@
+# typed: 2026-10-31T07:27:13Z  commit: 1bc8a2ea  command: .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/mcp-call.ts
+[mcp-call] ok=true (enum recorded tools=122, mcp__ast_grep__=true, mcp__lsp__=true, ast_grep call recorded, call result has the fixture line=true, lsp dependency staged from checkout-store) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/mcp-call/2026-10-31T07-29-04.793Z
+[mcp-call] PASS
+EXIT=0

@@ -1,0 +1,5 @@
+# typed: 2026-10-31T07:26:00Z  commit: 1bc8a2ea  branch: release/v0.16.4  command: .toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin
+ 407 pass
+ 0 fail
+Ran 407 tests across 27 files. [1.93s]
+EXIT=0
