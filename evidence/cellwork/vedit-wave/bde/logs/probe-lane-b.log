@@ -1,0 +1,22 @@
+PASS B02/B06 — accepted=true resolved members=["Senior Engineer","Seat 1","Seat 2"] (absent ⇒ ownerRole; several members share one role)
+PASS B04/empty — member-invalid present for empty: ["member-invalid"]
+PASS B04/whitespace-only — member-invalid present for whitespace-only: ["member-invalid"]
+PASS B04/too-long-65 — member-invalid present for too-long-65: ["member-invalid"]
+PASS B04/control-char — member-invalid present for control-char: ["member-invalid"]
+PASS B04/slash — member-invalid present for slash: ["member-invalid"]
+PASS B04/backslash — member-invalid present for backslash: ["member-invalid"]
+PASS B04/boundary-64 — 64-char member produces findings []
+PASS B05 — member-role-conflict for one member under two ownerRoles: ["member-role-conflict"]
+PASS B06/legal — one role, several members AND two tasks sharing one member are legal: []
+PASS B03 — ownerRole is still validated beside a declared member: ["unknown-owner-role"]
+PASS B07/same-member — same resolved member refuses: ["member-role-conflict","self-review"]
+PASS B07/different-member — different resolved members allowed: []
+PASS B07/fallback-same-role — no members declared ⇒ ownerRole comparison refuses: ["self-review"]
+PASS B07/fallback-different-role — no members declared, different roles allowed: []
+PASS B08 — refused artifact exists=true accepted=false findings=1 (verdict findings=1)
+PASS B09/coexist — accepted=true canonical exists=true refused artifact still exists=true
+PASS B09/never-overwritten — canonical byte-identical after a later refusal=true bytes=1465
+PASS B09/latest — latestSplit returns the ACCEPTED record (accepted=true)
+PASS B11 — a ### subheading inside Constraints finalizes: ok=true missing=[]
+PASS B12 — whitespace-only Constraints still refused: ok=false missing=["Constraints"]
+SUMMARY {"total":21,"passed":21,"failed":[]}

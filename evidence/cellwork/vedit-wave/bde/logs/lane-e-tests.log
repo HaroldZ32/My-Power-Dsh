@@ -1,0 +1,36 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/band-parity.test.ts:
+(pass) the LITERALS are equal: prefixes, root files, instruction basenames and the licence regex [0.10ms]
+(pass) the SEMANTICS are equal, row by row, and each row is the CONTRACT's answer [0.66ms]
+(pass) the instruction basenames are the ONLY class admitted outside the workspace root [0.07ms]
+
+packages/mpd-cellwork-plugin/test/planner-guard.test.ts:
+(pass) a SOURCE read is refused, and the sentence teaches BOTH routes and the reason [0.17ms]
+(pass) the band it keeps is the captain's band — prefixes, the root files, and instruction files ANYWHERE [0.12ms]
+(pass) grep and glob judge their `path`, and a bare call FAILS CLOSED [0.05ms]
+(pass) the rule covers exactly the THREE path-shaped tools and exactly ONE seat [0.04ms]
+(pass) the seat name is matched after trimming and lower-casing, and only in mode `member` [0.04ms]
+(pass) THE INSTALL: the callback feeds the decision the ARGUMENTS and the ROOT — and only for the planner [0.19ms]
+(pass) THE PROMPT: the planner's instantiation prompt carries the delegation block (C5, ruling R2) [0.13ms]
+(pass) a malformed exec or a throwing root resolver never throws and never denies for its own reason [0.19ms]
+
+packages/mpd-roles-plugin/test/captain-instruction-files.test.ts:
+(pass) each of the three instruction basenames is readable at ANY depth, inside the workspace [0.18ms]
+(pass) a SIBLING project's instruction file is readable — the D14 motivating case [0.04ms]
+(pass) the rest of the band is UNCHANGED — the prefix trees, the root files and the licence band [0.08ms]
+(pass) NOTHING ELSE moved: nested overview files, source paths and `..` hops stay refused [0.16ms]
+(pass) grep and glob judge their `path` argument by the SAME rule (an instruction file, not its directory) [0.06ms]
+(pass) the refusal names the TRUE band and promises no `README*` glob (D14's second half) [0.04ms]
+(pass) CONTROL: a NON-captain session keeps full reconnaissance — C4 widened the band, not the scope [0.03ms]
+
+packages/mpd-roles-plugin/test/role-spawn-maxdepth.test.ts:
+(pass) the pure reading: the caller's recorded depth plus one, for every header shape [0.07ms]
+(pass) THE WIRING: the registered mpd_role_spawn forwards `maxDepth` = caller depth + 1 [4.25ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [0.46ms]
+
+ 21 pass
+ 0 fail
+ 286 expect() calls
+Ran 21 tests across 4 files. [200.00ms]
+EXIT:0

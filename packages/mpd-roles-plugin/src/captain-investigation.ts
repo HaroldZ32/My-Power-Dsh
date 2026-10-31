@@ -12,10 +12,12 @@
 // `mpd` preset means, so a user working in another preset (`cordis` is the deployment default) keeps its
 // own reconnaissance. The write rule beside it reads the SAME predicate.
 //
-// WHAT STAYS OPEN — THE DOCUMENTATION BAND: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
-// and the root files `AGENTS.md` / `AGENT.md` / `CLAUDE.md` / `README.md` / `README.zh-CN.md` /
-// `CHANGELOG.md` / `LICENSE*.md`. Integration stays possible because the contract, the records and the
-// manual remain readable; the SOURCES do not.
+// WHAT STAYS OPEN — THE DOCUMENTATION BAND: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`;
+// ANY `AGENT.md` / `AGENTS.md` / `CLAUDE.md` by BASENAME at any depth, inside this workspace OR outside
+// its root, because the motivating read is a SIBLING project's instruction file (C4, D14); and at the
+// workspace root only `README.md` / `README.zh-CN.md` / `CHANGELOG.md` / `LICENSE*.md` — exactly those
+// two README spellings, since there is no `README*` glob. Integration stays possible because the
+// contract, the records and the manual remain readable; the SOURCES do not.
 //
 // THE DECISION IS PURE ({@link captainInvestigationDecision}), so it is unit-testable without a harness,
 // and the INSTALL is ONE `guardTool` registration through the adapter, beside the captain's write rule.
@@ -45,7 +47,22 @@ export const INVESTIGATION_TOOLS: readonly string[] = ["read", "glob", "grep"]
 /** The documentation BANDS the captain may still read: contracts, records, evidence and the reference. */
 export const CAPTAIN_READABLE_PREFIXES: readonly string[] = [".mpd/", "docs/", "evidence/", "agent-references/"]
 
-/** The ROOT instruction/overview files the captain may still read, by exact workspace-relative name. */
+/**
+ * The three project instruction files a reader may consult at ANY depth, by BASENAME (C4, D14).
+ *
+ * They are band-EXEMPT in {@link captainReadablePath}: depth, a `..` hop and a location outside the
+ * workspace root all still admit them, because the read this class exists for is a SIBLING project's
+ * `AGENT.md`. Matching is case-insensitive, like the licence band, so a Windows spelling cannot smuggle
+ * the file out of a band the reader is meant to have.
+ */
+export const CAPTAIN_INSTRUCTION_BASENAMES: readonly string[] = ["AGENT.md", "AGENTS.md", "CLAUDE.md"]
+
+/**
+ * The ROOT instruction/overview files the captain may still read, by exact workspace-relative name.
+ *
+ * The three instruction basenames are ALSO here, and that is not a contradiction: the list admits them at
+ * the root, while {@link CAPTAIN_INSTRUCTION_BASENAMES} admits them at any depth and outside the root.
+ */
 export const CAPTAIN_READABLE_ROOT_FILES: readonly string[] = [
   "AGENTS.md",
   "AGENT.md",
@@ -56,7 +73,7 @@ export const CAPTAIN_READABLE_ROOT_FILES: readonly string[] = [
 ]
 
 /** The licence band at the workspace root (`LICENSE.md`, `LICENSE-NOTICES.md`), matched by basename. */
-const ROOT_LICENSE_PATTERN = /^LICENSE.*\.md$/i
+export const ROOT_LICENSE_PATTERN = /^LICENSE.*\.md$/i
 
 /** Everything {@link captainInvestigationDecision} needs, so the decision stays pure and harness-free. */
 export interface CaptainInvestigationInput {
@@ -88,8 +105,9 @@ export function resolveInvestigationMode(raw: unknown): InvestigationMode {
 /**
  * Whether one path argument falls inside the documentation band the captain keeps.
  *
- * The order is the contract: a path that escapes the workspace (`..`), an absolute path outside the root
- * and every spelling that reaches no band are REFUSED; the bands and the named root files are ALLOWED.
+ * The order is the contract: an INSTRUCTION file is admitted by its basename whatever its parent segments
+ * say (C4, D14); otherwise a path that escapes the workspace (`..`), an absolute path outside the root and
+ * every spelling that reaches no band are REFUSED, while the bands and the named root files are ALLOWED.
  *
  * @param workspaceRoot - the session workspace root.
  * @param raw - the path the tool call carried.
@@ -99,6 +117,10 @@ export function captainReadablePath(workspaceRoot: string, raw: string): boolean
   /** The path normalised to POSIX, so a Windows separator cannot smuggle a band past the test. */
   const posix = String(raw ?? "").replace(/\\/g, "/")
   if (posix === "") return false
+  // THE INSTRUCTION FILES COME FIRST (C4, D14) — BEFORE the `..` and outside-root rules below. Their
+  // BASENAME is the whole test, because the read this class exists for is a SIBLING project's `AGENT.md`:
+  // a depth or root test here would refuse exactly the document a reader consults to learn the rules.
+  if (isInstructionFile(posix)) return true
   /** The workspace root, normalised with no trailing separator. */
   const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "")
   /** True when the caller spelled an absolute path. */
@@ -118,6 +140,23 @@ export function captainReadablePath(workspaceRoot: string, raw: string): boolean
   // cannot reach a source directory by spelling an instruction file inside it.
   if (CAPTAIN_READABLE_ROOT_FILES.includes(rel)) return true
   return rel.indexOf("/") === -1 && ROOT_LICENSE_PATTERN.test(rel)
+}
+
+/**
+ * Whether one path's BASENAME is a project instruction file (`AGENT.md`, `AGENTS.md`, `CLAUDE.md`).
+ *
+ * The parent segments are IGNORED on purpose — that IS the C4 (D14) rule: the file is readable at any
+ * depth and outside the workspace root, so only the last segment decides. Comparison is case-insensitive so
+ * a Windows spelling cannot drop the file out of the band.
+ *
+ * @param path - the path as the caller spelled it, already normalised to POSIX.
+ * @returns true when the last segment names one of the instruction files.
+ */
+function isInstructionFile(path: string): boolean {
+  /** The last path segment, lower-cased for the comparison. */
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase()
+  if (base === "") return false
+  return CAPTAIN_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base)
 }
 
 /**
@@ -160,9 +199,13 @@ function investigationRefusal(toolName: string, target: string): string {
     + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large"
     + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the"
     + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the"
-    + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`,"
-    + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and"
-    + " `captain.investigation: \"allow\"` in mpd.jsonc restores full access."
+    + " REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`,"
+    + " `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling"
+    + " project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and"
+    + " `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`,"
+    + " `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no"
+    + " `README*` glob. Every source path stays refused, and `captain.investigation: \"allow\"` in"
+    + " mpd.jsonc restores full access."
 }
 
 /**

@@ -2101,8 +2101,16 @@ function inboxOf(state, memberId) {
 function unreadOf(state, memberId) {
   return inboxOf(state, memberId).filter((message) => message.readAt === undefined);
 }
+function isOutstanding(message) {
+  return message.deliveredAt === undefined && message.readAt === undefined;
+}
 function undeliveredOf(state, memberId) {
-  return inboxOf(state, memberId).filter((message) => message.deliveredAt === undefined);
+  return inboxOf(state, memberId).filter(isOutstanding);
+}
+function scopeToTeam(state, teamId) {
+  if (teamId === undefined || teamId === "")
+    return state;
+  return { messages: state.messages.filter((message) => message.teamId === teamId) };
 }
 function summarise(state) {
   const order = [];
@@ -2120,7 +2128,7 @@ function summarise(state) {
       if (entry.oldestUnread === undefined)
         entry.oldestUnread = message.subject;
     }
-    if (message.deliveredAt === undefined)
+    if (isOutstanding(message))
       entry.undelivered += 1;
   }
   return order.map((id) => seen.get(id));
@@ -2133,7 +2141,7 @@ function send(workspace, input, now) {
     return { ok: false, reason: "unknown-recipient", detail: `"${input.toName || input.toId}" is not a member of this team` };
   }
   const state = readMailbox(workspace);
-  const backlog = undeliveredOf(state, input.toId).length;
+  const backlog = undeliveredOf(scopeToTeam(state, input.teamId), input.toId).length;
   const cap = input.maxUndelivered ?? 8;
   if (cap > 0 && backlog >= cap) {
     return { ok: false, reason: "backlog-full", detail: `"${input.toName || input.toId}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
@@ -6408,15 +6416,21 @@ ${result.message.body}`, exec.signal);
         const rows = summarise(state2);
         if (mailTeam === undefined)
           return { summary: rows, scope: "workspace" };
-        const mine = state2.messages.filter((message) => message.teamId === mailTeam.teamId);
+        const mine = scopeToTeam(state2, mailTeam.teamId).messages;
         const legacyUnstamped = state2.messages.length - state2.messages.filter((message) => message.teamId !== undefined).length;
         return { summary: summarise({ messages: mine }), scope: "team", ...legacyUnstamped === 0 ? {} : { legacyUnstamped } };
       }
       const state = readMailbox(workspace);
       const wanted = args?.member === undefined ? undefined : resolve4(String(args.member));
-      const memberId = wanted?.id ?? self?.session?.id ?? caller;
+      if (args?.member !== undefined && wanted === undefined) {
+        return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
+      }
+      const callerId = self?.session?.id ?? caller;
+      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
+      const memberId = wanted?.id ?? ownMember?.id ?? callerId;
+      const scoped = scopeToTeam(state, mailTeam?.teamId);
       return {
-        messages: unreadOf(state, memberId).map((message) => ({
+        messages: unreadOf(scoped, memberId).map((message) => ({
           id: message.id,
           fromName: message.fromName,
           subject: message.subject,
@@ -6424,9 +6438,9 @@ ${result.message.body}`, exec.signal);
           sentAt: message.sentAt,
           delivered: message.deliveredAt !== undefined
         })),
-        undelivered: undeliveredOf(state, memberId).length,
-        total: inboxOf(state, memberId).length,
-        memberName: wanted?.name ?? memberId
+        undelivered: undeliveredOf(scoped, memberId).length,
+        total: inboxOf(scoped, memberId).length,
+        memberName: wanted?.name ?? ownMember?.name ?? memberId
       };
     }
   }));

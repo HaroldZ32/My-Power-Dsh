@@ -1,0 +1,4 @@
+RED-CONFIRMED B08/B09 — pre-change: refusal landed at 1.json (accepted=false), no 1.refused.json existed=true, the accepted resubmission overwrote it (accepted=true)
+RED-CONFIRMED B11 — pre-change: a ### subheading inside Constraints was refused as empty (ok=false, missing=["Constraints"])
+RED-CONFIRMED B04/B07 — pre-change: no member-invalid for a path separator, no self-review for one shared member, and the verdict row carries NO resolved member at all (member=undefined)
+SUMMARY {"total":3,"redConfirmed":3,"notRed":[]}

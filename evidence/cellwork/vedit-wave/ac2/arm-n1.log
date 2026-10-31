@@ -1,0 +1,11 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/mail-order.test.ts:
+(pass) N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful [2.53ms]
+(pass) N1: deliverCellMail reports NOT sent when the `wake` record cannot be appended [0.09ms]
+
+ 2 pass
+ 6 filtered out
+ 0 fail
+ 14 expect() calls
+Ran 2 tests across 1 file. [187.00ms]

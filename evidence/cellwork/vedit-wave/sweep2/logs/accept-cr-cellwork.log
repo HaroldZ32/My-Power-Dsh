@@ -1,0 +1,46 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/split-refused.test.ts:
+(pass) C9: a REFUSED submission always writes split/<revision>.refused.json with the FULL finding list [1.58ms]
+(pass) C9: a refused resubmission leaves the ACCEPTED verdict byte-identical [0.62ms]
+(pass) C9: an ACCEPTED submission writes the canonical file and leaves no refusal beside it [0.24ms]
+(pass) C9: the LATEST verdict still names a refusal, and prefers the acceptance beside it [0.60ms]
+(pass) C1: a declared member is the resolved BOARD name, and several members may share one role [0.44ms]
+(pass) C1: member-invalid refuses an empty, overlong, control-character or path-separator name [0.17ms]
+(pass) C1: member-role-conflict refuses ONE member declared under two different owner roles [0.17ms]
+(pass) C1: same ROLE with DIFFERENT members is not self-review (two real seats) [0.07ms]
+(pass) C1: self-review fires on the MEMBER when both sides declare one [0.06ms]
+(pass) C1: with no member declared, self-review still compares the OWNER ROLE [0.07ms]
+(pass) C1/CR R-B1: two SPELLINGS of one member identity cannot be writer and verifier [0.05ms]
+(pass) C1/CR R-B1: one identity under TWO roles is member-role-conflict even when the spellings differ [0.06ms]
+(pass) C1/CR R-B1: a punctuation-only member name has NO identity and is member-invalid [0.06ms]
+(pass) C1/CR R-B1: identical spellings still share ONE member [0.08ms]
+(pass) C1/CR R-B1: case variants of one identity are the SAME member, not a conflict [0.05ms]
+(pass) C1/CR R-B1: the spelling mismatch is REFUSED at submit time and leaves its refusal artefact [0.19ms]
+
+packages/mpd-cellwork-plugin/test/split-task-owner.test.ts:
+(pass) C11/D2: the RECORDED board id wins over the owner spelling, so a renamed owner cannot hide the row [0.08ms]
+(pass) C11/D3: without a recorded id the owner spelling still finds the ticket (the pre-C11 fallback) [0.05ms]
+(pass) C11/D2: an OWNERLESS split ticket is claimed for cell-splitter and reported as repaired [0.33ms]
+(pass) C11/D2: a REFUSED claim still records the id and names the repair verb [0.06ms]
+(pass) C11: a readable board with NO split ticket is a hard error naming the repair verb [0.08ms]
+(pass) C11: an UNREADABLE team record proves nothing, so no missing-ticket error is invented [0.06ms]
+(pass) T28: the identity key keeps unicode letters/digits and still collapses ASCII spellings [0.22ms]
+(pass) T28: split validation ACCEPTS Chinese member names as distinct seats and still refuses a nameless one [0.39ms]
+(pass) T28: activation raises TWO Chinese-named members of one role, never one merged seat [2.36ms]
+
+packages/mpd-cellwork-plugin/test/mail-order.test.ts:
+(pass) D6: the durable row lands BEFORE the wake-up, and the `wake` record reports the attempt [1.73ms]
+(pass) D6: a durable row that cannot be written ends the call and NO wake-up is attempted [0.26ms]
+(pass) D6: a FAILED wake-up never costs the row, and the attempt is reported as undelivered [0.39ms]
+(pass) N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful [0.39ms]
+(pass) D6: deliverCellMail calls the durable append first, and a refusal skips the attempt entirely [0.06ms]
+(pass) D6: deliverCellMail classifies a THROWN wake-up as a failed attempt, never as a lost row [0.08ms]
+(pass) N1: deliverCellMail reports NOT sent when the `wake` record cannot be appended [0.07ms]
+(pass) D6: folding tolerates a torn line, a wake record with no send, and a later successful attempt [0.13ms]
+
+ 33 pass
+ 0 fail
+ 153 expect() calls
+Ran 33 tests across 3 files. [194.00ms]
+EXIT:0

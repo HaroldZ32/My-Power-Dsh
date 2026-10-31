@@ -1,0 +1,29 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/verifier-no-delegation.test.ts:
+(pass) the no-delegation list is the two bundle spawn tools, and it is NOT the write deny [0.12ms]
+(pass) a verifier is refused BOTH spawn tools, with a sentence that says why and names the channel [0.11ms]
+(pass) the delegation refusal is DISTINCT from the write refusal — each names its own repair [0.03ms]
+(pass) CONTROL: the verifier keeps its whole reading surface — only the two spawn names are gone [0.03ms]
+(pass) CONTROL: the rule is SCOPED to the verifier seat — a member and the planner keep the spawn tools [0.03ms]
+
+packages/mpd-cellwork-plugin/test/band-parity.test.ts:
+(pass) the LITERALS are equal: prefixes, root files, instruction basenames and the licence regex [0.04ms]
+(pass) the SEMANTICS are equal, row by row, and each row is the CONTRACT's answer [0.60ms]
+(pass) the instruction basenames are the ONLY class admitted outside the workspace root [0.06ms]
+
+packages/mpd-cellwork-plugin/test/planner-guard.test.ts:
+(pass) a SOURCE read is refused, and the sentence teaches BOTH routes and the reason [0.10ms]
+(pass) the band it keeps is the captain's band — prefixes, the root files, and instruction files ANYWHERE [0.11ms]
+(pass) grep and glob judge their `path`, and a bare call FAILS CLOSED [0.05ms]
+(pass) the rule covers exactly the THREE path-shaped tools and exactly ONE seat [0.04ms]
+(pass) the seat name is matched after trimming and lower-casing, and only in mode `member` [0.03ms]
+(pass) THE INSTALL: the callback feeds the decision the ARGUMENTS and the ROOT — and only for the planner [0.17ms]
+(pass) THE PROMPT: the planner's instantiation prompt carries the delegation block (C5, ruling R2) [0.10ms]
+(pass) a malformed exec or a throwing root resolver never throws and never denies for its own reason [0.16ms]
+
+ 16 pass
+ 0 fail
+ 222 expect() calls
+Ran 16 tests across 3 files. [174.00ms]
+EXIT:0

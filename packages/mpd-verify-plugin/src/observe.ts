@@ -20,6 +20,7 @@ import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/i
 import type { ArmedLoopView, VerifierSeatView } from "./law.ts"
 import { GATED_WRITE_TOOLS, readTargetPath, classifyWriteTarget, resolvePositiveInt, resolveVerifyMode, sessionKeyOf, verifierEnvelopeDecision } from "./law.ts"
 import { loopsDir, mintId, readLoops, readSeats, writeJsonAtomic } from "./ledger.ts"
+import { projectGateIdentity } from "./gates.ts"
 
 /**
  * THE DELEGATION TOOLS. A call to one of these from the top-level agent is what arms a delegated loop.
@@ -352,16 +353,30 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
 export function armDelegateLoop(workspace: string, sessionId: string, toolName: string, ttlMs: number): string | undefined {
   /** The loops already of record for this session and tool. */
   const existing = readLoops(workspace).find((loop) => loop.sessionId === sessionId && loop.status === "armed" && loop.openedVia === "observer")
-  if (existing !== undefined) return existing.loopId
+  if (existing !== undefined) {
+    // CR #12 (second half, T29): an UNFROZEN loop REFUSES gate evidence, so a loop armed before this freeze
+    // existed would refuse its OWN evidence forever. The re-arm is the one moment that can repair it without
+    // minting a second loop, so the freeze is ADOPTED here — taken from the file as it stands at this
+    // delegation, which is the moment the loop starts being used for work.
+    if (existing.gateFile === undefined) {
+      /** The loop with the current gate file adopted; every other field is left exactly as it was. */
+      const adopted = { ...existing, gateFile: projectGateIdentity(workspace) }
+      writeJsonAtomic(join(loopsDir(workspace), existing.loopId + ".json"), adopted)
+    }
+    return existing.loopId
+  }
   /** The instant the loop is opened. */
   const now = new Date()
   /** The loop's id. */
   const loopId = mintId("loop")
-  /** The loop record: a delegated writer, and a verifier that binds itself later. */
+  /** The loop record: a delegated writer, a verifier that binds itself later, and the gate freeze. */
   const loop = {
     version: 1 as const,
     loopId,
     taskId: null,
+    // THE GATE FREEZE (CR #12/T29): an observer-armed loop freezes `mpd-gates.json` exactly as the tool
+    // does, so its gate evidence can never certify a file the loop's writer edited after arming.
+    gateFile: projectGateIdentity(workspace),
     workspace,
     sessionId,
     writer: { kind: "delegate" as const, id: "delegate:" + toolName },

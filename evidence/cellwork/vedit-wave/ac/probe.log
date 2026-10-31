@@ -1,0 +1,50 @@
+PASS A1 three cell signals fence (mode/handoffReady/fenced) — checkpoint=its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it | handoff=a handoff is already written and waiting for the compaction barrier | flag=the compaction barrier gave up and fenced it (no-engine; the reseed failed)
+PASS A2 a record-level fenced row fences too — reason=the compaction barrier gave up and fenced it
+PASS A3 a fenced owner is never messaged — sent=["h-Healthy"]
+PASS A4 every fenced row is REPORTED with the member and the reassign repair — reasons=["declared owner \"Checkpoint\" is FENCED (its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it) — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:\"T1\", owner:\"<another member>\"}]}","declared owner \"HandoffReady\" is FENCED (a handoff is already written and waiting for the compaction barrier) — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:\"T2\", owner:\"<another member>\"}]}","declared owner \"FencedFlag\" is FENCED (the compaction barrier gave up and fenced it (no-engine; the reseed failed)) — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:\"T3\", owner:\"<another member>\"}]}","declared owner \"RecordFenced\" is FENCED (the compaction barrier gave up and fenced it) — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:\"T5\", owner:\"<another member>\"}]}"]
+PASS A5 the ready non-fenced row is paired — pairs=["T4:Healthy"]
+PASS B1 the successful pair is claimed THEN delivered — T1={"taskId":"T1","owner":"Target","claimed":true,"delivered":true}
+PASS B2 a FENCED target is refused before any claim — T2={"taskId":"T2","owner":"Fenced","claimed":false,"delivered":false,"reason":"the target member \"Fenced\" is FENCED (the compaction barrier gave up and fenced it (no-engine)) — pick an unfenced member"}, order=["claim:T1","send","claim:T6","claim:T7","send"]
+PASS B3 a terminal row is never reopened — T4={"taskId":"T4","owner":"Target","claimed":false,"delivered":false,"reason":"row T4 is already completed — a terminal row is never reopened"}
+PASS B4 an unknown member is refused (no substitution) — T5={"taskId":"T5","owner":"Ghost","claimed":false,"delivered":false,"reason":"the roster does not name \"Ghost\" — no substitution is made"}
+PASS B5 a refused claim is REPORTED, not thrown — T6={"taskId":"T6","owner":"Flaky","claimed":false,"delivered":false,"reason":"the board refused the claim: the board refused"}
+PASS B6 the hand-over is journaled as task-reassigned — rows=["T1->Target","T7->Target"]
+PASS B7 claim lands BEFORE the message — order=["claim:T1","send","claim:T6","claim:T7","send"]
+PASS B8 a send failure is REPORTED after the claim — T7={"taskId":"T7","owner":"Target","claimed":true,"delivered":false,"reason":"the row IS claimed for \"Target\" but the message failed: transport down"}
+PASS C1 a failed durable append sends NO wake — delivery={"landed":false,"wakeSent":false,"wakeReason":"the durable row could not be written, so no wake-up was attempted (mail is durable first)"}, attempted=false
+PASS C2 write row -> wake -> write wake record — order=["append-send","wake","append-wake"]
+PASS C3 a throwing wake is reported as not sent, row kept — delivery={"landed":true,"wakeSent":false,"wakeReason":"the wake-up failed: transport down"}
+PASS C4 send row carries wakeSent:false, wake is a separate record — lines=["send:false","wake:true"]
+PASS C5 the fold reports the wake outcome — folded=[true]
+PASS C6 a PRE-wake row keeps its own wakeSent in this build — legacy=true
+PASS D1 the recorded ID is found even with NO owner — found=T9
+PASS D2 without an id the owner is the fallback (live row first) — found=T8
+PASS D3 liveOnly skips a terminal owner row — liveOnly=T8
+PASS D4 staging CLAIMS an ownerless ticket for cell-splitter — resolution={"splitTaskId":"T9","ownerRepaired":true,"repairError":"","boardReadable":true}, claims=[{"action":"claim","task_id":"T9","claimant":"cell-splitter"}]
+PASS D5 a missing ticket is a hard error naming the repair verb — repairError=no split ticket is on the board — repair it with `agent_teams_task {action:"claim", claimant:"cell-splitter"}`
+PASS D6 an unreadable board is not evidence of absence — resolution={"splitTaskId":"","ownerRepaired":false,"repairError":"","boardReadable":false}
+PASS E1 the first activation materialises — tasks=5, loops=4
+PASS E2 ONE member per DISTINCT member (two share one role) — membersAdded=["Alpha","Beta","Reviewer","Junior Engineer"]
+PASS E3 board owners are the MEMBER names — owners=["Alpha","Beta","Reviewer","Junior Engineer","Reviewer"]
+PASS E4 contracts name the ROLE and the MEMBER — contracts=["/tmp/r1-ac-FKTQQe/.mpd/cellwork/cell-20261031T060000000Z-probe/contracts/A.md","/tmp/r1-ac-FKTQQe/.mpd/cellwork/cell-20261031T060000000Z-probe/contracts/B.md","/tmp/r1-ac-FKTQQe/.mpd/cellwork/cell-20261031T060000000Z-probe/contracts/C.md","/tmp/r1-ac-FKTQQe/.mpd/cellwork/cell-20261031T060000000Z-probe/contracts/E.md"]
+PASS E5 writer_id is the member's SESSION id (never the name) — writers=["h-Alpha","h-Beta","h-Reviewer","h-Junior Engineer"]
+PASS E6 writer_reason names the member — reasons=["member: Alpha","member: Beta","member: Reviewer","member: Junior Engineer"]
+PASS E7 progress rows are COMPACT (stage+key+ordinal+total only) — count=17, first={"stage":"contract","key":"A","ordinal":1,"total":17}, last={"stage":"loop","key":"E","ordinal":17,"total":17}
+PASS E8 the dispatch wakes the resolved MEMBER owners — sends=4
+PASS E9 a failed pass returns ONE partial snapshot — partial keys=boardIds,contracts,loopIds,members, progress=15
+PASS E10 progress is compact up to the failure (no whole state) — count=15
+PASS E11 the resume converges without duplicates — membersAdded=[], tasksCreated=[]
+PASS E12 the resume opens ONLY the missing loops — loopCalls=2
+PASS E13 the resumed writer_id still names the session (Reviewer) — first={"writer":"delegate","contract":".mpd/cellwork/cell-20261031T060000000Z-probe/contracts/C.md","scope":["src/c/**"],"task_id":"T3","writer_id":"h-Reviewer","writer_reason":"member: Reviewer"}
+PASS E14 an empty member falls back to the ownerRole — resolved=Junior Engineer
+PASS E17 a MEMBER-stage failure resumes without re-adding the member — re-added=["Beta","Reviewer","Junior Engineer"], members=4
+PASS E18 the member-stage resume still arms every loop and task once — loops=4, tasks=5
+PASS E19 a TASK-stage failure resumes with no duplicate member/task — membersAdded=[], tasksCreated=["Reviewer","Junior Engineer","Reviewer"], tasks=5
+PASS E20 the task-stage resume opens the loops it had not reached — loopCalls=4
+PASS E15 an 'already on the roster' answer is RECONCILED, not fatal — alpha={"name":"Alpha","role":"Senior Engineer","sessionId":"h-live-Alpha","executorRef":"h-live-Alpha","mode":"member","handoffReady":false,"handoffs":0,"joinedAt":"2026-10-31T06:00:00.000Z"}, reused=["Alpha"]
+PASS E16 the reconciled live handle is the loop's writer_id — writer=h-live-Alpha
+PASS F1 fenced + fencedReason survive the record round-trip — row={"name":"Fenced","role":"Senior Engineer","sessionId":"h-Fenced","executorRef":"h-Fenced","mode":"member","handoffReady":false,"handoffs":0,"fenced":true,"fencedReason":"no-engine","joinedAt":"2026-10-31T06:00:00.000Z"}
+PASS F2 an unfenced member does not GROW a fenced:false key — keys=["name","role","sessionId","executorRef","mode","handoffReady","handoffs","joinedAt"]
+PASS F3 splitTaskId survives the record round-trip — splitTaskId=T9
+
+ALL ARMS PASS

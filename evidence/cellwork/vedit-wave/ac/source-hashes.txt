@@ -1,0 +1,11 @@
+6c6357d00e9b478baa14c7f3160f113870c215e5131ff9ecf049948abca224bc  .mpd/plans/cellwork-vedit-wave.md
+34de09c3a2e0b3aa80aba53749e64fd0361e8b46ddf719aa8edd2a208574954d  packages/mpd-cellwork-plugin/src/activate.ts
+7a50100c01ef759bbb54768e64e73526d3c194c347024051bbd8800532c82647  packages/mpd-cellwork-plugin/src/dispatch.ts
+346e68e9c8fca9d09178ee91bdce40913412a24aeb2e2e68e521d642ebe678c6  packages/mpd-cellwork-plugin/src/flow.ts
+964b9cfebd275b6b3755f66dc4a1f0acc8509669350419b3ab9c9f606b185670  packages/mpd-cellwork-plugin/src/index.ts
+5bfce2701e36e8d318a5546d8e7304b5dae11c1519a67c4a6ce63bf21209e214  packages/mpd-cellwork-plugin/src/mail.ts
+6a71e932c6c9df1ffece8753839739840e3303d1d0f41e21171dff3122187dcd  packages/mpd-cellwork-plugin/src/protocol.ts
+7552d8fc43fe7439adaa5bb104393df75a0af6c9b83f9c970beaa1afcac351cf  packages/mpd-cellwork-plugin/src/protocol-core.ts
+8dfe0e94ea96026aabbfc87edf3557fff34a1b2a6c94d9c6ee894c4d1cf770d8  packages/mpd-cellwork-plugin/src/staging.ts
+8f20dc46fc2309844e17fd115d37f5a0cc84dcecd702db6cf99b7fb07ed4bbc8  packages/mpd-cellwork-plugin/src/state.ts
+4e503c785b3f98d4c68faaa8a129bbdb22d8a3ae9d2e71171bcdae42d86a8ad3  packages/mpd-cellwork-plugin/test/activate-resume.test.ts

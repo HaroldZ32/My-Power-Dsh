@@ -1,0 +1,3 @@
+COMMAND: .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+EXIT:0

@@ -175,6 +175,18 @@ data: {"rev":8}
 - Absorbed from the official implementation, each earned there: a message is TARGETED at a live member
   resolved by name, a member cannot message itself, a member's UNDELIVERED backlog is BOUNDED (the
   official `TEAM_MAILBOX_FULL`), and the queue keeps insertion order.
+- **The undelivered BOUND is per TEAM, and an ACKNOWLEDGEMENT releases a slot.** The bound (default 8)
+  counts the rows a member was never handed AND never acknowledged — ONE shared outstanding predicate
+  feeds the send bound, `summary`'s `undelivered` column and the mail tool's `unread` branch, so the
+  three cannot disagree about which rows are outstanding. It is scoped to the claiming team's own rows:
+  a retired team's backlog can never refuse a fresh team's mail whose member ids restart at `M1`, and an
+  unstamped legacy row counts for nobody. A transport delivery frees exactly one slot; an explicit
+  `read`/ack frees exactly one slot per acked row (the one release valve an operator has, and it must
+  not depend on a delivery a stalled member will never trigger). `unread` with no member named resolves
+  the CALLER's own member id, so a self-read cannot silently answer with somebody else's queue. A
+  SUPPLIED `member` must RESOLVE: an unknown name is REFUSED with the value named and the roster listed
+  (`"<name>" is not a member of this team (members: …)`), and NO mail is returned — a typo never falls
+  back to the caller's own inbox.
 - **Everything is workspace-scoped** through `dsh.workspaceRoot(exec)`, never the process cwd.
 
 ### Nested teams (subcells)

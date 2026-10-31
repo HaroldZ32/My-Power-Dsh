@@ -1,0 +1,12 @@
+PASS E01 — instruction files at any depth/outside root and the documented band are readable; unexpected refusals=[]
+PASS E02 — source paths, non-instruction `..` spellings, nested non-instruction files and empty paths stay refused; unexpected admissions=[]
+PASS E02/decision — read/grep/glob on a source path — and a bare call — are refused: {"read":"string","glob":"string","grep":"string","bare":"string"}
+PASS E02/scope — sibling instruction file and docs pass; a child session, `allow` mode and a non-reconnaissance tool pass: {}
+PASS E03 — refusal text advertises the true band and the routes: [["AGENT.md",true],["AGENTS.md",true],["CLAUDE.md",true],["README.md",true],["README.zh-CN.md",true],["CHANGELOG.md",true],["LICENSE*.md",true],["no README* glob",true],["delegation routes",true],["mpd.jsonc opt-out",true]]
+PASS E04 — maxDepth = recorded caller depth + 1; top-level stays 1: [["no header at all",1,1],["top-level depth 0",1,1],["nested depth 1",2,2],["nested depth 3",4,4],["origin subagent, no depth",2,2],["origin subagent, depth 2",3,3],["negative depth",1,1],["numeric string depth",3,3],["fractional depth 1.9",2,2]]
+PASS E05 — planner band: unexpected refusals=[] unexpected admissions=[]
+PASS E05/decisions — bare call refused, other members untouched, only read/grep/glob intercepted, the name is trimmed+lower-cased, an unresolved root fails closed: {"bare":"string","caseName":"string","noRoot":true}
+PASS E06 — the planner refusal teaches BOTH routes and says why: [["cellwork_recon",true],["Explorer",true],["Researcher",true],["mpd_role_spawn",true],["read-only roster role",true],["why (context)",true],["the band it may read",true]]
+PASS E07 — plannerPrompt carries every PLANNER_RECON_LINES line (18): missing=[]
+PASS E08 — the two bands agree with each other AND with the contract on a 20-path table; literal equality=true divergent=[]
+SUMMARY {"total":11,"passed":11,"failed":[]}

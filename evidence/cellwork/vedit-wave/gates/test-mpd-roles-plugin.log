@@ -1,0 +1,5 @@
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: .toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin  (per-package, the repository's prescribed invocation)
+ 191 pass
+ 0 fail
+Ran 191 tests across 12 files. [360.00ms]
+EXIT=0

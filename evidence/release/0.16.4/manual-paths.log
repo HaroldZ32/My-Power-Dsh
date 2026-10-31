@@ -1,0 +1,14 @@
+# typed: 2026-10-31T07:26:00Z  commit: 1bc8a2ea  branch: release/v0.16.4  command: node scripts/verify-manual-paths.ts
+[verify-manual-paths] under-report:placeholder AGENTS.md:535 -> <bundle>/skills
+[verify-manual-paths] under-report:placeholder AGENTS.md:548 -> $DSH_HOME/.agent-presets/
+[verify-manual-paths] under-report:placeholder AGENTS.md:676 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:682 -> <ws>/.mpd/mpd.jsonc
+[verify-manual-paths] under-report:placeholder AGENTS.md:683 -> <ws>/.mpd/model-config-seed.json
+[verify-manual-paths] census bucket=under-report:elided direction=under-report count=1 reason="contains an elision mark — the path is not written out, so no literal target exists"
+[verify-manual-paths] under-report:elided AGENTS.md:18 -> [中文](./<name>.zh-CN.md) [non-ASCII/elision characters]
+[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason="a directory spelled in words rather than as a token — nothing to stat"
+[verify-manual-paths] census family=over-report direction=over-report total=73 buckets=6 (counted apart from under-report and from unresolved)
+[verify-manual-paths] census family=under-report direction=under-report total=83 buckets=7 (counted apart from over-report and from unresolved)
+[verify-manual-paths] census family=declared direction=declared total=2 buckets=2 (the DECLARED anticipatory class and its rot guard — counted apart from the audited subjects and from unresolved)
+[verify-manual-paths] PASS resolved=153 over-report=73 under-report=83 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+EXIT=0

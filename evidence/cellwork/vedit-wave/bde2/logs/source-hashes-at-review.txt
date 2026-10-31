@@ -1,0 +1,9 @@
+63a37d03cbca4aa61950ff4e6bbd6dba2867568ed89a1220570f5ca92047ca01  packages/mpd-verify-plugin/src/gates.ts
+89e8bd8b1feaf89bec86fe6532160c230ffa20cdde2e83aae8d8113c7b30c8df  packages/mpd-verify-plugin/src/tools.ts
+c6a8d09dfeb3a361853722488957aa7b1b719d44b15f1c9950250ce4a0f73d7d  packages/mpd-verify-plugin/src/ledger.ts
+0a10ab9b4c978ab55368b91e435bf96a6318fe582ad746fb70f787ba93876bbb  packages/mpd-verify-plugin/src/observe.ts
+ca219eb63cfc6d0873f0a03f0d02cefe2d1eb8af4b95cef74f441c1dbb8b0f8c  packages/mpd-verify-plugin/README.md
+6b366cd4a38a97a2803a92e431c37f90a68ff78af474c020730ba0c52d95ca60  packages/mpd-verify-plugin/README.zh-CN.md
+0af2cbba12716ad048b88b726c494527fda65e5f2a08a2063859b0c376788679  packages/mpd-roles-plugin/src/index.ts
+e4e91a59b875cef1b934ca605a34cee3245e0e7925a2ad8c4f75ad2d4cffdcba  packages/mpd-workmate-plugin/src/index.ts
+6644fb1a5f64e9f9f414baaf0d3161537bbb97cb0a50674c5ac8f1c1795100f9  packages/mpd-cellwork-plugin/src/guard.ts

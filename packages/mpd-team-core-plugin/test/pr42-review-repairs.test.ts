@@ -436,6 +436,196 @@ describe("F-C — the mailbox summary scopes by team IDENTITY", () => {
   })
 })
 
+// ── D16b — a LATER wave's defect, filed beside F-C because it is the SAME rule applied to a THIRD call
+// site. F-C scoped `summary` by team identity, and the send bound now narrows by `scopeToTeam`; the
+// `unread` branch was still folding the WORKSPACE-GLOBAL ledger by `toId` alone, so a new team's `M1`
+// read a finished wave's mail — and reported an `undelivered` count the send bound no longer uses. ──
+describe("D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound", () => {
+  test("a stale row addressed to ANOTHER team's M1 is excluded from unread, undelivered and total", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    await approveTeam(h)
+    // One real message to THIS team, sent through the tool: it carries the team stamp.
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "ours", body: "work" }, LEAD)
+    /** The per-team member id every team reuses, which is what the stale row impersonates. */
+    const m1 = "M1"
+    // A row stamped with ANOTHER team, addressed to the same `M1` — the impostor F-C caught in `summary`.
+    // It is UNDELIVERED, so a workspace-wide fold would also inflate the count the send bound measures.
+    sendRawMail(h.workspace, { fromId: "x", fromName: "old wave", toId: m1, toName: "Senior Engineer", subject: "stale", body: "b", memberIds: [m1], teamId: "team-old-wave" }, NOW)
+    /** The tool's own answer for this team's `M1`. */
+    const answer = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ subject?: string }>; undelivered?: number; total?: number }
+    // ONLY this team's row is its inbox: the other team's row to the same M1 is gone from the list, from
+    // `total` and from `undelivered` (the tool's own send was delivered, the stale row was not).
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["ours"])
+    expect(answer.total).toBe(1)
+    expect(answer.undelivered).toBe(0)
+  })
+
+  test("NEGATIVE CONTROL: a row stamped with THIS team is included, even without the tool's send", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    /** The per-team member id the planted row addresses. */
+    const m1 = "M1"
+    // Planted directly, so this arm isolates the FILTER from what `send` happens to record.
+    sendRawMail(h.workspace, { fromId: "x", fromName: "the lead", toId: m1, toName: "Senior Engineer", subject: "planted", body: "b", memberIds: [m1], teamId }, NOW)
+    /** The tool's own answer for this team's `M1`. */
+    const answer = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ subject?: string }>; undelivered?: number; total?: number }
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["planted"])
+    expect(answer.total).toBe(1)
+    expect(answer.undelivered).toBe(1)
+  })
+
+  test("NEGATIVE CONTROL: with no team resolved the unread branch still reads the WHOLE fold", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The per-team member id the stale row addresses — also the session that reads it. */
+    const m1 = "M1"
+    sendRawMail(h.workspace, { fromId: "x", fromName: "old wave", toId: m1, toName: "Senior Engineer", subject: "stale", body: "b", memberIds: [m1], teamId: "team-old-wave" }, NOW)
+    // A session that belongs to no team reads an inbox by its own session id, which is what this fixture
+    // addresses: no team means no identity to scope by, so the stale row is visible again.
+    const answer = await h.call("agent_teams_mail", { action: "unread" }, m1) as { messages?: Array<{ subject?: string }>; undelivered?: number; total?: number }
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["stale"])
+    expect(answer.total).toBe(1)
+    expect(answer.undelivered).toBe(1)
+  })
+})
+
+// ── D16c — the SELF path of the same `unread` branch. D16b scoped WHICH rows an inbox may read; this
+// one fixes WHOSE inbox it is: a message is addressed to the roster member id (`M1`), while a member's
+// session id is the `executorRef` the record kept at spawn — two different strings — so keying the self
+// read on the session id matched nothing and a member always read an EMPTY inbox of its own. ──
+describe("D16c — a member's own `unread` resolves its ROSTER member id", () => {
+  test("a member reading with no `member` argument sees the mail addressed to its own member row", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "yours", body: "work" }, LEAD)
+    /** The member's OWN session, which is the `executorRef` the record kept for it. */
+    const senior = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The tool's answer to the member's own read. */
+    const answer = await h.call("agent_teams_mail", { action: "unread" }, senior, { title: "You are the Senior Engineer." }) as { messages?: Array<{ subject?: string }>; total?: number; memberName?: string }
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["yours"])
+    expect(answer.total).toBe(1)
+    // The inbox is NAMED, not keyed by the session id: the answer says whose mail this is.
+    expect(answer.memberName).toBe("Senior Engineer")
+  })
+
+  test("NEGATIVE CONTROL: an explicit `member` still wins over the self resolution", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "mine", body: "w" }, LEAD)
+    await h.call("agent_teams_mail", { action: "send", to: "Reviewer", subject: "theirs", body: "w" }, LEAD)
+    /** The Senior Engineer's own session, which asks for the REVIEWER's inbox by name. */
+    const senior = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The tool's answer for the inbox it was ASKED for. */
+    const answer = await h.call("agent_teams_mail", { action: "unread", member: "Reviewer" }, senior, { title: "You are the Senior Engineer." }) as { messages?: Array<{ subject?: string }>; memberName?: string }
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["theirs"])
+    expect(answer.memberName).toBe("Reviewer")
+  })
+
+  test("NEGATIVE CONTROL: a session that names no roster row still reads by its own session id", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The session id of an agent that belongs to no team at all. */
+    const outsider = "sess-outsider"
+    // Nobody's roster names it, so the fallback is the session id it was addressed by — unchanged.
+    sendRawMail(h.workspace, { fromId: "x", fromName: "lead", toId: outsider, toName: "outsider", subject: "outsider mail", body: "b", memberIds: [outsider] }, NOW)
+    /** The tool's answer to the outsider's read. */
+    const answer = await h.call("agent_teams_mail", { action: "unread" }, outsider) as { messages?: Array<{ subject?: string }>; total?: number }
+    expect(answer.messages?.map((message) => message.subject)).toEqual(["outsider mail"])
+    expect(answer.total).toBe(1)
+  })
+})
+
+// ── H1 (the D16 review's ONE High finding, frozen as R7 of the contract) — an ACK is the operator's
+// RELEASE VALVE. `undeliveredOf` counted `deliveredAt === undefined` only, so a member with a full
+// backlog could not be unblocked by acknowledging a row: the send stayed refused and the ONLY exit was
+// a delivery the stalled member was never going to make (measured live: 23 orphaned rows, acks did
+// nothing). The predicate is now shared by the bound, `summary` and `unread`. ──
+describe("H1 — an acknowledged row frees a bound slot through the REAL tool surface", () => {
+  test("8 outstanding rows refuse the ninth, one `read` frees exactly one, and `summary` agrees", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team, whose id is the stamp every planted row carries. */
+    const teamId = await approveTeam(h)
+    /** The per-team member id the planted backlog addresses. */
+    const m1 = "M1"
+    // EIGHT rows this team queued and never delivered — the production shape, planted directly because
+    // the stub transport accepts everything a tool `send` hands it (so a tool-built backlog is empty).
+    for (let i = 0; i < 8; i += 1) {
+      sendRawMail(h.workspace, { fromId: "x", fromName: "the lead", toId: m1, toName: "Senior Engineer", subject: "queued" + i, body: "b", memberIds: [m1], teamId }, NOW)
+    }
+    /** The summary before any ack: the member's `undelivered` column is the backlog the bound measures. */
+    const before = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { summary?: Array<{ memberId?: string; undelivered?: number }> }
+    expect(before.summary?.find((row) => row.memberId === m1)?.undelivered).toBe(8)
+    /** The bound's refusal through the tool, with the EXACT sentence an operator reads. */
+    const refused = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "ninth", body: "b" }, LEAD) as { refused?: string }
+    expect(refused.refused).toBe('"Senior Engineer" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
+    /** The oldest queued row, taken from the tool's OWN unread answer so the id is not a fixture guess. */
+    const queued = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ id?: string }> }
+    /** The id the operator acknowledges. */
+    const first = String(queued.messages?.[0]?.id ?? "")
+    expect(first).not.toBe("")
+    /** The acknowledgement, through the tool's `read` action. */
+    const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[] }
+    expect(acked.moved).toEqual([first])
+    /** The summary after the ack: the SAME set the bound measures drops by exactly one. */
+    const after = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { summary?: Array<{ memberId?: string; undelivered?: number }> }
+    expect(after.summary?.find((row) => row.memberId === m1)?.undelivered).toBe(7)
+    /** The send the acknowledgement UNBLOCKED — the whole point of the release valve. */
+    const accepted = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "after-ack", body: "b" }, LEAD) as { message?: { id?: string }; refused?: string }
+    expect(accepted.refused).toBeUndefined()
+    expect(accepted.message?.id).toBeDefined()
+  })
+})
+
+// ── CR repair M (a CodeRabbit finding on the mail tool) — an EXPLICIT `member` that does not resolve
+// must REFUSE, never fall back to the caller's own inbox. The fallback answered a question nobody asked
+// with the wrong inbox, so a typo read as "nothing unread" instead of "that name is not on this team". ──
+describe("CR repair M — an unknown explicit `member` REFUSES instead of answering the caller's inbox", () => {
+  test("a misspelled `member` is refused, naming the spelling and the roster it was resolved on", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "mine", body: "w" }, LEAD)
+    /** The tool's answer to an inbox nobody on the roster owns. */
+    const typo = await h.call("agent_teams_mail", { action: "unread", member: "Senor Engineer" }, LEAD) as { refused?: string; messages?: unknown[] }
+    expect(typo.refused).toBe('"Senor Engineer" is not a member of this team (members: Senior Engineer, Reviewer)')
+    // NOTHING was answered: the silent fallback to the caller's own inbox is the defect itself.
+    expect(typo.messages).toBeUndefined()
+  })
+
+  test("NEGATIVE CONTROL: with no `member` argument the caller still reads its OWN inbox", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "mine", body: "w" }, LEAD)
+    /** The member's own session, which asks for no particular inbox. */
+    const senior = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The tool's answer to that self read. */
+    const own = await h.call("agent_teams_mail", { action: "unread" }, senior, { title: "You are the Senior Engineer." }) as { messages?: Array<{ subject?: string }>; refused?: string }
+    expect(own.refused).toBeUndefined()
+    expect(own.messages?.map((message) => message.subject)).toEqual(["mine"])
+  })
+
+  test("NEGATIVE CONTROL: with NO team resolved an explicit `member` also refuses, saying the roster is empty", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The tool's answer for a team-less session that named somebody anyway. */
+    const outside = await h.call("agent_teams_mail", { action: "unread", member: "anyone" }, "sess-outsider") as { refused?: string; messages?: unknown[] }
+    expect(outside.refused).toBe('"anyone" is not a member of this team (members: none)')
+    // The rule is uniform: no roster means no inbox to answer for a NAME, so the caller's own is not a substitute.
+    expect(outside.messages).toBeUndefined()
+  })
+})
+
 describe("F-D — archive evidence is keyed by the record's OWN plan", () => {
   test("the repro: partial approve -> retry create+replace -> delete the retry -> dispatch leaves the team LIVE", async () => {
     /** The harness, with the Reviewer's raise failing so the approval STOPS PARTWAY. */

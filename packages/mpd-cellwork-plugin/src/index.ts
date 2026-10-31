@@ -29,6 +29,7 @@ import { installCellworkFlow, type FlowCtx } from "./flow"
 import { installCellworkProtocol } from "./protocol"
 import type { ProtocolCtx } from "./protocol-core"
 import { stagePlanningTeam } from "./staging"
+import { roleKey } from "./split"
 import { cellDir, freeCellId, journalPath, newCellState, readActiveCell, readCell, recordTransition, requirementsPath, statePath, writeCell, type CellReadFailure, type CellState } from "./state"
 
 /** The cordis plugin name; the bundle patch addresses this row by its id `mpd-cellwork`. */
@@ -96,6 +97,10 @@ interface CellworkStatusResult {
   teamMembers: number
   /** The live team's task count, when the team record was readable. */
   teamTasks: number
+  /** The recorded board id of this cell's staged split ticket, or "" when none is recorded (contract C11). */
+  splitTaskId: string
+  /** The cell-record vs live-roster member divergence; the read never mutates either side (contract C11). */
+  memberDivergence: MemberDivergence
   /** The cell directory every artifact lives under. */
   cellDir: string
   /** Absolute state record path. */
@@ -236,6 +241,49 @@ function teamCounts(record: Record<string, unknown> | undefined): { members: num
     members: Array.isArray(record.members) ? record.members.length : 0,
     tasks: Array.isArray(record.tasks) ? record.tasks.length : 0,
   }
+}
+
+/** The roster divergence `cellwork_status` reports (contract C11, defect D11). */
+interface MemberDivergence {
+  /** Live team members the cell record never learned. */
+  missingFromCell: string[]
+  /** Cell-record members the live team no longer carries. */
+  missingFromTeam: string[]
+  /** Whether the two sides agree (also true when no live team record is readable — nothing to compare). */
+  inSync: boolean
+}
+
+/**
+ * Compare the cell record's member table with the live team roster (contract C11).
+ *
+ * REPORT-ONLY by contract: the reader never mutates either side, so a cell whose table diverged from the
+ * roster (the VEdit cell knew 7 of 13 members) still answers — the two lists name who is missing where,
+ * and the captain decides what to do about it.
+ *
+ * @param record - the live team record, or undefined when no team is readable.
+ * @param state - the cell record being reported.
+ * @returns the two directional lists plus the `inSync` flag.
+ */
+function memberDivergence(record: Record<string, unknown> | undefined, state: CellState): MemberDivergence {
+  // AN UNREADABLE RECORD IS NOT AN EMPTY ROSTER: with no live side there is nothing to compare, and
+  // reporting every recorded member as "missing from the team" would be a claim the read cannot support.
+  if (record === undefined) return { missingFromCell: [], missingFromTeam: [], inSync: true }
+  /** The live roster names, when the record carries any. */
+  const liveRows: string[] = []
+  for (const row of Array.isArray(record.members) ? record.members : []) {
+    if (typeof row === "object" && row !== null && typeof (row as { name?: unknown }).name === "string" && (row as { name: string }).name !== "") liveRows.push((row as { name: string }).name)
+  }
+  /** The live names, by comparison key. */
+  const liveKeys = new Set(liveRows.map((name) => roleKey(name)))
+  /** The cell record's names, in record order. */
+  const cellRows = Object.values(state.members).map((member) => member.name).filter((name) => name !== "")
+  /** The cell names, by comparison key. */
+  const cellKeys = new Set(cellRows.map((name) => roleKey(name)))
+  /** Live members the cell never learned. */
+  const missingFromCell = liveRows.filter((name) => !cellKeys.has(roleKey(name)))
+  /** Recorded members the live roster no longer carries. */
+  const missingFromTeam = cellRows.filter((name) => !liveKeys.has(roleKey(name)))
+  return { missingFromCell, missingFromTeam, inSync: missingFromCell.length === 0 && missingFromTeam.length === 0 }
 }
 
 /**
@@ -389,6 +437,16 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           seat: { oneOf: [{ type: "object" }, { type: "null" }] },
           teamMembers: { type: "number" },
           teamTasks: { type: "number" },
+          splitTaskId: { type: "string" },
+          memberDivergence: {
+            type: "object",
+            properties: {
+              missingFromCell: { type: "array", items: { type: "string" } },
+              missingFromTeam: { type: "array", items: { type: "string" } },
+              inSync: { type: "boolean" },
+            },
+            required: ["missingFromCell", "missingFromTeam", "inSync"],
+          },
           cellDir: { type: "string" },
           statePath: { type: "string" },
           journalPath: { type: "string" },
@@ -419,8 +477,10 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         if (!single.ok) return { ok: false, error: refusalText(single), path: single.path }
         state = single.state
       }
-      /** The live team's counts, when a team id is recorded and readable. */
-      const counts = teamCounts(teamRecordOf(ctx, caller.workspace, state.teamId))
+      /** The live team record, when a team id is recorded and readable. */
+      const teamRecord = teamRecordOf(ctx, caller.workspace, state.teamId)
+      /** The live team's counts. */
+      const counts = teamCounts(teamRecord)
       return {
         ok: true,
         cellId: state.cellId,
@@ -440,6 +500,8 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,
         teamTasks: counts.tasks,
+        splitTaskId: state.splitTaskId ?? "",
+        memberDivergence: memberDivergence(teamRecord, state),
         cellDir: cellDir(caller.workspace, state.cellId),
         statePath: statePath(caller.workspace, state.cellId),
         journalPath: journalPath(caller.workspace, state.cellId),
@@ -521,13 +583,19 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           // call RESUMES that same slot instead of refusing it and a half-team never sits behind a
           // record that claims no team at all. The refusal names the recovery so a model can act on it.
           /** The record carrying whatever the failed pass managed to approve. */
-          const partialState: CellState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) } }
-          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now)
+          const partialState: CellState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" }
+          // BOTH FACTS ARE JOURNALED (CR #6): the split ticket's board id is recorded even when its owner
+          // repair was refused, and the repair's own sentence rides beside it — so the operator reads "the
+          // row is KNOWN, its owner is still MISSING" instead of an id lost with the failed claim.
+          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), splitTaskId: partialState.splitTaskId ?? "", error: staged.error ?? "", ...(staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError }) }, now)
           return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" }
         }
-        /** The record carrying the approved team and the two planning members. */
-        stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) } }
-        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {} }, now)
+        /** The record carrying the approved team, the two planning members and the split ticket's id. */
+        stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" }
+        // THE SPLIT TICKET'S BOARD ID IS RECORDED HERE (contract C11, defect D2/D3): every later lookup
+        // reads it FIRST, so a staged ticket whose owner was lost still resolves. An ownerless row this
+        // call CLAIMED for `cell-splitter` is journaled, so the repair is auditable.
+        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, splitTaskId: stagedState.splitTaskId ?? "", ...(staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {}), ...(staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError }) }, now)
       }
       /** The live team's counts, when one is recorded and readable. */
       const counts = teamCounts(teamRecordOf(ctx, caller.workspace, stagedState.teamId))

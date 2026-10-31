@@ -1,0 +1,5 @@
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: .toolchain/node_modules/.bin/bun test packages/mpd-verify-plugin  (per-package, the repository's prescribed invocation)
+ 82 pass
+ 0 fail
+Ran 82 tests across 4 files. [323.00ms]
+EXIT=0

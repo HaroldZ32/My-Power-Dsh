@@ -1,0 +1,17 @@
+PASS A1 retired backlog ignored by the bound — unscoped(prefix)=8, fresh send ok=true
+PASS A2 retired rows are still real rows — unscoped undelivered for M4 = 8 (fixture = 8)
+PASS A3 a send stamps the teamId onto its row — stored teamId=team-fresh
+PASS B1 the 9th send in the current team refuses — ok=false reason=backlog-full
+PASS B2 refusal sentence and bound value 8 unchanged — detail="M4" already has 8 undelivered message(s) (bound 8) — it is not keeping up
+PASS B3 the bound still counts only this member — undelivered(M4)=8
+FAIL C1 read/ack frees exactly one slot — before.ok=false, moved=1, afterReadSend.ok=false detail="M4" already has 8 undelivered message(s) (bound 8) — it is not keeping up
+PASS C2 an ack records readAt and leaves deliveredAt untouched — readAt=2026-10-31T05:10:00.000Z, deliveredAt=undefined
+PASS C3 delivery frees exactly one slot (control) — afterDelivery.ok=true
+PASS D1 an unstamped row blocks no team (bound) — first ok=true
+PASS D2 the team's own row still fills its bound — second ok=false reason=backlog-full
+PASS E1 summary and bound agree per member — bound=3, summary=3, expected=3
+PASS E2 no-team caller keeps the unscoped fold — unscoped=7, expected=7 (3 current + 3 other + 1 unstamped)
+PASS F1 delivery does not acknowledge (readAt stays absent) — deliveredAt=2026-10-31T05:01:00.000Z, readAt=undefined
+PASS F2 an ack does not fabricate delivery (deliveredAt preserved) — deliveredAt=2026-10-31T05:01:00.000Z, readAt=2026-10-31T05:02:00.000Z
+
+FAILED ARMS: C1 read/ack frees exactly one slot

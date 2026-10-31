@@ -1,0 +1,9 @@
+=== lane D pre-change (HEAD) probes of the new symbols
+gates.ts PROJECT_GATE_FILE/resolveGate/loadProjectGates: 0
+tools.ts writer_id/writer_reason: 0
+=== lane E pre-change (HEAD) probes of the new symbols
+captain-investigation.ts CAPTAIN_INSTRUCTION_BASENAMES: 0
+roles index.ts spawnMaxDepthOf/maxDepth: 0
+cellwork guard.ts planner arm (PLANNER_/cell-planner): 0
+cellwork prompts.ts PLANNER_RECON_LINES: 0
+staging.ts PLANNER_RECON_LINES import: 0

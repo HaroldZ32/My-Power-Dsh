@@ -74,6 +74,16 @@ export interface CellMemberRecord {
   handoffReady: boolean
   /** How many handoffs this member has written (the ordinal of the NEXT one is this + 1). */
   handoffs: number
+  /**
+   * Whether the compaction barrier GAVE UP on this member (contract C7).
+   *
+   * OPTIONAL AND ADDITIVE, written by the barrier path: a fenced member is reported as unavailable and
+   * its ready rows must be re-assigned instead of messaged. Absent means "not fenced", never `false` —
+   * the key is preserved only when a writer recorded it, so an older record still parses.
+   */
+  fenced?: boolean
+  /** The one-sentence reason the barrier recorded when it fenced this member. PRESERVED, never defaulted. */
+  fencedReason?: string
   /** ISO instant the member was added to the cell. */
   joinedAt: string
 }
@@ -133,6 +143,15 @@ export interface CellState {
   requirementsRevision: number
   /** The accepted split revision, or null while no split has been accepted. */
   splitRevision: number | null
+  /**
+   * The BOARD ID of the split ticket this cell staged (contract C11), or `""`/absent when none is known.
+   *
+   * OPTIONAL AND ADDITIVE. Staging records it once the board answers, and every later lookup of "the
+   * split ticket" reads it FIRST, by owner second — so a ticket whose owner was lost still resolves, and
+   * a requirements update can mark the split stale and re-dispatch the SAME row (defect D2/D3). A record
+   * written before this field existed carries no key and falls back to the owner lookup.
+   */
+  splitTaskId?: string
   /** The split revision MATERIALISED on the live team (null before the first activation). */
   activatedRevision: number | null
   /**
@@ -266,13 +285,12 @@ export function splitPath(workspace: string, cellId: string, revision: number): 
 }
 
 /**
- * The BESIDE path a REFUSED verdict takes when `split/<revision>.json` already holds an ACCEPTED one:
- * `split/<revision>.refused.json`.
+ * The path a REFUSED verdict takes: `split/<revision>.refused.json`, written on EVERY refusal.
  *
- * Amendment 6 R2: a refused same-revision resubmission must never destroy the accepted verdict on disk.
- * The refusal still lands (the splitter needs its per-task breakdown), but at its own path, so the
- * canonical per-revision file stays the record of what was ACCEPTED and `latestSplit` never mistakes a
- * refusal for an acceptance.
+ * Amendment 6 R2 and contract C9: a refused same-revision resubmission must never destroy the accepted
+ * verdict on disk, and a refusal must always leave its findings behind even when no accepted file exists
+ * yet. Both hold because the refusal ALWAYS lands at this own path: the canonical `split/<revision>.json`
+ * stays the record of what was ACCEPTED, and `latestSplit` never mistakes a refusal for an acceptance.
  *
  * @param workspace - the workspace root the caller resolved through the adapter.
  * @param cellId - the cell that owns the split.
@@ -345,6 +363,7 @@ export function newCellState(input: NewCellInput): CellState {
     subcellIds: [],
     requirementsRevision: 0,
     splitRevision: null,
+    splitTaskId: "",
     activatedRevision: null,
     activatedTasks: {},
     activatedLoops: {},
@@ -562,6 +581,10 @@ function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
     mode,
     handoffReady: raw.handoffReady === true,
     handoffs: typeof raw.handoffs === "number" ? raw.handoffs : 0,
+    // ADDITIVE AND PRESERVED, not defaulted: a fence written by the barrier must survive every read, and
+    // a record that never carried one must not grow `fenced: false` (its ABSENCE is the "not fenced" fact).
+    ...(raw.fenced === true ? { fenced: true } : {}),
+    ...(typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {}),
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
   }
 }
@@ -635,6 +658,9 @@ function normalizeCellState(raw: unknown): CellState | null {
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
+    // TOLERANT READ: a record written before the split ticket's id was recorded carries no key, and the
+    // readers fall back to finding the ticket by its owner (contract C11) instead of refusing the record.
+    splitTaskId: typeof raw.splitTaskId === "string" ? raw.splitTaskId : "",
     activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
     activatedTasks: stringMap(raw.activatedTasks),
     // TOLERANT READ: old cells carry neither key, and a null/absent in-flight revision is "no
