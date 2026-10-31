@@ -1,0 +1,8 @@
+[tool-web-fetch] harness=0.2.1-rc.3 node=v24.21.0
+[tool-web-fetch] tracked preset /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml sha256=e08b3eddf851d6f30b0895dbdd4dc1a8c646abb413e5a0c1957b1e0b1f1a449c
+[tool-web-fetch] evidence dir /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/web-plane/tool-web-fetch/2026-10-31T02-39-06-583Z
+[tool-web-fetch] arm=positive fetchConfigured=true registered=true toolCount=128 headers=1 preset=mpd
+[tool-web-fetch] arm=negative fetchConfigured=false registered=false toolCount=127 headers=1 preset=mpd
+[tool-web-fetch] arm=call-live called=true succeeded=true preset=mpd errors=0
+[tool-web-fetch] verdict positive=PASS negative=PASS realCall=PASS (live-model)
+[tool-web-fetch] wrote /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/web-plane/tool-web-fetch/2026-10-31T02-39-06-583Z/result.json
