@@ -23,7 +23,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index.ts"
-import { send as sendRawMail } from "../src/mailbox-store.ts"
+import { readRecords, send as sendRawMail } from "../src/mailbox-store.ts"
 import { readPlan } from "../src/plan-store.ts"
 import { activeTeamId, readTeam, teamRecordPath, writeTeam, type TeamRecord } from "../src/team-store.ts"
 import { isLiveTeam, readArchivedPlanIndex, reapReapedTeams } from "../src/team-lifecycle.ts"
@@ -572,8 +572,15 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
     /** The id the operator acknowledges. */
     const first = String(queued.messages?.[0]?.id ?? "")
     expect(first).not.toBe("")
-    /** The acknowledgement, through the tool's `read` action. */
-    const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[] }
+    // ── OWNERSHIP (contract §5): the ack belongs to the row's ADDRESSEE, not to whoever sent it. The
+    // old unauthenticated `markRead` let the lead acknowledge a member's row; that primitive is gone,
+    // and the lead's attempt is now the mechanical proof that no administrative escape survived.
+    const byLead = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[]; refused?: string }
+    expect(byLead.moved).toEqual([])
+    expect(byLead.refused).toContain("only its recipient may acknowledge it")
+    /** The acknowledgement, through the tool's `read` action, made AS THE ADDRESSEE. */
+    const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, "child-Senior-Engineer") as { moved?: string[]; refused?: string }
+    expect(acked.refused).toBeUndefined()
     expect(acked.moved).toEqual([first])
     /** The summary after the ack: the SAME set the bound measures drops by exactly one. */
     const after = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { summary?: Array<{ memberId?: string; undelivered?: number }> }
@@ -582,6 +589,77 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
     const accepted = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "after-ack", body: "b" }, LEAD) as { message?: { id?: string }; refused?: string }
     expect(accepted.refused).toBeUndefined()
     expect(accepted.message?.id).toBeDefined()
+  })
+})
+
+// ── AC-2 ON THE REAL TOOL SURFACE (contract `.mpd/plans/mail-unify.md` §5): addressing a lead as
+// `captain`, a broadcast as ONE ROW PER RECIPIENT, and the question/answer envelope end to end. The
+// store arms prove the rules; these prove the TOOL wires them (a schema param that never reaches the
+// store would pass every store arm). ──
+describe("the mail envelope and addressing through the REAL tool surface", () => {
+  test("`captain` is addressable, `*` fans out one row per member, and a question/answer exchange round-trips", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session the stub executor recorded, which is the identity `callerIdentity` resolves. */
+    const member = "child-Senior-Engineer"
+    // A MEMBER asks its captain: `captain` resolves to the team's `leadSessionId`, recorded as such.
+    /** The recorded row addressed to the captain, whose name is the ROLE whatever alias was used. */
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "may I?", body: "b" }, member) as { message?: { id?: string; toName?: string; threadId?: string }; refused?: string }
+    expect(asked.refused).toBeUndefined()
+    expect(asked.message?.toName).toBe("captain")
+    // THE BROADCAST FANS OUT: one row per OTHER member, the sender excluded, no single multi-`to` row.
+    /** The broadcast's answer: one row per recipient, with the `broadcast` marker set. */
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, LEAD) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    expect((fan.messages ?? []).map((message) => message.toName).sort()).toEqual(["Reviewer", "Senior Engineer"])
+    // A QUESTION and its ANSWER through the tool: the payload alone decides the kind, and the answer
+    // echoes the offered LABEL verbatim — the mechanical replacement for counting options.
+    /** The question payload the lead sends. */
+    const question = { questionId: "q1", question: "which store?", options: [{ label: "A. one" }, { label: "B. two" }] }
+    /** The recorded question row, whose kind comes from the payload alone. */
+    const quiz = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "q", body: "b", question }, LEAD) as { message?: { id?: string; kind?: string; threadId?: string }; refused?: string }
+    expect(quiz.refused).toBeUndefined()
+    expect(quiz.message?.kind).toBe("question")
+    /** The answer payload, echoing one offered label. */
+    const answer = { questionId: "q1", answerTo: String(quiz.message?.id ?? ""), selected: ["B. two"] }
+    /** The recorded answer row, which must join the QUESTION's thread. */
+    const replied = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "a", body: "b", answer }, member) as { message?: { kind?: string; threadId?: string; replyTo?: string }; refused?: string }
+    expect(replied.refused).toBeUndefined()
+    expect(replied.message?.kind).toBe("answer")
+    // I7: the answer replies to the question row, so it joins the QUESTION's thread.
+    expect(replied.message?.replyTo).toBe(quiz.message?.id)
+    expect(replied.message?.threadId).toBe(quiz.message?.threadId)
+  })
+
+  test("a MEMBER's `*` excludes its OWN roster row, and a member cannot message itself (R2's F1)", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session the stub executor recorded; its roster id is `M1`, NOT this string. */
+    const member = "child-Senior-Engineer"
+    // THE SEAM THE LEAD-ONLY ARM CANNOT SEE: `selfId` used to be the SESSION id while the roster is
+    // addressed by `M1`, so the member's own row survived the fan-out.
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, member) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    // The other member AND the captain — never the sender's own roster row.
+    expect((fan.messages ?? []).map((message) => message.toName)).toEqual(["Reviewer", "captain"])
+    // …and addressing its own roster id directly is the store's own self rule, reached through the tool.
+    const self = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "me", body: "b" }, member) as { refused?: string }
+    expect(self.refused).toBe("a team member cannot message itself")
+    // R2's N1: EVERY attempt left a DURABLE wake line with its reason — one `sent:true` for the member
+    // the stub transport reached, one `sent:false` for the captain it cannot reach. A process log line
+    // would be invisible here, which is exactly the defect.
+    /** The `wake` lines the fan-out left, in log order. */
+    const wakes = readRecords(h.workspace).filter((record) => (record as { t?: string }).t === "wake") as Array<{ id?: string; sent?: boolean; reason?: string }>
+    expect(wakes).toHaveLength(2)
+    expect(wakes.filter((line) => line.sent === true)).toHaveLength(1)
+    /** The refused attempt, which must carry why. */
+    const refusedWake = wakes.filter((line) => line.sent === false)
+    expect(refusedWake).toHaveLength(1)
+    expect(refusedWake[0].reason).toContain("recorded, not woken")
   })
 })
 

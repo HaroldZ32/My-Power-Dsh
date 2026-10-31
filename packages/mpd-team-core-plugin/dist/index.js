@@ -1,6 +1,6 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync6, readFileSync as readFileSync6, readdirSync as readdirSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join8 } from "node:path";
+import { existsSync as existsSync5, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join9 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -2026,45 +2026,383 @@ function createLazyDshAdapter(ctx, options) {
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
 import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
+
+// packages/mpd-mail-protocol/src/types.ts
+function isMailKind(value) {
+  return value === "message" || value === "question" || value === "answer";
+}
+var INDEX_FIELD_NAMES = [
+  "index",
+  "indexes",
+  "indices",
+  "optionIndex",
+  "optionIndices",
+  "selectedIndex",
+  "selectedIndices",
+  "optionNumber",
+  "optionNumbers"
+];
+// packages/mpd-mail-protocol/src/validate.ts
+function problem(code, message, labels) {
+  return labels === undefined ? { code, message } : { code, message, labels: [...labels] };
+}
+function check(problems) {
+  return problems.length === 0 ? { ok: true } : { ok: false, problems: [...problems] };
+}
+function appendProblems(target, nested) {
+  if (!nested.ok)
+    target.push(...nested.problems);
+}
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function findIndexFields(value) {
+  const found = [];
+  const seen = new Set;
+  const walk = (current, path, depth) => {
+    if (depth > 16 || current === null || typeof current !== "object")
+      return;
+    if (seen.has(current))
+      return;
+    seen.add(current);
+    if (Array.isArray(current)) {
+      current.forEach((entry, index) => walk(entry, path + "[" + String(index) + "]", depth + 1));
+      return;
+    }
+    for (const [key, entry] of Object.entries(current)) {
+      const childPath = path + "." + key;
+      if (INDEX_FIELD_NAMES.includes(key))
+        found.push(childPath);
+      walk(entry, childPath, depth + 1);
+    }
+  };
+  walk(value, "$", 0);
+  return found;
+}
+function labelsOf(question) {
+  const options = question.options;
+  if (!Array.isArray(options))
+    return [];
+  return options.map((option) => String(option?.label ?? "")).filter((label) => label !== "");
+}
+function validateQuestion(question) {
+  if (!isPlainObject(question))
+    return check([problem("kind-payload", "a question payload must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(question)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (typeof question.questionId !== "string" || question.questionId.trim() === "") {
+    problems.push(problem("question-id", "a question must carry a non-empty `questionId`; every answer copies it"));
+  }
+  const options = question.options;
+  if (!Array.isArray(options) || options.length === 0) {
+    problems.push(problem("question-empty", "a question must offer at least one option"));
+  }
+  const labels = [];
+  if (Array.isArray(options)) {
+    options.forEach((option, index) => {
+      const label = option?.label;
+      if (typeof label !== "string" || label.trim() === "") {
+        problems.push(problem("option-label", "option " + String(index + 1) + " has an empty label"));
+        return;
+      }
+      if (labels.includes(label)) {
+        problems.push(problem("option-label", "duplicate option label: " + JSON.stringify(label) + " — labels must be unique within a question"));
+        return;
+      }
+      labels.push(label);
+    });
+  }
+  if (typeof question.question !== "string" || question.question.trim() === "") {
+    problems.push(problem("question-empty", "the question text is empty"));
+  }
+  return check(problems);
+}
+function validateAnswer(answer, question) {
+  if (!isPlainObject(answer))
+    return check([problem("kind-payload", "an answer payload must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(answer)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (typeof answer.questionId !== "string" || answer.questionId.trim() === "") {
+    problems.push(problem("answer-question-id", "an answer must carry the question's non-empty `questionId`"));
+  }
+  const selected = answer.selected;
+  const selectedIsArray = Array.isArray(selected);
+  if (!selectedIsArray) {
+    problems.push(problem("answer-selection", "`selected` must be an array of offered label strings"));
+  }
+  const picked = [];
+  if (selectedIsArray) {
+    selected.forEach((entry, index) => {
+      if (typeof entry !== "string" || entry.trim() === "") {
+        problems.push(problem("answer-selection", "selected entry " + String(index + 1) + " is not a non-empty label string"));
+        return;
+      }
+      picked.push(entry);
+    });
+  }
+  const custom = answer.custom;
+  if (custom !== undefined && (typeof custom !== "string" || custom.trim() === "")) {
+    problems.push(problem("answer-selection", "`custom`, when present, must be non-empty text"));
+  }
+  if (typeof answer.answerTo !== "string" || answer.answerTo.trim() === "") {
+    problems.push(problem("reference-unknown", "an answer must name the question message it answers (`answerTo`)"));
+  }
+  const hasCustom = typeof custom === "string" && custom.trim() !== "";
+  if (question === undefined) {
+    if (selectedIsArray && picked.length === 0 && !hasCustom) {
+      problems.push(problem("answer-selection", "an answer must select at least one offered label or give `custom`"));
+    }
+    return check(problems);
+  }
+  const offered = labelsOf(question);
+  for (const label of picked) {
+    if (!offered.includes(label)) {
+      problems.push(problem("answer-unknown-label", "selected label is not offered by the question: " + JSON.stringify(label), offered));
+    }
+  }
+  if (typeof question.questionId !== "string" || question.questionId.trim() === "") {
+    problems.push(problem("question-id", "the referenced question has an empty `questionId`, so no answer can be correlated"));
+  } else if (typeof answer.questionId === "string" && answer.questionId.trim() !== "" && answer.questionId !== question.questionId) {
+    problems.push(problem("answer-question-id", "`questionId` " + JSON.stringify(answer.questionId) + " does not match the referenced question's `questionId` " + JSON.stringify(question.questionId)));
+  }
+  if (selectedIsArray) {
+    if (question.multiSelect === true) {
+      if (picked.length < 1) {
+        problems.push(problem("answer-selection", "a multi-select answer must select at least one offered label"));
+      }
+    } else if (picked.length > 1) {
+      problems.push(problem("answer-selection", "a single-select answer must select exactly one label; got " + String(picked.length)));
+    } else if (picked.length === 1) {
+      if (hasCustom) {
+        problems.push(problem("answer-selection", "a single-select answer must not combine a selected label with `custom`; give exactly one or the other"));
+      }
+    } else if (!hasCustom) {
+      problems.push(problem("answer-selection", "a single-select answer must select exactly one label or give `custom`"));
+    }
+  }
+  return check(problems);
+}
+function validateEnvelope(envelope) {
+  if (!isPlainObject(envelope))
+    return check([problem("envelope", "a mail envelope must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(envelope)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (!isMailKind(envelope.kind)) {
+    problems.push(problem("kind-payload", "`kind` must be `message`, `question` or `answer`; got " + JSON.stringify(envelope.kind)));
+    return check(problems);
+  }
+  if (envelope.kind === "message") {
+    if (envelope.question !== undefined)
+      problems.push(problem("kind-payload", "a `message` row must not carry a question payload"));
+    if (envelope.answer !== undefined)
+      problems.push(problem("kind-payload", "a `message` row must not carry an answer payload"));
+  } else if (envelope.kind === "question") {
+    if (envelope.question === undefined)
+      problems.push(problem("kind-payload", "a `question` row must carry its question payload"));
+    else
+      appendProblems(problems, validateQuestion(envelope.question));
+    if (envelope.answer !== undefined)
+      problems.push(problem("kind-payload", "a `question` row must not carry an answer payload"));
+  } else {
+    if (envelope.answer === undefined)
+      problems.push(problem("kind-payload", "an `answer` row must carry its answer payload"));
+    else
+      appendProblems(problems, validateAnswer(envelope.answer));
+    if (envelope.question !== undefined)
+      problems.push(problem("kind-payload", "an `answer` row must not carry a question payload"));
+  }
+  return check(problems);
+}
+function validateReferences(envelope, messages) {
+  const problems = [];
+  const byId = new Map(messages.map((message) => [message.id, message]));
+  if (envelope.replyTo !== undefined) {
+    if (typeof envelope.replyTo !== "string" || !byId.has(envelope.replyTo)) {
+      problems.push(problem("reference-unknown", "`replyTo` names no message in this mailbox: " + JSON.stringify(envelope.replyTo)));
+    }
+  }
+  if (envelope.kind === "answer" && envelope.answer !== undefined) {
+    const target = byId.get(envelope.answer.answerTo);
+    if (target === undefined) {
+      problems.push(problem("reference-unknown", "`answerTo` names no message in this mailbox: " + JSON.stringify(envelope.answer.answerTo)));
+    } else if (target.kind !== "question") {
+      problems.push(problem("reference-not-question", "`answerTo` must name a `question` row; " + target.id + " is a `" + target.kind + "` row"));
+    } else if (target.question !== undefined) {
+      appendProblems(problems, validateAnswer(envelope.answer, target.question));
+    } else {
+      problems.push(problem("question-payload-missing", "the referenced `question` row " + target.id + " carries no question payload, so its offered labels cannot be checked"));
+      appendProblems(problems, validateAnswer(envelope.answer));
+    }
+  }
+  return check(problems);
+}
+function inheritedThreadId(envelope, byId) {
+  if (typeof envelope.threadId === "string" && envelope.threadId !== "")
+    return envelope.threadId;
+  if (typeof envelope.replyTo === "string" && envelope.replyTo !== "")
+    return byId.get(envelope.replyTo)?.threadId;
+  return;
+}
+function fanOutTargets(senderId, targets) {
+  const out = [];
+  const seen = new Set;
+  for (const target of targets) {
+    if (target.id === "" || target.id === senderId || seen.has(target.id))
+      continue;
+    seen.add(target.id);
+    out.push({ id: target.id, name: target.name });
+  }
+  return out;
+}
+// packages/mpd-mail-protocol/src/fold.ts
+function isPlainObject2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function textOf(value) {
+  if (typeof value === "string")
+    return value;
+  return value === undefined || value === null ? "" : String(value);
+}
+function objectOf(value) {
+  return isPlainObject2(value) ? value : undefined;
+}
+function foldSend(state, record, line) {
+  const id = record.id;
+  if (typeof id !== "string" || id === "") {
+    state.problems.push("line " + String(line) + ": a `send` row has no id, skipped");
+    return;
+  }
+  if (state.byId.has(id)) {
+    state.problems.push("line " + String(line) + ": duplicate `send` id " + JSON.stringify(id) + "; the FIRST write wins and this row is ignored");
+    return;
+  }
+  const kindValue = record.kind;
+  const kind = isMailKind(kindValue) ? kindValue : "message";
+  if (kindValue !== undefined && !isMailKind(kindValue)) {
+    state.problems.push("line " + String(line) + ": unknown kind " + JSON.stringify(kindValue) + ", folded as `message`");
+  }
+  const replyTo = typeof record.replyTo === "string" && record.replyTo !== "" ? record.replyTo : undefined;
+  const statedThread = typeof record.threadId === "string" && record.threadId !== "" ? record.threadId : undefined;
+  let question = objectOf(record.question);
+  let answer = objectOf(record.answer);
+  if (kind === "question" && question === undefined) {
+    state.problems.push("line " + String(line) + ": a `question` row has no question payload");
+  }
+  if (kind === "answer" && answer === undefined) {
+    state.problems.push("line " + String(line) + ": an `answer` row has no answer payload");
+  }
+  if (kind !== "question" && question !== undefined) {
+    state.problems.push("line " + String(line) + ": a `" + kind + "` row carries a question payload, dropped");
+    question = undefined;
+  }
+  if (kind !== "answer" && answer !== undefined) {
+    state.problems.push("line " + String(line) + ": a `" + kind + "` row carries an answer payload, dropped");
+    answer = undefined;
+  }
+  if (replyTo !== undefined && !state.byId.has(replyTo)) {
+    state.problems.push("line " + String(line) + ": `replyTo` " + JSON.stringify(replyTo) + " names no folded message; the reply re-roots on its own id");
+  }
+  if (statedThread !== undefined && statedThread !== id && !state.byId.has(statedThread)) {
+    state.problems.push("line " + String(line) + ": explicit `threadId` " + JSON.stringify(statedThread) + " names no folded message; kept as declared");
+  }
+  const inherited = inheritedThreadId({
+    kind,
+    ...replyTo === undefined ? {} : { replyTo },
+    ...statedThread === undefined ? {} : { threadId: statedThread }
+  }, state.byId);
+  const message = {
+    id,
+    kind,
+    fromId: textOf(record.fromId),
+    fromName: textOf(record.fromName),
+    toId: textOf(record.toId),
+    toName: textOf(record.toName),
+    subject: textOf(record.subject),
+    body: textOf(record.body),
+    sentAt: textOf(record.at),
+    threadId: inherited ?? id,
+    ...typeof record.teamId === "string" && record.teamId !== "" ? { teamId: record.teamId } : {},
+    ...replyTo === undefined ? {} : { replyTo },
+    ...question === undefined ? {} : { question },
+    ...answer === undefined ? {} : { answer }
+  };
+  state.byId.set(id, message);
+}
+function foldStateRecord(state, record, line) {
+  const id = record.id;
+  if (typeof id !== "string" || id === "") {
+    state.problems.push("line " + String(line) + ": a `" + String(record.t) + "` row has no id, skipped");
+    return;
+  }
+  const message = state.byId.get(id);
+  if (message === undefined) {
+    state.problems.push("line " + String(line) + ": a `" + String(record.t) + "` row references unfolded message " + JSON.stringify(id));
+    return;
+  }
+  if (record.t === "delivered") {
+    message.deliveredAt = textOf(record.at);
+    return;
+  }
+  message.readAt = textOf(record.at);
+  const by = record.by;
+  if (typeof by === "string" && by !== "")
+    message.readBy = by;
+}
+function foldMail(records) {
+  const state = { byId: new Map, problems: [] };
+  records.forEach((raw, index) => {
+    if (!isPlainObject2(raw)) {
+      state.problems.push("line " + String(index + 1) + ": not a JSON object, skipped");
+      return;
+    }
+    if (raw.t === "send") {
+      foldSend(state, raw, index + 1);
+      return;
+    }
+    if (raw.t === "delivered" || raw.t === "read") {
+      foldStateRecord(state, raw, index + 1);
+      return;
+    }
+  });
+  return { messages: [...state.byId.values()], problems: state.problems };
+}
+// packages/mpd-team-core-plugin/src/mailbox-store.ts
 function mailboxPath(workspace) {
   return join2(workspace, ".mpd", "team", "mailbox.jsonl");
 }
 function fold(records) {
-  const byId = new Map;
+  const folded = foldMail(records);
+  const messages = folded.messages;
+  const stamps = new Map;
   for (const raw of records) {
-    const record = raw;
-    if (record === null || typeof record !== "object")
+    if (raw === null || typeof raw !== "object")
       continue;
-    if (record.t === "send") {
-      const send = record;
-      if (typeof send.id !== "string" || send.id === "")
-        continue;
-      byId.set(send.id, {
-        id: send.id,
-        fromId: String(send.fromId ?? ""),
-        fromName: String(send.fromName ?? ""),
-        toId: String(send.toId ?? ""),
-        toName: String(send.toName ?? ""),
-        subject: String(send.subject ?? ""),
-        body: String(send.body ?? ""),
-        sentAt: String(send.at ?? ""),
-        ...typeof send.teamId === "string" && send.teamId !== "" ? { teamId: send.teamId } : {}
-      });
+    const line = raw;
+    if (line.t !== "send" || typeof line.id !== "string" || line.id === "")
       continue;
-    }
-    if (record.t === "delivered" || record.t === "read") {
-      const id = String(record.id ?? "");
-      const message = byId.get(id);
-      if (message === undefined)
-        continue;
-      const at = String(record.at ?? "");
-      if (record.t === "delivered")
-        message.deliveredAt = at;
-      else
-        message.readAt = at;
-    }
+    if (stamps.has(line.id))
+      continue;
+    const cellId = typeof line.cellId === "string" && line.cellId !== "" ? line.cellId : undefined;
+    const fromCell = typeof line.fromCell === "string" && line.fromCell !== "" ? line.fromCell : undefined;
+    const fromMemberId = typeof line.fromMemberId === "string" && line.fromMemberId !== "" ? line.fromMemberId : undefined;
+    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined)
+      continue;
+    stamps.set(line.id, {
+      ...cellId === undefined ? {} : { cellId },
+      ...fromCell === undefined ? {} : { fromCell },
+      ...fromMemberId === undefined ? {} : { fromMemberId }
+    });
   }
-  return { messages: [...byId.values()] };
+  return {
+    messages: messages.map((message) => ({ ...message, ...stamps.get(message.id) ?? {} })),
+    problems: [...folded.problems]
+  };
 }
 function readRecords(workspace) {
   const path = mailboxPath(workspace);
@@ -2095,6 +2433,17 @@ function appendRecord(workspace, record) {
   appendFileSync(mailboxPath(workspace), JSON.stringify(record) + `
 `);
 }
+function recordWake(workspace, id, outcome, now) {
+  const record = {
+    t: "wake",
+    id,
+    sent: outcome.sent,
+    ...outcome.reason === undefined || outcome.reason === "" ? {} : { reason: outcome.reason },
+    at: now.toISOString()
+  };
+  appendRecord(workspace, record);
+  return record;
+}
 function inboxOf(state, memberId) {
   return state.messages.filter((message) => message.toId === memberId);
 }
@@ -2110,7 +2459,10 @@ function undeliveredOf(state, memberId) {
 function scopeToTeam(state, teamId) {
   if (teamId === undefined || teamId === "")
     return state;
-  return { messages: state.messages.filter((message) => message.teamId === teamId) };
+  return {
+    messages: state.messages.filter((message) => message.teamId === teamId),
+    ...state.problems === undefined ? {} : { problems: state.problems }
+  };
 }
 function summarise(state) {
   const order = [];
@@ -2133,33 +2485,113 @@ function summarise(state) {
   }
   return order.map((id) => seen.get(id));
 }
-function send(workspace, input, now) {
-  if (input.toId === input.fromId) {
-    return { ok: false, reason: "self", detail: "a team member cannot message itself" };
+function resolveRecipients(directory, to) {
+  const spelling = to.trim();
+  const alias = spelling.toLowerCase();
+  const all = directory.lead === undefined ? [...directory.members] : [...directory.members, directory.lead];
+  const names = all.map((address) => address.name === "" ? address.id : address.name).join(", ");
+  if (spelling === "*") {
+    return { ok: true, targets: fanOutTargets(directory.selfId, all), broadcast: true };
   }
-  if (!input.memberIds.includes(input.toId)) {
-    return { ok: false, reason: "unknown-recipient", detail: `"${input.toName || input.toId}" is not a member of this team` };
+  if (alias === "captain" || alias === "lead") {
+    if (directory.lead === undefined) {
+      return { ok: false, reason: "unknown-recipient", detail: `this team records no lead, so "${spelling}" is not addressable (members: ${names || "none"})` };
+    }
+    return { ok: true, targets: [{ id: directory.lead.id, name: "captain" }], broadcast: false };
+  }
+  const member = directory.members.find((address) => address.id === spelling) ?? directory.members.find((address) => address.name === spelling);
+  if (member === undefined) {
+    return { ok: false, reason: "unknown-recipient", detail: `"${spelling}" is not a member of this team (members: ${names || "none"})` };
+  }
+  return { ok: true, targets: [{ id: member.id, name: member.name }], broadcast: false };
+}
+function problemsSentence(check2) {
+  return check2.problems.map((problem2) => problem2.labels === undefined ? problem2.message : `${problem2.message} (valid labels: ${problem2.labels.join(", ")})`).join("; ");
+}
+function unauthorizedAnswer(messageId) {
+  return "only a recipient of the question may answer it: " + messageId;
+}
+function sendMany(workspace, input, targets, now) {
+  const replyTo = input.replyTo !== undefined && input.replyTo !== "" ? input.replyTo : input.kind === "answer" && input.answer !== undefined && input.answer.answerTo !== "" ? input.answer.answerTo : undefined;
+  const envelope = {
+    kind: input.kind ?? "message",
+    ...replyTo === undefined ? {} : { replyTo },
+    ...input.threadId === undefined || input.threadId === "" ? {} : { threadId: input.threadId },
+    ...input.question === undefined ? {} : { question: input.question },
+    ...input.answer === undefined ? {} : { answer: input.answer }
+  };
+  const addressable = new Set([...input.memberIds, ...input.leadIds ?? []]);
+  const senderIds = new Set([input.fromId, ...input.fromMemberId === undefined || input.fromMemberId === "" ? [] : [input.fromMemberId]]);
+  for (const target of targets) {
+    if (senderIds.has(target.id))
+      return { ok: false, reason: "self", detail: "a team member cannot message itself" };
+    if (!addressable.has(target.id))
+      return { ok: false, reason: "unknown-recipient", detail: `"${target.name || target.id}" is not a member of this team` };
+  }
+  const envelopeCheck = validateEnvelope(envelope);
+  if (!envelopeCheck.ok) {
+    return { ok: false, reason: "invalid-envelope", detail: problemsSentence(envelopeCheck) };
   }
   const state = readMailbox(workspace);
-  const backlog = undeliveredOf(scopeToTeam(state, input.teamId), input.toId).length;
+  const scoped = scopeToTeam(state, input.teamId);
+  const workspaceById = new Map(state.messages.map((message) => [message.id, message]));
+  if (envelope.kind === "answer" && envelope.answer !== undefined) {
+    if (envelope.replyTo !== undefined && envelope.replyTo !== envelope.answer.answerTo) {
+      return { ok: false, reason: "invalid-envelope", detail: "an answer's `replyTo` must be the question message it answers (`answerTo`)" };
+    }
+    const asked = workspaceById.get(envelope.answer.answerTo);
+    if (asked === undefined || asked.kind !== "question") {
+      return { ok: false, reason: "not-recipient", detail: unauthorizedAnswer(envelope.answer.answerTo) };
+    }
+    const senderIds2 = new Set([input.fromId, ...input.fromMemberId === undefined || input.fromMemberId === "" ? [] : [input.fromMemberId]]);
+    const askerIds = new Set([asked.fromId, ...asked.fromMemberId === undefined ? [] : [asked.fromMemberId]].filter((id) => id !== ""));
+    if (!senderIds2.has(asked.toId)) {
+      return { ok: false, reason: "not-recipient", detail: unauthorizedAnswer(envelope.answer.answerTo) };
+    }
+    for (const target of targets) {
+      if (!askerIds.has(target.id)) {
+        return { ok: false, reason: "not-recipient", detail: `an answer goes back to the asker ("${asked.fromName}"), not to "${target.name || target.id}"` };
+      }
+    }
+  }
+  const referenceCheck = validateReferences(envelope, state.messages);
+  if (!referenceCheck.ok) {
+    return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) };
+  }
   const cap = input.maxUndelivered ?? 8;
-  if (cap > 0 && backlog >= cap) {
-    return { ok: false, reason: "backlog-full", detail: `"${input.toName || input.toId}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+  for (const target of targets) {
+    const backlog = undeliveredOf(scoped, target.id).length;
+    if (cap > 0 && backlog >= cap) {
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+    }
   }
   const at = now.toISOString();
-  const message = {
-    id: `mail-${at.replace(/[-:.TZ]/g, "").slice(0, 14)}-${(state.messages.length + 1).toString().padStart(3, "0")}`,
+  const stem = `mail-${at.replace(/[-:.TZ]/g, "").slice(0, 14)}-`;
+  const ids = targets.map((_target, index) => stem + (state.messages.length + 1 + index).toString().padStart(3, "0"));
+  const threadById = envelope.kind === "answer" ? workspaceById : new Map(scoped.messages.map((message) => [message.id, message]));
+  const threadId = inheritedThreadId(envelope, threadById) ?? ids[0];
+  const messages = targets.map((target, index) => ({
+    id: ids[index],
+    kind: envelope.kind,
+    ...envelope.replyTo === undefined ? {} : { replyTo: envelope.replyTo },
+    threadId,
+    ...envelope.question === undefined ? {} : { question: envelope.question },
+    ...envelope.answer === undefined ? {} : { answer: envelope.answer },
     fromId: input.fromId,
     fromName: input.fromName,
-    toId: input.toId,
-    toName: input.toName,
+    toId: target.id,
+    toName: target.name,
     subject: input.subject,
     body: input.body,
     sentAt: at,
-    ...input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId }
-  };
-  appendRecord(workspace, { t: "send", ...message, at });
-  return { ok: true, message };
+    ...input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId },
+    ...input.cellId === undefined || input.cellId === "" ? {} : { cellId: input.cellId },
+    ...input.fromCell === undefined || input.fromCell === "" ? {} : { fromCell: input.fromCell },
+    ...input.fromMemberId === undefined || input.fromMemberId === "" ? {} : { fromMemberId: input.fromMemberId }
+  }));
+  for (const message of messages)
+    appendRecord(workspace, { t: "send", ...message, at });
+  return { ok: true, messages };
 }
 function markDelivered(workspace, ids, now) {
   const state = readMailbox(workspace);
@@ -2174,18 +2606,218 @@ function markDelivered(workspace, ids, now) {
   }
   return moved;
 }
-function markRead(workspace, ids, now) {
+function acknowledge(workspace, ids, ack, now) {
   const state = readMailbox(workspace);
   const byId = new Map(state.messages.map((message) => [message.id, message]));
   const moved = [];
+  const refused = [];
   for (const id of ids) {
     const message = byId.get(id);
     if (message === undefined || message.readAt !== undefined)
       continue;
-    appendRecord(workspace, { t: "read", id, at: now.toISOString() });
+    if (message.toId !== ack.byId) {
+      refused.push({ id, reason: `${id} was addressed to "${message.toName}", not to "${ack.byName}" — only its recipient may acknowledge it` });
+      continue;
+    }
+    appendRecord(workspace, { t: "read", id, at: now.toISOString(), by: ack.byName });
     moved.push(id);
   }
-  return moved;
+  return { moved, refused };
+}
+
+// packages/mpd-team-core-plugin/src/mail-permit.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2 } from "node:fs";
+import { join as join3 } from "node:path";
+var PERMIT_SCOPES = ["answer", "message"];
+function isPermitScope(value) {
+  return value === "answer" || value === "message";
+}
+var PERMIT_DEFAULT_TTL_MS = 60000;
+var PERMIT_MAX_TTL_MS = 600000;
+var WAIT_MAX_TIMEOUT_MS = 60000;
+var WAIT_DEFAULT_TIMEOUT_MS = 15000;
+var WAIT_POLL_INTERVAL_MS = 50;
+function permitsPath(workspace) {
+  return join3(workspace, ".mpd", "team", "permits.jsonl");
+}
+function readPermitRecords(workspace) {
+  const path = permitsPath(workspace);
+  if (!existsSync2(path))
+    return [];
+  let text = "";
+  try {
+    text = readFileSync2(path, "utf8");
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const line of text.split(`
+`)) {
+    if (line.trim() === "")
+      continue;
+    try {
+      out.push(JSON.parse(line));
+    } catch {}
+  }
+  return out;
+}
+function isPermitRecord(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    return false;
+  const line = value;
+  if (line.t !== "permit")
+    return false;
+  for (const field of ["permitId", "issuerId", "issuerName", "holderId", "holderName", "at"]) {
+    if (typeof line[field] !== "string" || line[field].trim() === "")
+      return false;
+  }
+  if (!isPermitScope(line.scope))
+    return false;
+  if (typeof line.ttlMs !== "number" || !Number.isFinite(line.ttlMs) || line.ttlMs <= 0)
+    return false;
+  if (typeof line.expiresAt !== "string" || !Number.isFinite(Date.parse(line.expiresAt)))
+    return false;
+  return line.questionId === undefined || typeof line.questionId === "string";
+}
+function foldPermits(records) {
+  const permits = [];
+  const problems = [];
+  const seen = new Set;
+  for (const raw of records) {
+    if (!isPermitRecord(raw)) {
+      problems.push('skipped a line that does not carry the permit shape (t:"permit" with every field)');
+      continue;
+    }
+    if (seen.has(raw.permitId)) {
+      problems.push(`skipped a duplicate permit id "${raw.permitId}" (the FIRST write wins)`);
+      continue;
+    }
+    seen.add(raw.permitId);
+    permits.push(raw);
+  }
+  return { permits, problems };
+}
+function readPermits(workspace) {
+  return foldPermits(readPermitRecords(workspace));
+}
+function appendPermit(workspace, permit) {
+  mkdirSync3(join3(workspace, ".mpd", "team"), { recursive: true });
+  appendFileSync2(permitsPath(workspace), JSON.stringify(permit) + `
+`);
+}
+function buildPermit(input, now) {
+  const ttlMs = Math.min(Math.max(Math.floor(input.ttlMs), 1), PERMIT_MAX_TTL_MS);
+  const questionId = input.questionId === undefined ? "" : input.questionId.trim();
+  return {
+    t: "permit",
+    permitId: input.permitId === undefined || input.permitId.trim() === "" ? `permit-${randomUUID2()}` : input.permitId.trim(),
+    issuerId: input.issuerId.trim(),
+    issuerName: input.issuerName.trim(),
+    holderId: input.holderId.trim(),
+    holderName: input.holderName.trim(),
+    scope: input.scope,
+    ttlMs,
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+    ...questionId === "" ? {} : { questionId },
+    at: now.toISOString()
+  };
+}
+function issuePermit(workspace, input, now) {
+  if (input.issuerId.trim() === "" || input.holderId.trim() === "") {
+    return { ok: false, detail: "a permit needs a non-empty issuer and holder — an unattributable grant can never be validated" };
+  }
+  const scope = input.scope === undefined ? "answer" : input.scope;
+  if (!isPermitScope(scope)) {
+    return { ok: false, detail: `scope must be one of ${PERMIT_SCOPES.map((entry) => `"${entry}"`).join(" or ")} — got ${JSON.stringify(input.scope ?? null)}` };
+  }
+  const requestedTtl = input.ttlMs === undefined ? PERMIT_DEFAULT_TTL_MS : Number(input.ttlMs);
+  if (!Number.isFinite(requestedTtl) || requestedTtl <= 0) {
+    return { ok: false, detail: `ttlMs must be a positive number of milliseconds (bound ${PERMIT_MAX_TTL_MS}) — got ${JSON.stringify(input.ttlMs ?? null)}` };
+  }
+  const questionId = input.questionId === undefined ? "" : String(input.questionId).trim();
+  const permit = buildPermit({
+    issuerId: input.issuerId,
+    issuerName: input.issuerName,
+    holderId: input.holderId,
+    holderName: input.holderName,
+    scope,
+    ttlMs: requestedTtl,
+    ...questionId === "" ? {} : { questionId },
+    ...input.permitId === undefined ? {} : { permitId: input.permitId }
+  }, now);
+  appendPermit(workspace, permit);
+  return { ok: true, permit };
+}
+function checkPermit(permit, caller, now) {
+  if (permit === undefined)
+    return { ok: false, reason: "unknown", detail: "no such permit is recorded" };
+  const expiresAt = Date.parse(permit.expiresAt);
+  if (!Number.isFinite(expiresAt))
+    return { ok: false, reason: "invalid", detail: `permit ${permit.permitId} carries no parsable expiresAt ("${permit.expiresAt}")` };
+  const at = now.getTime();
+  if (at >= expiresAt) {
+    return { ok: false, reason: "expired", detail: `permit ${permit.permitId} expired at ${permit.expiresAt} (it is now ${now.toISOString()}) — ask its issuer for a fresh one` };
+  }
+  const spellings = new Set([caller.holderId, ...caller.sessionId === undefined ? [] : [caller.sessionId]].filter((value) => value !== ""));
+  if (!spellings.has(permit.holderId) && (caller.holderName === "" || caller.holderName !== permit.holderName)) {
+    return { ok: false, reason: "foreign-holder", detail: `permit ${permit.permitId} was issued to "${permit.holderName}" ("${permit.holderId}"), not to this caller` };
+  }
+  const leadIds = (caller.leadIds ?? []).filter((id) => id !== "");
+  if (leadIds.length === 0)
+    return { ok: false, reason: "foreign-issuer", detail: `permit ${permit.permitId} cannot be validated: this caller's team records no captain` };
+  if (!leadIds.includes(permit.issuerId)) {
+    return { ok: false, reason: "foreign-issuer", detail: `permit ${permit.permitId} was issued by "${permit.issuerName}" ("${permit.issuerId}"), who is not this caller's captain` };
+  }
+  const remaining = expiresAt - at;
+  const requested = caller.requestedTimeoutMs === undefined || !Number.isFinite(caller.requestedTimeoutMs) ? WAIT_DEFAULT_TIMEOUT_MS : Math.max(0, Math.floor(caller.requestedTimeoutMs));
+  const timeoutMs = Math.max(0, Math.min(requested, WAIT_MAX_TIMEOUT_MS, remaining));
+  return { ok: true, permit, timeoutMs };
+}
+function checkWaitTarget(permit, target) {
+  if (permit.scope === "answer" && target.kind !== "question") {
+    return { ok: false, reason: "not-a-question", detail: `permit ${permit.permitId} has scope "answer", so it waits on a question; "${target.id}" is a ${target.kind} row` };
+  }
+  const questionId = permit.questionId;
+  if (questionId !== undefined && questionId !== "" && target.question?.questionId !== questionId) {
+    return { ok: false, reason: "wrong-question", detail: `permit ${permit.permitId} is scoped to question "${questionId}", but "${target.id}" carries "${target.question?.questionId ?? ""}"` };
+  }
+  return { ok: true };
+}
+function repliesTo(state, permit, target) {
+  const questionId = target.question?.questionId;
+  return state.messages.filter((message) => {
+    if (message.id === target.id)
+      return false;
+    if (message.answer !== undefined && message.answer.answerTo === target.id) {
+      if (permit.scope === "message")
+        return true;
+      return message.kind === "answer" && (questionId === undefined || message.answer.questionId === questionId);
+    }
+    return permit.scope === "message" && message.replyTo === target.id;
+  });
+}
+async function waitForReply(context) {
+  const intervalMs = Number.isFinite(context.intervalMs) ? Math.max(1, Math.floor(context.intervalMs ?? WAIT_POLL_INTERVAL_MS)) : WAIT_POLL_INTERVAL_MS;
+  const timeoutMs = Number.isFinite(context.timeoutMs) ? Math.max(0, Math.floor(context.timeoutMs)) : 0;
+  const startedAt = context.now().getTime();
+  const deadline = startedAt + timeoutMs;
+  const maxPolls = Math.max(1, Math.ceil(timeoutMs / intervalMs) + 1);
+  let polls = 0;
+  for (;; ) {
+    polls += 1;
+    const found = repliesTo(context.read(), context.permit, context.target);
+    if (found.length > 0)
+      return { ok: true, messages: found, polls, waitedMs: Math.max(0, context.now().getTime() - startedAt) };
+    if (context.signal?.aborted === true)
+      return { ok: false, reason: "aborted", polls, waitedMs: Math.max(0, context.now().getTime() - startedAt) };
+    if (polls >= maxPolls)
+      return { ok: false, reason: "timeout", polls, waitedMs: Math.max(0, context.now().getTime() - startedAt) };
+    const remaining = deadline - context.now().getTime();
+    if (remaining <= 0)
+      return { ok: false, reason: "timeout", polls, waitedMs: Math.max(0, context.now().getTime() - startedAt) };
+    await context.sleep(Math.min(intervalMs, remaining));
+  }
 }
 
 // packages/mpd-team-core-plugin/src/dispatch.ts
@@ -2364,24 +2996,24 @@ function reconcile(ledger, teamId, tasks) {
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync as readdirSync2, renameSync as renameSync3, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join4 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync2, renameSync as renameSync3, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { join as join5 } from "node:path";
 
 // packages/mpd-team-core-plugin/src/team-store.ts
-import { existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
-import { join as join3 } from "node:path";
+import { existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync3, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
+import { join as join4 } from "node:path";
 var TASK_KINDS = ["requirement", "work", "review", "repair", "integration"];
 function teamRoot(workspace) {
-  return join3(workspace, ".mpd", "team");
+  return join4(workspace, ".mpd", "team");
 }
 function teamsDir(workspace) {
-  return join3(teamRoot(workspace), "teams");
+  return join4(teamRoot(workspace), "teams");
 }
 function teamRecordPath(workspace, teamId) {
-  return join3(teamsDir(workspace), sanitizeId(teamId) + ".json");
+  return join4(teamsDir(workspace), sanitizeId(teamId) + ".json");
 }
 function teamsIndexPath(workspace) {
-  return join3(teamRoot(workspace), "teams.json");
+  return join4(teamRoot(workspace), "teams.json");
 }
 function sanitizeId(value) {
   const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "");
@@ -2389,14 +3021,14 @@ function sanitizeId(value) {
 }
 function readJson(path) {
   try {
-    const parsed = JSON.parse(readFileSync2(path, "utf8"));
+    const parsed = JSON.parse(readFileSync3(path, "utf8"));
     return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : undefined;
   } catch {
     return;
   }
 }
 function writeJson(path, value) {
-  mkdirSync3(join3(path, ".."), { recursive: true });
+  mkdirSync4(join4(path, ".."), { recursive: true });
   const temp = path + ".tmp-" + process.pid;
   writeFileSync(temp, JSON.stringify(value, null, 2) + `
 `);
@@ -2479,7 +3111,7 @@ function listTeams(workspace) {
 }
 function createTeam(workspace, input, now) {
   const teamId = input.teamId ?? newTeamId(now);
-  if (existsSync2(teamRecordPath(workspace, teamId))) {
+  if (existsSync3(teamRecordPath(workspace, teamId))) {
     throw new Error(`team id "${teamId}" already exists in this workspace — refusing to overwrite a team record`);
   }
   const record = {
@@ -2901,7 +3533,7 @@ function idleMembers(record) {
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
 function teamRoot2(workspace) {
-  return join4(workspace, ".mpd", "team");
+  return join5(workspace, ".mpd", "team");
 }
 function planFileId(value, what) {
   const raw = String(value);
@@ -2914,21 +3546,21 @@ function planFileId(value, what) {
   }
   return id;
 }
-var stagingDir = (workspace) => join4(teamRoot2(workspace), "staging");
-var stagingPath = (workspace, sessionId) => join4(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json");
-var contractsDir = (workspace) => join4(teamRoot2(workspace), "contracts");
-var contractPath = (workspace, taskId) => join4(contractsDir(workspace), planFileId(taskId, "contract task id") + ".json");
-var holdPath = (workspace) => join4(teamRoot2(workspace), "hold.json");
-var archiveDir = (workspace) => join4(teamRoot2(workspace), "archive");
+var stagingDir = (workspace) => join5(teamRoot2(workspace), "staging");
+var stagingPath = (workspace, sessionId) => join5(stagingDir(workspace), planFileId(sessionId, "staging session id") + ".json");
+var contractsDir = (workspace) => join5(teamRoot2(workspace), "contracts");
+var contractPath = (workspace, taskId) => join5(contractsDir(workspace), planFileId(taskId, "contract task id") + ".json");
+var holdPath = (workspace) => join5(teamRoot2(workspace), "hold.json");
+var archiveDir = (workspace) => join5(teamRoot2(workspace), "archive");
 function readJson2(path) {
   try {
-    return JSON.parse(readFileSync3(path, "utf8"));
+    return JSON.parse(readFileSync4(path, "utf8"));
   } catch {
     return;
   }
 }
 function writeJson2(path, value) {
-  mkdirSync4(join4(path, ".."), { recursive: true });
+  mkdirSync5(join5(path, ".."), { recursive: true });
   writeFileSync2(path, JSON.stringify(value, null, 2) + `
 `);
 }
@@ -2983,13 +3615,13 @@ function classifyBlocker(plan, reference) {
 }
 function archivePlan(workspace, plan) {
   const target = archivePathFor(workspace, plan.planId);
-  if (existsSync3(join4(target, "plan.json"))) {
+  if (existsSync4(join5(target, "plan.json"))) {
     throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`);
   }
-  mkdirSync4(target, { recursive: true });
-  writeJson2(join4(target, "plan.json"), plan);
+  mkdirSync5(target, { recursive: true });
+  writeJson2(join5(target, "plan.json"), plan);
   const staged = stagingPath(workspace, plan.sessionId);
-  if (existsSync3(staged))
+  if (existsSync4(staged))
     rmSync3(staged, { force: true });
   return target;
 }
@@ -3025,7 +3657,7 @@ function listContracts(workspace) {
   for (const name of names) {
     if (!name.endsWith(".json"))
       continue;
-    const contract = readJson2(join4(contractsDir(workspace), name));
+    const contract = readJson2(join5(contractsDir(workspace), name));
     if (contract !== undefined && contract.version === 1)
       out.push(contract);
   }
@@ -3042,17 +3674,17 @@ function placeHold(workspace, reason, heldBy, now) {
 }
 function clearHold(workspace) {
   const path = holdPath(workspace);
-  if (!existsSync3(path))
+  if (!existsSync4(path))
     return false;
   rmSync3(path, { force: true });
   return true;
 }
 function archivePathFor(workspace, planId) {
-  return join4(archiveDir(workspace), planFileId(planId, "archived plan id"));
+  return join5(archiveDir(workspace), planFileId(planId, "archived plan id"));
 }
 function moveIntoArchive(workspace, from, planId) {
   const target = archivePathFor(workspace, planId);
-  mkdirSync4(archiveDir(workspace), { recursive: true });
+  mkdirSync5(archiveDir(workspace), { recursive: true });
   renameSync3(from, target);
   return target;
 }
@@ -3400,11 +4032,17 @@ function buildTeamMail(workspace) {
       subject: String(entry.subject ?? ""),
       body: String(entry.body ?? ""),
       sentAt: String(entry.sentAt ?? ""),
+      kind: String(entry.kind ?? "message"),
+      threadId: String(entry.threadId ?? ""),
+      ...entry.replyTo === undefined ? {} : { replyTo: String(entry.replyTo) },
+      ...entry.question === undefined ? {} : { question: entry.question },
+      ...entry.answer === undefined ? {} : { answer: entry.answer },
       ...entry.deliveredAt === undefined ? {} : { deliveredAt: String(entry.deliveredAt) },
-      ...entry.readAt === undefined ? {} : { readAt: String(entry.readAt) }
+      ...entry.readAt === undefined ? {} : { readAt: String(entry.readAt) },
+      ...entry.readBy === undefined ? {} : { readBy: String(entry.readBy) }
     };
   });
-  return { ok: true, workspace, messages, records: readRecords(workspace).length };
+  return { ok: true, workspace, messages, records: readRecords(workspace).length, problems: (Array.isArray(state.problems) ? state.problems : []).map(String) };
 }
 function planForSession(workspace, sessionId) {
   return buildTeamPlan(readPlan(workspace, sessionId), workspace, sessionId);
@@ -3578,8 +4216,8 @@ data: ${JSON.stringify({ rev: revisionNow() })}
 }
 
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
-import { readFileSync as readFileSync4, readdirSync as readdirSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { readFileSync as readFileSync5, readdirSync as readdirSync3 } from "node:fs";
+import { join as join6 } from "node:path";
 var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
 function isLiveTeamPhase(phase) {
   return LIVE_TEAM_PHASES.includes(phase);
@@ -3589,13 +4227,13 @@ function readArchivedPlanIndex(workspace) {
   const unapproved = new Set;
   let entries = [];
   try {
-    entries = readdirSync3(join5(teamRoot(workspace), "archive"));
+    entries = readdirSync3(join6(teamRoot(workspace), "archive"));
   } catch {
     return { approved, unapproved };
   }
   for (const entry of entries) {
     try {
-      const raw = readFileSync4(join5(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
+      const raw = readFileSync5(join6(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
       const plan = JSON.parse(raw);
       const key = String(plan.planId ?? "");
       if (key === "")
@@ -4499,10 +5137,10 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync5, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join6, resolve as resolve3 } from "node:path";
-var LEDGER_PATH = join6(".mpd", "boulder.json");
-var PLANS_DIR = join6(".mpd", "plans");
+import { readFileSync as readFileSync6, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute2, join as join7, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join7(".mpd", "boulder.json");
+var PLANS_DIR = join7(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -4514,7 +5152,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync5(join6(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync6(join7(root, LEDGER_PATH), "utf8"));
     return isRecord2(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -4546,7 +5184,7 @@ function newestPlan(root) {
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join6(directory, entry.name);
+      const path = join7(directory, entry.name);
       const stats = statSync2(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
@@ -4559,7 +5197,7 @@ function newestPlan(root) {
   return candidates[0]?.path;
 }
 function plansDirectory(workspaceRoot) {
-  return join6(workspaceRoot, PLANS_DIR);
+  return join7(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -4571,14 +5209,14 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync5(path, "utf8"));
+    return parsePlanMarkdown(readFileSync6(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }
 }
 // packages/mpd-graph-core/src/watch.ts
 import { readdirSync as readdirSync5, statSync as statSync3, watch } from "node:fs";
-import { basename, dirname, join as join7 } from "node:path";
+import { basename, dirname, join as join8 } from "node:path";
 var REARM_DELAYS_MS = [25, 100, 400];
 function defaultCreateWatch(path, listener) {
   return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
@@ -4622,7 +5260,7 @@ function directorySignature(directory, accept) {
   for (const name of names.sort()) {
     if (!accept(name))
       continue;
-    const stats = statOrUndefined(join7(directory, name));
+    const stats = statOrUndefined(join8(directory, name));
     if (stats === undefined)
       continue;
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
@@ -5007,7 +5645,7 @@ class GraphModels {
 }
 
 // packages/mpd-team-core-plugin/src/change-feed.ts
-import { mkdirSync as mkdirSync5, watch as watch2 } from "node:fs";
+import { mkdirSync as mkdirSync6, watch as watch2 } from "node:fs";
 var watchDirectory = (dir, onEvent) => watch2(dir, { persistent: false }, onEvent);
 function detachTimer(timer) {
   const unref = timer.unref;
@@ -5130,7 +5768,7 @@ class ChangeFeed {
         if (state.armed.has(dir))
           continue;
         try {
-          mkdirSync5(dir, { recursive: true });
+          mkdirSync6(dir, { recursive: true });
         } catch {}
       }
       for (const dir of dirs) {
@@ -5179,17 +5817,17 @@ var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
-var dispatchPath = (workspace) => join8(workspace, ".mpd", "team", "dispatch.json");
+var dispatchPath = (workspace) => join9(workspace, ".mpd", "team", "dispatch.json");
 function readLedger(workspace) {
   try {
-    const raw = JSON.parse(readFileSync6(dispatchPath(workspace), "utf8"));
+    const raw = JSON.parse(readFileSync7(dispatchPath(workspace), "utf8"));
     return raw !== null && typeof raw === "object" ? raw : {};
   } catch {
     return {};
   }
 }
 function writeLedger(workspace, ledger) {
-  mkdirSync6(join8(workspace, ".mpd", "team"), { recursive: true });
+  mkdirSync7(join9(workspace, ".mpd", "team"), { recursive: true });
   const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
   writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
 `);
@@ -6352,23 +6990,33 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
-    description: "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it.",
+    description: "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it. A `question`/`answer` object makes the row that kind; answers echo LABELS verbatim, never an index. `permit` (captain-only) grants a TTL-bounded blocking wait to a member; `wait` uses it and is refused without one, naming the caller's captain. Every other action stays non-blocking.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["send", "unread", "read", "summary"], description: "What to do." },
-        to: { type: "string", description: "send: the member name or id to message." },
+        action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
+        to: { type: "string", description: "send: a member id/name, `captain`/`lead`, or `*` to broadcast." },
         subject: { type: "string", description: "send: one line the recipient sees first." },
         body: { type: "string", description: "send: the message." },
+        question: { type: "object", description: "send: {questionId, question, options:[{label}], multiSelect?}." },
+        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels], custom?}." },
+        replyTo: { type: "string", description: "send: the message id this row replies to." },
         member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." }
+        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+        holder: { type: "string", description: "permit: member id/name the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
+        ttlMs: { type: "number", description: "permit: grant lifetime in ms (default 60000, max 600000)." },
+        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
+        permitId: { type: "string", description: "wait: the captain-issued permit id." },
+        messageId: { type: "string", description: "wait: the message id being waited on." },
+        timeoutMs: { type: "number", description: "wait: block in ms (default 15000; capped by the permit and 60000)." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" }, broadcast: { type: "boolean" }, ok: { type: "boolean" }, reason: { type: "string" }, permit: { type: "object" }, permitScope: { type: "string" }, answers: { type: "array", items: { type: "object" } }, polls: { type: "number" }, waitedMs: { type: "number" } } },
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}` : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))` : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
 `) + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "") : (value?.messages?.length ?? 0) === 0 ? "nothing unread" : value.messages.map((mail) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join(`
 `))
     },
@@ -6379,37 +7027,155 @@ function apply(ctx) {
       const mailTeam = recordFor(workspace, caller, lineage);
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }));
       const resolve4 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
+      const callerId = String(self?.session?.id ?? caller);
+      const callerName = String(self?.session?.header?.title ?? caller);
+      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
+      const leadId = String(mailTeam?.leadSessionId ?? "");
+      const callerIsLead = mailTeam !== undefined && leadId !== "" && (mailTeam.leadSessionId === callerId || (mailTeam.leadHistory ?? []).includes(callerId) || lineage.some((id) => id === mailTeam.leadSessionId || (mailTeam.leadHistory ?? []).includes(id)));
+      const captainSpelling = () => {
+        if (mailTeam === undefined)
+          return "this caller resolves no team record, so no captain can have issued a permit";
+        if (leadId === "")
+          return "this team records no captain, so no permit can be valid";
+        if (callerIsLead)
+          return `this caller IS this team's captain ("${leadId}"), who grants permits to members`;
+        return `this caller's captain is "${leadId}"`;
+      };
       if (args?.action === "send") {
-        const target = resolve4(String(args?.to ?? ""));
-        if (target === undefined) {
-          return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` };
-        }
-        const result = send(workspace, {
-          fromId: self?.session?.id ?? caller,
-          fromName: self?.session?.header?.title ?? caller,
-          toId: target.id,
-          toName: target.name,
+        const resolved = resolveRecipients({
+          members: roster.map((member) => ({ id: member.id, name: member.name })),
+          ...leadId === "" ? {} : { lead: { id: leadId, name: "captain" } },
+          selfId: ownMember?.id ?? callerId
+        }, String(args?.to ?? ""));
+        if (!resolved.ok)
+          return { refused: resolved.detail };
+        if (resolved.targets.length === 0)
+          return { refused: "there is nobody to address — this team has no other members and records no lead" };
+        const result = sendMany(workspace, {
+          fromId: callerId,
+          fromName: callerName,
+          toId: resolved.targets[0].id,
+          toName: resolved.targets[0].name,
           subject: String(args?.subject ?? ""),
           body: String(args?.body ?? ""),
           memberIds: roster.map((member) => member.id),
+          ...leadId === "" ? {} : { leadIds: [leadId] },
+          kind: args?.answer !== undefined ? "answer" : args?.question !== undefined ? "question" : "message",
+          ...args?.replyTo === undefined ? {} : { replyTo: String(args.replyTo) },
+          ...args?.threadId === undefined ? {} : { threadId: String(args.threadId) },
+          ...args?.question === undefined ? {} : { question: args.question },
+          ...args?.answer === undefined ? {} : { answer: args.answer },
+          ...ownMember === undefined ? {} : { fromMemberId: ownMember.id },
           ...mailTeam === undefined ? {} : { teamId: mailTeam.teamId }
-        }, now());
+        }, resolved.targets, now());
         if (!result.ok)
           return { refused: result.detail };
-        try {
-          if (target.handle === "")
-            throw new Error(`${target.name} has no executor handle — it was never raised`);
-          await executor().send(exec.agent, target.handle, `[${result.message.subject}]
+        const delivered = [];
+        for (const message of result.messages) {
+          const member = roster.find((entry) => entry.id === message.toId);
+          if (member === undefined) {
+            recordWake(workspace, message.id, { sent: false, reason: `${message.toName} is the team lead — recorded, not woken` }, now());
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id}; the lead is recorded, not woken`);
+            continue;
+          }
+          if (member.handle === "") {
+            recordWake(workspace, message.id, { sent: false, reason: `${member.name} has no executor handle — it was never raised` }, now());
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id}; ${member.name} has no executor handle`);
+            continue;
+          }
+          try {
+            await executor().send(exec.agent, member.handle, `[${message.subject}]
 
-${result.message.body}`, exec.signal);
-          markDelivered(workspace, [result.message.id], now());
-        } catch (error) {
-          rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String(error?.message ?? error)}`);
+${message.body}`, exec.signal);
+            recordWake(workspace, message.id, { sent: true }, now());
+            delivered.push(message.id);
+          } catch (error) {
+            recordWake(workspace, message.id, { sent: false, reason: `the transport refused it: ${String(error?.message ?? error)}` }, now());
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id} but the transport refused it: ${String(error?.message ?? error)}`);
+          }
         }
-        return { message: result.message };
+        if (delivered.length > 0)
+          markDelivered(workspace, delivered, now());
+        return resolved.broadcast ? { messages: result.messages, broadcast: true } : { message: result.messages[0] };
+      }
+      if (args?.action === "permit") {
+        if (!callerIsLead)
+          return { refused: `permit: only this team's captain may issue a wait permit — ${captainSpelling()}` };
+        const holder = resolve4(String(args?.holder ?? ""));
+        if (holder === undefined) {
+          return { refused: `permit: "${String(args?.holder ?? "")}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
+        }
+        const issued = issuePermit(workspace, {
+          issuerId: callerId,
+          issuerName: callerName,
+          holderId: holder.id,
+          holderName: holder.name,
+          ...args?.scope === undefined ? {} : { scope: args.scope },
+          ...args?.ttlMs === undefined ? {} : { ttlMs: args.ttlMs },
+          ...args?.questionId === undefined ? {} : { questionId: args.questionId }
+        }, now());
+        if (!issued.ok)
+          return { refused: `permit: ${issued.detail}` };
+        return { ok: true, permit: issued.permit };
+      }
+      if (args?.action === "wait") {
+        const permitId = String(args?.permitId ?? "");
+        const messageId = String(args?.messageId ?? "");
+        if (permitId === "")
+          return { refused: `wait: permitId is required — a blocking wait needs a permit from your captain: ${captainSpelling()}` };
+        if (messageId === "")
+          return { refused: `wait: messageId is required (the row that will be answered) — the permit comes from your captain: ${captainSpelling()}` };
+        if (args?.timeoutMs !== undefined && (!Number.isFinite(Number(args.timeoutMs)) || Number(args.timeoutMs) < 0)) {
+          return { refused: `wait: timeoutMs must be a non-negative number of milliseconds — got ${JSON.stringify(args.timeoutMs ?? null)}` };
+        }
+        const permits = readPermits(workspace);
+        const permit = permits.permits.find((entry) => entry.permitId === permitId);
+        if (permit === undefined) {
+          return { refused: `wait: no permit "${permitId}" is recorded — a blocking wait needs a permit from your captain: ${captainSpelling()}; without one every mail call stays non-blocking` };
+        }
+        const checked = checkPermit(permit, {
+          holderId: ownMember?.id ?? callerId,
+          holderName: ownMember?.name ?? callerName,
+          sessionId: callerId,
+          leadIds: [leadId, ...mailTeam?.leadHistory ?? []].filter((id) => id !== ""),
+          ...args?.timeoutMs === undefined ? {} : { requestedTimeoutMs: Number(args.timeoutMs) }
+        }, now());
+        if (!checked.ok)
+          return { refused: `wait: ${checked.detail}` };
+        const state2 = scopeToTeam(readMailbox(workspace), mailTeam?.teamId);
+        const target = state2.messages.find((message) => message.id === messageId);
+        if (target === undefined)
+          return { refused: `wait: no message "${messageId}" is recorded for this team — pass the id the send returned` };
+        const targetCheck = checkWaitTarget(checked.permit, target);
+        if (!targetCheck.ok)
+          return { refused: `wait: ${targetCheck.detail}` };
+        const outcome = await waitForReply({
+          permit: checked.permit,
+          target,
+          timeoutMs: checked.timeoutMs,
+          read: () => scopeToTeam(readMailbox(workspace), mailTeam?.teamId),
+          now,
+          sleep: (ms) => new Promise((resolve5) => setTimeout(resolve5, ms)),
+          ...exec.signal === undefined ? {} : { signal: exec.signal }
+        });
+        if (!outcome.ok)
+          return { ok: false, reason: outcome.reason, permitId, permitScope: checked.permit.scope, polls: outcome.polls, waitedMs: outcome.waitedMs };
+        const answers = outcome.messages.flatMap((message) => message.answer === undefined ? [] : [{
+          id: message.id,
+          fromName: message.fromName,
+          questionId: message.answer.questionId,
+          answerTo: message.answer.answerTo,
+          selected: message.answer.selected,
+          ...message.answer.custom === undefined ? {} : { custom: message.answer.custom }
+        }]);
+        if (checked.permit.scope === "message") {
+          return { ok: true, permitId, permitScope: checked.permit.scope, messages: outcome.messages, polls: outcome.polls, waitedMs: outcome.waitedMs };
+        }
+        return { ok: true, permitId, permitScope: checked.permit.scope, answers, polls: outcome.polls, waitedMs: outcome.waitedMs };
       }
       if (args?.action === "read") {
-        return { moved: markRead(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], now()) };
+        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: ownMember?.id ?? callerId, byName: ownMember?.name ?? callerName }, now());
+        return { moved: outcome.moved, ...outcome.refused.length === 0 ? {} : { refused: outcome.refused.map((entry) => entry.reason).join("; ") } };
       }
       if (args?.action === "summary") {
         const state2 = readMailbox(workspace);
@@ -6425,8 +7191,6 @@ ${result.message.body}`, exec.signal);
       if (args?.member !== undefined && wanted === undefined) {
         return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
       }
-      const callerId = self?.session?.id ?? caller;
-      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
       const memberId = wanted?.id ?? ownMember?.id ?? callerId;
       const scoped = scopeToTeam(state, mailTeam?.teamId);
       return {
@@ -6436,7 +7200,12 @@ ${result.message.body}`, exec.signal);
           subject: message.subject,
           body: message.body,
           sentAt: message.sentAt,
-          delivered: message.deliveredAt !== undefined
+          delivered: message.deliveredAt !== undefined,
+          kind: message.kind,
+          threadId: message.threadId,
+          ...message.replyTo === undefined ? {} : { replyTo: message.replyTo },
+          ...message.question === undefined ? {} : { question: message.question },
+          ...message.answer === undefined ? {} : { answer: message.answer }
         })),
         undelivered: undeliveredOf(scoped, memberId).length,
         total: inboxOf(scoped, memberId).length,
@@ -6503,8 +7272,8 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join8(root, ".mpd", "team", "staging");
-      const pending = existsSync4(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const staging = join9(root, ".mpd", "team", "staging");
+      const pending = existsSync5(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {
           try {

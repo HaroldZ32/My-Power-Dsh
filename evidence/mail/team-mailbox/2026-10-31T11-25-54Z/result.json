@@ -1,0 +1,91 @@
+{
+  "review": {
+    "lane": "R2 (final re-verification of T23)",
+    "boardTask": "T24",
+    "workTask": "T23",
+    "subject": "Answer-path existence oracle closed, no regression, wave ready",
+    "contract": ".mpd/plans/mail-unify.md (254 lines) — §4 I4/I5, §5 ownership, §12 accepted security bound",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "70dc8903a9d98707a1fff7777c6b94a7680e63427416cced68253961ce073824",
+    "hashes": {
+      "src/mailbox-store.ts": "77f3abbf138c53d5a6e00864c4970eedb361c929054fe50afec1504e6c9b8e2c",
+      "test/mail-authorization-order.test.ts": "8e1acdc0507aeaaf808913a418a07b11695f85a12234f8be4c4c54b7719c470f",
+      "dist/index.js (team-core, FRESH)": "255bdbfccd72b488722fa07874397081f5dd9f90cac8354f3a0b254a5e649a96",
+      "dist/index.js (cellwork, STALE — T10 item)": "45169d924af63c191af124a09e580f2b77d10b58250013e2e9480657a42bc36f"
+    },
+    "sandwich": "Store + test hashes identical at gate start (11:25:54Z) and review end (11:26:43Z). The contract declares the plain-reply visibility as an ACCEPTED SECURITY BOUND and records the T17→T21→T22→T23 security incident."
+  },
+  "verdict": {
+    "task": "approve",
+    "answerPathOracle": "CLOSED",
+    "waveReady": "YES from this lane — code, tests and static gates are green; the ONE remaining precondition is T10's rebuild of the cellwork dist (it inlines the repaired team-core store) and its PR/Docker sweep.",
+    "riskLevel": "low",
+    "justification": "The three answer-path refusals are now literally the same sentence with only the caller-supplied id varying (no addressee, no labels, no existence bit, nothing written), the mismatched-replyTo path is existence-blind too, the declared plain-reply bound behaves exactly as §12 states (accepted, no thread root leaked), and every prior property re-verified clean: the leak stays closed, the proven cross-team addressee still answers and inherits the thread, the same-team addressee keeps the correction aid, and T18's seat keys still pass. The combined three-package suite is 695/695 and five static gates are green; the only red gate is dist-fresh for the cellwork bundle, which T10 owns."
+  },
+  "checks": [
+    {
+      "check": "A — answer-path oracle: an ABSENT id, an existing NON-QUESTION row and a FOREIGN question must be indistinguishable",
+      "result": "CLOSED",
+      "evidence": "Probe A: all three return `reason: not-recipient` with detail exactly `only a recipient of the question may answer it: <the caller-supplied id>`; no addressee name, no label text, no thread root, and zero answer rows written. Probe A2: `replyTo != answerTo` is checked before the lookup, so its refusal is byte-identical for an absent and a foreign `answerTo`. Code: `unauthorizedAnswer(answerTo)` is the one sentence for absent / non-question / non-recipient; the shipped T23 arm asserts the same."
+    },
+    {
+      "check": "B — the declared plain-reply bound",
+      "result": "AS DECLARED",
+      "evidence": "Probe B: a plain reply to a foreign existing message is accepted but its thread is its OWN id (no foreign thread root), while a bogus id is refused. §12's 'ACCEPTED SECURITY BOUND (T22/T23)' states exactly this trade-off."
+    },
+    {
+      "check": "C1 — no cross-team label leak (the T19 High)",
+      "result": "STILL CLOSED",
+      "evidence": "Probe C1: foreign non-recipient with an invented label → not-recipient, no 'valid labels', no foreign thread root, no answer row."
+    },
+    {
+      "check": "C2 — a proven cross-team addressee still works",
+      "result": "NO REGRESSION",
+      "evidence": "Probe C2: ok, and the answer inherits the question's thread root from the workspace fold."
+    },
+    {
+      "check": "C3 — same-team echo only for the addressee",
+      "result": "NO REGRESSION",
+      "evidence": "Probe C3: a non-recipient gets not-recipient with no labels; the ADDRESSEE still receives 'valid labels: A. x-one'."
+    },
+    {
+      "check": "C4 — T18's stable seat keys against the repaired ownership",
+      "result": "NO REGRESSION",
+      "evidence": "Probe C4: the seat-key answer passes."
+    }
+  ],
+  "gates": [
+    { "id": "bun-test-three-packages", "command": "bun test packages/mpd-mail-protocol packages/mpd-team-core-plugin packages/mpd-cellwork-plugin", "exit": 0, "decidingOutput": "695 pass, 0 fail, 52 files — the AC-7 combined command" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "no diagnostics" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=54 failed=0 violations=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    {
+      "id": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "decidingOutput": "FRESH mpd-mail-protocol (2fd9c52e) and mpd-team-core-plugin (255bdbcc); STALE packages/mpd-cellwork-plugin/dist/index.js (45169d92 vs fresh 2df87ddf) — cellwork INLINES the repaired team-core store.",
+      "attribution": "T10's integration item (the Lead pre-declared stale dists as the captain's rebuild domain). NOT a T23 defect: the store change is in team-core, whose dist IS fresh; cellwork merely bundles it."
+    }
+  ],
+  "findings": [],
+  "declinedToJudge": [
+    { "item": "The cellwork dist staleness", "reason": "A mechanical bundling consequence of T23's store change, owned by T10's rebuild — the source, tests and the team-core dist are all green." },
+    { "item": "The declared plain-reply visibility", "reason": "Explicitly accepted and recorded in §12 with the rationale (thread not inherited, no content exposure); the answer-path oracle, which had no such justification, is closed." },
+    { "item": "Docker / the PR body / the full `bun run verify:gates` aggregate", "reason": "T10's release-last lane; my `verify-dist-fresh` run is the one integration signal outside my lane and it is reported above." },
+    { "item": "Docs and README wording", "reason": "T6 closed; verify:docs is green." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890; store/test hashes stable 11:25:54Z → 11:26:43Z.",
+    "Read: the T23 authorization/no-oracle block (`unauthorizedAnswer`, the pre-lookup replyTo check), T23's new arm, and the new §12 accepted-bound/incident entries.",
+    "Ran: the combined three-package suite (695/0), typecheck, comments, docs, rows, manifest, dist-fresh, and seven probes (A/A2/B/C1–C4) over `sendMany`.",
+    "Did NOT run: the Docker lane, `bun run verify:gates` aggregate (both T10), or the cellwork package's own suite separately (the combined run includes it)."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/team-mailbox/2026-10-31T11-25-54Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

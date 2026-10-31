@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/mail-protocol",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The mail plane's shared zero-dependency vocabulary: the message/question/answer envelope, the pure validators that make an answer echo offered labels verbatim (I1-I7), the tolerant mailbox fold and the fan-out/thread helpers. Library only: no cordis row, no patch entry, no runtime dependency.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "review": {
+    "lane": "R2 (re-verification of the T21 authorization repair)",
+    "boardTask": "T22",
+    "workTask": "T21",
+    "subject": "No cross-team label leak, ownership precedes echo, no existence oracle",
+    "contract": ".mpd/plans/mail-unify.md §5 ownership + §4 I4/I5",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee",
+    "hashes": {
+      "src/mailbox-store.ts": "60817206308d5819789a1e929c152a71c591e60e762d5fa1129eab7d1702face",
+      "test/mail-authorization-order.test.ts (new)": "b1d43e2f3c67120ffe4c53a41f57fd188296276e11342d7c84380bda282b9f32",
+      "dist/index.js": "ec883a510cbcb5383181d1fc16c166353810a723f22e49265c533d4702a9f589"
+    },
+    "sandwich": "All three hashes identical at gate start (11:20:03Z) and review end (11:21:14Z)."
+  },
+  "verdict": {
+    "task": "request-changes",
+    "riskLevel": "medium-low",
+    "justification": "The two dangerous properties are CLOSED and I reproduced the closure myself: a foreign non-recipient now gets `not-recipient` with no label text, no thread root and nothing written (both for a wrong and for a CORRECT label), ownership precedes the echo even inside one team, the addressee's correction aid still works, a PROVEN cross-team addressee still answers and inherits the thread, and T18's stable seat keys still pass. The third property — NO EXISTENCE ORACLE — is NOT met: a bogus reference and a foreign existing reference still get distinguishable answers (`invalid-envelope` vs `not-recipient` for an answer; refused vs ACCEPTED for a plain reply), so a member can probe whether a workspace message id exists. That is a Medium information leak (existence/activity, not labels or threads) with a cheap fix on the answer path; the plain-reply channel is a design trade-off the captain may accept as a declared bound."
+  },
+  "properties": [
+    {
+      "property": "1. No cross-team LABEL leak",
+      "result": "MET",
+      "evidence": "Probe 1 (foreign question, invented label): reason `not-recipient`, detail 'only a recipient of the question may answer it: … was addressed to \"recipient\"', `hasLabels:false`, `hasThreadRoot:false`, zero answer rows. Probe 3 (same-team non-recipient): same, no labels. Probe 4 (the ADDRESSEE, control): the I4 echo still returns 'valid labels: A. x-one'. Code: the ownership block runs BEFORE `validateReferences`, on `workspaceById` (the whole mailbox)."
+    },
+    {
+      "property": "2. Ownership precedes echo (and the authorization cannot be skipped for a foreign reference)",
+      "result": "MET",
+      "evidence": "Probe 2 (foreign question, CORRECT label): `not-recipient`, nothing written — the old 'accepted because the scoped lookup missed the foreign row' bypass is gone (the lookup is now the workspace map). Probe 8: an answer whose `replyTo` differs from `answerTo` is refused (no foreign-thread vector). Probe 5: a PROVEN cross-team addressee passes and inherits the question's thread root. Probe 9: T18's stable seat-key answer still passes."
+    },
+    {
+      "property": "3. No existence oracle",
+      "result": "NOT MET",
+      "evidence": "Probe 7: an answer with a BOGUS `answerTo` → `invalid-envelope` ('names no message in this mailbox'), while an answer referencing a FOREIGN existing question → `not-recipient` (a distinguishable answer). A plain reply with a bogus id → `invalid-envelope`, but a plain reply to a FOREIGN existing id → **ok:true** — the reference is accepted, which confirms existence. T21's own arm 'a PLAIN reply to a foreign message cannot inherit that conversation's thread' documents the trade-off ('the reference is visible, the thread is not')."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "Medium",
+      "title": "The EXISTENCE ORACLE persists: a member can probe whether any workspace message id exists through the ANSWER path (uniform refusal not used) and, more strongly, through a PLAIN reply (a foreign id is accepted while a bogus one is refused)",
+      "where": "packages/mpd-team-core-plugin/src/mailbox-store.ts · sendMany: the answer branch's `asked === undefined` refusal ('invalid-envelope: answerTo names no message') vs the `not-recipient` refusal; and `validateReferences(envelope, state.messages)` for plain replies",
+      "what": "Probe 7: `{answer, answerTo:<bogus>}` → invalid-envelope; `{answer, answerTo:<foreign existing>}` → not-recipient. `{message, replyTo:<bogus>}` → invalid-envelope; `{message, replyTo:<foreign existing>}` → ok. IDs are near-guessable (`mail-<YYYYMMDDHHMMSS>-<seq>`), so the two channels let any team member enumerate/confirm message existence across the workspace — and by implication another team's activity and timing.",
+      "why": "T22's third requested property is exactly this. The leak is not content (no labels, no thread), which is why it is Medium rather than High, but it is a real cross-team disclosure channel and it is the one the captain asked to close.",
+      "direction": "Answer path (cheap, store-only): collapse the 'no such message' case into the SAME `not-recipient` sentence (name the id, never whether it exists), so bogus and foreign ids are indistinguishable. Plain-reply path: either scope the reference check for NON-answer rows to the caller's team (making a foreign id indistinguishable from a bogus one — a legitimate cross-cell thread reply would then need the answer path or an explicit contract amendment), or declare the cross-team reference visibility as an ACCEPTED bound in §12 with the rationale (the thread is not inherited, which the current arm already asserts). The captain decides which; do not leave it implicit.",
+      "evidence": "probes.ts probe 7 in output.log; T21's plain-reply arm documents the current choice"
+    }
+  ],
+  "gates": [
+    { "id": "bun-test-team-core", "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "decidingOutput": "466 pass, 0 fail, 30 files (459 + T21's 7 arms)" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "no diagnostics" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=54 failed=0 violations=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "VERDICT: PASS" }
+  ],
+  "declinedToJudge": [
+    { "item": "The plain-reply reference visibility if the captain accepts it as a declared bound", "reason": "The thread is not inherited (probe 6) and no label is exposed; with a §12 declaration this becomes an accepted trade-off rather than a defect. The answer-path channel, however, has no such justification and is cheap to close." },
+    { "item": "T18's stable seat keys against the repaired ownership", "reason": "Probe 9 passes; verified compatible." },
+    { "item": "The `replyTo`==`answerTo` guard and the new refusal sentences", "reason": "Strictly stronger than the previous behaviour; no legitimate path lost (probe 8 and the shipped cross-cell arms pass)." },
+    { "item": "dist freshness", "reason": "T10 owns the rebuild." },
+    { "item": "Docs/README wording", "reason": "T6's lane." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890; hashes stable 11:20:03Z → 11:21:14Z.",
+    "Read: sendMany's authorization/reference/thread block and T21's seven new arms.",
+    "Ran: six gates (466/0) and nine probes over `sendMany` (foreign wrong/correct label, same-team non-recipient + addressee control, proven cross-team addressee + thread inheritance, plain reply thread non-leak, the oracle, replyTo!=answerTo, seat-key compatibility).",
+    "Did NOT run: dist-fresh (T10), the combined multi-package suite, Docker."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/team-mailbox/2026-10-31T11-20-03Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

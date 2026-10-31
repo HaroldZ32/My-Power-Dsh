@@ -297,7 +297,9 @@ export function checkpointRefusal(toolName: string): string {
     + "work stops at this boundary. Call `cellwork_handoff` now with the task, the current state, the "
     + "decisions (and why), the artifacts, the verified facts, the open questions and the single next "
     + "step, then END YOUR TURN. The plugin compacts this agent's context and promotes it (or reseeds it "
-    + "from that handoff), so anything you did not write down is lost. `cellwork_status` and "
+    + "from that handoff), so anything you did not write down is lost. `cellwork_send` and "
+    + "`cellwork_inbox` are refused here too, so a structured `question` cannot be asked or answered at a "
+    + "checkpoint — the handoff's OPEN QUESTIONS are the channel. `cellwork_status` and "
     + "`cellwork_context` stay readable meanwhile."
 }
 

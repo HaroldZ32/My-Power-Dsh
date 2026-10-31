@@ -329,6 +329,12 @@ describe("every action's value satisfies its declared output contract", () => {
       await f.call("agent_teams_plan", { action: "approve", dry_run: true })
       await f.call("agent_teams_plan", { action: "approve" })
       await f.call("agent_teams_plan", { action: "status" })
+      // THE PERMIT/WAIT BRANCHES (T3, contract §7), driven while the team is still LIVE: a grant answers
+      // the granted record, and a wait whose target is not on the board refuses with a sentence — both
+      // values are checked against this tool's own declaration by `call` above.
+      /** The lead's grant to the plan's member, read for the id the wait names. */
+      const granted = await f.call("agent_teams_mail", { action: "permit", holder: "Senior Engineer", scope: "answer", ttlMs: 1_000 })
+      await f.call("agent_teams_mail", { action: "wait", permitId: granted.permit.permitId, messageId: "mail-does-not-exist", timeoutMs: 0 })
       await f.call("agent_teams_plan", { action: "delete" })
       await f.call("agent_teams_plan", { action: "delete" })
       // The other four tools answer the same discipline.

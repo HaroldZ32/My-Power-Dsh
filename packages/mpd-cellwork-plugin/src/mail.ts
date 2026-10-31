@@ -1,44 +1,46 @@
-// CELLWORK MAIL — the cell's durable, addressed message log (contract B9).
+// CELLWORK MAIL — the cell's VIEW over the ONE workspace mailbox (contract §6; wave `mail-unify`).
 //
-// WHY A CELL-OWNED LOG when the team already has `agent_teams_mail`. That mailbox is the TEAM's: it
-// addresses live members of one team, and it has no concept of the CAPTAIN as a recipient (the Lead is not
-// on the roster) or of a sub-cell. The cell therefore owns a small append-only log INSIDE the cell
-// directory, addressed by NAME (`captain`, `cell-planner`, …), which is what makes the planner's question
-// relay possible and what the captain reads on its next `cellwork_inbox` call.
+// WHERE THE ROWS LIVE NOW. `cellwork_send` writes into `<ws>/.mpd/team/mailbox.jsonl` — the SAME
+// durable stream the team plane uses — through the team store's `sendMany` (atomic fan-out: every rule
+// runs before the first append). Every cellwork row is stamped with the cell's `teamId` (contract §6)
+// and with an additive `cellId` the CELL VIEW scopes by; `fromCell` keeps a cross-cell sender, exactly
+// as before. The team fold projects `cellId`/`fromCell`/`fromMemberId` onto the folded message, but the
+// view still filters the RAW records first, so it stays correct if that projection changes.
 //
-// DELIVERY IS BEST-EFFORT, DURABILITY IS NOT. A row is written first; a wake-up is then attempted through
-// the transport when the sender is the captain and the recipient is a live member. A row whose wake-up
-// failed stays UNREAD and is surfaced on `cellwork_supervise` — mail is durable, wake-up is best-effort
-// (the frozen contract's own words).
+// THE OLD LOG STAYS READABLE (contract §12). A cell's pre-unification `<cell>/mail.jsonl` is still read
+// and merged into the view; an acknowledgement for one of its rows is appended back to THAT log, while a
+// unified row is acknowledged through the store's ownership-checked `markRead`.
 //
-// THE ORDER IS THEREFORE PART OF THE FORMAT (D6). The `send` row and the wake-up attempt are TWO appends:
-// the row lands first with no wake claim on it, and the attempt's outcome is appended afterwards as a
-// `wake` record. `deliverCellMail` is the one place that order is expressed, so no caller can invert it
-// again — the defect was a tool that woke the member before the row it described existed.
-//
-// The log is `mail.jsonl` inside the cell directory: append-only, one record per line, so a crash costs the
-// last line and never the file. `send` opens a message; `read` is the recipient's acknowledgement.
+// DELIVERY IS BEST-EFFORT, DURABILITY IS NOT (D6). `sendMany` writes the row(s) first; a wake-up is
+// then attempted per row and its outcome appended as a `wake` record AFTER the durable row. A row whose
+// wake-up failed stays UNREAD and is surfaced on `cellwork_supervise` — mail is durable, wake is
+// best-effort. `deliverCellMail` remains the ONE seam that expresses that order and is still exercised
+// directly; the tool path hands it an already-durable append, because the store owns the write.
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+
+import { acknowledge, appendRecord, fold as foldMailbox, mailboxPath, readMailbox, readRecords } from "../../mpd-team-core-plugin/src/mailbox-store"
+import type { MailAck, MailMessage as TeamMailMessage, MailSendLine } from "../../mpd-team-core-plugin/src/mailbox-store"
+import type { MailAnswer, MailKind, MailQuestion } from "../../mpd-mail-protocol/src/index"
 import { cellDir } from "./state"
 import { nameKey } from "./dispatch"
 
 /** The mail log's file name inside one cell directory. */
 export const CELL_MAIL_FILE = "mail.jsonl"
 
-/** One `send` record: a message opened by a sender. */
+/** One `send` record as the CELL VIEW exposes it: the cell words plus the protocol envelope. */
 export interface CellMailSend {
   /** Discriminator: this record opens a message. */
   t: "send"
-  /** Message id, unique inside the cell. */
+  /** Message id, unique inside the workspace mailbox. */
   id: string
-  /** The cell the message belongs to (stamped so a copied log is traceable). */
+  /** The cell the row belongs to; the view scopes by this and the store never interprets it. */
   cellId: string
-  /** The sender's cell name (`captain`, `cell-planner`, …). */
+  /** The sender's cell seat name (`captain`, `cell-planner`, …). */
   from: string
-  /** The sender's CELL id, when the row was written into another cell's log (a cross-cell message). */
+  /** The sender's CELL id, on a cross-cell row. */
   fromCell?: string
-  /** The recipient's cell name, as addressed. */
+  /** The recipient's cell seat name, as addressed. */
   to: string
   /** One-line subject. */
   subject: string
@@ -47,19 +49,39 @@ export interface CellMailSend {
   /** ISO instant the row was written. */
   at: string
   /**
-   * Whether a wake-up had been handed to the transport when THIS row landed.
+   * Whether the row claims a wake-up happened when it was written.
    *
-   * Always `false` on a row written by {@link deliverCellMail}: the row must exist before anything is
-   * woken, so the attempt's outcome is appended later as a {@link CellMailWake} record. A row from an
-   * older build may carry `true`, and folding keeps it.
+   * Always `false` on a row written by this build: the `wake` record that follows is what a fold
+   * trusts. A legacy row may carry `true`, and folding keeps it when no wake record exists.
    */
   wakeSent: boolean
-  /** Why the wake-up was not sent, when it was not (a pre-`wake`-record spelling). */
+  /** A legacy wake-up refusal spelling, when the row predates the `wake` record. */
   wakeReason?: string
+  /** Which protocol envelope this row carries; absent reads as `message` (legacy rows). */
+  kind?: MailKind
+  /** The message id this row replies to (I5/I7). */
+  replyTo?: string
+  /** The thread id, when the writer stated one; the fold resolves inheritance (I7). */
+  threadId?: string
+  /** Present exactly on a `question` row. */
+  question?: MailQuestion
+  /** Present exactly on an `answer` row. */
+  answer?: MailAnswer
+  /** The team this row was sent for, stamped by the store so the team plane can scope by identity. */
+  teamId?: string
+  /** The sender's session id, when known; recorded so the team plane owns the row correctly. */
+  fromId?: string
+  /** The recipient's session id, when known; the store's ownership check reads it. */
+  toId?: string
+  /** The sender's ROSTER/seat identity, when it has one (the ownership rules accept either spelling). */
+  fromMemberId?: string
 }
 
 /**
  * One `wake` record: what happened to the wake-up, appended AFTER the durable `send` row (D6).
+ *
+ * This is the byte-for-byte TWIN of team-core's `MailWakeLine` (contract §5): one `wake` vocabulary for
+ * both planes, `{t:"wake", id, sent, reason?, at}`, with `reason` required whenever `sent` is false.
  *
  * A separate record on purpose — the log is append-only, so a row written before the attempt cannot
  * carry the attempt's outcome. A message with NO `wake` record is one whose wake-up was never attempted
@@ -93,20 +115,43 @@ export interface CellMailRead {
 /** One line of the cell mail log. */
 export type CellMailRecord = CellMailSend | CellMailRead | CellMailWake
 
-/** One folded message: the `send` plus whether it was read. */
+/** One folded message: the view's `send` plus its acknowledgement and wake state. */
 export interface CellMailMessage extends CellMailSend {
   /** Whether the recipient acknowledged it. */
   read: boolean
+  /** The name that acknowledged it, when the `read` record carried one. */
+  readBy?: string
 }
 
-/** The absolute mail log path of one cell. */
+/** The outcome of one acknowledgement batch: rows moved through the store and rows moved via legacy append. */
+export interface CellAckResult {
+  /** The ids that moved from unread to read, in request order (store rows, then legacy rows). */
+  moved: string[]
+  /** The subset that a LEGACY `mail.jsonl` acknowledgement moved. */
+  legacy: string[]
+  /**
+   * The rows the store REFUSED to acknowledge, each with the sentence that says who owns it (T9/N1).
+   *
+   * WHY IT IS CARRIED OUT (T9/N1): the store has always refused a foreign acknowledgement, but the cell
+   * plane dropped that list, so a seat saw `acknowledged: 0` with the same rows back and no reason. The
+   * refusal is the whole diagnosis — the row is addressed to a different identity — so it is returned
+   * verbatim instead of being reduced to a count.
+   */
+  refused: Array<{ id: string; reason: string }>
+}
+
+/** The absolute path of one cell's LEGACY mail log (migration read; new rows go to the mailbox). */
 export function cellMailPath(workspace: string, cellId: string): string {
   return join(cellDir(workspace, cellId), CELL_MAIL_FILE)
 }
 
+/** The workspace mailbox every plane now writes to. */
+export function cellMailboxPath(workspace: string): string {
+  return mailboxPath(workspace)
+}
+
 /**
  * Mint one message id: the instant plus a per-process counter, so two messages in one millisecond differ.
- *
  * @param now - the instant to stamp.
  * @param sequence - the caller's per-process counter.
  * @returns the id.
@@ -116,19 +161,53 @@ export function mailId(now: Date, sequence: number): string {
 }
 
 /**
- * Append one record to a cell's mail log.
+ * The id the store's next `send` would mint — used ONLY to default a question's `questionId`.
  *
+ * The team store owns message ids and mints them inside `sendMany`, so a caller that needs the id
+ * BEFORE the write (a question's `questionId` defaults to the row's own id, contract §6) cannot ask it
+ * for one. This mirrors the store's stem and sequence exactly; it is a pre-flight READ, never a write.
+ * @param workspace - the workspace whose mailbox is being read.
+ * @param now - the clock the store will mint with.
+ * @returns the id the next appended send row will carry.
+ */
+export function nextCellMailId(workspace: string, now: Date): string {
+  /** The store's id stem: the UTC instant to the second, punctuation stripped. */
+  const stem = "mail-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14) + "-"
+  /** Rows already in the mailbox; the store sequences from this count. */
+  const count = readMailbox(workspace).messages.length
+  return stem + String(count + 1).padStart(3, "0")
+}
+
+/**
+ * Read one field as text without throwing on a loose value.
+ * @param value - the field read off a JSON row.
+ * @returns the string itself; `""` for `undefined`/`null`; `String(value)` otherwise.
+ */
+function textOf(value: unknown): string {
+  if (typeof value === "string") return value
+  return value === undefined || value === null ? "" : String(value)
+}
+
+/**
+ * Whether a value is a non-null, non-array object.
+ * @param value - the value to classify.
+ * @returns true for a plain object.
+ */
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+/**
+ * Append one record to one cell's LEGACY log (migration acks only; new mail goes to the mailbox).
  * @param workspace - the workspace root the caller resolved through the adapter.
- * @param cellId - the cell whose log is appended.
+ * @param cellId - the cell whose legacy log is appended.
  * @param record - the record to append.
  * @returns true when the line reached the file.
  */
-export function appendCellMail(workspace: string, cellId: string, record: CellMailRecord): boolean {
+function appendLegacyCellMail(workspace: string, cellId: string, record: CellMailRecord): boolean {
   try {
-    /** The log path whose directory the cell record write normally created already. */
-    const path = cellMailPath(workspace, cellId)
     mkdirSync(cellDir(workspace, cellId), { recursive: true })
-    appendFileSync(path, JSON.stringify(record) + "\n", "utf8")
+    appendFileSync(cellMailPath(workspace, cellId), JSON.stringify(record) + "\n", "utf8")
     return true
   } catch {
     return false
@@ -136,15 +215,98 @@ export function appendCellMail(workspace: string, cellId: string, record: CellMa
 }
 
 /**
- * Read one cell's mail log.
+ * Append one record to the WORKSPACE mailbox, stamped with this cell's `cellId`.
  *
- * A torn last line is dropped rather than trusted (the log is history, the cell record is truth).
- *
+ * The stamp is the view's scope and is inert to the team plane; `teamId` (when the caller carries one)
+ * is the contract §6 identity the team plane scopes by. The store exposes no `wake` variant, so the
+ * cast is required: a `wake` row is a cellwork-only line the protocol fold tolerates as a foreign kind.
  * @param workspace - the workspace root the caller resolved through the adapter.
- * @param cellId - the cell whose log is read.
+ * @param cellId - the cell the row belongs to.
+ * @param record - the record to append.
+ * @returns true when the line reached the file.
+ */
+export function appendCellMail(workspace: string, cellId: string, record: CellMailRecord): boolean {
+  try {
+    appendRecord(workspace, { ...record, cellId } as unknown as Parameters<typeof appendRecord>[1])
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Normalize one raw line (legacy or unified) into a `CellMailRecord`.
+ *
+ * Unified rows carry the team words (`fromName`/`toName`/`sentAt`) while legacy rows carry the cell
+ * words (`from`/`to`/`at`); both are mapped onto the cell words so ONE fold reads either. The protocol
+ * envelope fields are carried through verbatim; their validation is the store's job at send time, not
+ * this read path's.
+ * @param value - the parsed JSON line.
+ * @param cellId - the cell the line was read for (used when the line carries none).
+ * @returns the normalized record, or undefined for an unknown/malformed line.
+ */
+function normalizeRawRecord(value: unknown, cellId: string): CellMailRecord | undefined {
+  if (!isObject(value)) return undefined
+  /** The message id; without one no record can be joined to a message. */
+  const id = textOf(value.id)
+  if (id === "") return undefined
+  if (value.t === "read") {
+    return { t: "read", id, by: textOf(value.by), at: textOf(value.at) }
+  }
+  if (value.t === "wake") {
+    return {
+      t: "wake",
+      id,
+      sent: value.sent === true,
+      ...(typeof value.reason === "string" && value.reason !== "" ? { reason: value.reason } : {}),
+      at: textOf(value.at),
+    }
+  }
+  if (value.t !== "send") return undefined
+  /** The question payload, only when the row carries an object there. */
+  const question = isObject(value.question) ? value.question as unknown as MailQuestion : undefined
+  /** The answer payload, only when the row carries an object there. */
+  const answer = isObject(value.answer) ? value.answer as unknown as MailAnswer : undefined
+  /** The protocol kind, when the row carries a known one. */
+  const kind: MailKind | undefined = value.kind === "message" || value.kind === "question" || value.kind === "answer" ? value.kind : undefined
+  /** The cell word for the sender, falling back to the unified spelling on a unified row. */
+  const from = textOf(value.from) === "" ? textOf(value.fromName) : textOf(value.from)
+  /** The cell word for the recipient, on the same fallback. */
+  const to = textOf(value.to) === "" ? textOf(value.toName) : textOf(value.to)
+  return {
+    t: "send",
+    id,
+    cellId: textOf(value.cellId) === "" ? cellId : textOf(value.cellId),
+    from,
+    to,
+    subject: textOf(value.subject),
+    body: textOf(value.body),
+    at: textOf(value.at) === "" ? textOf(value.sentAt) : textOf(value.at),
+    wakeSent: value.wakeSent === true,
+    ...(typeof value.wakeReason === "string" && value.wakeReason !== "" ? { wakeReason: value.wakeReason } : {}),
+    ...(kind === undefined ? {} : { kind }),
+    ...(typeof value.replyTo === "string" && value.replyTo !== "" ? { replyTo: value.replyTo } : {}),
+    ...(typeof value.threadId === "string" && value.threadId !== "" ? { threadId: value.threadId } : {}),
+    ...(question === undefined ? {} : { question }),
+    ...(answer === undefined ? {} : { answer }),
+    ...(typeof value.teamId === "string" && value.teamId !== "" ? { teamId: value.teamId } : {}),
+    ...(typeof value.fromId === "string" && value.fromId !== "" ? { fromId: value.fromId } : {}),
+    ...(typeof value.toId === "string" && value.toId !== "" ? { toId: value.toId } : {}),
+    ...(typeof value.fromCell === "string" && value.fromCell !== "" ? { fromCell: value.fromCell } : {}),
+    ...(typeof value.fromMemberId === "string" && value.fromMemberId !== "" ? { fromMemberId: value.fromMemberId } : {}),
+  }
+}
+
+/**
+ * Read one cell's LEGACY log, normalized to the view's record shape.
+ *
+ * A torn last line is dropped rather than trusted (the log is history, the cell record is truth). An
+ * older row with no `cellId` is stamped with this cell's id, because the file itself is the scope.
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose legacy log is read.
  * @returns every parseable record, in append order.
  */
-export function readCellMail(workspace: string, cellId: string): CellMailRecord[] {
+function readLegacyCellMail(workspace: string, cellId: string): CellMailRecord[] {
   /** The raw log text. */
   let text: string
   try {
@@ -152,48 +314,243 @@ export function readCellMail(workspace: string, cellId: string): CellMailRecord[
   } catch {
     return []
   }
-  /** The parseable records. */
-  const records: CellMailRecord[] = []
+  /** The normalized records. */
+  const out: CellMailRecord[] = []
   for (const line of text.split("\n")) {
     if (line.trim() === "") continue
     try {
-      /** The parsed line. */
-      const parsed = JSON.parse(line) as CellMailRecord
-      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read" || parsed.t === "wake")) records.push(parsed)
+      /** The record, when this line is one of the three the view knows. */
+      const normalized = normalizeRawRecord(JSON.parse(line), cellId)
+      if (normalized !== undefined) out.push(normalized)
     } catch {
       // A torn line costs one history row, never the log.
     }
   }
-  return records
+  return out
 }
 
 /**
- * Fold one mail log into the current state of its messages.
+ * Read the WORKSPACE mailbox's rows belonging to one cell.
  *
- * @param records - the log, in append order.
- * @returns one message per `send`, with its read state and its latest wake-up outcome.
+ * The filter is on the RAW record's `cellId` (contract §6 / the Lead's scoping rule), never on a folded
+ * field, so the view cannot start showing another cell's mail if the store's projection changes.
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose rows are read.
+ * @returns the normalized records in log order.
+ */
+export function readUnifiedCellMail(workspace: string, cellId: string): CellMailRecord[] {
+  /** The normalized records belonging to this cell, in mailbox order. */
+  const out: CellMailRecord[] = []
+  for (const raw of readRecords(workspace)) {
+    if (!isObject(raw)) continue
+    // ONLY a message row is scoped by `cellId`: it names whose mail this is. A `read`/`wake` state row
+    // carries no cell stamp (the store writes it), so it is matched by the message ID it names — a
+    // state row can only apply to a send this cell already folded, because mailbox ids are unique
+    // workspace-wide. Filtering state rows out would leave every acknowledgement unread.
+    if (raw.t === "send" && raw.cellId !== cellId) continue
+    /** The record, when this row is one the cell view knows. */
+    const normalized = normalizeRawRecord(raw, cellId)
+    if (normalized !== undefined) out.push(normalized)
+  }
+  return out
+}
+
+/**
+ * Resolve one message by id across the WORKSPACE mailbox, whichever cell stamped it.
+ *
+ * WHY IT EXISTS (T9/F1 layer 1). A cross-cell row is stamped with the RECIPIENT cell's `cellId`, so a
+ * cross-cell question lives in the recipient's view while the answer is composed from a DIFFERENT cell.
+ * Resolving the answered question from the target cell's view alone therefore missed it and the caller
+ * was refused with a misleading "must carry the question's non-empty questionId". This reads the one
+ * durable mailbox by row id, across every cell stamp, and the FIRST matching send wins — the same
+ * declared first-write rule the fold applies.
+ *
+ * It is a READ only: whether the row is answerable, and every reference/ownership rule, stays with the
+ * store at send time. A pre-unification row that lives only in a cell's legacy `mail.jsonl` is NOT
+ * visible here (the mailbox does not hold it); the caller keeps the target cell's view as a fallback.
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param id - the message id being resolved (an answer's `replyTo`).
+ * @returns the normalized send row, or undefined when the mailbox holds no row with that id.
+ */
+export function findWorkspaceMailById(workspace: string, id: string): CellMailSend | undefined {
+  if (id === "") return undefined
+  for (const raw of readRecords(workspace)) {
+    // Only a `send` row names a message; state rows carry the same id without the envelope.
+    if (!isObject(raw) || raw.t !== "send" || raw.id !== id) continue
+    /** The normalized view of that row, so the caller reads the same words a view row would. */
+    const normalized = normalizeRawRecord(raw, "")
+    if (normalized !== undefined && normalized.t === "send") return normalized
+  }
+  return undefined
+}
+
+/**
+ * Read one cell's mail view: its LEGACY log plus its rows in the workspace mailbox.
+ *
+ * Both sources are normalized to the same record shape and merged in `at` order, so an inbox's "oldest
+ * first" stays true across the migration boundary. A duplicate id is left to the fold's declared
+ * FIRST-wins policy.
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose mail is read.
+ * @returns every record, oldest first.
+ */
+export function readCellMail(workspace: string, cellId: string): CellMailRecord[] {
+  /** The legacy rows first, then the unified rows; the sort below orders them together. */
+  const merged = [...readLegacyCellMail(workspace, cellId), ...readUnifiedCellMail(workspace, cellId)]
+  /** The merged rows with their arrival index, so equal instants keep a stable order. */
+  const indexed = merged.map((record: CellMailRecord, index: number) => ({ record, index }))
+  indexed.sort((left, right) => left.record.at.localeCompare(right.record.at) || left.index - right.index)
+  return indexed.map((entry) => entry.record)
+}
+
+/**
+ * Convert one cell-shaped send into the store's `MailSendLine`.
+ *
+ * The team words are derived from the cell words when the row is legacy, and `fromMemberId` defaults to
+ * the sender's SEAT name so the store's ownership rules can match a legacy question row addressed to a
+ * name (the D16c dual-spelling rule).
+ * @param record - the cell-shaped send row.
+ * @returns the line the team store's fold reads.
+ */
+function toSendLine(record: CellMailSend): MailSendLine {
+  return {
+    t: "send",
+    id: record.id,
+    fromId: record.fromId ?? record.from,
+    fromName: record.from,
+    toId: record.toId ?? record.to,
+    toName: record.to,
+    subject: record.subject,
+    body: record.body,
+    at: record.at,
+    cellId: record.cellId,
+    fromMemberId: record.fromMemberId ?? record.from,
+    ...(record.fromCell === undefined ? {} : { fromCell: record.fromCell }),
+    ...(record.teamId === undefined ? {} : { teamId: record.teamId }),
+    ...(record.kind === undefined ? {} : { kind: record.kind }),
+    ...(record.replyTo === undefined ? {} : { replyTo: record.replyTo }),
+    ...(record.threadId === undefined ? {} : { threadId: record.threadId }),
+    ...(record.question === undefined ? {} : { question: record.question }),
+    ...(record.answer === undefined ? {} : { answer: record.answer }),
+  }
+}
+
+/**
+ * Fold the cell view's records into its messages.
+ *
+ * The store's OWN fold does the work (`fold`), so the team plane and the cell view share one definition
+ * of the envelope, the thread resolution (I7), the read state and the first-wins duplicate policy. This
+ * function adds only what the cell view owns: the cell words (`from`/`to`/`at`), the wake outcome from
+ * the `wake` records, and the legacy row's own wake claim when no `wake` record was ever appended.
+ * @param records - the merged view records, in log order.
+ * @returns one message per `send`, in log order, with its read and wake state.
  */
 export function foldCellMail(records: readonly CellMailRecord[]): CellMailMessage[] {
-  /** The messages by id, in send order. */
-  const byId = new Map<string, CellMailMessage>()
+  /** The protocol-shaped send lines the store's fold reads. */
+  const sends: MailSendLine[] = []
+  /** The state rows the store's fold applies by id. */
+  const reads: Array<{ t: "read"; id: string; at: string; by?: string }> = []
+  /** The latest wake outcome per message id, in record order. */
+  const wakes = new Map<string, { sent: boolean; reason?: string }>()
+  /** The legacy sends' own wake claims, used only where no `wake` record exists. */
+  const claims = new Map<string, { wakeSent: boolean; wakeReason?: string }>()
   for (const record of records) {
     if (record.t === "send") {
-      byId.set(record.id, { ...record, read: false })
+      sends.push(toSendLine(record))
+      if (record.wakeSent || record.wakeReason !== undefined) {
+        claims.set(record.id, { wakeSent: record.wakeSent, ...(record.wakeReason === undefined ? {} : { wakeReason: record.wakeReason }) })
+      }
       continue
     }
-    /** The message this record names; a record for a `send` the log lost is dropped. */
-    const message = byId.get(record.id)
-    if (message === undefined) continue
     if (record.t === "read") {
-      message.read = true
+      reads.push({ t: "read", id: record.id, at: record.at, ...(record.by === "" ? {} : { by: record.by }) })
       continue
     }
-    /** Whether the transport accepted the wake-up, which REPLACES the row's own (always false) claim. */
-    message.wakeSent = record.sent === true
-    if (record.reason === undefined || record.reason === "") delete message.wakeReason
-    else message.wakeReason = record.reason
+    wakes.set(record.id, { sent: record.sent, ...(record.reason === undefined ? {} : { reason: record.reason }) })
   }
-  return [...byId.values()]
+  /** The store's folded messages, with the `cellId`/`fromCell`/`fromMemberId` stamps projected back on. */
+  const folded: readonly TeamMailMessage[] = foldMailbox([...sends, ...reads]).messages
+  return folded.map((message: TeamMailMessage) => {
+    /** The wake outcome recorded for this message, when one was attempted. */
+    const wake = wakes.get(message.id)
+    /** The legacy row's own claim, for a message whose wake record was never written. */
+    const claim = claims.get(message.id)
+    /** Whether this message's wake-up is DELIVERED as far as the log can prove. */
+    const wakeSent = wake === undefined ? claim?.wakeSent === true : wake.sent === true
+    /** Why it did not go out, when it did not. */
+    const wakeReason = wake === undefined ? claim?.wakeReason : wake.sent ? undefined : wake.reason
+    return {
+      t: "send",
+      id: message.id,
+      cellId: message.cellId ?? "",
+      from: message.fromName,
+      to: message.toName,
+      subject: message.subject,
+      body: message.body,
+      at: message.sentAt,
+      kind: message.kind,
+      threadId: message.threadId,
+      read: message.readAt !== undefined,
+      wakeSent,
+      ...(message.fromCell === undefined ? {} : { fromCell: message.fromCell }),
+      ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+      ...(message.question === undefined ? {} : { question: message.question }),
+      ...(message.answer === undefined ? {} : { answer: message.answer }),
+      ...(message.readBy === undefined ? {} : { readBy: message.readBy }),
+      ...(wakeReason === undefined ? {} : { wakeReason }),
+      ...(message.teamId === undefined ? {} : { teamId: message.teamId }),
+      ...(message.fromId === undefined ? {} : { fromId: message.fromId }),
+      ...(message.toId === undefined ? {} : { toId: message.toId }),
+      ...(message.fromMemberId === undefined ? {} : { fromMemberId: message.fromMemberId }),
+    }
+  })
+}
+
+/**
+ * Acknowledge the messages one seat read.
+ *
+ * A row that lives in the WORKSPACE mailbox moves through the store's ownership-checked `markRead`
+ * (the ack's `byId` must be the row's `toId`). A LEGACY row lives only in the old cell log, so its
+ * `read` record is appended back to that log — the same ack-once fact, recorded where the message is.
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell whose inbox was read.
+ * @param ids - the unread message ids the seat is acknowledging.
+ * @param ack - who is acknowledging: the store compares `byId`, the log records `byName`.
+ * @param now - the clock, injected so the ack instant is testable.
+ * @returns the ids that moved, and which of them were legacy.
+ */
+export function acknowledgeCellMail(workspace: string, cellId: string, ids: readonly string[], ack: MailAck, now: Date): CellAckResult {
+  /** The ids that belong to the workspace mailbox (the store owns their ownership check). */
+  const unifiedIds = new Set(
+    readUnifiedCellMail(workspace, cellId)
+      .filter((record) => record.t === "send")
+      .map((record) => record.id),
+  )
+  /** The ids the store must move. */
+  const viaStore = ids.filter((id) => unifiedIds.has(id))
+  /**
+   * The store's ownership-checked outcome: the ids that moved AND the ids it refused, with the reason.
+   *
+   * `acknowledge` rather than `markRead` on purpose (T9/N1): the narrow shape dropped the refusal list,
+   * and a refused acknowledgement is exactly the fact a stalled seat needs to see.
+   */
+  const outcome = acknowledge(workspace, viaStore, ack, now)
+  /** The store's refusals, carried out of the store instead of the `acknowledged: 0` silence. */
+  const refused: Array<{ id: string; reason: string }> = outcome.refused.map((entry) => ({ id: entry.id, reason: entry.reason }))
+  /** The ids that exist only in the legacy log. */
+  const viaLegacy = ids.filter((id) => !unifiedIds.has(id))
+  /** The ids the legacy append moved. */
+  const movedLegacy: string[] = []
+  for (const id of viaLegacy) {
+    if (appendLegacyCellMail(workspace, cellId, { t: "read", id, by: ack.byName, at: now.toISOString() })) {
+      movedLegacy.push(id)
+    } else {
+      // A legacy acknowledgement that could not be WRITTEN is the same class of silence: the row stays
+      // unread, so it is reported rather than skipped.
+      refused.push({ id, reason: "the legacy `mail.jsonl` read record could not be written — the row stays unread" })
+    }
+  }
+  return { moved: [...outcome.moved, ...movedLegacy], legacy: movedLegacy, refused }
 }
 
 /**

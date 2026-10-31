@@ -13,7 +13,7 @@ import { test, expect } from "bun:test"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { cellMailPath, deliverCellMail, foldCellMail, readCellMail, wakeFailures, type CellMailRecord } from "../src/mail.ts"
+import { cellMailPath, cellMailboxPath, deliverCellMail, foldCellMail, readCellMail, wakeFailures, type CellMailRecord } from "../src/mail.ts"
 import { newCellState, writeCell, type CellMemberRecord } from "../src/state.ts"
 import { installCellworkProtocol } from "../src/protocol.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
@@ -94,7 +94,7 @@ function makeHarness(mailAsDirectory: boolean = false): Harness {
   const cell = { ...newCellState({ cellId: CELL_ID, objective: "ship the widget", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-10-31T12:00:00.000Z") }), phase: "executing" as const, teamId: "team-mail", members: { "cell-planner": memberRow("cell-planner") } }
   writeCell(workspace, cell)
   if (mailAsDirectory) {
-    mkdirSync(cellMailPath(workspace, CELL_ID), { recursive: true })
+    mkdirSync(cellMailboxPath(workspace), { recursive: true })
   }
   /** The captain's handle. */
   const captain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: workspace } } }
@@ -150,14 +150,7 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
  * @returns the parsed rows; an unreadable log answers an empty list.
  */
 function logRows(harness: Harness): CellMailRecord[] {
-  /** The raw log text. */
-  let text = ""
-  try {
-    text = readFileSync(cellMailPath(harness.workspace, CELL_ID), "utf8")
-  } catch {
-    return []
-  }
-  return text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as CellMailRecord)
+  return readCellMail(harness.workspace, CELL_ID)
 }
 
 // ── the ordering contract ─────────────────────────────────────────────────
@@ -243,7 +236,7 @@ permissionArm("N1: a `wake` record that cannot be written is NOT reported as a s
   /** The harness whose mail log becomes unwritable exactly while the attempt is in flight. */
   const harness = makeHarness()
   /** The mail log path, made read-only inside the executor so ONLY the wake record's append fails. */
-  const mailPath = cellMailPath(harness.workspace, CELL_ID)
+  const mailPath = cellMailboxPath(harness.workspace)
   harness.beforeSend = (): void => { chmodSync(mailPath, 0o444) }
   /** The captain's message. */
   const answer = await runTool(harness, "cellwork_send", { to: "cell-planner", subject: "status?", body: "one line please" })

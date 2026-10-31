@@ -303,26 +303,34 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
 
 ## 感知 cell 的邮件
 
-cell 内的智能体可以互相通信，不经过用户界面，也不经过队长：
+cell 内的智能体可以互相通信，不经过用户界面，也不经过队长。邮件本身走一条与团队面共享的持久流——
+`<workspace>/.mpd/team/mailbox.jsonl`；kind、标签规则、寻址与确认归属只在 [`mail.zh-CN.md`](./mail.zh-CN.md)
+里讲一次。
 
-- **team 内**邮件就是既有的 `agent_teams_mail`（成员 ↔ 成员，队长不在路径上）。
-- **成员 ↔ 队长、跨 cell** 的邮件由 `cellwork_send` 负责。它在 cell 树里解析收件人——成员名、字面量
-  `captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的子 cell
-  或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以 `"not in this cell's tree"` 拒绝。
-  显式给出的名字既不是 `captain`、也不是**目标 cell** 的成员时会被**拒绝**——答复列出该 cell 的成员——绝不会
-  悄悄投进调用者自己的收件箱。
-  一次发送会把该行追加到**目标 cell** 的 `mail.jsonl`——跨 cell 发送时就是**收件方 cell** 的文件，该 cell 的
-  `cellwork_inbox` 从这里读取——而**发送方**的 journal 会以 `cell:<cellId>` 戳并带 `toCell:<target>` 记录这次
-  发送。
-- 邮件**先落盘（持久），唤醒尽力而为**。唤醒从未发出的行会保持**未投递**状态（`unreadMail` 加上
-  `wakeFailures[]` 行，每行 `{id,to,subject,reason}`）；`cellwork_inbox` 读取并确认未读行，
-  `cellwork_supervise` 会同时呈现未读计数与每一条未投递行——不只是待办看板。跨 cell 的行只做持久投递
-  （跨 cell 不尝试唤醒），并出现在收件方 cell 的巡检里。成员 → 队长的行由队长的收件箱读取，因为队长不是
-  mailbox 成员，Lead 的 handle 也无法被直接唤醒。
-- **日志格式变了，而且是单向兼容。** `send` 行如今总是带 `wakeSent: false`，唤醒结果作为一条单独的
-  `wake` 记录（`t:"wake"`、`sent`、`reason?`、`at`）追加在它**之后**，于是"先落盘、后唤醒"在日志里可以
-  直接看到，而不是靠推断。本构建能正确折叠**更旧**的日志（`wake` 之前的行保留自己的 `wakeSent`），但来自
-  **旧构建**的读者会把新行读成"未唤醒"。如实写明，不要藏起来。
+- **`cellwork_send`** 在 cell 树里解析收件人——成员名、字面量 `captain`，或跨 cell 形式
+  `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的子 cell 或本 cell 的父 cell
+  （`cell.subcellIds` / `cell.parentCellId`），其它一律以 `"not in this cell's tree"` 拒绝。显式给出的名字既
+  不是 `captain`、也不是**目标 cell** 的成员时会被**拒绝**——答复列出该 cell 的成员——绝不会悄悄投进调用者
+  自己的收件箱。
+- **行落在哪里。** 落在 workspace 邮箱里，并盖上该 cell 的 `teamId` 与一个附加的 `cellId`（视图按它筛选；
+  跨 cell 的发送者还会盖上 `fromCell`）。写入走共享存储的原子扇出，所以所有规则都在第一次追加之前跑完。
+  统一之前的 `<cell>/mail.jsonl` 仍然会被读取，并按 `at` 顺序合并进视图；对**那些**行的确认会追加回那个文件，
+  而统一之后的行则走共享存储的、带归属检查的确认路径。**发送方**的 journal 会以 `cell:<cellId>` 戳并带
+  `toCell:<target>` 记录这次发送。
+- **结构化邮件，同一套协议。** `kind`（`message` | `question` | `answer`），省略时从 `options` 或从
+  `selected`/`custom` 推断；问题用 `options` + `multiSelect`；`replyTo`（应答的 `answerTo`）；应答用
+  `selected`（逐字复制的被提供标签）和/或 `custom`；`questionId`（默认取问题自己的消息 id，或被应答问题的
+  key）；`broadcast: true` 表示目标 cell 的每个席位一行，排除发送者。未知标签会被拒绝，并附上完整的合法标签
+  列表。
+- **先持久，唤醒尽力而为。** 行在任何唤醒尝试**之前**写入，尝试的结果是单独的一条 `wake` 记录
+  （`{t:"wake", id, sent, reason?, at}`——规范形状与各种原因见 [`mail.zh-CN.md`](./mail.zh-CN.md)）。唤醒
+  从未发出的行保持**未投递**，`cellwork_supervise` 会同时呈现未读计数与每一条这样的行（`unreadMail` 加上
+  `wakeFailures[]`），不只是待办看板。跨 cell 的行只做持久投递（跨 cell 不尝试唤醒），并出现在收件方 cell 的
+  巡检里。成员 → 队长的行由队长的收件箱读取，因为队长不是 mailbox 成员，Lead 的 handle 也无法被直接唤醒。
+- **日志格式变了，而且是单向兼容。** `send` 行带着 `wakeSent: false`（旧拼写），唤醒结果作为随后的单独
+  `wake` 记录存在，于是"先落盘、后唤醒"在日志里可以直接看到，而不是靠推断。本构建能正确折叠**更旧**的日志
+  （`wake` 之前的行保留自己的 `wakeSent`），但来自**旧构建**的读者会把新行读成"未唤醒"——而且它在 cell 文件
+  里根本找不到新行，因为现在写入的行住在 workspace 邮箱里。如实写明，不要藏起来。
 
 ## 磁盘状态
 

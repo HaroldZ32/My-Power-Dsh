@@ -28,16 +28,20 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFile
 import { join } from "node:path"
 import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
+  acknowledge,
   inboxOf,
   markDelivered,
-  markRead,
   readMailbox,
+  recordWake,
+  resolveRecipients,
   scopeToTeam,
-  send as sendMail,
+  sendMany as sendMailMany,
   summarise,
   undeliveredOf,
   unreadOf as unreadMessages,
 } from "./mailbox-store"
+import { checkPermit, checkWaitTarget, issuePermit, readPermits, waitForReply } from "./mail-permit"
+import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
 import {
   assign,
   dispatchMessage,
@@ -2584,26 +2588,45 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description:
-      "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it.",
+      "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it. A `question`/`answer` object makes the row that kind; answers echo LABELS verbatim, never an index. `permit` (captain-only) grants a TTL-bounded blocking wait to a member; `wait` uses it and is refused without one, naming the caller's captain. Every other action stays non-blocking.",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["send", "unread", "read", "summary"], description: "What to do." },
-        to: { type: "string", description: "send: the member name or id to message." },
+        action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
+        to: { type: "string", description: "send: a member id/name, `captain`/`lead`, or `*` to broadcast." },
         subject: { type: "string", description: "send: one line the recipient sees first." },
         body: { type: "string", description: "send: the message." },
+        question: { type: "object", description: "send: {questionId, question, options:[{label}], multiSelect?}." },
+        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels], custom?}." },
+        replyTo: { type: "string", description: "send: the message id this row replies to." },
         member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
         ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+        holder: { type: "string", description: "permit: member id/name the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
+        ttlMs: { type: "number", description: "permit: grant lifetime in ms (default 60000, max 600000)." },
+        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
+        permitId: { type: "string", description: "wait: the captain-issued permit id." },
+        messageId: { type: "string", description: "wait: the message id being waited on." },
+        timeoutMs: { type: "number", description: "wait: block in ms (default 15000; capped by the permit and 60000)." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" }, broadcast: { type: "boolean" }, ok: { type: "boolean" }, reason: { type: "string" }, permit: { type: "object" }, permitScope: { type: "string" }, answers: { type: "array", items: { type: "object" } }, polls: { type: "number" }, waitedMs: { type: "number" } } },
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
+            // A PERMIT answers with the grant itself, so the captain reads the id it must relay and the
+            // instant the grant lapses — the two facts the member's `wait` will be checked against.
+            : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}`
+            // A WAIT reports its own outcome before the unread list, whose payload is also `messages`.
+            : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))`
+            : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms`
             : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
+            // A BROADCAST answers with one row per recipient, so it is checked before the unread list,
+            // whose payload is also `messages` — otherwise a fan-out would render as several subjects.
+            : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient`
             : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
             // C7-4 F3: the scope is printed, so a workspace-global fold is never mistaken for this team's.
             // F-C adds the counted legacy note: an unstamped row is left out of a team-scoped answer, and
@@ -2628,43 +2651,220 @@ export function apply(ctx: any): void {
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }))
       /** Resolve a member by name OR by id, because a captain addresses people by name. */
       const resolve = (name: string): { id: string; name: string; status: string; handle: string } | undefined => roster.find((member) => member.id === name || member.name === name)
+      /** The caller's own session id, which the record keeps as that member's `executorRef`. */
+      const callerId = String(self?.session?.id ?? caller)
+      /** The caller's own display name, recorded where a row or an acknowledgement names an author. */
+      const callerName = String(self?.session?.header?.title ?? caller)
+      /** This caller's own roster row, resolved ONCE so `send`, `read` and `unread` agree about who calls. */
+      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember
+      /** The id this team addresses as `captain`, when its record names a lead (contract §5). */
+      const leadId = String(mailTeam?.leadSessionId ?? "")
+      // THE CAPTAIN PREDICATE (contract §7): the durable Lead id, or a session the churn record kept
+      // after a fork/resume. A DELEGATION CHILD presents no lineage (`where` empties it), so a teammate
+      // can never borrow the captain arm through its parent link.
+      /** Whether this caller is the record's CAPTAIN, which is what lets it issue a permit. */
+      const callerIsLead = mailTeam !== undefined && leadId !== "" && (
+        mailTeam.leadSessionId === callerId
+        || (mailTeam.leadHistory ?? []).includes(callerId)
+        || lineage.some((id) => id === mailTeam.leadSessionId || (mailTeam.leadHistory ?? []).includes(id))
+      )
+      /**
+       * How a permit refusal names this caller's captain, or says why no captain can be named (AC-4).
+       *
+       * A refusal that only says "denied" leaves the caller with no next step, so every permit/wait
+       * refusal carries this sentence: the captain's recorded id for a member, and the honest fact for a
+       * caller the roster does not place on a team (or for the captain itself, who grants, not waits).
+       */
+      const captainSpelling = (): string => {
+        if (mailTeam === undefined) return "this caller resolves no team record, so no captain can have issued a permit"
+        if (leadId === "") return "this team records no captain, so no permit can be valid"
+        if (callerIsLead) return `this caller IS this team's captain ("${leadId}"), who grants permits to members`
+        return `this caller's captain is "${leadId}"`
+      }
 
       if (args?.action === "send") {
-        /** The addressed member, or undefined — in which case the refusal names the whole roster. */
-        const target = resolve(String(args?.to ?? ""))
-        if (target === undefined) {
-          return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` }
-        }
-        /** The store's verdict: the recorded message, or the refusal and its reason. */
-        const result = sendMail(workspace, {
-          fromId: self?.session?.id ?? caller,
-          fromName: self?.session?.header?.title ?? caller,
-          toId: target.id,
-          toName: target.name,
+        // THE ADDRESS RULES (contract §5): a member id or name, `captain`/`lead`, or `*`. ONE resolver,
+        // so the row count and the refusal can never disagree about who a broadcast reached.
+        const resolved = resolveRecipients({
+          members: roster.map((member) => ({ id: member.id, name: member.name })),
+          ...(leadId === "" ? {} : { lead: { id: leadId, name: "captain" } }),
+          // THE SENDER'S OWN ROSTER ID, not its session id (R2's F1): the roster is addressed by `M1`
+          // while a member's session is a different string, so handing the resolver the session id let
+          // the member's own roster row survive a `*` broadcast — and let it message itself.
+          selfId: ownMember?.id ?? callerId,
+        }, String(args?.to ?? ""))
+        if (!resolved.ok) return { refused: resolved.detail }
+        // A broadcast to nobody is NOT a send: report that instead of "sent 0 message(s)", which would
+        // read as a delivered round.
+        if (resolved.targets.length === 0) return { refused: "there is nobody to address — this team has no other members and records no lead" }
+        /** The store's verdict: one row per recipient, or the refusal and why nothing was written. */
+        const result = sendMailMany(workspace, {
+          fromId: callerId,
+          fromName: callerName,
+          // `toId`/`toName` describe the FIRST recipient; the fan-out itself is driven by `targets`.
+          toId: resolved.targets[0].id,
+          toName: resolved.targets[0].name,
           subject: String(args?.subject ?? ""),
           body: String(args?.body ?? ""),
           memberIds: roster.map((member) => member.id),
+          ...(leadId === "" ? {} : { leadIds: [leadId] }),
+          // THE KIND IS INFERRED from the payload, so the two can never disagree: an `answer` object
+          // makes an answer row, a `question` object a question row, and neither a plain message. The
+          // payloads are narrowed by the protocol validators INSIDE the store, which refuse a
+          // malformed one with the rule (and, for a label mismatch, the full valid label list).
+          kind: args?.answer !== undefined ? "answer" : args?.question !== undefined ? "question" : "message",
+          ...(args?.replyTo === undefined ? {} : { replyTo: String(args.replyTo) }),
+          ...(args?.threadId === undefined ? {} : { threadId: String(args.threadId) }),
+          ...(args?.question === undefined ? {} : { question: args.question as MailQuestion }),
+          ...(args?.answer === undefined ? {} : { answer: args.answer as MailAnswer }),
+          // THE SENDER'S ROSTER ID: a row is addressed to `M1` while the answering session names
+          // itself by session id, so the ownership rules need both spellings recorded at send time.
+          ...(ownMember === undefined ? {} : { fromMemberId: ownMember.id }),
           // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
           // team identity is recorded HERE, at the one moment the sending team is known.
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
-        }, now())
+        }, resolved.targets, now())
         if (!result.ok) return { refused: result.detail }
-        // The transport carries it; a delivery failure does NOT lose the record — the message stays
-        // undelivered in the ledger, which is exactly what `summary` reports.
-        try {
-          // A member with no handle was never raised, so there is nothing to deliver to and the
-          // message stays UNDELIVERED in the ledger — which is exactly what `summary` reports.
-          if (target.handle === "") throw new Error(`${target.name} has no executor handle — it was never raised`)
-          await executor().send(exec.agent, target.handle, `[${result.message.subject}]\n\n${result.message.body}`, exec.signal)
-          markDelivered(workspace, [result.message.id], now())
-        } catch (error) {
-          rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${result.message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+        // The transport carries each row; a delivery failure does NOT lose the record — the message
+        // stays undelivered in the ledger, which is exactly what `summary` reports.
+        /** The ids whose recipient really accepted them, so `delivered` is stamped only where it is true. */
+        const delivered: string[] = []
+        for (const message of result.messages) {
+          /** The roster row this message was addressed to, when it is a board member at all. */
+          const member = roster.find((entry) => entry.id === message.toId)
+          // EVERY attempt leaves a DURABLE `wake` line with its reason (contract §5, R2's N1): the row
+          // itself is written before the attempt, so only a separate record can carry the outcome, and
+          // an operator must be able to read "the lead never woke" from the mailbox. The process log
+          // line below is kept for a live tail, never as the record.
+          if (member === undefined) {
+            // The LEAD has no member row: its row is durable, its wake is best-effort and refused here.
+            recordWake(workspace, message.id, { sent: false, reason: `${message.toName} is the team lead — recorded, not woken` }, now())
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id}; the lead is recorded, not woken`)
+            continue
+          }
+          if (member.handle === "") {
+            // A member with no handle was never raised, so there is nothing to deliver to and the
+            // message stays UNDELIVERED — which is exactly what `summary` reports.
+            recordWake(workspace, message.id, { sent: false, reason: `${member.name} has no executor handle — it was never raised` }, now())
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id}; ${member.name} has no executor handle`)
+            continue
+          }
+          try {
+            await executor().send(exec.agent, member.handle, `[${message.subject}]\n\n${message.body}`, exec.signal)
+            recordWake(workspace, message.id, { sent: true }, now())
+            delivered.push(message.id)
+          } catch (error) {
+            // The transport refused it: the same failure the mailbox already reports as undelivered,
+            // now WITH the reason on the durable side, exactly as the cellwork captain path does.
+            recordWake(workspace, message.id, { sent: false, reason: `the transport refused it: ${String((error as Error)?.message ?? error)}` }, now())
+            rowLogLine("mpd-team-core", `[mpd-team-core] the mailbox recorded ${message.id} but the transport refused it: ${String((error as Error)?.message ?? error)}`)
+          }
         }
-        return { message: result.message }
+        if (delivered.length > 0) markDelivered(workspace, delivered, now())
+        // A fan-out reports the rows it wrote; a single send keeps the one-message shape callers know.
+        return resolved.broadcast ? { messages: result.messages, broadcast: true } : { message: result.messages[0] }
+      }
+
+      if (args?.action === "permit") {
+        // THE CAPTAIN'S GRANT (contract §7): only this team's Lead may mint a permit, and only for a
+        // member of its own team. Everything below is read off the RECORD, so a caller that merely
+        // claims captaincy cannot issue one.
+        if (!callerIsLead) return { refused: `permit: only this team's captain may issue a wait permit — ${captainSpelling()}` }
+        /** The member the grant is for: a roster id or name, the same resolution `send` addresses by. */
+        const holder = resolve(String(args?.holder ?? ""))
+        if (holder === undefined) {
+          return { refused: `permit: "${String(args?.holder ?? "")}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` }
+        }
+        /** The store's verdict: the appended grant, or the sentence saying why nothing was written. */
+        const issued = issuePermit(workspace, {
+          issuerId: callerId,
+          issuerName: callerName,
+          holderId: holder.id,
+          holderName: holder.name,
+          ...(args?.scope === undefined ? {} : { scope: args.scope }),
+          ...(args?.ttlMs === undefined ? {} : { ttlMs: args.ttlMs }),
+          ...(args?.questionId === undefined ? {} : { questionId: args.questionId }),
+        }, now())
+        if (!issued.ok) return { refused: `permit: ${issued.detail}` }
+        return { ok: true, permit: issued.permit }
+      }
+
+      if (args?.action === "wait") {
+        // A BLOCKING WAIT IS A GRANTED EXCEPTION (contract §7/AC-4). Every refusal below names the
+        // captain, the permit bounds the wait's own lifetime, and the poll loop is finite — so the
+        // default stays non-blocking and a caller with no permit cannot park itself at all.
+        /** The permit the caller names, or empty when the argument is missing. */
+        const permitId = String(args?.permitId ?? "")
+        /** The row the caller waits on, or empty when the argument is missing. */
+        const messageId = String(args?.messageId ?? "")
+        if (permitId === "") return { refused: `wait: permitId is required — a blocking wait needs a permit from your captain: ${captainSpelling()}` }
+        if (messageId === "") return { refused: `wait: messageId is required (the row that will be answered) — the permit comes from your captain: ${captainSpelling()}` }
+        // A typo must never silently become the default timeout, so the raw spelling is judged first.
+        if (args?.timeoutMs !== undefined && (!Number.isFinite(Number(args.timeoutMs)) || Number(args.timeoutMs) < 0)) {
+          return { refused: `wait: timeoutMs must be a non-negative number of milliseconds — got ${JSON.stringify(args.timeoutMs ?? null)}` }
+        }
+        /** The folded permit log; a torn line costs one grant and never the file (contract §12). */
+        const permits = readPermits(workspace)
+        /** The grant this call names, or undefined when the log holds none. */
+        const permit = permits.permits.find((entry) => entry.permitId === permitId)
+        if (permit === undefined) {
+          return { refused: `wait: no permit "${permitId}" is recorded — a blocking wait needs a permit from your captain: ${captainSpelling()}; without one every mail call stays non-blocking` }
+        }
+        /** The permit's verdict: ownership, expiry, the issuer's authority and the effective timeout. */
+        const checked = checkPermit(permit, {
+          holderId: ownMember?.id ?? callerId,
+          holderName: ownMember?.name ?? callerName,
+          sessionId: callerId,
+          leadIds: [leadId, ...(mailTeam?.leadHistory ?? [])].filter((id) => id !== ""),
+          ...(args?.timeoutMs === undefined ? {} : { requestedTimeoutMs: Number(args.timeoutMs) }),
+        }, now())
+        if (!checked.ok) return { refused: `wait: ${checked.detail}` }
+        // THE TARGET comes from the same TEAM-SCOPED fold the unread branch reads, so an id from a
+        // finished wave can never satisfy a wait against this team's mailbox.
+        /** The mailbox as this caller's team can claim it, read once for the target lookup. */
+        const state = scopeToTeam(readMailbox(workspace), mailTeam?.teamId)
+        /** The folded row the caller says it waits on. */
+        const target = state.messages.find((message) => message.id === messageId)
+        if (target === undefined) return { refused: `wait: no message "${messageId}" is recorded for this team — pass the id the send returned` }
+        /** Whether the permit's scope covers this target at all (a question for `answer`). */
+        const targetCheck = checkWaitTarget(checked.permit, target)
+        if (!targetCheck.ok) return { refused: `wait: ${targetCheck.detail}` }
+        // BOUNDED POLLING: one mailbox read per interval for at most the permit-bounded timeout. The
+        // loop has a poll ceiling as well as a deadline (see `waitForReply`), so it cannot spin.
+        /** The bounded outcome: the assembled rows, a timeout, or an abort. */
+        const outcome = await waitForReply({
+          permit: checked.permit,
+          target,
+          timeoutMs: checked.timeoutMs,
+          read: () => scopeToTeam(readMailbox(workspace), mailTeam?.teamId),
+          now,
+          sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+          ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+        })
+        if (!outcome.ok) return { ok: false, reason: outcome.reason, permitId, permitScope: checked.permit.scope, polls: outcome.polls, waitedMs: outcome.waitedMs }
+        // A SCOPE-`answer` PERMIT answers with the assembled ANSWERS: the label echo the protocol
+        // exists for, plus the correlation keys — never a whole mailbox row the caller must re-render.
+        /** The assembled answer payloads, correlating each row to the question it answers. */
+        const answers = outcome.messages.flatMap((message) => message.answer === undefined ? [] : [{
+          id: message.id,
+          fromName: message.fromName,
+          questionId: message.answer.questionId,
+          answerTo: message.answer.answerTo,
+          selected: message.answer.selected,
+          ...(message.answer.custom === undefined ? {} : { custom: message.answer.custom }),
+        }])
+        // A SCOPE-`message` PERMIT waits for a REPLY, not necessarily an answer, so it returns the rows.
+        if (checked.permit.scope === "message") {
+          return { ok: true, permitId, permitScope: checked.permit.scope, messages: outcome.messages, polls: outcome.polls, waitedMs: outcome.waitedMs }
+        }
+        return { ok: true, permitId, permitScope: checked.permit.scope, answers, polls: outcome.polls, waitedMs: outcome.waitedMs }
       }
 
       if (args?.action === "read") {
-        return { moved: markRead(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], now()) }
+        // OWNERSHIP (contract §5): the acknowledgement is made AS THE CALLER'S OWN MEMBER ROW, and the
+        // store refuses a row addressed to anybody else. There is no administrative escape.
+        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: ownMember?.id ?? callerId, byName: ownMember?.name ?? callerName }, now())
+        return { moved: outcome.moved, ...(outcome.refused.length === 0 ? {} : { refused: outcome.refused.map((entry) => entry.reason).join("; ") }) }
       }
 
       if (args?.action === "summary") {
@@ -2709,12 +2909,8 @@ export function apply(ctx: any): void {
       // A message is ADDRESSED to the roster member id (`M1`), while a member's session id is the
       // `executorRef` the record kept at spawn — TWO DIFFERENT STRINGS. Keying the self path on the
       // session id therefore matched nothing, and a member reading its own inbox always saw an empty
-      // one. ONE resolver, the same `callerIdentity` the board uses (C7-4 F2): the recorded handle
-      // first, then a roster name the session title contains.
-      /** The caller's own session id, which the record keeps as that member's `executorRef`. */
-      const callerId = self?.session?.id ?? caller
-      /** This caller's own roster row, when the resolved team's roster names it. */
-      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember
+      // one. ONE resolver, the same `callerIdentity` the board uses (C7-4 F2) — resolved ONCE at the
+      // top of this tool, so `send`, `read` and `unread` can never disagree about who is calling.
       /** The inbox owner: the named member, else the caller's OWN member row, else its session id. */
       const memberId = wanted?.id ?? ownMember?.id ?? callerId
       // ── D16b: THE SAME PER-TEAM FILTER THE SEND BOUND APPLIES ──
@@ -2732,6 +2928,13 @@ export function apply(ctx: any): void {
           body: message.body,
           sentAt: message.sentAt,
           delivered: message.deliveredAt !== undefined,
+          // THE ENVELOPE, carried so a reader never has to count options: a `question` arrives with its
+          // LABELS and an `answer` with the labels it echoed (contract §5/§6).
+          kind: message.kind,
+          threadId: message.threadId,
+          ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+          ...(message.question === undefined ? {} : { question: message.question }),
+          ...(message.answer === undefined ? {} : { answer: message.answer }),
         })),
         undelivered: undeliveredOf(scoped, memberId).length,
         total: inboxOf(scoped, memberId).length,

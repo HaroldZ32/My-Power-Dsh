@@ -18,7 +18,7 @@
 | `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` 通过**团队执行器**执行它（原生后端在被钉住的宿主上（harness 0.2.1+）经 `ctx.subagents.startActivation` 拉起持久子会话，只把已退役的 `ctx.subagents.startContinuable` 留作老宿主的回退 —— `CONTINUABLE_START_MEMBERS`，由 `continuableStartMember` 从新到旧探测；官方 `dsh.team*` 调用是**回退**），并按 mpd 记录解析 `blocked_by`/`owner`，持久化声明的 `kind`（取自 `task.kind` 或其顶层别名，未知词会被**拒绝**）；0 成员且 0 任务的计划会被**拒绝**；`delete` 归档；`status` 在该后端生效时把记录与官方读数并排给出 |
 | `agent_teams_task` | `claim`、`contract`、`release`、`complete`、`fail`、`depend` | 在 mpd 记录上认领任务**并**冻结契约（单调 `attempt`）；读回契约；`release` 释放配对并把任务行退回 `pending`；`complete`/`fail` 是终结动词（仅所有者或队长可用，可带 `note`/`expected_revision`，`FAIL` 会释放其依赖方）；`depend` 只向**既有**行**追加** `blocked_by` 依赖边——重复添加是幂等空操作（会如实报告），已终结的行、未知的 `task_id`、既非该行所有者又非队长的调用者、以及**自环**或**任何环**（双节点或传递环）都会被**拒绝**；所有拒绝都在**任何写入之前**返回，`blockedBy` 与 `revision` 保持原样——成环的边永远无法满足就绪规则，而 `depend` 只会追加、永不删边，任务行会因此永久 not-ready——并报告点名不到任何任务的引用：按原文保留在 `blockedBy`、在结果里点名、并持久化为该行的 `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并在**按团队分键的台账**里记录配对；`release` 释放配对并重开任务行 |
-| `agent_teams_mail` | `send`、`unread`、`read`、`summary` | 团队信箱：durable，且带官方**给不了**的已读状态 |
+| `agent_teams_mail` | `send`、`unread`、`read`、`summary`、`permit`、`wait` | 团队信箱：**一条** durable 流，承载 `message`/`question`/`answer` 记录，且带官方**给不了**的已读状态；`permit` 签发等待授权（仅本队 Lead），`wait` 在该授权内阻塞——完整协议见 [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md) |
 | `agent_teams_control` | `halt`、`resume` | 只停派工、别的什么都不做的暂停 |
 
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
@@ -137,6 +137,31 @@ data: {"rev":8}
   别人的队列。显式给出的 `member` **必须能解析**：未知名字会被**拒绝**，拒绝信息点名该值并列出名册
   （`"<name>" is not a member of this team (members: …)`），且**不返回任何邮件**——拼写错误绝不会回退到
   调用者自己的收件箱。
+- **一条流，三种 kind。** 记录带 `kind`（`message` | `question` | `answer`），外加 `replyTo`/`threadId` 及
+  其 kind 指定的载荷；没有 `kind` 的旧记录折叠为 `message`。问题提供**标签**，答案逐字回显这些**标签字符串**
+  ——任何地方都没有选项序号，这就是 2026-10-31 relay 缺陷的机械修复。信封、校验器与容错折叠在
+  [`mpd-mail-protocol`](../mpd-mail-protocol/README.zh-CN.md) 里；使用者视角、寻址规则与已声明边界见
+  [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md)。
+- **寻址**接受成员 id、成员名、`captain`/`lead`（记录中的 `leadSessionId`，记为 `toName: "captain"`），
+  或 `"*"`——广播会为**每个收件人**铸造**一条**记录（全部成员加 lead，排除发送者、去重），共享同一信封与
+  线程。没有「多收件人记录」，因此按收件人确认与按收件人上限才诚实；解析结果为空时会被拒绝，而不是回答
+  「已发送 0 条」。判断「自己」会同时比对发送者的**两种写法**（roster id 与会话 id），因为记录按 roster id
+  寻址，而会话按自己的会话 id 命名自己。
+- **确认属于收件人。** `read` 记录 `by`（确认者显示名，折叠为 `readBy`），并拒绝指向他人的 id——**没有**管理
+  员后门。后果明说：队长不能代停滞成员清理积压；permit 授予的是**等待**，从不是确认。确认身份是调用者的
+  **ROSTER id**（`ownMember.id`；没有 roster 行的 lead 用会话 id）。
+- **唤醒是一条 durable 记录，不是进程日志。** 每条记录写入后才会尝试尽力而为的唤醒，其结果追加为
+  `{t:"wake", id, sent, reason?, at}`——`sent` 为 false 时 `reason` 必填；没有任何 wake 记录的行意味着尝试
+  从未发生（读者必须按「未唤醒」处理）。该形状与 cellwork 面的记录互为规范孪生；两侧各自写哪些原因，在
+  [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md) 里逐条列出。
+- **折叠的问题列表是被暴露的。** 重复的 send id 保留**第一条**写入并**报告**（I8）：异常随折叠状态以
+  `problems` 暴露，web 投影会渲染它们。`problems` 在状态上是**可选**的（调用方构造的、只是消息列表的视图不是
+  折叠结果），并有三条补偿保证：`fold`/`readMailbox` 总是填充它，`scopeToTeam` 会带着它穿过，两条测试臂
+  断言干净日志得到 `{messages: [], problems: []}`。
+- **已声明的边界。** 工具从 `question`/`answer` 载荷**推断** `kind`，不提供 `kind` 或 `threadId` 参数（回复
+  通过 `replyTo` 归入线程）；直接构造记录的调用方仍可向存储 API 显式传入二者。已注册的工具表面由一条实测
+  预算断言：`permit`/`wait` 落地后为 **5,600 → 6,400 字符，实测 6,289**——任何进一步放宽都必须**先**获得队长
+  批准。
 - **一切按工作区定位**，经 `dsh.workspaceRoot(exec)`，绝不用进程 cwd。
 
 ### 嵌套团队（子单元）
