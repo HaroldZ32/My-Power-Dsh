@@ -7,14 +7,16 @@
 import { appendJournal, freeCellId, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
-import { dispatchOwnerOnly, nameKey, sendThroughExecutor, type DispatchRecordView, type DispatchReport } from "./dispatch"
+import { applyReassignments, dispatchOwnerOnly, fenceReasonOf, nameKey, reassignPairs, sendThroughExecutor, type DispatchRecordView, type DispatchReport, type ReassignOutcome } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
-import { appendCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
+import { appendCellMail, deliverCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import {
   applyCheckpoint,
   checkpointDirective,
+  checkpointUnrecoverableEntry,
   compactionJournalEntry,
   handoffWrittenDirective,
+  memberAfterBarrier,
   nextStepOf,
   planCheckpoint,
   promoteAfterHandoff,
@@ -78,6 +80,16 @@ function render(value: string): Array<{ type: "text"; text: string }> {
  */
 function refusalText(failure: { path: string; reason: string; detail: string }): string {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed"
+}
+
+/**
+ * A message from an unknown thrown value, without assuming it is an Error.
+ *
+ * @param error - the thrown value.
+ * @returns its message text.
+ */
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**
@@ -174,8 +186,26 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_dispatch ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent or failed owner is REPORTED and the task left pending — never substituted. Delivery goes through the team executor and is journaled.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. Delivery goes through the team executor and is journaled.",
+    parameters: {
+      type: "object",
+      properties: {
+        reassign: {
+          type: "array",
+          description: "Rows to hand to another member BEFORE the pass: each is claimed for that member on the board, journaled, then delivered to it. Use it to repair the rows a fenced owner still holds.",
+          items: {
+            type: "object",
+            properties: {
+              task_id: { type: "string", description: "The board row to hand over (`T17`)." },
+              owner: { type: "string", description: "The member that should own and receive the row." },
+            },
+            required: ["task_id", "owner"],
+            additionalProperties: false,
+          },
+        },
+      },
+      additionalProperties: false,
+    },
     output: {
       schema: {
         type: "object",
@@ -184,6 +214,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           error: { type: "string" },
           pairs: { type: "array", items: { type: "object" } },
           skipped: { type: "array", items: { type: "object" } },
+          reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
+          reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
           refused: { type: "string" },
         },
         required: ["ok"],
@@ -196,13 +228,19 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const pairs = Array.isArray(result.pairs) ? result.pairs as Array<Record<string, unknown>> : []
         /** The reported skips. */
         const skipped = Array.isArray(result.skipped) ? result.skipped as Array<Record<string, unknown>> : []
-        if (typeof result.refused === "string") return render("cellwork_dispatch refused: " + result.refused)
-        return render(pairs.length === 0
-          ? "nothing dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")
-          : pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)).join("\n") + (skipped.length === 0 ? "" : "\nreported: " + skipped.length))
+        /** The reassignment outcomes, reported before the pass because they run before it. */
+        const reassigned = Array.isArray(result.reassigned) ? result.reassigned as Array<Record<string, unknown>> : []
+        /** The refused `reassign` entries. */
+        const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : []
+        /** One line per hand-over, claiming and delivery reported as the SEPARATE facts they are. */
+        const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")))
+        if (typeof result.refused === "string") return render([...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
+        return render([...handovers, ...invalid, ...(pairs.length === 0
+          ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")]
+          : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...(skipped.length === 0 ? [] : ["reported: " + skipped.length])])].join("\n"))
       },
     },
-    execute: async (_args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
+    execute: async (args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
       /** The caller's context. */
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
@@ -215,7 +253,38 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The delivery binding, when this composition exposes the team executor. */
       const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
       if (send === undefined) return { ok: false, error: "cellwork_dispatch: this composition exposes no team executor, so no member can be woken" }
-      /** The live record, re-read for this pass. */
+      /** The instant this pass is stamped with, shared so no row of the pass reads earlier than its neighbour. */
+      const now = new Date()
+      /** The `reassign` pairs this call could read, and the entries it refused. */
+      const handover = reassignPairs(readArgs(args)["reassign"])
+      /** What the hand-over did, one entry per readable pair. */
+      let reassigned: ReassignOutcome[] = []
+      // THE HAND-OVER RUNS BEFORE THE PASS (C6): claim on the board, journal, then deliver — the order a
+      // member depends on, because a message for a row it cannot see on the board is the D4/D5 livelock.
+      if (handover.pairs.length > 0) {
+        /** The live record the claims target, read per call. */
+        const before = recordOf(caller.workspace, cell.teamId)
+        reassigned = await applyReassignments({
+          workspace: caller.workspace,
+          cell,
+          record: before as DispatchRecordView | undefined,
+          pairs: handover.pairs,
+          claim: async (taskId: string, owner: string): Promise<{ ok: boolean; error?: string }> => {
+            try {
+              /** The board's own answer to `agent_teams_task {action:"claim"}`. */
+              const claimed = await dsh.executeTool({ name: "agent_teams_task", arguments: { action: "claim", task_id: taskId, claimant: owner }, agent: exec.agent })
+              return claimed.ok ? { ok: true } : { ok: false, error: String(claimed.error ?? "the board refused the claim") }
+            } catch (error) {
+              return { ok: false, error: errorText(error) }
+            }
+          },
+          send,
+          now,
+          handleFor: (name) => cell.members[name]?.executorRef,
+        })
+        appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed).length, delivered: reassigned.filter((row) => row.delivered).length, rejected: reassigned.filter((row) => !row.claimed).length, invalid: handover.invalid.length }, now)
+      }
+      /** The live record, RE-READ after the hand-over: the claims just moved those rows to `in_progress`. */
       const record = recordOf(caller.workspace, cell.teamId)
       /** The report. */
       const report: DispatchReport = await dispatchOwnerOnly({
@@ -223,19 +292,26 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         cell,
         record: record as DispatchRecordView | undefined,
         send,
-        now: new Date(),
+        now,
         handleFor: (name) => cell.members[name]?.executorRef,
         excludedTaskIds: Object.values(cell.cancelledTasks),
       })
-      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, new Date())
-      return { ok: true, pairs: report.pairs, skipped: report.skipped, ...(report.refused === undefined ? {} : { refused: report.refused }) }
+      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, now)
+      return {
+        ok: true,
+        pairs: report.pairs,
+        skipped: report.skipped,
+        ...(reassigned.length === 0 ? {} : { reassigned }),
+        ...(handover.invalid.length === 0 ? {} : { reassignInvalid: handover.invalid }),
+        ...(report.refused === undefined ? {} : { refused: report.refused }),
+      }
     },
   }))
 
   // ── cellwork_supervise ───────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the FENCED members together with the open rows they own (reassign those), and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     output: {
       schema: {
@@ -251,6 +327,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
+          fenced: { type: "array", items: { type: "object" }, description: "Every fenced member with the reason and the OPEN board rows it still owns — the rows a `reassign` pass repairs." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } },
         },
@@ -264,10 +341,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const members = Array.isArray(result.members) ? result.members as Array<Record<string, unknown>> : []
         /** The task rows. */
         const tasks = Array.isArray(result.tasks) ? result.tasks as Array<Record<string, unknown>> : []
+        /** The fenced members, with the rows a reassignment would move. */
+        const fenced = Array.isArray(result.fenced) ? result.fenced as Array<Record<string, unknown>> : []
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
           "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round((row.ratio as number) * 100) + "%" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
+          "fenced: " + (fenced.length === 0
+            ? "none"
+            : fenced.map((row) => String(row.name) + " (" + String(row.reason) + ") owns " + (Array.isArray(row.tasks) && row.tasks.length > 0 ? (row.tasks as unknown[]).map((id) => String(id)).join(", ") : "no open row") + " — repair with cellwork_dispatch {reassign:[{task_id, owner}]}").join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String((result.wakeFailures as unknown[]).length) + " without a wake-up" : ""),
         ].join("\n"))
       },
@@ -293,6 +375,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       })
       /** The folded mail. */
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId))
+      // THE FENCED MEMBERS AND THEIR OPEN ROWS (C7): a fenced seat cannot claim, so the captain reads the
+      // rows to reassign HERE, from the read-only sweep, instead of reconstructing them from the journal.
+      /** Every fenced member, with the reason and the open board rows it still owns. */
+      const fenced = Object.values(cell.members).flatMap((member) => {
+        /** Why this member is fenced, or undefined when it can work. */
+        const reason = fenceReasonOf(member)
+        if (reason === undefined) return []
+        /** The open rows credited to this member — the ones a `reassign` pass could move. */
+        const owned = tasks.filter((task) => {
+          /** The row's status: a terminal row is finished work, never a row to hand over. */
+          const status = String(task.status ?? "")
+          return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name)
+        }).map((task) => String(task.id ?? ""))
+        return [{ name: member.name, mode: member.mode, reason, tasks: owned }]
+      })
       return {
         ok: true,
         cellId: cell.cellId,
@@ -303,6 +400,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         splitRevision: cell.splitRevision,
         requirementsRevision: cell.requirementsRevision,
         handoffReady: Object.values(cell.members).filter((member) => member.handoffReady).map((member) => member.name),
+        fenced,
         unreadMail: messages.filter((message) => !message.read).length,
         wakeFailures: wakeFailures(messages).map((message) => ({ id: message.id, to: message.to, subject: message.subject, reason: message.wakeReason ?? "no wake-up was attempted" })),
       }
@@ -406,6 +504,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const member = caller.cell.members[caller.member]
       if (member === undefined) return { ok: false, error: "cellwork_handoff: " + JSON.stringify(caller.member) + " is not a recorded cell member" }
       if (caller.sessionId === caller.cell.captainSessionId) return { ok: false, error: "cellwork_handoff: the captain is never checkpointed (declared bound) — it dispatches, it does not hand off" }
+      // ONE HANDOFF PER CHECKPOINT (C7): a second document while the first still waits for the barrier is
+      // the 3-handoffs-in-7-minutes livelock D5 recorded, and the barrier reads only the LATEST ordinal —
+      // so the refusal is what saves the continuity, not the write.
+      if (member.handoffReady) {
+        return { ok: false, error: "cellwork_handoff: the handoff " + JSON.stringify(caller.member) + " already wrote (handoff/" + String(member.handoffs) + ") is STILL WAITING for the compaction barrier — END YOUR TURN now instead of writing a second document; the barrier compacts and promotes you from the FIRST one" }
+      }
       /** The document the member wrote. */
       const content = argString(readArgs(args), "content")
       if (content.trim() === "") return { ok: false, error: "cellwork_handoff: `content` is required — the handoff document IS the continuity, so there is nothing to validate without it" }
@@ -511,7 +615,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_send ────────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; a failed wake-up is journaled and surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended to that same log as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
@@ -541,7 +645,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return render("cellwork_send refused: " + String(result.error ?? "unknown refusal"))
-        return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; no wake-up: " + String(result.wakeReason ?? "best-effort") + ")"))
+        // THE ANSWER NAMES WHICH HALF FAILED (repair N1): "no wake-up" plus a reason that says the
+        // transport refused it reads differently from a reason that says the RECORD of it was lost.
+        return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; " + String(result.wakeReason ?? "no wake-up was attempted") + ")"))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
@@ -550,7 +656,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The caller's context. */
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
-      if (caller.cell === null || caller.member === "") return { ok: false, error: "cellwork_send: this session belongs to no active cell" }
+      // NARROWED ONCE, for the callbacks below: a closure cannot rely on the property narrowing above,
+      // so the cell is bound to a local and every later read (including the two appends) uses it.
+      /** The caller's own cell. */
+      const cell = caller.cell
+      if (cell === null || caller.member === "") return { ok: false, error: "cellwork_send: this session belongs to no active cell" }
       /** The requested recipient. */
       const requested = argString(argv, "to").trim()
       if (requested === "") return { ok: false, error: "cellwork_send: `to` is required (`captain`, a member name, or `<cellId>/<captain|member>` for a cell in this cell's tree)" }
@@ -568,17 +678,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
        */
       const slash = requested.lastIndexOf("/")
       /** The cell the row is addressed to: the caller's own cell, or the tree member named before the slash. */
-      const targetCellId = slash < 0 ? caller.cell.cellId : requested.slice(0, slash).trim()
+      const targetCellId = slash < 0 ? cell.cellId : requested.slice(0, slash).trim()
       /** The name the recipient answers to inside the target cell. */
       const requestedName = slash < 0 ? requested : requested.slice(slash + 1).trim()
       if (requestedName === "") return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" }
       /** Whether this send crosses into another cell of the tree. */
-      const crossCell = targetCellId !== caller.cell.cellId
+      const crossCell = targetCellId !== cell.cellId
       /** The target cell's record, when this send crosses cells. */
-      let target: CellState = caller.cell
+      let target: CellState = cell
       if (crossCell) {
-        if (targetCellId !== caller.cell.parentCellId && !caller.cell.subcellIds.includes(targetCellId)) {
-          return { ok: false, error: "cellwork_send: " + JSON.stringify(targetCellId) + " is not in this cell's tree — a cross-cell recipient must be a SUB-CELL of " + caller.cell.cellId + " (" + (caller.cell.subcellIds.join(", ") || "none") + ") or its parent cell (" + (caller.cell.parentCellId ?? "none") + ")" }
+        if (targetCellId !== cell.parentCellId && !cell.subcellIds.includes(targetCellId)) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(targetCellId) + " is not in this cell's tree — a cross-cell recipient must be a SUB-CELL of " + cell.cellId + " (" + (cell.subcellIds.join(", ") || "none") + ") or its parent cell (" + (cell.parentCellId ?? "none") + ")" }
         }
         /** The target cell's record, or the refusal this send answers with. */
         const read = readCell(caller.workspace, targetCellId)
@@ -597,43 +707,41 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!crossCell && nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
       /** The instant this row is stamped with. */
       const now = new Date()
-      /** Whether a wake-up was handed to the transport. */
-      let wakeSent = false
-      /** Why no wake-up went out, when it did not. */
-      let wakeReason: string | undefined
-      if (crossCell) {
-        wakeReason = "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)"
-      } else if (toCaptain) {
-        wakeReason = "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`"
-      } else if (caller.sessionId !== caller.cell.captainSessionId) {
-        wakeReason = "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`"
-      } else if (String(recipientMember?.executorRef ?? "") === "") {
-        wakeReason = "the recipient has no executor handle (never raised)"
-      } else {
-        /** The delivery binding, when the executor exists. */
-        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
-        if (send === undefined) wakeReason = "this composition exposes no team executor"
-        else {
-          try {
-            await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + body + "\n\n(full row: cell " + caller.cell.cellId + ")")
-            wakeSent = true
-          } catch (error) {
-            wakeReason = "the wake-up failed: " + (error instanceof Error ? error.message : String(error))
-          }
-        }
-      }
-      // THE ROW LANDS WHERE THE RECIPIENT READS IT: a cross-cell message is appended to the TARGET cell's
-      // log (its `cellwork_inbox` reads that log), while the SENDER's journal records that it went out.
+      // THE ID EXISTS BEFORE ANYTHING IS WRITTEN (D6): the durable row and the `wake` record that follows
+      // it must name the SAME message, so the id is minted first and both appends quote it.
       /** The id already used by the log this row is appended to, so a cross-cell id cannot shadow one. */
       const taken = new Set(readCellMail(caller.workspace, targetCellId).map((record) => record.id))
       /** The next unused id: the per-process sequence advanced until it is free in the target log. */
       let id = mailId(now, (mailSequence += 1))
       while (taken.has(id)) id = mailId(now, (mailSequence += 1))
-      /** Whether the durable row reached the recipient's log. */
-      const appended = appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent, ...(crossCell ? { fromCell: caller.cell.cellId } : {}), ...(wakeReason === undefined ? {} : { wakeReason }) })
-      if (!appended) return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent (mail is durable first)" }
-      appendJournal(caller.workspace, caller.cell.cellId, { event: "mail", cell: "cell:" + caller.cell.cellId, id, from: caller.member, to, ...(crossCell ? { toCell: targetCellId } : {}), subject, wakeSent }, now)
-      return { ok: true, id, to, wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: caller.cell.cellId } : {}), ...(wakeReason === undefined ? {} : { wakeReason }) }
+      /**
+       * The wake-up attempt, handed to {@link deliverCellMail} so it runs AFTER the durable row landed.
+       *
+       * It resolves its refusal instead of throwing there, because "no wake-up was attempted" and "the
+       * transport failed" are different facts a reader needs; the wrapper classifies a throw as the latter.
+       */
+      const attemptWake = async (): Promise<{ sent: boolean; reason?: string }> => {
+        if (crossCell) return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" }
+        if (toCaptain) return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" }
+        if (caller.sessionId !== cell.captainSessionId) return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" }
+        if (String(recipientMember?.executorRef ?? "") === "") return { sent: false, reason: "the recipient has no executor handle (never raised)" }
+        /** The delivery binding, when the executor exists. */
+        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
+        if (send === undefined) return { sent: false, reason: "this composition exposes no team executor" }
+        await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + body + "\n\n(full row: cell " + cell.cellId + ")")
+        return { sent: true }
+      }
+      // THE ROW LANDS WHERE THE RECIPIENT READS IT: a cross-cell message is appended to the TARGET cell's
+      // log (its `cellwork_inbox` reads that log), while the SENDER's journal records that it went out.
+      /** The durable-first delivery: the row, then the wake-up attempt, then the attempt's outcome. */
+      const delivery = await deliverCellMail({
+        appendSend: () => appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent: false, ...(crossCell ? { fromCell: cell.cellId } : {}) }),
+        attemptWake,
+        appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id, sent: outcome.sent, ...(outcome.reason === undefined ? {} : { reason: outcome.reason }), at: now.toISOString() }),
+      })
+      if (!delivery.landed) return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent and no wake-up was attempted (mail is durable first)" }
+      appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id, from: caller.member, to, ...(crossCell ? { toCell: targetCellId } : {}), subject, wakeSent: delivery.wakeSent }, now)
+      return { ok: true, id, to, wakeSent: delivery.wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}), ...(delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason }) }
     },
   }))
 
@@ -771,15 +879,13 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail)
         return
       }
-      /** The member row after the barrier (the reseed path may have minted a new handle). */
-      const updated: CellMemberRecord = {
-        ...(fresh.state.members[caller.member] ?? member),
-        mode: result.outcome === "refused" ? "checkpoint" : "subcaptain",
-        handoffReady: result.outcome === "refused",
-        ...(result.newHandle === undefined ? {} : { sessionId: result.newHandle, executorRef: result.newHandle }),
-      }
+      /** The member row after the barrier (this outcome decides the fence markers and may mint a handle). */
+      const updated: CellMemberRecord = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result)
       /** The record after the barrier. */
       const next: CellState = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } }
+      // THE GIVEN-UP BARRIER GETS ITS OWN JOURNAL ROW (C7): the compaction row below reports the attempt,
+      // this one reports that the member is now OUT OF SERVICE and which verb repairs its rows.
+      if (result.outcome === "refused") appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now)
       transition(caller.workspace, next, compactionJournalEntry(caller.member, result), now)
     } finally {
       inFlight.delete(key)

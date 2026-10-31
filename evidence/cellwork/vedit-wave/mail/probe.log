@@ -1,0 +1,32 @@
+PASS W0 the fresh team minted its own M4 — planner.id=M4
+PASS W1a retired rows invisible in the unread list — subjects=["ours"]
+PASS W1b retired rows invisible in total/undelivered — total=1, undelivered=1
+PASS W1e an UNSTAMPED row is invisible to a team-scoped unread — subjects=["ours"], total=1
+PASS W1c retired backlog does not block the fresh team's send — refused=undefined
+PASS W1d self path sees its own team's rows, not the retired ones — subjects=["ours","fresh-send"], memberName=Planner
+PASS W2a self call with no member resolves to its own MEMBER id — subjects=["own-mail"], memberName=Senior Engineer
+PASS W2b explicit member by NAME resolves — subjects=["reviewer-mail"]
+PASS W2c explicit member by MEMBER ID resolves — subjects=["reviewer-mail"]
+PASS W2d explicit member BEATS self identity (by name) — subjects=["reviewer-mail"]
+PASS W2e explicit member BEATS self identity (by member id) — subjects=["reviewer-mail"]
+PASS W2f explicit member id naming ITSELF still lists its own mail — subjects=["own-mail"]
+PASS W2g a non-member caller of the team gets an empty answer, not a throw — messages=0, total=0, memberName=lead-session-1
+PASS W3a no-team caller reads the whole fold — subjects=["unstamped-mail","stamped-mail"], total=2, undelivered=2
+PASS W4a summary reports the 8-row backlog — summary.undelivered=8
+PASS W4b the 9th send refuses with the EXACT sentence at bound 8 — refused="Senior Engineer" already has 8 undelivered message(s) (bound 8) — it is not keeping up
+PASS W4c the unread answer names the row to ack — id=mail-20261031050000-001
+PASS W4d the ack moves exactly one row — moved=["mail-20261031050000-001"]
+PASS W4e summary drops by exactly one after one ack — summary.undelivered=7
+PASS W4f the ack unblocks the next send — refused=undefined
+PASS W4g EXACTLY one slot moved (one refill returns the bound and refuses) — refused="Senior Engineer" already has 8 undelivered message(s) (bound 8) — it is not keeping up
+PASS W4h another ack frees exactly one (8 -> 7) — summary.undelivered=7
+PASS W4h2 yet another ack frees exactly one more (7 -> 6) — summary.undelivered=6
+PASS W4i summary, undeliveredOf and isOutstanding agree — isOutstanding=6, summary=6, undeliveredOf=6
+PASS W4j delivery frees exactly one slot — summary.undelivered=5
+PASS W5a H1 CLOSED: ack frees exactly one slot (store level) — before.ok=false, moved=1, afterAck.ok=true, afterAgain.ok=false
+PASS W5b the ack sets readAt and never fabricates delivery — readAt=2026-10-31T05:10:00.000Z, deliveredAt=undefined
+PASS W5c the acked row leaves the outstanding set — isOutstanding=false
+OBS O1 member caller, member=<colleague session id> — subjects=["own-mail"], memberName=Senior Engineer
+OBS O2 lead caller, member=<member session id> — subjects=[], total=0, memberName=lead-session-1
+
+ALL ARMS PASS

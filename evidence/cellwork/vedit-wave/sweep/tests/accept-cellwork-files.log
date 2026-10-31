@@ -1,0 +1,66 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts:
+(pass) C12/D1: failing at the contract stage resumes to convergence with no duplicate artifact [14.63ms]
+(pass) C12/D1: failing at the member stage resumes to convergence with no duplicate artifact [2.79ms]
+(pass) C12/D1: failing at the task stage resumes to convergence with no duplicate artifact [2.61ms]
+(pass) C12/D1: failing at the loop stage resumes to convergence with no duplicate artifact [2.37ms]
+(pass) C12/D1: failing at the dispatch stage resumes to convergence with no duplicate artifact [2.25ms]
+(pass) C1: two members share one role and each is raised separately, with one prompt per member [2.17ms]
+(pass) C8: a successful pass writes NO whole-state partial row and one progress row per artifact [2.00ms]
+(pass) C5/R2: the PLANNER prompt carries the delegation block and the SPLITTER prompt does not [0.82ms]
+
+packages/mpd-cellwork-plugin/test/status-reconcile.test.ts:
+(pass) C11/D11: the status read NAMES members missing on each side and never mutates either [0.76ms]
+(pass) C11/D11: an in-sync roster reports inSync with two empty lists [0.37ms]
+(pass) C11/D11: with no readable team the read reports nothing to compare instead of failing [0.33ms]
+(pass) C11: the status read exposes the recorded split ticket id, so a lost owner cannot hide it [0.33ms]
+
+packages/mpd-cellwork-plugin/test/split-task-owner.test.ts:
+(pass) C11/D2: the RECORDED board id wins over the owner spelling, so a renamed owner cannot hide the row [0.04ms]
+(pass) C11/D3: without a recorded id the owner spelling still finds the ticket (the pre-C11 fallback) [0.04ms]
+(pass) C11/D2: an OWNERLESS split ticket is claimed for cell-splitter and reported as repaired [0.17ms]
+(pass) C11/D2: a REFUSED claim still records the id and names the repair verb [0.07ms]
+(pass) C11: a readable board with NO split ticket is a hard error naming the repair verb [0.07ms]
+(pass) C11: an UNREADABLE team record proves nothing, so no missing-ticket error is invented [0.05ms]
+
+packages/mpd-cellwork-plugin/test/mail-order.test.ts:
+(pass) D6: the durable row lands BEFORE the wake-up, and the `wake` record reports the attempt [1.16ms]
+(pass) D6: a durable row that cannot be written ends the call and NO wake-up is attempted [0.23ms]
+(pass) D6: a FAILED wake-up never costs the row, and the attempt is reported as undelivered [0.41ms]
+(pass) N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful [0.36ms]
+(pass) D6: deliverCellMail calls the durable append first, and a refusal skips the attempt entirely [0.06ms]
+(pass) D6: deliverCellMail classifies a THROWN wake-up as a failed attempt, never as a lost row [0.07ms]
+(pass) N1: deliverCellMail reports NOT sent when the `wake` record cannot be appended [0.06ms]
+(pass) D6: folding tolerates a torn line, a wake record with no send, and a later successful attempt [0.12ms]
+
+packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:
+(pass) C7: fenceReasonOf names each of the three signals and clears a working seat [0.05ms]
+(pass) C7: cellMemberOf matches the cell row by name and by the dispatch name key [0.04ms]
+(pass) C7: a member at its CONTEXT CHECKPOINT is FENCED, reported with the repair, and never messaged [0.23ms]
+(pass) C7: a written handoff waiting for the barrier FENCES the member (the D4 re-delivery defect) [0.09ms]
+(pass) C7: the barrier's explicit `fenced` marker fences a member whose mode still looks ordinary [0.09ms]
+(pass) C7: the fence comes from the CELL record even when the roster row looks healthy [0.08ms]
+(pass) C7 control: a promoted subcaptain and a healthy member are both paired [0.20ms]
+(pass) C7: fencing one owner does not stop another owner's ready row [0.14ms]
+(pass) C7: a given-up barrier fences the member row it persists, and a later success clears the marker [0.05ms]
+(pass) C7: the given-up journal row names the member, the attempts and the repair verb [0.02ms]
+(pass) C7: a refused barrier PERSISTS the fence and journals `checkpoint-unrecoverable` [11.28ms]
+(pass) C7: cellwork_supervise lists every fenced member with the open rows it owns [0.90ms]
+(pass) C7: a SECOND cellwork_handoff is refused while the first waits for the barrier [0.36ms]
+
+packages/mpd-cellwork-plugin/test/dispatch-reassign.test.ts:
+(pass) C6: reassignPairs reads the pairs, trims them, and reports what it cannot use [0.09ms]
+(pass) C6: applyReassignments claims on the board, journals `task-reassigned`, THEN delivers [0.61ms]
+(pass) C6: a REFUSED claim is reported, nothing is delivered, and no journal row is written [0.14ms]
+(pass) C6: a row that cannot be handed over is REPORTED — never thrown, never claimed [0.21ms]
+(pass) C6: a target with no executor handle is reported BEFORE the claim (a claim would hide the row) [0.13ms]
+(pass) C6: cellwork_dispatch claims through the board, journals, delivers, and never re-delivers the row [0.88ms]
+(pass) C6: a reassignment the board refuses is reported in the result, and the pass still runs [0.40ms]
+(pass) C6: the pass skips a fenced owner's row with the repair named, and delivers nothing to it [0.29ms]
+
+ 47 pass
+ 0 fail
+ 866 expect() calls
+Ran 47 tests across 6 files. [246.00ms]
+EXIT:0

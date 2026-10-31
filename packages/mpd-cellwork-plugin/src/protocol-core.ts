@@ -343,6 +343,57 @@ export function compactionJournalEntry(memberName: string, result: PromotionResu
 }
 
 /**
+ * The journal row a GIVEN-UP compaction barrier writes (contract C7).
+ *
+ * Deliberately separate from {@link compactionJournalEntry}: that row reports one barrier OUTCOME, while
+ * this one records the CONSEQUENCE — the member is now fenced, and the rows it owns must be reassigned.
+ * D5 measured what its absence costs: a member fenced-but-owning wrote three handoffs in seven minutes
+ * while ten tickets stayed owned by nobody who could claim them.
+ *
+ * @param memberName - the member the barrier gave up on.
+ * @param result - the barrier's outcome (its attempts and classification are quoted).
+ * @returns the journal row.
+ */
+export function checkpointUnrecoverableEntry(memberName: string, result: PromotionResult): Record<string, unknown> {
+  return {
+    event: "checkpoint-unrecoverable",
+    member: memberName,
+    attempts: result.attempts,
+    reason: result.reason,
+    repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}",
+  }
+}
+
+/**
+ * The member row a finished compaction barrier leaves behind (contract C7).
+ *
+ * A GIVEN-UP barrier fences the member EXPLICITLY (`fenced` + `fencedReason`), so `cellwork_supervise` and
+ * an operator can name the repair; a promoted or reseeded one carries NO fence marker at all. The row is
+ * rebuilt field by field rather than spread, because a spread would carry a PREVIOUS `fenced: true`
+ * through a later successful barrier and keep a healthy member out of dispatch — the exact livelock D5
+ * cost, only in the other direction.
+ *
+ * @param previous - the member row as the record held it before this outcome.
+ * @param result - the barrier's outcome (its classification is the fence's cause).
+ * @returns the row to persist.
+ */
+export function memberAfterBarrier(previous: CellMemberRecord, result: PromotionResult): CellMemberRecord {
+  /** Whether the barrier gave up, which is what fences the member. */
+  const givenUp = result.outcome === "refused"
+  return {
+    name: previous.name,
+    role: previous.role,
+    sessionId: result.newHandle ?? previous.sessionId,
+    executorRef: result.newHandle ?? previous.executorRef,
+    mode: givenUp ? "checkpoint" : "subcaptain",
+    handoffReady: givenUp,
+    handoffs: previous.handoffs,
+    joinedAt: previous.joinedAt,
+    ...(givenUp ? { fenced: true, fencedReason: result.reason } : {}),
+  }
+}
+
+/**
  * Compress one handoff into the member's own engine, and promote or reseed it.
  *
  * The barrier is BOUNDED: `compactionRetries` attempts, `idleBarrierDelayMs` apart. A `null` result means

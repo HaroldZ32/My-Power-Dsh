@@ -17,11 +17,54 @@
 
 ## 五个工具
 
-- **`mpd_verify_open`** —— 开一个「委派 + 验证」loop。`writer:"self"`（被计数的路径：没有 `self_write_reason` 且没有一个**不同的** `verifier` 就会拒绝）或 `writer:"delegate"`（由成员来写）。`scope` 为空表示覆盖整个工作区。可选参数 **`contract`** 点名本波自己的冻结契约（工作区相对路径）并被**记录到该 loop 上**；不传时 loop 保留一个**已声明**的默认值（`AGENTS.md`），**绝不会是别的波次的计划文件**。
+- **`mpd_verify_open`** —— 开一个「委派 + 验证」loop。`writer:"self"`（被计数的路径：没有 `self_write_reason` 且没有一个**不同的** `verifier` 就会拒绝）或 `writer:"delegate"`（由成员来写）。在 `writer:"delegate"` 下还可以**点名写作者**：**`writer_id`**（成员的 agent 身份——它的 session id，trim 后 1..200 字符）成为该 loop 的 `writer.id`，**`writer_reason`**（同样 trim 后 1..200）成为 `writer.reason`，例如 `member: <name>`；不传 `writer_id` 时保留 `delegate:pending` 占位符。两个参数描述的都是**委派**循环，因此在 `writer:"self"` 下用**同一句话**拒绝。`scope` 为空表示覆盖整个工作区。可选参数 **`contract`** 点名本波自己的冻结契约（工作区相对路径）并被**记录到该 loop 上**；不传时 loop 保留一个**已声明**的默认值（`AGENTS.md`），**绝不会是别的波次的计划文件**。该 loop 还**冻结** workspace 的 `mpd-gates.json` 身份——`present` + 字节 sha256，或 `absent`——因此挂在它下面的 gate 运行只能认证那一个确切的文件（见项目 gate 一节）。
 - **`mpd_verify_escape`** —— **被计数的**逃生口：一行 JSONL、一行启动日志、一次允许的写入。`reason` 为空会拒绝；日志写不下去时不发放任何额度。
 - **`mpd_verify_seat`** —— 把调用方 session 绑定为某 loop 的 **verifier**。幂等；当调用方就是该 loop 的 writer 时拒绝。该席位的冻结文档就是**这个 loop 自己的 `contract`**，由**同一个函数**解析，席位与记录都调它，因此一份裁决的 `docPaths` 与它的 `basis.frozenContract` **不可能对不上**。
-- **`mpd_verify_evidence`** —— `kind:"gate"` 只跑固定表里的一个 id（`gates`、`tests`、`typecheck`、`docs`、`manifest`、`comments`、`rows`、`vendor`、`dist`、`pack`）并写日志；`kind:"probe"` 对每个路径返回 `{path, exists, bytes, sha256, mtime}`，**绝不返回内容**。
+- **`mpd_verify_evidence`** —— `kind:"gate"` 跑**一个** id：workspace 自己的 `mpd-gates.json` 声明了该 id 就先用它，否则用固定表（`gates`、`tests`、`typecheck`、`docs`、`manifest`、`comments`、`rows`、`vendor`、`dist`、`pack`）并写日志——当该运行绑定的 loop 所冻结的 gate 文件不再匹配（或该 loop 早于冻结机制）时会**拒绝且不写证据**，结果与证据行都会声明 `gateFreeze:"frozen"|"unfrozen"`；`kind:"probe"` 对每个路径返回 `{path, exists, bytes, sha256, mtime}`，**绝不返回内容**。
 - **`mpd_verify_record`** —— 通过校验器记录裁决。**PASS** 必须给出所依据的文档、至少一项 gate 证据，以及一个不是 `unproven` 的基础 —— 盲性只是**声明**，从不被观测，因此未证明的基础一律视为 UNVERIFIED；校验器仍会拒绝没有文档、使用伪造证据 id 或同一 agent 自证的 PASS。**FAIL** 必须给出 finding（每条都要有证明它的 `doc_source`），并会开出 repair 任务、解锁诊断读取。`bind-unproven` 仍会拒绝 basis 被声明为 `unproven` 的 PASS，`blind-spent` 仍会点名一次「被准入的」读取，但没有任何已发布组合会写入观测日志，因此 `blind-spent` 无法被证据触发 —— 需要付出什么代价见文末边界。
+
+## 项目自定义 gate（`mpd-gates.json`）
+
+workspace 可以在**根目录的一个文件**里声明或**覆盖**验证者要跑的 gate。文件从**调用 session 的 workspace**
+解析，绝不从进程 cwd。文件只提供它**声明**的 id；它没声明的每个 id 仍保留自己的固定表条目，文件不存在时就是
+全部 id。
+
+```jsonc
+{ "version": 1, "gates": {
+  "lint": { "argv": ["cargo", "clippy", "--", "-D", "warnings"] },
+  "tests": { "cmd": "cargo test --all", "argv": ["cargo", "test", "--all"] }
+} }
+```
+
+- `version` 可选，存在时必须是 `1`；顶层只允许 `version` 与 `gates`，最多声明 **32** 个 gate。
+- gate id 匹配 `^[a-z][a-z0-9-]{0,31}$`。
+- `argv` **必填**：1..32 个非空字符串，每个最多 4096 字符。`argv[0]` 是**程序**（PATH 名或绝对路径），以
+  `shell:false`、`cwd` = workspace、沿用既有 `verify.gateTimeoutMs` 超时启动。`cmd` 是可选标签，最多
+  **4096** 字符；不传时默认为 `argv.join(" ")`。
+- **优先级：项目条目优先，固定表其次——按 id 逐个判断。** 项目条目**新增**一个 id 或**覆盖**已有 id；项目
+  没声明的每个 id（文件不存在时就是全部 id）仍解析到自己的固定表条目。项目文件是扩展点、绝不是替换，
+  「文件没有声明这个 id」也**不是**格式错误。
+- **文件格式错误会拒绝整次调用，绝不回退。** 一句话同时点明文件与问题（JSON 非法、顶层或条目里有未知键、
+  缺少 `gates`、id 非法、`argv` 缺失/非数组/为空、参数或 `cmd` 超长），并且**不写任何证据**。即使请求的 id
+  属于**固定表**，这条拒绝同样生效：一个坏掉的项目文件绝不可能悄悄跑一条项目没声明的命令。
+- **证据日志点名真正跑了什么。** 日志第一行是
+  `# gate <id> cmd: <label JSON> program: <program JSON> argv: <args JSON>`——只有 `cmd` 标签是一个**声明**
+  （`cmd:"bun test"` 而 `argv:["true"]` 会认证一条根本没跑过的命令），因此**日志**及其 `logSha256`（哈希
+  **含这一行头**的日志）才是权威，证据行的 `cmd` 元数据只是标签。程序完全无法启动时，日志**与** tail 都会追加
+  `[spawn-error] <原因>`，让调用方读到原因而不是一行裸头（exit 仍是 `-1` 表示「从未启动」，超时为 `124`）；
+  `cmd` 或某个 `argv` 元素里的换行、U+2028/U+2029 行分隔符或 DEL 等控制字符会在单行头里被**转义**，因此项目
+  文本永远无法伪造出一行日志。结果携带 `cmd`、`exit`、`logPath`、`logSha256` 与 `gateFreeze`。
+- **loop 会冻结它的 gate 文件，文件一变该 loop 的运行就被拒绝。** `mpd_verify_open` 与 observer 的 arm 路径
+  都把 workspace `mpd-gates.json` 的身份记在 loop 上（`present` + sha256，或 `absent`）。挂在该 loop 下的 gate
+  运行只要发现身份不同——字节变了、文件被删、或在 `absent` 冻结下**出现了**文件——就会被**拒绝**，只回一句
+  `gate-freeze:` 且**不写证据**。一个**没有快照**的已知 loop（旧构建打开的）同样拒绝，并给出「开一个**新**
+  loop」的修复；observer 的 re-arm 会把冻结**收养**进这种 loop，使它不会永远拒绝。每条 **gate** 证据行都会
+  声明 `gateFreeze`：绑定到带快照的 loop 时为 `"frozen"`，只有绑定到**未知** loop 时才为 `"unfrozen"`
+  （这样的证据永远不能被真正的 loop 引用）；probe 行不带 gate 冻结。已声明边界：冻结是这一个文件的字节身份，
+  不是签名——它约束**何时**允许文件改变，不认证**是谁**写的。
+- **文件有多诚实取决于项目自己。** 它可以把某个 gate id 指向任何命令；插件欠你的是**证据点名生效命令**，
+  让读者看得到实际跑的是什么。**不要**在本仓库根目录留下 `mpd-gates.json`（测试与探针都在临时目录里创建
+  它）：文件从调用 session 的 workspace 解析，一个漏下的文件会悄悄覆盖本仓库自己的 gate。
 
 ## 已撤销的两道守卫（记录，而非安装）
 
@@ -69,3 +112,5 @@
 5. `.mpd/**` 永远可写，因此代码形状的内容可以藏在里面——此边界受限于 `.mpd/` 是被 gitignore 的运行时状态、不可能发布出去。
 6. **观察日志是按进程的，如今也失效了。** 它在内存里，而席位的 `unlocked` 标志是持久化的，因此在**更早的进程**里做过的一次读取从不可能阻止后来的 PASS。guard 撤销后已没有任何东西写入该日志，所以这条边界属于历史：每个席位都读作 `blind`，任何进程里都没有读取被观测到。
 7. **绑定验证员在盲态下可以读 `evidence/**` 与每个 `packages/*/README.md`（含 `.zh-CN` 对照）** —— 这两处在修好之前是被拒的，导致裁决只能依赖产物的存在/size/sha256 而不是内容。该可读带只是**约定（prose），不是栅栏**：没有任何已发布的 row 安装 `installVerifyGuard`，因此没有任何东西拒绝 `packages/*/src/**`、`packages/*/test/**` 或含 `..` 的拼写 —— 席位遵守这条带，是因为纪律如此要求，这正是边界 1 的要旨。`evidence/**` 里的产物**可能内嵌源码帧**（闸门日志尾部），所以读它是**受控黑盒证据**——这正是边界 3 已经写明的那件事。
+8. **same-agent 拒绝比较的是字符串。** 当 `writerId === verifierId` 时 `mpd_verify_record` 拒绝；`writer_id` 是调用者写下的值，而它保存的 verifier id 是**调用 session** 的 id。点名真实写作者（cell 里某个成员的 session id）让这条规则在 cell 打开的每条 loop 上真正有意义——但它从不保证不可伪造。
+9. **项目声明的 gate 有多诚实，取决于项目的 `mpd-gates.json`。** 该文件可以把某个 gate id 指向任何命令；插件承诺的是**证据点名生效命令**，而不是命令的质量。固定表为文件**没有声明**的每个 id 提供条目——这是**按 id 逐个**的回退，文件不存在时就是全部 id。冻结自身的边界：每条 loop 对一个文件的字节身份，绝不是签名，因此它约束的是**何时**允许文件改变，而不是**谁**写的。

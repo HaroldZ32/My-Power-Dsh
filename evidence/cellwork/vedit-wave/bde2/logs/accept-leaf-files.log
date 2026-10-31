@@ -1,0 +1,33 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/leaf-boundary.test.ts:
+(pass) the leaf list is exactly the two bundle spawn tools, and the workmate row's copy is identical [0.05ms]
+(pass) the depth floor: a consult may be raised from depth 0 or 1, and never from depth 2 or deeper [0.09ms]
+(pass) THE WIRING: mpd_role_spawn refuses a depth-2 caller and starts NO child, while depth 1 still spawns [3.38ms]
+(pass) a READ-ONLY child gets the write deny AND the leaf deny in ONE restriction call [1.07ms]
+(pass) a WRITE-CAPABLE child gets the leaf deny alone, in ONE restriction call [0.60ms]
+(pass) a child this row did not raise is left alone [0.48ms]
+
+packages/mpd-roles-plugin/test/role-spawn-maxdepth.test.ts:
+(pass) the pure reading: the caller's recorded depth plus one, for every header shape [0.04ms]
+(pass) THE WIRING: the registered mpd_role_spawn forwards `maxDepth` = caller depth + 1 [1.15ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route nor the prompt the spawn already carried [0.37ms]
+
+packages/mpd-workmate-plugin/test/leaf-boundary.test.ts:
+(pass) the two rows' copies agree, and the depth sentence is identical (source-level parity) [0.06ms]
+(pass) THE WIRING: mpd_workmate_spawn refuses a depth-2 caller and starts NO child, while depth 1 still spawns [1.57ms]
+(pass) a READ-ONLY workmate child gets the write deny AND the leaf deny in ONE restriction call [0.50ms]
+(pass) a WRITE-CAPABLE workmate child gets the leaf deny alone, in ONE restriction call [0.34ms]
+(pass) a child this row did not raise is left alone [0.06ms]
+
+packages/mpd-workmate-plugin/test/workmate-spawn-maxdepth.test.ts:
+(pass) the reading matches mpd_role_spawn's helper on EVERY header shape — the parity pin [0.05ms]
+(pass) the values themselves: top-level 1, nested 2, and deeper nesting scales with the caller [0.02ms]
+(pass) THE WIRING: the registered mpd_workmate_spawn forwards `maxDepth` = caller depth + 1, per call [0.49ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route, the label nor the prompt [0.35ms]
+
+ 18 pass
+ 0 fail
+ 106 expect() calls
+Ran 18 tests across 4 files. [190.00ms]
+EXIT:0

@@ -1,0 +1,26 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/split-refused.test.ts:
+(pass) C9: a REFUSED submission always writes split/<revision>.refused.json with the FULL finding list [2.10ms]
+(pass) C9: a refused resubmission leaves the ACCEPTED verdict byte-identical [1.07ms]
+(pass) C9: an ACCEPTED submission writes the canonical file and leaves no refusal beside it [0.34ms]
+(pass) C9: the LATEST verdict still names a refusal, and prefers the acceptance beside it [0.67ms]
+(pass) C1: a declared member is the resolved BOARD name, and several members may share one role [0.45ms]
+(pass) C1: member-invalid refuses an empty, overlong, control-character or path-separator name [0.21ms]
+(pass) C1: member-role-conflict refuses ONE member declared under two different owner roles [0.14ms]
+(pass) C1: same ROLE with DIFFERENT members is not self-review (two real seats) [0.04ms]
+(pass) C1: self-review fires on the MEMBER when both sides declare one [0.07ms]
+(pass) C1: with no member declared, self-review still compares the OWNER ROLE [0.04ms]
+
+packages/mpd-cellwork-plugin/test/requirements-subheadings.test.ts:
+(pass) C10: a ### subheading stays INSIDE its parent section's body [0.33ms]
+(pass) C10: nested headings of every deeper level stay in the parent body [0.08ms]
+(pass) C10: a body runs until the next heading of the SAME or a HIGHER level [0.04ms]
+(pass) C10: a #### heading nested under a ### section is body too [0.03ms]
+(pass) C10: a section whose body is only whitespace is still missing or empty [0.06ms]
+
+ 15 pass
+ 0 fail
+ 62 expect() calls
+Ran 15 tests across 2 files. [195.00ms]
+EXIT:0

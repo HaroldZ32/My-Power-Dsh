@@ -1,0 +1,10 @@
+cb00a9281ce9b4a5b240be15e8cf308bf43cbe54a3ef77fa642b44aabe5718af  packages/mpd-cellwork-plugin/src/dispatch.ts
+f850e9f27a241edf48460c3511fc33a3485edf9cd2e769a4eadce8d6fa8c417a  packages/mpd-cellwork-plugin/src/protocol.ts
+d496546276bed1e77c5e2b309a39bea25686c07c8c87ad351049bf96066b6810  packages/mpd-cellwork-plugin/src/mail.ts
+4eb91c2e77f47dfc74e4903fd6f2020cc9d314bdfd6ee768c924988dd44ffcb0  packages/mpd-cellwork-plugin/src/split.ts
+4c924c2df3313f9dcb8108d76d20c4e79639adf03bf09b680a86d910ea795b62  packages/mpd-cellwork-plugin/src/flow.ts
+3930f17e309d26f9478fca909441286192f06d82f5a97af36e18044345f1618d  packages/mpd-cellwork-plugin/src/staging.ts
+c0636ed9b36b637a1a31c303770802159856e6cf2a74e585f66e554d8cf186ea  packages/mpd-cellwork-plugin/src/index.ts
+34de09c3a2e0b3aa80aba53749e64fd0361e8b46ddf719aa8edd2a208574954d  packages/mpd-cellwork-plugin/src/activate.ts
+18685555a4f69b376e7bce3016faa17d7070659a1c0a04cdc37b29fd44be5112  packages/mpd-cellwork-plugin/test/mail-order.test.ts
+ae15ed081c67040c33250cc990f18349f9bbbff06666e2bf3859c1a9122ed10a  packages/mpd-team-core-plugin/src/index.ts

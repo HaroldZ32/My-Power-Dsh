@@ -1,0 +1,75 @@
+COMMAND: .toolchain/node_modules/.bin/bun test packages/mpd-workmate-plugin
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-workmate-plugin/test/rename-delete.test.ts:
+(pass) rename moves the evolved identity and preserves every byte of it [3.62ms]
+(pass) renamedFrom accumulates, dedupes, survives a later reflect and is capped [3.20ms]
+(pass) A5 note rule: only a LEADING autoNote prefix is rewritten, a custom note keeps its bytes [1.02ms]
+(pass) invalid names are rejected BEFORE any filesystem call, on both argument positions [1.40ms]
+(pass) same-key rename and case-only rename are refused with no side effect (M2) [0.50ms]
+(pass) the library ROOT can never be addressed as an instance (§B) [0.57ms]
+(pass) collision guard: ANY lstat hit on the target is a 409 collision and nothing is overwritten (M5) [0.72ms]
+(pass) a symlinked instance directory is refused, not resolved (§H) [0.51ms]
+(pass) unknown and orphan directories are never touched (M3), repeat delete is 404 [0.81ms]
+(pass) delete archives by default: hidden immediately, restorable, index key dropped [1.13ms]
+(pass) purge requires confirm === name, then removes the instance for good (D1) [0.93ms]
+(pass) a READONLY instance is a valid mutation target: library administration, not self-editing (M1) [0.58ms]
+(pass) delete never touches another workmate's bytes and leaves no partial instance [0.91ms]
+(pass) in-use gate: a name a team member holds blocks BOTH the rename target and the source (§E, A6) [1.32ms]
+(pass) busyTeams reads <cwd>/.mpd/team, skips archived teams and non-directory entries, fails open [0.43ms]
+(pass) the mpd-OWNED record layout is read too — a teammate spawned today is no longer invisible [0.31ms]
+(pass) an ENDED team or a settled member does not freeze a workmate forever [0.29ms]
+(pass) A3: a stale meta.name cannot shadow the directory key, and a legacy key cannot resurrect a dir [1.17ms]
+(pass) an interrupted rename is rolled back: no half-moved instance, the key stays addressable [0.59ms]
+(pass) a throwing spawn releases the in-use counter, so it cannot block a later rename [1.41ms]
+(pass) no registered output schema uses a type ARRAY, and every surface reports archived: null on purge [1.88ms]
+(pass) routes: §D status/reason matrix, headers, no path leakage [2.57ms]
+(pass) a headless profile stays tool-only: no webServer, no route work, tools still function [0.66ms]
+(pass) the mutation tools' declared output schemas accept the values they return (t15) [20.28ms]
+(pass) the OLD return shape is rejected by the harness validator, so this lock can actually fail (t15) [1.25ms]
+(pass) the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name [0.83ms]
+(pass) the workmate web routes carry no id/baseId for a base or an instance [0.78ms]
+
+packages/mpd-workmate-plugin/test/sandbox-guard.test.ts:
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [58.32ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: HOME unset + DSH_HOME -> REFUSED [64.26ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [63.39ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > node: sandbox HOME + explicit override -> ALLOWED [64.48ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + DSH_HOME -> ALLOWED (the recipe the manual prescribes) [29.89ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: HOME unset + DSH_HOME -> REFUSED [30.79ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: real HOME + DSH_HOME -> REFUSED 403 real-home-refused [29.15ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > bun: sandbox HOME + explicit override -> ALLOWED [25.87ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > CONTROL: a one-sided arm table is reported as HIDING the defect (the t23 failure shape) [0.27ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > FALSIFIABILITY: the same arms FAIL against the pre-fix predicate (homedir() follows $HOME) [51.69ms]
+(pass) T-43 real-home guard — both sides, in the shape production uses > the artifact under test is the package's own dist (no src/dist write from this suite) [0.08ms]
+
+packages/mpd-workmate-plugin/test/workmate-spawn-maxdepth.test.ts:
+(pass) the reading matches mpd_role_spawn's helper on EVERY header shape — the parity pin [0.09ms]
+(pass) the values themselves: top-level 1, nested 2, and deeper nesting scales with the caller [0.03ms]
+(pass) THE WIRING: the registered mpd_workmate_spawn forwards `maxDepth` = caller depth + 1, per call [1.36ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route, the label nor the prompt [0.42ms]
+
+packages/mpd-workmate-plugin/test/child-seam-label.test.ts:
+(pass) a workmate child is identified by its EXACT sanitized key > a canonical key resolves to itself [0.03ms]
+(pass) a workmate child is identified by its EXACT sanitized key > a ROSTER name never resolves to a sanitized twin [0.03ms]
+(pass) a workmate child is identified by its EXACT sanitized key > an empty, non-string or punctuation-only label is not a key [0.02ms]
+
+packages/mpd-workmate-plugin/test/workmate.test.ts:
+(pass) sanitizeName / capText / autoNote / scoreMatch units [0.16ms]
+(pass) S6: capText honours the cap MARKER INCLUDED, at the boundary and below it [0.10ms]
+(pass) init → list → reflect → match lifecycle with a sandbox HOME [2.23ms]
+(pass) AC4 — the spawn route is re-resolved per spawn (R2) > a config change between two spawns carries to the second, and meta stays provenance [0.85ms]
+(pass) AC4 — the spawn route is re-resolved per spawn (R2) > TWO agents with DIFFERENT routes spawn independently — no cross-talk (§9) [0.77ms]
+(pass) AC4 — the spawn route is re-resolved per spawn (R2) > an UNCONFIGURED route REFUSES the spawn — the frozen meta is never a route (§3) [0.51ms]
+(pass) AC4 — the spawn route is re-resolved per spawn (R2) > no config service + no DECLARED route refuses; an extension base's own route still runs [0.68ms]
+(pass) an omo roster id is refused as a base even when roles.get(id) resolves it, and the refusal names NAMES only [0.64ms]
+(pass) the base key is case/space/hyphen insensitive and the auto name derives from the functional name (C1/C2) [3.28ms]
+(pass) spawn carries persona+memory+note, reflect instruction, readonly deny, own route [1.12ms]
+(pass) workmate library root is under HOME and not in cwd [0.33ms]
+(pass) no workmate tool advertises or returns baseId [0.56ms]
+
+ 57 pass
+ 0 fail
+ 621 expect() calls
+Ran 57 tests across 5 files. [717.00ms]
+EXIT:0

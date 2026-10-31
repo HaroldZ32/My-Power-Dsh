@@ -98,12 +98,13 @@ describe("L1 — the decision function's behaviour table, path by path", () => {
     expect(readByCaptain("./docs/a.md")).toBeUndefined()
   })
 
-  test("the root instruction/overview files are allowed, and only at the root", () => {
+  test("the root instruction/overview files are allowed, and the instruction basenames at any depth", () => {
     for (const name of CAPTAIN_READABLE_ROOT_FILES) expect(readByCaptain(name)).toBeUndefined()
     expect(readByCaptain("LICENSE.md")).toBeUndefined()
     expect(readByCaptain("LICENSE-NOTICES.md")).toBeUndefined()
-    // A NESTED instruction file is NOT the band: spelling one inside a source tree reaches no source.
-    expect(String(readByCaptain("packages/x/AGENTS.md") ?? "")).toContain("captain investigation rule")
+    // AN INSTRUCTION FILE ANYWHERE IS THE BAND (C4, D14): a nested AGENT.md/AGENTS.md/CLAUDE.md is readable;
+    // a nested README.md is NOT.
+    expect(readByCaptain("packages/x/AGENTS.md")).toBeUndefined()
     expect(String(readByCaptain("packages/x/README.md") ?? "")).toContain("captain investigation rule")
   })
 

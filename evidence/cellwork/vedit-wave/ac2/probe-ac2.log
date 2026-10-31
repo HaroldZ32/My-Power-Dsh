@@ -1,0 +1,37 @@
+PASS CR2-1 a FAILED target is refused and reported — T1={"taskId":"T1","owner":"Failed","claimed":false,"delivered":false,"reason":"the target member \"Failed\" FAILED to start — a row claimed for it would never be picked up; pick a member that is running"}
+PASS CR2-2 a PROVISIONING target is refused and reported — T2={"taskId":"T2","owner":"Prov","claimed":false,"delivered":false,"reason":"the target member \"Prov\" is still being raised — retry the reassignment once it is running"}
+PASS CR2-3 neither target was claimed nor messaged — claims=["T3"], sent=["h-Target"]
+PASS CR2-4 the rows stay pending (no board write happened) — pending=4
+PASS CR2-5 a running target is still delivered (no regression) — T3={"taskId":"T3","owner":"Target","claimed":true,"delivered":true}
+PASS CR2-6 a fenced target is still refused (no regression) — T4={"taskId":"T4","owner":"Fenced","claimed":false,"delivered":false,"reason":"the target member \"Fenced\" is FENCED (the compaction barrier gave up and fenced it) — pick an unfenced member"}
+PASS CR4-1 handleOrNull treats '', whitespace and non-strings as absent — ["", "   ", undefined, 42].map(handleOrNull)=[null,null,null,null], trimmed="h1"
+PASS CR4-2 the DISPATCH pass delivers through the LIVE handle when the cell's is blank — pairs=["Blank:h-live-1","Blank2:h-live-2"]
+PASS CR4-3 the REASSIGN path delivers through the LIVE handle when the cell's is blank — outcomes=["Blank:true","Blank2:true"]
+PASS CR4-4 a handle absent on BOTH sides is still reported — dispatch=declared owner "NoHandle" has no executor handle (never raised); reassign=the target member "NoHandle" has no executor handle (never raised) — claiming the row for it would hide the row from the next pass
+PASS CR7-1 a failed `wake` record append is reported NOT sent, with its own reason — delivery={"landed":true,"wakeSent":false,"wakeReason":"the wake-up was attempted and the transport accepted it, but its `wake` record could not be written — the durable log reports this row as undelivered"}
+PASS CR7-2 the order is still row -> attempt -> record — order=["send-row","wake","wake-record"]
+PASS CR7-3 a failed durable send append still sends NO wake — delivery={"landed":false,"wakeSent":false,"wakeReason":"the durable row could not be written, so no wake-up was attempted (mail is durable first)"}, attempted=false
+PASS CR7-4 both appends landing still reports sent — delivery={"landed":true,"wakeSent":true}
+PASS CR7-5 the permission arm is skipped-as-root WITH its stated reason — source check on test/mail-order.test.ts
+PASS CR7-6 the seam-level N1 arm is unconditional `test(` — source check on the unconditional seam arm
+PASS CR5-1 a work/review pair spelling the seat two ways is REFUSED as self-review — codes=["self-review"], detail=the review task "R" resolves to the SAME board member as the work it reviews ("Seat A", identity "seat-a") — the verifier must be a different member
+PASS CR5-2 two roles spelling one identity is member-role-conflict — codes=["member-role-conflict","write-scope-overlap"]
+PASS CR5-3 a punctuation-only member name is member-invalid — codes=["member-invalid"], detail=member "---" has no identity: the activation key (letters and digits, in any script) is empty, so it would collapse into ONE seat with every other such name — include at least one letter or digit
+PASS CR5-4 identical spellings still share one member without a finding — codes=["write-scope-overlap"]
+PASS CR5-5 activate.ts was NOT changed to accommodate the validation (T6 anchor) — activate.ts sha256=34de09c3a2e0b3aa80aba53749e64fd0361e8b46ddf719aa8edd2a208574954d
+PASS CR5-6 identical spellings raise exactly ONE member — added=["Seat A"], ok=true
+PASS CR3-1 the first update appends ONE replacement row — minted=1, tasks=2, replacement=R1
+PASS CR3-2 the first update WRITES the replacement id back — recorded=R1, state=R1
+PASS CR3-3 the SECOND update REUSES the live row and appends NOTHING — minted=1, tasks=2, second={"splitTaskId":"R1","redispatchable":true,"replacement":""}
+PASS CR3-4 exactly ONE split-task-replaced row exists for the two updates — rows=["R1"]
+PASS CR3-5 the update rows carry the recorded id and the reuse flag — updates=[{"recorded":"R1","redispatchable":false},{"recorded":"R1","redispatchable":true}]
+PASS CR3-6 a LIVE row is preferred over the recorded CLOSED one — picked=R9, minted=0, tasks=2
+PASS CR3-7 the preferred live id is written back — recorded=R9
+PASS CR6-1 a FAILED owner repair still returns the ticket id — resolution={"splitTaskId":"T9","ownerRepaired":false,"repairError":"the ownerless split ticket T9 could not be claimed (the split task is blocked by its requirements task) — repair it with `agent_teams_task {action:\"claim\", claimant:\"cell-splitter\"}`","boardReadable":true}
+PASS CR6-2 the failure names the repair verb in its error — repairError=the ownerless split ticket T9 could not be claimed (the split task is blocked by its requirements task) — repair it with `agent_teams_task {action:"claim", claimant:"cell-splitter"}`
+PASS CR6-3 an ID-first lookup FINDS the row afterwards — found=T9
+PASS CR6-4 the repair path was actually attempted — claims=[{"action":"claim","task_id":"T9","claimant":"cell-splitter"}]
+PASS CR6-5 staging keeps the id on the refused-repair branch and surfaces ownerRepairError — source check on staging.ts
+PASS CR6-6 the partial/staged journal rows carry splitTaskId AND ownerRepairError — source check on index.ts
+
+ALL ARMS PASS

@@ -1,0 +1,23 @@
+const root = "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh";
+const ci = await import("/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/src/captain-investigation.ts");
+const cg = await import("/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/src/guard.ts");
+const rows = [];
+const cap = (p) => rows.push(["captain", p, ci.captainReadablePath(root, p)]);
+cap("/home/haroldzhao/MyProj/DshProj/VEdit/AGENT.md");
+cap("/home/haroldzhao/MyProj/DshProj/VEdit/docs/x.md");
+cap("../VEdit/AGENTS.md");
+cap("./AGENTS.md");
+cap("packages/mpd-roles-plugin/src/index.ts");
+cap("/home/haroldzhao/MyProj/DshProj/VEdit/src/main.rs");
+cap("docs/../packages/x/src/y.ts");
+const seat = { cellId: "cell-x", name: "cell-planner", mode: "member" };
+const planner = (p) => rows.push(["planner", p, cg.plannerReadablePath(root, p)]);
+planner("/home/haroldzhao/MyProj/DshProj/VEdit/CLAUDE.md");
+planner("packages/mpd-cellwork-plugin/src/activate.ts");
+planner("docs/cellwork.md");
+planner(".mpd/plans/cellwork-vedit-wave.md");
+// the planner rule only fires for the planner seat
+const other = { cellId: "cell-x", name: "Senior Engineer", mode: "member" };
+rows.push(["guard:planner-seat-src", "packages/x/src/y.ts", String(cg.cellworkGuardDecision(seat, "read", { workspaceRoot: root, args: { file_path: "packages/x/src/y.ts" } }) ?? "ALLOW")]);
+rows.push(["guard:member-seat-src", "packages/x/src/y.ts", String(cg.cellworkGuardDecision(other, "read", { workspaceRoot: root, args: { file_path: "packages/x/src/y.ts" } }) ?? "ALLOW")]);
+for (const [who, p, v] of rows) console.log(`${who.padEnd(22)} ${String(v === true ? "READABLE" : v === false ? "REFUSED" : v).padEnd(42)} ${p}`);

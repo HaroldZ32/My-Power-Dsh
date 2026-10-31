@@ -9,8 +9,16 @@
 //
 // DELIVERY IS THE EXECUTOR'S: `dsh.teamExecutor().send(captainAgent, member.executorRef, text)` — the
 // native backend cold-resumes a member that is not currently live. The member then CLAIMS the task
-// itself (`agent_teams_task {action:"claim"}`); this pass does not write the board, so the record never
-// claims work nobody has started.
+// itself (`agent_teams_task {action:"claim"}`); the PASS itself does not write the board, so the record
+// never claims work nobody has started. The ONE board write in this module is the explicit
+// `cellwork_dispatch {reassign}` repair below, which claims a row FOR a member on the captain's own
+// instruction (a fenced owner never claims anything).
+//
+// A FENCED MEMBER IS NEVER MESSAGED (contract C7). Fenced means its cell record says `mode: checkpoint`,
+// or `handoffReady`, or the compaction barrier gave up and marked it `fenced`. Waking such a member burns
+// the retry budget on a claim its own guard refuses — the defect this rule removes (D4/D5: four
+// deliveries of one ticket, then three handoffs in seven minutes) — so the pass reports it by name
+// together with the repair (`reassign`) and leaves the row pending.
 import { appendJournal, contractPath, type CellState } from "./state"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index"
 import { cellDir } from "./state"
@@ -45,6 +53,33 @@ export interface DispatchMemberView {
   status?: string
   /** The executor's handle — the only address `executor.send` accepts. */
   executorRef?: string
+  /** The cell record's member mode, when the caller passes the CELL row rather than the team one. */
+  mode?: string
+  /** Whether the member's handoff is written and waiting for the compaction barrier. */
+  handoffReady?: boolean
+  /** The compaction barrier's explicit fence marker (see {@link fenceReasonOf}). */
+  fenced?: boolean
+  /** Why the barrier fenced the member, quoted in the skip reason. */
+  fencedReason?: string
+}
+
+/**
+ * The fields that FENCE a member: the cell record's own mode/handoff state plus the barrier's markers.
+ *
+ * Both the CELL row (`CellMemberRecord`, where `mode`/`handoffReady` live) and a team-roster row
+ * satisfy it, so the fence is decided once, by {@link fenceReasonOf}, wherever it is asked.
+ */
+export interface FenceableView {
+  /** The member's board name, when the row carries one (the normalised match reads it). */
+  name?: string
+  /** `member` | `verifier` | `checkpoint` | `subcaptain`, as the cell record stores it. */
+  mode?: string
+  /** Whether a handoff is written and waiting for the compaction barrier. */
+  handoffReady?: boolean
+  /** The barrier's explicit marker: compaction gave up, so the owner must be reassigned. */
+  fenced?: boolean
+  /** Why the barrier fenced the member. */
+  fencedReason?: string
 }
 
 /** The team record slice this pass reads. */
@@ -187,6 +222,69 @@ export function resolveOwner(members: readonly DispatchMemberView[], owner: stri
 }
 
 /**
+ * Why one member cannot be woken, or undefined when it can (contract C7).
+ *
+ * THREE signals fence a member, and the record's own `mode`/`handoffReady` are the durable ones: the
+ * barrier may be refused after its retries, so a `checkpoint` seat with a written handoff IS the fence
+ * even before the explicit `fenced` marker is written. The marker names the cause when the barrier gave
+ * up, which is what makes the report actionable.
+ *
+ * @param member - the member row, from the CELL record where it exists and the team record otherwise.
+ * @returns the one-sentence reason, or undefined when the member may be messaged.
+ */
+export function fenceReasonOf(member: FenceableView | undefined): string | undefined {
+  if (member === undefined) return undefined
+  if (member.fenced === true) {
+    return "the compaction barrier gave up and fenced it" + (typeof member.fencedReason === "string" && member.fencedReason !== "" ? " (" + member.fencedReason + ")" : "")
+  }
+  if (member.mode === "checkpoint") return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it"
+  if (member.handoffReady === true) return "a handoff is already written and waiting for the compaction barrier"
+  return undefined
+}
+
+/**
+ * The CELL record's own row for one member, which is where the fence is recorded.
+ *
+ * Exact name first, then the dispatch name key, because a cell row and a board row may spell the same
+ * member differently (`Senior Engineer` / `senior-engineer`).
+ *
+ * @param cell - the cell whose member table is searched (`members` is optional so a partial test double works).
+ * @param memberName - the member's board name.
+ * @returns the member row, or undefined when this cell record never learned the member.
+ */
+export function cellMemberOf(cell: { members?: Readonly<Record<string, FenceableView>> }, memberName: string): FenceableView | undefined {
+  /** The member table, defaulted so a record this build cannot read answers "unknown member". */
+  const members = cell.members ?? {}
+  /** The exact spelling, which is the cell record's own key and therefore preferred. */
+  const exact = members[memberName]
+  if (exact !== undefined) return exact
+  /** The key the requested spelling collapses to. */
+  const key = nameKey(memberName)
+  for (const [name, row] of Object.entries(members)) {
+    if (nameKey(name) === key || nameKey(String(row.name ?? "")) === key) return row
+  }
+  return undefined
+}
+
+/**
+ * A USABLE executor handle, or null when the value is absent or blank (repair R-A2, CR #4).
+ *
+ * `??` is not enough here: a cell record writes `executorRef: ""` for a member whose handle it never
+ * learned, and `"" ?? liveRosterHandle` answers `""` — so a blank cell value SHADOWED a perfectly good
+ * roster handle and the dispatch skipped the member as "never raised". Empty and whitespace-only both
+ * mean absent; anything else is handed back trimmed.
+ *
+ * @param value - the candidate handle, read as untrusted (a record from any build).
+ * @returns the trimmed handle, or null when there is none.
+ */
+export function handleOrNull(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  /** The handle without the surrounding blanks, which are never part of an id. */
+  const trimmed = value.trim()
+  return trimmed === "" ? null : trimmed
+}
+
+/**
  * The SPLIT KEY a board task id was materialised from, when the cell record still knows it.
  *
  * The contract file is named by the SPLIT KEY (`contracts/<key>.md`, the path activation writes and
@@ -306,6 +404,14 @@ export async function dispatchOwnerOnly(deps: DispatchDeps): Promise<DispatchRep
     }
     /** The owner's board name. */
     const memberName = String(member.name ?? owner)
+    // THE FENCE COMES FIRST (C7): a fenced member's own guard refuses the claim the message would ask
+    // for, so delivering it is the livelock defect D4/D5 recorded — reported here, never messaged.
+    /** Why this owner cannot be woken, read from the CELL row first (where `mode`/`handoffReady` live). */
+    const fence = fenceReasonOf(cellMemberOf(deps.cell, memberName)) ?? fenceReasonOf(member)
+    if (fence !== undefined) {
+      report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:" + JSON.stringify(taskId) + ", owner:\"<another member>\"}]}" })
+      continue
+    }
     if (member.status === "failed") {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " FAILED to start" })
       continue
@@ -322,9 +428,9 @@ export async function dispatchOwnerOnly(deps: DispatchDeps): Promise<DispatchRep
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " is BUSY on another task — reported, never substituted" })
       continue
     }
-    /** The executor handle the message must address (the fresher recorded one wins). */
-    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "")
-    if (handle === "") {
+    /** The executor handle the message must address (the fresher NON-BLANK one wins — repair R-A2). */
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef)
+    if (handle === null) {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " has no executor handle (never raised)" })
       continue
     }
@@ -339,6 +445,184 @@ export async function dispatchOwnerOnly(deps: DispatchDeps): Promise<DispatchRep
     appendJournal(deps.workspace, deps.cell.cellId, { event: "dispatch", taskId, member: memberName, teamId: String(deps.record.teamId ?? "") }, deps.now)
   }
   return report
+}
+
+/**
+ * One `cellwork_dispatch {reassign}` pair, already validated (see {@link reassignPairs}).
+ */
+export interface ReassignPair {
+  /** The board row being handed over. */
+  taskId: string
+  /** The member the row is claimed FOR and delivered to. */
+  owner: string
+}
+
+/**
+ * What one reassignment did — reported for every path, never thrown (contract C6).
+ */
+export interface ReassignOutcome {
+  /** The board row this outcome is about. */
+  taskId: string
+  /** The member name the row was handed to (the roster's own spelling once resolved). */
+  owner: string
+  /** Whether the board row is claimed for that member. */
+  claimed: boolean
+  /** Whether the dispatch message reached that member's handle. */
+  delivered: boolean
+  /** Why the reassignment stopped short, when it did. */
+  reason?: string
+}
+
+/**
+ * What {@link applyReassignments} needs: the cell, the board and the two side effects it may perform.
+ */
+export interface ReassignDeps {
+  /** The workspace root the caller resolved through the adapter. */
+  workspace: string
+  /** The cell being dispatched (its id stamps the message and the journal row). */
+  cell: CellState
+  /** The live team record, or undefined when the team service cannot be read. */
+  record: DispatchRecordView | undefined
+  /** The pairs to apply, in the caller's order. */
+  pairs: readonly ReassignPair[]
+  /** Claim one row for one member through the board; resolves `ok:false` instead of throwing. */
+  claim: (taskId: string, owner: string) => Promise<{ ok: boolean; error?: string }>
+  /** Deliver one message to one member handle. */
+  send: (handle: string, content: string) => Promise<void>
+  /** The instant to journal with. */
+  now: Date
+  /** A member's CURRENT handle, when the caller knows a fresher one than the record carries. */
+  handleFor?: (memberName: string) => string | undefined
+}
+
+/**
+ * Read the `reassign` argument of `cellwork_dispatch` without trusting its shape.
+ *
+ * The harness validates the tool schema, but this handler is also reached by a test double and by a
+ * composition running an older schema, so every entry is checked here. A blank id, a blank owner or the
+ * same row named twice is REPORTED as one sentence (the readable entries still apply) rather than thrown.
+ *
+ * @param value - the raw argument value.
+ * @returns the readable pairs, and one sentence per entry this build refused.
+ */
+export function reassignPairs(value: unknown): { pairs: ReassignPair[]; invalid: string[] } {
+  /** The readable pairs, in the caller's order. */
+  const pairs: ReassignPair[] = []
+  /** One sentence per entry that could not be read. */
+  const invalid: string[] = []
+  if (value === undefined) return { pairs, invalid }
+  if (!Array.isArray(value)) return { pairs, invalid: ["`reassign` must be an array of {task_id, owner} objects"] }
+  /** The ids already asked for, so one row is never claimed twice in one call. */
+  const seen = new Set<string>()
+  for (const entry of value) {
+    /** The entry read as a record, or undefined when it is not an object. */
+    const row = typeof entry === "object" && entry !== null && !Array.isArray(entry) ? entry as Record<string, unknown> : undefined
+    /** The board id this entry names, trimmed. */
+    const taskId = typeof row?.task_id === "string" ? row.task_id.trim() : ""
+    /** The member name this entry names, trimmed. */
+    const owner = typeof row?.owner === "string" ? row.owner.trim() : ""
+    if (taskId === "" || owner === "") {
+      invalid.push("every `reassign` entry needs a non-empty `task_id` and `owner` (got " + JSON.stringify(entry) + ")")
+      continue
+    }
+    if (seen.has(taskId)) {
+      invalid.push("task " + JSON.stringify(taskId) + " is named twice in `reassign` — one claim per row per call")
+      continue
+    }
+    seen.add(taskId)
+    pairs.push({ taskId, owner })
+  }
+  return { pairs, invalid }
+}
+
+/**
+ * Claim each named row for its new member, journal the hand-over, then deliver the dispatch message.
+ *
+ * THE ORDER IS THE CONTRACT (C6): the board write lands BEFORE the message, so a member never receives
+ * work it cannot see on the board, and the journal row is written between them so the hand-over survives
+ * a crash of either half. Every failure is an entry in the answer — nothing here throws.
+ *
+ * The target is checked BEFORE the claim: a member this cell never raised has no handle, and claiming a
+ * row for someone who cannot be woken would hide the row from the next pass.
+ *
+ * @param deps - the cell, the board, the claim seam and the delivery.
+ * @returns one outcome per pair, in the caller's order.
+ */
+export async function applyReassignments(deps: ReassignDeps): Promise<ReassignOutcome[]> {
+  /** One outcome per pair, in the caller's order. */
+  const outcomes: ReassignOutcome[] = []
+  /** The live board, defaulted to empty for a record this build cannot read. */
+  const tasks = Array.isArray(deps.record?.tasks) ? deps.record.tasks : []
+  /** The live roster, defaulted the same way. */
+  const members = Array.isArray(deps.record?.members) ? deps.record.members : []
+  for (const pair of deps.pairs) {
+    /** The board row the pair names. */
+    const task = tasks.find((row) => String(row.id ?? "") === pair.taskId)
+    if (task === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "no board row is named " + JSON.stringify(pair.taskId) + " — nothing was reassigned" })
+      continue
+    }
+    /** The row's status, which a terminal row must not be reopened from. */
+    const status = String(task.status ?? "")
+    if (status === "completed" || status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "row " + pair.taskId + " is already " + status + " — a terminal row is never reopened" })
+      continue
+    }
+    /** The roster row the requested owner names. */
+    const member = resolveOwner(members, pair.owner)
+    if (member === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "the roster does not name " + JSON.stringify(pair.owner) + " — no substitution is made" })
+      continue
+    }
+    /** The owner's board name, as the roster spells it. */
+    const memberName = String(member.name ?? pair.owner)
+    /** Why this target cannot be woken, when that is the case (a fenced member is never messaged). */
+    const fence = fenceReasonOf(cellMemberOf(deps.cell, memberName)) ?? fenceReasonOf(member)
+    if (fence !== undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — pick an unfenced member" })
+      continue
+    }
+    // THE TARGET'S OWN STATUS IS CHECKED BEFORE THE CLAIM (repair R-A1, CR #2): a FAILED member can still
+    // carry a recorded handle, so claiming a row for it would move the row to `in_progress` where no later
+    // pass picks it up — the exact hazard the fence check above exists to prevent. The rule is the same
+    // one `dispatchOwnerOnly` applies to an owner, so both paths refuse the same members.
+    if (member.status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " FAILED to start — a row claimed for it would never be picked up; pick a member that is running" })
+      continue
+    }
+    if (member.status === "provisioning") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is still being raised — retry the reassignment once it is running" })
+      continue
+    }
+    /** The executor handle the message would go to (the fresher NON-BLANK one wins — repair R-A2). */
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef)
+    if (handle === null) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " has no executor handle (never raised) — claiming the row for it would hide the row from the next pass" })
+      continue
+    }
+    /** The member the row is being taken from, for the journal row. */
+    const previous = String(task.owner ?? "").trim()
+    /** The board's answer to the claim; a throw from the seam is reported, never propagated. */
+    let claimed: { ok: boolean; error?: string }
+    try {
+      claimed = await deps.claim(pair.taskId, memberName)
+    } catch (error) {
+      claimed = { ok: false, error: errorText(error) }
+    }
+    if (!claimed.ok) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the board refused the claim: " + (claimed.error ?? "unknown refusal") })
+      continue
+    }
+    appendJournal(deps.workspace, deps.cell.cellId, { event: "task-reassigned", taskId: pair.taskId, from: previous, to: memberName, member: memberName }, deps.now)
+    try {
+      await deps.send(handle, dispatchMessageFor(deps, task, pair.taskId))
+    } catch (error) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: true, delivered: false, reason: "the row IS claimed for " + JSON.stringify(memberName) + " but the message failed: " + errorText(error) })
+      continue
+    }
+    outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: true, delivered: true })
+  }
+  return outcomes
 }
 
 /**

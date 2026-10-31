@@ -1,0 +1,13 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-workmate-plugin/test/workmate-spawn-maxdepth.test.ts:
+(pass) the reading matches mpd_role_spawn's helper on EVERY header shape — the parity pin [0.12ms]
+(pass) the values themselves: top-level 1, nested 2, and deeper nesting scales with the caller [0.03ms]
+(pass) THE WIRING: the registered mpd_workmate_spawn forwards `maxDepth` = caller depth + 1, per call [2.90ms]
+(pass) CONTROL: the forwarded cap disturbs neither the route, the label nor the prompt [0.41ms]
+
+ 4 pass
+ 0 fail
+ 30 expect() calls
+Ran 4 tests across 1 file. [192.00ms]
+EXIT:0

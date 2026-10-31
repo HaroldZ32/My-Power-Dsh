@@ -593,6 +593,7 @@ function sessionIsMpdCaptain(agent) {
 var INVESTIGATION_CONFIG_KEY = "captain.investigation";
 var INVESTIGATION_TOOLS = ["read", "glob", "grep"];
 var CAPTAIN_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var CAPTAIN_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var CAPTAIN_READABLE_ROOT_FILES = [
   "AGENTS.md",
   "AGENT.md",
@@ -609,6 +610,8 @@ function captainReadablePath(workspaceRoot, raw) {
   const posix = String(raw ?? "").replace(/\\/g, "/");
   if (posix === "")
     return false;
+  if (isInstructionFile(posix))
+    return true;
   const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
   const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix);
   let rel;
@@ -627,6 +630,12 @@ function captainReadablePath(workspaceRoot, raw) {
     return true;
   return rel.indexOf("/") === -1 && ROOT_LICENSE_PATTERN.test(rel);
 }
+function isInstructionFile(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  if (base === "")
+    return false;
+  return CAPTAIN_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base);
+}
 function captainInvestigationDecision(input) {
   if (input.mode !== "deny")
     return;
@@ -643,7 +652,7 @@ function captainInvestigationDecision(input) {
   return investigationRefusal(toolName, JSON.stringify(raw));
 }
 function investigationRefusal(toolName, target) {
-  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`," + " `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling" + " project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and" + " `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no" + ' `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in' + " mpd.jsonc restores full access.";
 }
 function installCaptainInvestigationGuard(dsh, options) {
   const mode = resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY));
@@ -3236,6 +3245,7 @@ var READONLY_DENY = [
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict"
 ];
+var LEAF_SPAWN_DENY = ["mpd_role_spawn", "mpd_workmate_spawn"];
 function withdrawnReason(knob) {
   return "withdrawn:2026-10-17-user-ruling(" + knob + ")";
 }
@@ -3426,6 +3436,21 @@ function extensionRoles(ctx, exec, warn) {
   }
   return { roles, refused };
 }
+function spawnMaxDepthOf(agent) {
+  const header = agent?.session?.header;
+  const raw = Number(header?.delegationDepth);
+  if (Number.isFinite(raw) && raw >= 1)
+    return Math.floor(raw) + 1;
+  return header?.origin === "subagent" ? 2 : 1;
+}
+function consultDepthRefusal(agent) {
+  const header = agent?.session?.header;
+  const raw = Number(header?.delegationDepth);
+  const depth = Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : header?.origin === "subagent" ? 1 : 0;
+  if (depth < 2)
+    return;
+  return "mpd spawn rule: refused — this session is at delegation depth " + depth + ", two or more levels below" + " the session that started the work, so it may not raise another consult. `mpd_role_spawn` and" + " `mpd_workmate_spawn` forward a depth cap that makes their child a LEAF, and a session at depth 2 or" + " deeper IS that leaf: the consults it would raise are exactly the runaway nesting the cap exists to" + " prevent (CR repair E). Do the work here, or hand the question UP — report what you need to the session" + " that raised you and end your turn.";
+}
 function apply(ctx, config = {}) {
   const warn = (line) => {
     const message = "[mpd-roles] " + line;
@@ -3535,10 +3560,18 @@ function apply(ctx, config = {}) {
   const roleNameListOf = (surface) => surface.roles.map((role) => role.name).join(", ");
   const applyChildReadonlyDeny = (agent) => {
     try {
-      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY]);
-      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + outcome.applied.length + " denials to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY]);
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + outcome.applied.length + " denials (+ the leaf spawn boundary) to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
     } catch (error) {
-      rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this member may be able to write");
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this member may be able to write and to delegate");
+    }
+  };
+  const applyChildLeafDeny = (agent) => {
+    try {
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...LEAF_SPAWN_DENY]);
+      rowLogLine("mpd-roles", "[mpd-roles] child leaf boundary: applied " + outcome.applied.length + " spawn denials to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
+    } catch (error) {
+      rowLogLine("mpd-roles", "[mpd-roles] child leaf boundary: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this child may be able to delegate further");
     }
   };
   installChildPersonaSeam(dsh, {
@@ -3552,6 +3585,22 @@ function apply(ctx, config = {}) {
     warn: (line) => warnOnce("child-persona:" + line, line),
     onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined
   });
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("agent/created", (payload) => {
+      try {
+        const agent = payload?.agent ?? payload;
+        const label = dsh.subagentLabelOf(agent);
+        if (label === undefined)
+          return;
+        const spec = roleOf(roleSurface(undefined), label);
+        if (spec === null || spec.readonly)
+          return;
+        applyChildLeafDeny(agent);
+      } catch (error) {
+        rowLogLine("mpd-roles", "[mpd-roles] child leaf boundary: a child could not be identified, so its spawn tools were left open (" + String(error?.message ?? error) + ")");
+      }
+    });
+  }
   ctx.provide("mpdRoles", {
     adapterIdentity: dshAdapterIdentity(ctx),
     list: () => roleSurface(undefined).roles.map((r) => ({ id: r.id, name: r.name, description: r.description, readonly: r.readonly, chain: r.chain.map((c) => ({ ...c })), personaFile: r.personaFile, persona: r.persona, extension: r.extension })),
@@ -3578,7 +3627,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright — a depth-1 caller (the cell planner) may still raise its one consult.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -3588,6 +3637,9 @@ evidence:
 - ` + v.evidence.join(`
 - `) : "")) },
     execute: async (args, exec) => {
+      const tooDeep = consultDepthRefusal(exec?.agent);
+      if (tooDeep !== undefined)
+        throw new Error(tooDeep);
       const surface = roleSurface(exec);
       const spec = roleOfToolInput(surface, String(args?.role ?? ""));
       if (spec === null)
@@ -3623,6 +3675,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
+        maxDepth: spawnMaxDepthOf(exec.agent),
         ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
         ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
@@ -3753,8 +3806,10 @@ export {
   ADAPTER_IDENTITY_FALLBACK,
   ADAPTER_IDENTITY_MOUNTED,
   ADAPTER_IDENTITY_PENDING,
+  LEAF_SPAWN_DENY,
   READONLY_DENY,
   apply,
+  consultDepthRefusal,
   extensionRoleId,
   extensionRoles,
   inject,
@@ -3766,5 +3821,6 @@ export {
   roleOfToolInput,
   rosterFunctionList,
   rosterNameList,
+  spawnMaxDepthOf,
   stagedPlanProbe
 };

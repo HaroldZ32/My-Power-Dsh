@@ -74,9 +74,15 @@ export function normalizeHeading(heading: string): string {
 /**
  * Parse one document into heading → body map.
  *
- * Only headings up to level 4 are considered; a body runs until the next heading of ANY level, which is
- * how a reader sees the document. The first heading wins when a spelling repeats, so a stray duplicate
- * cannot empty a section that was already answered.
+ * Only headings up to level 4 are considered. What changed for C10/D9 is the BODY RANGE, not the
+ * outline: a section's body runs until the next heading of the SAME or a HIGHER level (the same number of
+ * `#` markers or fewer), so a `###` subheading and everything under it belong to the parent's body
+ * instead of truncating it. Every heading still opens its own section — a document title (`# …`) must not
+ * swallow the `##` sections below it, and a reader can still look a nested heading up by name. A heading
+ * whose body is only whitespace keeps an empty body, so such a section is still "missing or empty".
+ *
+ * The first heading wins when a spelling repeats, so a stray duplicate cannot empty a section that was
+ * already answered.
  *
  * @param text - the markdown document.
  * @returns the normalised headings and their trimmed bodies.
@@ -84,26 +90,24 @@ export function normalizeHeading(heading: string): string {
 export function parseSections(text: string): Map<string, string> {
   /** The resulting heading-to-body map. */
   const sections = new Map<string, string>()
-  /** The heading currently collecting body lines, or undefined before the first heading. */
-  let current: string | undefined
-  /** The body lines collected for the current heading. */
-  let body: string[] = []
-  /** Flush the collected body into the map under the current heading. */
-  const flush = (): void => {
-    if (current !== undefined && !sections.has(current)) sections.set(current, body.join("\n").trim())
-    body = []
-  }
-  for (const line of text.split("\n")) {
+  /** The document's lines, indexed so a body is a contiguous slice. */
+  const lines = text.split("\n")
+  /** Every heading with the line it sits on and its level, in document order. */
+  const headings: Array<{ line: number; level: number; key: string }> = []
+  for (let index = 0; index < lines.length; index += 1) {
     /** The heading match: one to four `#` markers and a non-empty title. */
-    const heading = /^(#{1,4})\s+(.+?)\s*$/.exec(line)
-    if (heading !== null) {
-      flush()
-      current = normalizeHeading(heading[2])
-      continue
-    }
-    if (current !== undefined) body.push(line)
+    const match = /^(#{1,4})\s+(.+?)\s*$/.exec(lines[index])
+    if (match !== null) headings.push({ line: index, level: match[1].length, key: normalizeHeading(match[2]) })
   }
-  flush()
+  for (let position = 0; position < headings.length; position += 1) {
+    /** The heading whose body this is. */
+    const heading = headings[position]
+    /** The first LATER heading at the same or a higher level; undefined means "to the end of the file". */
+    const closing = headings.slice(position + 1).find((candidate) => candidate.level <= heading.level)
+    /** The body lines: every line after the heading, nested headings included, up to that closing heading. */
+    const body = lines.slice(heading.line + 1, closing === undefined ? lines.length : closing.line).join("\n").trim()
+    if (!sections.has(heading.key)) sections.set(heading.key, body)
+  }
   return sections
 }
 

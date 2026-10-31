@@ -1,0 +1,9 @@
+PASS M1-1 a misspelled explicit member is REFUSED — refused="Senior Enginerr" is not a member of this team (members: Senior Engineer, Reviewer)
+PASS M1-2 the refusal NAMES the value — refused="Senior Enginerr" is not a member of this team (members: Senior Engineer, Reviewer)
+PASS M1-3 no mail is listed (no fallback to the caller's own inbox) — messages=undefined
+PASS M2 explicit member ID still resolves — subjects=["for-senior"]
+PASS M3 explicit member NAME still resolves — subjects=["for-senior"]
+PASS M4 omitting `member` still reads the caller's own inbox — subjects=["for-senior"], memberName=Senior Engineer
+PASS M5 a non-member caller with no `member` keeps the empty answer — messages=0, total=0
+
+ALL ARMS PASS

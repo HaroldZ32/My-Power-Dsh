@@ -1,0 +1,5 @@
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: .toolchain/node_modules/.bin/bun run verify:docs
+[verify-docs-parity] links=471 checked=439 resolved=439 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=125
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=471 dead=0 — PASS
+EXIT=0

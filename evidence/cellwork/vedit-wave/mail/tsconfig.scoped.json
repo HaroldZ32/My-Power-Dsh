@@ -1,0 +1,7 @@
+{
+  "extends": "../../../../tsconfig.json",
+  "include": [
+    "../../../../packages/mpd-team-core-plugin/src/**/*.ts",
+    "../../../../packages/mpd-team-core-plugin/test/**/*.ts"
+  ]
+}

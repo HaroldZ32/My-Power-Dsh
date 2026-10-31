@@ -1,0 +1,54 @@
+bun test v1.4.0 (34cbb9a40)
+
+evidence/cellwork/vedit-wave/d16/prefix/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [0.81ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.04ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.05ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.24ms]
+85 | 
+86 |   test("the bound is PER TEAM — a finished team's backlog cannot refuse a new team's same-named member", () => {
+87 |     // Two sends for the OLD team exhaust THAT team's bound of two; `M1` is a per-team id every team
+88 |     // reuses, which is exactly why an unscoped count would carry the old wave's queue into the new one.
+89 |     for (let i = 0; i < 2; i += 1) expect(send(box, msg({ subject: "old" + i, teamId: "team-old", maxUndelivered: 2 }), later(i)).ok).toBe(true)
+90 |     expect(send(box, msg({ subject: "new0", teamId: "team-new", maxUndelivered: 2 }), later(3)).ok).toBe(true)
+                                                                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/d16/prefix/test/mailbox-store.test.ts:90:101)
+(fail) sending > the bound is PER TEAM — a finished team's backlog cannot refuse a new team's same-named member [0.33ms]
+ 98 |   })
+ 99 | 
+100 |   test("an UNSTAMPED row predates the team field, so a stamped team does not count it", () => {
+101 |     // A row written before team stamping existed: no team can prove it owns it, so it blocks nobody.
+102 |     expect(send(box, msg({ subject: "legacy", maxUndelivered: 1 }), NOW).ok).toBe(true)
+103 |     expect(send(box, msg({ subject: "first", teamId: "team-a", maxUndelivered: 1 }), later(1)).ok).toBe(true)
+                                                                                                         ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/d16/prefix/test/mailbox-store.test.ts:103:100)
+(fail) sending > an UNSTAMPED row predates the team field, so a stamped team does not count it [0.16ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.27ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.17ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.33ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.29ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.08ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.21ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.17ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.07ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.04ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.32ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.04ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.13ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.04ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.09ms]
+
+ 18 pass
+ 2 fail
+ 53 expect() calls
+Ran 20 tests across 1 file. [183.00ms]

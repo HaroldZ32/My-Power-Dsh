@@ -50,6 +50,21 @@ export const READONLY_DENY = [
   "mcp__lsp__rename_symbol_strict",
 ]
 
+/**
+ * The bundle's OWN spawn tools, denied in the scope of every child this row raises (CR repair E).
+ *
+ * WHY: the pinned host treats `maxDepth` as an absolute cap for the child being started and does NOT carry it
+ * into the child as a descendant restriction, so a child that could call a spawn tool again would raise its
+ * own cap and nest past the consultation boundary. Denying BOTH names in the child's own tool scope makes
+ * every consult a LEAF by construction — and it is what stops a READ-ONLY workmate delegating a write to a
+ * write-capable role.
+ *
+ * It is a SEPARATE list from {@link READONLY_DENY} on purpose: that list is the read-only guarantee, exactly
+ * eight names and asserted equal to the roles plugin's copy; this one applies to EVERY child. The roles row
+ * keeps its own copy (no runtime cross-package import) and `test/leaf-boundary.test.ts` pins the two equal.
+ */
+export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
+
 /** A refused mutation, carrying the wire reason of the shared protocol (contract §D) so the HTTP
  * layer maps it verbatim and the GUI can branch on it. */
 export class WorkmateError extends Error {
@@ -742,6 +757,71 @@ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: 
   }
 }
 
+/**
+ * The explicit `maxDepth` one `mpd_workmate_spawn` forwards: the caller's recorded delegation depth plus one.
+ *
+ * WHY IT MUST BE EXPLICIT (defect D17 — the SAME rule as `mpd_role_spawn`'s helper): with no `maxDepth` the
+ * host applies its own depth default, and a NESTED caller — a depth-1 cell planner or a team member is the
+ * measured shape — has its consult refused there with a `SubagentDepthError`, even though THIS consult is a
+ * leaf that spawns nothing. Forwarding the caller's depth plus one places the child exactly one level below
+ * the caller, so a top-level caller keeps the historical `maxDepth: 1` as an EXPLICIT value.
+ *
+ * THE READING IS DELIBERATELY IDENTICAL to `spawnMaxDepthOf` in `mpd-roles-plugin/src/index.ts`, and the
+ * duplication is a TEST pin rather than an accident: this package ships no runtime dependency on that row's
+ * module (only on the adapter's), so `test/workmate-spawn-maxdepth.test.ts` imports BOTH helpers from source
+ * and compares them on every header shape. A caller with no recorded depth reads as `0`; a session the
+ * harness recorded as `origin: "subagent"` WITHOUT a depth reads as depth `1`, exactly as `sessionRank`
+ * classifies it — answering `0` there would hand a child's child the top-level cap.
+ *
+ * @param agent - the calling agent handle, whose session header carries the recorded depth.
+ * @returns the cap to forward, a positive integer.
+ */
+export function spawnMaxDepthOf(agent: unknown): number {
+  /** The agent's session header, where the harness records the origin and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  /** The recorded depth; a non-numeric or negative value is not a depth and reads as `0` below. */
+  const raw = Number(header?.delegationDepth)
+  if (Number.isFinite(raw) && raw >= 1) return Math.floor(raw) + 1
+  return header?.origin === "subagent" ? 2 : 1
+}
+
+/**
+ * The refusal `mpd_workmate_spawn` answers when the CALLER is already too deep to raise a consult (CR repair E).
+ *
+ * THE BOUNDARY. The two bundle spawn tools forward `maxDepth = caller depth + 1` — which makes the child a
+ * leaf — AND the child's own tool scope denies both spawn tools, so a consult can never delegate and can
+ * never raise its own cap. This refusal is the HARD FLOOR under that scope control: a session at depth 2 or
+ * deeper is refused even when the scope restriction never landed (a label no seam resolved, a composition
+ * without the `agent/created` bus, a session raised by something other than these two rows).
+ *
+ * DEPTH 0 AND 1 STAY OPEN ON PURPOSE: the captain raises its consults (0 → 1), and the cell PLANNER — a team
+ * member at depth 1, NOT a child of these tools — keeps its own `mpd_role_spawn` route. The consult it raises
+ * lands at depth 2 and is itself a leaf.
+ *
+ * THE TEXT AND THE READING ARE DELIBERATELY IDENTICAL to `consultDepthRefusal` in
+ * `mpd-roles-plugin/src/index.ts`: this package ships no runtime dependency on that row's module (only on the
+ * adapter's), so `test/leaf-boundary.test.ts` imports BOTH from source and compares them — a test-only pin,
+ * exactly like {@link spawnMaxDepthOf}'s twin there.
+ *
+ * @param agent - the calling agent handle, whose session header carries the recorded depth.
+ * @returns the denial sentence, or undefined when the caller may still spawn.
+ */
+export function consultDepthRefusal(agent: unknown): string | undefined {
+  /** The agent's session header, where the harness records the origin and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  /** The recorded depth; a non-numeric or negative value is not a depth and reads as `0` below. */
+  const raw = Number(header?.delegationDepth)
+  /** The depth this call is judged at: a subagent-origin session without a depth is a CHILD (depth 1). */
+  const depth = Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : header?.origin === "subagent" ? 1 : 0
+  if (depth < 2) return undefined
+  return "mpd spawn rule: refused — this session is at delegation depth " + depth + ", two or more levels below"
+    + " the session that started the work, so it may not raise another consult. `mpd_role_spawn` and"
+    + " `mpd_workmate_spawn` forward a depth cap that makes their child a LEAF, and a session at depth 2 or"
+    + " deeper IS that leaf: the consults it would raise are exactly the runaway nesting the cap exists to"
+    + " prevent (CR repair E). Do the work here, or hand the question UP — report what you need to the session"
+    + " that raised you and end your turn."
+}
+
 /** Row entry point: the seven workmate tools, the mutation routes and the `mpdWorkmate` service. */
 export function apply(ctx: Ctx): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
@@ -901,13 +981,36 @@ export function apply(ctx: Ctx): void {
       // RETAINED + TOLERANT: a scope that does not know `mcp__lsp__*` (a profile without `cclsp`)
       // rejects the WHOLE list, so an unpruned apply would deny NOTHING and leave this workmate
       // writable. The applier prunes exactly the names the host reports and retries once.
+      // THE LEAF NAMES RIDE THIS SAME CALL (CR repair E): ONE restriction per child, never two layers, so a
+      // read-only workmate also cannot delegate its work to a write-capable role.
       /** The accepted names and whatever the host pruned as unknown here. */
-      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])
       // ONE line per child, carrying BOTH numbers, so a pruning regression is visible on disk.
-      reportPrunedNames("read-only workmate child: applied " + outcome.applied.length + " denials to its own tool scope"
+      reportPrunedNames("read-only workmate child: applied " + outcome.applied.length + " denials (+ the leaf spawn boundary) to its own tool scope"
         + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"))
     } catch (error) {
-      reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this workmate may be able to write")
+      reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this workmate may be able to write and to delegate")
+    }
+  }
+
+  /**
+   * Apply ONLY the leaf boundary to one WRITE-CAPABLE workmate child's own scope, retained.
+   *
+   * PARTITIONED FROM {@link applyChildReadonlyDeny} ON PURPOSE: `installChildPersonaSeam` calls the read-only
+   * applier for read-only children ONLY, and that applier already carries the leaf names — so this one covers
+   * the write-capable child and NO child's scope is restricted twice by this row.
+   * @param agent - the freshly created child whose own scope is restricted.
+   */
+  function applyChildLeafDeny(agent: unknown): void {
+    try {
+      /** The accepted names and whatever the host pruned as unknown here. */
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...LEAF_SPAWN_DENY])
+      reportPrunedNames("workmate child leaf boundary: applied " + outcome.applied.length + " spawn denials to its own tool scope"
+        + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"))
+    } catch (error) {
+      // Reported, never thrown: a degradation here must not fail the spawn, and the depth floor in the spawn
+      // tool still refuses any caller at depth 2 or deeper.
+      reportPrunedNames("workmate child leaf boundary: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this child may be able to delegate further")
     }
   }
 
@@ -940,6 +1043,38 @@ export function apply(ctx: Ctx): void {
     // cannot attach (a mounted-adapter double may expose none of the two seams).
     onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined,
   })
+
+  // ── THE LEAF BOUNDARY on every child this row raises (CR repair E) ──────────────────────────────
+  //
+  // WHY A SECOND LISTENER. `installChildPersonaSeam` restricts the READ-ONLY workmate child and only that one,
+  // so a write-capable consult would otherwise keep both spawn tools — and could then raise its own `maxDepth`
+  // cap and nest past the consultation boundary. The two listeners are PARTITIONED (this one skips read-only
+  // workmates, whose applier already carries the same names), so no child's scope is restricted twice.
+  //
+  // The identity read MIRRORS the seam's `resolve`: the canonical workmate KEY, exact-match, then its library
+  // record — a label that names no instance is the ROSTER row's child and is left alone here. Never throws
+  // inside `agent/created`: a throw there fails the whole spawn, and a missing restriction must be a log line.
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("agent/created", (payload: unknown) => {
+      try {
+        /** The agent the payload carries; a build that hands the agent itself still works. */
+        const agent = (payload as { agent?: unknown } | undefined)?.agent ?? payload
+        /** The child's own delegation label; absent for a child this composition did not raise. */
+        const label = dsh.subagentLabelOf(agent)
+        if (label === undefined) return
+        /** The library key that label is, or null when it names no workmate instance. */
+        const key = workmateKeyFromLabel(label)
+        if (key === null) return
+        /** The instance's record; a key with no instance is not this row's child. */
+        const meta = readMeta(wmDir(key))
+        if (meta === null || meta.readonly) return
+        applyChildLeafDeny(agent)
+      } catch (error) {
+        reportPrunedNames("workmate child leaf boundary: a child could not be identified, so its spawn tools were left open ("
+          + String((error as Error)?.message ?? error) + ")")
+      }
+    })
+  }
 
   /** Normalize a base KEY: case/space/hyphen insensitive, so "Deep Worker", "deep worker" and
    * "deep-worker" all name the same specialist. */
@@ -1070,10 +1205,17 @@ export function apply(ctx: Ctx): void {
 
   dsh.registerTool({
     name: "mpd_workmate_spawn",
-    description: "Reuse a workmate instance: spawn it as a ONE-SHOT single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). On a host exposing `startActivation` the adapter disposes that activation once the report settles (the retired `start` fallback is inherently one-shot), so the consult is NOT reused: ask a new question with a NEW spawn, and rely on the workmate RECORD (persona/memory/note) for durable continuity, not on the child session (the harness catalog is append-only, so a settled child may still list as `inactive`). The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
+    description: "Reuse a workmate instance: spawn it as a ONE-SHOT single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). On a host exposing `startActivation` the adapter disposes that activation once the report settles (the retired `start` fallback is inherently one-shot), so the consult is NOT reused: ask a new question with a NEW spawn, and rely on the workmate RECORD (persona/memory/note) for durable continuity, not on the child session (the harness catalog is append-only, so a settled child may still list as `inactive`). The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "")) },
     execute: async (args: any, exec: any) => {
+      // THE LEAF BOUNDARY, ENFORCED AT THE TOOL (CR repair E): a session at depth 2 or deeper may not raise a
+      // consult, whatever its own tool scope looks like (a composition without the `agent/created` bus, a
+      // child whose label no seam resolved). Refused BEFORE the instance is resolved, so nothing is read and
+      // no child is started.
+      /** The refusal for a caller that is already too deep, or undefined when it may still spawn. */
+      const tooDeep = consultDepthRefusal(exec?.agent)
+      if (tooDeep !== undefined) throw new Error(tooDeep)
       /** The instance being spawned, resolved by key. */
       const { meta, key } = ensureInstance(String(args?.name ?? ""))
       /** The task text; empty is a caller error and must never spawn an empty prompt. */
@@ -1123,6 +1265,10 @@ export function apply(ctx: Ctx): void {
           model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
+          // AN EXPLICIT LEAF BOUND (defect D17) — see `spawnMaxDepthOf`: the caller's own recorded depth plus
+          // one, forwarded by the adapter on BOTH harness generations, so a NESTED caller's one-shot consult
+          // is never refused by a host depth default it cannot see.
+          maxDepth: spawnMaxDepthOf(exec.agent),
           // The route's OWN effort keyword rides along when it states one — AFTER the catalog
           // adaptation above. An absent keyword passes nothing and the harness keeps its resolution.
           ...(route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } }),

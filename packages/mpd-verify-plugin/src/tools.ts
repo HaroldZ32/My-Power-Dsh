@@ -23,7 +23,7 @@ import {
   writeRecord, writeRepair, writeSeats,
 } from "./ledger.ts"
 import type { EvidenceMeta, VerifyLoop, VerifySeat } from "./ledger.ts"
-import { GATE_TABLE, gateById, probeArtifacts, runGate } from "./gates.ts"
+import { GATE_TABLE, PROJECT_GATE_FILE, probeArtifacts, projectGateIdentity, resolveGate, runGate } from "./gates.ts"
 import type { ArtifactProbe, GateEvidence, HashedDoc, VerificationRecord, VerifyFinding } from "./record.ts"
 import { buildRecord, validateVerificationRecord } from "./record.ts"
 import type { VerifyRuntime } from "./observe.ts"
@@ -140,13 +140,15 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_open",
     description:
-      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member. `contract` is the document THIS wave's verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `" + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
+      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member: `writer_id` names its AGENT IDENTITY (the member's session id) and `writer_reason` records the human name (`member: <name>`), so the record's same-agent refusal compares real identities instead of a placeholder; both are refused with `writer:\"self\"`. `contract` is the document THIS wave's verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `" + DEFAULT_CONTRACT_PATH + "`. The loop also FREEZES the workspace's `mpd-gates.json` (absent counts as frozen too), so a later edit cannot change what this loop's gate evidence certifies. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
         verifier: { type: "string", description: "The agent that will verify (a member name or session id). Required for writer:\"self\", and must not be the caller." },
         self_write_reason: { type: "string", description: "writer:\"self\" only: why this agent writes its own code. Required, echoed in the report." },
         writer: { type: "string", enum: ["self", "delegate"], description: "Who writes. Defaults to `self`." },
+        writer_id: { type: "string", description: "writer:\"delegate\" only: the loop's WRITER identity — the member's session id (an agent key, not a display name), trimmed to 1..200 characters. Absent records the `delegate:pending` placeholder. Refused with writer:\"self\"." },
+        writer_reason: { type: "string", description: "writer:\"delegate\" only: text stored on the loop's `writer.reason`, e.g. `member: <name>` when `writer_id` is a session id; trimmed to 1..200 characters. Refused with writer:\"self\"." },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
         contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
@@ -171,6 +173,23 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
       const reason = String(args?.self_write_reason ?? "")
       /** The verifier the caller named. */
       const verifier = String(args?.verifier ?? "")
+      /** The named writer identity, trimmed; `undefined` when the caller named none. */
+      const writerId = args?.writer_id === undefined ? undefined : String(args.writer_id).trim()
+      /** The named writer description, trimmed; `undefined` when the caller named none. */
+      const writerReason = args?.writer_reason === undefined ? undefined : String(args.writer_reason).trim()
+      // THE SHAPE RULE FIRST, so a malformed value is named as malformed: an id a report cannot spell is
+      // not an identity a record can compare, and a reason a report cannot read is not one either.
+      if (writerId !== undefined && (writerId === "" || writerId.length > 200)) {
+        return { refused: "`writer_id` must be a non-empty identity of at most 200 characters after trimming — it is the AGENT KEY (the member's session id) a record's same-agent refusal compares" }
+      }
+      if (writerReason !== undefined && (writerReason === "" || writerReason.length > 200)) {
+        return { refused: "`writer_reason` must be non-empty text of at most 200 characters after trimming — it is the human label stored beside `writer_id`, e.g. `member: <name>`" }
+      }
+      // EITHER PARAMETER DESCRIBES A DELEGATED LOOP: a writer:"self" loop's writer IS the calling session,
+      // so naming another writer here would contradict the loop's kind.
+      if (writerKind === "self" && (writerId !== undefined || writerReason !== undefined)) {
+        return { refused: "`writer_id` and `writer_reason` are refused with writer:\"self\" because both describe a DELEGATED loop — this loop's writer is the calling session (" + sessionId + "), so omit both or open the loop with writer:\"delegate\"" }
+      }
       // THE COUNTED PATH IS NEVER SILENT: a self-writer loop without a stated reason is exactly the
       // "main agent quietly writes the code" case this law exists to remove, so it is refused outright.
       if (writerKind === "self" && reason.trim() === "") {
@@ -193,9 +212,20 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
         ...(contract === undefined ? {} : { contract }),
+        // THE C3 FREEZE (CR #12): the project gate file's identity is captured HERE, at open time, so the
+        // loop's own WRITER (who may edit the file, the write guard being withdrawn) cannot swap a gate
+        // after the fact. Every gate run bound to this loop compares against it.
+        gateFile: projectGateIdentity(workspace),
         workspace,
         sessionId,
-        writer: { kind: writerKind, id: writerKind === "self" ? sessionId : "delegate:pending", reason: writerKind === "self" ? reason : undefined },
+        // THE WRITER ID IS AN IDENTITY, NOT A LABEL (C2, D12): a delegated loop names the member's session
+        // id, so `mpd_verify_record`'s same-agent refusal compares two REAL agent keys; without one the
+        // placeholder stays, which is exactly today's behaviour.
+        writer: {
+          kind: writerKind,
+          id: writerKind === "self" ? sessionId : writerId ?? "delegate:pending",
+          reason: writerKind === "self" ? reason : writerReason,
+        },
         verifier: { id: verifier === "" ? "unbound" : verifier },
         scope: Array.isArray(args?.scope) ? args.scope.map(String) : [],
         status: "armed",
@@ -217,7 +247,7 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         id: loop.writer.id,
         ...(typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}),
       }
-      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), status: loop.status, expiresAt: loop.expiresAt }
+      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile, status: loop.status, expiresAt: loop.expiresAt }
     },
   }
 }
@@ -329,7 +359,7 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_evidence",
     description:
-      "Produce black-box evidence. `kind:\"gate\"` runs ONE id from the fixed table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log; `kind:\"probe\"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted.",
+      "Produce black-box evidence. `kind:\"gate\"` runs ONE id from the EFFECTIVE gate table — the workspace's `mpd-gates.json` entries first, then the frozen ids (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) — and writes its log, whose one-line header names the label, the program AND the argv that really ran; a `kind:\"gate\"` run bound to a loop is REFUSED when `mpd-gates.json` no longer matches the file that loop froze at open, and also when the loop carries NO freeze at all (open a new loop to certify gates), while `gateFreeze` on the result and the evidence row declares which guarantee the run carries. `kind:\"probe\"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted: `argv` comes from the project file or the frozen table, and is spawned with `shell:false`.",
     parameters: {
       type: "object",
       properties: {
@@ -358,25 +388,34 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
       /** The evidence id, minted before the run so the metadata and the log share it. */
       const evidenceId = mintId("ev")
       if (String(args?.kind ?? "") === "gate") {
-        /** The table entry, or `undefined` for an id that is not on the table. */
-        const spec = gateById(String(args?.gate ?? ""))
-        // NO FREE-FORM COMMAND, EVER: an unknown id is refused with the whole table named, so a caller
-        // that guessed gets the vocabulary instead of a silent success.
-        if (spec === undefined) return { refused: "unknown-gate: " + JSON.stringify(String(args?.gate ?? "")) + " is not on the fixed table. The ids are: " + GATE_TABLE.map((entry) => entry.id).join(", ") }
+        /** The loop these gate runs would be filed under, when the ledger knows it (its FREEZE is read here). */
+        const boundLoop = loopId === null ? undefined : readLoops(workspace).find((candidate) => candidate.loopId === loopId)
+        /** The CR #12 refusal: a bound loop may only certify the project gate file that loop FROZE. */
+        const freezeRefusal = gateFreezeRefusal(workspace, loopId, boundLoop)
+        if (freezeRefusal !== undefined) return { refused: freezeRefusal }
+        /** The freeze guarantee this evidence carries, DECLARED on the row rather than inferred from it. */
+        const gateFreeze: "frozen" | "unfrozen" = boundLoop?.gateFile === undefined ? "unfrozen" : "frozen"
+        /** The effective entry: the workspace's project gate file first, the frozen table second. */
+        const resolved = resolveGate(workspace, String(args?.gate ?? ""))
+        // NO FREE-FORM COMMAND, EVER: an id nothing declares — or a malformed project file, which is
+        // refused rather than silently replaced by the frozen table — comes back as the sentence to return.
+        if (!resolved.ok) return { refused: resolved.refused }
+        /** The entry that really runs, and whose `cmd` the evidence header names. */
+        const spec = resolved.spec
         /** The gate's timeout, from the row's config or the default. */
         const timeoutMs = resolvePositiveInt(deps.configValue("verify.gateTimeoutMs"), DEFAULT_GATE_TIMEOUT_MS)
         /** The run's result. */
         const result = runGate(workspace, spec, timeoutMs)
         /** The log written beside the metadata, so nothing is reported that is not on disk. */
         const wrote = writeEvidence(workspace, {
-          version: 1, evidenceId, loopId, kind: "gate", cmd: spec.cmd, exit: result.exit,
+          version: 1, evidenceId, loopId, kind: "gate", cmd: spec.cmd, exit: result.exit, gateFreeze,
           at: new Date().toISOString(),
           logPath: ".mpd/verify/evidence/" + evidenceId + ".log",
           logSha256: result.outputSha256,
-        }, result.output)
+        }, result.log)
         if (!wrote) return { refused: "the gate ran (exit " + result.exit + ") but its evidence could not be written under " + evidenceDir(workspace) + " — evidence that is not on disk cannot be cited, so it is not reported as produced" }
-        deps.log("gate " + spec.id + " exit=" + result.exit + " evidence=" + evidenceId)
-        return { evidenceId, gate: spec.id, cmd: spec.cmd, exit: result.exit, logPath: ".mpd/verify/evidence/" + evidenceId + ".log", logSha256: result.outputSha256, tail: result.tail }
+        deps.log("gate " + spec.id + " exit=" + result.exit + " freeze=" + gateFreeze + " evidence=" + evidenceId)
+        return { evidenceId, gate: spec.id, cmd: spec.cmd, exit: result.exit, logPath: ".mpd/verify/evidence/" + evidenceId + ".log", logSha256: result.outputSha256, tail: result.tail, gateFreeze }
       }
       /** The paths to probe, defaulted to nothing rather than to the workspace (a bare probe walks nothing). */
       const paths = Array.isArray(args?.paths) ? args.paths.map(String) : []
@@ -397,6 +436,45 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
 /** The fixed gate table's ids, exposed so an unknown gate can name the whole vocabulary. */
 function gateIds(): string[] {
   return GATE_TABLE.map((entry) => entry.id)
+}
+
+/**
+ * The CR #12 freeze check: a gate run BOUND to a loop may only certify the project gate file that loop
+ * froze when it was opened.
+ *
+ * WHY THIS EXISTS: the write guard is WITHDRAWN, so a loop's own writer may edit `mpd-gates.json`. Without
+ * a freeze it could point a gate id at a command that passes, or relabel one, and the evidence would look
+ * conforming. A file whose bytes changed since the loop opened refuses the run, and the sentence names the
+ * repair (restore the file, or open a NEW loop over the gates you mean to prove).
+ *
+ * ABSENT IS AN ANSWER TOO: a loop opened with no project file freezes `absent`, so a file that appears
+ * later is a change like any other. A loop with NO SNAPSHOT AT ALL (one written before the freeze existed)
+ * REFUSES: without a snapshot the run cannot say which gates it certified, and the repair is a NEW loop.
+ * Only a run bound to NO KNOWN loop is left to the live file — and it declares `gateFreeze:"unfrozen"`.
+ *
+ * @param workspace - the calling session's workspace root.
+ * @param loopId - the loop the evidence is filed under, or `null` when it is unbound.
+ * @param loop - that loop, when the ledger knows it.
+ * @returns the refusal sentence, or `undefined` when the run may proceed.
+ */
+function gateFreezeRefusal(workspace: string, loopId: string | null, loop: VerifyLoop | undefined): string | undefined {
+  // AN UNKNOWN LOOP IS NOT AN UNFROZEN ONE: a pre-plugin evidence id (`waveloop-<slug>`) or an unbound run
+  // has no loop to check, and such evidence can never be cited for a REAL loop (the record filters by loop).
+  if (loop === undefined) return undefined
+  // AN UNFROZEN LOOP REFUSES (T29, the second half of CR #12): a loop carrying no snapshot may have had its
+  // gates edited after it was armed, so a gate run under it cannot say WHICH gates it certified. The repair
+  // is a NEW loop, whose freeze is taken from the file as it stands then.
+  if (loop.gateFile === undefined) {
+    return "gate-freeze: loop " + JSON.stringify(loop.loopId) + " carries NO frozen " + PROJECT_GATE_FILE + " (it was opened before the freeze existed), so a gate run under it cannot name the gates it certified — open a NEW loop and run the gate under that one, so its evidence carries the frozen file"
+  }
+  /** The project gate file as it stands RIGHT NOW. */
+  const current = projectGateIdentity(workspace)
+  if (current.state === loop.gateFile.state && current.sha256 === loop.gateFile.sha256) return undefined
+  /** The frozen identity as the sentence spells it, so `absent` and a hash read the same way. */
+  const frozen = loop.gateFile.state === "absent" ? "absent" : "sha256 " + loop.gateFile.sha256
+  /** The current identity, spelled the same way. */
+  const now = current.state === "absent" ? "absent" : "sha256 " + current.sha256
+  return "gate-freeze: " + PROJECT_GATE_FILE + " changed after loop " + JSON.stringify(String(loopId)) + " was opened (frozen " + frozen + ", now " + now + "), so a gate run for that loop would certify a command the loop never froze — restore the file, or open a new loop over the gates you mean to prove"
 }
 
 /** The `mpd_verify_record` definition. */

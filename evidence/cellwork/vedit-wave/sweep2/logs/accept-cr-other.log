@@ -1,0 +1,41 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-verify-plugin/test/gates-project.test.ts:
+(pass) mpd-gates.json (C3 / D13) > an ABSENT project file leaves the frozen table exactly as it was [0.55ms]
+(pass) mpd-gates.json (C3 / D13) > a project entry ADDS a new id, and every frozen id still resolves to its own entry [0.47ms]
+(pass) mpd-gates.json (C3 / D13) > a project entry OVERRIDES a frozen id, and the frozen table keeps its own strings [0.13ms]
+(pass) mpd-gates.json (C3 / D13) > an explicit `cmd` is the effective one, and it wins over the argv's spelling [0.10ms]
+(pass) mpd-gates.json (C3 / D13) > EVERY malformation is refused in one sentence naming the file and the problem — no silent fallback [1.58ms]
+(pass) mpd-gates.json (C3 / D13) > a real run proves the EFFECTIVE command: header, cwd and the recorded cmd [10.73ms]
+(pass) mpd-gates.json (C3 / D13) > a real override replaces the frozen command the runner would have used [8.49ms]
+(pass) mpd-gates.json (C3 / D13) > a spawned project gate gets argv literally: shell:false means no metacharacter executes [7.86ms]
+(pass) mpd-gates.json (C3 / D13) > a malformed project file refuses a FROZEN id through the tool and writes NO evidence [0.26ms]
+(pass) CR repairs #11-#14 on the gate plane > #14 the log header names the REAL program and argv, not only the `cmd` label [8.36ms]
+(pass) CR repairs #11-#14 on the gate plane > #11 a newline or line separator in `cmd`/`argv` cannot forge a log line [8.16ms]
+(pass) CR repairs #11-#14 on the gate plane > #13 a spawn failure is IN the log and the tail, not a bare header [0.79ms]
+(pass) CR repairs #11-#14 on the gate plane > #12 a loop FREEZES `mpd-gates.json`: an edit afterwards refuses that loop's gate runs [15.82ms]
+(pass) CR repairs #11-#14 on the gate plane > #12 a loop opened with NO project file refuses the file that appears later [0.66ms]
+(pass) T29 - an UNFROZEN loop refuses gate evidence, and the observer freezes > a loop with NO snapshot REFUSES a gate run and names the repair [7.55ms]
+(pass) T29 - an UNFROZEN loop refuses gate evidence, and the observer freezes > the OBSERVER freezes the loop it arms: its gate runs are green, and an edit is refused [8.45ms]
+(pass) T29 - an UNFROZEN loop refuses gate evidence, and the observer freezes > re-arming ADOPTS a freeze into an observer loop armed before the freeze existed [8.07ms]
+
+packages/mpd-roles-plugin/test/leaf-boundary.test.ts:
+(pass) the leaf list is exactly the two bundle spawn tools, and the workmate row's copy is identical [0.04ms]
+(pass) the depth floor: a consult may be raised from depth 0 or 1, and never from depth 2 or deeper [0.09ms]
+(pass) THE WIRING: mpd_role_spawn refuses a depth-2 caller and starts NO child, while depth 1 still spawns [3.38ms]
+(pass) a READ-ONLY child gets the write deny AND the leaf deny in ONE restriction call [0.99ms]
+(pass) a WRITE-CAPABLE child gets the leaf deny alone, in ONE restriction call [0.61ms]
+(pass) a child this row did not raise is left alone [0.45ms]
+
+packages/mpd-workmate-plugin/test/leaf-boundary.test.ts:
+(pass) the two rows' copies agree, and the depth sentence is identical (source-level parity) [0.06ms]
+(pass) THE WIRING: mpd_workmate_spawn refuses a depth-2 caller and starts NO child, while depth 1 still spawns [1.49ms]
+(pass) a READ-ONLY workmate child gets the write deny AND the leaf deny in ONE restriction call [0.50ms]
+(pass) a WRITE-CAPABLE workmate child gets the leaf deny alone, in ONE restriction call [0.36ms]
+(pass) a child this row did not raise is left alone [0.06ms]
+
+ 28 pass
+ 0 fail
+ 290 expect() calls
+Ran 28 tests across 3 files. [283.00ms]
+EXIT:0

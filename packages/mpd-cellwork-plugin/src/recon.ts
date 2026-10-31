@@ -1,10 +1,11 @@
 // CELLWORK RECON — the planner's one-shot READ-ONLY consult (contract B5, plan §4.12).
 //
-// WHY A CELLWORK TOOL INSTEAD OF `mpd_role_spawn`. The roster spawn path does not pass an explicit
-// `maxDepth`, so a depth-1 planner's child would hit the service default and be refused
-// (`SubagentDepthError`). This path raises the consult through the adapter's DIRECT start seam with an
-// explicit ABSOLUTE cap (`request.maxDepth = cellwork.depthMax`) and `label` set to EXACTLY the read-only
-// roster name, which is what makes the child-persona seam apply the exported deny list mechanically.
+// WHY A CELLWORK TOOL OF ITS OWN. `mpd_role_spawn` now forwards an explicit `maxDepth` (the caller's
+// recorded depth + 1), so this path has no depth advantage over it — the two AGREE on the depth rule. What
+// recon adds is the cell's own plumbing: the consult is raised through the adapter's DIRECT start seam with
+// an explicit ABSOLUTE cap (`request.maxDepth = cellwork.depthMax`), `label` set to EXACTLY the read-only
+// roster name, which is what makes the child-persona seam apply the exported deny list mechanically, and
+// the report journaled inside the cell so the planner's own record carries the evidence.
 //
 // DECLARED BOUND: on a composition without that seam the label buys nothing and the read-only discipline
 // is prose in the prompt. The result says `personaInjected: false` in that case rather than claiming a
