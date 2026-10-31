@@ -1,15 +1,4 @@
-# typed: 2026-10-31T07:26:00Z  commit: 1bc8a2ea  branch: release/v0.16.4  command: .toolchain/node_modules/.bin/bun run verify:gates
-[verify-gates] comment-coverage out| scanned 506 TypeScript file(s) of 506 in the source set; inspected 45457 declaration(s); skipped 21663 inline callback(s) as out of family
-[verify-gates] comment-coverage out| 
-[verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
-[verify-gates] member comment-coverage: exit=0 PASS - 2380ms
-[verify-gates] member graph-model :: node ./scripts/verify-graph-model.ts --self-test
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — positive: the default model equals its declared input (oracle + golden) :: 0 mismatches
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — determinism: two builds serialize byte-identically :: identical
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — input-order independence: reversed board and plan arrays build the same model :: identical
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — negative: a seeded wrong edge is refused and NAMED :: edge F1→F2: expected source "plan" got "board"
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — --fixture <dir> loads plan.md + board.json and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
-[verify-gates] graph-model out| [verify-graph-model] self-test PASS — --board <path> --plan <path> loads the explicit files and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+# typed: 2026-10-31T07:38:15Z  commit: a4665463  command: bun run verify:gates
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — --emit prints the serialized model and still exits by the check :: exit 0, snapshot=present
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — --seed-wrong-edge exits non-zero and a FAIL line NAMES the edge :: exit 1: [verify-graph-model] FAIL edge F1→F2: expected source "plan" got "board"
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — grouped positive: the nested model equals its declared tree (oracle + golden) :: 0 mismatches
@@ -18,10 +7,10 @@
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — backward: a model built with no group carries no groups key and no node frame :: flat, as before groups existed
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — --seed-wrong-anchor exits non-zero and a FAIL line NAMES the un-anchored box edge :: exit 1: [verify-graph-model] FAIL edge B1→teamB1: missing (expected source "board")
 [verify-gates] graph-model out| [verify-graph-model] self-test PASS — 13 arms: both directions and the path forms
-[verify-gates] member graph-model: exit=0 PASS - 253ms
+[verify-gates] member graph-model: exit=0 PASS - 243ms
 [verify-gates] member workflows :: node ./scripts/verify-workflows.ts
 [verify-gates] workflows out| [verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
 [verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
-[verify-gates] member workflows: exit=0 PASS - 32ms
+[verify-gates] member workflows: exit=0 PASS - 36ms
 [verify-gates] PASS - 9/9 member gate(s) green
 EXIT=0
