@@ -1,0 +1,36 @@
+PASS D08 — absent file resolves the frozen entry: {"runner":"bun","cmd":"bun test packages"}
+PASS D09/D15/override — project entry overrides the frozen id and cmd defaults to argv.join(' '): {"id":"tests","cmd":"node -e process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|')) $((1+1)) && echo SHELL","runner":"argv","argv":["node","-e","process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|'))","$((1+1)) && echo SHELL"]}
+PASS D09/added — project entry ADDS a new id and keeps an explicit cmd: {"id":"audit","cmd":"project audit label"}
+PASS D15/fallback — an id the project does not declare still resolves the frozen entry: {"id":"docs","cmd":"bun run verify:docs","runner":"bun","argv":["run","verify:docs"]}
+PASS D16/cwd — the child's cwd is the workspace: "RAN:/tmp/mpd-r2d-c3-zDOUnQ:$((1+1)) && echo SHELL"
+PASS D16/shell-false — the shell metacharacter arrives as ONE verbatim argv element (no shell): "RAN:/tmp/mpd-r2d-c3-zDOUnQ:$((1+1)) && echo SHELL"
+PASS D16/exit — exit code observed: 0
+PASS D17/header — the log's ONE header line names the EFFECTIVE cmd: "# gate tests cmd: node -e process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|')) $((1+1)) && echo SHELL"
+PASS D15/tool-override — the tool ran the PROJECT entry through the project file: {"exit":0,"cmd":"node -e process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|')) $((1+1)) && echo SHELL"}
+PASS D17/tool-header — the evidence log on disk names the effective cmd: "# gate tests cmd: node -e process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|')) $((1+1)) && echo SHELL"
+PASS D15/meta — evidence metadata names the effective cmd and the loop: {"version":1,"evidenceId":"ev-20261031T054434-7b7de2","loopId":"loop-probe","kind":"gate","cmd":"node -e process.stdout.write('RAN:' + process.cwd() + ':' + process.argv.slice(1).join('|')) $((1+1)) && echo SHELL","exit":0,"at":"2026-10-31T05:44:34.974Z","logPath":".mpd/verify/evidence/ev-20261031T054434-7b7de2.log","logSha256":"5e11743b75e1d5ab182fd3217dfc640ff6fc9ca6ed62198600c04b9991212ff1"}
+PASS D13/version-2 — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (version must be 1, got 2), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/unknown-top-key — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (unknown top-level key \"extra\"), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/unknown-entry-key — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate \"tests\" declares unknown key \"note\"), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/argv-not-array — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate \"tests\" needs `argv` to be an array of 1..32 strings), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/argv-empty — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate \"tests\" declares 0 argument(s), and `argv` must carry 1..32), so the gate call is refused instead of falling back to the froze"
+PASS D13/argv-number — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate \"tests\" argv[1] must be a non-empty string), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/argv-too-long — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate \"tests\" argv[1] is 4097 characters long, and the limit is 4096), so the gate call is refused instead of falling back to the fr"
+PASS D13/bad-id — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (gate id \"Bad_Id\" must match ^[a-z][a-z0-9-]{0,31}$), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/too-many — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (33 gates are declared, and the limit is 32), so the gate call is refused instead of falling back to the frozen table"
+PASS D13/gates-missing — refused=true file+problem named=true tool refused=true evidence written=0 sentence="mpd-gates.json at the workspace root is invalid (`gates` is missing), so the gate call is refused instead of falling back to the frozen table"
+PASS D14/boundary-32 — 32 entries accepted: ok=true entries=32
+PASS D15/unknown — unknown id refused with the effective vocabulary: "unknown-gate: \"nope\" is not on the fixed table. The ids are: audit, gates, tests, typecheck, docs, manifest, comments, rows, vendor, dist, pack"
+PASS D16/timeout — a killed child reports exit 124 within the budget: exit=124 elapsedMs=304
+PASS D18/per-call — a rewrite is observed by the next call (no module-level cache): "node -e process.stdout.write('SECOND')"
+PASS D01/D02 — writer_id is stored as the loop's writer.id (no placeholder): {"kind":"delegate","id":"session-S","reason":"member: Alice"}
+PASS D05 — writer_reason is stored on writer.reason: "member: Alice"
+PASS D03 — absent writer_id keeps the placeholder: "delegate:pending"
+PASS D04 — writer:self + writer_id is refused: "`writer_id` and `writer_reason` are refused with writer:\"self\" because both describe a DELEGATED loop — this loop's writer is the calling session (session-S), so omit both or open the loop with writer:\"delegate\""
+PASS D04/reason — writer:self + writer_reason is refused: "`writer_id` and `writer_reason` are refused with writer:\"self\" because both describe a DELEGATED loop — this loop's writer is the calling session (session-S), so omit both or open the loop with writer:\"delegate\""
+PASS D01/bounds — trimmed-empty refused, 201 chars refused, 200 chars accepted: empty=true long=true max=true
+PASS D06/refused — a verdict from the named writer is refused with same-agent: {"reason":"same-agent","detail":"the verifier and the writer are the same agent (\"session-S\"): the law requires code written by A to be verified by a DIFFERENT agent B"}
+PASS D06/accepted — the same loop recorded by a DIFFERENT session is accepted: {"writerId":"session-S","verifierId":"session-T","verdict":"FAIL"}
+PASS D07/PASS — a PASS citing the produced gate evidence is accepted and names the writer: {"writerId":"session-S","verdict":"PASS","gateEvidence":1}
+PASS D08/control — no project file: frozen typecheck "bun run typecheck", table size=10
+SUMMARY {"total":35,"passed":35,"failed":[]}

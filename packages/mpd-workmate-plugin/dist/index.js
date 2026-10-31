@@ -2550,6 +2550,13 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
     throw new WorkmateError("internal", `mpd_workmate: delete of "${key}" failed (${String(e?.code ?? "error")}) — ${fate}`, 500);
   }
 }
+function spawnMaxDepthOf(agent) {
+  const header = agent?.session?.header;
+  const raw = Number(header?.delegationDepth);
+  if (Number.isFinite(raw) && raw >= 1)
+    return Math.floor(raw) + 1;
+  return header?.origin === "subagent" ? 2 : 1;
+}
 function apply(ctx) {
   const dsh = resolveDshAdapter(ctx);
   function rolesService() {
@@ -2774,6 +2781,7 @@ Work with the tools your role requires (read-only workmates must never modify an
           model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
+          maxDepth: spawnMaxDepthOf(exec.agent),
           ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
           ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
@@ -3016,5 +3024,6 @@ export {
   renameWorkmate,
   sanitizeName,
   scoreMatch,
+  spawnMaxDepthOf,
   workmateKeyFromLabel
 };

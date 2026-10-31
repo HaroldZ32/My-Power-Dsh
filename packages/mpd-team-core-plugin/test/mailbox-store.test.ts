@@ -11,6 +11,7 @@ import {
   markDelivered,
   markRead,
   readMailbox,
+  scopeToTeam,
   send,
   summarise,
   undeliveredOf,
@@ -83,6 +84,28 @@ describe("sending", () => {
     expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toContain("not keeping up")
   })
 
+  test("the bound is PER TEAM — a finished team's backlog cannot refuse a new team's same-named member", () => {
+    // Two sends for the OLD team exhaust THAT team's bound of two; `M1` is a per-team id every team
+    // reuses, which is exactly why an unscoped count would carry the old wave's queue into the new one.
+    for (let i = 0; i < 2; i += 1) expect(send(box, msg({ subject: "old" + i, teamId: "team-old", maxUndelivered: 2 }), later(i)).ok).toBe(true)
+    expect(send(box, msg({ subject: "new0", teamId: "team-new", maxUndelivered: 2 }), later(3)).ok).toBe(true)
+    expect(send(box, msg({ subject: "new1", teamId: "team-new", maxUndelivered: 2 }), later(4)).ok).toBe(true)
+    /** The send that exceeds the NEW team's OWN bound, which must still be refused. */
+    const refused = send(box, msg({ subject: "new2", teamId: "team-new", maxUndelivered: 2 }), later(5))
+    expect(refused.ok).toBe(false)
+    // `expect` cannot narrow the union, so the refusal arm is named by a cast; the bound still fires
+    // WITHIN one team, which is what proves scoping did not merely disable it.
+    expect((refused as Extract<SendResult, { ok: false }>).reason).toBe("backlog-full")
+  })
+
+  test("an UNSTAMPED row predates the team field, so a stamped team does not count it", () => {
+    // A row written before team stamping existed: no team can prove it owns it, so it blocks nobody.
+    expect(send(box, msg({ subject: "legacy", maxUndelivered: 1 }), NOW).ok).toBe(true)
+    expect(send(box, msg({ subject: "first", teamId: "team-a", maxUndelivered: 1 }), later(1)).ok).toBe(true)
+    // The team's OWN row still fills its bound, so the legacy exclusion is not a disabled bound.
+    expect(send(box, msg({ subject: "second", teamId: "team-a", maxUndelivered: 1 }), later(2)).ok).toBe(false)
+  })
+
   test("DELIVERING frees the backlog: the bound is on what is not yet accepted", () => {
     send(box, msg({ maxUndelivered: 1 }), NOW)
     expect(send(box, msg({ subject: "second", maxUndelivered: 1 }), later(1)).ok).toBe(false)
@@ -90,6 +113,41 @@ describe("sending", () => {
     const first = readMailbox(box).messages[0]
     markDelivered(box, [first.id], later(2))
     expect(send(box, msg({ subject: "second", maxUndelivered: 1 }), later(3)).ok).toBe(true)
+  })
+
+  test("the LIVE shape: bound 8, and an ACK frees exactly one slot — the operator's release valve", () => {
+    /** The production bound the store applies when the caller names none. */
+    const BOUND = 8
+    // Fill the bound with rows the transport has NOT accepted and the member has NOT acknowledged.
+    for (let i = 0; i < BOUND; i += 1) expect(send(box, msg({ subject: "waiting" + i, teamId: "team-live" }), later(i)).ok).toBe(true)
+    /** The send that exceeds the DEFAULT bound, which must be refused. */
+    const refused = send(box, msg({ subject: "ninth", teamId: "team-live" }), later(9))
+    expect(refused.ok).toBe(false)
+    // The EXACT sentence an operator reads, count and bound spelled out (no `maxUndelivered` was named).
+    expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe('"senior" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
+    /** The oldest queued row, which the recipient ACKNOWLEDGES to free its slot. */
+    const first = readMailbox(box).messages[0]
+    expect(markRead(box, [first.id], later(10))).toEqual([first.id])
+    // THE RELEASE VALVE: an acknowledgement — not a delivery — frees exactly one slot.
+    expect(send(box, msg({ subject: "after-ack", teamId: "team-live" }), later(11)).ok).toBe(true)
+    // …and the bound is FULL again, so the next send is refused: exactly ONE slot moved, never two.
+    expect(send(box, msg({ subject: "after-ack-2", teamId: "team-live" }), later(12)).ok).toBe(false)
+  })
+
+  test("the summary's `undelivered` counts the SAME set the bound does — one ack drops both by one", () => {
+    // Three queued rows for one member of one team: neither delivered nor acknowledged.
+    for (let i = 0; i < 3; i += 1) send(box, msg({ subject: "queued" + i, teamId: "team-agree" }), later(i))
+    /** The bound's own measurement, taken exactly the way `send` takes it. */
+    const backlog = undeliveredOf(scopeToTeam(readMailbox(box), "team-agree"), "senior").length
+    /** The summary row for that same member, over the same team scope. */
+    const row = summarise(scopeToTeam(readMailbox(box), "team-agree")).find((entry) => entry.memberId === "senior")!
+    expect(row.undelivered).toBe(backlog)
+    /** The oldest queued row, whose acknowledgement must move BOTH counts. */
+    const first = readMailbox(box).messages[0]
+    markRead(box, [first.id], later(5))
+    // ONE acknowledgement: the bound and the summary drop by exactly ONE each, still agreeing.
+    expect(undeliveredOf(scopeToTeam(readMailbox(box), "team-agree"), "senior").length).toBe(backlog - 1)
+    expect(summarise(scopeToTeam(readMailbox(box), "team-agree")).find((entry) => entry.memberId === "senior")!.undelivered).toBe(backlog - 1)
   })
 
   test("ids are unique and ordered, so a mailbox can be cited", () => {

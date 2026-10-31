@@ -34,7 +34,13 @@ read-only discipline.
   as `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
   mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
   the child session; team work is the mpd plan plane (`agent_teams_plan`), never the official
-  `spawn_teammate`, which the team door guard refuses.
+  `spawn_teammate`, which the team door guard refuses. **Every consult carries an explicit leaf bound:**
+  `mpd_role_spawn` forwards `maxDepth` = the caller's recorded delegation depth + 1, so a NESTED caller's
+  one-shot child is a leaf instead of being refused by a host depth default it cannot see. A caller with
+  no recorded depth reads as depth `0` (top-level, cap `1` — today's behaviour); a session the harness
+  recorded `origin:"subagent"` WITHOUT a depth reads as depth `1` (cap `2`), so a child's child never
+  receives the top-level cap. `mpd_workmate_spawn` reads the session header identically, and a test
+  compares both helpers on every header shape.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
   the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).
@@ -165,12 +171,26 @@ probe (AGENTS.md §13). A pruned name is reported once on the row's log.
 
 This row installs TWO `tools.guard` callbacks beside the read-only one: a **captain-investigation guard**
 (the `mpd` preset's top-level session DELEGATES reconnaissance, so `read`/`grep`/`glob` on a SOURCE path
-are refused while the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
-and the root instruction/overview files — stays readable; knob `captain.investigation`, `"deny"` default
+are refused while the documentation band stays readable — `.mpd/**`, `docs/**`, `evidence/**`,
+`agent-references/**`; ANY `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by BASENAME at any depth, inside this
+workspace OR outside its root, because a sibling project's instruction file is the motivating read; and
+at the workspace root ONLY `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two
+README spellings exactly, since there is no `README*` glob. A path is judged by its SPELLING (symlinks
+are never resolved), and a `..` segment is admitted ONLY when the basename is one of the three
+instruction files; every other `..` stays refused. The refusal text advertises that whole band, so a
+reader learns the true boundary instead of a shorter one; knob `captain.investigation`, `"deny"` default
 | `"allow"`) and a **delegation gate** (a call to `subagent`, `subagent_fork` or `workflow` is refused
 with a sentence naming `mpd_role_spawn`, the workmate library, Agent Teams and `send_message` — with
 the qualifier that `send_message` continues only an EXISTING TEAM child, never a finished consult
 (consults are one-shot); knob `delegation.gate`, `"deny"` default | `"captain"` | `"allow"`).
+
+**The CELL PLANNER inherits the same band, and its reconnaissance is delegated too.** A cellwork seat
+named `cell-planner` is refused `read`/`grep`/`glob` on a source path; the refusal names the two
+delegation routes — `cellwork_recon` with `Explorer`/`Researcher`, or `mpd_role_spawn` with a read-only
+roster role — and the cellwork plugin imports the same three band lists, pinned by a parity test that
+imports both modules (no runtime cross-package import). The planner's instantiation prompt carries the
+guidance verbatim (`PLANNER_RECON_LINES`, spliced by the cellwork plugin), so the rule is read before the
+first interview question; the guard is what enforces it.
 
 **The delegation gate's preset exemption is TOP-LEVEL ONLY.** A top-level session of another preset (the
 deployment default `cordis` included) keeps its own spawn habits, while MEMBER AND CHILD sessions stay

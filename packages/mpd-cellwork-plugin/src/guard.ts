@@ -22,7 +22,10 @@
 //                  `cellwork_start`/`cellwork_stop` (only the captain may open or close the cell) plus the
 //                  four sub-cell verbs. It gets NO file-work tool, because clause 5 runs a promoted agent
 //                  "under the same rules as the main agent" and the main agent is dispatch-only.
-//   * member     — the ordinary work surface, untouched.
+//   * member     — the ordinary work surface, untouched — with ONE named exception, the CELL PLANNER,
+//                  which delegates its reconnaissance instead of reading source itself (C5, D15) and so is
+//                  refused `read`/`grep`/`glob` on a source path, with a refusal that teaches both
+//                  delegation routes.
 //
 // DECLARED BOUNDS (README): the guard is process-wide, fires at DISPATCH only, never sees intent, and
 // covers no row that calls a service directly instead of going through a tool. A cell record that
@@ -72,6 +75,43 @@ export const VERIFIER_DENY_TOOLS: readonly string[] = [
 export const CHECKPOINT_ALLOW_TOOLS: readonly string[] = ["cellwork_handoff", "cellwork_context", "cellwork_status"]
 
 /**
+ * The documentation band the CELL PLANNER keeps — the SAME band the `mpd` captain keeps (C5, D14 parity).
+ *
+ * DUPLICATED here rather than imported: this package ships no runtime dependency on `mpd-roles-plugin`, and
+ * the two copies may not drift. The pin is `test/band-parity.test.ts`, which imports BOTH modules from
+ * source and reddens the moment a list or the predicate's behaviour diverges — a TEST, never a shipped
+ * import (the contract's design note).
+ */
+export const PLANNER_READABLE_PREFIXES: readonly string[] = [".mpd/", "docs/", "evidence/", "agent-references/"]
+
+/**
+ * The exact workspace-relative files the planner may read at the ROOT, mirroring the captain's root band.
+ *
+ * The three instruction basenames are also in {@link PLANNER_INSTRUCTION_BASENAMES}, which admits them at
+ * any depth: this list covers the root spelling, that one covers every depth and the world outside the root.
+ */
+export const PLANNER_READABLE_ROOT_FILES: readonly string[] = [
+  "AGENTS.md",
+  "AGENT.md",
+  "CLAUDE.md",
+  "README.md",
+  "README.zh-CN.md",
+  "CHANGELOG.md",
+]
+
+/** The three project instruction files the planner may read at ANY depth, by basename (C5, D14). */
+export const PLANNER_INSTRUCTION_BASENAMES: readonly string[] = ["AGENT.md", "AGENTS.md", "CLAUDE.md"]
+
+/** The licence band at the workspace root (`LICENSE.md`, `LICENSE-NOTICES.md`), matched by basename. */
+export const PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i
+
+/** The three path-shaped reconnaissance tools the planner is refused on when the path is a SOURCE path. */
+export const PLANNER_RECON_TOOLS: readonly string[] = ["read", "grep", "glob"]
+
+/** The cell member name that carries the planner's rule; the cell record and the team board use it verbatim. */
+export const PLANNER_SEAT_NAME = "cell-planner"
+
+/**
  * The two cell-lifecycle verbs ONLY the captain may call: a subcaptain opens sub-cells, never cells.
  *
  * Excluding them from the subcaptain surface is what keeps the mode single-owner: a promoted member that
@@ -115,6 +155,19 @@ export interface CellworkSeat {
   name: string
   /** The mode the guard enforces. */
   mode: CellSeatMode
+}
+
+/**
+ * One dispatch's ARGUMENTS, as far as the CELL PLANNER's path rule needs them.
+ *
+ * Only that one arm reads this: every other mode is decided by (seat, toolName) alone, which is why the
+ * argument is OPTIONAL and why the decision stays a pure function of its inputs.
+ */
+export interface CellworkGuardCall {
+  /** The call's argument object, as the harness validated it. */
+  args?: Record<string, unknown> | undefined
+  /** The session workspace root, as the adapter resolved it; `""` when it could not be resolved. */
+  workspaceRoot?: string
 }
 
 /** The install outcome, mirroring the other guards this bundle ships. */
@@ -238,16 +291,126 @@ export function subcaptainRefusal(toolName: string): string {
 }
 
 /**
+ * The CELL PLANNER's refusal: DELEGATE the reconnaissance, with both routes named and the reason stated.
+ *
+ * ONE paragraph on purpose: it is read as a tool result, and the replacement calls have to be
+ * copy-pasteable from it.
+ *
+ * @param toolName - the tool the planner tried, named first so it cannot mistake which call was refused.
+ * @param target - the path as the caller spelled it, or the reason none could be read.
+ * @returns the teaching paragraph.
+ */
+export function plannerRefusal(toolName: string, target: string): string {
+  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so"
+    + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the"
+    + " requirements document, and a source tree spent here is context the interview then lacks. Two"
+    + " read-only routes, both one-shot: `cellwork_recon` {role:\"Explorer\"|\"Researcher\", task} — its"
+    + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's"
+    + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)"
+    + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`,"
+    + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside"
+    + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`,"
+    + " `CHANGELOG.md` and `LICENSE*.md`."
+}
+
+/**
+ * Whether one path argument falls inside the band the CELL PLANNER keeps.
+ *
+ * The ORDER is the captain's order, because the two bands are ONE contract (C5, D14): an INSTRUCTION file is
+ * admitted by its BASENAME whatever its parent segments say; otherwise a spelling with a `..` segment, an
+ * absolute path outside the root and every spelling that reaches no band are REFUSED, while the band
+ * prefixes, the named root files and the root licence band are ALLOWED.
+ *
+ * @param workspaceRoot - the workspace root this call resolved, or `""` when none could be resolved.
+ * @param raw - the path the tool call carried.
+ * @returns true when the planner may read that path.
+ */
+export function plannerReadablePath(workspaceRoot: string, raw: string): boolean {
+  /** The path normalised to POSIX, so a Windows separator cannot smuggle a band past the test. */
+  const posix = String(raw ?? "").replace(/\\/g, "/")
+  if (posix === "") return false
+  // INSTRUCTION FILES FIRST, exactly as the captain's band does: their BASENAME decides, so a nested one and
+  // a SIBLING project's own `AGENT.md` are readable — the documents a planner consults to learn the rules.
+  if (isPlannerInstructionFile(posix)) return true
+  /** The workspace root, normalised with no trailing separator. */
+  const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "")
+  /** True when the caller spelled an absolute path. */
+  const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix)
+  /** The workspace-relative spelling, or `undefined` when the path is not under the root. */
+  let rel: string | undefined
+  if (!absolute) rel = posix.startsWith("./") ? posix.slice(2) : posix
+  else if (root !== "" && posix.startsWith(root + "/")) rel = posix.slice(root.length + 1)
+  if (rel === undefined || rel === "") return false
+  // NO PARENT HOPS: a spelling carrying a `..` segment is refused outright rather than resolved, so
+  // `docs/../packages/x/src/y.ts` cannot start inside a band and end outside it.
+  if (rel.split("/").includes("..")) return false
+  /** True when the path is inside a documentation band, or IS the band directory itself. */
+  const inBand = PLANNER_READABLE_PREFIXES.some((prefix) => rel!.startsWith(prefix) || rel === prefix.replace(/\/$/, ""))
+  if (inBand) return true
+  if (PLANNER_READABLE_ROOT_FILES.includes(rel)) return true
+  return rel.indexOf("/") === -1 && PLANNER_LICENSE_PATTERN.test(rel)
+}
+
+/**
+ * Whether one path's BASENAME is a project instruction file (`AGENT.md`, `AGENTS.md`, `CLAUDE.md`).
+ *
+ * The parent segments are IGNORED on purpose — that IS the rule: the file is readable at any depth and
+ * outside the workspace root, so only the last segment decides.
+ *
+ * @param path - the path as the caller spelled it, already normalised to POSIX.
+ * @returns true when the last segment names one of the instruction files.
+ */
+function isPlannerInstructionFile(path: string): boolean {
+  /** The last path segment, lower-cased for the comparison. */
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase()
+  if (base === "") return false
+  return PLANNER_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base)
+}
+
+/** The argument keys a path-shaped call may spell its target under, in the verification law's own order. */
+const PLANNER_PATH_ARG_KEYS: readonly string[] = ["file_path", "path", "filePath", "target"]
+
+/**
+ * The path one reconnaissance-shaped call names, when it carries a usable spelling.
+ *
+ * @param args - the call's argument object, as the harness validated it.
+ * @returns the path, or undefined when no key carried a non-empty string.
+ */
+function plannerTargetPath(args: Record<string, unknown> | undefined): string | undefined {
+  for (const key of PLANNER_PATH_ARG_KEYS) {
+    /** The raw value under this key, accepted only when it is a non-empty string. */
+    const value = args?.[key]
+    if (typeof value === "string" && value !== "") return value
+  }
+  return undefined
+}
+
+/**
+ * Whether one seat belongs to the CELL PLANNER.
+ *
+ * Compared after trimming and lower-casing: the member name travels through the cell record AND the team
+ * board, and the two spellings are not guaranteed to agree on case.
+ *
+ * @param seat - the caller's seat.
+ * @returns true when that seat is the planner.
+ */
+function isPlannerSeat(seat: CellworkSeat): boolean {
+  return seat.name.trim().toLowerCase() === PLANNER_SEAT_NAME
+}
+
+/**
  * The pure decision: the sentence that denies one call, or undefined when it is allowed.
  *
- * Every arm is a total function of (seat, name); nothing here reads disk, a clock or a service, so the
- * whole policy is unit-testable without a harness.
+ * Every arm but ONE is a total function of (seat, name); the CELL PLANNER's arm additionally reads the
+ * call's path and the workspace root, which is why `call` exists and why it is optional. Nothing here reads
+ * disk, a clock or a service, so the whole policy is unit-testable without a harness.
  *
  * @param seat - the caller's seat, or undefined when the session is in no cell (always allowed).
  * @param toolName - the registered tool name being dispatched.
+ * @param call - the call's arguments and resolved root, read ONLY by the planner's path arm.
  * @returns the refusal paragraph, or undefined to allow.
  */
-export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: string): string | undefined {
+export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: string, call?: CellworkGuardCall): string | undefined {
   // NO CELL, NO RULE: an unrelated session — and a cell whose record could not be read — is untouched.
   if (seat === undefined) return undefined
   if (toolName === "") return undefined
@@ -256,7 +419,17 @@ export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: 
   if (seat.mode === "checkpoint") return CHECKPOINT_ALLOW_TOOLS.includes(toolName) ? undefined : checkpointRefusal(toolName)
   // SUBCAPTAIN is a MINI-CAPTAIN (Amendment 4): the same dispatch-only discipline one level down.
   if (seat.mode === "subcaptain") return isSubcaptainAllowed(toolName) ? undefined : subcaptainRefusal(toolName)
-  // MEMBER answers undefined: a plain cell member is an ordinary worker on the ordinary work surface.
+  // MEMBER is ordinarily the untouched work surface; the CELL PLANNER is its ONE exception (C5, D15). Its
+  // reconnaissance is delegation, so the three path-shaped tools are refused on a SOURCE path — judged by the
+  // SAME band the captain keeps, because a planner reads the manual, the contract and the requirements record.
+  if (seat.mode === "member" && isPlannerSeat(seat)) {
+    if (!PLANNER_RECON_TOOLS.includes(toolName)) return undefined
+    /** The path this call names; absent means a bare call, which FAILS CLOSED exactly as the captain's arm does. */
+    const raw = plannerTargetPath(call?.args)
+    if (raw === undefined) return plannerRefusal(toolName, "(no path argument — a bare call searches the whole workspace)")
+    if (plannerReadablePath(call?.workspaceRoot ?? "", raw)) return undefined
+    return plannerRefusal(toolName, JSON.stringify(raw))
+  }
   return undefined
 }
 
@@ -266,12 +439,16 @@ export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: 
  * A composition without that seam is a stated absence, not a failure: the mode still records and the
  * refusal surfaces on its tools, but the captain is not mechanically fenced (the README says so).
  *
- * @param dsh - the adapter's capability probe and its `guardTool` registration.
+ * The adapter slice carries the workspace-root seam TOO: the planner's path arm has to relativise an
+ * absolute spelling, and the root is resolved through the adapter rather than from the process — see
+ * {@link pathBandRootOf}, which also keeps every other dispatch free of that resolution.
+ *
+ * @param dsh - the adapter's capability probe, its `guardTool` registration and its workspace-root seam.
  * @param options - the seat lookup and the logging sink.
  * @returns the install outcome, carrying the disposer when one was returned.
  */
 export function installCellworkGuard(
-  dsh: Pick<DshAdapter, "capabilities" | "guardTool">,
+  dsh: Pick<DshAdapter, "capabilities" | "guardTool" | "workspaceRoot">,
   options: CellworkGuardOptions,
 ): CellworkGuardInstall {
   try {
@@ -284,7 +461,12 @@ export function installCellworkGuard(
       try {
         /** The dispatched tool's registered name, read defensively so an unexpected shape passes. */
         const toolName = String(exec?.name ?? "")
-        return cellworkGuardDecision(options.seatOf(exec), toolName)
+        /** The caller's seat; undefined when the session is in no cell, which passes through untouched. */
+        const seat = options.seatOf(exec)
+        return cellworkGuardDecision(seat, toolName, {
+          args: exec?.arguments,
+          workspaceRoot: pathBandRootOf(dsh, seat, toolName, exec),
+        })
       } catch {
         // A throwing guard would take an unrelated call down; an unreadable call is a pass-through.
         return undefined
@@ -294,5 +476,33 @@ export function installCellworkGuard(
   } catch (error) {
     options.warn("[mpd-cellwork] installing the guard failed (" + (error instanceof Error ? error.message : String(error)) + ")")
     return { installed: false, reason: "install-failed" }
+  }
+}
+
+/**
+ * The workspace root one decision should judge a path against, or `""` when no arm reads a path.
+ *
+ * TWO POINTED REASONS. The root is resolved THROUGH THE ADAPTER — never `process.cwd()`, never a cached
+ * constant (AGENTS.md §6) — and only for the cell planner's three reconnaissance tools, so every other tool
+ * call of every other member pays nothing for a fact it never reads. A throwing resolver answers `""`, which
+ * keeps the RELATIVE band working and refuses the rest: the fail-closed direction, not a silent pass.
+ *
+ * @param dsh - the adapter, for its workspace-root seam.
+ * @param seat - the caller's seat, or undefined when it is in no cell.
+ * @param toolName - the registered tool name being dispatched.
+ * @param exec - the dispatch being guarded.
+ * @returns the root to judge against, or `""`.
+ */
+function pathBandRootOf(
+  dsh: Pick<DshAdapter, "workspaceRoot">,
+  seat: CellworkSeat | undefined,
+  toolName: string,
+  exec: DshToolExec | undefined,
+): string {
+  if (seat === undefined || seat.mode !== "member" || !isPlannerSeat(seat) || !PLANNER_RECON_TOOLS.includes(toolName)) return ""
+  try {
+    return dsh.workspaceRoot(exec)
+  } catch {
+    return ""
   }
 }

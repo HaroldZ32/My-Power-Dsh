@@ -14,6 +14,116 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## Unreleased — cell-work repairs from two live VEdit sessions, project-declared gates, and a named verify writer
+
+Two cell-work sessions in a real project (`VEdit`, running the published 0.16.3 file set) produced a
+defect list, and this wave closes every item on it. The frozen contract is
+`.mpd/plans/cellwork-vedit-wave.md`; every lane is judged by a DIFFERENT reviewer working from that
+contract and the repository documentation — never from the implementation — and the verdicts are
+recorded on the board.
+
+**Fixed — a failed activation resumes, and one pass journals ONE snapshot.** `cellwork_activate`
+checkpoints each artifact as it is created and a retry of the SAME accepted revision converges: members
+reconcile by name, recorded board ids are reused, a verify loop is opened for every code task that has
+none, and `activatedRevision` is set only after a successful dispatch. A newer accepted revision
+supersedes an older in-flight partial; a lower one is refused. The per-artifact journal is now COMPACT:
+one `cell-activation-progress` row per artifact, the full snapshot ONCE on failure, and every row of a
+pass carries the same non-decreasing instant (the VEdit journal had 119 full snapshots, ~40 % of a
+490 KB file, with the final row stamped EARLIER than the rows above it). An end-to-end test fails
+activation at EACH of the five stages and asserts convergence with no duplicate member, task or loop.
+
+**Added — a split task may declare its `member` (one spelling).** Absent, the member name IS the owner
+role (unchanged). Present, the board member is that name while `ownerRole` is still validated against
+the roster, several tasks may share one member and several members may share one owner role — the
+parallelism the old one-member-per-role rule silently removed. `member-invalid` refuses an empty name, a
+name longer than 64 characters, or one carrying a control character or a path separator;
+`member-role-conflict` refuses one member declared under two different owner roles; `self-review`
+compares the RESOLVED member names when both sides declare one. Activation raises ONE member per
+distinct `member`, and every frozen contract names both the owner role and the member.
+
+**Fixed — a refused split leaves its findings, and a `###` subheading belongs to its parent.** Every
+refused submission is persisted at `split/<revision>.refused.json` with its full finding list (beside,
+never on top of, an accepted record), and the `split-refused` journal row carries the findings instead
+of counts. The requirements validator now ends a section body at the next heading of the SAME or a
+HIGHER level, so a legitimate `###` subsection no longer truncates it; a whitespace-only body is still
+refused as missing or empty.
+
+**Added — `cellwork_dispatch {reassign}` and FENCED members.** A member is fenced when its recorded
+`mode` is `checkpoint`, when a handoff still waits for the compaction barrier, or when the barrier gave
+up (`fenced: true` + `fencedReason`, journaled as `checkpoint-unrecoverable`). A fenced member is never
+messaged; the pass reports the skip and leaves the row pending. `reassign` is the repair: each row is
+claimed on the board for the target, journaled as `task-reassigned`, then delivered, BEFORE the pass —
+and every outcome is reported, never thrown. A second `cellwork_handoff` is refused while the first
+waits for the barrier (the three-handoffs-in-seven-minutes livelock). `cellwork_supervise` lists every
+fenced member with the open rows it still owns. Two bounds: after a reassignment the target owns an
+in-flight row, so the SAME pass reports its other ready rows BUSY (one task per member per pass); and
+the generic `agent_teams_dispatch` falls back to roster order when the declared owner is busy — during
+this wave it handed a REVIEW task to its own writer (released immediately, no verdict recorded), which
+is why cell dispatch stays owner-only and never substitutes.
+
+**Fixed — the cell record reconciles with the live roster, and the split ticket is found by id.**
+`cellwork_status` reports `memberDivergence` (`missingFromCell`, `missingFromTeam`, `inSync`,
+report-only) and the recorded split-ticket board id (`splitTaskId`). Staging records that id and looks
+the ticket up by it first, by owner second, so a requirements bump marks the split stale and
+re-dispatches the SAME row instead of a minted duplicate; a missing or ownerless ticket is a hard error
+naming the repair, and staging repairs a lost owner itself by claiming the row for `cell-splitter`.
+
+**Changed — the cell mail log format (ONE-WAY).** A `send` row now always carries `wakeSent: false`, and
+the wake-up outcome is a separate `wake` record (`t:"wake"`, `sent`, `reason?`, `at`) appended AFTER it,
+so "durable first, wake second" is observable instead of inferred. This build folds an older log
+correctly (a pre-`wake` row keeps its own `wakeSent`); a reader from a PREVIOUS build reads a new row as
+"not woken" — stated rather than hidden.
+
+**Added — the verify loop names its writer, and a project may declare its gates.** `mpd_verify_open`
+accepts `writer_id` (the member's agent identity — its session id, trimmed to 1..200 characters) and
+`writer_reason` (also 1..200, e.g. `member: <name>`); both are refused in one sentence with
+`writer:"self"`. Activation passes the owning member's session id, so `mpd_verify_record`'s same-agent
+refusal compares real agent keys instead of the `delegate:pending` placeholder (a string comparison:
+meaningful, never unforgeable). A workspace-root `mpd-gates.json` may add or override gate ids for
+`mpd_verify_evidence`: `argv` (1..32 non-empty strings of at most 4096 characters) is spawned with
+`shell:false` in the workspace, an optional `cmd` label of at most 4096 characters defaults to
+`argv.join(" ")`, and the evidence log's header names the EFFECTIVE command (its sha256 covers that
+header). A malformed file refuses the CALL with one sentence naming the file and the problem — even for
+a frozen id — and never falls back; the frozen table applies only when the file is absent.
+
+**Fixed — the captain reads project instruction files anywhere, and roster consults carry an explicit
+leaf depth.** The `mpd` top-level session may now read any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by
+basename at any depth, inside the workspace or outside its root (a sibling project's instruction file is
+the motivating read); at the root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md`
+are admitted (there is no `README*` glob), and the refusal text advertises the true band. A path is
+judged by its SPELLING (symlinks are never resolved) and a `..` segment is admitted ONLY for the three
+instruction basenames. The CELL PLANNER keeps the same band and is refused `read`/`grep`/`glob` on a
+source path; its refusal and its prompt both name the two delegated routes. `mpd_role_spawn` now forwards
+an explicit `maxDepth` (the caller's recorded depth + 1, with `origin:"subagent"` without a depth read
+as depth 1) so a nested consult is a leaf; `mpd_workmate_spawn` reads the header identically and a test
+compares both helpers.
+
+**Fixed — `agent_teams_mail`'s undelivered bound is PER TEAM, and an acknowledgement releases a slot.**
+The bound counted workspace-wide by member id, so a retired team's backlog (ids restart at `M1`) blocked
+a fresh team's mail, and `summary` disagreed with it; and only a transport delivery could free a slot,
+which a stalled member never produces. The send bound, `summary`'s `undelivered` column and the `unread`
+branch now share ONE outstanding predicate (neither delivered nor acknowledged) scoped to the team's own
+rows; an ack frees exactly one slot per acked row, an unstamped legacy row counts for nobody, and a
+retired team's rows count for nobody.
+
+**Docs.** The bilingual pairs move in this change: `docs/cellwork{,.zh-CN}.md` and the
+`mpd-cellwork-plugin` / `mpd-verify-plugin` / `mpd-roles-plugin` README pairs. The cell doc states the
+four bounds a reader would otherwise get wrong (the one-way mail format, the post-reassignment BUSY
+report, the instruction-file `..` hop, and the generic-dispatch hazard with its mitigation). This
+changelog is English-only by policy, like every release section before it.
+
+**Verification.** Recorded for the wave: reviewers approved lanes B (C1 validation/C9/C10) on 12
+probes, D (C2 server/C3) on 18 probes and E (C4/C5) on 9 probes; per-package suites reported cellwork
+148 pass / 0 fail, verify 74/0, roles 185/0, team-core 404/0, workmate 57/0 (868 pass, 0 fail);
+`bun run typecheck` exit 0; `verify:comments` PASS (501 files); `verify-dist-fresh` 34/34 fresh; and
+`verify:rows` / `verify:manifest` / `verify-no-host-override` PASS. `bun run verify:docs` passed with
+pairs=52 / failed=0 / violations=0 / dead=0, and the last independent sweep re-ran
+`preset-conformance` on the final bytes (real mount, `agentPreset=mpd`). The package suites stay offline
+(no harness, no network); the live VEdit sessions that produced the defect list ran the published 0.16.3
+file set.
+
+
+
 ## 0.16.3 — 2026-10-30 — a taskless teammate can no longer touch a tool, and a failed cell activation resumes
 
 **An approved team plan spawns every member, and a member with no board task could still work.**

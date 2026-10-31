@@ -11,6 +11,11 @@
 // failed stays UNREAD and is surfaced on `cellwork_supervise` — mail is durable, wake-up is best-effort
 // (the frozen contract's own words).
 //
+// THE ORDER IS THEREFORE PART OF THE FORMAT (D6). The `send` row and the wake-up attempt are TWO appends:
+// the row lands first with no wake claim on it, and the attempt's outcome is appended afterwards as a
+// `wake` record. `deliverCellMail` is the one place that order is expressed, so no caller can invert it
+// again — the defect was a tool that woke the member before the row it described existed.
+//
 // The log is `mail.jsonl` inside the cell directory: append-only, one record per line, so a crash costs the
 // last line and never the file. `send` opens a message; `read` is the recipient's acknowledgement.
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs"
@@ -41,10 +46,36 @@ export interface CellMailSend {
   body: string
   /** ISO instant the row was written. */
   at: string
-  /** Whether the wake-up was handed to the transport; a durable row is delivered either way. */
+  /**
+   * Whether a wake-up had been handed to the transport when THIS row landed.
+   *
+   * Always `false` on a row written by {@link deliverCellMail}: the row must exist before anything is
+   * woken, so the attempt's outcome is appended later as a {@link CellMailWake} record. A row from an
+   * older build may carry `true`, and folding keeps it.
+   */
   wakeSent: boolean
-  /** Why the wake-up was not sent, when it was not. */
+  /** Why the wake-up was not sent, when it was not (a pre-`wake`-record spelling). */
   wakeReason?: string
+}
+
+/**
+ * One `wake` record: what happened to the wake-up, appended AFTER the durable `send` row (D6).
+ *
+ * A separate record on purpose — the log is append-only, so a row written before the attempt cannot
+ * carry the attempt's outcome. A message with NO `wake` record is one whose wake-up was never attempted
+ * (the process stopped between the two appends), which `wakeFailures` reports as undelivered.
+ */
+export interface CellMailWake {
+  /** Discriminator: this record reports one wake-up attempt. */
+  t: "wake"
+  /** The message the attempt was for. */
+  id: string
+  /** Whether the transport accepted the wake-up. */
+  sent: boolean
+  /** Why it did not, when it did not. */
+  reason?: string
+  /** ISO instant of the attempt. */
+  at: string
 }
 
 /** One `read` record: the recipient's acknowledgement. */
@@ -60,7 +91,7 @@ export interface CellMailRead {
 }
 
 /** One line of the cell mail log. */
-export type CellMailRecord = CellMailSend | CellMailRead
+export type CellMailRecord = CellMailSend | CellMailRead | CellMailWake
 
 /** One folded message: the `send` plus whether it was read. */
 export interface CellMailMessage extends CellMailSend {
@@ -128,7 +159,7 @@ export function readCellMail(workspace: string, cellId: string): CellMailRecord[
     try {
       /** The parsed line. */
       const parsed = JSON.parse(line) as CellMailRecord
-      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read")) records.push(parsed)
+      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read" || parsed.t === "wake")) records.push(parsed)
     } catch {
       // A torn line costs one history row, never the log.
     }
@@ -140,7 +171,7 @@ export function readCellMail(workspace: string, cellId: string): CellMailRecord[
  * Fold one mail log into the current state of its messages.
  *
  * @param records - the log, in append order.
- * @returns one message per `send`, with its read state.
+ * @returns one message per `send`, with its read state and its latest wake-up outcome.
  */
 export function foldCellMail(records: readonly CellMailRecord[]): CellMailMessage[] {
   /** The messages by id, in send order. */
@@ -148,11 +179,19 @@ export function foldCellMail(records: readonly CellMailRecord[]): CellMailMessag
   for (const record of records) {
     if (record.t === "send") {
       byId.set(record.id, { ...record, read: false })
-    } else {
-      /** The message this acknowledgement names. */
-      const message = byId.get(record.id)
-      if (message !== undefined) message.read = true
+      continue
     }
+    /** The message this record names; a record for a `send` the log lost is dropped. */
+    const message = byId.get(record.id)
+    if (message === undefined) continue
+    if (record.t === "read") {
+      message.read = true
+      continue
+    }
+    /** Whether the transport accepted the wake-up, which REPLACES the row's own (always false) claim. */
+    message.wakeSent = record.sent === true
+    if (record.reason === undefined || record.reason === "") delete message.wakeReason
+    else message.wakeReason = record.reason
   }
   return [...byId.values()]
 }
@@ -181,4 +220,77 @@ export function unreadFor(messages: readonly CellMailMessage[], names: readonly 
  */
 export function wakeFailures(messages: readonly CellMailMessage[]): CellMailMessage[] {
   return messages.filter((message) => !message.read && !message.wakeSent)
+}
+
+/**
+ * How one mail delivery ended (D6): the durable row first, the wake-up attempt second.
+ */
+export interface MailDelivery {
+  /** Whether the durable row reached the log; when false NO wake-up was attempted. */
+  landed: boolean
+  /**
+   * Whether the wake-up is DELIVERED as far as the cell can tell: the transport accepted it AND its
+   * `wake` record reached the log. A wake whose record was lost folds as undelivered, so answering
+   * "sent" would contradict the record a later reader trusts (repair N1).
+   */
+  wakeSent: boolean
+  /** Why the wake-up did not go out, or why the record of it could not be written. */
+  wakeReason?: string
+}
+
+/**
+ * What {@link deliverCellMail} needs: two appends and the attempt they bracket.
+ */
+export interface MailDeliveryDeps {
+  /** Append the durable `send` row; false means the row never landed. */
+  appendSend: () => boolean
+  /** Attempt the wake-up; resolves the outcome (a throw is classified as a failed wake-up). */
+  attemptWake: () => Promise<{ sent: boolean; reason?: string }>
+  /**
+   * Append the `wake` record for that outcome.
+   *
+   * False means the record never landed, so the log reports the row as undelivered and the answer must
+   * not claim a sent wake (repair N1).
+   */
+  appendWake: (outcome: { sent: boolean; reason?: string }) => boolean
+}
+
+/**
+ * Deliver one cell message DURABLE FIRST: the row lands, then the recipient may be woken.
+ *
+ * The one place the order is expressed, so it cannot drift back into a tool body (D6 measured the
+ * reverse: a wake delivered for a row whose append then failed, which no reader could ever find). A
+ * refused `send` append ends the attempt — nothing is woken for a message that does not exist.
+ *
+ * THE ANSWER AGREES WITH THE LOG (repair N1): a wake is reported sent only when the transport accepted
+ * it AND its `wake` record was appended, because a fold of the log is what every later reader sees. The
+ * two failures stay DISTINGUISHABLE in the reason: "the transport refused it" versus "the record of it
+ * could not be written".
+ *
+ * @param deps - the durable append, the wake-up attempt and the outcome append.
+ * @returns whether the row landed and what the wake-up did, as far as the log can prove it.
+ */
+export async function deliverCellMail(deps: MailDeliveryDeps): Promise<MailDelivery> {
+  if (!deps.appendSend()) {
+    return { landed: false, wakeSent: false, wakeReason: "the durable row could not be written, so no wake-up was attempted (mail is durable first)" }
+  }
+  /** The attempt's outcome; a seam that throws is a FAILED wake-up, never a lost row. */
+  let outcome: { sent: boolean; reason?: string }
+  try {
+    outcome = await deps.attemptWake()
+  } catch (error) {
+    outcome = { sent: false, reason: "the wake-up failed: " + (error instanceof Error ? error.message : String(error)) }
+  }
+  /** Whether the attempt's outcome reached the log, which is what a later fold trusts. */
+  const recorded = deps.appendWake(outcome)
+  if (!recorded) {
+    return {
+      landed: true,
+      wakeSent: false,
+      wakeReason: outcome.sent === true
+        ? "the wake-up was attempted and the transport accepted it, but its `wake` record could not be written — the durable log reports this row as undelivered"
+        : "the wake-up did not go out (" + (outcome.reason ?? "no reason given") + ") and its `wake` record could not be written either — the durable log reports this row as undelivered",
+    }
+  }
+  return { landed: true, wakeSent: outcome.sent === true, ...(outcome.reason === undefined ? {} : { wakeReason: outcome.reason }) }
 }

@@ -10,7 +10,10 @@
 // WHAT IS ABSORBED from the official implementation, deliberately, because each was earned there:
 //   • a message is TARGETED at a live member, resolved by name, and a member cannot message itself;
 //   • a member's UNDELIVERED backlog is BOUNDED, so a stalled member cannot silently accumulate work —
-//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one;
+//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one — the bound is
+//     PER TEAM, because member ids (`M1`, `M2`, …) repeat across waves and a finished team's queue must
+//     never refuse a new team's work — and an ACK RELEASES A SLOT, because the one release valve an
+//     operator has cannot depend on a delivery a stalled member will never trigger;
 //   • the queue keeps INSERTION ORDER, and unread counts are computed oldest-first.
 //
 // WHAT IS OURS: `sent → delivered → read`. `read` is an explicit acknowledgement by the recipient,
@@ -163,9 +166,49 @@ export function unreadOf(state: MailboxState, memberId: string): MailMessage[] {
   return inboxOf(state, memberId).filter((message) => message.readAt === undefined)
 }
 
-/** Messages the transport has not accepted yet, oldest first. */
+/**
+ * Whether one message still counts against a member's backlog: NEITHER accepted by the transport NOR
+ * acknowledged by the recipient.
+ *
+ * WHY THE ACK COUNTS, when `delivered` is the transport's own fact: the bound exists to say a member is
+ * not keeping up, and a recipient that has ACKNOWLEDGED a row IS keeping up with it — even when the
+ * transport never stamped a delivery. Counting only `deliveredAt` left the operator with no release
+ * valve: a full backlog could be cleared ONLY by a delivery the stalled member was never going to make
+ * (measured: 8 rows, one acknowledged, the ninth send still refused). The three consumers of this rule
+ * — the send bound through {@link undeliveredOf}, the `undelivered` column {@link summarise} renders,
+ * and the mail tool's `unread` answer — share it, so they can never disagree about WHICH rows are
+ * outstanding.
+ *
+ * @param message - one folded message.
+ * @returns true while the message is still outstanding.
+ */
+export function isOutstanding(message: MailMessage): boolean {
+  return message.deliveredAt === undefined && message.readAt === undefined
+}
+
+/** Messages this member was never handed AND never acknowledged, oldest first — the backlog a bound measures. */
 export function undeliveredOf(state: MailboxState, memberId: string): MailMessage[] {
-  return inboxOf(state, memberId).filter((message) => message.deliveredAt === undefined)
+  return inboxOf(state, memberId).filter(isOutstanding)
+}
+
+/**
+ * The slice of the mailbox ONE TEAM can claim: the rows stamped with its identity.
+ *
+ * WHY, when a recipient id looks like enough to filter on: every team mints its members from `M1`
+ * upward, so `toId`/`toName` repeat across teams and a workspace-wide fold shows a NEW team's `M1` the
+ * mail of a wave that ended days earlier. A row stamped for another team is not this team's, and an
+ * UNSTAMPED row predates the field, so no team can prove it owns it either. This is the rule `summary`
+ * applies, spelled ONCE here: the send bound, `summary` and the mail tool's `unread` branch all narrow
+ * through this function, so they cannot drift apart about which rows a team owns.
+ *
+ * @param state - the folded mailbox to narrow.
+ * @param teamId - the claiming team; `undefined` or empty means no team was resolved, so the whole fold
+ *   comes back — there is no identity to scope by.
+ * @returns the state narrowed to the rows this team can claim.
+ */
+export function scopeToTeam(state: MailboxState, teamId: string | undefined): MailboxState {
+  if (teamId === undefined || teamId === "") return state
+  return { messages: state.messages.filter((message) => message.teamId === teamId) }
 }
 
 /** A per-member mail summary, for a status view. */
@@ -178,7 +221,7 @@ export interface MailSummary {
   total: number
   /** Messages this member has not acknowledged. */
   unread: number
-  /** Messages the transport has not accepted yet. */
+  /** Messages still OUTSTANDING — neither accepted by the transport nor acknowledged ({@link isOutstanding}). */
   undelivered: number
   /** The oldest unread subject, so a reader sees WHAT is waiting without listing everything. */
   oldestUnread?: string
@@ -203,7 +246,8 @@ export function summarise(state: MailboxState): MailSummary[] {
       entry.unread += 1
       if (entry.oldestUnread === undefined) entry.oldestUnread = message.subject
     }
-    if (message.deliveredAt === undefined) entry.undelivered += 1
+    // The SAME predicate the send bound measures, so this column and the bound can never disagree.
+    if (isOutstanding(message)) entry.undelivered += 1
   }
   return order.map((id) => seen.get(id) as MailSummary)
 }
@@ -257,8 +301,12 @@ export function send(workspace: string, input: SendInput, now: Date): SendResult
   }
   /** The mailbox as it stands, which is what the backlog bound is measured against. */
   const state = readMailbox(workspace)
-  /** How many messages to this member the transport has not accepted yet. */
-  const backlog = undeliveredOf(state, input.toId).length
+  /**
+   * How many messages THIS TEAM sent to this member and the transport has not accepted yet — the SAME
+   * {@link scopeToTeam} narrowing the `unread` branch reads, so the number the bound refuses on is the
+   * number a reader is shown. Without it, a finished team's `M1` backlog refused a new team's `M1`.
+   */
+  const backlog = undeliveredOf(scopeToTeam(state, input.teamId), input.toId).length
   /** Effective backlog bound; zero or less disables the bound entirely. */
   const cap = input.maxUndelivered ?? 8
   if (cap > 0 && backlog >= cap) {

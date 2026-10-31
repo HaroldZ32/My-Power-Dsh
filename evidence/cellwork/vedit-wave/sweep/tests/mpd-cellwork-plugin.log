@@ -1,0 +1,186 @@
+COMMAND: .toolchain/node_modules/.bin/bun test packages/mpd-cellwork-plugin
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-cellwork-plugin/test/activate-resume-e2e.test.ts:
+(pass) C12/D1: failing at the contract stage resumes to convergence with no duplicate artifact [14.63ms]
+(pass) C12/D1: failing at the member stage resumes to convergence with no duplicate artifact [3.33ms]
+(pass) C12/D1: failing at the task stage resumes to convergence with no duplicate artifact [3.16ms]
+(pass) C12/D1: failing at the loop stage resumes to convergence with no duplicate artifact [2.69ms]
+(pass) C12/D1: failing at the dispatch stage resumes to convergence with no duplicate artifact [2.62ms]
+(pass) C1: two members share one role and each is raised separately, with one prompt per member [2.62ms]
+(pass) C8: a successful pass writes NO whole-state partial row and one progress row per artifact [2.25ms]
+(pass) C5/R2: the PLANNER prompt carries the delegation block and the SPLITTER prompt does not [0.97ms]
+
+packages/mpd-cellwork-plugin/test/split-refused.test.ts:
+(pass) C9: a REFUSED submission always writes split/<revision>.refused.json with the FULL finding list [0.36ms]
+(pass) C9: a refused resubmission leaves the ACCEPTED verdict byte-identical [0.40ms]
+(pass) C9: an ACCEPTED submission writes the canonical file and leaves no refusal beside it [0.26ms]
+(pass) C9: the LATEST verdict still names a refusal, and prefers the acceptance beside it [0.61ms]
+(pass) C1: a declared member is the resolved BOARD name, and several members may share one role [0.28ms]
+(pass) C1: member-invalid refuses an empty, overlong, control-character or path-separator name [0.14ms]
+(pass) C1: member-role-conflict refuses ONE member declared under two different owner roles [0.10ms]
+(pass) C1: same ROLE with DIFFERENT members is not self-review (two real seats) [0.05ms]
+(pass) C1: self-review fires on the MEMBER when both sides declare one [0.07ms]
+(pass) C1: with no member declared, self-review still compares the OWNER ROLE [0.04ms]
+
+packages/mpd-cellwork-plugin/test/status-reconcile.test.ts:
+(pass) C11/D11: the status read NAMES members missing on each side and never mutates either [0.90ms]
+(pass) C11/D11: an in-sync roster reports inSync with two empty lists [0.38ms]
+(pass) C11/D11: with no readable team the read reports nothing to compare instead of failing [0.34ms]
+(pass) C11: the status read exposes the recorded split ticket id, so a lost owner cannot hide it [0.36ms]
+
+packages/mpd-cellwork-plugin/test/supervise-lossless.test.ts:
+(pass) B1: cellwork_supervise walks losslessly with a task row that has no owner [1.97ms]
+(pass) B2: the walk holds over every cellwork tool result the harness can invoke [5.56ms]
+
+packages/mpd-cellwork-plugin/test/budget.test.ts:
+(pass) an INJECTED window of 123456 produces the documented budget 30864 [0.07ms]
+(pass) a large window accepts a normal task and enforces the whole-window condition [0.05ms]
+(pass) an uncertified route is refused with NO guessed window [0.03ms]
+(pass) the window reader takes the catalog window, then the operator override, then refuses [0.15ms]
+(pass) a declared 2 MiB input is refused with its real bytes and a bytes → tokens breakdown [4.33ms]
+(pass) CJK bytes are priced at the punitive rate, and an unreadable or outside path is a refusal [0.67ms]
+
+packages/mpd-cellwork-plugin/test/cellwork.test.ts:
+(pass) the plugin declares the tool and command seams and registers exactly one /cellwork command [0.50ms]
+(pass) an empty or whitespace /cellwork answers usage and writes NO cell state [0.29ms]
+(pass) a non-empty /cellwork writes the cell record and submits exactly ONE directive [0.62ms]
+(pass) a second /cellwork while one cell is active REFUSES and names the active cell [0.48ms]
+(pass) /cellwork with no live turn surface archives the cell it just wrote instead of fencing a captain [0.53ms]
+(pass) the pure guard decision: no seat allows, and each mode refuses exactly its own surface [0.35ms]
+(pass) A5: the captain may open a verify loop BY EXACT NAME, and every other mpd_verify_* call stays refused [0.05ms]
+(pass) the installed guard fences the captain of the ACTIVE cell and leaves every other session alone [0.58ms]
+(pass) a composition without the tools.guard seam installs nothing and says so [0.21ms]
+(pass) the installed guard fences a SUBCAPTAIN seat as a mini-captain, while the captain keeps start/stop [0.73ms]
+(pass) a record round-trips through an atomic write and leaves no temporary file behind [0.20ms]
+(pass) a corrupt state is REFUSED with its path, never reset, and the command refuses on it [0.49ms]
+(pass) an unreadable schema VERSION is refused and named, not migrated or reset [0.11ms]
+(pass) cellwork_status reports the cell, the live team's counts and the caller's own seat [0.53ms]
+(pass) cellwork_start is captain-only, idempotent, and NEVER creates a cell [1.06ms]
+(pass) cellwork_stop archives the cell, refuses live work unless forced, and gives the captain its tools back [0.86ms]
+(pass) after a stop a NEW cell can be started, which is what 'archived, not deleted' is for [1.65ms]
+(pass) no context-window literal is baked into the package, and the row names no harness seam itself [0.59ms]
+(pass) CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all [0.20ms]
+(pass) CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch` [0.03ms]
+(pass) CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits [0.05ms]
+
+packages/mpd-cellwork-plugin/test/requirements-subheadings.test.ts:
+(pass) C10: a ### subheading stays INSIDE its parent section's body [0.10ms]
+(pass) C10: nested headings of every deeper level stay in the parent body [0.05ms]
+(pass) C10: a body runs until the next heading of the SAME or a HIGHER level [0.03ms]
+(pass) C10: a #### heading nested under a ### section is body too [0.03ms]
+(pass) C10: a section whose body is only whitespace is still missing or empty [0.06ms]
+
+packages/mpd-cellwork-plugin/test/split-task-owner.test.ts:
+(pass) C11/D2: the RECORDED board id wins over the owner spelling, so a renamed owner cannot hide the row [0.06ms]
+(pass) C11/D3: without a recorded id the owner spelling still finds the ticket (the pre-C11 fallback) [0.06ms]
+(pass) C11/D2: an OWNERLESS split ticket is claimed for cell-splitter and reported as repaired [0.20ms]
+(pass) C11/D2: a REFUSED claim still records the id and names the repair verb [0.08ms]
+(pass) C11: a readable board with NO split ticket is a hard error naming the repair verb [0.06ms]
+(pass) C11: an UNREADABLE team record proves nothing, so no missing-ticket error is invented [0.08ms]
+
+packages/mpd-cellwork-plugin/test/band-parity.test.ts:
+(pass) the LITERALS are equal: prefixes, root files, instruction basenames and the licence regex [0.05ms]
+(pass) the SEMANTICS are equal, row by row, and each row is the CONTRACT's answer [0.41ms]
+(pass) the instruction basenames are the ONLY class admitted outside the workspace root [0.06ms]
+
+packages/mpd-cellwork-plugin/test/planner-guard.test.ts:
+(pass) a SOURCE read is refused, and the sentence teaches BOTH routes and the reason [0.11ms]
+(pass) the band it keeps is the captain's band — prefixes, the root files, and instruction files ANYWHERE [0.10ms]
+(pass) grep and glob judge their `path`, and a bare call FAILS CLOSED [0.05ms]
+(pass) the rule covers exactly the THREE path-shaped tools and exactly ONE seat [0.04ms]
+(pass) the seat name is matched after trimming and lower-casing, and only in mode `member` [0.04ms]
+(pass) THE INSTALL: the callback feeds the decision the ARGUMENTS and the ROOT — and only for the planner [0.12ms]
+(pass) THE PROMPT: the planner's instantiation prompt carries the delegation block (C5, ruling R2) [0.08ms]
+(pass) a malformed exec or a throwing root resolver never throws and never denies for its own reason [0.12ms]
+
+packages/mpd-cellwork-plugin/test/mail-order.test.ts:
+(pass) D6: the durable row lands BEFORE the wake-up, and the `wake` record reports the attempt [0.82ms]
+(pass) D6: a durable row that cannot be written ends the call and NO wake-up is attempted [0.29ms]
+(pass) D6: a FAILED wake-up never costs the row, and the attempt is reported as undelivered [0.43ms]
+(pass) N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful [0.43ms]
+(pass) D6: deliverCellMail calls the durable append first, and a refusal skips the attempt entirely [0.07ms]
+(pass) D6: deliverCellMail classifies a THROWN wake-up as a failed attempt, never as a lost row [0.10ms]
+(pass) N1: deliverCellMail reports NOT sent when the `wake` record cannot be appended [0.07ms]
+(pass) D6: folding tolerates a torn line, a wake record with no send, and a later successful attempt [0.13ms]
+
+packages/mpd-cellwork-plugin/test/flow.test.ts:
+(pass) cellwork_start stages TWO members and TWO tasks, with personas, roles and a blocked split task [1.88ms]
+(pass) requirements: incomplete refused, complete finalized, a changed finalize refused, update bumps and marks stale [1.67ms]
+(pass) split: graph refusals name the rule (cycle, self-review, overlap, unknown role, no answer) and the revision mismatch [2.42ms]
+(pass) split: an accepted graph is measured against the INJECTED window, and a 2 MiB input is refused with its bytes [3.38ms]
+(pass) recon: planner only, label exactly Explorer, explicit absolute maxDepth, persona in the prompt [1.80ms]
+(pass) activate: contracts → members → tasks → verify loop BEFORE dispatch, owner-only, never a second activation [2.33ms]
+(pass) activate: a STALE split is refused unless its revision is passed explicitly [2.18ms]
+(pass) owner-only dispatch reports a busy or absent owner and never substitutes another member [0.34ms]
+(pass) Amendment 5a: a requirements update re-dispatches the SAME split task with the new revision [1.84ms]
+(pass) Amendment 5b: cellwork_recon refuses a stopped cell, and the returned report is JOURNALED [1.25ms]
+(pass) Amendment 5c: the planner directive carries the relay protocol, and the captain authors nothing [0.85ms]
+(pass) B8: planCheckpoint never guesses, fires once at the ratio, and suppresses reinjection [0.14ms]
+(pass) B8: handoff validation accepts both grammars and names every missing section [0.15ms]
+(pass) B8: the barrier compacts with a REAL signal, promotes on success, and reseeds from the handoff on null [0.56ms]
+(pass) B8: cellwork_handoff writes the document, marks the member ready and journals it [1.04ms]
+(pass) B9: cellwork_send writes a durable row and cellwork_inbox acknowledges it exactly once [1.07ms]
+(pass) B8: cellwork_subteam enforces depthMax and registers the sub-cell when it fits [1.22ms]
+(pass) D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own [4.80ms]
+(pass) D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so [1.08ms]
+(pass) cellwork_dispatch and cellwork_supervise are captain-only; supervise reports the pending board [1.12ms]
+(pass) C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row [3.76ms]
+(pass) C1: work a later revision drops is marked cancelled, never deleted, and never dispatched [4.88ms]
+(pass) C2.1: the compaction barrier classifies busy, error and no-engine after the retry budget [0.43ms]
+(pass) C2.2: mail addresses a member, `captain` and a cross-subcell recipient, and the journal carries the cell stamp [1.95ms]
+(pass) C2.3: an UNDELIVERED mail row is surfaced by cellwork_supervise, not only by the pending board [1.15ms]
+(pass) Amendment 6 R1: the dispatched message names the contract file the verify loop froze, and that file EXISTS [1.92ms]
+(pass) Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and SURVIVES a refused resubmission [3.20ms]
+(pass) CR 4377306694: a repeated finalize of the SAME content (no trailing newline) is IDEMPOTENT, not CHANGED [1.30ms]
+(pass) CR 4377306675: a promoted subcaptain resolves to ITS OWN sub-cell — dispatch/supervise/activate accepted — and the captain stays on its own cell [1.48ms]
+(pass) CR 4377306675: the parent REFUSES a silent stop while its sub-cell is live, and the forced way is journaled [1.32ms]
+(pass) CR 4377306686: the team record is read from the CALLER's workspace, not the process root [3.26ms]
+(pass) CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan [1.48ms]
+(pass) CR 4377316529: an approval that stops mid-way PERSISTS the team id and its members, and the retry reuses that team [0.88ms]
+(pass) CR 4377316529: an approved-but-UNRECORDED team is recovered and its missing member repaired, never re-approved [1.18ms]
+
+packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:
+(pass) C7: fenceReasonOf names each of the three signals and clears a working seat [0.06ms]
+(pass) C7: cellMemberOf matches the cell row by name and by the dispatch name key [0.06ms]
+(pass) C7: a member at its CONTEXT CHECKPOINT is FENCED, reported with the repair, and never messaged [0.23ms]
+(pass) C7: a written handoff waiting for the barrier FENCES the member (the D4 re-delivery defect) [0.10ms]
+(pass) C7: the barrier's explicit `fenced` marker fences a member whose mode still looks ordinary [0.10ms]
+(pass) C7: the fence comes from the CELL record even when the roster row looks healthy [0.09ms]
+(pass) C7 control: a promoted subcaptain and a healthy member are both paired [0.20ms]
+(pass) C7: fencing one owner does not stop another owner's ready row [0.15ms]
+(pass) C7: a given-up barrier fences the member row it persists, and a later success clears the marker [0.07ms]
+(pass) C7: the given-up journal row names the member, the attempts and the repair verb [0.04ms]
+(pass) C7: a refused barrier PERSISTS the fence and journals `checkpoint-unrecoverable` [11.12ms]
+(pass) C7: cellwork_supervise lists every fenced member with the open rows it owns [0.99ms]
+(pass) C7: a SECOND cellwork_handoff is refused while the first waits for the barrier [0.36ms]
+
+packages/mpd-cellwork-plugin/test/dispatch-reassign.test.ts:
+(pass) C6: reassignPairs reads the pairs, trims them, and reports what it cannot use [0.07ms]
+(pass) C6: applyReassignments claims on the board, journals `task-reassigned`, THEN delivers [0.71ms]
+(pass) C6: a REFUSED claim is reported, nothing is delivered, and no journal row is written [0.16ms]
+(pass) C6: a row that cannot be handed over is REPORTED — never thrown, never claimed [0.24ms]
+(pass) C6: a target with no executor handle is reported BEFORE the claim (a claim would hide the row) [0.13ms]
+(pass) C6: cellwork_dispatch claims through the board, journals, delivers, and never re-delivers the row [0.84ms]
+(pass) C6: a reassignment the board refuses is reported in the result, and the pass still runs [0.35ms]
+(pass) C6: the pass skips a fenced owner's row with the repair named, and delivers nothing to it [0.26ms]
+
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts:
+(pass) A1–A3: a verify-loop failure records the partial in-flight state, and the retry resumes it [3.76ms]
+(pass) A2/A3: a member-raise failure records the member, and the retry reuses it instead of re-raising [2.52ms]
+(pass) A2/A3: a task-creation failure records the minted id, and the retry reuses it [2.45ms]
+(pass) A2/A3: a dispatch-stage failure records every artifact, and the retry dispatches once [2.52ms]
+(pass) A4: the verify-loop opener is the captain's live agent, and the producer survives only as data [2.61ms]
+(pass) A3: a duplicate-roster answer is resolved from the live roster, never fatal [2.13ms]
+(pass) A4: activation without a live caller agent refuses before any write [1.59ms]
+(pass) A1: a record written before the in-flight fields existed still reads [1.05ms]
+(pass) F1: a pre-upgrade kept code task with an armed contract is skipped and its contract is never rewritten [3.85ms]
+(pass) F2: a newer accepted revision supersedes an older in-flight partial and journals it [3.51ms]
+(pass) F2: a LOWER accepted revision still cannot supersede an in-flight one [2.16ms]
+(pass) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours [0.42ms]
+
+ 148 pass
+ 0 fail
+ 2000 expect() calls
+Ran 148 tests across 15 files. [403.00ms]
+EXIT:0

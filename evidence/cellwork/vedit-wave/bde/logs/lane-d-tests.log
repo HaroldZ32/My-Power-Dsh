@@ -1,0 +1,27 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-verify-plugin/test/open-writer-id.test.ts:
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > both parameters are DECLARED as optional strings, and the call stays strict [0.47ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > a delegated loop stores the NAMED writer instead of the placeholder [0.72ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > an ABSENT writer_id keeps today's `delegate:pending` placeholder [0.19ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > writer:"self" REFUSES either writer parameter and writes no loop at all [0.09ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > either parameter without writer:"delegate" is refused, because `self` is the default [0.08ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > both values are TRIMMED, and an empty or over-long one is refused [0.27ms]
+(pass) mpd_verify_open writer_id / writer_reason (C2 / D12) > ACCEPTANCE: a verdict from the LOOP'S OWN writer is refused `same-agent`, a different session's is accepted [1.42ms]
+
+packages/mpd-verify-plugin/test/gates-project.test.ts:
+(pass) mpd-gates.json (C3 / D13) > an ABSENT project file leaves the frozen table exactly as it was [0.31ms]
+(pass) mpd-gates.json (C3 / D13) > a project entry ADDS a new id, and every frozen id still resolves to its own entry [0.39ms]
+(pass) mpd-gates.json (C3 / D13) > a project entry OVERRIDES a frozen id, and the frozen table keeps its own strings [0.17ms]
+(pass) mpd-gates.json (C3 / D13) > an explicit `cmd` is the effective one, and it wins over the argv's spelling [0.11ms]
+(pass) mpd-gates.json (C3 / D13) > EVERY malformation is refused in one sentence naming the file and the problem — no silent fallback [1.55ms]
+(pass) mpd-gates.json (C3 / D13) > a real run proves the EFFECTIVE command: header, cwd and the recorded cmd [9.70ms]
+(pass) mpd-gates.json (C3 / D13) > a real override replaces the frozen command the runner would have used [8.94ms]
+(pass) mpd-gates.json (C3 / D13) > a spawned project gate gets argv literally: shell:false means no metacharacter executes [9.28ms]
+(pass) mpd-gates.json (C3 / D13) > a malformed project file refuses a FROZEN id through the tool and writes NO evidence [0.31ms]
+
+ 16 pass
+ 0 fail
+ 212 expect() calls
+Ran 16 tests across 2 files. [240.00ms]
+EXIT:0

@@ -1,0 +1,11 @@
+PASS T16/record-failure — {"canDeny":true,"landed":true,"wakeSent":false,"wakeReason":"the wake-up was attempted and the transport accepted it, but its `wake` record could not be written — the durable log reports this row as undelivered","rawLogTypes":["send"],"folded":[{"id":"m1","wakeSent":false,"read":false}],"unread":1,"wakeFailures":1,"order":["send","wake-attempt","wake-record"]}
+PASS T16/transport-failure — {"wakeSent":false,"wakeReason":"the transport refused it: member is inactive","recordFailureReason":"the wake-up was attempted and the transport accepted it, but its `wake` record c","distinguishable":true,"folded":[{"wakeSent":false,"read":false}]}
+PASS D6/durable-first — {"landed":false,"wakeSent":false,"wakeReason":"the durable row could not be written, so no wake-up was attempted (mail is durable first)","order":["send"],"logExists":false}
+PASS D16/scope — {"scopedRows":8,"undelivered":8,"wholeFold":21,"retiredTeamRows":8,"legacyRows":5}
+PASS D16/bound-refusal — {"reason":"backlog-full","detail":"\"Member A\" already has 8 undelivered message(s) (bound 8) — it is not keeping up"}
+PASS D16/ack-frees — one ack frees exactly one slot: send ok=true
+PASS D16/delivery-frees — one delivery frees exactly one slot: send ok=true
+PASS D16/legacy-excluded — 5 unstamped rows do not count against a team's bound (7 outstanding + send accepted): {"id":"mail-20261031060000-013","teamId":"team-A"}
+PASS D16/summary-predicate — {"summaryUndelivered":8,"predicateCount":8,"unread":9,"total":10}
+PASS D16b/unread-scoped — {"unread":9,"ids":["A2","A3","A4"],"teams":["team-A"]}
+SUMMARY {"total":10,"passed":10,"failed":[]}

@@ -515,9 +515,14 @@ test("A1–A3: a verify-loop failure records the partial in-flight state, and th
   expect(Object.keys(partial.activatedLoops)).toEqual(["auth-core"])
   /** The partial journal events the contract names. */
   const partialRows = journalEntries(harness.workspace, cellId).filter((row) => row.event === "cell-activation-partial")
-  // PERSISTED INCREMENTALLY: 2 contracts + 3 members + 4 tasks + 1 loop = 10 checkpoints, plus the final
-  // write that carries the failure sentence — not one lump written after the whole pass.
-  expect(partialRows.length).toBeGreaterThanOrEqual(10)
+  /** The COMPACT per-artifact progress rows the pass journaled (contract C8). */
+  const progressRows = journalEntries(harness.workspace, cellId).filter((row) => row.event === "cell-activation-progress")
+  // ONE WHOLE-STATE SNAPSHOT, ON FAILURE ONLY (contract C8/D7): 2 contracts + 3 members + 4 tasks + 1 loop
+  // are journaled as compact progress deltas (`cell-activation-progress`), and the accumulated state is
+  // written exactly once, carrying the failure sentence — never once per artifact (the defect wrote 119).
+  expect(partialRows.length).toBe(1)
+  expect(progressRows.length).toBeGreaterThanOrEqual(10)
+  expect(progressRows.at(-1)?.ordinal).toBeGreaterThanOrEqual(10)
   expect(partialRows.at(-1)?.revision).toBe(1)
   expect(String(partialRows.at(-1)?.error)).toContain("could not open the verify loop")
   // THE RETRY: the same accepted revision resumes; only the MISSING loop is opened.
@@ -767,7 +772,9 @@ test("A3: a duplicate-roster answer is resolved from the live roster, never fata
       // "already on the roster", and the RE-READ below is what resolves it.
       return reads === 1 ? { teamId: "team-1", members: [], tasks: [] } : { teamId: "team-1", members: [liveMember], tasks: [] }
     },
-    checkpoint: (): void => {},
+    // R6: the dep was renamed when activation moved from a per-artifact checkpoint to a compact
+    // progress row (contract C8); the no-op keeps this arm's subject — the live-roster reconciliation.
+    progress: (): void => {},
     now: new Date(),
   }
   /** The materialisation. */

@@ -9,6 +9,10 @@
 // leave. It deliberately does NOT restate the guard's clause-by-clause allowlist — the guard answers
 // any refused call with that paragraph, so repeating it here would spend context on a list the model
 // can always ask for.
+//
+// IT ALSO CARRIES THE PLANNER'S DELEGATION BLOCK ({@link PLANNER_RECON_LINES}, C5/D15): the prose lives
+// here because this module owns the cell's words, and `staging.ts` spreads it into `plannerPrompt` so the
+// instantiation prompt itself says reconnaissance is delegated — the mechanical arm is the guard's.
 import { CELL_JOURNAL_FILE, CELL_REQUIREMENTS_FILE, CELL_STATE_FILE, cellDir, type CellState } from "./state"
 
 /** The one line an empty `/cellwork` answers; it names the command and what it needs. */
@@ -16,6 +20,39 @@ export const CELLWORK_USAGE = "usage: /cellwork <objective> — starts cell-work
   + "planner runs a Socratic requirements interview through you, the requirements are split into tasks whose "
   + "context cost the plugin MEASURES against the executing model's own window, and the team works, hands off, "
   + "compacts and promotes itself. `/cellwork` is the only way to start the mode."
+
+/**
+ * The planner's DELEGATION block: reconnaissance is delegated, never run by the planner itself (C5, D15).
+ *
+ * `staging.ts` spreads these lines into `plannerPrompt`, so the instantiation prompt says it in the
+ * planner's own reading order — BEFORE it starts asking questions — while the enforcement lives in the
+ * guard (`guard.ts`, the `cell-planner` arm), which refuses `read`/`grep`/`glob` on a source path and
+ * answers with the same two routes.
+ *
+ * The block OPENS and CLOSES with an empty line so a caller can splice it between two sections without
+ * owning the blank-line bookkeeping. Both delegation routes are named with their argument shapes, because
+ * a prompt that says "delegate" without saying HOW teaches the planner to stall.
+ */
+export const PLANNER_RECON_LINES: readonly string[] = [
+  "",
+  "RECONNAISSANCE IS DELEGATED, NEVER RUN BY YOU: do not `read`, `grep` or `glob` the project's source",
+  "yourself — the cellwork guard refuses exactly that (its refusal names the two routes below), and with",
+  "reason. Your context is spent on the interview and the requirements document: a source tree read here is",
+  "context the interview then lacks, while the REPORT you actually need is a hundred lines, not ten thousand.",
+  "",
+  "THE TWO ROUTES, both one-shot and READ-ONLY, and you consume the report rather than re-deriving it:",
+  "1. `cellwork_recon` {role:\"Explorer\"|\"Researcher\", task} — the in-cell route. Its report comes straight",
+  "   back to you and is journaled, and it forwards its own depth cap, so the host's nesting default never",
+  "   refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence and cites it.",
+  "2. `mpd_role_spawn` {role:\"Explorer\"|\"Researcher\"|\"Architect\", task} — the roster route, for a",
+  "   composition where the cellwork tool is not mounted. Same discipline: ONE bounded question, one report.",
+  "",
+  "THE BAND YOU MAY READ YOURSELF: `.mpd/**` (the cell record, the requirements file, the contracts),",
+  "`docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth,",
+  "inside this workspace or outside its root; and at the workspace root `README.md`, `README.zh-CN.md`,",
+  "`CHANGELOG.md` and `LICENSE*.md`.",
+  "",
+]
 
 /**
  * Build the activation directive for one freshly created cell.

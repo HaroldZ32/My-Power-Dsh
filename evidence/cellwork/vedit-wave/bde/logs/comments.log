@@ -1,0 +1,11 @@
+# verify-comment-coverage
+
+scanned 497 TypeScript file(s) of 497 in the source set; inspected 44901 declaration(s); skipped 21288 inline callback(s) as out of family
+
+VERDICT: FAIL — 2 violation(s) across 1 file(s).
+
+packages/mpd-cellwork-plugin/test/mail-order.test.ts (2)
+  78: parameter-type — makeHarness
+  277: comment — logPath
+
+EXIT:1

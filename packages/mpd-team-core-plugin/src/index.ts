@@ -32,6 +32,7 @@ import {
   markDelivered,
   markRead,
   readMailbox,
+  scopeToTeam,
   send as sendMail,
   summarise,
   undeliveredOf,
@@ -2679,7 +2680,9 @@ export function apply(ctx: any): void {
         // the row whose `teamId` stamp IS this team's — the identity, never a reusable id.
         if (mailTeam === undefined) return { summary: rows, scope: "workspace" }
         /** The messages stamped with THIS team's identity — the only rows this team can claim. */
-        const mine = state.messages.filter((message) => message.teamId === mailTeam.teamId)
+        // ONE filter with the send bound and the `unread` branch (T11's NIT): `scopeToTeam` spells the
+        // team rule once, so `summary` can never count a different set than the bound refuses on.
+        const mine = scopeToTeam(state, mailTeam.teamId).messages
         // THE LEGACY RULE, stated rather than guessed: a row with NO stamp predates the field, so no team
         // can PROVE it owns it — it is EXCLUDED and COUNTED in the answer. Claiming every unstamped row
         // that merely matches this team's member ids is the defect itself; the `createdAt` fallback
@@ -2694,10 +2697,27 @@ export function apply(ctx: any): void {
       const state = readMailbox(workspace)
       /** The member whose inbox was asked for, when the call named one. */
       const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
-      /** The inbox owner: the named member, else the caller's own session. */
-      const memberId = wanted?.id ?? self?.session?.id ?? caller
+      // ── D16c: THE CALLER'S OWN MEMBER ID, NOT ITS SESSION ID ──
+      // A message is ADDRESSED to the roster member id (`M1`), while a member's session id is the
+      // `executorRef` the record kept at spawn — TWO DIFFERENT STRINGS. Keying the self path on the
+      // session id therefore matched nothing, and a member reading its own inbox always saw an empty
+      // one. ONE resolver, the same `callerIdentity` the board uses (C7-4 F2): the recorded handle
+      // first, then a roster name the session title contains.
+      /** The caller's own session id, which the record keeps as that member's `executorRef`. */
+      const callerId = self?.session?.id ?? caller
+      /** This caller's own roster row, when the resolved team's roster names it. */
+      const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember
+      /** The inbox owner: the named member, else the caller's OWN member row, else its session id. */
+      const memberId = wanted?.id ?? ownMember?.id ?? callerId
+      // ── D16b: THE SAME PER-TEAM FILTER THE SEND BOUND APPLIES ──
+      // `memberId` is a per-team id (`M1`, `M2`, …) every team reuses, so an unscoped fold hands a new
+      // team's `M1` a finished wave's unread mail — and an `undelivered` count the send bound no longer
+      // reasons about. One filter, one identity: this team's rows, or the whole fold when no team
+      // resolved (the caller then has no identity to scope by, exactly like `summary`).
+      /** The rows this caller's team can claim; the three counts below are all measured against it. */
+      const scoped = scopeToTeam(state, mailTeam?.teamId)
       return {
-        messages: unreadMessages(state, memberId).map((message) => ({
+        messages: unreadMessages(scoped, memberId).map((message) => ({
           id: message.id,
           fromName: message.fromName,
           subject: message.subject,
@@ -2705,9 +2725,9 @@ export function apply(ctx: any): void {
           sentAt: message.sentAt,
           delivered: message.deliveredAt !== undefined,
         })),
-        undelivered: undeliveredOf(state, memberId).length,
-        total: inboxOf(state, memberId).length,
-        memberName: wanted?.name ?? memberId,
+        undelivered: undeliveredOf(scoped, memberId).length,
+        total: inboxOf(scoped, memberId).length,
+        memberName: wanted?.name ?? ownMember?.name ?? memberId,
       }
     },
   }))

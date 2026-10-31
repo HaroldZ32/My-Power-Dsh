@@ -1,0 +1,137 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:
+(pass) F-A (CWE-862) — the live append arms require the LEAD > a spawned MEMBER's live create_task is REFUSED with the reason, and the record is untouched [6.79ms]
+(pass) F-A (CWE-862) — the live append arms require the LEAD > a member that also records the LEAD as parentSession is refused all the same [1.11ms]
+(pass) F-A (CWE-862) — the live append arms require the LEAD > NEGATIVE CONTROL: the LEAD's own live appends still land on the record [1.45ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > a member whose parentSession IS the Lead cannot close ANOTHER member's row as the Lead [1.67ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > the same member still closes its OWN row [1.45ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a forked captain that is NOT on the roster still closes as the lead, and the heal sticks [1.46ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a member of ANOTHER name borrowing a stranger's lineage is still refused [1.11ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > a stale row addressed to ANOTHER team's M1 is excluded; this team's own rows are kept [2.53ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: a row stamped with THIS team's id is included, even without the tool's send [1.25ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > a LEGACY unstamped row follows the stated rule: excluded from the team scope and COUNTED [1.33ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: with no team resolved the WHOLE fold is returned, legacy row included [0.30ms]
+455 |     sendRawMail(h.workspace, { fromId: "x", fromName: "old wave", toId: m1, toName: "Senior Engineer", subject: "stale", body: "b", memberIds: [m1], teamId: "team-old-wave" }, NOW)
+456 |     /** The tool's own answer for this team's `M1`. */
+457 |     const answer = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ subject?: string }>; undelivered?: number; total?: number }
+458 |     // ONLY this team's row is its inbox: the other team's row to the same M1 is gone from the list, from
+459 |     // `total` and from `undelivered` (the tool's own send was delivered, the stale row was not).
+460 |     expect(answer.messages?.map((message) => message.subject)).toEqual(["ours"])
+                                                                     ^
+error: expect(received).toEqual(expected)
+
+  [
+    "ours",
++   "stale",
+  ]
+
+- Expected  - 0
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/mail/prefix-family/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:460:64)
+(fail) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > a stale row addressed to ANOTHER team's M1 is excluded from unread, undelivered and total [1.51ms]
+(pass) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > NEGATIVE CONTROL: a row stamped with THIS team is included, even without the tool's send [1.17ms]
+(pass) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > NEGATIVE CONTROL: with no team resolved the unread branch still reads the WHOLE fold [0.29ms]
+506 |     await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "yours", body: "work" }, LEAD)
+507 |     /** The member's OWN session, which is the `executorRef` the record kept for it. */
+508 |     const senior = handleOf(h.workspace, teamId, "Senior Engineer")
+509 |     /** The tool's answer to the member's own read. */
+510 |     const answer = await h.call("agent_teams_mail", { action: "unread" }, senior, { title: "You are the Senior Engineer." }) as { messages?: Array<{ subject?: string }>; total?: number; memberName?: string }
+511 |     expect(answer.messages?.map((message) => message.subject)).toEqual(["yours"])
+                                                                     ^
+error: expect(received).toEqual(expected)
+
+- [
+-   "yours",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/mail/prefix-family/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:511:64)
+(fail) D16c — a member's own `unread` resolves its ROSTER member id > a member reading with no `member` argument sees the mail addressed to its own member row [1.45ms]
+(pass) D16c — a member's own `unread` resolves its ROSTER member id > NEGATIVE CONTROL: an explicit `member` still wins over the self resolution [1.46ms]
+(pass) D16c — a member's own `unread` resolves its ROSTER member id > NEGATIVE CONTROL: a session that names no roster row still reads by its own session id [0.32ms]
+575 |     /** The acknowledgement, through the tool's `read` action. */
+576 |     const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[] }
+577 |     expect(acked.moved).toEqual([first])
+578 |     /** The summary after the ack: the SAME set the bound measures drops by exactly one. */
+579 |     const after = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { summary?: Array<{ memberId?: string; undelivered?: number }> }
+580 |     expect(after.summary?.find((row) => row.memberId === m1)?.undelivered).toBe(7)
+                                                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: 7
+Received: 8
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/mail/prefix-family/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:580:76)
+(fail) H1 — an acknowledged row frees a bound slot through the REAL tool surface > 8 outstanding rows refuse the ninth, one `read` frees exactly one, and `summary` agrees [2.12ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > the repro: partial approve -> retry create+replace -> delete the retry -> dispatch leaves the team LIVE [3.17ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > NEGATIVE CONTROL: a genuinely discarded plan is still reaped, with its plan id in the reason [0.81ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > an old record WITHOUT the field follows the migration rule: never archive-reaped, still phase-reaped [0.92ms]
+(pass) F-J — the staged arm carries kind/coverageOf/sourceTaskId > a staged repair row reaches the STAGED plan and the BOARD with all three fields [1.28ms]
+(pass) F-J — the staged arm carries kind/coverageOf/sourceTaskId > NEGATIVE CONTROL: a staged task that names NO kind still becomes `work` [1.25ms]
+
+packages/mpd-team-core-plugin/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [0.27ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.05ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.04ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.20ms]
+(pass) sending > the bound is PER TEAM — a finished team's backlog cannot refuse a new team's same-named member [0.23ms]
+(pass) sending > an UNSTAMPED row predates the team field, so a stamped team does not count it [0.17ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.23ms]
+127 |     expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe('"senior" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
+128 |     /** The oldest queued row, which the recipient ACKNOWLEDGES to free its slot. */
+129 |     const first = readMailbox(box).messages[0]
+130 |     expect(markRead(box, [first.id], later(10))).toEqual([first.id])
+131 |     // THE RELEASE VALVE: an acknowledgement — not a delivery — frees exactly one slot.
+132 |     expect(send(box, msg({ subject: "after-ack", teamId: "team-live" }), later(11)).ok).toBe(true)
+                                                                                              ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/mail/prefix-family/packages/mpd-team-core-plugin/test/mailbox-store.test.ts:132:89)
+(fail) sending > the LIVE shape: bound 8, and an ACK frees exactly one slot — the operator's release valve [0.50ms]
+144 |     expect(row.undelivered).toBe(backlog)
+145 |     /** The oldest queued row, whose acknowledgement must move BOTH counts. */
+146 |     const first = readMailbox(box).messages[0]
+147 |     markRead(box, [first.id], later(5))
+148 |     // ONE acknowledgement: the bound and the summary drop by exactly ONE each, still agreeing.
+149 |     expect(undeliveredOf(scopeToTeam(readMailbox(box), "team-agree"), "senior").length).toBe(backlog - 1)
+                                                                                              ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/vedit-wave/mail/prefix-family/packages/mpd-team-core-plugin/test/mailbox-store.test.ts:149:89)
+(fail) sending > the summary's `undelivered` counts the SAME set the bound does — one ack drops both by one [0.37ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.17ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.20ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.18ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.06ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.14ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.16ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.06ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.05ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.23ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.04ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.13ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.03ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.08ms]
+
+5 tests failed:
+(fail) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > a stale row addressed to ANOTHER team's M1 is excluded from unread, undelivered and total [1.51ms]
+(fail) D16c — a member's own `unread` resolves its ROSTER member id > a member reading with no `member` argument sees the mail addressed to its own member row [1.45ms]
+(fail) H1 — an acknowledged row frees a bound slot through the REAL tool surface > 8 outstanding rows refuse the ninth, one `read` frees exactly one, and `summary` agrees [2.12ms]
+(fail) sending > the LIVE shape: bound 8, and an ACK frees exactly one slot — the operator's release valve [0.50ms]
+(fail) sending > the summary's `undelivered` counts the SAME set the bound does — one ack drops both by one [0.37ms]
+
+ 40 pass
+ 5 fail
+ 161 expect() calls
+Ran 45 tests across 2 files. [79.00ms]

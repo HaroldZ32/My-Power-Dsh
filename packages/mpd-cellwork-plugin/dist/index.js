@@ -2055,6 +2055,7 @@ function newCellState(input) {
     subcellIds: [],
     requirementsRevision: 0,
     splitRevision: null,
+    splitTaskId: "",
     activatedRevision: null,
     activatedTasks: {},
     activatedLoops: {},
@@ -2181,6 +2182,8 @@ function normalizeMember(name, raw) {
     mode,
     handoffReady: raw.handoffReady === true,
     handoffs: typeof raw.handoffs === "number" ? raw.handoffs : 0,
+    ...raw.fenced === true ? { fenced: true } : {},
+    ...typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {},
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : ""
   };
 }
@@ -2235,6 +2238,7 @@ function normalizeCellState(raw) {
     subcellIds: Array.isArray(raw.subcellIds) ? raw.subcellIds.map(String) : [],
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
+    splitTaskId: typeof raw.splitTaskId === "string" ? raw.splitTaskId : "",
     activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
     activatedTasks: stringMap(raw.activatedTasks),
     activatedLoops: stringMap(raw.activatedLoops),
@@ -2463,6 +2467,19 @@ var VERIFIER_DENY_TOOLS = [
   "mcp__lsp__rename_symbol_strict"
 ];
 var CHECKPOINT_ALLOW_TOOLS = ["cellwork_handoff", "cellwork_context", "cellwork_status"];
+var PLANNER_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var PLANNER_READABLE_ROOT_FILES = [
+  "AGENTS.md",
+  "AGENT.md",
+  "CLAUDE.md",
+  "README.md",
+  "README.zh-CN.md",
+  "CHANGELOG.md"
+];
+var PLANNER_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
+var PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
+var PLANNER_RECON_TOOLS = ["read", "grep", "glob"];
+var PLANNER_SEAT_NAME = "cell-planner";
 var SUBCAPTAIN_FORBIDDEN_NAMES = ["cellwork_start", "cellwork_stop"];
 var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise"];
 function isCaptainAllowed(toolName) {
@@ -2491,7 +2508,52 @@ function checkpointRefusal(toolName) {
 function subcaptainRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a SUBCAPTAIN of the cell: it builds and " + "dispatches the next-level team under the SAME rules as the captain, so it dispatches rather than works, " + "and it never edits a file, runs a shell, does reconnaissance or verifies. Allowed here: `cellwork_*` " + "except `cellwork_handoff`, `cellwork_start` and `cellwork_stop` (stage the sub-cell with " + "`cellwork_subteam`, materialise an accepted split with `cellwork_activate`, dispatch with " + "`cellwork_dispatch` and sweep with `cellwork_supervise`), `agent_teams_*`, `ask_user_question`, " + "`todo_write` and `mpd_memory_*`. Only the CAPTAIN opens or closes a cell: if this cell needs that, " + "send the request with `cellwork_send` and end your turn.";
 }
-function cellworkGuardDecision(seat, toolName) {
+function plannerRefusal(toolName, target) {
+  return "cellwork: `" + toolName + "` on " + target + " is refused — this session is the CELL PLANNER, so" + " its reconnaissance is DELEGATED, never run itself: its context has to carry the interview and the" + " requirements document, and a source tree spent here is context the interview then lacks. Two" + ' read-only routes, both one-shot: `cellwork_recon` {role:"Explorer"|"Researcher", task} — its' + " report comes straight back, and it forwards its own depth cap so it is never refused by the host's" + " nesting default — or `mpd_role_spawn` with a read-only roster role (Explorer, Researcher, Architect)" + " when the cellwork tool is not mounted. The band stays open to you: `.mpd/**`, `docs/**`," + " `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth, inside" + " this workspace or outside its root; and at the workspace root only `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md`.";
+}
+function plannerReadablePath(workspaceRoot, raw) {
+  const posix = String(raw ?? "").replace(/\\/g, "/");
+  if (posix === "")
+    return false;
+  if (isPlannerInstructionFile(posix))
+    return true;
+  const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
+  const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix);
+  let rel;
+  if (!absolute)
+    rel = posix.startsWith("./") ? posix.slice(2) : posix;
+  else if (root !== "" && posix.startsWith(root + "/"))
+    rel = posix.slice(root.length + 1);
+  if (rel === undefined || rel === "")
+    return false;
+  if (rel.split("/").includes(".."))
+    return false;
+  const inBand = PLANNER_READABLE_PREFIXES.some((prefix) => rel.startsWith(prefix) || rel === prefix.replace(/\/$/, ""));
+  if (inBand)
+    return true;
+  if (PLANNER_READABLE_ROOT_FILES.includes(rel))
+    return true;
+  return rel.indexOf("/") === -1 && PLANNER_LICENSE_PATTERN.test(rel);
+}
+function isPlannerInstructionFile(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  if (base === "")
+    return false;
+  return PLANNER_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base);
+}
+var PLANNER_PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+function plannerTargetPath(args) {
+  for (const key of PLANNER_PATH_ARG_KEYS) {
+    const value = args?.[key];
+    if (typeof value === "string" && value !== "")
+      return value;
+  }
+  return;
+}
+function isPlannerSeat(seat) {
+  return seat.name.trim().toLowerCase() === PLANNER_SEAT_NAME;
+}
+function cellworkGuardDecision(seat, toolName, call) {
   if (seat === undefined)
     return;
   if (toolName === "")
@@ -2504,6 +2566,16 @@ function cellworkGuardDecision(seat, toolName) {
     return CHECKPOINT_ALLOW_TOOLS.includes(toolName) ? undefined : checkpointRefusal(toolName);
   if (seat.mode === "subcaptain")
     return isSubcaptainAllowed(toolName) ? undefined : subcaptainRefusal(toolName);
+  if (seat.mode === "member" && isPlannerSeat(seat)) {
+    if (!PLANNER_RECON_TOOLS.includes(toolName))
+      return;
+    const raw = plannerTargetPath(call?.args);
+    if (raw === undefined)
+      return plannerRefusal(toolName, "(no path argument — a bare call searches the whole workspace)");
+    if (plannerReadablePath(call?.workspaceRoot ?? "", raw))
+      return;
+    return plannerRefusal(toolName, JSON.stringify(raw));
+  }
   return;
 }
 function installCellworkGuard(dsh, options) {
@@ -2515,7 +2587,11 @@ function installCellworkGuard(dsh, options) {
     const dispose = dsh.guardTool((exec) => {
       try {
         const toolName = String(exec?.name ?? "");
-        return cellworkGuardDecision(options.seatOf(exec), toolName);
+        const seat = options.seatOf(exec);
+        return cellworkGuardDecision(seat, toolName, {
+          args: exec?.arguments,
+          workspaceRoot: pathBandRootOf(dsh, seat, toolName, exec)
+        });
       } catch {
         return;
       }
@@ -2526,9 +2602,38 @@ function installCellworkGuard(dsh, options) {
     return { installed: false, reason: "install-failed" };
   }
 }
+function pathBandRootOf(dsh, seat, toolName, exec) {
+  if (seat === undefined || seat.mode !== "member" || !isPlannerSeat(seat) || !PLANNER_RECON_TOOLS.includes(toolName))
+    return "";
+  try {
+    return dsh.workspaceRoot(exec);
+  } catch {
+    return "";
+  }
+}
 
 // packages/mpd-cellwork-plugin/src/prompts.ts
 var CELLWORK_USAGE = "usage: /cellwork <objective> — starts cell-work for that objective: a dedicated " + "planner runs a Socratic requirements interview through you, the requirements are split into tasks whose " + "context cost the plugin MEASURES against the executing model's own window, and the team works, hands off, " + "compacts and promotes itself. `/cellwork` is the only way to start the mode.";
+var PLANNER_RECON_LINES = [
+  "",
+  "RECONNAISSANCE IS DELEGATED, NEVER RUN BY YOU: do not `read`, `grep` or `glob` the project's source",
+  "yourself — the cellwork guard refuses exactly that (its refusal names the two routes below), and with",
+  "reason. Your context is spent on the interview and the requirements document: a source tree read here is",
+  "context the interview then lacks, while the REPORT you actually need is a hundred lines, not ten thousand.",
+  "",
+  "THE TWO ROUTES, both one-shot and READ-ONLY, and you consume the report rather than re-deriving it:",
+  '1. `cellwork_recon` {role:"Explorer"|"Researcher", task} — the in-cell route. Its report comes straight',
+  "   back to you and is journaled, and it forwards its own depth cap, so the host's nesting default never",
+  "   refuses it. `Explorer` finds the file and the code; `Researcher` collects evidence and cites it.",
+  '2. `mpd_role_spawn` {role:"Explorer"|"Researcher"|"Architect", task} — the roster route, for a',
+  "   composition where the cellwork tool is not mounted. Same discipline: ONE bounded question, one report.",
+  "",
+  "THE BAND YOU MAY READ YOURSELF: `.mpd/**` (the cell record, the requirements file, the contracts),",
+  "`docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`, `AGENTS.md` or `CLAUDE.md` at any depth,",
+  "inside this workspace or outside its root; and at the workspace root `README.md`, `README.zh-CN.md`,",
+  "`CHANGELOG.md` and `LICENSE*.md`.",
+  ""
+];
 function activationDirective(input) {
   const state = input.state;
   const dir = cellDir(input.workspace, state.cellId);
@@ -2585,26 +2690,22 @@ function normalizeHeading(heading) {
 }
 function parseSections(text) {
   const sections = new Map;
-  let current;
-  let body = [];
-  const flush = () => {
-    if (current !== undefined && !sections.has(current))
-      sections.set(current, body.join(`
-`).trim());
-    body = [];
-  };
-  for (const line of text.split(`
-`)) {
-    const heading = /^(#{1,4})\s+(.+?)\s*$/.exec(line);
-    if (heading !== null) {
-      flush();
-      current = normalizeHeading(heading[2]);
-      continue;
-    }
-    if (current !== undefined)
-      body.push(line);
+  const lines = text.split(`
+`);
+  const headings = [];
+  for (let index = 0;index < lines.length; index += 1) {
+    const match = /^(#{1,4})\s+(.+?)\s*$/.exec(lines[index]);
+    if (match !== null)
+      headings.push({ line: index, level: match[1].length, key: normalizeHeading(match[2]) });
   }
-  flush();
+  for (let position = 0;position < headings.length; position += 1) {
+    const heading = headings[position];
+    const closing = headings.slice(position + 1).find((candidate) => candidate.level <= heading.level);
+    const body = lines.slice(heading.line + 1, closing === undefined ? lines.length : closing.line).join(`
+`).trim();
+    if (!sections.has(heading.key))
+      sections.set(heading.key, body);
+  }
   return sections;
 }
 function headingSatisfies(heading, section) {
@@ -2652,7 +2753,7 @@ function writeRequirements(workspace, cellId, text) {
 }
 
 // packages/mpd-cellwork-plugin/src/split.ts
-import { readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
+import { existsSync as existsSync3, readdirSync as readdirSync2, readFileSync as readFileSync3 } from "node:fs";
 import { dirname as dirname2 } from "node:path";
 
 // packages/mpd-cellwork-plugin/src/budget.ts
@@ -2837,6 +2938,20 @@ var CELL_ROLES = ["cell-planner", "cell-splitter"];
 function roleKey(role) {
   return role.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+var MEMBER_NAME_MAX_CHARS = 64;
+function memberProblem(member) {
+  const name = member.trim();
+  if (name === "")
+    return "member is empty — name the board member this task is raised for, or omit `member` to use the owner role";
+  if (name.length > MEMBER_NAME_MAX_CHARS)
+    return "member " + JSON.stringify(name) + " is longer than " + String(MEMBER_NAME_MAX_CHARS) + " characters";
+  if (/[\u0000-\u001f\u007f/\\]/.test(name))
+    return "member " + JSON.stringify(name) + " contains a control character or a path separator";
+  return null;
+}
+function resolvedMember(task) {
+  return (task.member ?? task.ownerRole).trim();
+}
 function isSafeTaskKey(key) {
   return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(key) && key !== "." && key !== "..";
 }
@@ -2878,6 +2993,11 @@ function validateGraph(tasks, roster) {
     } else if (!roles.has(roleKey(task.ownerRole))) {
       findings.push({ taskKey: task.key, code: "unknown-owner-role", detail: "ownerRole " + JSON.stringify(task.ownerRole) + " is neither a roster role nor a cell role (" + CELL_ROLES.join(", ") + ")" });
     }
+    if (task.member !== undefined) {
+      const memberReason = memberProblem(task.member);
+      if (memberReason !== null)
+        findings.push({ taskKey: task.key, code: "member-invalid", detail: memberReason });
+    }
     if (task.blockedBy === undefined && task.independent !== true) {
       findings.push({ taskKey: task.key, code: "no-dependency-answer", detail: "the task declares no dependency answer: pass blockedBy (an array; [] is an explicit root) or independent: true" });
     }
@@ -2891,6 +3011,24 @@ function validateGraph(tasks, roster) {
       if (!keys.has(reference))
         findings.push({ taskKey: task.key, code: "unknown-blocker", detail: "blockedBy names " + JSON.stringify(reference) + ", which is not a task key in this split" });
     }
+  }
+  const memberRoles = new Map;
+  for (const task of tasks) {
+    if (task.member === undefined || memberProblem(task.member) !== null)
+      continue;
+    const name = task.member.trim();
+    const entry = memberRoles.get(name);
+    if (entry === undefined) {
+      memberRoles.set(name, { roles: new Set([roleKey(task.ownerRole)]), keys: [task.key] });
+    } else {
+      entry.roles.add(roleKey(task.ownerRole));
+      entry.keys.push(task.key);
+    }
+  }
+  for (const [name, entry] of memberRoles) {
+    if (entry.roles.size <= 1)
+      continue;
+    findings.push({ taskKey: entry.keys[0], code: "member-role-conflict", detail: "member " + JSON.stringify(name) + " is declared with DIFFERENT owner roles by tasks " + entry.keys.map((key) => JSON.stringify(key)).join(", ") + " — one member has one role; declare a separate member per role, or align the owner roles" });
   }
   const visiting = new Set;
   const done = new Set;
@@ -2952,7 +3090,13 @@ function validateGraph(tasks, roster) {
       findings.push({ taskKey: task.key, code: "review-count", detail: "verify: true requires EXACTLY one review task blocked by " + JSON.stringify(task.key) + "; this split declares " + String(reviews.length) });
       continue;
     }
-    if (roleKey(reviews[0].ownerRole) === roleKey(task.ownerRole)) {
+    const workMember = task.member;
+    const reviewMember = reviews[0].member;
+    if (workMember !== undefined && reviewMember !== undefined) {
+      if (resolvedMember(task) === resolvedMember(reviews[0])) {
+        findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is raised for the SAME member as the work it reviews (" + JSON.stringify(resolvedMember(task)) + ") — the verifier must be a different member" });
+      }
+    } else if (roleKey(reviews[0].ownerRole) === roleKey(task.ownerRole)) {
       findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is owned by the SAME role as the work it reviews (" + JSON.stringify(task.ownerRole) + ") — the verifier must be a different declared role" });
     }
   }
@@ -2984,6 +3128,7 @@ async function submitSplit(deps, submission) {
       description: task.description,
       kind: task.kind ?? "work",
       ownerRole: task.ownerRole,
+      member: resolvedMember(task),
       writeScopes: [...task.writeScopes],
       blockedBy: [...task.blockedBy ?? []],
       inputs,
@@ -3024,16 +3169,13 @@ async function submitSplit(deps, submission) {
     }
   };
   const canonical = splitPath(deps.workspace, deps.cellId, submission.revision);
-  const stored = readSplit(deps.workspace, deps.cellId, submission.revision);
-  const wouldDestroyAccepted = !accepted && stored.ok && stored.verdict.accepted;
-  const file = wouldDestroyAccepted ? refusedSplitPath(deps.workspace, deps.cellId, submission.revision) : canonical;
+  const file = accepted ? canonical : refusedSplitPath(deps.workspace, deps.cellId, submission.revision);
   const persisted = { ...verdict, file };
   atomicWriteText(file, JSON.stringify(persisted, null, 2) + `
 `);
   return persisted;
 }
-function readSplit(workspace, cellId, revision) {
-  const path = splitPath(workspace, cellId, revision);
+function readVerdictFile(path) {
   let text;
   try {
     text = readFileSync3(path, "utf8");
@@ -3055,6 +3197,9 @@ function readSplit(workspace, cellId, revision) {
   }
   return { ok: true, verdict };
 }
+function readSplit(workspace, cellId, revision) {
+  return readVerdictFile(splitPath(workspace, cellId, revision));
+}
 function latestSplit(workspace, cellId) {
   const dir = dirname2(splitPath(workspace, cellId, 0));
   let entries = [];
@@ -3063,10 +3208,19 @@ function latestSplit(workspace, cellId) {
   } catch {
     return null;
   }
-  const revisions = entries.filter((entry) => /^\d+\.json$/.test(entry)).map((entry) => Number(entry.slice(0, -".json".length))).filter((value) => Number.isInteger(value) && value > 0).sort((a, b) => b - a);
-  if (revisions.length === 0)
+  let latest = 0;
+  for (const entry of entries) {
+    const match = /^(\d+)(?:\.refused)?\.json$/.exec(entry);
+    if (match === null)
+      continue;
+    const revision = Number(match[1]);
+    if (Number.isInteger(revision) && revision > latest)
+      latest = revision;
+  }
+  if (latest === 0)
     return null;
-  return { revision: revisions[0], read: readSplit(workspace, cellId, revisions[0]) };
+  const canonical = splitPath(workspace, cellId, latest);
+  return { revision: latest, read: readVerdictFile(existsSync3(canonical) ? canonical : refusedSplitPath(workspace, cellId, latest)) };
 }
 function errorText3(error) {
   return error instanceof Error ? error.message : String(error);
@@ -3136,7 +3290,7 @@ async function runRecon(deps, input) {
 }
 
 // packages/mpd-cellwork-plugin/src/activate.ts
-import { existsSync as existsSync3, readFileSync as readFileSync4 } from "node:fs";
+import { existsSync as existsSync4, readFileSync as readFileSync4 } from "node:fs";
 
 // packages/mpd-cellwork-plugin/src/dispatch.ts
 function nameKey(name) {
@@ -3165,6 +3319,30 @@ function resolveOwner(members, owner) {
     return exact;
   const key = nameKey(trimmed);
   return members.find((member) => nameKey(String(member.name ?? "")) === key);
+}
+function fenceReasonOf(member) {
+  if (member === undefined)
+    return;
+  if (member.fenced === true) {
+    return "the compaction barrier gave up and fenced it" + (typeof member.fencedReason === "string" && member.fencedReason !== "" ? " (" + member.fencedReason + ")" : "");
+  }
+  if (member.mode === "checkpoint")
+    return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it";
+  if (member.handoffReady === true)
+    return "a handoff is already written and waiting for the compaction barrier";
+  return;
+}
+function cellMemberOf(cell, memberName) {
+  const members = cell.members ?? {};
+  const exact = members[memberName];
+  if (exact !== undefined)
+    return exact;
+  const key = nameKey(memberName);
+  for (const [name, row] of Object.entries(members)) {
+    if (nameKey(name) === key || nameKey(String(row.name ?? "")) === key)
+      return row;
+  }
+  return;
 }
 function splitKeyOfBoardId(cell, boardId) {
   const mapping = cell.activatedTasks ?? {};
@@ -3234,6 +3412,11 @@ async function dispatchOwnerOnly(deps) {
       continue;
     }
     const memberName = String(member.name ?? owner);
+    const fence = fenceReasonOf(cellMemberOf(deps.cell, memberName)) ?? fenceReasonOf(member);
+    if (fence !== undefined) {
+      report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — a fenced member is never messaged; reassign the row: cellwork_dispatch {reassign:[{task_id:" + JSON.stringify(taskId) + ', owner:"<another member>"}]}' });
+      continue;
+    }
     if (member.status === "failed") {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " FAILED to start" });
       continue;
@@ -3267,6 +3450,84 @@ async function dispatchOwnerOnly(deps) {
   }
   return report;
 }
+function reassignPairs(value) {
+  const pairs = [];
+  const invalid = [];
+  if (value === undefined)
+    return { pairs, invalid };
+  if (!Array.isArray(value))
+    return { pairs, invalid: ["`reassign` must be an array of {task_id, owner} objects"] };
+  const seen = new Set;
+  for (const entry of value) {
+    const row = typeof entry === "object" && entry !== null && !Array.isArray(entry) ? entry : undefined;
+    const taskId = typeof row?.task_id === "string" ? row.task_id.trim() : "";
+    const owner = typeof row?.owner === "string" ? row.owner.trim() : "";
+    if (taskId === "" || owner === "") {
+      invalid.push("every `reassign` entry needs a non-empty `task_id` and `owner` (got " + JSON.stringify(entry) + ")");
+      continue;
+    }
+    if (seen.has(taskId)) {
+      invalid.push("task " + JSON.stringify(taskId) + " is named twice in `reassign` — one claim per row per call");
+      continue;
+    }
+    seen.add(taskId);
+    pairs.push({ taskId, owner });
+  }
+  return { pairs, invalid };
+}
+async function applyReassignments(deps) {
+  const outcomes = [];
+  const tasks = Array.isArray(deps.record?.tasks) ? deps.record.tasks : [];
+  const members = Array.isArray(deps.record?.members) ? deps.record.members : [];
+  for (const pair of deps.pairs) {
+    const task = tasks.find((row) => String(row.id ?? "") === pair.taskId);
+    if (task === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "no board row is named " + JSON.stringify(pair.taskId) + " — nothing was reassigned" });
+      continue;
+    }
+    const status = String(task.status ?? "");
+    if (status === "completed" || status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "row " + pair.taskId + " is already " + status + " — a terminal row is never reopened" });
+      continue;
+    }
+    const member = resolveOwner(members, pair.owner);
+    if (member === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: "the roster does not name " + JSON.stringify(pair.owner) + " — no substitution is made" });
+      continue;
+    }
+    const memberName = String(member.name ?? pair.owner);
+    const fence = fenceReasonOf(cellMemberOf(deps.cell, memberName)) ?? fenceReasonOf(member);
+    if (fence !== undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — pick an unfenced member" });
+      continue;
+    }
+    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "");
+    if (handle === "") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " has no executor handle (never raised) — claiming the row for it would hide the row from the next pass" });
+      continue;
+    }
+    const previous = String(task.owner ?? "").trim();
+    let claimed;
+    try {
+      claimed = await deps.claim(pair.taskId, memberName);
+    } catch (error) {
+      claimed = { ok: false, error: errorText4(error) };
+    }
+    if (!claimed.ok) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the board refused the claim: " + (claimed.error ?? "unknown refusal") });
+      continue;
+    }
+    appendJournal(deps.workspace, deps.cell.cellId, { event: "task-reassigned", taskId: pair.taskId, from: previous, to: memberName, member: memberName }, deps.now);
+    try {
+      await deps.send(handle, dispatchMessageFor(deps, task, pair.taskId));
+    } catch (error) {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: true, delivered: false, reason: "the row IS claimed for " + JSON.stringify(memberName) + " but the message failed: " + errorText4(error) });
+      continue;
+    }
+    outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: true, delivered: true });
+  }
+  return outcomes;
+}
 function sendThroughExecutor(executor, captainAgent) {
   if (executor === undefined || typeof executor.send !== "function")
     return;
@@ -3276,373 +3537,6 @@ function sendThroughExecutor(executor, captainAgent) {
 }
 function errorText4(error) {
   return error instanceof Error ? error.message : String(error);
-}
-
-// packages/mpd-cellwork-plugin/src/activate.ts
-var CONTRACT_LOOP_PLACEHOLDER = "The verification loop is opened at activation; its id is appended below before dispatch.";
-function producerIdentity(cellId) {
-  return "cellwork:" + cellId;
-}
-function topologicalOrder(tasks) {
-  const ordered = [];
-  const emitted = new Set;
-  const byKey = new Map(tasks.map((task) => [task.key, task]));
-  const emit = (key) => {
-    if (emitted.has(key))
-      return;
-    const row = byKey.get(key);
-    if (row === undefined) {
-      emitted.add(key);
-      return;
-    }
-    for (const blocker of row.blockedBy)
-      emit(blocker);
-    emitted.add(key);
-    ordered.push(row);
-  };
-  for (const task of tasks)
-    emit(task.key);
-  return ordered;
-}
-function memberPrompt(deps, ownerRole, owned) {
-  const persona = deps.personaFor(ownerRole);
-  const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject);
-  return [
-    ...persona === null ? [] : [persona, ""],
-    "[mpd-cellwork] You are " + ownerRole + " on cell " + deps.cell.cellId + ".",
-    "",
-    "OBJECTIVE (the user's own words):",
-    deps.cell.objective,
-    "",
-    "YOUR TASKS on this cell's board (one dispatch message per task will follow):",
-    ...taskLines,
-    "",
-    "PROTOCOL:",
-    '1. WAIT for the dispatch message naming your task, then CLAIM it: agent_teams_task {action:"claim", task_id}.',
-    "2. The dispatch message names the paths you may write. Do not write outside them.",
-    "3. Read the frozen contract named in the message before you start; it is what your verifier judges.",
-    '4. On completion: agent_teams_task {action:"complete", task_id, note:"<one line>"}.',
-    "5. If you need a user decision, mail the captain; the captain relays the question. Do not guess.",
-    "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn."
-  ].join(`
-`);
-}
-function reviewTaskDescription(task, workTask, cellId) {
-  const contract = contractRelativePath(cellId, workTask.key);
-  return [
-    "VERIFY the work task " + JSON.stringify(workTask.key) + " (" + workTask.subject + ") as a BLIND reviewer.",
-    "Frozen contract: " + contract + " — read it (and the repository documentation) BEFORE the implementation.",
-    "It names the verification loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
-    "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
-    "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
-    "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task."
-  ].join(`
-`);
-}
-function buildContractDoc(deps, task, reviewer, boardId) {
-  const gates = deps.config.contractGates.length === 0 ? ["the repository's own declared gates (read the project instruction file: AGENTS.md §4, or its equivalent)"] : [...deps.config.contractGates];
-  const verifier = reviewer === undefined ? "NO REVIEW TASK — this task's verification is not armed" : reviewer.ownerRole;
-  return [
-    "# Acceptance contract — " + task.key + ": " + task.subject,
-    "",
-    "Cell: `" + deps.cell.cellId + "` · split revision " + String(deps.split.revision) + " · frozen " + deps.split.submittedAt,
-    "producer: " + producerIdentity(deps.cell.cellId),
-    "Owner: **" + task.ownerRole + "** · Verifier: **" + verifier + "** · Board task: `" + boardId + "`",
-    "",
-    "## Deliverable",
-    task.description,
-    "",
-    "## Allowed write scopes",
-    ...task.writeScopes.length === 0 ? ["(none declared — this task produces no code)"] : task.writeScopes.map((scope) => "- `" + scope + "`"),
-    "",
-    "## Acceptance criteria",
-    "1. The deliverable above exists, and every changed path is inside the allowed write scopes.",
-    "2. The gate commands below pass, with their observed exit codes quoted.",
-    "3. The BUILD's claims are re-checked from THIS contract and the documentation, never from the builder's reasoning.",
-    "4. A DIFFERENT agent records the verdict (see the verification protocol), citing documents and gate evidence ids.",
-    "",
-    "## Gate commands",
-    ...gates.map((gate) => "- `" + gate + "`"),
-    "",
-    "## Verification protocol",
-    "1. Bind the seat: `mpd_verify_seat {loop_id:<id from this contract's Loop section>}`.",
-    "2. Read the documentation band and this contract first; only a RECORDED FAIL makes reading the implementation legitimate.",
-    '3. Produce gate evidence and record the verdict: `mpd_verify_record {loop_id, verdict:"PASS"|"FAIL", sources:[…], evidence_ids:[…]}`.',
-    "4. On FAIL, name each finding with the document source that proves it and leave the repair to the writer.",
-    "",
-    "## Loop",
-    CONTRACT_LOOP_PLACEHOLDER
-  ].join(`
-`);
-}
-function withLoopId(doc, loopId) {
-  return doc.replace(CONTRACT_LOOP_PLACEHOLDER, "The verification loop is opened at activation; `" + loopId + '` (`mpd_verify_seat {loop_id:"' + loopId + '"}`).');
-}
-function contractAlreadyNamesLoop(deps, taskKey) {
-  const path = contractPath(deps.workspace, deps.cell.cellId, taskKey);
-  try {
-    if (!existsSync3(path))
-      return false;
-    return !readFileSync4(path, "utf8").includes(CONTRACT_LOOP_PLACEHOLDER);
-  } catch {
-    return false;
-  }
-}
-async function materializeSplit(deps) {
-  const teamId = deps.cell.teamId;
-  if (teamId === "")
-    return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" };
-  const partial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} };
-  let mutated = false;
-  const snapshot = () => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } });
-  const checkpoint = () => {
-    mutated = true;
-    deps.checkpoint(snapshot());
-  };
-  const fail = (error) => ({ ok: false, error, ...mutated ? { partial: snapshot() } : {} });
-  const errorText5 = (error) => error instanceof Error ? error.message : String(error);
-  const call = async (arguments_) => {
-    try {
-      const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent });
-      if (!result.ok)
-        return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" };
-      return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value : {} };
-    } catch (error) {
-      return { ok: false, error: errorText5(error) };
-    }
-  };
-  const reviewerOf = (key) => deps.split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(key));
-  const mode = deps.cell.activatedRevision === null ? "initial" : "resplit";
-  const previous = new Map(Object.entries(deps.cell.activatedTasks));
-  const keptKeys = new Set(deps.split.tasks.filter((task) => previous.has(task.key)).map((task) => task.key));
-  const droppedKeys = [...previous.keys()].filter((key) => !keptKeys.has(key) && deps.cell.cancelledTasks[key] === undefined);
-  const fresh = deps.split.tasks.filter((task) => !keptKeys.has(task.key));
-  const freshCode = fresh.filter((task) => task.writeScopes.length > 0);
-  let live;
-  try {
-    live = deps.recordFor(teamId);
-  } catch {
-    live = undefined;
-  }
-  const liveRoster = new Map;
-  for (const row of live?.members ?? [])
-    if (typeof row.name === "string" && row.name !== "")
-      liveRoster.set(roleKey(row.name), row);
-  const existingMembers = new Map(Object.values(deps.cell.members).map((member) => [roleKey(member.name), member]));
-  for (const [key, row] of liveRoster) {
-    const remembered = existingMembers.get(key);
-    const executorRef = typeof row.executorRef === "string" ? row.executorRef : "";
-    const name = typeof row.name === "string" ? row.name : key;
-    const owned = deps.split.tasks.filter((task) => roleKey(task.ownerRole) === key);
-    existingMembers.set(key, remembered === undefined ? { name, role: typeof row.role === "string" ? row.role : "", sessionId: executorRef, executorRef, mode: owned.length > 0 && owned.every((task) => task.kind === "review") ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() } : { ...remembered, sessionId: executorRef === "" ? remembered.sessionId : executorRef, executorRef: executorRef === "" ? remembered.executorRef : executorRef });
-  }
-  for (const task of freshCode) {
-    const reviewer = reviewerOf(task.key);
-    const doc = buildContractDoc(deps, task, reviewer, "");
-    const path = contractPath(deps.workspace, deps.cell.cellId, task.key);
-    try {
-      atomicWriteText(path, doc + `
-`);
-    } catch (error) {
-      return fail("cellwork_activate could not write the contract for " + JSON.stringify(task.key) + ": " + errorText5(error));
-    }
-    partial.contracts[task.key] = path;
-    checkpoint();
-  }
-  const handledRoles = new Set;
-  const newMembers = {};
-  const reused = [];
-  for (const task of fresh) {
-    const key = roleKey(task.ownerRole);
-    if (handledRoles.has(key))
-      continue;
-    handledRoles.add(key);
-    const owned = deps.split.tasks.filter((candidate) => roleKey(candidate.ownerRole) === key);
-    const existing = existingMembers.get(key);
-    if (existing !== undefined) {
-      reused.push(existing.name);
-      if (deps.cell.members[existing.name] === undefined) {
-        newMembers[existing.name] = existing;
-        partial.members = { ...partial.members, ...newMembers };
-        checkpoint();
-      }
-      continue;
-    }
-    const pureVerifier = owned.every((candidate) => candidate.kind === "review");
-    const name = task.ownerRole.trim();
-    const added = await call({
-      action: "add_member",
-      member: { name, role: name, description: name + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, name, owned) }
-    });
-    if (!added.ok) {
-      if (added.error.includes("is already on the roster")) {
-        let refreshed;
-        try {
-          refreshed = deps.recordFor(teamId);
-        } catch {
-          refreshed = undefined;
-        }
-        const row = (refreshed?.members ?? []).find((candidate) => roleKey(String(candidate.name ?? "")) === key);
-        if (row !== undefined) {
-          const executorRef = typeof row.executorRef === "string" ? row.executorRef : "";
-          const liveName = String(row.name);
-          newMembers[liveName] = { name: liveName, role: name, sessionId: executorRef, executorRef, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() };
-          reused.push(liveName);
-          partial.members = { ...partial.members, ...newMembers };
-          checkpoint();
-          continue;
-        }
-      }
-      return fail("cellwork_activate could not raise " + JSON.stringify(name) + ": " + added.error);
-    }
-    const handle = typeof added.value.spawned === "string" ? added.value.spawned : "";
-    if (handle === "")
-      return fail("cellwork_activate raised " + JSON.stringify(name) + " but the answer carried no executor handle");
-    newMembers[name] = { name, role: name, sessionId: handle, executorRef: handle, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() };
-    partial.members = { ...partial.members, ...newMembers };
-    checkpoint();
-  }
-  const boardIds = new Map;
-  for (const key of keptKeys) {
-    const id = previous.get(key);
-    if (id !== undefined && id !== "")
-      boardIds.set(key, id);
-  }
-  const activated = [];
-  for (const task of topologicalOrder(fresh)) {
-    const memberName = task.ownerRole.trim();
-    const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference);
-    const description = task.kind === "review" ? reviewTaskDescription(task, deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task, deps.cell.cellId) : task.description;
-    const appended = await call({
-      action: "create_task",
-      task: {
-        subject: task.subject,
-        description,
-        kind: task.kind,
-        owner: memberName,
-        ...task.writeScopes.length === 0 ? {} : { write_scopes: [...task.writeScopes] },
-        blocked_by: mappedBlockers
-      }
-    });
-    if (!appended.ok)
-      return fail("cellwork_activate could not append task " + JSON.stringify(task.key) + ": " + appended.error);
-    const row = typeof appended.value.task === "object" && appended.value.task !== null ? appended.value.task : undefined;
-    const boardId = typeof row?.id === "string" ? row.id : "";
-    if (boardId === "")
-      return fail("cellwork_activate appended task " + JSON.stringify(task.key) + " but the answer carried no board id");
-    boardIds.set(task.key, boardId);
-    activated.push({ key: task.key, boardId, kind: task.kind, ownerRole: task.ownerRole, memberName });
-    partial.boardIds[task.key] = boardId;
-    checkpoint();
-  }
-  const loopIds = new Map(Object.entries(deps.cell.activatedLoops ?? {}));
-  const loops = [];
-  const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0);
-  const armedByContract = new Set;
-  for (const task of codeTasks) {
-    if (loopIds.has(task.key))
-      continue;
-    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
-      armedByContract.add(task.key);
-      continue;
-    }
-    const boardId = boardIds.get(task.key) ?? "";
-    if (boardId === "")
-      return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board");
-    const contract = contractRelativePath(deps.cell.cellId, task.key);
-    let opened;
-    try {
-      opened = await deps.dsh.executeTool({
-        name: "mpd_verify_open",
-        arguments: { writer: "delegate", contract, scope: [...task.writeScopes], task_id: boardId },
-        agent: deps.captainAgent
-      });
-    } catch (error) {
-      return fail("cellwork_activate could not open the verify loop for " + JSON.stringify(task.key) + ": " + errorText5(error));
-    }
-    if (!opened.ok)
-      return fail("cellwork_activate could not open the verify loop for " + JSON.stringify(task.key) + ": " + String(opened.error));
-    const value = typeof opened.value === "object" && opened.value !== null ? opened.value : {};
-    if (typeof value.refused === "string")
-      return fail("cellwork_activate was REFUSED a verify loop for " + JSON.stringify(task.key) + ": " + value.refused);
-    const loopId = typeof value.loopId === "string" ? value.loopId : "";
-    if (loopId === "")
-      return fail("cellwork_activate opened no loop id for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
-    loopIds.set(task.key, loopId);
-    loops.push({ taskKey: task.key, boardId, loopId });
-    partial.loopIds[task.key] = loopId;
-    const path = partial.contracts[task.key] ?? contractPath(deps.workspace, deps.cell.cellId, task.key);
-    const stored = buildContractDoc(deps, task, reviewerOf(task.key), boardId);
-    try {
-      atomicWriteText(path, withLoopId(stored, loopId) + `
-`);
-    } catch (error) {
-      return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText5(error));
-    }
-    checkpoint();
-  }
-  for (const task of deps.split.tasks) {
-    if ((boardIds.get(task.key) ?? "") === "")
-      return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to dispatch");
-    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "" && !armedByContract.has(task.key))
-      return fail("cellwork_activate has no verify loop for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
-  }
-  const cancelled = [];
-  for (const key of droppedKeys) {
-    const boardId = previous.get(key) ?? "";
-    cancelled.push({ key, boardId });
-    appendJournal(deps.workspace, deps.cell.cellId, { event: "task-cancelled", key, boardId, revision: deps.split.revision, reason: "the accepted split no longer carries this task; the board row is kept and dispatch skips it" }, deps.now);
-  }
-  let dispatch;
-  let record;
-  try {
-    record = deps.recordFor(teamId);
-    const send = sendThroughExecutor(deps.dsh.teamExecutor(), deps.captainAgent);
-    const excludedTaskIds = [...Object.values(deps.cell.cancelledTasks), ...cancelled.map((entry) => entry.boardId)].filter((id) => id !== "");
-    const cellForDispatch = { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) };
-    dispatch = send === undefined ? { pairs: [], skipped: [], refused: "the team executor seam is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" } : await dispatchOwnerOnly({ workspace: deps.workspace, cell: cellForDispatch, record, send, excludedTaskIds, now: deps.now });
-  } catch (error) {
-    return fail("cellwork_activate could not dispatch: " + errorText5(error));
-  }
-  const splitterRow = (record?.tasks ?? []).find((task) => roleKey(String(task.owner ?? "")) === roleKey("cell-splitter") && task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled");
-  const splitTaskId = String(splitterRow?.id ?? "");
-  if (splitTaskId !== "") {
-    try {
-      await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "complete", task_id: splitTaskId, note: "split revision " + String(deps.split.revision) + " materialised by activation" }, agent: deps.captainAgent });
-    } catch {}
-  }
-  appendJournal(deps.workspace, deps.cell.cellId, {
-    event: "activate",
-    teamId,
-    mode,
-    splitRevision: deps.split.revision,
-    producer: producerIdentity(deps.cell.cellId),
-    tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
-    kept: [...keptKeys],
-    cancelled,
-    contracts: Object.values(partial.contracts),
-    loops: loops.map((loop) => ({ taskKey: loop.taskKey, loopId: loop.loopId })),
-    reused,
-    dispatched: dispatch.pairs.length,
-    skipped: dispatch.skipped.length,
-    ...splitTaskId === "" ? {} : { splitTaskId }
-  }, deps.now);
-  return {
-    ok: true,
-    outcome: {
-      mode,
-      contracts: Object.values(partial.contracts),
-      members: { ...newMembers },
-      reused: [...reused],
-      tasks: activated,
-      boardIds: Object.fromEntries(boardIds),
-      kept: [...keptKeys],
-      cancelled,
-      loops,
-      dispatch,
-      ...splitTaskId === "" ? {} : { splitTaskId }
-    }
-  };
 }
 
 // packages/mpd-cellwork-plugin/src/staging.ts
@@ -3693,7 +3587,7 @@ function plannerPrompt(deps) {
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
     '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back.',
-    "",
+    ...PLANNER_RECON_LINES,
     "THE DOCUMENT: write `<cell>/requirements.md` under the cell directory with these headings exactly:",
     "  ## Goal · ## Non-goals · ## Users / consumers · ## Constraints · ## Acceptance criteria · ## Open questions",
     "Every section must carry real content; an empty section will be refused.",
@@ -3761,10 +3655,15 @@ async function stagePlanningTeam(deps) {
   const existingTeamId = deps.cell.teamId;
   if (existingTeamId !== "") {
     const record = deps.teams()?.get?.(deps.workspace, existingTeamId);
+    const ticket2 = await resolveSplitTicket(deps, existingTeamId, "", false);
+    if (ticket2.boardReadable && ticket2.splitTaskId === "")
+      return { ok: false, error: "the planning team " + existingTeamId + " is on this cell's record but " + ticket2.repairError, teamId: existingTeamId, planName: "cell " + deps.cell.cellId, partial: true };
     return {
       ok: true,
       alreadyStaged: true,
       teamId: existingTeamId,
+      tasks: { splitId: ticket2.splitTaskId },
+      ...ticket2.ownerRepaired ? { ownerRepaired: true } : {},
       ...record === undefined ? {} : {
         members: {
           [PLANNER_MEMBER]: planningMemberRow(PLANNER_MEMBER, PLANNER_ROLE, deps.cell, deps.now),
@@ -3816,7 +3715,10 @@ async function stagePlanningTeam(deps) {
       }
       recovered[name] = livePlanningMemberRow(name, role, textField2(appended.value, "spawned"), deps.cell, deps.now);
     }
-    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, planName };
+    const recoveredTicket = await resolveSplitTicket(deps, recoveredId, "", false);
+    if (recoveredTicket.boardReadable && recoveredTicket.splitTaskId === "")
+      return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true };
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {} };
   }
   if (plan === undefined) {
     if (typeof status.value.team === "object" && status.value.team !== null) {
@@ -3882,11 +3784,20 @@ async function stagePlanningTeam(deps) {
   if (stoppedAt !== "") {
     return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + '); the record exists — inspect `agent_teams_plan {action:"status"}` and repair it', teamId, members, planName, partial: true };
   }
+  const postedId = (subject) => posted.find((row) => row.subject === subject)?.id ?? "";
+  const answeredSplitId = postedId(SPLIT_TASK_SUBJECT) === "" ? posted[1]?.id ?? "" : postedId(SPLIT_TASK_SUBJECT);
+  const ticket = await resolveSplitTicket(deps, teamId, answeredSplitId, true);
+  const splitId = ticket.splitTaskId === "" ? answeredSplitId : ticket.splitTaskId;
+  if (ticket.boardReadable && splitId === "")
+    return { ok: false, error: "the planning team " + teamId + " was approved but " + ticket.repairError, teamId, members, planName, partial: true };
+  if (ticket.repairError !== "")
+    return { ok: false, error: ticket.repairError, teamId, members, planName, partial: true };
   return {
     ok: true,
     teamId,
     members,
-    tasks: { requirementsId: posted[0]?.id, splitId: posted[1]?.id }
+    tasks: { requirementsId: postedId(REQUIREMENTS_TASK_SUBJECT), splitId },
+    ...ticket.ownerRepaired ? { ownerRepaired: true } : {}
   };
 }
 function livePlanningMemberRow(name, role, handle, cell, now) {
@@ -3916,11 +3827,438 @@ function splitterTaskDescription(cell) {
   ].join(`
 `);
 }
+var TERMINAL_TICKET_STATUSES = ["completed", "failed", "cancelled"];
+var SPLIT_TICKET_REPAIR = 'agent_teams_task {action:"claim", claimant:"cell-splitter"}';
+function findSplitTicket(rows, splitTaskId, liveOnly) {
+  const live = (row) => !TERMINAL_TICKET_STATUSES.includes(String(row.status ?? ""));
+  const recorded = splitTaskId === "" ? undefined : rows.find((row) => String(row.id ?? "") === splitTaskId);
+  if (recorded !== undefined && (!liveOnly || live(recorded)))
+    return recorded;
+  const owned = rows.filter((row) => roleKey(String(row.owner ?? "")) === roleKey(SPLITTER_MEMBER));
+  return owned.find(live) ?? (liveOnly ? undefined : owned[0]);
+}
+async function resolveSplitTicket(deps, teamId, preferredId, liveOnly) {
+  const record = deps.teams()?.get?.(deps.workspace, teamId);
+  if (typeof record !== "object" || record === null) {
+    return { splitTaskId: "", ownerRepaired: false, repairError: "", boardReadable: false };
+  }
+  const rows = Array.isArray(record.tasks) ? record.tasks.filter((row2) => typeof row2 === "object" && row2 !== null) : [];
+  const recorded = (deps.cell.splitTaskId ?? "").trim();
+  const preferred = preferredId.trim();
+  const row = (recorded === "" ? undefined : findSplitTicket(rows, recorded, liveOnly)) ?? (preferred === "" ? undefined : findSplitTicket(rows, preferred, liveOnly)) ?? findSplitTicket(rows, "", liveOnly);
+  if (row === undefined)
+    return { splitTaskId: "", ownerRepaired: false, repairError: "no split ticket is on the board — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true };
+  const splitTaskId = String(row.id ?? "");
+  const owner = String(row.owner ?? "").trim();
+  if (owner !== "" || splitTaskId === "")
+    return { splitTaskId, ownerRepaired: false, repairError: "", boardReadable: true };
+  try {
+    const claimed = await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "claim", task_id: splitTaskId, claimant: SPLITTER_MEMBER }, agent: deps.captainAgent });
+    if (!claimed.ok)
+      return { splitTaskId, ownerRepaired: false, repairError: "the ownerless split ticket " + splitTaskId + " could not be claimed (" + String(claimed.error) + ") — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true };
+    return { splitTaskId, ownerRepaired: true, repairError: "", boardReadable: true };
+  } catch (error) {
+    return { splitTaskId, ownerRepaired: false, repairError: "the ownerless split ticket " + splitTaskId + " could not be claimed (" + (error instanceof Error ? error.message : String(error)) + ") — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true };
+  }
+}
+
+// packages/mpd-cellwork-plugin/src/activate.ts
+var CONTRACT_LOOP_PLACEHOLDER = "The verification loop is opened at activation; its id is appended below before dispatch.";
+function producerIdentity(cellId) {
+  return "cellwork:" + cellId;
+}
+function topologicalOrder(tasks) {
+  const ordered = [];
+  const emitted = new Set;
+  const byKey = new Map(tasks.map((task) => [task.key, task]));
+  const emit = (key) => {
+    if (emitted.has(key))
+      return;
+    const row = byKey.get(key);
+    if (row === undefined) {
+      emitted.add(key);
+      return;
+    }
+    for (const blocker of row.blockedBy)
+      emit(blocker);
+    emitted.add(key);
+    ordered.push(row);
+  };
+  for (const task of tasks)
+    emit(task.key);
+  return ordered;
+}
+function resolvedMemberName(task) {
+  const declared = (task.member ?? "").trim();
+  return declared === "" ? task.ownerRole.trim() : declared;
+}
+function memberPrompt(deps, memberName, ownerRole, owned) {
+  const persona = deps.personaFor(ownerRole);
+  const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject);
+  return [
+    ...persona === null ? [] : [persona, ""],
+    "[mpd-cellwork] You are " + memberName + " (" + ownerRole + ") on cell " + deps.cell.cellId + ".",
+    "",
+    "OBJECTIVE (the user's own words):",
+    deps.cell.objective,
+    "",
+    "YOUR TASKS on this cell's board (one dispatch message per task will follow):",
+    ...taskLines,
+    "",
+    "PROTOCOL:",
+    '1. WAIT for the dispatch message naming your task, then CLAIM it: agent_teams_task {action:"claim", task_id}.',
+    "2. The dispatch message names the paths you may write. Do not write outside them.",
+    "3. Read the frozen contract named in the message before you start; it is what your verifier judges.",
+    '4. On completion: agent_teams_task {action:"complete", task_id, note:"<one line>"}.',
+    "5. If you need a user decision, mail the captain; the captain relays the question. Do not guess.",
+    "6. If the plugin tells you to CHECKPOINT, call cellwork_handoff and end your turn."
+  ].join(`
+`);
+}
+function reviewTaskDescription(task, workTask, cellId) {
+  const contract = contractRelativePath(cellId, workTask.key);
+  return [
+    "VERIFY the work task " + JSON.stringify(workTask.key) + " (" + workTask.subject + ") as a BLIND reviewer.",
+    "Frozen contract: " + contract + " — read it (and the repository documentation) BEFORE the implementation.",
+    "It names the verification loop to bind with `mpd_verify_seat`; the loop was opened at activation.",
+    "Then run the gates it lists, and record the verdict with `mpd_verify_record`",
+    "(a PASS cites the documents it rests on and the gate evidence ids; a FAIL names each finding and its",
+    "document source). You never fix the work: a FAIL bounces it back to its writer as a repair task."
+  ].join(`
+`);
+}
+function buildContractDoc(deps, task, reviewer, boardId) {
+  const gates = deps.config.contractGates.length === 0 ? ["the repository's own declared gates (read the project instruction file: AGENTS.md §4, or its equivalent)"] : [...deps.config.contractGates];
+  const verifier = reviewer === undefined ? "NO REVIEW TASK — this task's verification is not armed" : reviewer.ownerRole;
+  const memberName = resolvedMemberName(task);
+  return [
+    "# Acceptance contract — " + task.key + ": " + task.subject,
+    "",
+    "Cell: `" + deps.cell.cellId + "` · split revision " + String(deps.split.revision) + " · frozen " + deps.split.submittedAt,
+    "producer: " + producerIdentity(deps.cell.cellId),
+    "Owner: **" + task.ownerRole + "** (member `" + memberName + "`) · Verifier: **" + verifier + "** · Board task: `" + boardId + "`",
+    "",
+    "## Deliverable",
+    task.description,
+    "",
+    "## Allowed write scopes",
+    ...task.writeScopes.length === 0 ? ["(none declared — this task produces no code)"] : task.writeScopes.map((scope) => "- `" + scope + "`"),
+    "",
+    "## Acceptance criteria",
+    "1. The deliverable above exists, and every changed path is inside the allowed write scopes.",
+    "2. The gate commands below pass, with their observed exit codes quoted.",
+    "3. The BUILD's claims are re-checked from THIS contract and the documentation, never from the builder's reasoning.",
+    "4. A DIFFERENT agent records the verdict (see the verification protocol), citing documents and gate evidence ids.",
+    "",
+    "## Gate commands",
+    ...gates.map((gate) => "- `" + gate + "`"),
+    "",
+    "## Verification protocol",
+    "1. Bind the seat: `mpd_verify_seat {loop_id:<id from this contract's Loop section>}`.",
+    "2. Read the documentation band and this contract first; only a RECORDED FAIL makes reading the implementation legitimate.",
+    '3. Produce gate evidence and record the verdict: `mpd_verify_record {loop_id, verdict:"PASS"|"FAIL", sources:[…], evidence_ids:[…]}`.',
+    "4. On FAIL, name each finding with the document source that proves it and leave the repair to the writer.",
+    "",
+    "## Loop",
+    CONTRACT_LOOP_PLACEHOLDER
+  ].join(`
+`);
+}
+function withLoopId(doc, loopId) {
+  return doc.replace(CONTRACT_LOOP_PLACEHOLDER, "The verification loop is opened at activation; `" + loopId + '` (`mpd_verify_seat {loop_id:"' + loopId + '"}`).');
+}
+function contractAlreadyNamesLoop(deps, taskKey) {
+  const path = contractPath(deps.workspace, deps.cell.cellId, taskKey);
+  try {
+    if (!existsSync4(path))
+      return false;
+    return !readFileSync4(path, "utf8").includes(CONTRACT_LOOP_PLACEHOLDER);
+  } catch {
+    return false;
+  }
+}
+async function materializeSplit(deps) {
+  const teamId = deps.cell.teamId;
+  if (teamId === "")
+    return { ok: false, error: "cellwork_activate: no team is recorded on " + deps.cell.cellId + " — run `cellwork_start` first (the planning team is the record activation appends to)" };
+  const partial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} };
+  let mutated = false;
+  let artifacts = 0;
+  let total = 0;
+  const progress = (stage, key) => {
+    mutated = true;
+    artifacts += 1;
+    deps.progress({ stage, key, ordinal: artifacts, total });
+  };
+  const snapshot = () => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } });
+  const fail = (error) => ({ ok: false, error, ...mutated ? { partial: snapshot() } : {} });
+  const errorText5 = (error) => error instanceof Error ? error.message : String(error);
+  const call = async (arguments_) => {
+    try {
+      const result = await deps.dsh.executeTool({ name: "agent_teams_plan", arguments: arguments_, agent: deps.captainAgent });
+      if (!result.ok)
+        return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" };
+      return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value : {} };
+    } catch (error) {
+      return { ok: false, error: errorText5(error) };
+    }
+  };
+  const reviewerOf = (key) => deps.split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(key));
+  const mode = deps.cell.activatedRevision === null ? "initial" : "resplit";
+  const previous = new Map(Object.entries(deps.cell.activatedTasks));
+  const keptKeys = new Set(deps.split.tasks.filter((task) => previous.has(task.key)).map((task) => task.key));
+  const droppedKeys = [...previous.keys()].filter((key) => !keptKeys.has(key) && deps.cell.cancelledTasks[key] === undefined);
+  const fresh = deps.split.tasks.filter((task) => !keptKeys.has(task.key));
+  const freshCode = fresh.filter((task) => task.writeScopes.length > 0);
+  const memberOrder = [];
+  for (const task of fresh) {
+    const name = resolvedMemberName(task);
+    if (!memberOrder.some((seen) => roleKey(seen) === roleKey(name)))
+      memberOrder.push(name);
+  }
+  const loopIds = new Map(Object.entries(deps.cell.activatedLoops ?? {}));
+  const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0);
+  const armedByContract = new Set;
+  const loopTargets = [];
+  for (const task of codeTasks) {
+    if (loopIds.has(task.key))
+      continue;
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
+      armedByContract.add(task.key);
+      continue;
+    }
+    loopTargets.push(task);
+  }
+  total = freshCode.length + memberOrder.length + fresh.length + loopTargets.length;
+  let live;
+  try {
+    live = deps.recordFor(teamId);
+  } catch {
+    live = undefined;
+  }
+  const liveRoster = new Map;
+  for (const row of live?.members ?? [])
+    if (typeof row.name === "string" && row.name !== "")
+      liveRoster.set(roleKey(row.name), row);
+  const existingMembers = new Map(Object.values(deps.cell.members).map((member) => [roleKey(member.name), member]));
+  for (const [key, row] of liveRoster) {
+    const remembered = existingMembers.get(key);
+    const executorRef = typeof row.executorRef === "string" ? row.executorRef : "";
+    const name = typeof row.name === "string" ? row.name : key;
+    const owned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === key);
+    existingMembers.set(key, remembered === undefined ? { name, role: typeof row.role === "string" ? row.role : "", sessionId: executorRef, executorRef, mode: owned.length > 0 && owned.every((task) => task.kind === "review") ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() } : { ...remembered, sessionId: executorRef === "" ? remembered.sessionId : executorRef, executorRef: executorRef === "" ? remembered.executorRef : executorRef });
+  }
+  for (const task of freshCode) {
+    const reviewer = reviewerOf(task.key);
+    const doc = buildContractDoc(deps, task, reviewer, "");
+    const path = contractPath(deps.workspace, deps.cell.cellId, task.key);
+    try {
+      atomicWriteText(path, doc + `
+`);
+    } catch (error) {
+      return fail("cellwork_activate could not write the contract for " + JSON.stringify(task.key) + ": " + errorText5(error));
+    }
+    partial.contracts[task.key] = path;
+    progress("contract", task.key);
+  }
+  const handledMembers = new Set;
+  const newMembers = {};
+  const reused = [];
+  for (const memberName of memberOrder) {
+    const key = roleKey(memberName);
+    if (handledMembers.has(key))
+      continue;
+    handledMembers.add(key);
+    const owned = deps.split.tasks.filter((candidate) => roleKey(resolvedMemberName(candidate)) === key);
+    const ownerRole = (owned[0]?.ownerRole ?? memberName).trim();
+    const existing = existingMembers.get(key);
+    if (existing !== undefined) {
+      reused.push(existing.name);
+      if (deps.cell.members[existing.name] === undefined) {
+        newMembers[existing.name] = existing;
+        partial.members = { ...partial.members, ...newMembers };
+        progress("member", existing.name);
+      }
+      continue;
+    }
+    const pureVerifier = owned.every((candidate) => candidate.kind === "review");
+    const added = await call({
+      action: "add_member",
+      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned) }
+    });
+    if (!added.ok) {
+      if (added.error.includes("is already on the roster")) {
+        let refreshed;
+        try {
+          refreshed = deps.recordFor(teamId);
+        } catch {
+          refreshed = undefined;
+        }
+        const row = (refreshed?.members ?? []).find((candidate) => roleKey(String(candidate.name ?? "")) === key);
+        if (row !== undefined) {
+          const executorRef = typeof row.executorRef === "string" ? row.executorRef : "";
+          const liveName = String(row.name);
+          newMembers[liveName] = { name: liveName, role: ownerRole, sessionId: executorRef, executorRef, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() };
+          reused.push(liveName);
+          partial.members = { ...partial.members, ...newMembers };
+          progress("member", liveName);
+          continue;
+        }
+      }
+      return fail("cellwork_activate could not raise " + JSON.stringify(memberName) + ": " + added.error);
+    }
+    const handle = typeof added.value.spawned === "string" ? added.value.spawned : "";
+    if (handle === "")
+      return fail("cellwork_activate raised " + JSON.stringify(memberName) + " but the answer carried no executor handle");
+    newMembers[memberName] = { name: memberName, role: ownerRole, sessionId: handle, executorRef: handle, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() };
+    partial.members = { ...partial.members, ...newMembers };
+    progress("member", memberName);
+  }
+  const boardIds = new Map;
+  for (const key of keptKeys) {
+    const id = previous.get(key);
+    if (id !== undefined && id !== "")
+      boardIds.set(key, id);
+  }
+  const activated = [];
+  for (const task of topologicalOrder(fresh)) {
+    const memberName = resolvedMemberName(task);
+    const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference);
+    const description = task.kind === "review" ? reviewTaskDescription(task, deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task, deps.cell.cellId) : task.description;
+    const appended = await call({
+      action: "create_task",
+      task: {
+        subject: task.subject,
+        description,
+        kind: task.kind,
+        owner: memberName,
+        ...task.writeScopes.length === 0 ? {} : { write_scopes: [...task.writeScopes] },
+        blocked_by: mappedBlockers
+      }
+    });
+    if (!appended.ok)
+      return fail("cellwork_activate could not append task " + JSON.stringify(task.key) + ": " + appended.error);
+    const row = typeof appended.value.task === "object" && appended.value.task !== null ? appended.value.task : undefined;
+    const boardId = typeof row?.id === "string" ? row.id : "";
+    if (boardId === "")
+      return fail("cellwork_activate appended task " + JSON.stringify(task.key) + " but the answer carried no board id");
+    boardIds.set(task.key, boardId);
+    activated.push({ key: task.key, boardId, kind: task.kind, ownerRole: task.ownerRole, memberName });
+    partial.boardIds[task.key] = boardId;
+    progress("task", task.key);
+  }
+  const loops = [];
+  for (const task of loopTargets) {
+    const boardId = boardIds.get(task.key) ?? "";
+    if (boardId === "")
+      return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board");
+    const contract = contractRelativePath(deps.cell.cellId, task.key);
+    const memberName = resolvedMemberName(task);
+    const owner = newMembers[memberName] ?? existingMembers.get(roleKey(memberName));
+    const writerId = (owner?.sessionId ?? "").trim() === "" ? (owner?.executorRef ?? "").trim() : (owner?.sessionId ?? "").trim();
+    let opened;
+    try {
+      opened = await deps.dsh.executeTool({
+        name: "mpd_verify_open",
+        arguments: {
+          writer: "delegate",
+          contract,
+          scope: [...task.writeScopes],
+          task_id: boardId,
+          ...writerId === "" ? {} : { writer_id: writerId, writer_reason: "member: " + memberName }
+        },
+        agent: deps.captainAgent
+      });
+    } catch (error) {
+      return fail("cellwork_activate could not open the verify loop for " + JSON.stringify(task.key) + ": " + errorText5(error));
+    }
+    if (!opened.ok)
+      return fail("cellwork_activate could not open the verify loop for " + JSON.stringify(task.key) + ": " + String(opened.error));
+    const value = typeof opened.value === "object" && opened.value !== null ? opened.value : {};
+    if (typeof value.refused === "string")
+      return fail("cellwork_activate was REFUSED a verify loop for " + JSON.stringify(task.key) + ": " + value.refused);
+    const loopId = typeof value.loopId === "string" ? value.loopId : "";
+    if (loopId === "")
+      return fail("cellwork_activate opened no loop id for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
+    loopIds.set(task.key, loopId);
+    loops.push({ taskKey: task.key, boardId, loopId });
+    partial.loopIds[task.key] = loopId;
+    const path = partial.contracts[task.key] ?? contractPath(deps.workspace, deps.cell.cellId, task.key);
+    const stored = buildContractDoc(deps, task, reviewerOf(task.key), boardId);
+    try {
+      atomicWriteText(path, withLoopId(stored, loopId) + `
+`);
+    } catch (error) {
+      return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText5(error));
+    }
+    progress("loop", task.key);
+  }
+  for (const task of deps.split.tasks) {
+    if ((boardIds.get(task.key) ?? "") === "")
+      return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to dispatch");
+    if (task.writeScopes.length > 0 && (loopIds.get(task.key) ?? "") === "" && !armedByContract.has(task.key))
+      return fail("cellwork_activate has no verify loop for " + JSON.stringify(task.key) + " — refusing to dispatch unarmed work");
+  }
+  const cancelled = [];
+  for (const key of droppedKeys) {
+    const boardId = previous.get(key) ?? "";
+    cancelled.push({ key, boardId });
+    appendJournal(deps.workspace, deps.cell.cellId, { event: "task-cancelled", key, boardId, revision: deps.split.revision, reason: "the accepted split no longer carries this task; the board row is kept and dispatch skips it" }, deps.now);
+  }
+  let dispatch;
+  let record;
+  try {
+    record = deps.recordFor(teamId);
+    const send = sendThroughExecutor(deps.dsh.teamExecutor(), deps.captainAgent);
+    const excludedTaskIds = [...Object.values(deps.cell.cancelledTasks), ...cancelled.map((entry) => entry.boardId)].filter((id) => id !== "");
+    const cellForDispatch = { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) };
+    dispatch = send === undefined ? { pairs: [], skipped: [], refused: "the team executor seam is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" } : await dispatchOwnerOnly({ workspace: deps.workspace, cell: cellForDispatch, record, send, excludedTaskIds, now: deps.now });
+  } catch (error) {
+    return fail("cellwork_activate could not dispatch: " + errorText5(error));
+  }
+  const splitterRow = findSplitTicket(record?.tasks ?? [], deps.cell.splitTaskId ?? "", true);
+  const splitTaskId = String(splitterRow?.id ?? "");
+  if (splitTaskId !== "") {
+    try {
+      await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "complete", task_id: splitTaskId, note: "split revision " + String(deps.split.revision) + " materialised by activation" }, agent: deps.captainAgent });
+    } catch {}
+  }
+  appendJournal(deps.workspace, deps.cell.cellId, {
+    event: "activate",
+    teamId,
+    mode,
+    splitRevision: deps.split.revision,
+    producer: producerIdentity(deps.cell.cellId),
+    tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
+    kept: [...keptKeys],
+    cancelled,
+    contracts: Object.values(partial.contracts),
+    loops: loops.map((loop) => ({ taskKey: loop.taskKey, loopId: loop.loopId })),
+    reused,
+    progress: artifacts,
+    dispatched: dispatch.pairs.length,
+    skipped: dispatch.skipped.length,
+    ...splitTaskId === "" ? {} : { splitTaskId }
+  }, deps.now);
+  return {
+    ok: true,
+    outcome: {
+      mode,
+      contracts: Object.values(partial.contracts),
+      members: { ...newMembers },
+      reused: [...reused],
+      tasks: activated,
+      boardIds: Object.fromEntries(boardIds),
+      kept: [...keptKeys],
+      cancelled,
+      loops,
+      dispatch,
+      ...splitTaskId === "" ? {} : { splitTaskId }
+    }
+  };
+}
 
 // packages/mpd-cellwork-plugin/src/flow.ts
-function roleKeyOfOwner(row) {
-  return String(row.owner ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
 function splitPathFor(workspace, verdict) {
   const file = verdict.file;
   if (file === undefined || file === "")
@@ -4114,7 +4452,7 @@ missing sections: ` + result.missing.join(", ") : ""));
       writeRequirements(caller.workspace, state.cellId, text_);
       const revision = Math.max(1, state.requirementsRevision) + 1;
       const record = recordOf(teams(), caller.workspace, state.teamId);
-      const splitTask = boardTasksOf(record).find((row) => roleKeyOfOwner(row) === SPLITTER_MEMBER && String(row.status ?? "") !== "cancelled") ?? boardTasksOf(record).find((row) => roleKeyOfOwner(row) === SPLITTER_MEMBER);
+      const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false);
       const splitTaskId = splitTask === undefined ? "" : String(splitTask.id ?? "");
       const splitTaskStatus = splitTask === undefined ? "" : String(splitTask.status ?? "");
       const redispatchable = splitTaskStatus === "pending" || splitTaskStatus === "claimed" || splitTaskStatus === "in_progress";
@@ -4242,6 +4580,7 @@ missing sections: ` + result.missing.join(", ") : ""));
               description: { type: "string", description: "The owner's acceptance text." },
               kind: { type: "string", enum: ["requirement", "work", "review", "repair", "integration"], description: "Chain kind; omitted means work." },
               ownerRole: { type: "string", description: "A roster role name or a cell role." },
+              member: { type: "string", description: "The board member this task is raised for; omitted means the member IS the owner role. Several tasks may share one member; several members may share one role." },
               writeScopes: { type: "array", items: { type: "string" }, description: "Paths the task may write." },
               blockedBy: { type: "array", items: { type: "string" }, description: "Task keys that must close first; [] is an explicit root." },
               independent: { type: "boolean", description: "Explicit root, alternative to blockedBy: []." },
@@ -4334,6 +4673,7 @@ missing sections: ` + result.missing.join(", ") : ""));
             description: argString(row, "description"),
             ...argString(row, "kind") === "" ? {} : { kind: argString(row, "kind") },
             ownerRole: argString(row, "ownerRole"),
+            ...argString(row, "member") === "" ? {} : { member: argString(row, "member") },
             writeScopes: stringList(row.writeScopes),
             blockedBy: Array.isArray(row.blockedBy) ? stringList(row.blockedBy) : row.independent === true ? [] : undefined,
             independent: row.independent === true,
@@ -4352,13 +4692,13 @@ missing sections: ` + result.missing.join(", ") : ""));
         }
         return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" };
       }
-      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.length, refused: verdict.totals.refusedCount }, new Date);
+      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.map((finding) => ({ code: finding.code, taskKey: finding.taskKey, detail: finding.detail })), refused: verdict.totals.refusedCount }, new Date);
       return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2 };
     }
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises ONE member per distinct `member` (its owner role routes it, persona TEXT in the prompt), appends each NEW task owned by that member with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -4441,6 +4781,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         return { ok: false, error: "cellwork_activate: " + stored.detail, path: stored.path };
       if (!stored.verdict.accepted)
         return { ok: false, error: "cellwork_activate: revision " + String(acceptedRevision) + " was REFUSED by the measured verdict — the splitter must fix the findings and resubmit" };
+      const activatedAt = new Date;
       const persistPartial = (partial, error) => {
         const next2 = {
           ...state,
@@ -4449,7 +4790,7 @@ missing sections: ` + result.missing.join(", ") : ""));
           activatedTasks: { ...state.activatedTasks, ...partial.boardIds },
           activatedLoops: { ...state.activatedLoops ?? {}, ...partial.loopIds }
         };
-        transition(caller.workspace, next2, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...error === undefined ? {} : { error } }, new Date);
+        transition(caller.workspace, next2, { event: "cell-activation-partial", revision: acceptedRevision, members: Object.keys(partial.members), tasks: partial.boardIds, loops: partial.loopIds, contracts: Object.values(partial.contracts), ...error === undefined ? {} : { error } }, activatedAt);
       };
       const activated = await materializeSplit({
         dsh,
@@ -4460,10 +4801,10 @@ missing sections: ` + result.missing.join(", ") : ""));
         split: stored.verdict,
         personaFor,
         recordFor: (teamId) => recordOf(teams(), caller.workspace, teamId),
-        checkpoint: (partial) => {
-          persistPartial(partial);
+        progress: (step) => {
+          appendJournal(caller.workspace, state.cellId, { event: "cell-activation-progress", revision: acceptedRevision, ...step }, activatedAt);
         },
-        now: new Date
+        now: activatedAt
       });
       if (!activated.ok) {
         if (activated.partial !== undefined)
@@ -4485,9 +4826,10 @@ missing sections: ` + result.missing.join(", ") : ""));
         activatedLoops: loopTable,
         cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
         splitStale: false,
+        splitTaskId: (activated.outcome.splitTaskId ?? "") === "" ? state.splitTaskId ?? "" : String(activated.outcome.splitTaskId),
         members: { ...state.members, ...activated.outcome.members }
       };
-      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused }, new Date);
+      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length, reused: activated.outcome.reused, ...activated.outcome.splitTaskId === undefined ? {} : { splitTaskId: activated.outcome.splitTaskId } }, activatedAt);
       return {
         ok: true,
         cellId: state.cellId,
@@ -4621,7 +4963,7 @@ function readCellMail(workspace, cellId) {
       continue;
     try {
       const parsed = JSON.parse(line);
-      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read"))
+      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read" || parsed.t === "wake"))
         records.push(parsed);
     } catch {}
   }
@@ -4632,11 +4974,20 @@ function foldCellMail(records) {
   for (const record of records) {
     if (record.t === "send") {
       byId.set(record.id, { ...record, read: false });
-    } else {
-      const message = byId.get(record.id);
-      if (message !== undefined)
-        message.read = true;
+      continue;
     }
+    const message = byId.get(record.id);
+    if (message === undefined)
+      continue;
+    if (record.t === "read") {
+      message.read = true;
+      continue;
+    }
+    message.wakeSent = record.sent === true;
+    if (record.reason === undefined || record.reason === "")
+      delete message.wakeReason;
+    else
+      message.wakeReason = record.reason;
   }
   return [...byId.values()];
 }
@@ -4646,6 +4997,26 @@ function unreadFor(messages, names) {
 }
 function wakeFailures(messages) {
   return messages.filter((message) => !message.read && !message.wakeSent);
+}
+async function deliverCellMail(deps) {
+  if (!deps.appendSend()) {
+    return { landed: false, wakeSent: false, wakeReason: "the durable row could not be written, so no wake-up was attempted (mail is durable first)" };
+  }
+  let outcome;
+  try {
+    outcome = await deps.attemptWake();
+  } catch (error) {
+    outcome = { sent: false, reason: "the wake-up failed: " + (error instanceof Error ? error.message : String(error)) };
+  }
+  const recorded = deps.appendWake(outcome);
+  if (!recorded) {
+    return {
+      landed: true,
+      wakeSent: false,
+      wakeReason: outcome.sent === true ? "the wake-up was attempted and the transport accepted it, but its `wake` record could not be written — the durable log reports this row as undelivered" : "the wake-up did not go out (" + (outcome.reason ?? "no reason given") + ") and its `wake` record could not be written either — the durable log reports this row as undelivered"
+    };
+  }
+  return { landed: true, wakeSent: outcome.sent === true, ...outcome.reason === undefined ? {} : { wakeReason: outcome.reason } };
 }
 
 // packages/mpd-cellwork-plugin/src/protocol-core.ts
@@ -4749,6 +5120,29 @@ function compactionJournalEntry(memberName, result) {
     ...result.newHandle === undefined ? {} : { newHandle: result.newHandle }
   };
 }
+function checkpointUnrecoverableEntry(memberName, result) {
+  return {
+    event: "checkpoint-unrecoverable",
+    member: memberName,
+    attempts: result.attempts,
+    reason: result.reason,
+    repair: "reassign the rows this member owns: cellwork_dispatch {reassign:[{task_id, owner}]}"
+  };
+}
+function memberAfterBarrier(previous, result) {
+  const givenUp = result.outcome === "refused";
+  return {
+    name: previous.name,
+    role: previous.role,
+    sessionId: result.newHandle ?? previous.sessionId,
+    executorRef: result.newHandle ?? previous.executorRef,
+    mode: givenUp ? "checkpoint" : "subcaptain",
+    handoffReady: givenUp,
+    handoffs: previous.handoffs,
+    joinedAt: previous.joinedAt,
+    ...givenUp ? { fenced: true, fencedReason: result.reason } : {}
+  };
+}
 async function promoteAfterHandoff(deps) {
   let lastReason = "not attempted";
   for (let attempt = 1;attempt <= deps.config.compactionRetries; attempt += 1) {
@@ -4818,6 +5212,9 @@ function render(value) {
 function refusalText2(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed";
 }
+function errorText5(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 function superviseTaskRow(task) {
   return {
     ...typeof task.id === "string" ? { id: task.id } : {},
@@ -4853,8 +5250,26 @@ function installCellworkProtocol(deps) {
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent or failed owner is REPORTED and the task left pending — never substituted. Delivery goes through the team executor and is journaled.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. Delivery goes through the team executor and is journaled.",
+    parameters: {
+      type: "object",
+      properties: {
+        reassign: {
+          type: "array",
+          description: "Rows to hand to another member BEFORE the pass: each is claimed for that member on the board, journaled, then delivered to it. Use it to repair the rows a fenced owner still holds.",
+          items: {
+            type: "object",
+            properties: {
+              task_id: { type: "string", description: "The board row to hand over (`T17`)." },
+              owner: { type: "string", description: "The member that should own and receive the row." }
+            },
+            required: ["task_id", "owner"],
+            additionalProperties: false
+          }
+        }
+      },
+      additionalProperties: false
+    },
     output: {
       schema: {
         type: "object",
@@ -4863,6 +5278,8 @@ function installCellworkProtocol(deps) {
           error: { type: "string" },
           pairs: { type: "array", items: { type: "object" } },
           skipped: { type: "array", items: { type: "object" } },
+          reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
+          reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
           refused: { type: "string" }
         },
         required: ["ok"]
@@ -4873,14 +5290,17 @@ function installCellworkProtocol(deps) {
           return render("cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"));
         const pairs = Array.isArray(result.pairs) ? result.pairs : [];
         const skipped = Array.isArray(result.skipped) ? result.skipped : [];
+        const reassigned = Array.isArray(result.reassigned) ? result.reassigned : [];
+        const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : [];
+        const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")));
         if (typeof result.refused === "string")
-          return render("cellwork_dispatch refused: " + result.refused);
-        return render(pairs.length === 0 ? "nothing dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")") : pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)).join(`
-`) + (skipped.length === 0 ? "" : `
-reported: ` + skipped.length));
+          return render([...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join(`
+`));
+        return render([...handovers, ...invalid, ...pairs.length === 0 ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")] : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...skipped.length === 0 ? [] : ["reported: " + skipped.length]]].join(`
+`));
       }
     },
-    execute: async (_args, exec) => {
+    execute: async (args, exec) => {
       const caller = callerFor(exec);
       if (caller.refusal !== null)
         return { ok: false, error: refusalText2(caller.refusal), path: caller.refusal.path };
@@ -4893,23 +5313,54 @@ reported: ` + skipped.length));
       const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent);
       if (send === undefined)
         return { ok: false, error: "cellwork_dispatch: this composition exposes no team executor, so no member can be woken" };
+      const now = new Date;
+      const handover = reassignPairs(readArgs2(args)["reassign"]);
+      let reassigned = [];
+      if (handover.pairs.length > 0) {
+        const before = recordOf2(caller.workspace, cell.teamId);
+        reassigned = await applyReassignments({
+          workspace: caller.workspace,
+          cell,
+          record: before,
+          pairs: handover.pairs,
+          claim: async (taskId, owner) => {
+            try {
+              const claimed = await dsh.executeTool({ name: "agent_teams_task", arguments: { action: "claim", task_id: taskId, claimant: owner }, agent: exec.agent });
+              return claimed.ok ? { ok: true } : { ok: false, error: String(claimed.error ?? "the board refused the claim") };
+            } catch (error) {
+              return { ok: false, error: errorText5(error) };
+            }
+          },
+          send,
+          now,
+          handleFor: (name) => cell.members[name]?.executorRef
+        });
+        appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed).length, delivered: reassigned.filter((row) => row.delivered).length, rejected: reassigned.filter((row) => !row.claimed).length, invalid: handover.invalid.length }, now);
+      }
       const record = recordOf2(caller.workspace, cell.teamId);
       const report = await dispatchOwnerOnly({
         workspace: caller.workspace,
         cell,
         record,
         send,
-        now: new Date,
+        now,
         handleFor: (name) => cell.members[name]?.executorRef,
         excludedTaskIds: Object.values(cell.cancelledTasks)
       });
-      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, new Date);
-      return { ok: true, pairs: report.pairs, skipped: report.skipped, ...report.refused === undefined ? {} : { refused: report.refused } };
+      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, now);
+      return {
+        ok: true,
+        pairs: report.pairs,
+        skipped: report.skipped,
+        ...reassigned.length === 0 ? {} : { reassigned },
+        ...handover.invalid.length === 0 ? {} : { reassignInvalid: handover.invalid },
+        ...report.refused === undefined ? {} : { refused: report.refused }
+      };
     }
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the FENCED members together with the open rows they own (reassign those), and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     output: {
       schema: {
@@ -4925,6 +5376,7 @@ reported: ` + skipped.length));
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
+          fenced: { type: "array", items: { type: "object" }, description: "Every fenced member with the reason and the OPEN board rows it still owns — the rows a `reassign` pass repairs." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -4936,10 +5388,12 @@ reported: ` + skipped.length));
           return render("cellwork_supervise refused: " + String(result.error ?? "unknown refusal"));
         const members = Array.isArray(result.members) ? result.members : [];
         const tasks = Array.isArray(result.tasks) ? result.tasks : [];
+        const fenced = Array.isArray(result.fenced) ? result.fenced : [];
         return render([
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
           "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
+          "fenced: " + (fenced.length === 0 ? "none" : fenced.map((row) => String(row.name) + " (" + String(row.reason) + ") owns " + (Array.isArray(row.tasks) && row.tasks.length > 0 ? row.tasks.map((id) => String(id)).join(", ") : "no open row") + " — repair with cellwork_dispatch {reassign:[{task_id, owner}]}").join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String(result.wakeFailures.length) + " without a wake-up" : "")
         ].join(`
 `));
@@ -4960,6 +5414,16 @@ reported: ` + skipped.length));
         return { name: member.name, mode: member.mode, role: member.role, handoffReady: member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance };
       });
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
+      const fenced = Object.values(cell.members).flatMap((member) => {
+        const reason = fenceReasonOf(member);
+        if (reason === undefined)
+          return [];
+        const owned = tasks.filter((task) => {
+          const status = String(task.status ?? "");
+          return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
+        }).map((task) => String(task.id ?? ""));
+        return [{ name: member.name, mode: member.mode, reason, tasks: owned }];
+      });
       return {
         ok: true,
         cellId: cell.cellId,
@@ -4970,6 +5434,7 @@ reported: ` + skipped.length));
         splitRevision: cell.splitRevision,
         requirementsRevision: cell.requirementsRevision,
         handoffReady: Object.values(cell.members).filter((member) => member.handoffReady).map((member) => member.name),
+        fenced,
         unreadMail: messages.filter((message) => !message.read).length,
         wakeFailures: wakeFailures(messages).map((message) => ({ id: message.id, to: message.to, subject: message.subject, reason: message.wakeReason ?? "no wake-up was attempted" }))
       };
@@ -5071,6 +5536,9 @@ missing sections: ` + result.missing.join(", ") : ""));
         return { ok: false, error: "cellwork_handoff: " + JSON.stringify(caller.member) + " is not a recorded cell member" };
       if (caller.sessionId === caller.cell.captainSessionId)
         return { ok: false, error: "cellwork_handoff: the captain is never checkpointed (declared bound) — it dispatches, it does not hand off" };
+      if (member.handoffReady) {
+        return { ok: false, error: "cellwork_handoff: the handoff " + JSON.stringify(caller.member) + " already wrote (handoff/" + String(member.handoffs) + ") is STILL WAITING for the compaction barrier — END YOUR TURN now instead of writing a second document; the barrier compacts and promotes you from the FIRST one" };
+      }
       const content = argString2(readArgs2(args), "content");
       if (content.trim() === "")
         return { ok: false, error: "cellwork_handoff: `content` is required — the handoff document IS the continuity, so there is nothing to validate without it" };
@@ -5149,7 +5617,7 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; a failed wake-up is journaled and surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended to that same log as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
@@ -5179,7 +5647,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         const result = typeof value === "object" && value !== null ? value : {};
         if (result.ok === false)
           return render("cellwork_send refused: " + String(result.error ?? "unknown refusal"));
-        return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; no wake-up: " + String(result.wakeReason ?? "best-effort") + ")"));
+        return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; " + String(result.wakeReason ?? "no wake-up was attempted") + ")"));
       }
     },
     execute: async (args, exec) => {
@@ -5187,7 +5655,8 @@ missing sections: ` + result.missing.join(", ") : ""));
       const caller = callerFor(exec);
       if (caller.refusal !== null)
         return { ok: false, error: refusalText2(caller.refusal), path: caller.refusal.path };
-      if (caller.cell === null || caller.member === "")
+      const cell = caller.cell;
+      if (cell === null || caller.member === "")
         return { ok: false, error: "cellwork_send: this session belongs to no active cell" };
       const requested = argString2(argv, "to").trim();
       if (requested === "")
@@ -5197,15 +5666,15 @@ missing sections: ` + result.missing.join(", ") : ""));
       if (subject === "" || body.trim() === "")
         return { ok: false, error: "cellwork_send: `subject` and `body` are both required" };
       const slash = requested.lastIndexOf("/");
-      const targetCellId = slash < 0 ? caller.cell.cellId : requested.slice(0, slash).trim();
+      const targetCellId = slash < 0 ? cell.cellId : requested.slice(0, slash).trim();
       const requestedName = slash < 0 ? requested : requested.slice(slash + 1).trim();
       if (requestedName === "")
         return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" };
-      const crossCell = targetCellId !== caller.cell.cellId;
-      let target = caller.cell;
+      const crossCell = targetCellId !== cell.cellId;
+      let target = cell;
       if (crossCell) {
-        if (targetCellId !== caller.cell.parentCellId && !caller.cell.subcellIds.includes(targetCellId)) {
-          return { ok: false, error: "cellwork_send: " + JSON.stringify(targetCellId) + " is not in this cell's tree — a cross-cell recipient must be a SUB-CELL of " + caller.cell.cellId + " (" + (caller.cell.subcellIds.join(", ") || "none") + ") or its parent cell (" + (caller.cell.parentCellId ?? "none") + ")" };
+        if (targetCellId !== cell.parentCellId && !cell.subcellIds.includes(targetCellId)) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(targetCellId) + " is not in this cell's tree — a cross-cell recipient must be a SUB-CELL of " + cell.cellId + " (" + (cell.subcellIds.join(", ") || "none") + ") or its parent cell (" + (cell.parentCellId ?? "none") + ")" };
         }
         const read = readCell(caller.workspace, targetCellId);
         if (!read.ok)
@@ -5221,42 +5690,38 @@ missing sections: ` + result.missing.join(", ") : ""));
       if (!crossCell && nameKey(to) === nameKey(caller.member))
         return { ok: false, error: "cellwork_send: a seat cannot message itself" };
       const now = new Date;
-      let wakeSent = false;
-      let wakeReason;
-      if (crossCell) {
-        wakeReason = "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)";
-      } else if (toCaptain) {
-        wakeReason = "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`";
-      } else if (caller.sessionId !== caller.cell.captainSessionId) {
-        wakeReason = "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`";
-      } else if (String(recipientMember?.executorRef ?? "") === "") {
-        wakeReason = "the recipient has no executor handle (never raised)";
-      } else {
-        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent);
-        if (send === undefined)
-          wakeReason = "this composition exposes no team executor";
-        else {
-          try {
-            await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + `
-
-` + body + `
-
-(full row: cell ` + caller.cell.cellId + ")");
-            wakeSent = true;
-          } catch (error) {
-            wakeReason = "the wake-up failed: " + (error instanceof Error ? error.message : String(error));
-          }
-        }
-      }
       const taken = new Set(readCellMail(caller.workspace, targetCellId).map((record) => record.id));
       let id = mailId(now, mailSequence += 1);
       while (taken.has(id))
         id = mailId(now, mailSequence += 1);
-      const appended = appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent, ...crossCell ? { fromCell: caller.cell.cellId } : {}, ...wakeReason === undefined ? {} : { wakeReason } });
-      if (!appended)
-        return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent (mail is durable first)" };
-      appendJournal(caller.workspace, caller.cell.cellId, { event: "mail", cell: "cell:" + caller.cell.cellId, id, from: caller.member, to, ...crossCell ? { toCell: targetCellId } : {}, subject, wakeSent }, now);
-      return { ok: true, id, to, wakeSent, ...crossCell ? { crossCell: targetCellId, fromCell: caller.cell.cellId } : {}, ...wakeReason === undefined ? {} : { wakeReason } };
+      const attemptWake = async () => {
+        if (crossCell)
+          return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" };
+        if (toCaptain)
+          return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" };
+        if (caller.sessionId !== cell.captainSessionId)
+          return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" };
+        if (String(recipientMember?.executorRef ?? "") === "")
+          return { sent: false, reason: "the recipient has no executor handle (never raised)" };
+        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent);
+        if (send === undefined)
+          return { sent: false, reason: "this composition exposes no team executor" };
+        await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + `
+
+` + body + `
+
+(full row: cell ` + cell.cellId + ")");
+        return { sent: true };
+      };
+      const delivery = await deliverCellMail({
+        appendSend: () => appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent: false, ...crossCell ? { fromCell: cell.cellId } : {} }),
+        attemptWake,
+        appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id, sent: outcome.sent, ...outcome.reason === undefined ? {} : { reason: outcome.reason }, at: now.toISOString() })
+      });
+      if (!delivery.landed)
+        return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent and no wake-up was attempted (mail is durable first)" };
+      appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id, from: caller.member, to, ...crossCell ? { toCell: targetCellId } : {}, subject, wakeSent: delivery.wakeSent }, now);
+      return { ok: true, id, to, wakeSent: delivery.wakeSent, ...crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}, ...delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason } };
     }
   }));
   disposers.push(dsh.registerTool({
@@ -5377,13 +5842,10 @@ missing sections: ` + result.missing.join(", ") : ""));
         deps.warn("[mpd-cellwork] the compaction barrier could not re-read " + fresh.path + ": " + fresh.detail);
         return;
       }
-      const updated = {
-        ...fresh.state.members[caller.member] ?? member,
-        mode: result.outcome === "refused" ? "checkpoint" : "subcaptain",
-        handoffReady: result.outcome === "refused",
-        ...result.newHandle === undefined ? {} : { sessionId: result.newHandle, executorRef: result.newHandle }
-      };
+      const updated = memberAfterBarrier(fresh.state.members[caller.member] ?? member, result);
       const next = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } };
+      if (result.outcome === "refused")
+        appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
       transition(caller.workspace, next, compactionJournalEntry(caller.member, result), now);
     } finally {
       inFlight.delete(key);
@@ -5447,6 +5909,21 @@ function teamCounts(record) {
     members: Array.isArray(record.members) ? record.members.length : 0,
     tasks: Array.isArray(record.tasks) ? record.tasks.length : 0
   };
+}
+function memberDivergence(record, state) {
+  if (record === undefined)
+    return { missingFromCell: [], missingFromTeam: [], inSync: true };
+  const liveRows = [];
+  for (const row of Array.isArray(record.members) ? record.members : []) {
+    if (typeof row === "object" && row !== null && typeof row.name === "string" && row.name !== "")
+      liveRows.push(row.name);
+  }
+  const liveKeys = new Set(liveRows.map((name2) => roleKey(name2)));
+  const cellRows = Object.values(state.members).map((member) => member.name).filter((name2) => name2 !== "");
+  const cellKeys = new Set(cellRows.map((name2) => roleKey(name2)));
+  const missingFromCell = liveRows.filter((name2) => !cellKeys.has(roleKey(name2)));
+  const missingFromTeam = cellRows.filter((name2) => !liveKeys.has(roleKey(name2)));
+  return { missingFromCell, missingFromTeam, inSync: missingFromCell.length === 0 && missingFromTeam.length === 0 };
 }
 function liveTasks(record) {
   if (record === undefined || !Array.isArray(record.tasks))
@@ -5539,6 +6016,16 @@ function apply(ctx, config = {}) {
           seat: { oneOf: [{ type: "object" }, { type: "null" }] },
           teamMembers: { type: "number" },
           teamTasks: { type: "number" },
+          splitTaskId: { type: "string" },
+          memberDivergence: {
+            type: "object",
+            properties: {
+              missingFromCell: { type: "array", items: { type: "string" } },
+              missingFromTeam: { type: "array", items: { type: "string" } },
+              inSync: { type: "boolean" }
+            },
+            required: ["missingFromCell", "missingFromTeam", "inSync"]
+          },
           cellDir: { type: "string" },
           statePath: { type: "string" },
           journalPath: { type: "string" },
@@ -5566,7 +6053,8 @@ function apply(ctx, config = {}) {
           return { ok: false, error: refusalText3(single), path: single.path };
         state = single.state;
       }
-      const counts = teamCounts(teamRecordOf(ctx, caller.workspace, state.teamId));
+      const teamRecord = teamRecordOf(ctx, caller.workspace, state.teamId);
+      const counts = teamCounts(teamRecord);
       return {
         ok: true,
         cellId: state.cellId,
@@ -5586,6 +6074,8 @@ function apply(ctx, config = {}) {
         seat: caller.seat === undefined ? null : { name: caller.seat.name, mode: caller.seat.mode },
         teamMembers: counts.members,
         teamTasks: counts.tasks,
+        splitTaskId: state.splitTaskId ?? "",
+        memberDivergence: memberDivergence(teamRecord, state),
         cellDir: cellDir(caller.workspace, state.cellId),
         statePath: statePath(caller.workspace, state.cellId),
         journalPath: journalPath(caller.workspace, state.cellId),
@@ -5653,12 +6143,12 @@ function apply(ctx, config = {}) {
           now
         });
         if (!staged.ok) {
-          const partialState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} } };
+          const partialState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" };
           recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now);
           return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" };
         }
-        stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} } };
-        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {} }, now);
+        stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" };
+        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, ...staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {} }, now);
       }
       const counts = teamCounts(teamRecordOf(ctx, caller.workspace, stagedState.teamId));
       return {

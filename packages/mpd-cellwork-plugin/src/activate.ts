@@ -25,13 +25,14 @@
 // cellwork:<cellId>`) and in the journal, never as a fabricated session. A dispatch that carries no live
 // caller agent refuses before anything is written.
 //
-// RESUMPTION IS THE FAILURE CONTRACT (P1 A2/A3). Every artifact this pass creates is recorded on the
-// cell record through `ActivateDeps.checkpoint` as soon as it exists, and a failure after the first
-// mutation returns a structured partial. A retry of the SAME accepted revision seeds its members from
-// the live roster, its board ids from `CellState.activatedTasks` and its loops from
-// `CellState.activatedLoops`, so nothing is raised, minted or armed twice: the only remaining window is
-// a crash between one artifact and its checkpoint write, and the retry reconciles that artifact from the
-// live roster/state instead of failing on a duplicate.
+// RESUMPTION IS THE FAILURE CONTRACT (P1 A2/A3, C8). Each artifact this pass creates is journaled as
+// ONE compact progress row through `ActivateDeps.progress`; the FULL partial is handed back with the
+// failure and persisted ONCE by the caller, so a pass cannot flood the journal with whole-state rows
+// (defect D7). A retry of the SAME accepted revision seeds its members from the live roster, its board
+// ids from `CellState.activatedTasks` and its loops from `CellState.activatedLoops`, so nothing is
+// raised, minted or armed twice: the only remaining window is a crash between one artifact and the
+// failure snapshot, and the retry reconciles that artifact from the live roster/state instead of
+// failing on a duplicate.
 import { existsSync, readFileSync } from "node:fs"
 import { atomicWriteText, appendJournal, contractPath, type CellMemberRecord, type CellState } from "./state"
 import type { CellworkConfig } from "./config"
@@ -39,6 +40,7 @@ import type { SplitTaskVerdict, SplitVerdict } from "./split"
 import { roleKey } from "./split"
 import { contractRelativePath, dispatchOwnerOnly, sendThroughExecutor, type DispatchMemberView, type DispatchRecordView, type DispatchReport } from "./dispatch"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { findSplitTicket } from "./staging"
 
 /**
  * The placeholder sentence a frozen contract carries until {@link withLoopId} replaces it.
@@ -51,6 +53,24 @@ const CONTRACT_LOOP_PLACEHOLDER = "The verification loop is opened at activation
 /** The DECLARED producer identity, recorded as DATA on the frozen contract and in the journal. */
 export function producerIdentity(cellId: string): string {
   return "cellwork:" + cellId
+}
+
+/**
+ * One COMPACT per-artifact progress row of an activation pass (contract C8).
+ *
+ * The row carries the artifact's identity and its place in the pass, never the accumulated state: the
+ * whole-state snapshot is persisted ONCE, when a pass fails, so a single activation cannot flood the
+ * journal with re-serialised state (defect D7).
+ */
+export interface ActivateProgress {
+  /** The stage the artifact belongs to. */
+  stage: "contract" | "member" | "task" | "loop"
+  /** The artifact's key: a split key, or the member name for a member artifact. */
+  key: string
+  /** 1-based position of this artifact in the whole pass. */
+  ordinal: number
+  /** How many artifacts this pass is expected to produce in total. */
+  total: number
 }
 
 /** What {@link materializeSplit} needs. */
@@ -72,13 +92,14 @@ export interface ActivateDeps {
   /** Read the live team record by id, or undefined when the team service cannot answer. */
   recordFor: (teamId: string) => DispatchRecordView | undefined
   /**
-   * Persist the partial artifacts after EACH one is created (contract A2).
+   * Journal ONE compact progress row per artifact as it is created (contract C8).
    *
-   * Called once per contract written, member ensured, task minted and verify loop opened, so a crash
-   * leaves at most ONE artifact unrecorded. The caller owns the shape it writes (the cell record, under
-   * `cell-activation-partial`).
+   * `stage` names what was created, `key` the artifact, and `ordinal`/`total` place it in the pass. The
+   * FULL partial is NOT persisted here: the caller records it once, when the pass FAILS, so a pass cannot
+   * flood the journal with whole-state rows (defect D7). Every row the caller writes for this pass is
+   * stamped with {@link ActivateDeps.now}, so the journal stays monotonic.
    */
-  checkpoint: (partial: ActivatePartial) => void
+  progress: (step: ActivateProgress) => void
   /** The instant to journal with. */
   now: Date
 }
@@ -191,21 +212,37 @@ export function topologicalOrder(tasks: readonly SplitTaskVerdict[]): SplitTaskV
 }
 
 /**
+ * The board member one split task resolves to (contract C1).
+ *
+ * A declared `member` names the board member directly and lets several members share one `ownerRole`
+ * (real parallelism); without one, the role spelling IS the member, which is the pre-C1 behaviour.
+ *
+ * @param task - the accepted split task.
+ * @returns the member name, trimmed; the role spelling when no member is declared.
+ */
+export function resolvedMemberName(task: SplitTaskVerdict): string {
+  /** The declared member, when the graph validator accepted one. */
+  const declared = (task.member ?? "").trim()
+  return declared === "" ? task.ownerRole.trim() : declared
+}
+
+/**
  * The member's instantiation prompt: its persona, the cell protocol and the tasks it owns.
  *
  * @param deps - the cell, the persona reader and the knobs.
- * @param ownerRole - the role the member was raised for.
- * @param owned - the split tasks that role owns.
+ * @param memberName - the board member name the teammate is raised as.
+ * @param ownerRole - the role the member was raised for (its persona and routing label).
+ * @param owned - the split tasks that member owns.
  * @returns the prompt text.
  */
-export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "config">, ownerRole: string, owned: readonly SplitTaskVerdict[]): string {
+export function memberPrompt(deps: Pick<ActivateDeps, "cell" | "personaFor" | "config">, memberName: string, ownerRole: string, owned: readonly SplitTaskVerdict[]): string {
   /** The persona text, when the roster service answered. */
   const persona = deps.personaFor(ownerRole)
   /** One line per owned task: its key and subject. */
   const taskLines = owned.map((task) => "  · " + task.key + " — " + task.subject)
   return [
     ...(persona === null ? [] : [persona, ""]),
-    "[mpd-cellwork] You are " + ownerRole + " on cell " + deps.cell.cellId + ".",
+    "[mpd-cellwork] You are " + memberName + " (" + ownerRole + ") on cell " + deps.cell.cellId + ".",
     "",
     "OBJECTIVE (the user's own words):",
     deps.cell.objective,
@@ -260,12 +297,14 @@ export function buildContractDoc(deps: Pick<ActivateDeps, "cell" | "config" | "s
     : [...deps.config.contractGates]
   /** The role that will verify this task, when a review task exists. */
   const verifier = reviewer === undefined ? "NO REVIEW TASK — this task's verification is not armed" : reviewer.ownerRole
+  /** The board MEMBER that owns the task, which C1 lets differ from the role (several members, one role). */
+  const memberName = resolvedMemberName(task)
   return [
     "# Acceptance contract — " + task.key + ": " + task.subject,
     "",
     "Cell: `" + deps.cell.cellId + "` · split revision " + String(deps.split.revision) + " · frozen " + deps.split.submittedAt,
     "producer: " + producerIdentity(deps.cell.cellId),
-    "Owner: **" + task.ownerRole + "** · Verifier: **" + verifier + "** · Board task: `" + boardId + "`",
+    "Owner: **" + task.ownerRole + "** (member `" + memberName + "`) · Verifier: **" + verifier + "** · Board task: `" + boardId + "`",
     "",
     "## Deliverable",
     task.description,
@@ -332,7 +371,7 @@ function contractAlreadyNamesLoop(deps: Pick<ActivateDeps, "workspace" | "cell">
 /**
  * Materialise one accepted split on the live team record.
  *
- * @param deps - the adapter, the cell, the split, the captain's agent and the partial checkpoint.
+ * @param deps - the adapter, the cell, the split, the captain's agent and the progress sink.
  * @returns the artifacts created, or the refusal sentence plus the partial it may resume from.
  */
 export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResult> {
@@ -343,10 +382,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   const partial: ActivatePartial = { members: {}, boardIds: {}, loopIds: {}, contracts: {} }
   /** Whether anything has been written yet: before that, a failure has nothing to resume from. */
   let mutated = false
-  /** A fresh copy of the partial, so a persisted checkpoint can never alias a later mutation. */
+  /** How many artifacts this pass has journaled so far. */
+  let artifacts = 0
+  /** How many artifacts this pass is expected to produce, assigned once the delta is known. */
+  let total = 0
+  /**
+   * Journal ONE compact progress row for an artifact that now exists (contract C8).
+   *
+   * @param stage - the pass stage the artifact belongs to.
+   * @param key - the artifact's split key, or the member name for a member artifact.
+   */
+  const progress = (stage: ActivateProgress["stage"], key: string): void => {
+    mutated = true
+    artifacts += 1
+    deps.progress({ stage, key, ordinal: artifacts, total })
+  }
+  /** A fresh copy of the partial, so the failure snapshot can never alias a later mutation. */
   const snapshot = (): ActivatePartial => ({ members: { ...partial.members }, boardIds: { ...partial.boardIds }, loopIds: { ...partial.loopIds }, contracts: { ...partial.contracts } })
-  /** Record the partial after one artifact, then keep going. */
-  const checkpoint = (): void => { mutated = true; deps.checkpoint(snapshot()) }
   /** The failure arm: the sentence, plus the partial once anything was written. */
   const fail = (error: string): ActivateResult => ({ ok: false, error, ...(mutated ? { partial: snapshot() } : {}) })
   /** A message from an unknown thrown value, without assuming it is an Error. */
@@ -377,6 +429,34 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   const fresh = deps.split.tasks.filter((task) => !keptKeys.has(task.key))
   /** The code tasks among them, which are the ones a contract is written for. */
   const freshCode = fresh.filter((task) => task.writeScopes.length > 0)
+  /** The distinct board members the fresh tasks resolve to, in submission order (contract C1). */
+  const memberOrder: string[] = []
+  for (const task of fresh) {
+    /** The member this task resolves to. */
+    const name = resolvedMemberName(task)
+    if (!memberOrder.some((seen) => roleKey(seen) === roleKey(name))) memberOrder.push(name)
+  }
+  /** Every verify loop this revision already has, by split key: the ones a recorded pass armed. */
+  const loopIds = new Map<string, string>(Object.entries(deps.cell.activatedLoops ?? {}))
+  /** Every split task that needs a loop (a task with no write scope produces no code to verify). */
+  const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0)
+  /** Code-task keys ALREADY armed whose loop id the record cannot name (a pre-`activatedLoops` cell). */
+  const armedByContract = new Set<string>()
+  /** The code tasks whose loop THIS pass must open, decided up front so `total` is exact. */
+  const loopTargets: SplitTaskVerdict[] = []
+  for (const task of codeTasks) {
+    if (loopIds.has(task.key)) continue
+    // F1: a KEPT task from a cell activated BEFORE `activatedLoops` existed has no recorded id, but its
+    // frozen contract may already name a loop. Re-opening would duplicate the loop and rewrite a contract
+    // a verifier may be reading — so such a task is skipped, and its arming satisfies the dispatch gate.
+    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
+      armedByContract.add(task.key)
+      continue
+    }
+    loopTargets.push(task)
+  }
+  /** How many artifacts this pass will produce: contracts, members, tasks and verify loops (C8). */
+  total = freshCode.length + memberOrder.length + fresh.length + loopTargets.length
   /** The live team record as it stands, when the team service can answer. */
   let live: DispatchRecordView | undefined
   try { live = deps.recordFor(teamId) } catch { live = undefined }
@@ -386,7 +466,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   /** The roles already on the cell record, by comparison key. */
   const existingMembers = new Map<string, CellMemberRecord>(Object.values(deps.cell.members).map((member) => [roleKey(member.name), member]))
   // THE LIVE ROSTER IS THE SECOND SEED (contract A3): a member can exist on the team record while the
-  // cell record has no row for it (a crash between `add_member` and its checkpoint). The live
+  // cell record has no row for it (a crash between `add_member` and the failure snapshot). The live
   // `executorRef` is the fresher handle, so it wins over a remembered one.
   for (const [key, row] of liveRoster) {
     /** The row already on the cell record, when there is one. */
@@ -395,8 +475,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     const executorRef = typeof row.executorRef === "string" ? row.executorRef : ""
     /** The member name the team record spells. */
     const name = typeof row.name === "string" ? row.name : key
-    /** The tasks this role owns in the accepted split, which decide its mode on the cell record. */
-    const owned = deps.split.tasks.filter((task) => roleKey(task.ownerRole) === key)
+    /** The tasks this member owns in the accepted split, which decide its mode on the cell record. */
+    const owned = deps.split.tasks.filter((task) => roleKey(resolvedMemberName(task)) === key)
     existingMembers.set(key, remembered === undefined
       ? { name, role: typeof row.role === "string" ? row.role : "", sessionId: executorRef, executorRef, mode: owned.length > 0 && owned.every((task) => task.kind === "review") ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
       : { ...remembered, sessionId: executorRef === "" ? remembered.sessionId : executorRef, executorRef: executorRef === "" ? remembered.executorRef : executorRef })
@@ -416,24 +496,27 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       return fail("cellwork_activate could not write the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
     }
     partial.contracts[task.key] = path
-    checkpoint()
+    progress("contract", task.key)
   }
-  // 2. MEMBERS: one per distinct owner role, REUSING a planning member, a recorded member or a live
-  // roster row instead of raising a second one.
-  /** The roles handled in this pass, by comparison key. */
-  const handledRoles = new Set<string>()
+  // 2. MEMBERS: one per DISTINCT board member (contract C1) — several members may share one owner role,
+  // which is the real parallelism D10 was missing — REUSING a planning member, a recorded member or a
+  // live roster row instead of raising a second one.
+  /** The members handled in this pass, by comparison key. */
+  const handledMembers = new Set<string>()
   /** The member rows this pass ensured, keyed by board name. */
   const newMembers: Record<string, CellMemberRecord> = {}
   /** The board names this pass reused instead of raising. */
   const reused: string[] = []
-  for (const task of fresh) {
-    /** The owner role's comparison key. */
-    const key = roleKey(task.ownerRole)
-    if (handledRoles.has(key)) continue
-    handledRoles.add(key)
-    /** The tasks this role owns, for its prompt. */
-    const owned = deps.split.tasks.filter((candidate) => roleKey(candidate.ownerRole) === key)
-    /** Something already answers for this role: the cell record or the live roster. */
+  for (const memberName of memberOrder) {
+    /** The member's comparison key. */
+    const key = roleKey(memberName)
+    if (handledMembers.has(key)) continue
+    handledMembers.add(key)
+    /** The tasks this MEMBER owns, for its prompt. */
+    const owned = deps.split.tasks.filter((candidate) => roleKey(resolvedMemberName(candidate)) === key)
+    /** The roster role the member answers to; C1 refuses two roles for one member. */
+    const ownerRole = (owned[0]?.ownerRole ?? memberName).trim()
+    /** Something already answers for this member: the cell record or the live roster. */
     const existing = existingMembers.get(key)
     if (existing !== undefined) {
       reused.push(existing.name)
@@ -442,18 +525,16 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       if (deps.cell.members[existing.name] === undefined) {
         newMembers[existing.name] = existing
         partial.members = { ...partial.members, ...newMembers }
-        checkpoint()
+        progress("member", existing.name)
       }
       continue
     }
-    /** Whether every task this role owns is a review. */
+    /** Whether every task this member owns is a review. */
     const pureVerifier = owned.every((candidate) => candidate.kind === "review")
-    /** The member name: the roster role spelling, which is also the board's owner spelling. */
-    const name = task.ownerRole.trim()
-    /** The member append; the live arm raises the teammate immediately. */
+    /** The member append; the live arm raises the teammate immediately. The ROLE carries the routing. */
     const added = await call({
       action: "add_member",
-      member: { name, role: name, description: name + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, name, owned) },
+      member: { name: memberName, role: ownerRole, description: memberName + (pureVerifier ? " (verifier)" : ""), prompt: memberPrompt(deps, memberName, ownerRole, owned) },
     })
     if (!added.ok) {
       // A DUPLICATE IS A RECONCILIATION, NOT A FAILURE (contract A3): the member exists on the live
@@ -469,21 +550,21 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
           const executorRef = typeof row.executorRef === "string" ? row.executorRef : ""
           /** Its board name, spelled the way the roster spells it. */
           const liveName = String(row.name)
-          newMembers[liveName] = { name: liveName, role: name, sessionId: executorRef, executorRef, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
+          newMembers[liveName] = { name: liveName, role: ownerRole, sessionId: executorRef, executorRef, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
           reused.push(liveName)
           partial.members = { ...partial.members, ...newMembers }
-          checkpoint()
+          progress("member", liveName)
           continue
         }
       }
-      return fail("cellwork_activate could not raise " + JSON.stringify(name) + ": " + added.error)
+      return fail("cellwork_activate could not raise " + JSON.stringify(memberName) + ": " + added.error)
     }
     /** The handle the raise produced, when the answer carried one. */
     const handle = typeof added.value.spawned === "string" ? added.value.spawned : ""
-    if (handle === "") return fail("cellwork_activate raised " + JSON.stringify(name) + " but the answer carried no executor handle")
-    newMembers[name] = { name, role: name, sessionId: handle, executorRef: handle, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
+    if (handle === "") return fail("cellwork_activate raised " + JSON.stringify(memberName) + " but the answer carried no executor handle")
+    newMembers[memberName] = { name: memberName, role: ownerRole, sessionId: handle, executorRef: handle, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
     partial.members = { ...partial.members, ...newMembers }
-    checkpoint()
+    progress("member", memberName)
   }
   // 3. TASKS in dependency order; the board mints the ids every later call addresses. A KEPT key keeps
   // the id it was minted with — the live row is reused, never duplicated.
@@ -497,8 +578,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   /** The tasks as they landed, in creation order. */
   const activated: ActivatedTask[] = []
   for (const task of topologicalOrder(fresh)) {
-    /** The owner member name (`cell-planner` for a cell role, else the role spelling). */
-    const memberName = task.ownerRole.trim()
+    /** The board member the task resolves to: its declared `member`, else its role spelling (contract C1). */
+    const memberName = resolvedMemberName(task)
     /** The mapped blockers: keys already minted become board ids; a cell role is not a task so none remain. */
     const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference)
     /** The task's description; a review task additionally names its frozen contract. */
@@ -526,39 +607,40 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     boardIds.set(task.key, boardId)
     activated.push({ key: task.key, boardId, kind: task.kind, ownerRole: task.ownerRole, memberName })
     partial.boardIds[task.key] = boardId
-    checkpoint()
+    progress("task", task.key)
   }
   // 4. VERIFY LOOPS, before dispatch: a verdict with no armed loop is a verdict nobody checks. The
   // condition is `activatedLoops`, NOT `freshCode` (contract A3): a KEPT task whose loop the failing
   // pass never opened is exactly the VEdit wedge, and a loop that already exists is never re-armed.
-  /** Every verify loop this revision already has, by split key: the ones a recorded pass armed. */
-  const loopIds = new Map<string, string>(Object.entries(deps.cell.activatedLoops ?? {}))
   /** The loops THIS pass opens, as the outcome reports them (a recorded loop is never re-armed). */
   const loops: ActivatedLoop[] = []
-  /** Every split task that needs a loop (a task with no write scope produces no code to verify). */
-  const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0)
-  /** Code-task keys ALREADY armed whose loop id the record cannot name (a pre-`activatedLoops` cell). */
-  const armedByContract = new Set<string>()
-  for (const task of codeTasks) {
-    if (loopIds.has(task.key)) continue
-    // F1: a KEPT task from a cell activated BEFORE `activatedLoops` existed has no recorded id, but its
-    // frozen contract may already name a loop. Re-opening would duplicate the loop and rewrite a contract
-    // a verifier may be reading — so such a task is skipped, and its arming satisfies the dispatch gate.
-    if (keptKeys.has(task.key) && contractAlreadyNamesLoop(deps, task.key)) {
-      armedByContract.add(task.key)
-      continue
-    }
+  for (const task of loopTargets) {
     /** The board id this task was materialised as. */
     const boardId = boardIds.get(task.key) ?? ""
     if (boardId === "") return fail("cellwork_activate has no board id for " + JSON.stringify(task.key) + " — refusing to open a verify loop for a row that is not on the board")
     /** The relative contract path the loop freezes. */
     const contract = contractRelativePath(deps.cell.cellId, task.key)
+    /** The board member that OWNS this code task (contract C1). */
+    const memberName = resolvedMemberName(task)
+    /** The member row that carries the owner's agent identity, from this pass or the earlier seed. */
+    const owner = newMembers[memberName] ?? existingMembers.get(roleKey(memberName))
+    // THE LOOP NAMES ITS WRITER (contract C2, defect D12): `mpd_verify_record` compares the recorded
+    // writer id against the VERIFIER's session id, so the value must be an agent identity, never a
+    // display name. The cell record's `sessionId` is that identity; `executorRef` is the fallback for a
+    // composition that hands back only the executor handle.
+    const writerId = (owner?.sessionId ?? "").trim() === "" ? (owner?.executorRef ?? "").trim() : (owner?.sessionId ?? "").trim()
     /** The loop-open call, under the CAPTAIN'S OWN agent (contract A4). */
     let opened: { ok: boolean; value?: unknown; error?: unknown }
     try {
       opened = await deps.dsh.executeTool({
         name: "mpd_verify_open",
-        arguments: { writer: "delegate", contract, scope: [...task.writeScopes], task_id: boardId },
+        arguments: {
+          writer: "delegate",
+          contract,
+          scope: [...task.writeScopes],
+          task_id: boardId,
+          ...(writerId === "" ? {} : { writer_id: writerId, writer_reason: "member: " + memberName }),
+        },
         agent: deps.captainAgent,
       })
     } catch (error) {
@@ -584,7 +666,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     } catch (error) {
       return fail("cellwork_activate could not rewrite the contract for " + JSON.stringify(task.key) + ": " + errorText(error))
     }
-    checkpoint()
+    progress("loop", task.key)
   }
   // THE DISPATCH GATE (contract A3): only after EVERY task has a board id and EVERY code task has a loop
   // id may the owners be woken — a dispatch that skips a loop is the disarmament this repair removes.
@@ -626,8 +708,10 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   }
   // THE SPLIT TASK CLOSES HERE, not on acceptance: it stayed open through a requirements update so the
   // SAME row could be re-dispatched, and materialisation is the moment its work is done.
+  // The RECORDED board id is read FIRST (contract C11): a staged ticket that reached the board with NO
+  // owner would never match an owner-only lookup, and its row would stay open forever.
   /** The splitter's board row, when it is still open. */
-  const splitterRow = (record?.tasks ?? []).find((task) => roleKey(String(task.owner ?? "")) === roleKey("cell-splitter") && task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled")
+  const splitterRow = findSplitTicket(record?.tasks ?? [], deps.cell.splitTaskId ?? "", true)
   /** The id of that row. */
   const splitTaskId = String(splitterRow?.id ?? "")
   if (splitTaskId !== "") {
@@ -650,6 +734,8 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     contracts: Object.values(partial.contracts),
     loops: loops.map((loop) => ({ taskKey: loop.taskKey, loopId: loop.loopId })),
     reused,
+    // ONE compact row per artifact, never the accumulated state (contract C8/D7).
+    progress: artifacts,
     dispatched: dispatch.pairs.length,
     skipped: dispatch.skipped.length,
     ...(splitTaskId === "" ? {} : { splitTaskId }),

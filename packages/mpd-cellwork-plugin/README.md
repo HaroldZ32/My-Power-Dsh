@@ -29,16 +29,26 @@ about. A session in no cell is untouched, which is what makes the mode free whil
 | verifier | `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` |
 | member at its context checkpoint | everything except `cellwork_handoff`, `cellwork_context`, `cellwork_status` |
 | subcaptain | a MINI-CAPTAIN: the captain allowlist MINUS `cellwork_start`/`cellwork_stop`, plus the four sub-cell verbs `cellwork_subteam`, `cellwork_activate`, `cellwork_dispatch`, `cellwork_supervise`. No file-work tool at all |
+| planner (`cell-planner`) | `read`/`grep`/`glob` inside the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`; any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by basename at any depth, inside or outside the workspace root; at the root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md`, `LICENSE*.md` — and every other tool it needs to plan |
 | ordinary member | nothing: it is a normal worker |
 
 Every refusal is ONE teaching paragraph naming what was refused, the calls that replace it, and
 `cellwork_stop` as the way out. `cellwork_stop` archives the cell, the seat disappears with it, and the
 same session is unguarded again.
 
+The planner row is the repository's reconnaissance rule, not a cellwork invention: its band is the SAME
+band the top-level `mpd` captain keeps (a parity test imports both lists, so they cannot drift), a path
+is judged by its SPELLING with symlinks never resolved, and a `..` segment is admitted ONLY when the
+basename is one of the three instruction files — reading a sibling project's `AGENT.md` is exactly why
+the hop is allowed. In a cell the planner NEVER runs reconnaissance itself: `cellwork_recon` forwards an
+absolute depth cap and `mpd_role_spawn` forwards the caller's recorded depth + 1, so a nested consult is
+a leaf instead of hitting a host depth default it cannot see.
+
 ## State on disk
 
 `<workspace>/.mpd/cellwork/<cell-id>/` holds `state.json` (the record), `journal.jsonl` (append-only
-history), `requirements.md`, `split/<rev>.json`, `contracts/<taskKey>.md` and `handoff/<member>-<n>.md`.
+history), `requirements.md`, `split/<rev>.json` and `split/<rev>.refused.json`, `contracts/<taskKey>.md`
+and `handoff/<member>-<n>.md`.
 The root is resolved through `dsh.workspaceRoot(exec)` per call — never `process.cwd()`, never a cached
 constant. Writes go through a temporary file and a rename in the same directory, so a reader sees the
 previous record or the new one and never a half-written file.
@@ -50,22 +60,30 @@ the record says `stopped`, and a later `/cellwork` mints a new cell id.
 ## Tools in this package
 
 - `cellwork_status` — phase, objective, captain, requirements/split revisions, members and their modes,
-  injected checkpoints, the live team's member/task counts, the caller's own seat and the on-disk paths.
+  injected checkpoints, the live team's member/task counts, the recorded split-ticket board id
+  (`splitTaskId`), the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` /
+  `inSync`, report-only), the caller's own seat and the on-disk paths.
 - `cellwork_start` — opens the requirements phase of the ACTIVE cell (captain only): validates the cell
   and the caller, stamps `startedAt`, journals it. It never creates a cell; that is the command's alone.
 - `cellwork_stop` — archives the cell (no deletion), clears the guard and gives the tools back. It
   REFUSES while a board task is `claimed`/`in_progress` unless `force:true`, and a forced stop is
   journaled as such.
 
-The flow tools: `cellwork_requirements` (the planner's finalize/update), `cellwork_recon` (the planner's
-one-shot read-only consult), `cellwork_split` (the splitter's measured graph), `cellwork_activate` (the
-captain's materialisation, whose answer's `reused` list names the members resolved from the cell record or
-the live roster instead of raised).
+The flow tools: `cellwork_requirements` (the planner's finalize/update; a section body runs to the next
+heading of the same or a higher level, so `###` stays inside its parent), `cellwork_recon` (the
+planner's one-shot read-only consult), `cellwork_split` (the splitter's measured graph — each task may
+declare its board `member`, and a refusal persists its findings at `split/<rev>.refused.json`),
+`cellwork_activate` (the captain's materialisation; it raises ONE member per distinct `member`, names
+both the owner role and the member in each contract, and its answer's `reused` list names the members
+resolved from the cell record or the live roster instead of raised).
 
-The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass), `cellwork_supervise` (the
-captain's read-only sweep), `cellwork_context` (a member's own occupancy), `cellwork_handoff` (the
-checkpoint document), `cellwork_subteam` (a subcaptain's sub-cell registration), `cellwork_send` /
-`cellwork_inbox` (durable cell mail). They land on the SAME record and guard documented here.
+The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass, plus `reassign` hand-overs),
+`cellwork_supervise` (the captain's read-only sweep, including every fenced member and the open rows it
+still owns), `cellwork_context` (a member's own occupancy), `cellwork_handoff` (the checkpoint document;
+a SECOND one is refused while the first waits for the barrier), `cellwork_subteam` (a subcaptain's
+sub-cell registration), `cellwork_send` / `cellwork_inbox` (durable cell mail — the `send` row lands
+first and the wake-up attempt is a separate `wake` record). They land on the SAME record and guard
+documented here.
 
 ## Config
 
@@ -93,9 +111,17 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   operator override (`override`), or the task is `uncertified` — never guessed. A split is accepted only
   when the estimate fits `floor(window * windowFraction)` AND leaves the model's max output plus the
   compaction headroom inside the window; an over-budget task is refused WITH its bytes → tokens breakdown.
-- **B7 owner-only dispatch.** A ready task is paired ONLY with its declared owner; a busy or absent owner
-  is reported and the task left pending — never substituted. The verify loop for every code task is opened
-  BEFORE the dispatch pass that hands the work out.
+- **B7 owner-only dispatch.** A ready task is paired ONLY with its declared owner; a busy, absent or
+  FENCED owner is reported and the task left pending — never substituted. A member is FENCED when its
+  recorded `mode` is `checkpoint`, when a handoff it wrote still waits for the compaction barrier, or
+  when the barrier gave up and recorded `fenced: true` + `fencedReason`, and a fenced member is never
+  messaged. `cellwork_dispatch {reassign:[{task_id, owner}]}` is the repair: for each pair, BEFORE the
+  pass, the row is claimed on the board for that member, journaled as `task-reassigned` (from → to), then
+  delivered — a failure is reported in `reassigned`/`reassignInvalid`, never thrown, and a terminal row,
+  an unknown member or a fenced TARGET is refused. After a reassignment the target owns an in-flight
+  row, so the SAME pass reports its OTHER ready rows BUSY (one task per member per pass): the documented
+  rule, not a regression. The verify loop for every code task is opened BEFORE the dispatch pass that
+  hands the work out.
 - **Resumable activation.** `cellwork_activate` checkpoints each artifact the moment it creates it — the
   in-flight revision (`activationInFlight`), every member raised, every board id minted and every loop opened
   (`activatedLoops`) — under the `cell-activation-partial` journal event; the phase never regresses, so it
@@ -111,7 +137,29 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   split are refused with the existing teaching errors. The answer's `reused` list names the members resolved
   from the cell record or the live roster instead of raised. The resume is not a transaction: the residual
   window is one board/verify call plus one cell-record write, and a duplicate board row that window leaves
-  behind is detectable but not deletable (the team plane has no cancel verb).
+  behind is detectable but not deletable (the team plane has no cancel verb). The journal of a pass is
+  compact: ONE `cell-activation-progress` row per artifact as it is created, the full snapshot ONCE on
+  failure (`cell-activation-partial`), and every row of one pass carries the same non-decreasing pass
+  instant, so the journal is monotonic (D7: 119 full snapshots were ~40 % of a 490 KB journal and the
+  final row was stamped EARLIER than the rows above it).
+- **C1 — `member` names the seat.** A split task may declare `member`; omitted, the member name IS the
+  owner role. Several tasks may share one member, and several members may share one owner role (that is
+  real parallelism for one role). The name is refused as `member-invalid` when empty, longer than 64
+  characters, or carrying a control character/path separator; `member-role-conflict` refuses one member
+  declared under two DIFFERENT owner roles; `self-review` compares the RESOLVED member names when both
+  sides declare one. Activation raises ONE member per distinct `member`, and a contract names the owner
+  role AND the member (`Owner: **<role>** (member `<name>`)`).
+- **C11 — the split ticket is found by id, and a lost owner is repaired.** Staging records the staged
+  split ticket's BOARD id as `splitTaskId`; every lookup tries that id first and the owner second, so a
+  requirements bump marks the split stale and re-dispatches the SAME row. A missing/ownerless ticket is
+  a hard error naming the repair, and staging repairs a lost owner itself by claiming the row for
+  `cell-splitter` (`agent_teams_task {action:"claim", claimant:"cell-splitter"}`) instead of minting a
+  duplicate.
+- **The mail log format changed, one-way.** A `send` row now always carries `wakeSent: false`, and the
+  wake-up outcome is a SEPARATE `wake` record (`t:"wake"`, `sent`, `reason?`, `at`) appended after it.
+  This build folds an older log correctly (a pre-`wake` row keeps its own `wakeSent`); a reader from a
+  PREVIOUS build reads a new row as "not woken" — a one-bundle-workspace bound, stated rather than
+  hidden.
 - **Lossless tool results.** Every cellwork tool result survives the harness's lossless-JSON walk: a task
   projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
   and no result carries a non-finite number, a negative zero or a cycle.
@@ -124,7 +172,11 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   ONE `mpd_verify_*` entry on the captain allowlist: `mpd_verify_seat`, `mpd_verify_evidence`,
   `mpd_verify_record` and `mpd_verify_escape` stay refused for the captain, so a `writer:"self"` loop it opens
   is inert (`mpd_verify_seat` refuses the loop's own writer). With no live caller agent, `cellwork_activate`
-  refuses before any write.
+  refuses before any write. The loop NAMES its writer: activation passes the owning member's session id as
+  `writer_id` (1..200 characters after trimming) and the human name as `writer_reason: "member: <name>"`
+  (also 1..200) into `writer.reason`, so the record's same-agent refusal compares real agent keys instead of
+  the `delegate:pending` placeholder. Both parameters are refused in one sentence with `writer:"self"`. The
+  comparison is a STRING comparison: it makes the rule meaningful, never unforgeable.
 - **One override, one identity.** `windowOverride` is a single value: it certifies ANY route the catalog
   cannot report, recorded as `override`. The planning tasks are closed under the CALLER's own identity
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.
@@ -175,6 +227,13 @@ declared follow-up (`docs/cellwork.md`, "Declared bounds").
   the loop and the verdict, and does not pretend to observe what a verifier read.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
   measurement, and deliberately punitive for CJK.
+- **The generic team verb is the hazard cell mode removes.** `agent_teams_dispatch` pairs a ready task
+  with its declared owner but FALLS BACK TO ROSTER ORDER when that owner is busy; during this wave it
+  handed a REVIEW task to the member that had WRITTEN the reviewed lanes. The captain released the
+  pairing immediately, restored the row to the independent reviewer, and the writer disclosed it had
+  only run `git diff --stat`, a marker grep and a directory listing before it was stopped — no verdict
+  existed, so no contaminated judgement was recorded. `cellwork_dispatch` is owner-only and never
+  substitutes; outside cell mode, wait for the declared owner or release and reassign deliberately.
 - No live-LLM end-to-end run is claimed by this package's tests: they prove the command surface, the
   guard decisions per mode, the state store and the start/status/stop lifecycle against a fake ctx. A
   mounted boot proves that this row APPLIES; a live `/cellwork` dispatch is the QA case's proof.
@@ -183,7 +242,10 @@ declared follow-up (`docs/cellwork.md`, "Declared bounds").
 
 `bun test packages/mpd-cellwork-plugin` — offline, no harness, no network. Each arm runs through the
 adapter entry points the host uses (`apply`, the captured command definition, the captured tool
-definitions and the ONE installed guard predicate), in a fresh temp workspace.
+definitions and the ONE installed guard predicate), in a fresh temp workspace. The wave's defect arms
+are separate files: `activate-resume-e2e` (a failure at EACH of the five activation stages, then
+convergence with no duplicate), `split-refused`, `requirements-subheadings`, `dispatch-fenced`,
+`dispatch-reassign`, `mail-order`, `planner-guard`, `band-parity` and `status-reconcile`.
 
 The seam rule for this package is the repository's: every harness touch goes through
 `resolveDshAdapter(ctx)`, and the design background is in the

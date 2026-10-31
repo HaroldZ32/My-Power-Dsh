@@ -27,9 +27,16 @@ import { isAbsolute, join, relative, sep } from "node:path"
 export interface LoopWriter {
   /** `self` means the captain writes (COUNTED and visible); `delegate` means a member does. */
   kind: "self" | "delegate"
-  /** The writer's agent key; for a delegated loop opened by the observer, the delegate is named later. */
+  /**
+   * The writer's AGENT KEY. A delegated loop opened through `mpd_verify_open` carries the caller's
+   * `writer_id` (the member's session id), so a record's same-agent refusal compares real identities;
+   * without one, and for a loop the observer opened, it stays the `delegate:pending` placeholder.
+   */
   id: string
-  /** Why the captain is writing its own code — REQUIRED for `self`, echoed in every report. */
+  /**
+   * Why the captain writes its own code — REQUIRED for `self`, echoed in every report — or, for a
+   * delegated loop opened through the tool, the caller's `writer_reason` (e.g. `member: <name>`).
+   */
   reason?: string
 }
 

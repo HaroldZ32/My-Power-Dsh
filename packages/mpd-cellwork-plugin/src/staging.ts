@@ -17,6 +17,8 @@ import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { CellworkConfig } from "./config"
 import type { CellMemberRecord, CellState } from "./state"
 import type { TeamsServiceView } from "./caller"
+import { roleKey } from "./split"
+import { PLANNER_RECON_LINES } from "./prompts"
 
 /** The planner member's board name. */
 export const PLANNER_MEMBER = "cell-planner"
@@ -73,6 +75,13 @@ export interface StageResult {
   members?: Record<string, CellMemberRecord>
   /** The board ids of the two tasks. */
   tasks?: { requirementsId?: string; splitId?: string }
+  /**
+   * Whether this call CLAIMED an ownerless split ticket for `cell-splitter` (contract C11).
+   *
+   * A plan approval can post the split ticket with no owner (defect D2); staging repairs that itself, so
+   * the requirements-update path can still find and re-dispatch the SAME row (defect D3).
+   */
+  ownerRepaired?: boolean
   /**
    * The name of the plan slot this cell stages under (`"cell " + cellId`), so a caller can journal WHICH
    * plan a partial failure left behind and a retry can recognize its own slot.
@@ -169,7 +178,9 @@ export function plannerPrompt(deps: Pick<StageDeps, "cell" | "personaFor">): str
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
     "  {role:\"Explorer\"|\"Researcher\", task} — a one-shot READ-ONLY consult; you get its report back.",
-    "",
+    // C5/D15, ruling R2: the delegation block is EXPORTED by `prompts.ts` (lane E owns that file) and
+    // spliced here, in the PLANNER prompt only. The block opens and closes with an empty line.
+    ...PLANNER_RECON_LINES,
     "THE DOCUMENT: write `<cell>/requirements.md` under the cell directory with these headings exactly:",
     "  ## Goal · ## Non-goals · ## Users / consumers · ## Constraints · ## Acceptance criteria · ## Open questions",
     "Every section must carry real content; an empty section will be refused.",
@@ -253,10 +264,17 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
   if (existingTeamId !== "") {
     /** The live record, when the team service can read it. */
     const record = deps.teams()?.get?.(deps.workspace, existingTeamId)
+    // THE SPLIT TICKET IS RESOLVED ON THE IDEMPOTENT PATH TOO (contract C11): a retry that takes this
+    // arm is the moment the earlier pass's failure stopped, and its board id is recorded from here on.
+    /** The staged split ticket, resolved by the recorded id first and by its owner second. */
+    const ticket = await resolveSplitTicket(deps, existingTeamId, "", false)
+    if (ticket.boardReadable && ticket.splitTaskId === "") return { ok: false, error: "the planning team " + existingTeamId + " is on this cell's record but " + ticket.repairError, teamId: existingTeamId, planName: "cell " + deps.cell.cellId, partial: true }
     return {
       ok: true,
       alreadyStaged: true,
       teamId: existingTeamId,
+      tasks: { splitId: ticket.splitTaskId },
+      ...(ticket.ownerRepaired ? { ownerRepaired: true } : {}),
       ...(record === undefined ? {} : {
         members: {
           [PLANNER_MEMBER]: planningMemberRow(PLANNER_MEMBER, PLANNER_ROLE, deps.cell, deps.now),
@@ -327,7 +345,12 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
       }
       recovered[name] = livePlanningMemberRow(name, role, textField(appended.value, "spawned"), deps.cell, deps.now)
     }
-    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, planName }
+    // THE RECOVERED TEAM'S SPLIT TICKET IS RESOLVED HERE TOO (contract C11): the approval had already
+    // run, so no `create_task` answer carries its id — the board read is the only place it exists.
+    /** The staged split ticket, resolved by the recorded id first and by its owner second. */
+    const recoveredTicket = await resolveSplitTicket(deps, recoveredId, "", false)
+    if (recoveredTicket.boardReadable && recoveredTicket.splitTaskId === "") return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true }
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...(recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}) }
   }
   // No usable plan of ours is staged: create one and fill it. `approval:"required"` is the default, and
   // the explicit approve call below is what executes it (nothing is spawned before that).
@@ -406,11 +429,26 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     // the idempotent path instead of staging a second team.
     return { ok: false, error: "the planning team " + teamId + " was approved but a member could not be raised (" + stoppedAt + "); the record exists — inspect `agent_teams_plan {action:\"status\"}` and repair it", teamId, members, planName, partial: true }
   }
+  /** The board id the approval minted for one staged subject, or "" when it carried none. */
+  const postedId = (subject: string): string => posted.find((row) => row.subject === subject)?.id ?? ""
+  // THE SPLIT TICKET IS RESOLVED AND ITS OWNER REPAIRED HERE (contract C11, defects D2/D3): the approval
+  // may post it with NO owner, so the board is read back and the row is claimed for `cell-splitter`.
+  /** The id the approval's own answer named for the split ticket, or "". */
+  const answeredSplitId = postedId(SPLIT_TASK_SUBJECT) === "" ? (posted[1]?.id ?? "") : postedId(SPLIT_TASK_SUBJECT)
+  /** The staged split ticket, resolved by that id first and by its owner second. */
+  const ticket = await resolveSplitTicket(deps, teamId, answeredSplitId, true)
+  /** The id this staging records: the board read is authoritative, the approval's answer the fallback. */
+  const splitId = ticket.splitTaskId === "" ? answeredSplitId : ticket.splitTaskId
+  // A MISSING TICKET IS A HARD ERROR only when the board WAS readable and carried none: an unreadable
+  // record proves nothing, so the approval's own answer is recorded instead of refusing a staged team.
+  if (ticket.boardReadable && splitId === "") return { ok: false, error: "the planning team " + teamId + " was approved but " + ticket.repairError, teamId, members, planName, partial: true }
+  if (ticket.repairError !== "") return { ok: false, error: ticket.repairError, teamId, members, planName, partial: true }
   return {
     ok: true,
     teamId,
     members,
-    tasks: { requirementsId: posted[0]?.id, splitId: posted[1]?.id },
+    tasks: { requirementsId: postedId(REQUIREMENTS_TASK_SUBJECT), splitId },
+    ...(ticket.ownerRepaired ? { ownerRepaired: true } : {}),
   }
 }
 
@@ -473,4 +511,111 @@ export function splitterTaskDescription(cell: CellState): string {
     "Fix every refusal the measured breakdown names; then close the task with",
     "`agent_teams_task {action:\"complete\", task_id:<this task>}` once a split revision is ACCEPTED.",
   ].join("\n")
+}
+
+/** The board statuses a still-actionable row never carries. */
+const TERMINAL_TICKET_STATUSES: readonly string[] = ["completed", "failed", "cancelled"]
+
+/** One board row, as much of it as the split-ticket lookup reads (contract C11). */
+export interface SplitTicketRow {
+  /** The board id the row answers to; read through `String(...)`, so an untrusted record is tolerated. */
+  id?: unknown
+  /** The declared owner's board name. */
+  owner?: unknown
+  /** The board status, used only to tell a live row from a terminal one. */
+  status?: unknown
+}
+
+/** The sentence every missing/ownerless split ticket's report carries: the repair verb, verbatim. */
+export const SPLIT_TICKET_REPAIR = "agent_teams_task {action:\"claim\", claimant:\"cell-splitter\"}"
+
+/**
+ * Find the cell's split ticket on one board read: the RECORDED id first, the owner second (contract C11).
+ *
+ * The recorded id wins because a staged ticket can reach the board with NO owner (defect D2), and an
+ * owner-only lookup then reports "no split task" forever — which is also what blinded the STALE machinery
+ * (defect D3). The owner match stays as the fallback for a cell whose record predates
+ * {@link CellState.splitTaskId}.
+ *
+ * @param rows - the cell team's board rows, in board order.
+ * @param splitTaskId - the recorded board id, or "" when the cell never recorded one.
+ * @param liveOnly - true to skip terminal rows, false to consider every row.
+ * @returns the row, or undefined when the board holds no split ticket.
+ */
+export function findSplitTicket(rows: readonly SplitTicketRow[], splitTaskId: string, liveOnly: boolean): SplitTicketRow | undefined {
+  /** Whether one row is still actionable. */
+  const live = (row: SplitTicketRow): boolean => !TERMINAL_TICKET_STATUSES.includes(String(row.status ?? ""))
+  /** The row the cell RECORDED, whatever its owner says. */
+  const recorded = splitTaskId === "" ? undefined : rows.find((row) => String(row.id ?? "") === splitTaskId)
+  if (recorded !== undefined && (!liveOnly || live(recorded))) return recorded
+  /** The splitter's rows, in board order. */
+  const owned = rows.filter((row) => roleKey(String(row.owner ?? "")) === roleKey(SPLITTER_MEMBER))
+  /** The live row first, the terminal one only when the caller tolerates it. */
+  return owned.find(live) ?? (liveOnly ? undefined : owned[0])
+}
+
+/** What {@link resolveSplitTicket} found and repaired. */
+export interface SplitTicketResolution {
+  /** The split ticket's board id, or "" when the board carries none. */
+  splitTaskId: string
+  /** Whether this call CLAIMED an ownerless row for `cell-splitter`. */
+  ownerRepaired: boolean
+  /** The refusal sentence of a failed owner repair, or "" when no repair was needed or it succeeded. */
+  repairError: string
+  /**
+   * Whether the team record could be READ at all.
+   *
+   * A record the service cannot answer proves nothing about the board: `false` means "absence is not
+   * evidence", so a caller must not report a missing ticket — it falls back to the id the approval answered.
+   */
+  boardReadable: boolean
+}
+
+/**
+ * Resolve the cell's staged split ticket on the live board and repair a LOST OWNER (contract C11, D2).
+ *
+ * Runs AFTER the approval, against the board the approval minted. An ownerless ticket is claimed for
+ * `cell-splitter` here, so a requirements update can find and re-dispatch the SAME row instead of
+ * reporting "no split task" (D3). The repair is reported, never thrown: the board id is recorded either
+ * way, and the id-first lookup keeps working when the claim itself is refused.
+ *
+ * @param deps - the adapter, the workspace, the captain's agent and the team reader.
+ * @param teamId - the approved team whose board is read.
+ * @param preferredId - the board id the approval answered, when it carried one.
+ * @param liveOnly - true on the fresh-approval path (the ticket must still be actionable), false on a
+ *   resume, where a ticket the activation already CLOSED is a normal row and its id must still be kept.
+ * @returns what was found and what the repair did.
+ */
+export async function resolveSplitTicket(deps: Pick<StageDeps, "dsh" | "workspace" | "cell" | "captainAgent" | "teams">, teamId: string, preferredId: string, liveOnly: boolean): Promise<SplitTicketResolution> {
+  /** The live board, read back after the approval. */
+  const record = deps.teams()?.get?.(deps.workspace, teamId)
+  if (typeof record !== "object" || record === null) {
+    // A record the service cannot answer is NOT an empty board: nothing here can prove the ticket absent,
+    // so the caller keeps whatever id the approval answered and no repair sentence is invented.
+    return { splitTaskId: "", ownerRepaired: false, repairError: "", boardReadable: false }
+  }
+  /** Its task rows, as the lookup reads them. */
+  const rows = Array.isArray((record as { tasks?: unknown }).tasks) ? (record as { tasks: unknown[] }).tasks.filter((row) => typeof row === "object" && row !== null) as SplitTicketRow[] : []
+  /** The id the cell already recorded. */
+  const recorded = (deps.cell.splitTaskId ?? "").trim()
+  /** The id this call could add. */
+  const preferred = preferredId.trim()
+  /** The row: the recorded id first, the approval's id second, the owner last. */
+  const row = (recorded === "" ? undefined : findSplitTicket(rows, recorded, liveOnly))
+    ?? (preferred === "" ? undefined : findSplitTicket(rows, preferred, liveOnly))
+    ?? findSplitTicket(rows, "", liveOnly)
+  if (row === undefined) return { splitTaskId: "", ownerRepaired: false, repairError: "no split ticket is on the board — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true }
+  /** The ticket's board id, which every later lookup reads first. */
+  const splitTaskId = String(row.id ?? "")
+  /** The owner the board stored, which a plan-approval defect can leave empty (D2). */
+  const owner = String(row.owner ?? "").trim()
+  if (owner !== "" || splitTaskId === "") return { splitTaskId, ownerRepaired: false, repairError: "", boardReadable: true }
+  try {
+    /** The repair claim, for the row's fixed owner (`cell-splitter`). */
+    const claimed = await deps.dsh.executeTool({ name: "agent_teams_task", arguments: { action: "claim", task_id: splitTaskId, claimant: SPLITTER_MEMBER }, agent: deps.captainAgent })
+    if (!claimed.ok) return { splitTaskId, ownerRepaired: false, repairError: "the ownerless split ticket " + splitTaskId + " could not be claimed (" + String(claimed.error) + ") — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true }
+    return { splitTaskId, ownerRepaired: true, repairError: "", boardReadable: true }
+  } catch (error) {
+    return { splitTaskId, ownerRepaired: false, repairError: "the ownerless split ticket " + splitTaskId + " could not be claimed (" + (error instanceof Error ? error.message : String(error)) + ") — repair it with `" + SPLIT_TICKET_REPAIR + "`", boardReadable: true }
+  }
 }

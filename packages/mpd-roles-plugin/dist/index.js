@@ -593,6 +593,7 @@ function sessionIsMpdCaptain(agent) {
 var INVESTIGATION_CONFIG_KEY = "captain.investigation";
 var INVESTIGATION_TOOLS = ["read", "glob", "grep"];
 var CAPTAIN_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var CAPTAIN_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var CAPTAIN_READABLE_ROOT_FILES = [
   "AGENTS.md",
   "AGENT.md",
@@ -609,6 +610,8 @@ function captainReadablePath(workspaceRoot, raw) {
   const posix = String(raw ?? "").replace(/\\/g, "/");
   if (posix === "")
     return false;
+  if (isInstructionFile(posix))
+    return true;
   const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
   const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix);
   let rel;
@@ -627,6 +630,12 @@ function captainReadablePath(workspaceRoot, raw) {
     return true;
   return rel.indexOf("/") === -1 && ROOT_LICENSE_PATTERN.test(rel);
 }
+function isInstructionFile(path) {
+  const base = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+  if (base === "")
+    return false;
+  return CAPTAIN_INSTRUCTION_BASENAMES.some((name) => name.toLowerCase() === base);
+}
 function captainInvestigationDecision(input) {
   if (input.mode !== "deny")
     return;
@@ -643,7 +652,7 @@ function captainInvestigationDecision(input) {
   return investigationRefusal(toolName, JSON.stringify(raw));
 }
 function investigationRefusal(toolName, target) {
-  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`," + " `AGENTS.md` and `CLAUDE.md` at ANY depth — inside this workspace or outside its root, so a sibling" + " project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**` and" + " `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`," + " `CHANGELOG.md` and `LICENSE*.md` — those two README spellings exactly, since there is no" + ' `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in' + " mpd.jsonc restores full access.";
 }
 function installCaptainInvestigationGuard(dsh, options) {
   const mode = resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY));
@@ -3426,6 +3435,13 @@ function extensionRoles(ctx, exec, warn) {
   }
   return { roles, refused };
 }
+function spawnMaxDepthOf(agent) {
+  const header = agent?.session?.header;
+  const raw = Number(header?.delegationDepth);
+  if (Number.isFinite(raw) && raw >= 1)
+    return Math.floor(raw) + 1;
+  return header?.origin === "subagent" ? 2 : 1;
+}
 function apply(ctx, config = {}) {
   const warn = (line) => {
     const message = "[mpd-roles] " + line;
@@ -3623,6 +3639,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
+        maxDepth: spawnMaxDepthOf(exec.agent),
         ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
         ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
@@ -3766,5 +3783,6 @@ export {
   roleOfToolInput,
   rosterFunctionList,
   rosterNameList,
+  spawnMaxDepthOf,
   stagedPlanProbe
 };

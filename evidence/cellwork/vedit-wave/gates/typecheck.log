@@ -1,0 +1,3 @@
+# typed: 2026-10-31T06:03:18Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+EXIT=0

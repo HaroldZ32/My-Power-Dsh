@@ -26,18 +26,24 @@ seat keeps its envelope as PROSE rather than as a fence.
 
 - **`mpd_verify_open`** — open a delegation+verification loop. `writer:"self"` (the counted path, and it
   refuses without a `self_write_reason` plus a `verifier` that is a different agent) or
-  `writer:"delegate"` (a member writes). An empty `scope` covers the whole workspace. An optional
-  **`contract`** names the wave's own frozen contract (a workspace-relative path) and is RECORDED on the
-  loop; when it is absent the loop keeps a declared default (`AGENTS.md`), never another wave's plan.
+  `writer:"delegate"` (a member writes). With `writer:"delegate"` it may also NAME the writer:
+  **`writer_id`** (the member's agent identity — its session id, trimmed to 1..200 characters) becomes
+  the loop's `writer.id`, and **`writer_reason`** (also trimmed to 1..200) becomes `writer.reason`, e.g.
+  `member: <name>`. Without `writer_id` the `delegate:pending` placeholder stays. Both parameters
+  describe a DELEGATED loop, so both are refused in ONE sentence with `writer:"self"`. An empty `scope`
+  covers the whole workspace. An optional **`contract`** names the wave's own frozen contract (a
+  workspace-relative path) and is RECORDED on the loop; when it is absent the loop keeps a declared
+  default (`AGENTS.md`), never another wave's plan.
 - **`mpd_verify_escape`** — the **counted** escape: one JSONL row, one boot-log line, one allowed write.
   It refuses an empty `reason`, and it grants nothing when the row cannot be written.
 - **`mpd_verify_seat`** — bind the calling session as a loop's **verifier**. Idempotent; refused when the
   caller is the loop's writer. Its frozen documents are **the loop's own `contract`**, resolved by ONE
   function that the seat and the record both call, so a verdict's `docPaths` and its
   `basis.frozenContract` can never disagree about which document they verified against.
-- **`mpd_verify_evidence`** — `kind:"gate"` runs ONE id from the fixed table (`gates`, `tests`,
-  `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log;
-  `kind:"probe"` reports `{path, exists, bytes, sha256, mtime}` per path and **never content**.
+- **`mpd_verify_evidence`** — `kind:"gate"` runs ONE id: the workspace's own `mpd-gates.json` entry when
+  it declares that id, otherwise the fixed table (`gates`, `tests`, `typecheck`, `docs`, `manifest`,
+  `comments`, `rows`, `vendor`, `dist`, `pack`), and writes its log; `kind:"probe"` reports
+  `{path, exists, bytes, sha256, mtime}` per path and **never content**.
 - **`mpd_verify_record`** — record the verdict through the validator. A **PASS** needs the documents it
   cites, at least one gate, and a basis that is not `unproven` — blindness is DECLARED, never observed,
   so an unproven basis is UNVERIFIED; the validator still refuses a PASS with no documents, a forged
@@ -46,6 +52,44 @@ seat keeps its envelope as PROSE rather than as a fence.
   PASS whose basis is declared `unproven`, and `blind-spent` still names an admitted read, but no
   shipped composition writes the observation log, so `blind-spent` cannot be triggered by evidence —
   see the bounds for what that costs.
+
+## Project gates (`mpd-gates.json`)
+
+A workspace may declare or OVERRIDE the gates its verifier runs, in ONE file at the workspace root. When
+the file is absent, the frozen table above is exactly what it was; it is resolved from the CALLING
+SESSION's workspace, never from the process cwd.
+
+```jsonc
+{ "version": 1, "gates": {
+  "lint": { "argv": ["cargo", "clippy", "--", "-D", "warnings"] },
+  "tests": { "cmd": "cargo test --all", "argv": ["cargo", "test", "--all"] }
+} }
+```
+
+- `version` is optional and must be `1`; the top level carries only `version` and `gates`, and at most
+  **32** gates may be declared.
+- A gate id matches `^[a-z][a-z0-9-]{0,31}$`.
+- `argv` is REQUIRED: 1..32 non-empty strings of at most 4096 characters each. `argv[0]` is the PROGRAM
+  (a PATH name or an absolute path), spawned with `shell:false` and `cwd` = the workspace, under the
+  existing `verify.gateTimeoutMs` timeout. `cmd` is an optional label of at most **4096** characters;
+  when it is absent it defaults to `argv.join(" ")`.
+- **Precedence is project entry first, frozen table second.** A project entry ADDS a new id or
+  OVERRIDES an existing one, and every id the project does not declare still resolves to its frozen
+  entry — an extension point, never a replacement.
+- **A malformed file REFUSES the call; it never falls back.** ONE sentence names the file and the
+  problem (bad JSON, an unknown top-level or entry key, a missing `gates`, a bad id, a
+  missing/non-array/empty `argv`, an oversize argument or `cmd`), and NO evidence is written. The
+  refusal fires even when the requested id is FROZEN, so a broken project file can never silently run a
+  command the project did not declare.
+- **The evidence log names the EFFECTIVE command.** Its first line is
+  `# gate <id> cmd: <effective cmd>`, so a PASS says which command really ran; the record's
+  `logSha256` hashes the log INCLUDING that header, and the result carries `cmd`, `exit`, `logPath` and
+  `logSha256`.
+- **The file is only as honest as the project.** It can point a gate id at anything; what the plugin
+  owes is that the evidence names the effective command, so a reader can see what actually ran. Keep a
+  `mpd-gates.json` OUT of this repository's root (tests and probes create theirs under a temp
+  directory): the file is resolved from the calling session's workspace, so a stray one would silently
+  override this repository's own gates.
 
 ## The withdrawn guards (a record, not an install)
 
@@ -129,3 +173,10 @@ and `verify.dir`.
    `packages/*/test/**` or a `..`-carrying spelling — a seat keeps to the band because the discipline
    says so, which is bound 1's point. An `evidence/**` artifact may EMBED source frames
    (a gate log tail), so reading one is **controlled black-box evidence**, which bound 3 already states.
+8. **The same-agent refusal compares STRINGS.** `mpd_verify_record` refuses when
+   `writerId === verifierId`; `writer_id` is whatever the caller wrote, and the verifier id it stores
+   is the CALLING SESSION's id. Naming a real writer (a cell's member session id) makes the rule
+   meaningful on every loop the cell opens — it never makes it unforgeable.
+9. **A project-declared gate is only as honest as the project's `mpd-gates.json`.** The file can point a
+   gate id at anything; the plugin's promise is the evidence naming the effective command, not the
+   command's quality. The frozen table is the fallback ONLY when the file is absent.

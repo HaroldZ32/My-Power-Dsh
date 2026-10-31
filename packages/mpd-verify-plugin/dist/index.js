@@ -2579,7 +2579,7 @@ function installDelegationObserver(dsh, options) {
 
 // packages/mpd-verify-plugin/src/gates.ts
 import { spawnSync } from "node:child_process";
-import { existsSync as existsSync2, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync2, readFileSync as readFileSync2, statSync as statSync3 } from "node:fs";
 import { basename, isAbsolute as isAbsolute3, join as join4, relative as relative3 } from "node:path";
 var GATE_TABLE = [
   { id: "gates", cmd: "bun run verify:gates", runner: "bun", argv: ["run", "verify:gates"] },
@@ -2598,6 +2598,118 @@ var TAIL_CHARS = 4096;
 function gateById(id) {
   return GATE_TABLE.find((entry) => entry.id === id);
 }
+var PROJECT_GATE_FILE = "mpd-gates.json";
+var PROJECT_GATE_LIMIT = 32;
+var PROJECT_GATE_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+var PROJECT_GATE_ARGV_LIMIT = 32;
+var PROJECT_GATE_ARG_LIMIT = 4096;
+function describeError(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function refuseProjectFile(problem) {
+  return {
+    ok: false,
+    refused: PROJECT_GATE_FILE + " at the workspace root is invalid (" + problem + "), so the gate call is refused instead of falling back to the frozen table"
+  };
+}
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function loadProjectGates(workspace) {
+  const file = join4(workspace, PROJECT_GATE_FILE);
+  if (!existsSync2(file))
+    return { ok: true, specs: [] };
+  let text = "";
+  try {
+    text = readFileSync2(file, "utf8");
+  } catch (error) {
+    return refuseProjectFile("it cannot be read (" + describeError(error) + ")");
+  }
+  let parsed = undefined;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return refuseProjectFile("it is not valid JSON (" + describeError(error) + ")");
+  }
+  if (!isPlainObject(parsed))
+    return refuseProjectFile("the top level must be an object");
+  const allowedTopLevel = new Set(["version", "gates"]);
+  for (const key of Object.keys(parsed)) {
+    if (!allowedTopLevel.has(key))
+      return refuseProjectFile("unknown top-level key " + JSON.stringify(key));
+  }
+  if (parsed.version !== undefined && parsed.version !== 1) {
+    return refuseProjectFile("version must be 1, got " + JSON.stringify(parsed.version));
+  }
+  if (!("gates" in parsed))
+    return refuseProjectFile("`gates` is missing");
+  const gates = parsed.gates;
+  if (!isPlainObject(gates))
+    return refuseProjectFile("`gates` must be an object of gate entries");
+  const ids = Object.keys(gates);
+  if (ids.length > PROJECT_GATE_LIMIT) {
+    return refuseProjectFile(ids.length + " gates are declared, and the limit is " + PROJECT_GATE_LIMIT);
+  }
+  const specs = [];
+  for (const id of ids) {
+    if (!PROJECT_GATE_ID_PATTERN.test(id)) {
+      return refuseProjectFile("gate id " + JSON.stringify(id) + " must match " + PROJECT_GATE_ID_PATTERN.source);
+    }
+    const entry = gates[id];
+    if (!isPlainObject(entry))
+      return refuseProjectFile("gate " + JSON.stringify(id) + " must be an object with `argv`");
+    for (const key of Object.keys(entry)) {
+      if (key !== "cmd" && key !== "argv") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " declares unknown key " + JSON.stringify(key));
+      }
+    }
+    const declared = entry.argv;
+    if (!Array.isArray(declared)) {
+      return refuseProjectFile("gate " + JSON.stringify(id) + " needs `argv` to be an array of 1.." + PROJECT_GATE_ARGV_LIMIT + " strings");
+    }
+    if (declared.length < 1 || declared.length > PROJECT_GATE_ARGV_LIMIT) {
+      return refuseProjectFile("gate " + JSON.stringify(id) + " declares " + declared.length + " argument(s), and `argv` must carry 1.." + PROJECT_GATE_ARGV_LIMIT);
+    }
+    const argv = [];
+    for (let index = 0;index < declared.length; index += 1) {
+      const argument = declared[index];
+      if (typeof argument !== "string" || argument === "") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] must be a non-empty string");
+      }
+      if (argument.length > PROJECT_GATE_ARG_LIMIT) {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] is " + argument.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
+      }
+      argv.push(argument);
+    }
+    let cmd = argv.join(" ");
+    if (entry.cmd !== undefined) {
+      if (typeof entry.cmd !== "string" || entry.cmd.trim() === "") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` must be a non-empty string");
+      }
+      if (entry.cmd.length > PROJECT_GATE_ARG_LIMIT) {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` is " + entry.cmd.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
+      }
+      cmd = entry.cmd;
+    }
+    specs.push({ id, cmd, runner: "argv", argv });
+  }
+  return { ok: true, specs };
+}
+function resolveGate(workspace, id) {
+  const project = loadProjectGates(workspace);
+  if (!project.ok)
+    return { ok: false, refused: project.refused };
+  const declared = project.specs.find((entry) => entry.id === id);
+  if (declared !== undefined)
+    return { ok: true, spec: declared };
+  const frozen = gateById(id);
+  if (frozen !== undefined)
+    return { ok: true, spec: frozen };
+  return {
+    ok: false,
+    refused: "unknown-gate: " + JSON.stringify(id) + " is not on the fixed table. The ids are: " + [...project.specs.map((entry) => entry.id), ...GATE_TABLE.map((entry) => entry.id)].join(", ")
+  };
+}
 function runnerPath(runner) {
   if (runner === "node")
     return process.execPath;
@@ -2611,7 +2723,9 @@ function runnerPath(runner) {
   return "bun";
 }
 function runGate(workspace, spec, timeoutMs) {
-  const child = spawnSync(runnerPath(spec.runner), [...spec.argv], {
+  const program = spec.runner === "argv" ? String(spec.argv[0] ?? "") : runnerPath(spec.runner);
+  const argv = spec.runner === "argv" ? spec.argv.slice(1) : spec.argv;
+  const child = spawnSync(program, [...argv], {
     cwd: workspace,
     encoding: "utf8",
     timeout: timeoutMs,
@@ -2620,12 +2734,15 @@ function runGate(workspace, spec, timeoutMs) {
   });
   const output = String(child.stdout ?? "") + String(child.stderr ?? "");
   const exit = typeof child.status === "number" ? child.status : child.signal !== null && child.signal !== undefined ? 124 : -1;
+  const log = "# gate " + spec.id + " cmd: " + spec.cmd + `
+` + output;
   return {
     spec,
     exit,
     output,
+    log,
     tail: output.length > TAIL_CHARS ? output.slice(output.length - TAIL_CHARS) : output,
-    outputSha256: sha256Text(output)
+    outputSha256: sha256Text(log)
   };
 }
 function probeArtifacts(workspace, paths) {
@@ -2787,13 +2904,15 @@ function registerVerifyTools(dsh, deps) {
 function openTool(deps) {
   return {
     name: "mpd_verify_open",
-    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member. `contract` is the document THIS wave\'s verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `' + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
+    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member: `writer_id` names its AGENT IDENTITY (the member\'s session id) and `writer_reason` records the human name (`member: <name>`), so the record\'s same-agent refusal compares real identities instead of a placeholder; both are refused with `writer:"self"`. `contract` is the document THIS wave\'s verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `' + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
         verifier: { type: "string", description: 'The agent that will verify (a member name or session id). Required for writer:"self", and must not be the caller.' },
         self_write_reason: { type: "string", description: 'writer:"self" only: why this agent writes its own code. Required, echoed in the report.' },
         writer: { type: "string", enum: ["self", "delegate"], description: "Who writes. Defaults to `self`." },
+        writer_id: { type: "string", description: 'writer:"delegate" only: the loop\'s WRITER identity — the member\'s session id (an agent key, not a display name), trimmed to 1..200 characters. Absent records the `delegate:pending` placeholder. Refused with writer:"self".' },
+        writer_reason: { type: "string", description: 'writer:"delegate" only: text stored on the loop\'s `writer.reason`, e.g. `member: <name>` when `writer_id` is a session id; trimmed to 1..200 characters. Refused with writer:"self".' },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
         contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
@@ -2810,6 +2929,17 @@ function openTool(deps) {
       const writerKind = String(args?.writer ?? "self") === "delegate" ? "delegate" : "self";
       const reason = String(args?.self_write_reason ?? "");
       const verifier = String(args?.verifier ?? "");
+      const writerId = args?.writer_id === undefined ? undefined : String(args.writer_id).trim();
+      const writerReason = args?.writer_reason === undefined ? undefined : String(args.writer_reason).trim();
+      if (writerId !== undefined && (writerId === "" || writerId.length > 200)) {
+        return { refused: "`writer_id` must be a non-empty identity of at most 200 characters after trimming — it is the AGENT KEY (the member's session id) a record's same-agent refusal compares" };
+      }
+      if (writerReason !== undefined && (writerReason === "" || writerReason.length > 200)) {
+        return { refused: "`writer_reason` must be non-empty text of at most 200 characters after trimming — it is the human label stored beside `writer_id`, e.g. `member: <name>`" };
+      }
+      if (writerKind === "self" && (writerId !== undefined || writerReason !== undefined)) {
+        return { refused: '`writer_id` and `writer_reason` are refused with writer:"self" because both describe a DELEGATED loop — this loop\'s writer is the calling session (' + sessionId + '), so omit both or open the loop with writer:"delegate"' };
+      }
       if (writerKind === "self" && reason.trim() === "") {
         return { refused: 'a writer:"self" loop requires `self_write_reason` — the captain writing its own code is the COUNTED path, and an uncounted one is indistinguishable from the defect this law removes. Pass a reason, or delegate the write (writer:"delegate") and let a member do it.' };
       }
@@ -2827,7 +2957,11 @@ function openTool(deps) {
         ...contract === undefined ? {} : { contract },
         workspace,
         sessionId,
-        writer: { kind: writerKind, id: writerKind === "self" ? sessionId : "delegate:pending", reason: writerKind === "self" ? reason : undefined },
+        writer: {
+          kind: writerKind,
+          id: writerKind === "self" ? sessionId : writerId ?? "delegate:pending",
+          reason: writerKind === "self" ? reason : writerReason
+        },
         verifier: { id: verifier === "" ? "unbound" : verifier },
         scope: Array.isArray(args?.scope) ? args.scope.map(String) : [],
         status: "armed",
@@ -2923,7 +3057,7 @@ function seatTool(deps) {
 function evidenceTool(deps) {
   return {
     name: "mpd_verify_evidence",
-    description: 'Produce black-box evidence. `kind:"gate"` runs ONE id from the fixed table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log; `kind:"probe"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted.',
+    description: 'Produce black-box evidence. `kind:"gate"` runs ONE id from the EFFECTIVE gate table — the workspace\'s `mpd-gates.json` entries first, then the frozen ids (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) — and writes its log, whose header names the command that ran; `kind:"probe"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted: `argv` comes from the project file or the frozen table, and is spawned with `shell:false`.',
     parameters: {
       type: "object",
       properties: {
@@ -2944,9 +3078,10 @@ function evidenceTool(deps) {
       const loopId = seat?.loopId ?? (args?.loop_id === undefined ? null : String(args.loop_id));
       const evidenceId = mintId("ev");
       if (String(args?.kind ?? "") === "gate") {
-        const spec = gateById(String(args?.gate ?? ""));
-        if (spec === undefined)
-          return { refused: "unknown-gate: " + JSON.stringify(String(args?.gate ?? "")) + " is not on the fixed table. The ids are: " + GATE_TABLE.map((entry) => entry.id).join(", ") };
+        const resolved = resolveGate(workspace, String(args?.gate ?? ""));
+        if (!resolved.ok)
+          return { refused: resolved.refused };
+        const spec = resolved.spec;
         const timeoutMs = resolvePositiveInt(deps.configValue("verify.gateTimeoutMs"), DEFAULT_GATE_TIMEOUT_MS);
         const result = runGate(workspace, spec, timeoutMs);
         const wrote2 = writeEvidence(workspace, {
@@ -2959,7 +3094,7 @@ function evidenceTool(deps) {
           at: new Date().toISOString(),
           logPath: ".mpd/verify/evidence/" + evidenceId + ".log",
           logSha256: result.outputSha256
-        }, result.output);
+        }, result.log);
         if (!wrote2)
           return { refused: "the gate ran (exit " + result.exit + ") but its evidence could not be written under " + evidenceDir(workspace) + " — evidence that is not on disk cannot be cited, so it is not reported as produced" };
         deps.log("gate " + spec.id + " exit=" + result.exit + " evidence=" + evidenceId);

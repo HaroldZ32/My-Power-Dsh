@@ -515,6 +515,32 @@ export {
   ADAPTER_IDENTITY_PENDING,
 } from "../../mpd-dsh-adapter-plugin/src/index"
 
+/**
+ * The explicit `maxDepth` one `mpd_role_spawn` forwards: the caller's recorded delegation depth plus one.
+ *
+ * WHY IT MUST BE EXPLICIT (C5, D15): with no `maxDepth` the host applies its own depth default, and a
+ * NESTED caller — a depth-1 cell planner is the measured case — has its consult refused there with a
+ * `SubagentDepthError`, even though THIS consult is a leaf that will spawn nothing. Forwarding the caller's
+ * depth plus one places the child exactly one level below the caller, so a top-level caller keeps today's
+ * behaviour as `maxDepth: 1` and a nested one is no longer refused by a default it cannot see.
+ *
+ * A caller that recorded NO depth reads as `0` — a top-level session and a seeded fork both do, which is the
+ * direction §5's captain rule already takes. A session the harness recorded as `origin: "subagent"` without a
+ * depth is read as depth `1` rather than `0`: the two facts classify the same session as a CHILD in
+ * `sessionRank`, and answering `0` there would hand a child's child the top-level cap.
+ *
+ * @param agent - the calling agent handle, whose session header carries the recorded depth.
+ * @returns the cap to forward, a positive integer.
+ */
+export function spawnMaxDepthOf(agent: unknown): number {
+  /** The agent's session header, where the harness records the origin and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  /** The recorded depth; a non-numeric or negative value is not a depth and reads as `0` below. */
+  const raw = Number(header?.delegationDepth)
+  if (Number.isFinite(raw) && raw >= 1) return Math.floor(raw) + 1
+  return header?.origin === "subagent" ? 2 : 1
+}
+
 /** Row entry point: provide `mpdRoles`, register the three tools, then install the team plane. */
 export function apply(ctx: Ctx, config: Config = {}): void {
   /** Report one line through the ctx logger, falling back to stdout. */
@@ -863,6 +889,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
+        // AN EXPLICIT LEAF BOUND (C5, D15) — see `spawnMaxDepthOf`: the caller's own recorded depth plus
+        // one, forwarded by the adapter on BOTH harness generations, so a NESTED caller's one-shot consult
+        // is never refused by the host's depth default it cannot see.
+        maxDepth: spawnMaxDepthOf(exec.agent),
         // The slot's OWN effort keyword rides along when its resolved route states one — AFTER the
         // fallback consumption and the effort adaptation above. The contract still forbids clamping
         // or inventing an effort, so an absent keyword passes nothing and the harness keeps its own

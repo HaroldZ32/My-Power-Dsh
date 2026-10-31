@@ -1,0 +1,56 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:
+(pass) F-A (CWE-862) — the live append arms require the LEAD > a spawned MEMBER's live create_task is REFUSED with the reason, and the record is untouched [6.16ms]
+(pass) F-A (CWE-862) — the live append arms require the LEAD > a member that also records the LEAD as parentSession is refused all the same [1.10ms]
+(pass) F-A (CWE-862) — the live append arms require the LEAD > NEGATIVE CONTROL: the LEAD's own live appends still land on the record [1.45ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > a member whose parentSession IS the Lead cannot close ANOTHER member's row as the Lead [1.56ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > the same member still closes its OWN row [1.36ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a forked captain that is NOT on the roster still closes as the lead, and the heal sticks [1.43ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a member of ANOTHER name borrowing a stranger's lineage is still refused [1.07ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > a stale row addressed to ANOTHER team's M1 is excluded; this team's own rows are kept [1.93ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: a row stamped with THIS team's id is included, even without the tool's send [1.08ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > a LEGACY unstamped row follows the stated rule: excluded from the team scope and COUNTED [1.28ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: with no team resolved the WHOLE fold is returned, legacy row included [0.31ms]
+(pass) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > a stale row addressed to ANOTHER team's M1 is excluded from unread, undelivered and total [1.26ms]
+(pass) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > NEGATIVE CONTROL: a row stamped with THIS team is included, even without the tool's send [1.09ms]
+(pass) D16b — the mailbox `unread` branch uses the SAME per-team filter as the send bound > NEGATIVE CONTROL: with no team resolved the unread branch still reads the WHOLE fold [0.30ms]
+(pass) D16c — a member's own `unread` resolves its ROSTER member id > a member reading with no `member` argument sees the mail addressed to its own member row [1.32ms]
+(pass) D16c — a member's own `unread` resolves its ROSTER member id > NEGATIVE CONTROL: an explicit `member` still wins over the self resolution [1.42ms]
+(pass) D16c — a member's own `unread` resolves its ROSTER member id > NEGATIVE CONTROL: a session that names no roster row still reads by its own session id [0.31ms]
+(pass) H1 — an acknowledged row frees a bound slot through the REAL tool surface > 8 outstanding rows refuse the ninth, one `read` frees exactly one, and `summary` agrees [2.20ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > the repro: partial approve -> retry create+replace -> delete the retry -> dispatch leaves the team LIVE [3.05ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > NEGATIVE CONTROL: a genuinely discarded plan is still reaped, with its plan id in the reason [0.80ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > an old record WITHOUT the field follows the migration rule: never archive-reaped, still phase-reaped [0.91ms]
+(pass) F-J — the staged arm carries kind/coverageOf/sourceTaskId > a staged repair row reaches the STAGED plan and the BOARD with all three fields [1.20ms]
+(pass) F-J — the staged arm carries kind/coverageOf/sourceTaskId > NEGATIVE CONTROL: a staged task that names NO kind still becomes `work` [1.29ms]
+
+packages/mpd-team-core-plugin/test/mailbox-store.test.ts:
+(pass) sending > a message to a live member is recorded and starts UNDELIVERED and UNREAD [0.22ms]
+(pass) sending > a member cannot message ITSELF — the official rule, kept [0.04ms]
+(pass) sending > a message to somebody who is NOT a member is refused, naming them [0.04ms]
+(pass) sending > a member's UNDELIVERED backlog is bounded — a stalled member cannot silently accumulate [0.22ms]
+(pass) sending > the bound is PER TEAM — a finished team's backlog cannot refuse a new team's same-named member [0.24ms]
+(pass) sending > an UNSTAMPED row predates the team field, so a stamped team does not count it [0.16ms]
+(pass) sending > DELIVERING frees the backlog: the bound is on what is not yet accepted [0.22ms]
+(pass) sending > the LIVE shape: bound 8, and an ACK frees exactly one slot — the operator's release valve [0.44ms]
+(pass) sending > the summary's `undelivered` counts the SAME set the bound does — one ack drops both by one [0.28ms]
+(pass) sending > ids are unique and ordered, so a mailbox can be cited [0.17ms]
+(pass) the state transitions > delivered and read are SEPARATE facts, and read is the one only this mailbox has [0.21ms]
+(pass) the state transitions > a REPEAT moves nothing and is not an error [0.19ms]
+(pass) the state transitions > an unknown id is ignored, so a stale citation cannot corrupt the log [0.06ms]
+(pass) durability > the log is APPEND-ONLY: a later transition never rewrites an earlier line [0.14ms]
+(pass) durability > a HALF-WRITTEN last line costs that line and nothing else [0.15ms]
+(pass) durability > a fold is order-independent for the transitions: read-then-delivered still ends both-set [0.05ms]
+(pass) durability > malformed records are SKIPPED, never fatal [0.03ms]
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread [0.24ms]
+(pass) the summary a status view renders > an empty mailbox summarises to nothing at all [0.04ms]
+(pass) the summary a status view renders > inboxOf keeps insertion order [0.13ms]
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing [0.04ms]
+(pass) the legacy read path > a file of only blank lines folds to empty [0.08ms]
+
+ 45 pass
+ 0 fail
+ 169 expect() calls
+Ran 45 tests across 2 files. [218.00ms]
+EXIT:0

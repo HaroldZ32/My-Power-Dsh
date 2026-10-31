@@ -23,7 +23,7 @@ import {
   writeRecord, writeRepair, writeSeats,
 } from "./ledger.ts"
 import type { EvidenceMeta, VerifyLoop, VerifySeat } from "./ledger.ts"
-import { GATE_TABLE, gateById, probeArtifacts, runGate } from "./gates.ts"
+import { GATE_TABLE, probeArtifacts, resolveGate, runGate } from "./gates.ts"
 import type { ArtifactProbe, GateEvidence, HashedDoc, VerificationRecord, VerifyFinding } from "./record.ts"
 import { buildRecord, validateVerificationRecord } from "./record.ts"
 import type { VerifyRuntime } from "./observe.ts"
@@ -140,13 +140,15 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_open",
     description:
-      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member. `contract` is the document THIS wave's verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `" + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
+      "Open a delegation+verification LOOP. `writer:\"self\"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:\"delegate\"` records a loop whose writer is a member: `writer_id` names its AGENT IDENTITY (the member's session id) and `writer_reason` records the human name (`member: <name>`), so the record's same-agent refusal compares real identities instead of a placeholder; both are refused with `writer:\"self\"`. `contract` is the document THIS wave's verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `" + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
         verifier: { type: "string", description: "The agent that will verify (a member name or session id). Required for writer:\"self\", and must not be the caller." },
         self_write_reason: { type: "string", description: "writer:\"self\" only: why this agent writes its own code. Required, echoed in the report." },
         writer: { type: "string", enum: ["self", "delegate"], description: "Who writes. Defaults to `self`." },
+        writer_id: { type: "string", description: "writer:\"delegate\" only: the loop's WRITER identity — the member's session id (an agent key, not a display name), trimmed to 1..200 characters. Absent records the `delegate:pending` placeholder. Refused with writer:\"self\"." },
+        writer_reason: { type: "string", description: "writer:\"delegate\" only: text stored on the loop's `writer.reason`, e.g. `member: <name>` when `writer_id` is a session id; trimmed to 1..200 characters. Refused with writer:\"self\"." },
         scope: { type: "array", items: { type: "string" }, description: "The paths this loop covers, relative to the workspace. EMPTY means the whole workspace." },
         contract: { type: "string", description: "The wave contract this loop freezes for its verifier: a workspace-relative path (e.g. `.mpd/plans/verify-law-defects.md`). `mpd_verify_seat` hands the seat exactly this document and `mpd_verify_record` hashes it as the record's `basis.frozenContract`. With none, the declared default `" + DEFAULT_CONTRACT_PATH + "` applies — never a previous wave's plan." },
         task_id: { type: "string", description: "The board task this loop verifies, when it verifies one." },
@@ -171,6 +173,23 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
       const reason = String(args?.self_write_reason ?? "")
       /** The verifier the caller named. */
       const verifier = String(args?.verifier ?? "")
+      /** The named writer identity, trimmed; `undefined` when the caller named none. */
+      const writerId = args?.writer_id === undefined ? undefined : String(args.writer_id).trim()
+      /** The named writer description, trimmed; `undefined` when the caller named none. */
+      const writerReason = args?.writer_reason === undefined ? undefined : String(args.writer_reason).trim()
+      // THE SHAPE RULE FIRST, so a malformed value is named as malformed: an id a report cannot spell is
+      // not an identity a record can compare, and a reason a report cannot read is not one either.
+      if (writerId !== undefined && (writerId === "" || writerId.length > 200)) {
+        return { refused: "`writer_id` must be a non-empty identity of at most 200 characters after trimming — it is the AGENT KEY (the member's session id) a record's same-agent refusal compares" }
+      }
+      if (writerReason !== undefined && (writerReason === "" || writerReason.length > 200)) {
+        return { refused: "`writer_reason` must be non-empty text of at most 200 characters after trimming — it is the human label stored beside `writer_id`, e.g. `member: <name>`" }
+      }
+      // EITHER PARAMETER DESCRIBES A DELEGATED LOOP: a writer:"self" loop's writer IS the calling session,
+      // so naming another writer here would contradict the loop's kind.
+      if (writerKind === "self" && (writerId !== undefined || writerReason !== undefined)) {
+        return { refused: "`writer_id` and `writer_reason` are refused with writer:\"self\" because both describe a DELEGATED loop — this loop's writer is the calling session (" + sessionId + "), so omit both or open the loop with writer:\"delegate\"" }
+      }
       // THE COUNTED PATH IS NEVER SILENT: a self-writer loop without a stated reason is exactly the
       // "main agent quietly writes the code" case this law exists to remove, so it is refused outright.
       if (writerKind === "self" && reason.trim() === "") {
@@ -195,7 +214,14 @@ function openTool(deps: VerifyToolDeps): DshToolDef {
         ...(contract === undefined ? {} : { contract }),
         workspace,
         sessionId,
-        writer: { kind: writerKind, id: writerKind === "self" ? sessionId : "delegate:pending", reason: writerKind === "self" ? reason : undefined },
+        // THE WRITER ID IS AN IDENTITY, NOT A LABEL (C2, D12): a delegated loop names the member's session
+        // id, so `mpd_verify_record`'s same-agent refusal compares two REAL agent keys; without one the
+        // placeholder stays, which is exactly today's behaviour.
+        writer: {
+          kind: writerKind,
+          id: writerKind === "self" ? sessionId : writerId ?? "delegate:pending",
+          reason: writerKind === "self" ? reason : writerReason,
+        },
         verifier: { id: verifier === "" ? "unbound" : verifier },
         scope: Array.isArray(args?.scope) ? args.scope.map(String) : [],
         status: "armed",
@@ -329,7 +355,7 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_evidence",
     description:
-      "Produce black-box evidence. `kind:\"gate\"` runs ONE id from the fixed table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log; `kind:\"probe\"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted.",
+      "Produce black-box evidence. `kind:\"gate\"` runs ONE id from the EFFECTIVE gate table — the workspace's `mpd-gates.json` entries first, then the frozen ids (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) — and writes its log, whose header names the command that ran; `kind:\"probe\"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted: `argv` comes from the project file or the frozen table, and is spawned with `shell:false`.",
     parameters: {
       type: "object",
       properties: {
@@ -358,11 +384,13 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
       /** The evidence id, minted before the run so the metadata and the log share it. */
       const evidenceId = mintId("ev")
       if (String(args?.kind ?? "") === "gate") {
-        /** The table entry, or `undefined` for an id that is not on the table. */
-        const spec = gateById(String(args?.gate ?? ""))
-        // NO FREE-FORM COMMAND, EVER: an unknown id is refused with the whole table named, so a caller
-        // that guessed gets the vocabulary instead of a silent success.
-        if (spec === undefined) return { refused: "unknown-gate: " + JSON.stringify(String(args?.gate ?? "")) + " is not on the fixed table. The ids are: " + GATE_TABLE.map((entry) => entry.id).join(", ") }
+        /** The effective entry: the workspace's project gate file first, the frozen table second. */
+        const resolved = resolveGate(workspace, String(args?.gate ?? ""))
+        // NO FREE-FORM COMMAND, EVER: an id nothing declares — or a malformed project file, which is
+        // refused rather than silently replaced by the frozen table — comes back as the sentence to return.
+        if (!resolved.ok) return { refused: resolved.refused }
+        /** The entry that really runs, and whose `cmd` the evidence header names. */
+        const spec = resolved.spec
         /** The gate's timeout, from the row's config or the default. */
         const timeoutMs = resolvePositiveInt(deps.configValue("verify.gateTimeoutMs"), DEFAULT_GATE_TIMEOUT_MS)
         /** The run's result. */
@@ -373,7 +401,7 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
           at: new Date().toISOString(),
           logPath: ".mpd/verify/evidence/" + evidenceId + ".log",
           logSha256: result.outputSha256,
-        }, result.output)
+        }, result.log)
         if (!wrote) return { refused: "the gate ran (exit " + result.exit + ") but its evidence could not be written under " + evidenceDir(workspace) + " — evidence that is not on disk cannot be cited, so it is not reported as produced" }
         deps.log("gate " + spec.id + " exit=" + result.exit + " evidence=" + evidenceId)
         return { evidenceId, gate: spec.id, cmd: spec.cmd, exit: result.exit, logPath: ".mpd/verify/evidence/" + evidenceId + ".log", logSha256: result.outputSha256, tail: result.tail }

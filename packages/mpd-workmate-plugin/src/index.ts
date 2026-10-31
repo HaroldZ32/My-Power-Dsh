@@ -742,6 +742,34 @@ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: 
   }
 }
 
+/**
+ * The explicit `maxDepth` one `mpd_workmate_spawn` forwards: the caller's recorded delegation depth plus one.
+ *
+ * WHY IT MUST BE EXPLICIT (defect D17 — the SAME rule as `mpd_role_spawn`'s helper): with no `maxDepth` the
+ * host applies its own depth default, and a NESTED caller — a depth-1 cell planner or a team member is the
+ * measured shape — has its consult refused there with a `SubagentDepthError`, even though THIS consult is a
+ * leaf that spawns nothing. Forwarding the caller's depth plus one places the child exactly one level below
+ * the caller, so a top-level caller keeps the historical `maxDepth: 1` as an EXPLICIT value.
+ *
+ * THE READING IS DELIBERATELY IDENTICAL to `spawnMaxDepthOf` in `mpd-roles-plugin/src/index.ts`, and the
+ * duplication is a TEST pin rather than an accident: this package ships no runtime dependency on that row's
+ * module (only on the adapter's), so `test/workmate-spawn-maxdepth.test.ts` imports BOTH helpers from source
+ * and compares them on every header shape. A caller with no recorded depth reads as `0`; a session the
+ * harness recorded as `origin: "subagent"` WITHOUT a depth reads as depth `1`, exactly as `sessionRank`
+ * classifies it — answering `0` there would hand a child's child the top-level cap.
+ *
+ * @param agent - the calling agent handle, whose session header carries the recorded depth.
+ * @returns the cap to forward, a positive integer.
+ */
+export function spawnMaxDepthOf(agent: unknown): number {
+  /** The agent's session header, where the harness records the origin and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  /** The recorded depth; a non-numeric or negative value is not a depth and reads as `0` below. */
+  const raw = Number(header?.delegationDepth)
+  if (Number.isFinite(raw) && raw >= 1) return Math.floor(raw) + 1
+  return header?.origin === "subagent" ? 2 : 1
+}
+
 /** Row entry point: the seven workmate tools, the mutation routes and the `mpdWorkmate` service. */
 export function apply(ctx: Ctx): void {
   // Every harness seam goes through the shared adapter (see packages/mpd-dsh-adapter-plugin).
@@ -1123,6 +1151,10 @@ export function apply(ctx: Ctx): void {
           model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
+          // AN EXPLICIT LEAF BOUND (defect D17) — see `spawnMaxDepthOf`: the caller's own recorded depth plus
+          // one, forwarded by the adapter on BOTH harness generations, so a NESTED caller's one-shot consult
+          // is never refused by a host depth default it cannot see.
+          maxDepth: spawnMaxDepthOf(exec.agent),
           // The route's OWN effort keyword rides along when it states one — AFTER the catalog
           // adaptation above. An absent keyword passes nothing and the harness keeps its resolution.
           ...(route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } }),
