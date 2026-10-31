@@ -585,6 +585,47 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
   })
 })
 
+// ── CR repair M (a CodeRabbit finding on the mail tool) — an EXPLICIT `member` that does not resolve
+// must REFUSE, never fall back to the caller's own inbox. The fallback answered a question nobody asked
+// with the wrong inbox, so a typo read as "nothing unread" instead of "that name is not on this team". ──
+describe("CR repair M — an unknown explicit `member` REFUSES instead of answering the caller's inbox", () => {
+  test("a misspelled `member` is refused, naming the spelling and the roster it was resolved on", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "mine", body: "w" }, LEAD)
+    /** The tool's answer to an inbox nobody on the roster owns. */
+    const typo = await h.call("agent_teams_mail", { action: "unread", member: "Senor Engineer" }, LEAD) as { refused?: string; messages?: unknown[] }
+    expect(typo.refused).toBe('"Senor Engineer" is not a member of this team (members: Senior Engineer, Reviewer)')
+    // NOTHING was answered: the silent fallback to the caller's own inbox is the defect itself.
+    expect(typo.messages).toBeUndefined()
+  })
+
+  test("NEGATIVE CONTROL: with no `member` argument the caller still reads its OWN inbox", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "mine", body: "w" }, LEAD)
+    /** The member's own session, which asks for no particular inbox. */
+    const senior = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The tool's answer to that self read. */
+    const own = await h.call("agent_teams_mail", { action: "unread" }, senior, { title: "You are the Senior Engineer." }) as { messages?: Array<{ subject?: string }>; refused?: string }
+    expect(own.refused).toBeUndefined()
+    expect(own.messages?.map((message) => message.subject)).toEqual(["mine"])
+  })
+
+  test("NEGATIVE CONTROL: with NO team resolved an explicit `member` also refuses, saying the roster is empty", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The tool's answer for a team-less session that named somebody anyway. */
+    const outside = await h.call("agent_teams_mail", { action: "unread", member: "anyone" }, "sess-outsider") as { refused?: string; messages?: unknown[] }
+    expect(outside.refused).toBe('"anyone" is not a member of this team (members: none)')
+    // The rule is uniform: no roster means no inbox to answer for a NAME, so the caller's own is not a substitute.
+    expect(outside.messages).toBeUndefined()
+  })
+})
+
 describe("F-D — archive evidence is keyed by the record's OWN plan", () => {
   test("the repro: partial approve -> retry create+replace -> delete the retry -> dispatch leaves the team LIVE", async () => {
     /** The harness, with the Reviewer's raise failing so the approval STOPS PARTWAY. */

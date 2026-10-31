@@ -267,6 +267,24 @@ export function cellMemberOf(cell: { members?: Readonly<Record<string, Fenceable
 }
 
 /**
+ * A USABLE executor handle, or null when the value is absent or blank (repair R-A2, CR #4).
+ *
+ * `??` is not enough here: a cell record writes `executorRef: ""` for a member whose handle it never
+ * learned, and `"" ?? liveRosterHandle` answers `""` — so a blank cell value SHADOWED a perfectly good
+ * roster handle and the dispatch skipped the member as "never raised". Empty and whitespace-only both
+ * mean absent; anything else is handed back trimmed.
+ *
+ * @param value - the candidate handle, read as untrusted (a record from any build).
+ * @returns the trimmed handle, or null when there is none.
+ */
+export function handleOrNull(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  /** The handle without the surrounding blanks, which are never part of an id. */
+  const trimmed = value.trim()
+  return trimmed === "" ? null : trimmed
+}
+
+/**
  * The SPLIT KEY a board task id was materialised from, when the cell record still knows it.
  *
  * The contract file is named by the SPLIT KEY (`contracts/<key>.md`, the path activation writes and
@@ -410,9 +428,9 @@ export async function dispatchOwnerOnly(deps: DispatchDeps): Promise<DispatchRep
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " is BUSY on another task — reported, never substituted" })
       continue
     }
-    /** The executor handle the message must address (the fresher recorded one wins). */
-    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "")
-    if (handle === "") {
+    /** The executor handle the message must address (the fresher NON-BLANK one wins — repair R-A2). */
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef)
+    if (handle === null) {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " has no executor handle (never raised)" })
       continue
     }
@@ -564,9 +582,21 @@ export async function applyReassignments(deps: ReassignDeps): Promise<ReassignOu
       outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — pick an unfenced member" })
       continue
     }
-    /** The executor handle the message would go to (the fresher recorded one wins). */
-    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "")
-    if (handle === "") {
+    // THE TARGET'S OWN STATUS IS CHECKED BEFORE THE CLAIM (repair R-A1, CR #2): a FAILED member can still
+    // carry a recorded handle, so claiming a row for it would move the row to `in_progress` where no later
+    // pass picks it up — the exact hazard the fence check above exists to prevent. The rule is the same
+    // one `dispatchOwnerOnly` applies to an owner, so both paths refuse the same members.
+    if (member.status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " FAILED to start — a row claimed for it would never be picked up; pick a member that is running" })
+      continue
+    }
+    if (member.status === "provisioning") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is still being raised — retry the reassignment once it is running" })
+      continue
+    }
+    /** The executor handle the message would go to (the fresher NON-BLANK one wins — repair R-A2). */
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef)
+    if (handle === null) {
       outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " has no executor handle (never raised) — claiming the row for it would hide the row from the next pass" })
       continue
     }

@@ -121,8 +121,9 @@ test("THE WIRING: the registered mpd_role_spawn forwards `maxDepth` = caller dep
   // The measured D15 case: a depth-1 cell planner's consult is a LEAF at depth 2, so the host's nesting
   // default can no longer refuse it.
   expect((await spawnAt({ agentPreset: "mpd", delegationDepth: 1 })).maxDepth).toBe(2)
-  // Deeper nesting scales WITH the caller instead of pinning one constant.
-  expect((await spawnAt({ delegationDepth: 2 })).maxDepth).toBe(3)
+  // A DEPTH-2 caller never reaches the arithmetic: the leaf boundary refuses it first (CR repair E), so this
+  // arm asserts the refusal rather than a cap. The pure reading above still documents the arithmetic.
+  await expect(spawnAt({ delegationDepth: 2 })).rejects.toThrow(/delegation depth 2/)
   /** The spec one TOP-LEVEL caller produced. */
   const topLevel = await spawnAt({ agentPreset: "mpd", delegationDepth: 0 })
   // Today's behaviour, now explicit: the field is PRESENT and it is 1, not absent.

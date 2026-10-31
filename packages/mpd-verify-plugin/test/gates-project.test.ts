@@ -20,8 +20,8 @@ import { join } from "node:path"
 import type { DshToolDef } from "../../mpd-dsh-adapter-plugin/src/index"
 import { GATE_TABLE, PROJECT_GATE_FILE, gateById, loadProjectGates, resolveGate } from "../src/gates.ts"
 import type { GateLookup, GateSpec, ProjectGateLoad } from "../src/gates.ts"
-import { readEvidence, sha256Text } from "../src/ledger.ts"
-import { createVerifyRuntime } from "../src/observe.ts"
+import { readEvidence, readLoops, sha256Text, writeLoop } from "../src/ledger.ts"
+import { armDelegateLoop, createVerifyRuntime } from "../src/observe.ts"
 import { DEFAULT_LOOP_TTL_MS, registerVerifyTools } from "../src/tools.ts"
 
 /** The subset of `mpd_verify_evidence`'s gate result these arms read. */
@@ -40,6 +40,8 @@ interface GateOutcome {
   logSha256?: string
   /** The last 4096 characters of the child's output. */
   tail?: string
+  /** The freeze guarantee the evidence carries: `frozen` when a loop pinned the project gate file. */
+  gateFreeze?: string
 }
 
 /** A throwaway workspace under the OS temp dir — never the repository root. */
@@ -98,8 +100,8 @@ function printArgv(marker: string): string[] {
   return [process.execPath, "-e", "console.log(" + JSON.stringify(marker) + ")"]
 }
 
-/** The registered `mpd_verify_evidence` definition for a sandbox workspace. */
-function evidenceTool(workspace: string): DshToolDef {
+/** The five registered law tools for a sandbox workspace, keyed by name. */
+function lawTools(workspace: string): Map<string, DshToolDef> {
   /** The definitions the registration call hands the registry. */
   const captured: DshToolDef[] = []
   registerVerifyTools({
@@ -118,17 +120,63 @@ function evidenceTool(workspace: string): DshToolDef {
     dsh: { workspaceRoot: () => workspace, teamMembership: () => undefined },
     log: () => {},
   })
-  /** The evidence definition, absent only when the registration is incomplete. */
-  const tool = captured.find((definition) => definition.name === "mpd_verify_evidence")
-  if (tool === undefined) throw new Error("mpd_verify_evidence was not registered")
+  return new Map(captured.map((definition) => [definition.name, definition]))
+}
+
+/** One captured tool, refused loudly when the registration is incomplete. */
+function toolFor(tools: Map<string, DshToolDef>, name: string): DshToolDef {
+  /** The definition, absent only when registration broke. */
+  const tool = tools.get(name)
+  if (tool === undefined) throw new Error(name + " was not registered")
   return tool
 }
 
-/** Run one gate id through the real tool, as one verifier session. */
-function runGateTool(workspace: string, id: string): GateOutcome {
-  /** The call's execution object; a gate run needs no caller state beyond the workspace. */
-  const exec = { name: "mpd_verify_evidence", arguments: { kind: "gate", gate: id }, agent: { session: { id: "verifier-session" } } }
-  return evidenceTool(workspace).execute({ kind: "gate", gate: id }, exec) as GateOutcome
+/** The subset of `mpd_verify_open`'s result these arms read. */
+interface OpenOutcome {
+  /** The refusal sentence, when the call was refused. */
+  refused?: string
+  /** The minted loop id. */
+  loopId?: string
+  /** The project gate file identity the loop froze, when the tool names it. */
+  gateFile?: { state: string; sha256: string }
+}
+
+/** Call one law tool as a named caller session. */
+function callTool(tool: DshToolDef, args: Record<string, unknown>, sessionId: string): OpenOutcome & GateOutcome {
+  /** The call's execution object; these tools read the workspace from their deps. */
+  const exec = { name: tool.name, arguments: args, agent: { session: { id: sessionId } } }
+  return tool.execute(args, exec) as OpenOutcome & GateOutcome
+}
+
+/** Run one gate id through the real evidence tool, optionally bound to a loop. */
+function runGateTool(workspace: string, id: string, loopId?: string): GateOutcome {
+  /** The call's arguments: `loop_id` binds the evidence to a loop, which is what the freeze check reads. */
+  const args: Record<string, unknown> = loopId === undefined ? { kind: "gate", gate: id } : { kind: "gate", gate: id, loop_id: loopId }
+  return callTool(toolFor(lawTools(workspace), "mpd_verify_evidence"), args, "verifier-session")
+}
+
+/**
+ * A loop file written DIRECTLY, with no tool and no gate snapshot — the shape a loop from BEFORE the
+ * freeze has (T29 needs one to prove that an unfrozen loop now refuses gate evidence).
+ *
+ * @param workspace - the sandbox the loop is written into.
+ * @param sessionId - the delegating session the loop belongs to.
+ * @param openedVia - `tool` for a hand-written loop, `observer` for one the auto-arm would adopt.
+ * @returns the fixture loop id.
+ */
+function legacyLoop(workspace: string, sessionId: string, openedVia: "tool" | "observer"): string {
+  /** The fixture loop id, derived from its kind so one sandbox can hold both shapes. */
+  const loopId = "loop-legacy-" + openedVia
+  /** The instant the fixture is armed at. */
+  const now = new Date()
+  expect(writeLoop(workspace, {
+    version: 1, loopId, taskId: null, workspace, sessionId,
+    writer: { kind: "delegate", id: "session-S" },
+    verifier: { id: "verifier-X" },
+    scope: [], status: "armed", openedVia,
+    createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + DEFAULT_LOOP_TTL_MS).toISOString(),
+  })).toBe(true)
+  return loopId
 }
 
 describe("mpd-gates.json (C3 / D13)", () => {
@@ -236,9 +284,15 @@ describe("mpd-gates.json (C3 / D13)", () => {
     expect(result.cmd).toBe(argv.join(" "))
     /** The log as it sits on disk. */
     const log = readFileSync(join(workspace, String(result.logPath)), "utf8")
-    // THE HEADER NAMES THE EFFECTIVE CMD: a PASS can say which command ran, even when the frozen table
-    // has never heard of it.
-    expect(log.split("\n")[0]).toBe("# gate probe-cwd cmd: " + argv.join(" "))
+    /** The header line: ONE line, naming the label, the program and the argv that really ran. */
+    const header = log.split("\n")[0]
+    // THE HEADER NAMES WHAT RAN (CR #14): the `cmd` label alone is a CLAIM; the program and argv are the
+    // fact, so a PASS can never cite a command that did not execute.
+    expect(header).toContain("cmd: " + JSON.stringify(argv.join(" ")))
+    expect(header).toContain("program: " + JSON.stringify(process.execPath))
+    expect(header).toContain("argv: " + JSON.stringify(argv.slice(1)))
+    // ONE header line, then the child's own output: the header can never swallow the run.
+    expect(log.split("\n")[1]).toBe("cwd=" + realpathSync(workspace))
     // The recorded hash is the hash of what was WRITTEN, header included.
     expect(result.logSha256).toBe(sha256Text(log))
     /** The evidence metadata the record path cites. */
@@ -289,6 +343,203 @@ describe("mpd-gates.json (C3 / D13)", () => {
     expect(String(result.refused)).toContain(PROJECT_GATE_FILE)
     // NO FALLBACK, NO BOGUS EVIDENCE: a refused call must leave nothing a record could cite.
     expect(readEvidence(workspace)).toHaveLength(0)
+    cleanup(workspace)
+  })
+})
+
+describe("CR repairs #11-#14 on the gate plane", () => {
+  test("#14 the log header names the REAL program and argv, not only the `cmd` label", () => {
+    /** The argv that actually runs. */
+    const argv = printArgv("real-argv-ran")
+    /** A sandbox whose label deliberately differs from the argv. */
+    const workspace = withShape({ version: 1, gates: { "audit-label": { cmd: "audit label", argv } } })
+    /** The run's result. */
+    const result = runGateTool(workspace, "audit-label")
+    expect(result.refused).toBeUndefined()
+    expect(result.exit).toBe(0)
+    /** The log on disk. */
+    const log = readFileSync(join(workspace, String(result.logPath)), "utf8")
+    /** The header line. */
+    const header = log.split("\n")[0]
+    // THE ATTACK THIS CLOSES: `cmd:"bun test packages"` + `argv:["true"]` used to record only the label,
+    // so a PASS could cite a command that never ran.
+    expect(header).toContain("cmd: " + JSON.stringify("audit label"))
+    expect(header).toContain("program: " + JSON.stringify(process.execPath))
+    expect(header).toContain("argv: " + JSON.stringify(argv.slice(1)))
+    expect(result.tail).toContain("real-argv-ran")
+    // The label stays the record's `cmd` (the human name); the LOG is the authoritative account of what
+    // executed, and `logSha256` pins it.
+    expect(readEvidence(workspace).find((row) => row.evidenceId === result.evidenceId)?.cmd).toBe("audit label")
+    cleanup(workspace)
+  })
+
+  test("#11 a newline or line separator in `cmd`/`argv` cannot forge a log line", () => {
+    /** One marker a forger would want on a line of its own. */
+    const forged = "FORGED-EVIDENCE-ROW"
+    /** A cmd carrying a newline, a U+2028 line separator and a DEL control character. */
+    const cmd = "first\n" + forged + "\u2028" + forged + "\u007f"
+    /** An argv element that also carries a newline. */
+    const argv = [process.execPath, "-e", "console.log('ran')", "\n" + forged]
+    /** A sandbox declaring that gate. */
+    const workspace = withShape({ version: 1, gates: { forged: { cmd, argv } } })
+    /** The run's result. */
+    const result = runGateTool(workspace, "forged")
+    expect(result.refused).toBeUndefined()
+    /** The log's lines. */
+    const lines = readFileSync(join(workspace, String(result.logPath)), "utf8").split("\n")
+    // THE HEADER IS ONE LINE: the project's own text is ESCAPED into it, so nothing it contains starts a
+    // line of its own. `lines` is header + "ran" + the trailing empty string.
+    expect(lines).toHaveLength(3)
+    expect(lines.some((line) => line.trim() === forged)).toBe(false)
+    expect(lines[0]).toContain('"first\\nFORGED-EVIDENCE-ROW')
+    // JSON alone does not escape the line separator or DEL, so the header escapes them too.
+    expect(lines[0]).toContain("\\u2028")
+    expect(lines[0]).toContain("\\u007f")
+    expect(lines[0]).toContain(JSON.stringify("\n" + forged))
+    cleanup(workspace)
+  })
+
+  test("#13 a spawn failure is IN the log and the tail, not a bare header", () => {
+    /** A program that cannot exist. */
+    const missing = "mpd-cr-no-such-program-xyz"
+    /** A sandbox declaring that gate. */
+    const workspace = withShape({ version: 1, gates: { "missing-tool": { argv: [missing] } } })
+    /** The run's result. */
+    const result = runGateTool(workspace, "missing-tool")
+    expect(result.refused).toBeUndefined()
+    // THE FAILURE IS A FAILURE: the child never started, so the exit code is the runner's own -1.
+    expect(result.exit).not.toBe(0)
+    // ... AND IT SAYS WHY: the spawn error reaches the tail a model reads.
+    expect(String(result.tail)).toContain("[spawn-error]")
+    expect(String(result.tail)).toContain(missing)
+    /** The log on disk. */
+    const log = readFileSync(join(workspace, String(result.logPath)), "utf8")
+    expect(log).toContain("[spawn-error]")
+    expect(log).toContain(missing)
+    // The evidence still lands, so the FAILURE itself is citable rather than invisible.
+    expect(readEvidence(workspace).some((row) => row.evidenceId === result.evidenceId)).toBe(true)
+    cleanup(workspace)
+  })
+
+  test("#12 a loop FREEZES `mpd-gates.json`: an edit afterwards refuses that loop's gate runs", () => {
+    /** The gate as first declared. */
+    const argv = printArgv("frozen-ran")
+    /** A sandbox with one project gate. */
+    const workspace = withShape({ version: 1, gates: { frozen: { argv } } })
+    /** The tools for this workspace. */
+    const tools = lawTools(workspace)
+    /** The delegated loop: the freeze is captured when it is opened. */
+    const opened = callTool(toolFor(tools, "mpd_verify_open"), { writer: "delegate", writer_id: "session-S", verifier: "verifier-X" }, "captain-session")
+    expect(opened.refused).toBeUndefined()
+    /** The loop id. */
+    const loopId = String(opened.loopId)
+    // THE FREEZE IS ON DISK AND IN THE RESULT: the file's identity at open time.
+    const frozenSha = sha256Text(readFileSync(join(workspace, PROJECT_GATE_FILE), "utf8"))
+    expect(readLoops(workspace).find((loop) => loop.loopId === loopId)?.gateFile).toEqual({ state: "present", sha256: frozenSha })
+    expect(opened.gateFile).toEqual({ state: "present", sha256: frozenSha })
+    /** A bound run under the unchanged file: green, and it SAYS the evidence is frozen. */
+    const frozenRun = runGateTool(workspace, "frozen", loopId)
+    expect(frozenRun.refused).toBeUndefined()
+    expect(frozenRun.exit).toBe(0)
+    expect(frozenRun.gateFreeze).toBe("frozen")
+    expect(frozenRun.tail).toContain("frozen-ran")
+    // THE ATTACK (CR #12): the loop's own writer edits the gate file to make it pass or mislabel it.
+    writeFileSync(join(workspace, PROJECT_GATE_FILE), JSON.stringify({ version: 1, gates: { frozen: { argv: printArgv("edited") } } }), "utf8")
+    /** The bound run after the edit. */
+    const attack = runGateTool(workspace, "frozen", loopId)
+    expect(String(attack.refused)).toContain("gate-freeze")
+    expect(String(attack.refused)).toContain(PROJECT_GATE_FILE)
+    // NOTHING RAN AND NOTHING WAS WRITTEN: the refused run leaves exactly the first evidence row.
+    expect(readEvidence(workspace)).toHaveLength(1)
+    // AN UNBOUND RUN IS STILL LIVE, and it DECLARES that it carries no freeze — the bound is stated, not
+    // hidden: a gate run with no loop has no file to freeze.
+    const live = runGateTool(workspace, "frozen")
+    expect(live.refused).toBeUndefined()
+    expect(live.gateFreeze).toBe("unfrozen")
+    expect(live.tail).toContain("edited")
+    cleanup(workspace)
+  })
+
+  test("#12 a loop opened with NO project file refuses the file that appears later", () => {
+    /** A sandbox with no project gate file at all. */
+    const workspace = sandbox()
+    /** The tools for this workspace. */
+    const tools = lawTools(workspace)
+    /** The loop, opened while the workspace carried no project gate file. */
+    const opened = callTool(toolFor(tools, "mpd_verify_open"), { writer: "delegate", writer_id: "session-S", verifier: "verifier-X" }, "captain-session")
+    expect(opened.refused).toBeUndefined()
+    /** The loop id. */
+    const loopId = String(opened.loopId)
+    expect(readLoops(workspace).find((loop) => loop.loopId === loopId)?.gateFile).toEqual({ state: "absent", sha256: "" })
+    // ABSENT IS A FROZEN ANSWER TOO: a file that appears later would change what a FROZEN id runs.
+    writeFileSync(join(workspace, PROJECT_GATE_FILE), JSON.stringify({ version: 1, gates: { gates: { argv: printArgv("late") } } }), "utf8")
+    /** The bound run after the file appeared. */
+    const attack = runGateTool(workspace, "gates", loopId)
+    expect(String(attack.refused)).toContain("gate-freeze")
+    expect(readEvidence(workspace)).toHaveLength(0)
+    cleanup(workspace)
+  })
+})
+
+describe("T29 - an UNFROZEN loop refuses gate evidence, and the observer freezes", () => {
+  test("a loop with NO snapshot REFUSES a gate run and names the repair", () => {
+    /** A sandbox with one project gate. */
+    const workspace = withShape({ version: 1, gates: { frozen: { argv: printArgv("legacy-ran") } } })
+    /** A loop written before the freeze existed: armed, but with no `gateFile` field at all. */
+    const loopId = legacyLoop(workspace, "captain-session", "tool")
+    /** The bound run: an unfrozen loop cannot say which gates it certified. */
+    const bound = runGateTool(workspace, "frozen", loopId)
+    expect(String(bound.refused)).toContain("gate-freeze")
+    expect(String(bound.refused)).toContain("NO frozen")
+    expect(String(bound.refused)).toContain("open a NEW loop")
+    // NOTHING RAN: the refusal precedes the spawn, so there is no evidence to cite.
+    expect(readEvidence(workspace)).toHaveLength(0)
+    // THE UNBOUND RUN IS NOT THE SUBJECT: with no loop, the same gate still runs and says `unfrozen`.
+    const live = runGateTool(workspace, "frozen")
+    expect(live.refused).toBeUndefined()
+    expect(live.gateFreeze).toBe("unfrozen")
+    cleanup(workspace)
+  })
+
+  test("the OBSERVER freezes the loop it arms: its gate runs are green, and an edit is refused", () => {
+    /** A sandbox with one project gate. */
+    const workspace = withShape({ version: 1, gates: { frozen: { argv: printArgv("observer-ran") } } })
+    /** The loop the observer arms for one delegation. */
+    const armed = armDelegateLoop(workspace, "captain-session", "mpd_role_spawn", DEFAULT_LOOP_TTL_MS)
+    expect(armed === undefined).toBe(false)
+    /** The loop id the observer armed. */
+    const loopId = String(armed)
+    /** The file identity at arm time. */
+    const frozenSha = sha256Text(readFileSync(join(workspace, PROJECT_GATE_FILE), "utf8"))
+    expect(readLoops(workspace).find((loop) => loop.loopId === loopId)?.gateFile).toEqual({ state: "present", sha256: frozenSha })
+    /** A bound run under the frozen file. */
+    const frozenRun = runGateTool(workspace, "frozen", loopId)
+    expect(frozenRun.refused).toBeUndefined()
+    expect(frozenRun.exit).toBe(0)
+    expect(frozenRun.gateFreeze).toBe("frozen")
+    // THE SAME FREEZE THE TOOL WRITES: an edit after arming refuses the run.
+    writeFileSync(join(workspace, PROJECT_GATE_FILE), JSON.stringify({ version: 1, gates: { frozen: { argv: printArgv("edited") } } }), "utf8")
+    /** The bound run after the edit. */
+    const attack = runGateTool(workspace, "frozen", loopId)
+    expect(String(attack.refused)).toContain("gate-freeze")
+    cleanup(workspace)
+  })
+
+  test("re-arming ADOPTS a freeze into an observer loop armed before the freeze existed", () => {
+    /** A sandbox with one project gate. */
+    const workspace = withShape({ version: 1, gates: { frozen: { argv: printArgv("adopted-ran") } } })
+    /** A legacy OBSERVER loop for the same session: armed, unfrozen. */
+    const legacyId = legacyLoop(workspace, "captain-session", "observer")
+    // As it stands it refuses gate evidence (the arm above), so the observer must repair it.
+    expect(String(runGateTool(workspace, "frozen", legacyId).refused)).toContain("gate-freeze")
+    /** The re-arm: the SAME loop is reused, now carrying the freeze. */
+    const rearmed = armDelegateLoop(workspace, "captain-session", "mpd_role_spawn", DEFAULT_LOOP_TTL_MS)
+    expect(rearmed).toBe(legacyId)
+    expect(readLoops(workspace).find((loop) => loop.loopId === legacyId)?.gateFile).toEqual({ state: "present", sha256: sha256Text(readFileSync(join(workspace, PROJECT_GATE_FILE), "utf8")) })
+    /** And its gate evidence now runs under the adopted freeze. */
+    const run = runGateTool(workspace, "frozen", legacyId)
+    expect(run.refused).toBeUndefined()
+    expect(run.gateFreeze).toBe("frozen")
     cleanup(workspace)
   })
 })

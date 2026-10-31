@@ -1,5 +1,4 @@
-# typed: 2026-10-31T06:03:18Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-no-host-override.ts
-[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-no-host-override.ts
 [verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
 [verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
 [verify-no-host-override] host-declared row ids: 214

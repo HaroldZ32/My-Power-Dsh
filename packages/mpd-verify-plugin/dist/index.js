@@ -2220,7 +2220,7 @@ function resolvePositiveInt(raw, fallback) {
 }
 
 // packages/mpd-verify-plugin/src/observe.ts
-import { join as join3 } from "node:path";
+import { join as join4 } from "node:path";
 
 // packages/mpd-verify-plugin/src/ledger.ts
 import { createHash, randomBytes } from "node:crypto";
@@ -2390,6 +2390,221 @@ function readEscapes(workspace) {
   return rows;
 }
 
+// packages/mpd-verify-plugin/src/gates.ts
+import { spawnSync } from "node:child_process";
+import { existsSync as existsSync2, readFileSync as readFileSync2, statSync as statSync3 } from "node:fs";
+import { basename, isAbsolute as isAbsolute3, join as join3, relative as relative3 } from "node:path";
+var GATE_TABLE = [
+  { id: "gates", cmd: "bun run verify:gates", runner: "bun", argv: ["run", "verify:gates"] },
+  { id: "tests", cmd: "bun test packages", runner: "bun", argv: ["test", "packages"] },
+  { id: "typecheck", cmd: "bun run typecheck", runner: "bun", argv: ["run", "typecheck"] },
+  { id: "docs", cmd: "bun run verify:docs", runner: "bun", argv: ["run", "verify:docs"] },
+  { id: "manifest", cmd: "bun run verify:manifest", runner: "bun", argv: ["run", "verify:manifest"] },
+  { id: "comments", cmd: "bun run verify:comments", runner: "bun", argv: ["run", "verify:comments"] },
+  { id: "rows", cmd: "bun run verify:rows", runner: "bun", argv: ["run", "verify:rows"] },
+  { id: "vendor", cmd: "node scripts/verify-vendor.ts", runner: "node", argv: ["scripts/verify-vendor.ts"] },
+  { id: "dist", cmd: "node scripts/verify-dist-fresh.ts", runner: "node", argv: ["scripts/verify-dist-fresh.ts"] },
+  { id: "pack", cmd: "node scripts/pack-mpd.ts", runner: "node", argv: ["scripts/pack-mpd.ts"] }
+];
+var PROBE_PATH_LIMIT = 64;
+var TAIL_CHARS = 4096;
+function gateById(id) {
+  return GATE_TABLE.find((entry) => entry.id === id);
+}
+var PROJECT_GATE_FILE = "mpd-gates.json";
+var PROJECT_GATE_LIMIT = 32;
+var PROJECT_GATE_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+var PROJECT_GATE_ARGV_LIMIT = 32;
+var PROJECT_GATE_ARG_LIMIT = 4096;
+function describeError(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function refuseProjectFile(problem) {
+  return {
+    ok: false,
+    refused: PROJECT_GATE_FILE + " at the workspace root is invalid (" + problem + "), so the gate call is refused instead of falling back to the frozen table"
+  };
+}
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function loadProjectGates(workspace) {
+  const file = join3(workspace, PROJECT_GATE_FILE);
+  if (!existsSync2(file))
+    return { ok: true, specs: [] };
+  let text = "";
+  try {
+    text = readFileSync2(file, "utf8");
+  } catch (error) {
+    return refuseProjectFile("it cannot be read (" + describeError(error) + ")");
+  }
+  let parsed = undefined;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    return refuseProjectFile("it is not valid JSON (" + describeError(error) + ")");
+  }
+  if (!isPlainObject(parsed))
+    return refuseProjectFile("the top level must be an object");
+  const allowedTopLevel = new Set(["version", "gates"]);
+  for (const key of Object.keys(parsed)) {
+    if (!allowedTopLevel.has(key))
+      return refuseProjectFile("unknown top-level key " + JSON.stringify(key));
+  }
+  if (parsed.version !== undefined && parsed.version !== 1) {
+    return refuseProjectFile("version must be 1, got " + JSON.stringify(parsed.version));
+  }
+  if (!("gates" in parsed))
+    return refuseProjectFile("`gates` is missing");
+  const gates = parsed.gates;
+  if (!isPlainObject(gates))
+    return refuseProjectFile("`gates` must be an object of gate entries");
+  const ids = Object.keys(gates);
+  if (ids.length > PROJECT_GATE_LIMIT) {
+    return refuseProjectFile(ids.length + " gates are declared, and the limit is " + PROJECT_GATE_LIMIT);
+  }
+  const specs = [];
+  for (const id of ids) {
+    if (!PROJECT_GATE_ID_PATTERN.test(id)) {
+      return refuseProjectFile("gate id " + JSON.stringify(id) + " must match " + PROJECT_GATE_ID_PATTERN.source);
+    }
+    const entry = gates[id];
+    if (!isPlainObject(entry))
+      return refuseProjectFile("gate " + JSON.stringify(id) + " must be an object with `argv`");
+    for (const key of Object.keys(entry)) {
+      if (key !== "cmd" && key !== "argv") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " declares unknown key " + JSON.stringify(key));
+      }
+    }
+    const declared = entry.argv;
+    if (!Array.isArray(declared)) {
+      return refuseProjectFile("gate " + JSON.stringify(id) + " needs `argv` to be an array of 1.." + PROJECT_GATE_ARGV_LIMIT + " strings");
+    }
+    if (declared.length < 1 || declared.length > PROJECT_GATE_ARGV_LIMIT) {
+      return refuseProjectFile("gate " + JSON.stringify(id) + " declares " + declared.length + " argument(s), and `argv` must carry 1.." + PROJECT_GATE_ARGV_LIMIT);
+    }
+    const argv = [];
+    for (let index = 0;index < declared.length; index += 1) {
+      const argument = declared[index];
+      if (typeof argument !== "string" || argument === "") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] must be a non-empty string");
+      }
+      if (argument.length > PROJECT_GATE_ARG_LIMIT) {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] is " + argument.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
+      }
+      argv.push(argument);
+    }
+    let cmd = argv.join(" ");
+    if (entry.cmd !== undefined) {
+      if (typeof entry.cmd !== "string" || entry.cmd.trim() === "") {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` must be a non-empty string");
+      }
+      if (entry.cmd.length > PROJECT_GATE_ARG_LIMIT) {
+        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` is " + entry.cmd.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
+      }
+      cmd = entry.cmd;
+    }
+    specs.push({ id, cmd, runner: "argv", argv });
+  }
+  return { ok: true, specs };
+}
+function resolveGate(workspace, id) {
+  const project = loadProjectGates(workspace);
+  if (!project.ok)
+    return { ok: false, refused: project.refused };
+  const declared = project.specs.find((entry) => entry.id === id);
+  if (declared !== undefined)
+    return { ok: true, spec: declared };
+  const frozen = gateById(id);
+  if (frozen !== undefined)
+    return { ok: true, spec: frozen };
+  return {
+    ok: false,
+    refused: "unknown-gate: " + JSON.stringify(id) + " is not on the fixed table. The ids are: " + [...project.specs.map((entry) => entry.id), ...GATE_TABLE.map((entry) => entry.id)].join(", ")
+  };
+}
+function headerValue(value) {
+  const json = JSON.stringify(value) ?? "null";
+  return json.replace(/[\u007f-\u009f\u2028\u2029]/g, (character) => "\\u" + (character.codePointAt(0) ?? 0).toString(16).padStart(4, "0"));
+}
+function projectGateIdentity(workspace) {
+  const file = join3(workspace, PROJECT_GATE_FILE);
+  if (!existsSync2(file))
+    return { state: "absent", sha256: "" };
+  return { state: "present", sha256: sha256File(file) };
+}
+function runnerPath(runner) {
+  if (runner === "node")
+    return process.execPath;
+  if (basename(process.execPath).startsWith("bun"))
+    return process.execPath;
+  for (const dir of String(process.env.PATH ?? "").split(":")) {
+    const candidate = join3(dir, "bun");
+    if (dir !== "" && existsSync2(candidate))
+      return candidate;
+  }
+  return "bun";
+}
+function runGate(workspace, spec, timeoutMs) {
+  const program = spec.runner === "argv" ? String(spec.argv[0] ?? "") : runnerPath(spec.runner);
+  const argv = spec.runner === "argv" ? spec.argv.slice(1) : spec.argv;
+  const child = spawnSync(program, [...argv], {
+    cwd: workspace,
+    encoding: "utf8",
+    timeout: timeoutMs,
+    maxBuffer: 64 * 1024 * 1024,
+    shell: false
+  });
+  const spawnFailure = child.error === undefined ? "" : `
+[spawn-error] ` + describeError(child.error) + `
+`;
+  const output = String(child.stdout ?? "") + String(child.stderr ?? "") + spawnFailure;
+  const exit = typeof child.status === "number" ? child.status : child.signal !== null && child.signal !== undefined ? 124 : -1;
+  const log = "# gate " + spec.id + " cmd: " + headerValue(spec.cmd) + " program: " + headerValue(program) + " argv: " + headerValue([...argv]) + `
+` + output;
+  return {
+    spec,
+    exit,
+    output,
+    log,
+    tail: output.length > TAIL_CHARS ? output.slice(output.length - TAIL_CHARS) : output,
+    outputSha256: sha256Text(log)
+  };
+}
+function probeArtifacts(workspace, paths) {
+  const readings = [];
+  for (const raw of paths.slice(0, PROBE_PATH_LIMIT)) {
+    const absolute = isAbsolute3(raw) ? raw : join3(workspace, raw);
+    const rel = relative3(workspace, absolute);
+    if (rel.startsWith("..") || isAbsolute3(rel)) {
+      readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
+      continue;
+    }
+    try {
+      if (!existsSync2(absolute)) {
+        readings.push({ path: rel, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
+        continue;
+      }
+      const stat = statSync3(absolute);
+      if (stat.isDirectory()) {
+        readings.push({ path: rel, exists: true, kind: "dir", bytes: 0, sha256: "", mtime: stat.mtime.toISOString() });
+        continue;
+      }
+      readings.push({
+        path: rel,
+        exists: true,
+        kind: "file",
+        bytes: stat.size,
+        sha256: sha256File(absolute),
+        mtime: stat.mtime.toISOString()
+      });
+    } catch {
+      readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
+    }
+  }
+  return readings;
+}
+
 // packages/mpd-verify-plugin/src/observe.ts
 var DELEGATION_TOOLS = [
   "spawn_teammate",
@@ -2536,14 +2751,20 @@ function createVerifyRuntime(options) {
 }
 function armDelegateLoop(workspace, sessionId, toolName, ttlMs) {
   const existing = readLoops(workspace).find((loop2) => loop2.sessionId === sessionId && loop2.status === "armed" && loop2.openedVia === "observer");
-  if (existing !== undefined)
+  if (existing !== undefined) {
+    if (existing.gateFile === undefined) {
+      const adopted = { ...existing, gateFile: projectGateIdentity(workspace) };
+      writeJsonAtomic(join4(loopsDir(workspace), existing.loopId + ".json"), adopted);
+    }
     return existing.loopId;
+  }
   const now = new Date;
   const loopId = mintId("loop");
   const loop = {
     version: 1,
     loopId,
     taskId: null,
+    gateFile: projectGateIdentity(workspace),
     workspace,
     sessionId,
     writer: { kind: "delegate", id: "delegate:" + toolName },
@@ -2554,7 +2775,7 @@ function armDelegateLoop(workspace, sessionId, toolName, ttlMs) {
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + ttlMs).toISOString()
   };
-  return writeJsonAtomic(join3(loopsDir(workspace), loopId + ".json"), loop) ? loopId : undefined;
+  return writeJsonAtomic(join4(loopsDir(workspace), loopId + ".json"), loop) ? loopId : undefined;
 }
 function installDelegationObserver(dsh, options) {
   try {
@@ -2575,208 +2796,6 @@ function installDelegationObserver(dsh, options) {
     options.warn("the delegation observer could not be installed — delegated loops will not be auto-armed");
     return () => {};
   }
-}
-
-// packages/mpd-verify-plugin/src/gates.ts
-import { spawnSync } from "node:child_process";
-import { existsSync as existsSync2, readFileSync as readFileSync2, statSync as statSync3 } from "node:fs";
-import { basename, isAbsolute as isAbsolute3, join as join4, relative as relative3 } from "node:path";
-var GATE_TABLE = [
-  { id: "gates", cmd: "bun run verify:gates", runner: "bun", argv: ["run", "verify:gates"] },
-  { id: "tests", cmd: "bun test packages", runner: "bun", argv: ["test", "packages"] },
-  { id: "typecheck", cmd: "bun run typecheck", runner: "bun", argv: ["run", "typecheck"] },
-  { id: "docs", cmd: "bun run verify:docs", runner: "bun", argv: ["run", "verify:docs"] },
-  { id: "manifest", cmd: "bun run verify:manifest", runner: "bun", argv: ["run", "verify:manifest"] },
-  { id: "comments", cmd: "bun run verify:comments", runner: "bun", argv: ["run", "verify:comments"] },
-  { id: "rows", cmd: "bun run verify:rows", runner: "bun", argv: ["run", "verify:rows"] },
-  { id: "vendor", cmd: "node scripts/verify-vendor.ts", runner: "node", argv: ["scripts/verify-vendor.ts"] },
-  { id: "dist", cmd: "node scripts/verify-dist-fresh.ts", runner: "node", argv: ["scripts/verify-dist-fresh.ts"] },
-  { id: "pack", cmd: "node scripts/pack-mpd.ts", runner: "node", argv: ["scripts/pack-mpd.ts"] }
-];
-var PROBE_PATH_LIMIT = 64;
-var TAIL_CHARS = 4096;
-function gateById(id) {
-  return GATE_TABLE.find((entry) => entry.id === id);
-}
-var PROJECT_GATE_FILE = "mpd-gates.json";
-var PROJECT_GATE_LIMIT = 32;
-var PROJECT_GATE_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
-var PROJECT_GATE_ARGV_LIMIT = 32;
-var PROJECT_GATE_ARG_LIMIT = 4096;
-function describeError(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function refuseProjectFile(problem) {
-  return {
-    ok: false,
-    refused: PROJECT_GATE_FILE + " at the workspace root is invalid (" + problem + "), so the gate call is refused instead of falling back to the frozen table"
-  };
-}
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function loadProjectGates(workspace) {
-  const file = join4(workspace, PROJECT_GATE_FILE);
-  if (!existsSync2(file))
-    return { ok: true, specs: [] };
-  let text = "";
-  try {
-    text = readFileSync2(file, "utf8");
-  } catch (error) {
-    return refuseProjectFile("it cannot be read (" + describeError(error) + ")");
-  }
-  let parsed = undefined;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return refuseProjectFile("it is not valid JSON (" + describeError(error) + ")");
-  }
-  if (!isPlainObject(parsed))
-    return refuseProjectFile("the top level must be an object");
-  const allowedTopLevel = new Set(["version", "gates"]);
-  for (const key of Object.keys(parsed)) {
-    if (!allowedTopLevel.has(key))
-      return refuseProjectFile("unknown top-level key " + JSON.stringify(key));
-  }
-  if (parsed.version !== undefined && parsed.version !== 1) {
-    return refuseProjectFile("version must be 1, got " + JSON.stringify(parsed.version));
-  }
-  if (!("gates" in parsed))
-    return refuseProjectFile("`gates` is missing");
-  const gates = parsed.gates;
-  if (!isPlainObject(gates))
-    return refuseProjectFile("`gates` must be an object of gate entries");
-  const ids = Object.keys(gates);
-  if (ids.length > PROJECT_GATE_LIMIT) {
-    return refuseProjectFile(ids.length + " gates are declared, and the limit is " + PROJECT_GATE_LIMIT);
-  }
-  const specs = [];
-  for (const id of ids) {
-    if (!PROJECT_GATE_ID_PATTERN.test(id)) {
-      return refuseProjectFile("gate id " + JSON.stringify(id) + " must match " + PROJECT_GATE_ID_PATTERN.source);
-    }
-    const entry = gates[id];
-    if (!isPlainObject(entry))
-      return refuseProjectFile("gate " + JSON.stringify(id) + " must be an object with `argv`");
-    for (const key of Object.keys(entry)) {
-      if (key !== "cmd" && key !== "argv") {
-        return refuseProjectFile("gate " + JSON.stringify(id) + " declares unknown key " + JSON.stringify(key));
-      }
-    }
-    const declared = entry.argv;
-    if (!Array.isArray(declared)) {
-      return refuseProjectFile("gate " + JSON.stringify(id) + " needs `argv` to be an array of 1.." + PROJECT_GATE_ARGV_LIMIT + " strings");
-    }
-    if (declared.length < 1 || declared.length > PROJECT_GATE_ARGV_LIMIT) {
-      return refuseProjectFile("gate " + JSON.stringify(id) + " declares " + declared.length + " argument(s), and `argv` must carry 1.." + PROJECT_GATE_ARGV_LIMIT);
-    }
-    const argv = [];
-    for (let index = 0;index < declared.length; index += 1) {
-      const argument = declared[index];
-      if (typeof argument !== "string" || argument === "") {
-        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] must be a non-empty string");
-      }
-      if (argument.length > PROJECT_GATE_ARG_LIMIT) {
-        return refuseProjectFile("gate " + JSON.stringify(id) + " argv[" + index + "] is " + argument.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
-      }
-      argv.push(argument);
-    }
-    let cmd = argv.join(" ");
-    if (entry.cmd !== undefined) {
-      if (typeof entry.cmd !== "string" || entry.cmd.trim() === "") {
-        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` must be a non-empty string");
-      }
-      if (entry.cmd.length > PROJECT_GATE_ARG_LIMIT) {
-        return refuseProjectFile("gate " + JSON.stringify(id) + " `cmd` is " + entry.cmd.length + " characters long, and the limit is " + PROJECT_GATE_ARG_LIMIT);
-      }
-      cmd = entry.cmd;
-    }
-    specs.push({ id, cmd, runner: "argv", argv });
-  }
-  return { ok: true, specs };
-}
-function resolveGate(workspace, id) {
-  const project = loadProjectGates(workspace);
-  if (!project.ok)
-    return { ok: false, refused: project.refused };
-  const declared = project.specs.find((entry) => entry.id === id);
-  if (declared !== undefined)
-    return { ok: true, spec: declared };
-  const frozen = gateById(id);
-  if (frozen !== undefined)
-    return { ok: true, spec: frozen };
-  return {
-    ok: false,
-    refused: "unknown-gate: " + JSON.stringify(id) + " is not on the fixed table. The ids are: " + [...project.specs.map((entry) => entry.id), ...GATE_TABLE.map((entry) => entry.id)].join(", ")
-  };
-}
-function runnerPath(runner) {
-  if (runner === "node")
-    return process.execPath;
-  if (basename(process.execPath).startsWith("bun"))
-    return process.execPath;
-  for (const dir of String(process.env.PATH ?? "").split(":")) {
-    const candidate = join4(dir, "bun");
-    if (dir !== "" && existsSync2(candidate))
-      return candidate;
-  }
-  return "bun";
-}
-function runGate(workspace, spec, timeoutMs) {
-  const program = spec.runner === "argv" ? String(spec.argv[0] ?? "") : runnerPath(spec.runner);
-  const argv = spec.runner === "argv" ? spec.argv.slice(1) : spec.argv;
-  const child = spawnSync(program, [...argv], {
-    cwd: workspace,
-    encoding: "utf8",
-    timeout: timeoutMs,
-    maxBuffer: 64 * 1024 * 1024,
-    shell: false
-  });
-  const output = String(child.stdout ?? "") + String(child.stderr ?? "");
-  const exit = typeof child.status === "number" ? child.status : child.signal !== null && child.signal !== undefined ? 124 : -1;
-  const log = "# gate " + spec.id + " cmd: " + spec.cmd + `
-` + output;
-  return {
-    spec,
-    exit,
-    output,
-    log,
-    tail: output.length > TAIL_CHARS ? output.slice(output.length - TAIL_CHARS) : output,
-    outputSha256: sha256Text(log)
-  };
-}
-function probeArtifacts(workspace, paths) {
-  const readings = [];
-  for (const raw of paths.slice(0, PROBE_PATH_LIMIT)) {
-    const absolute = isAbsolute3(raw) ? raw : join4(workspace, raw);
-    const rel = relative3(workspace, absolute);
-    if (rel.startsWith("..") || isAbsolute3(rel)) {
-      readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
-      continue;
-    }
-    try {
-      if (!existsSync2(absolute)) {
-        readings.push({ path: rel, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
-        continue;
-      }
-      const stat = statSync3(absolute);
-      if (stat.isDirectory()) {
-        readings.push({ path: rel, exists: true, kind: "dir", bytes: 0, sha256: "", mtime: stat.mtime.toISOString() });
-        continue;
-      }
-      readings.push({
-        path: rel,
-        exists: true,
-        kind: "file",
-        bytes: stat.size,
-        sha256: sha256File(absolute),
-        mtime: stat.mtime.toISOString()
-      });
-    } catch {
-      readings.push({ path: raw, exists: false, kind: "absent", bytes: 0, sha256: "", mtime: "" });
-    }
-  }
-  return readings;
 }
 
 // packages/mpd-verify-plugin/src/record.ts
@@ -2904,7 +2923,7 @@ function registerVerifyTools(dsh, deps) {
 function openTool(deps) {
   return {
     name: "mpd_verify_open",
-    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member: `writer_id` names its AGENT IDENTITY (the member\'s session id) and `writer_reason` records the human name (`member: <name>`), so the record\'s same-agent refusal compares real identities instead of a placeholder; both are refused with `writer:"self"`. `contract` is the document THIS wave\'s verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `' + DEFAULT_CONTRACT_PATH + "`. A loop authorises nothing after `expiresAt`.",
+    description: 'Open a delegation+verification LOOP. `writer:"self"` lets THIS agent write code inside `scope` — it is the counted, visible path and REQUIRES `self_write_reason` plus a `verifier` that is a different agent. `writer:"delegate"` records a loop whose writer is a member: `writer_id` names its AGENT IDENTITY (the member\'s session id) and `writer_reason` records the human name (`member: <name>`), so the record\'s same-agent refusal compares real identities instead of a placeholder; both are refused with `writer:"self"`. `contract` is the document THIS wave\'s verifier is handed (a workspace-relative path, e.g. `.mpd/plans/<wave>.md`); with none the loop falls back to the declared `' + DEFAULT_CONTRACT_PATH + "`. The loop also FREEZES the workspace's `mpd-gates.json` (absent counts as frozen too), so a later edit cannot change what this loop's gate evidence certifies. A loop authorises nothing after `expiresAt`.",
     parameters: {
       type: "object",
       properties: {
@@ -2955,6 +2974,7 @@ function openTool(deps) {
         loopId,
         taskId: args?.task_id === undefined ? null : String(args.task_id),
         ...contract === undefined ? {} : { contract },
+        gateFile: projectGateIdentity(workspace),
         workspace,
         sessionId,
         writer: {
@@ -2977,7 +2997,7 @@ function openTool(deps) {
         id: loop.writer.id,
         ...typeof loop.writer.reason === "string" ? { reason: loop.writer.reason } : {}
       };
-      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), status: loop.status, expiresAt: loop.expiresAt };
+      return { loopId, writer: writerView, verifier: loop.verifier, scope: loop.scope, contract: loopContractPath(loop), gateFile: loop.gateFile, status: loop.status, expiresAt: loop.expiresAt };
     }
   };
 }
@@ -3057,7 +3077,7 @@ function seatTool(deps) {
 function evidenceTool(deps) {
   return {
     name: "mpd_verify_evidence",
-    description: 'Produce black-box evidence. `kind:"gate"` runs ONE id from the EFFECTIVE gate table — the workspace\'s `mpd-gates.json` entries first, then the frozen ids (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) — and writes its log, whose header names the command that ran; `kind:"probe"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted: `argv` comes from the project file or the frozen table, and is spawned with `shell:false`.',
+    description: 'Produce black-box evidence. `kind:"gate"` runs ONE id from the EFFECTIVE gate table — the workspace\'s `mpd-gates.json` entries first, then the frozen ids (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) — and writes its log, whose one-line header names the label, the program AND the argv that really ran; a `kind:"gate"` run bound to a loop is REFUSED when `mpd-gates.json` no longer matches the file that loop froze at open, and also when the loop carries NO freeze at all (open a new loop to certify gates), while `gateFreeze` on the result and the evidence row declares which guarantee the run carries. `kind:"probe"` returns what exists, its size, its sha256 and its mtime for each path — never content. No free-form command is accepted: `argv` comes from the project file or the frozen table, and is spawned with `shell:false`.',
     parameters: {
       type: "object",
       properties: {
@@ -3078,6 +3098,11 @@ function evidenceTool(deps) {
       const loopId = seat?.loopId ?? (args?.loop_id === undefined ? null : String(args.loop_id));
       const evidenceId = mintId("ev");
       if (String(args?.kind ?? "") === "gate") {
+        const boundLoop = loopId === null ? undefined : readLoops(workspace).find((candidate) => candidate.loopId === loopId);
+        const freezeRefusal = gateFreezeRefusal(workspace, loopId, boundLoop);
+        if (freezeRefusal !== undefined)
+          return { refused: freezeRefusal };
+        const gateFreeze = boundLoop?.gateFile === undefined ? "unfrozen" : "frozen";
         const resolved = resolveGate(workspace, String(args?.gate ?? ""));
         if (!resolved.ok)
           return { refused: resolved.refused };
@@ -3091,14 +3116,15 @@ function evidenceTool(deps) {
           kind: "gate",
           cmd: spec.cmd,
           exit: result.exit,
+          gateFreeze,
           at: new Date().toISOString(),
           logPath: ".mpd/verify/evidence/" + evidenceId + ".log",
           logSha256: result.outputSha256
         }, result.log);
         if (!wrote2)
           return { refused: "the gate ran (exit " + result.exit + ") but its evidence could not be written under " + evidenceDir(workspace) + " — evidence that is not on disk cannot be cited, so it is not reported as produced" };
-        deps.log("gate " + spec.id + " exit=" + result.exit + " evidence=" + evidenceId);
-        return { evidenceId, gate: spec.id, cmd: spec.cmd, exit: result.exit, logPath: ".mpd/verify/evidence/" + evidenceId + ".log", logSha256: result.outputSha256, tail: result.tail };
+        deps.log("gate " + spec.id + " exit=" + result.exit + " freeze=" + gateFreeze + " evidence=" + evidenceId);
+        return { evidenceId, gate: spec.id, cmd: spec.cmd, exit: result.exit, logPath: ".mpd/verify/evidence/" + evidenceId + ".log", logSha256: result.outputSha256, tail: result.tail, gateFreeze };
       }
       const paths = Array.isArray(args?.paths) ? args.paths.map(String) : [];
       if (paths.length === 0)
@@ -3112,6 +3138,19 @@ function evidenceTool(deps) {
       return { evidenceId, probe, readings };
     }
   };
+}
+function gateFreezeRefusal(workspace, loopId, loop) {
+  if (loop === undefined)
+    return;
+  if (loop.gateFile === undefined) {
+    return "gate-freeze: loop " + JSON.stringify(loop.loopId) + " carries NO frozen " + PROJECT_GATE_FILE + " (it was opened before the freeze existed), so a gate run under it cannot name the gates it certified — open a NEW loop and run the gate under that one, so its evidence carries the frozen file";
+  }
+  const current = projectGateIdentity(workspace);
+  if (current.state === loop.gateFile.state && current.sha256 === loop.gateFile.sha256)
+    return;
+  const frozen = loop.gateFile.state === "absent" ? "absent" : "sha256 " + loop.gateFile.sha256;
+  const now = current.state === "absent" ? "absent" : "sha256 " + current.sha256;
+  return "gate-freeze: " + PROJECT_GATE_FILE + " changed after loop " + JSON.stringify(String(loopId)) + " was opened (frozen " + frozen + ", now " + now + "), so a gate run for that loop would certify a command the loop never froze — restore the file, or open a new loop over the gates you mean to prove";
 }
 function recordTool(deps) {
   return {

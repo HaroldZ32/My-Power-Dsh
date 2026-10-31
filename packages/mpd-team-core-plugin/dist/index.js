@@ -6422,6 +6422,9 @@ ${result.message.body}`, exec.signal);
       }
       const state = readMailbox(workspace);
       const wanted = args?.member === undefined ? undefined : resolve4(String(args.member));
+      if (args?.member !== undefined && wanted === undefined) {
+        return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
+      }
       const callerId = self?.session?.id ?? caller;
       const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
       const memberId = wanted?.id ?? ownMember?.id ?? callerId;

@@ -13,8 +13,9 @@
 // THE FOUR MODES, and why a plain member has none:
 //   * captain    — dispatch only: `cellwork_*` except `cellwork_handoff`, `agent_teams_*`,
 //                  `ask_user_question`, `todo_write`, `mpd_memory_*`. Everything else is refused.
-//   * verifier   — never writes: the eight read-only names are refused, and reading, gates, bash and
-//                  the five `mpd_verify_*` calls stay available.
+//   * verifier   — never writes AND NEVER DELEGATES (CR repair E): the eight read-only names and the two
+//                  bundle spawn tools (`mpd_role_spawn`, `mpd_workmate_spawn`) are refused, while reading,
+//                  gates, bash and the five `mpd_verify_*` calls stay available.
 //   * checkpoint — the context threshold was hit: only `cellwork_handoff`, `cellwork_context` and
 //                  `cellwork_status` answer, so an agent that ignores the prose still cannot keep
 //                  working.
@@ -107,6 +108,17 @@ export const PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i
 
 /** The three path-shaped reconnaissance tools the planner is refused on when the path is a SOURCE path. */
 export const PLANNER_RECON_TOOLS: readonly string[] = ["read", "grep", "glob"]
+
+/**
+ * The bundle's SPAWN tools a VERIFIER seat never gets (CR repair E: "a verifier never delegates").
+ *
+ * WHY: a verdict is the verifier's OWN work, and a delegated consult would put another agent's REPORT inside a
+ * verdict this seat signs — the same reasoning that keeps the eight write tools out of its hands, one level
+ * up. `cellwork_recon` needs no entry here (it is the PLANNER's route and is refused on its own arm), so the
+ * verifier keeps every reading tool, `bash`, the gates and the five `mpd_verify_*` calls, and loses only the
+ * two names that would let it hand the judgement to somebody else.
+ */
+export const VERIFIER_NO_DELEGATION: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
 
 /** The cell member name that carries the planner's rule; the cell record and the team board use it verbatim. */
 export const PLANNER_SEAT_NAME = "cell-planner"
@@ -253,6 +265,25 @@ export function verifierRefusal(toolName: string): string {
     + "and its gate evidence ids); reading, `bash`, `grep`, `glob` and `mpd_verify_*` stay available. A "
     + "FAIL bounces the work back to its writer as a repair task, and only a RECORDED FAIL makes "
     + "implementation reading legitimate, for diagnosis."
+}
+
+/**
+ * The verifier's DELEGATION refusal (CR repair E): it may not hand its judgement to another agent.
+ *
+ * Kept SEPARATE from {@link verifierRefusal} on purpose — that sentence is about not FIXING what it judges,
+ * this one about not OUTSOURCING the judgement, and a refusal that mixed them would teach the wrong repair.
+ *
+ * @param toolName - the bundle spawn tool the verifier tried.
+ * @returns the teaching paragraph.
+ */
+export function verifierDelegationRefusal(toolName: string): string {
+  return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, and A VERIFIER "
+    + "NEVER DELEGATES: the verdict is the seat's OWN work, so handing the question to another agent would "
+    + "put its report inside a judgement you sign. Reading, `bash`, `grep`, `glob`, the gates and the five "
+    + "`mpd_verify_*` calls stay available — read the frozen contract and the documentation (never the "
+    + "implementation), run the gates, and record the verdict with `mpd_verify_record` (a PASS needs the "
+    + "documents it cites and its gate evidence ids). If the evidence to judge is not there, a FAIL bounces "
+    + "the work back to its writer as a repair task: that is the channel, not a consult."
 }
 
 /**
@@ -415,7 +446,13 @@ export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: 
   if (seat === undefined) return undefined
   if (toolName === "") return undefined
   if (seat.mode === "captain") return isCaptainAllowed(toolName) ? undefined : captainRefusal(toolName)
-  if (seat.mode === "verifier") return VERIFIER_DENY_TOOLS.includes(toolName) ? verifierRefusal(toolName) : undefined
+  // THE VERIFIER: never writes (the eight names) and NEVER DELEGATES (CR repair E) — a verdict is the seat's
+  // own work, so the two bundle spawn tools are refused with their own sentence rather than the write one.
+  if (seat.mode === "verifier") {
+    if (VERIFIER_DENY_TOOLS.includes(toolName)) return verifierRefusal(toolName)
+    if (VERIFIER_NO_DELEGATION.includes(toolName)) return verifierDelegationRefusal(toolName)
+    return undefined
+  }
   if (seat.mode === "checkpoint") return CHECKPOINT_ALLOW_TOOLS.includes(toolName) ? undefined : checkpointRefusal(toolName)
   // SUBCAPTAIN is a MINI-CAPTAIN (Amendment 4): the same dispatch-only discipline one level down.
   if (seat.mode === "subcaptain") return isSubcaptainAllowed(toolName) ? undefined : subcaptainRefusal(toolName)

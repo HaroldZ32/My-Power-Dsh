@@ -15,6 +15,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, isAbsolute, join, relative } from "node:path"
 import { sha256File, sha256Text } from "./ledger.ts"
+import type { LoopGateFile } from "./ledger.ts"
 
 /** One entry of the fixed gate table. */
 export interface GateSpec {
@@ -297,6 +298,42 @@ export function resolveGate(workspace: string, id: string): GateLookup {
 }
 
 /**
+ * One value rendered for the evidence log's header line.
+ *
+ * JSON is the base spelling because it is exact and unambiguous, but JSON alone does NOT escape the
+ * U+007F-U+009F control range or the U+2028/U+2029 line separators — so those are escaped here as well.
+ * The guarantee this buys (CR #11): a newline or line separator inside a project's `cmd` or one of its
+ * `argv` elements can never start a line of its own in the log, which is the hashed artefact a record
+ * cites.
+ *
+ * @param value - the string, array or record to render.
+ * @returns a one-line, ASCII-safe JSON spelling.
+ */
+function headerValue(value: unknown): string {
+  /** The value's JSON spelling; `null` for `undefined`, which the header never passes. */
+  const json = JSON.stringify(value) ?? "null"
+  return json.replace(/[\u007f-\u009f\u2028\u2029]/g, (character) => "\\u" + (character.codePointAt(0) ?? 0).toString(16).padStart(4, "0"))
+}
+
+/**
+ * The identity of the workspace's project gate file RIGHT NOW: whether it exists, and the sha256 of its
+ * bytes.
+ *
+ * `mpd_verify_open` freezes this into the loop (CR #12) and every gate run bound to that loop compares
+ * against it: the write guard is withdrawn, so the loop's own WRITER can edit the file, and a byte-exact
+ * freeze is what stops it from pointing a gate at a command that passes or relabelling one.
+ *
+ * @param workspace - the workspace root the calling session resolved.
+ * @returns `{state:"absent"}` when there is no project file, else `{state:"present", sha256}` of its bytes.
+ */
+export function projectGateIdentity(workspace: string): LoopGateFile {
+  /** The project file's absolute path. */
+  const file = join(workspace, PROJECT_GATE_FILE)
+  if (!existsSync(file)) return { state: "absent", sha256: "" }
+  return { state: "present", sha256: sha256File(file) }
+}
+
+/**
  * The absolute path of the runner for one table entry.
  *
  * `bun` is resolved on PATH (it may not be the process running dsh), while `node` entries deliberately
@@ -339,12 +376,21 @@ export function runGate(workspace: string, spec: GateSpec, timeoutMs: number): G
     maxBuffer: 64 * 1024 * 1024,
     shell: false,
   })
-  /** The captured stdout and stderr, concatenated so the log is one artefact. */
-  const output = String(child.stdout ?? "") + String(child.stderr ?? "")
+  /**
+   * The spawn failure, when the program could not be started at all or the child hit an OS-level limit.
+   *
+   * An ENOENT (missing toolchain) used to leave a log whose ONLY line was the header, so the caller got no
+   * cause at all (CR #13). It is part of the OUTPUT on purpose, so it also reaches the `tail` a model reads.
+   */
+  const spawnFailure = child.error === undefined ? "" : "\n[spawn-error] " + describeError(child.error) + "\n"
+  /** The captured stdout and stderr, plus the spawn failure, so the log is one artefact WITH a cause. */
+  const output = String(child.stdout ?? "") + String(child.stderr ?? "") + spawnFailure
   /** The exit code: a signal-terminated child reports `null`, which is a failure like any other. */
   const exit = typeof child.status === "number" ? child.status : child.signal !== null && child.signal !== undefined ? 124 : -1
-  /** The log's exact bytes: ONE header line naming the EFFECTIVE command, then the child's output. */
-  const log = "# gate " + spec.id + " cmd: " + spec.cmd + "\n" + output
+  // THE HEADER NAMES WHAT RAN (CR #14): the `cmd` label alone is a CLAIM — `cmd:"bun test packages"` with
+  // `argv:["true"]` would certify a command that never executed. The program and the argv are the fact.
+  /** The log's exact bytes: ONE header line naming the label, the program and the argv, then the output. */
+  const log = "# gate " + spec.id + " cmd: " + headerValue(spec.cmd) + " program: " + headerValue(program) + " argv: " + headerValue([...argv]) + "\n" + output
   return {
     spec,
     exit,

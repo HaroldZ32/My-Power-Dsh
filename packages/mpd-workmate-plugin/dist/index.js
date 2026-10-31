@@ -2067,6 +2067,7 @@ var READONLY_DENY = [
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict"
 ];
+var LEAF_SPAWN_DENY = ["mpd_role_spawn", "mpd_workmate_spawn"];
 
 class WorkmateError extends Error {
   code;
@@ -2557,6 +2558,14 @@ function spawnMaxDepthOf(agent) {
     return Math.floor(raw) + 1;
   return header?.origin === "subagent" ? 2 : 1;
 }
+function consultDepthRefusal(agent) {
+  const header = agent?.session?.header;
+  const raw = Number(header?.delegationDepth);
+  const depth = Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : header?.origin === "subagent" ? 1 : 0;
+  if (depth < 2)
+    return;
+  return "mpd spawn rule: refused — this session is at delegation depth " + depth + ", two or more levels below" + " the session that started the work, so it may not raise another consult. `mpd_role_spawn` and" + " `mpd_workmate_spawn` forward a depth cap that makes their child a LEAF, and a session at depth 2 or" + " deeper IS that leaf: the consults it would raise are exactly the runaway nesting the cap exists to" + " prevent (CR repair E). Do the work here, or hand the question UP — report what you need to the session" + " that raised you and end your turn.";
+}
 function apply(ctx) {
   const dsh = resolveDshAdapter(ctx);
   function rolesService() {
@@ -2615,10 +2624,18 @@ function apply(ctx) {
   }
   function applyChildReadonlyDeny(agent) {
     try {
-      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY]);
-      reportPrunedNames("read-only workmate child: applied " + outcome.applied.length + " denials to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY]);
+      reportPrunedNames("read-only workmate child: applied " + outcome.applied.length + " denials (+ the leaf spawn boundary) to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
     } catch (error) {
-      reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this workmate may be able to write");
+      reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this workmate may be able to write and to delegate");
+    }
+  }
+  function applyChildLeafDeny(agent) {
+    try {
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...LEAF_SPAWN_DENY]);
+      reportPrunedNames("workmate child leaf boundary: applied " + outcome.applied.length + " spawn denials to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
+    } catch (error) {
+      reportPrunedNames("workmate child leaf boundary: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this child may be able to delegate further");
     }
   }
   installChildPersonaSeam(dsh, {
@@ -2638,6 +2655,25 @@ function apply(ctx) {
     warn: (line) => reportPrunedNames(line),
     onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined
   });
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("agent/created", (payload) => {
+      try {
+        const agent = payload?.agent ?? payload;
+        const label = dsh.subagentLabelOf(agent);
+        if (label === undefined)
+          return;
+        const key = workmateKeyFromLabel(label);
+        if (key === null)
+          return;
+        const meta = readMeta(wmDir(key));
+        if (meta === null || meta.readonly)
+          return;
+        applyChildLeafDeny(agent);
+      } catch (error) {
+        reportPrunedNames("workmate child leaf boundary: a child could not be identified, so its spawn tools were left open (" + String(error?.message ?? error) + ")");
+      }
+    });
+  }
   function normalizeBaseKey(s) {
     return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   }
@@ -2739,13 +2775,16 @@ note: ` + v.note) },
   });
   dsh.registerTool({
     name: "mpd_workmate_spawn",
-    description: "Reuse a workmate instance: spawn it as a ONE-SHOT single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). On a host exposing `startActivation` the adapter disposes that activation once the report settles (the retired `start` fallback is inherently one-shot), so the consult is NOT reused: ask a new question with a NEW spawn, and rely on the workmate RECORD (persona/memory/note) for durable continuity, not on the child session (the harness catalog is append-only, so a settled child may still list as `inactive`). The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
+    description: "Reuse a workmate instance: spawn it as a ONE-SHOT single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). On a host exposing `startActivation` the adapter disposes that activation once the report settles (the retired `start` fallback is inherently one-shot), so the consult is NOT reused: ask a new question with a NEW spawn, and rely on the workmate RECORD (persona/memory/note) for durable continuity, not on the child session (the harness catalog is append-only, so a settled child may still list as `inactive`). The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "")) },
     execute: async (args, exec) => {
+      const tooDeep = consultDepthRefusal(exec?.agent);
+      if (tooDeep !== undefined)
+        throw new Error(tooDeep);
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
       if (!task)
@@ -3005,6 +3044,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
   }
 }
 export {
+  LEAF_SPAWN_DENY,
   MATCH_THRESHOLD,
   MEMORY_CAP,
   NOTE_CAP,
@@ -3017,6 +3057,7 @@ export {
   autoNote,
   busyTeams,
   capText,
+  consultDepthRefusal,
   deleteWorkmate,
   inject,
   name,

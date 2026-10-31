@@ -48,6 +48,14 @@ export interface LoopVerifier {
   boundAt?: string
 }
 
+/** The project gate file AS a loop froze it when the loop was opened (CR #12). */
+export interface LoopGateFile {
+  /** `absent` when the workspace carried no `mpd-gates.json` at that moment. */
+  state: "absent" | "present"
+  /** The sha256 of the file's bytes at that moment; empty when the file was absent. */
+  sha256: string
+}
+
 /** One delegation+verification loop. */
 export interface VerifyLoop {
   /** Format version. */
@@ -65,6 +73,16 @@ export interface VerifyLoop {
    * later wave the PREVIOUS wave's plan.
    */
   contract?: string
+  /**
+   * The project gate file AS IT WAS when this loop was opened — the freeze that stops a loop's WRITER
+   * from editing its own gates while the write guard is withdrawn (CR #12).
+   *
+   * ABSENT on a loop written before the freeze existed (T29): such a loop REFUSES gate evidence, because
+   * without a snapshot the run cannot say which gates it certified — the repair is a new loop. The observer
+   * ADOPTS a freeze into such a loop at its next re-arm; only a run bound to no KNOWN loop is left to the
+   * live file, and it declares `gateFreeze: "unfrozen"` rather than claiming a guarantee it does not carry.
+   */
+  gateFile?: LoopGateFile
   /** The workspace the loop belongs to. */
   workspace: string
   /** The agent key the loop belongs to (the captain's session, for a self-writer loop). */
@@ -137,6 +155,12 @@ export interface EvidenceMeta {
   kind: "gate" | "probe"
   /** The exact command line for a gate run; absent for a probe. */
   cmd?: string
+  /**
+   * Whether the run was BOUND to a loop that had FROZEN the project gate file (`frozen`), or whether it
+   * carries no freeze (`unfrozen`: a run bound to no KNOWN loop). Declared on the evidence itself so a
+   * reader never has to infer the guarantee (CR #12/T29).
+   */
+  gateFreeze?: "frozen" | "unfrozen"
   /** The exit code for a gate run; absent for a probe. */
   exit?: number
   /** ISO instant the evidence was produced. */

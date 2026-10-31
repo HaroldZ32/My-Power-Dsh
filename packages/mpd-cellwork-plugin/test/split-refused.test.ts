@@ -255,3 +255,83 @@ test("C1: with no member declared, self-review still compares the OWNER ROLE", (
   ]
   expect(validateGraph(tasks, ROSTER).some((finding) => finding.code === "self-review")).toBe(true)
 })
+
+// ── CR R-B1: validation uses the SAME member-identity key as activation (`roleKey`) ─────────────
+
+test("C1/CR R-B1: two SPELLINGS of one member identity cannot be writer and verifier", () => {
+  /** A work task and its review under the SAME role, the member spelled two different ways. */
+  const tasks: SplitTaskInput[] = [
+    { key: "work", subject: "A", description: "Do A.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/a.ts"], blockedBy: [], independent: false, inputs: [], verify: true },
+    { key: "review", subject: "Review A", description: "Blind review of A.", kind: "review", ownerRole: "Senior Engineer", member: "seat-a", writeScopes: ["docs/a.md"], blockedBy: ["work"], independent: false, inputs: [], verify: false },
+  ]
+  /** The graph findings. */
+  const findings = validateGraph(tasks, ROSTER)
+  // The raw strings differ, but activation identifies both tasks as ONE seat (`roleKey` lowercases and
+  // collapses punctuation), so the graph must be refused at submit time instead of silently merging.
+  expect(findings.some((finding) => finding.code === "self-review")).toBe(true)
+  // One identity, one role: the shared role is legal on its own, so only `self-review` bites here.
+  expect(findings.some((finding) => finding.code === "member-role-conflict")).toBe(false)
+})
+
+test("C1/CR R-B1: one identity under TWO roles is member-role-conflict even when the spellings differ", () => {
+  /** The same member identity spelled differently, with the review under a different owner role. */
+  const tasks: SplitTaskInput[] = [
+    { key: "work", subject: "A", description: "Do A.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/a.ts"], blockedBy: [], independent: false, inputs: [], verify: true },
+    { key: "review", subject: "Review A", description: "Blind review of A.", kind: "review", ownerRole: "Reviewer", member: "seat-a", writeScopes: ["docs/a.md"], blockedBy: ["work"], independent: false, inputs: [], verify: false },
+  ]
+  /** The graph findings. */
+  const findings = validateGraph(tasks, ROSTER)
+  // One seat cannot carry two roles, whatever the spelling says.
+  expect(findings.some((finding) => finding.code === "member-role-conflict")).toBe(true)
+  // That seat also reviews the work it wrote, so the writer rule fires as well.
+  expect(findings.some((finding) => finding.code === "self-review")).toBe(true)
+})
+
+test("C1/CR R-B1: a punctuation-only member name has NO identity and is member-invalid", () => {
+  /** One task per punctuation-only spelling; distinct scopes keep the write-scope rule out of the way. */
+  const tasks: SplitTaskInput[] = [
+    taskWith("dashes", "---", "Senior Engineer", "src/dashes.ts"),
+    taskWith("dots", "...", "Senior Engineer", "src/dots.ts"),
+    taskWith("underscores", "___", "Senior Engineer", "src/underscores.ts"),
+  ]
+  /** The graph findings. */
+  const findings = validateGraph(tasks, ROSTER)
+  /** The task keys charged as member-invalid. */
+  const invalid = findings.filter((finding) => finding.code === "member-invalid").map((finding) => finding.taskKey)
+  // `roleKey` of every one of these is "", so activation would collapse them into ONE anonymous seat.
+  expect(invalid).toEqual(["dashes", "dots", "underscores"])
+})
+
+test("C1/CR R-B1: identical spellings still share ONE member", () => {
+  /** Two work tasks of one role raised for the SAME member name: one seat, two tasks. */
+  const tasks: SplitTaskInput[] = [
+    { key: "work-a", subject: "A", description: "Do A.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/a.ts"], blockedBy: [], independent: false, inputs: [], verify: false },
+    { key: "work-b", subject: "B", description: "Do B.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/b.ts"], blockedBy: [], independent: false, inputs: [], verify: false },
+  ]
+  // Sharing a member across tasks is legal as long as the owner role agrees.
+  expect(validateGraph(tasks, ROSTER)).toEqual([])
+})
+
+test("C1/CR R-B1: case variants of one identity are the SAME member, not a conflict", () => {
+  /** Two work tasks of one role whose member arrives in two letter cases. */
+  const tasks: SplitTaskInput[] = [
+    { key: "work-a", subject: "A", description: "Do A.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/a.ts"], blockedBy: [], independent: false, inputs: [], verify: false },
+    { key: "work-b", subject: "B", description: "Do B.", kind: "work", ownerRole: "Senior Engineer", member: "seat-a", writeScopes: ["src/b.ts"], blockedBy: [], independent: false, inputs: [], verify: false },
+  ]
+  // Activation raises ONE seat for both, so validation must not report a phantom second one.
+  expect(validateGraph(tasks, ROSTER)).toEqual([])
+})
+
+test("C1/CR R-B1: the spelling mismatch is REFUSED at submit time and leaves its refusal artefact", async () => {
+  /** The work/review pair whose member is one seat to activation but two spellings to a raw string. */
+  const tasks: SplitTaskInput[] = [
+    { key: "work", subject: "A", description: "Do A.", kind: "work", ownerRole: "Senior Engineer", member: "Seat A", writeScopes: ["src/a.ts"], blockedBy: [], independent: false, inputs: [], verify: true },
+    { key: "review", subject: "Review A", description: "Blind review of A.", kind: "review", ownerRole: "Senior Engineer", member: "seat-a", writeScopes: ["docs/a.md"], blockedBy: ["work"], independent: false, inputs: [], verify: false },
+  ]
+  /** The refused verdict the production writer persisted. */
+  const verdict = await submit(tempWorkspace(), tasks, 1)
+  expect(verdict.accepted).toBe(false)
+  expect(verdict.findings.some((finding) => finding.code === "self-review")).toBe(true)
+  // The refusal is an artefact a reader can re-open, exactly like every other refused split (C9).
+  expect(String(verdict.file)).toContain("1.refused.json")
+})

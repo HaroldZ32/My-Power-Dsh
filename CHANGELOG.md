@@ -23,23 +23,30 @@ contract and the repository documentation — never from the implementation — 
 recorded on the board.
 
 **Fixed — a failed activation resumes, and one pass journals ONE snapshot.** `cellwork_activate`
-checkpoints each artifact as it is created and a retry of the SAME accepted revision converges: members
+journals ONE compact `cell-activation-progress` row per artifact as it is created and writes the full
+accumulated partial ONCE, and only when a pass FAILS; a retry after that failure converges: members
 reconcile by name, recorded board ids are reused, a verify loop is opened for every code task that has
 none, and `activatedRevision` is set only after a successful dispatch. A newer accepted revision
-supersedes an older in-flight partial; a lower one is refused. The per-artifact journal is now COMPACT:
-one `cell-activation-progress` row per artifact, the full snapshot ONCE on failure, and every row of a
-pass carries the same non-decreasing instant (the VEdit journal had 119 full snapshots, ~40 % of a
-490 KB file, with the final row stamped EARLIER than the rows above it). An end-to-end test fails
-activation at EACH of the five stages and asserts convergence with no duplicate member, task or loop.
+supersedes an older in-flight partial; a lower one is refused. Every row of a pass carries the same
+non-decreasing instant (the VEdit journal had 119 full snapshots, ~40 % of a 490 KB file, with the final
+row stamped EARLIER than the rows above it). Declared bound: a process that DIES mid-pass leaves no
+partial at all, so a board task or verify loop created by the dead pass is not found and the retry
+creates it AGAIN — detectable, not deletable (the team plane has no cancel verb); members are the
+exception, because they reconcile by name against the live roster. An end-to-end test fails activation at
+EACH of the five stages and asserts convergence with no duplicate member, task or loop.
 
 **Added — a split task may declare its `member` (one spelling).** Absent, the member name IS the owner
 role (unchanged). Present, the board member is that name while `ownerRole` is still validated against
 the roster, several tasks may share one member and several members may share one owner role — the
-parallelism the old one-member-per-role rule silently removed. `member-invalid` refuses an empty name, a
-name longer than 64 characters, or one carrying a control character or a path separator;
-`member-role-conflict` refuses one member declared under two different owner roles; `self-review`
-compares the RESOLVED member names when both sides declare one. Activation raises ONE member per
-distinct `member`, and every frozen contract names both the owner role and the member.
+parallelism the old one-member-per-role rule silently removed. The seat's identity is a normalisation
+shared by activation, validation and dispatch: letters and digits of ANY script are kept, case is
+folded, and each run of other characters becomes one `-` — so `"Seat A"`/`"seat-a"` are one seat and
+`"工程师甲"`/`"工程师乙"` are two, which means a member name may be Chinese or any other script.
+`member-invalid` refuses a name whose identity is EMPTY (a punctuation-only `---`), a name longer than
+64 characters, or one carrying a control character or a path separator; `member-role-conflict` refuses
+two tasks that resolve to the SAME seat under different owner roles; `self-review` compares that same
+identity when both sides declare one. Activation raises ONE member per distinct `member`, and every
+frozen contract names both the owner role and the member.
 
 **Fixed — a refused split leaves its findings, and a `###` subheading belongs to its parent.** Every
 refused submission is persisted at `split/<revision>.refused.json` with its full finding list (beside,
@@ -53,13 +60,15 @@ refused as missing or empty.
 up (`fenced: true` + `fencedReason`, journaled as `checkpoint-unrecoverable`). A fenced member is never
 messaged; the pass reports the skip and leaves the row pending. `reassign` is the repair: each row is
 claimed on the board for the target, journaled as `task-reassigned`, then delivered, BEFORE the pass —
-and every outcome is reported, never thrown. A second `cellwork_handoff` is refused while the first
-waits for the barrier (the three-handoffs-in-seven-minutes livelock). `cellwork_supervise` lists every
-fenced member with the open rows it still owns. Two bounds: after a reassignment the target owns an
-in-flight row, so the SAME pass reports its other ready rows BUSY (one task per member per pass); and
-the generic `agent_teams_dispatch` falls back to roster order when the declared owner is busy — during
-this wave it handed a REVIEW task to its own writer (released immediately, no verdict recorded), which
-is why cell dispatch stays owner-only and never substitutes.
+and every outcome is reported, never thrown. A target that FAILED to start or is still PROVISIONING is
+refused (a row claimed for it would never be picked up), and the delivery handle is the freshest
+NON-BLANK one, so an empty recorded `executorRef` falls through to the live roster's handle. A second
+`cellwork_handoff` is refused while the first waits for the barrier (the three-handoffs-in-seven-minutes
+livelock). `cellwork_supervise` lists every fenced member with the open rows it still owns. Two bounds:
+after a reassignment the target owns an in-flight row, so the SAME pass reports its other ready rows
+BUSY (one task per member per pass); and the generic `agent_teams_dispatch` falls back to roster order
+when the declared owner is busy — during this wave it handed a REVIEW task to its own writer (released
+immediately, no verdict recorded), which is why cell dispatch stays owner-only and never substitutes.
 
 **Fixed — the cell record reconciles with the live roster, and the split ticket is found by id.**
 `cellwork_status` reports `memberDivergence` (`missingFromCell`, `missingFromTeam`, `inSync`,
@@ -67,12 +76,19 @@ report-only) and the recorded split-ticket board id (`splitTaskId`). Staging rec
 the ticket up by it first, by owner second, so a requirements bump marks the split stale and
 re-dispatches the SAME row instead of a minted duplicate; a missing or ownerless ticket is a hard error
 naming the repair, and staging repairs a lost owner itself by claiming the row for `cell-splitter`.
+The id is RECORDED even when that repair is refused (the journal carries `ownerRepairError` beside it),
+so the id-first lookup keeps working. A requirements `update` reuses ONE live split row — the recorded
+id, then any live row owned by `cell-splitter` — writes the id it used back to the cell record
+(the field is `splitTaskId`, reported as `recordedSplitTaskId`), and appends a replacement only when the recorded row is terminal and no live
+row exists.
 
-**Changed — the cell mail log format (ONE-WAY).** A `send` row now always carries `wakeSent: false`, and
-the wake-up outcome is a separate `wake` record (`t:"wake"`, `sent`, `reason?`, `at`) appended AFTER it,
-so "durable first, wake second" is observable instead of inferred. This build folds an older log
-correctly (a pre-`wake` row keeps its own `wakeSent`); a reader from a PREVIOUS build reads a new row as
-"not woken" — stated rather than hidden.
+**Changed — the cell mail log format (ONE-WAY), and an unknown recipient is REFUSED.** A `send` row now
+always carries `wakeSent: false`, and the wake-up outcome is a separate `wake` record (`t:"wake"`,
+`sent`, `reason?`, `at`) appended AFTER it, so "durable first, wake second" is observable instead of
+inferred. This build folds an older log correctly (a pre-`wake` row keeps its own `wakeSent`); a reader
+from a PREVIOUS build reads a new row as "not woken" — stated rather than hidden. A `cellwork_send` to a
+name that is neither `captain` nor a member of the target cell is REFUSED with that cell's member list
+instead of falling back to the caller's own inbox.
 
 **Added — the verify loop names its writer, and a project may declare its gates.** `mpd_verify_open`
 accepts `writer_id` (the member's agent identity — its session id, trimmed to 1..200 characters) and
@@ -81,22 +97,38 @@ accepts `writer_id` (the member's agent identity — its session id, trimmed to 
 refusal compares real agent keys instead of the `delegate:pending` placeholder (a string comparison:
 meaningful, never unforgeable). A workspace-root `mpd-gates.json` may add or override gate ids for
 `mpd_verify_evidence`: `argv` (1..32 non-empty strings of at most 4096 characters) is spawned with
-`shell:false` in the workspace, an optional `cmd` label of at most 4096 characters defaults to
-`argv.join(" ")`, and the evidence log's header names the EFFECTIVE command (its sha256 covers that
-header). A malformed file refuses the CALL with one sentence naming the file and the problem — even for
-a frozen id — and never falls back; the frozen table applies only when the file is absent.
+`shell:false` in the workspace, and an optional `cmd` label of at most 4096 characters defaults to
+`argv.join(" ")`. Precedence is PER ID: the project file supplies the ids it declares, and every id it
+does not declare keeps its frozen entry (with no file at all, every id does). A malformed file refuses
+the CALL with one sentence naming the file and the problem — even for a frozen id — and never falls
+back. The evidence log's one-line header now names the label, the PROGRAM and the argv that really ran,
+and its sha256 covers that header, so a label can no longer certify a command that never executed; a
+gate whose program cannot start appends `[spawn-error] <cause>` to the log and the tail (exit `-1`, or
+`124` on a timeout), and a newline, a U+2028 line separator or a DEL character inside `cmd` or an `argv`
+element is ESCAPED into the one-line header so it can never forge a log line. A loop FREEZES the
+workspace file's identity at open (`present` + sha256, or `absent`; the observer's arm path does the
+same): a gate run bound to that loop is refused with ONE `gate-freeze:` sentence and NO evidence when
+the file changed, was deleted, or newly appeared under an `absent` freeze, and a loop carrying NO
+snapshot (opened by an older build) refuses too — its repair is a NEW loop, and the observer's re-arm
+ADOPTS a freeze into such a loop. Every GATE evidence row declares `gateFreeze`: `"frozen"` when it was
+bound to a loop carrying a snapshot, `"unfrozen"` only when it was bound to NO known loop (such evidence
+can never be cited for a real loop); a probe row carries no gate freeze.
 
-**Fixed — the captain reads project instruction files anywhere, and roster consults carry an explicit
-leaf depth.** The `mpd` top-level session may now read any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by
-basename at any depth, inside the workspace or outside its root (a sibling project's instruction file is
-the motivating read); at the root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md`
-are admitted (there is no `README*` glob), and the refusal text advertises the true band. A path is
-judged by its SPELLING (symlinks are never resolved) and a `..` segment is admitted ONLY for the three
-instruction basenames. The CELL PLANNER keeps the same band and is refused `read`/`grep`/`glob` on a
-source path; its refusal and its prompt both name the two delegated routes. `mpd_role_spawn` now forwards
-an explicit `maxDepth` (the caller's recorded depth + 1, with `origin:"subagent"` without a depth read
-as depth 1) so a nested consult is a leaf; `mpd_workmate_spawn` reads the header identically and a test
-compares both helpers.
+**Fixed — the captain reads project instruction files anywhere, and a consult is a LEAF.** The `mpd`
+top-level session may now read any `AGENT.md`/`AGENTS.md`/`CLAUDE.md` by basename at any depth, inside
+the workspace or outside its root (a sibling project's instruction file is the motivating read); at the
+root only `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` are admitted (there is no
+`README*` glob), and the refusal text advertises the true band. A path is judged by its SPELLING
+(symlinks are never resolved) and a `..` segment is admitted ONLY for the three instruction basenames.
+The CELL PLANNER keeps the same band and is refused `read`/`grep`/`glob` on a source path; its refusal
+and its prompt both name the two delegated routes. `mpd_role_spawn` / `mpd_workmate_spawn` now deny BOTH
+spawn tools in the child's own scope, so a consult can never delegate again — read-only or not — and a
+caller already at delegation depth 2 or deeper is REFUSED outright (do the work, or hand the question
+up). Depth 0 and 1 stay open: the cell planner at depth 1 keeps its route and its consult lands at depth
+2 as a leaf, while `cellwork_recon` is exempt because its own depth is bounded by `cellwork.depthMax`.
+Both spawn tools still forward an explicit `maxDepth` (caller depth + 1) and read the session header
+identically. A cellwork VERIFIER seat is refused both spawn tools as well: the verdict is its own work,
+and a FAIL is the channel back to the writer.
 
 **Fixed — `agent_teams_mail`'s undelivered bound is PER TEAM, and an acknowledgement releases a slot.**
 The bound counted workspace-wide by member id, so a retired team's backlog (ids restart at `M1`) blocked
@@ -104,17 +136,19 @@ a fresh team's mail, and `summary` disagreed with it; and only a transport deliv
 which a stalled member never produces. The send bound, `summary`'s `undelivered` column and the `unread`
 branch now share ONE outstanding predicate (neither delivered nor acknowledged) scoped to the team's own
 rows; an ack frees exactly one slot per acked row, an unstamped legacy row counts for nobody, and a
-retired team's rows count for nobody.
+retired team's rows count for nobody. `unread` with no member named resolves the CALLER's own member id,
+so a self-read cannot answer with somebody else's queue.
 
 **Docs.** The bilingual pairs move in this change: `docs/cellwork{,.zh-CN}.md` and the
-`mpd-cellwork-plugin` / `mpd-verify-plugin` / `mpd-roles-plugin` README pairs. The cell doc states the
-four bounds a reader would otherwise get wrong (the one-way mail format, the post-reassignment BUSY
-report, the instruction-file `..` hop, and the generic-dispatch hazard with its mitigation). This
-changelog is English-only by policy, like every release section before it.
+`mpd-cellwork-plugin` / `mpd-verify-plugin` / `mpd-roles-plugin` / `mpd-team-core-plugin` README pairs.
+The cell doc states the bounds a reader would otherwise get wrong (the one-way mail format, the
+post-reassignment BUSY report, the instruction-file `..` hop, the crash window that makes the resume
+non-transactional, and the generic-dispatch hazard with its mitigation). This changelog is English-only
+by policy, like every release section before it.
 
 **Verification.** Recorded for the wave: reviewers approved lanes B (C1 validation/C9/C10) on 12
 probes, D (C2 server/C3) on 18 probes and E (C4/C5) on 9 probes; per-package suites reported cellwork
-148 pass / 0 fail, verify 74/0, roles 185/0, team-core 404/0, workmate 57/0 (868 pass, 0 fail);
+172 pass / 0 fail, verify 82/0, roles 191/0, team-core 407/0, workmate 62/0 (914 pass, 0 fail);
 `bun run typecheck` exit 0; `verify:comments` PASS (501 files); `verify-dist-fresh` 34/34 fresh; and
 `verify:rows` / `verify:manifest` / `verify-no-host-override` PASS. `bun run verify:docs` passed with
 pairs=52 / failed=0 / violations=0 / dead=0, and the last independent sweep re-ran

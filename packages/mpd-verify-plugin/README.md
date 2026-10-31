@@ -33,7 +33,9 @@ seat keeps its envelope as PROSE rather than as a fence.
   describe a DELEGATED loop, so both are refused in ONE sentence with `writer:"self"`. An empty `scope`
   covers the whole workspace. An optional **`contract`** names the wave's own frozen contract (a
   workspace-relative path) and is RECORDED on the loop; when it is absent the loop keeps a declared
-  default (`AGENTS.md`), never another wave's plan.
+  default (`AGENTS.md`), never another wave's plan. The loop also FREEZES the workspace's
+  `mpd-gates.json` identity — `present` + the sha256 of its bytes, or `absent` — so a gate run filed
+  under it can only certify that exact file (see the project-gates section).
 - **`mpd_verify_escape`** — the **counted** escape: one JSONL row, one boot-log line, one allowed write.
   It refuses an empty `reason`, and it grants nothing when the row cannot be written.
 - **`mpd_verify_seat`** — bind the calling session as a loop's **verifier**. Idempotent; refused when the
@@ -42,8 +44,10 @@ seat keeps its envelope as PROSE rather than as a fence.
   `basis.frozenContract` can never disagree about which document they verified against.
 - **`mpd_verify_evidence`** — `kind:"gate"` runs ONE id: the workspace's own `mpd-gates.json` entry when
   it declares that id, otherwise the fixed table (`gates`, `tests`, `typecheck`, `docs`, `manifest`,
-  `comments`, `rows`, `vendor`, `dist`, `pack`), and writes its log; `kind:"probe"` reports
-  `{path, exists, bytes, sha256, mtime}` per path and **never content**.
+  `comments`, `rows`, `vendor`, `dist`, `pack`), and writes its log — REFUSED with no evidence when the
+  run is bound to a loop whose frozen gate file no longer matches (or to a loop opened before the freeze
+  existed), and the result + evidence row declare `gateFreeze:"frozen"|"unfrozen"`; `kind:"probe"`
+  reports `{path, exists, bytes, sha256, mtime}` per path and **never content**.
 - **`mpd_verify_record`** — record the verdict through the validator. A **PASS** needs the documents it
   cites, at least one gate, and a basis that is not `unproven` — blindness is DECLARED, never observed,
   so an unproven basis is UNVERIFIED; the validator still refuses a PASS with no documents, a forged
@@ -55,9 +59,10 @@ seat keeps its envelope as PROSE rather than as a fence.
 
 ## Project gates (`mpd-gates.json`)
 
-A workspace may declare or OVERRIDE the gates its verifier runs, in ONE file at the workspace root. When
-the file is absent, the frozen table above is exactly what it was; it is resolved from the CALLING
-SESSION's workspace, never from the process cwd.
+A workspace may declare or OVERRIDE the gates its verifier runs, in ONE file at the workspace root. It
+is resolved from the CALLING SESSION's workspace, never from the process cwd. The file supplies the ids
+it DECLARES; every id it does not declare keeps its frozen entry, and with the file absent that is every
+id.
 
 ```jsonc
 { "version": 1, "gates": {
@@ -73,18 +78,37 @@ SESSION's workspace, never from the process cwd.
   (a PATH name or an absolute path), spawned with `shell:false` and `cwd` = the workspace, under the
   existing `verify.gateTimeoutMs` timeout. `cmd` is an optional label of at most **4096** characters;
   when it is absent it defaults to `argv.join(" ")`.
-- **Precedence is project entry first, frozen table second.** A project entry ADDS a new id or
-  OVERRIDES an existing one, and every id the project does not declare still resolves to its frozen
-  entry — an extension point, never a replacement.
+- **Precedence is project entry first, frozen table second — per ID.** A project entry ADDS a new id or
+  OVERRIDES an existing one; every id the project does not declare (and every id at all when the file is
+  absent) still resolves to its frozen entry. The project file is an extension point, never a
+  replacement, and "the file does not declare this id" is NOT a malformed file.
 - **A malformed file REFUSES the call; it never falls back.** ONE sentence names the file and the
   problem (bad JSON, an unknown top-level or entry key, a missing `gates`, a bad id, a
   missing/non-array/empty `argv`, an oversize argument or `cmd`), and NO evidence is written. The
   refusal fires even when the requested id is FROZEN, so a broken project file can never silently run a
   command the project did not declare.
-- **The evidence log names the EFFECTIVE command.** Its first line is
-  `# gate <id> cmd: <effective cmd>`, so a PASS says which command really ran; the record's
-  `logSha256` hashes the log INCLUDING that header, and the result carries `cmd`, `exit`, `logPath` and
-  `logSha256`.
+- **The evidence log names what REALLY ran.** Its first line is
+  `# gate <id> cmd: <label JSON> program: <program JSON> argv: <args JSON>` — the `cmd` label alone is a
+  claim (a label like `bun test` with `argv:["true"]` would certify a command that never executed), so
+  the LOG and its `logSha256` (which hashes the log INCLUDING that header) are the authority, while the
+  evidence row's `cmd` metadata stays a label. A gate whose program cannot be started at all appends
+  `[spawn-error] <cause>` to the log AND the tail, so the caller reads the cause instead of a bare
+  header (exit stays `-1` for "never started", `124` for a timeout); a newline, a U+2028/U+2029 line
+  separator or a DEL/control character inside `cmd` or an `argv` element is escaped in the one-line
+  header, so project text can never forge a log line. The result carries `cmd`, `exit`, `logPath`,
+  `logSha256` and `gateFreeze`.
+- **A loop FREEZES its gate file, and a changed file refuses that loop's runs.** `mpd_verify_open` and
+  the observer's arm path both record the workspace `mpd-gates.json` identity on the loop
+  (`present` + sha256, or `absent`). A gate run bound to that loop is REFUSED — with ONE `gate-freeze:`
+  sentence and NO evidence — when the file's identity differs: bytes changed, the file was deleted, or a
+  file APPEARED under an `absent` freeze. A KNOWN loop carrying NO snapshot at all (opened by an older
+  build) REFUSES too, with its own sentence and the repair "open a NEW loop"; the observer's re-arm
+  ADOPTS a freeze into such a loop, so it does not refuse forever. Every GATE evidence row declares
+  `gateFreeze`: `"frozen"` when it was bound to a loop carrying a snapshot, `"unfrozen"` only when it was
+  bound to NO known loop (such evidence can never be cited for a real loop); a probe row carries no gate
+  freeze. Declared bound:
+  the freeze is byte identity of THIS file, not a signature — it stops a writer from editing a gate under
+  a loop after arming, and it does not authenticate who wrote the file.
 - **The file is only as honest as the project.** It can point a gate id at anything; what the plugin
   owes is that the evidence names the effective command, so a reader can see what actually ran. Keep a
   `mpd-gates.json` OUT of this repository's root (tests and probes create theirs under a temp
@@ -179,4 +203,6 @@ and `verify.dir`.
    meaningful on every loop the cell opens — it never makes it unforgeable.
 9. **A project-declared gate is only as honest as the project's `mpd-gates.json`.** The file can point a
    gate id at anything; the plugin's promise is the evidence naming the effective command, not the
-   command's quality. The frozen table is the fallback ONLY when the file is absent.
+   command's quality. The frozen table supplies every id the file does not declare — that is the PER-ID
+   fallback, and with no file at all it supplies every id. The freeze's own bound: byte identity of one
+   file per loop, never a signature, so it constrains WHEN the file may change, not WHO wrote it.

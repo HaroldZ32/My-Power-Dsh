@@ -1,6 +1,4 @@
-# the two user-requested authority items, verified against the FINAL source predicates
-# command: node .mpd/tmp/verify-user-asks.mjs  (script copied beside this log)
-# workspace root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh   sibling project: /home/haroldzhao/MyProj/DshProj/VEdit
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node .mpd/tmp/verify-user-asks.mjs (the two user-requested authority items, FINAL source)
 captain                READABLE                                   /home/haroldzhao/MyProj/DshProj/VEdit/AGENT.md
 captain                REFUSED                                    /home/haroldzhao/MyProj/DshProj/VEdit/docs/x.md
 captain                READABLE                                   ../VEdit/AGENTS.md

@@ -1,7 +1,7 @@
-# typed: 2026-10-31T06:03:18Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-comment-coverage.ts
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-comment-coverage.ts
 # verify-comment-coverage
 
-scanned 501 TypeScript file(s) of 501 in the source set; inspected 45130 declaration(s); skipped 21441 inline callback(s) as out of family
+scanned 506 TypeScript file(s) of 506 in the source set; inspected 45457 declaration(s); skipped 21663 inline callback(s) as out of family
 
 VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
 EXIT=0

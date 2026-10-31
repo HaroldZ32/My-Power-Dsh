@@ -25,6 +25,18 @@ const CELL_ID = "cell-20261031T120000000Z"
 /** The captain's session id, which is what grants it the Lead authority a wake-up needs. */
 const CAPTAIN_SESSION = "session-captain"
 
+/** Whether this process runs as ROOT, where permission bits stop making a file unwritable (repair R-A3). */
+const rootRunner = process.getuid?.() === 0
+
+/** The reason the permission-bits arm cannot run as root, appended to its name so a skip is never silent. */
+const rootSkipReason = " [SKIPPED as root: a root process bypasses chmod 0444, so the wake-record append would succeed — the seam-level N1 arm below is the unconditional cover]"
+
+/**
+ * The runner for the one arm that needs permission bits to fail an append: `test` as a normal user,
+ * `test.skip` under root, where the mechanism cannot work and the name carries the reason.
+ */
+const permissionArm = rootRunner ? test.skip : test
+
 /** One fake live agent. */
 interface FakeAgent {
   /** The agent id (the session-id readers fall back to it). */
@@ -225,7 +237,7 @@ test("D6: a FAILED wake-up never costs the row, and the attempt is reported as u
   expect(wakeFailures(folded).map((message) => message.id)).toEqual([String(sent.id)])
 })
 
-test("N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful", async () => {
+permissionArm("N1: a `wake` record that cannot be written is NOT reported as a sent wake, and the log stays truthful" + (rootRunner ? rootSkipReason : ""), async () => {
   // The repair's arm: the `send` row lands, the transport ACCEPTS the wake, and only the `wake` record's
   // append fails (the log is made read-only inside the executor, so the failure is the SECOND append).
   /** The harness whose mail log becomes unwritable exactly while the attempt is in flight. */

@@ -2479,6 +2479,7 @@ var PLANNER_READABLE_ROOT_FILES = [
 var PLANNER_INSTRUCTION_BASENAMES = ["AGENT.md", "AGENTS.md", "CLAUDE.md"];
 var PLANNER_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
 var PLANNER_RECON_TOOLS = ["read", "grep", "glob"];
+var VERIFIER_NO_DELEGATION = ["mpd_role_spawn", "mpd_workmate_spawn"];
 var PLANNER_SEAT_NAME = "cell-planner";
 var SUBCAPTAIN_FORBIDDEN_NAMES = ["cellwork_start", "cellwork_stop"];
 var SUBCAPTAIN_TOOL_NAMES = ["cellwork_subteam", "cellwork_activate", "cellwork_dispatch", "cellwork_supervise"];
@@ -2501,6 +2502,9 @@ function captainRefusal(toolName) {
 }
 function verifierRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, so it never " + "fixes what it judges. Read the frozen contract and the documentation (not the implementation), run " + "the gates, then record the verdict with `mpd_verify_record` (a PASS needs the documents it cites " + "and its gate evidence ids); reading, `bash`, `grep`, `glob` and `mpd_verify_*` stay available. A " + "FAIL bounces the work back to its writer as a repair task, and only a RECORDED FAIL makes " + "implementation reading legitimate, for diagnosis.";
+}
+function verifierDelegationRefusal(toolName) {
+  return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, and A VERIFIER " + "NEVER DELEGATES: the verdict is the seat's OWN work, so handing the question to another agent would " + "put its report inside a judgement you sign. Reading, `bash`, `grep`, `glob`, the gates and the five " + "`mpd_verify_*` calls stay available — read the frozen contract and the documentation (never the " + "implementation), run the gates, and record the verdict with `mpd_verify_record` (a PASS needs the " + "documents it cites and its gate evidence ids). If the evidence to judge is not there, a FAIL bounces " + "the work back to its writer as a repair task: that is the channel, not a consult.";
 }
 function checkpointRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session reached its CONTEXT CHECKPOINT, so the " + "work stops at this boundary. Call `cellwork_handoff` now with the task, the current state, the " + "decisions (and why), the artifacts, the verified facts, the open questions and the single next " + "step, then END YOUR TURN. The plugin compacts this agent's context and promotes it (or reseeds it " + "from that handoff), so anything you did not write down is lost. `cellwork_status` and " + "`cellwork_context` stay readable meanwhile.";
@@ -2560,8 +2564,13 @@ function cellworkGuardDecision(seat, toolName, call) {
     return;
   if (seat.mode === "captain")
     return isCaptainAllowed(toolName) ? undefined : captainRefusal(toolName);
-  if (seat.mode === "verifier")
-    return VERIFIER_DENY_TOOLS.includes(toolName) ? verifierRefusal(toolName) : undefined;
+  if (seat.mode === "verifier") {
+    if (VERIFIER_DENY_TOOLS.includes(toolName))
+      return verifierRefusal(toolName);
+    if (VERIFIER_NO_DELEGATION.includes(toolName))
+      return verifierDelegationRefusal(toolName);
+    return;
+  }
   if (seat.mode === "checkpoint")
     return CHECKPOINT_ALLOW_TOOLS.includes(toolName) ? undefined : checkpointRefusal(toolName);
   if (seat.mode === "subcaptain")
@@ -2936,7 +2945,7 @@ function errorText2(error) {
 var SPLIT_KINDS = ["requirement", "work", "review", "repair", "integration"];
 var CELL_ROLES = ["cell-planner", "cell-splitter"];
 function roleKey(role) {
-  return role.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return role.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
 }
 var MEMBER_NAME_MAX_CHARS = 64;
 function memberProblem(member) {
@@ -2947,6 +2956,8 @@ function memberProblem(member) {
     return "member " + JSON.stringify(name) + " is longer than " + String(MEMBER_NAME_MAX_CHARS) + " characters";
   if (/[\u0000-\u001f\u007f/\\]/.test(name))
     return "member " + JSON.stringify(name) + " contains a control character or a path separator";
+  if (roleKey(name) === "")
+    return "member " + JSON.stringify(name) + " has no identity: the activation key (letters and digits, in any script) is empty, so it would collapse into ONE seat with every other such name — include at least one letter or digit";
   return null;
 }
 function resolvedMember(task) {
@@ -3014,21 +3025,22 @@ function validateGraph(tasks, roster) {
   }
   const memberRoles = new Map;
   for (const task of tasks) {
-    if (task.member === undefined || memberProblem(task.member) !== null)
+    if (task.member !== undefined && memberProblem(task.member) !== null)
       continue;
-    const name = task.member.trim();
-    const entry = memberRoles.get(name);
+    const name = resolvedMember(task);
+    const identity = roleKey(name);
+    const entry = memberRoles.get(identity);
     if (entry === undefined) {
-      memberRoles.set(name, { roles: new Set([roleKey(task.ownerRole)]), keys: [task.key] });
+      memberRoles.set(identity, { roles: new Map([[roleKey(task.ownerRole), task.ownerRole]]), keys: [task.key], display: name });
     } else {
-      entry.roles.add(roleKey(task.ownerRole));
+      entry.roles.set(roleKey(task.ownerRole), task.ownerRole);
       entry.keys.push(task.key);
     }
   }
-  for (const [name, entry] of memberRoles) {
+  for (const entry of memberRoles.values()) {
     if (entry.roles.size <= 1)
       continue;
-    findings.push({ taskKey: entry.keys[0], code: "member-role-conflict", detail: "member " + JSON.stringify(name) + " is declared with DIFFERENT owner roles by tasks " + entry.keys.map((key) => JSON.stringify(key)).join(", ") + " — one member has one role; declare a separate member per role, or align the owner roles" });
+    findings.push({ taskKey: entry.keys[0], code: "member-role-conflict", detail: "tasks " + entry.keys.map((key) => JSON.stringify(key)).join(", ") + " all resolve to ONE board member (" + JSON.stringify(entry.display) + ") but declare DIFFERENT owner roles (" + [...entry.roles.values()].map((role) => JSON.stringify(role)).join(", ") + ") — one member has one role; declare a separate member per role, or align the owner roles" });
   }
   const visiting = new Set;
   const done = new Set;
@@ -3090,11 +3102,11 @@ function validateGraph(tasks, roster) {
       findings.push({ taskKey: task.key, code: "review-count", detail: "verify: true requires EXACTLY one review task blocked by " + JSON.stringify(task.key) + "; this split declares " + String(reviews.length) });
       continue;
     }
-    const workMember = task.member;
-    const reviewMember = reviews[0].member;
-    if (workMember !== undefined && reviewMember !== undefined) {
-      if (resolvedMember(task) === resolvedMember(reviews[0])) {
-        findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is raised for the SAME member as the work it reviews (" + JSON.stringify(resolvedMember(task)) + ") — the verifier must be a different member" });
+    if (task.member !== undefined || reviews[0].member !== undefined) {
+      const workIdentity = roleKey(resolvedMember(task));
+      const reviewIdentity = roleKey(resolvedMember(reviews[0]));
+      if (workIdentity === reviewIdentity) {
+        findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " resolves to the SAME board member as the work it reviews (" + JSON.stringify(resolvedMember(task)) + ", identity " + JSON.stringify(workIdentity) + ") — the verifier must be a different member" });
       }
     } else if (roleKey(reviews[0].ownerRole) === roleKey(task.ownerRole)) {
       findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is owned by the SAME role as the work it reviews (" + JSON.stringify(task.ownerRole) + ") — the verifier must be a different declared role" });
@@ -3344,6 +3356,12 @@ function cellMemberOf(cell, memberName) {
   }
   return;
 }
+function handleOrNull(value) {
+  if (typeof value !== "string")
+    return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
 function splitKeyOfBoardId(cell, boardId) {
   const mapping = cell.activatedTasks ?? {};
   for (const [key, id] of Object.entries(mapping)) {
@@ -3433,8 +3451,8 @@ async function dispatchOwnerOnly(deps) {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " is BUSY on another task — reported, never substituted" });
       continue;
     }
-    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "");
-    if (handle === "") {
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef);
+    if (handle === null) {
       report.skipped.push({ taskId, subject, reason: "declared owner " + JSON.stringify(memberName) + " has no executor handle (never raised)" });
       continue;
     }
@@ -3501,8 +3519,16 @@ async function applyReassignments(deps) {
       outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is FENCED (" + fence + ") — pick an unfenced member" });
       continue;
     }
-    const handle = String(deps.handleFor?.(memberName) ?? member.executorRef ?? "");
-    if (handle === "") {
+    if (member.status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " FAILED to start — a row claimed for it would never be picked up; pick a member that is running" });
+      continue;
+    }
+    if (member.status === "provisioning") {
+      outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " is still being raised — retry the reassignment once it is running" });
+      continue;
+    }
+    const handle = handleOrNull(deps.handleFor?.(memberName)) ?? handleOrNull(member.executorRef);
+    if (handle === null) {
       outcomes.push({ taskId: pair.taskId, owner: memberName, claimed: false, delivered: false, reason: "the target member " + JSON.stringify(memberName) + " has no executor handle (never raised) — claiming the row for it would hide the row from the next pass" });
       continue;
     }
@@ -3664,6 +3690,7 @@ async function stagePlanningTeam(deps) {
       teamId: existingTeamId,
       tasks: { splitId: ticket2.splitTaskId },
       ...ticket2.ownerRepaired ? { ownerRepaired: true } : {},
+      ...ticket2.repairError === "" ? {} : { ownerRepairError: ticket2.repairError },
       ...record === undefined ? {} : {
         members: {
           [PLANNER_MEMBER]: planningMemberRow(PLANNER_MEMBER, PLANNER_ROLE, deps.cell, deps.now),
@@ -3718,7 +3745,7 @@ async function stagePlanningTeam(deps) {
     const recoveredTicket = await resolveSplitTicket(deps, recoveredId, "", false);
     if (recoveredTicket.boardReadable && recoveredTicket.splitTaskId === "")
       return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true };
-    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {} };
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}, ...recoveredTicket.repairError === "" ? {} : { ownerRepairError: recoveredTicket.repairError } };
   }
   if (plan === undefined) {
     if (typeof status.value.team === "object" && status.value.team !== null) {
@@ -3790,8 +3817,9 @@ async function stagePlanningTeam(deps) {
   const splitId = ticket.splitTaskId === "" ? answeredSplitId : ticket.splitTaskId;
   if (ticket.boardReadable && splitId === "")
     return { ok: false, error: "the planning team " + teamId + " was approved but " + ticket.repairError, teamId, members, planName, partial: true };
-  if (ticket.repairError !== "")
-    return { ok: false, error: ticket.repairError, teamId, members, planName, partial: true };
+  if (ticket.repairError !== "") {
+    return { ok: false, error: ticket.repairError, teamId, members, planName, tasks: { splitId }, ownerRepairError: ticket.repairError, partial: true };
+  }
   return {
     ok: true,
     teamId,
@@ -4380,6 +4408,7 @@ function installCellworkFlow(deps) {
           splitTaskStatus: { type: "string" },
           redispatchable: { type: "boolean" },
           replacementSplitTaskId: { type: "string" },
+          recordedSplitTaskId: { type: "string", description: "The split ticket id the cell record carries after this update — the row the NEXT update reuses." },
           closedTaskId: { type: "string" }
         },
         required: ["ok"]
@@ -4452,7 +4481,7 @@ missing sections: ` + result.missing.join(", ") : ""));
       writeRequirements(caller.workspace, state.cellId, text_);
       const revision = Math.max(1, state.requirementsRevision) + 1;
       const record = recordOf(teams(), caller.workspace, state.teamId);
-      const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false);
+      const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", true) ?? findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false);
       const splitTaskId = splitTask === undefined ? "" : String(splitTask.id ?? "");
       const splitTaskStatus = splitTask === undefined ? "" : String(splitTask.status ?? "");
       const redispatchable = splitTaskStatus === "pending" || splitTaskStatus === "claimed" || splitTaskStatus === "in_progress";
@@ -4478,8 +4507,9 @@ missing sections: ` + result.missing.join(", ") : ""));
           replacementSplitTaskId = typeof task?.id === "string" ? task.id : "";
         }
       }
-      const next = { ...state, requirementsRevision: revision, splitStale: state.splitRevision !== null ? true : state.splitStale };
-      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, ...replacementSplitTaskId === "" ? {} : { replacementSplitTaskId } }, now);
+      const recordedSplitTaskId = replacementSplitTaskId !== "" ? replacementSplitTaskId : splitTaskId !== "" ? splitTaskId : state.splitTaskId ?? "";
+      const next = { ...state, requirementsRevision: revision, splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale };
+      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, ...replacementSplitTaskId === "" ? {} : { replacementSplitTaskId } }, now);
       if (replacementSplitTaskId !== "") {
         appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now);
       }
@@ -4495,6 +4525,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         splitTaskStatus,
         redispatchable,
         replacementSplitTaskId,
+        recordedSplitTaskId,
         ...splitTaskId === "" ? { message: "no split task is on the board yet — the splitter will receive the whole graph when it is dispatched" } : redispatchable ? { message: "the SAME split task " + splitTaskId + " is re-dispatched with revision " + String(revision) + (next.splitStale ? " and the split marked STALE" : "") + " — dispatch it with `cellwork_dispatch`" } : { message: "split task " + splitTaskId + " is " + splitTaskStatus + " and this board has no reopen verb, so a replacement row " + (replacementSplitTaskId === "" ? "could NOT be appended (no live team to append to)" : replacementSplitTaskId) + " carries the re-split with revision " + String(revision) + " — dispatch it with `cellwork_dispatch`" }
       };
     }
@@ -6144,11 +6175,11 @@ function apply(ctx, config = {}) {
         });
         if (!staged.ok) {
           const partialState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" };
-          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now);
+          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), splitTaskId: partialState.splitTaskId ?? "", error: staged.error ?? "", ...staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError } }, now);
           return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" };
         }
         stagedState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...staged.members ?? {} }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" };
-        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, ...staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {} }, now);
+        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, splitTaskId: stagedState.splitTaskId ?? "", ...staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {}, ...staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError } }, now);
       }
       const counts = teamCounts(teamRecordOf(ctx, caller.workspace, stagedState.teamId));
       return {

@@ -34,13 +34,20 @@ read-only discipline.
   as `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
   mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
   the child session; team work is the mpd plan plane (`agent_teams_plan`), never the official
-  `spawn_teammate`, which the team door guard refuses. **Every consult carries an explicit leaf bound:**
-  `mpd_role_spawn` forwards `maxDepth` = the caller's recorded delegation depth + 1, so a NESTED caller's
-  one-shot child is a leaf instead of being refused by a host depth default it cannot see. A caller with
-  no recorded depth reads as depth `0` (top-level, cap `1` — today's behaviour); a session the harness
-  recorded `origin:"subagent"` WITHOUT a depth reads as depth `1` (cap `2`), so a child's child never
-  receives the top-level cap. `mpd_workmate_spawn` reads the session header identically, and a test
-  compares both helpers on every header shape.
+  `spawn_teammate`, which the team door guard refuses. **A CONSULT IS A LEAF, enforced two ways.** (1)
+  The child's OWN tool scope denies both bundle spawn tools (`mpd_role_spawn`, `mpd_workmate_spawn`), so a
+  consult can never delegate again — read-only or not — and can never raise its own depth cap; the deny
+  list is separate from the roster's read-only list and pinned equal in the workmate row by a test. (2) A
+  caller already at delegation depth **2 or deeper** is REFUSED outright with a teaching sentence (do the
+  work here, or hand the question up), while depth `0` and `1` stay open: the captain raises its consults
+  (0 → 1), and a cell PLANNER — a team member at depth 1, not a child of these tools — keeps the
+  `mpd_role_spawn` route, its consult landing at depth 2 as a leaf. `mpd_role_spawn` also forwards
+  `maxDepth` = the caller's recorded depth + 1, so the host's own depth default can never refuse that leaf.
+  A caller with no recorded depth reads as depth `0`; a session the harness recorded `origin:"subagent"`
+  WITHOUT a depth reads as depth `1` (a CHILD). `mpd_workmate_spawn` reads the header identically and a
+  test compares both helpers on every header shape. `cellwork_recon` is EXEMPT from the depth floor — its
+  own child depth is bounded by `cellwork.depthMax` — and a cellwork VERIFIER seat is refused both spawn
+  tools as well: the verdict is its own work, and a FAIL is the channel back to the writer.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
   the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).

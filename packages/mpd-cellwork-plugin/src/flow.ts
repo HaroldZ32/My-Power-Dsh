@@ -300,6 +300,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           splitTaskStatus: { type: "string" },
           redispatchable: { type: "boolean" },
           replacementSplitTaskId: { type: "string" },
+          recordedSplitTaskId: { type: "string", description: "The split ticket id the cell record carries after this update — the row the NEXT update reuses." },
           closedTaskId: { type: "string" },
         },
         required: ["ok"],
@@ -383,7 +384,11 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       // THE LOOKUP READS THE RECORDED BOARD ID FIRST (contract C11, defect D3): a staged ticket whose
       // owner was lost was invisible to the owner-only lookup, so a requirements bump neither marked the
       // split stale nor re-dispatched the SAME row. The owner match stays as the fallback.
-      const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false)
+      // A LIVE ROW WINS OVER THE RECORDED TERMINAL ONE (CR #3). After the first activation the recorded id
+      // names the CLOSED original, while a previous update may have appended a replacement the splitter can
+      // still claim. Preferring the closed row over that live replacement appended ANOTHER row on every
+      // bump, and this board has no cancel verb — so the live row is the one this update re-dispatches.
+      const splitTask = findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", true) ?? findSplitTicket(boardTasksOf(record), state.splitTaskId ?? "", false)
       /** The board id of that task, when one exists. */
       const splitTaskId = splitTask === undefined ? "" : String(splitTask.id ?? "")
       /** The status that task is in, so the caller can see whether the row is still dispatchable. */
@@ -420,9 +425,14 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           replacementSplitTaskId = typeof task?.id === "string" ? task.id : ""
         }
       }
+      // THE RECORD MUST NAME THE ROW THE NEXT UPDATE REUSES (CR #3): a replacement id is written back, so
+      // a second bump finds the LIVE replacement instead of the closed original and appends nothing. An
+      // update that found no row at all keeps whatever id the record already carried.
+      /** The split ticket id the cell record carries after this update. */
+      const recordedSplitTaskId = replacementSplitTaskId !== "" ? replacementSplitTaskId : (splitTaskId !== "" ? splitTaskId : (state.splitTaskId ?? ""))
       /** The record after the transition. */
-      const next: CellState = { ...state, requirementsRevision: revision, splitStale: state.splitRevision !== null ? true : state.splitStale }
-      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
+      const next: CellState = { ...state, requirementsRevision: revision, splitTaskId: recordedSplitTaskId, splitStale: state.splitRevision !== null ? true : state.splitStale }
+      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, recordedSplitTaskId, ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
       if (replacementSplitTaskId !== "") {
         appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now)
       }
@@ -438,6 +448,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         splitTaskStatus,
         redispatchable,
         replacementSplitTaskId,
+        recordedSplitTaskId,
         ...(splitTaskId === "" ? { message: "no split task is on the board yet — the splitter will receive the whole graph when it is dispatched" } : redispatchable
           ? { message: "the SAME split task " + splitTaskId + " is re-dispatched with revision " + String(revision) + (next.splitStale ? " and the split marked STALE" : "") + " — dispatch it with `cellwork_dispatch`" }
           : { message: "split task " + splitTaskId + " is " + splitTaskStatus + " and this board has no reopen verb, so a replacement row " + (replacementSplitTaskId === "" ? "could NOT be appended (no live team to append to)" : replacementSplitTaskId) + " carries the re-split with revision " + String(revision) + " — dispatch it with `cellwork_dispatch`" }),

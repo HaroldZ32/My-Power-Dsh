@@ -584,7 +584,10 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
           // record that claims no team at all. The refusal names the recovery so a model can act on it.
           /** The record carrying whatever the failed pass managed to approve. */
           const partialState: CellState = { ...next, teamId: staged.teamId ?? next.teamId, members: { ...next.members, ...(staged.members ?? {}) }, splitTaskId: staged.tasks?.splitId ?? next.splitTaskId ?? "" }
-          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), error: staged.error ?? "" }, now)
+          // BOTH FACTS ARE JOURNALED (CR #6): the split ticket's board id is recorded even when its owner
+          // repair was refused, and the repair's own sentence rides beside it — so the operator reads "the
+          // row is KNOWN, its owner is still MISSING" instead of an id lost with the failed claim.
+          recordTransition(caller.workspace, partialState, { event: "planning-team-partial", teamId: partialState.teamId, planName: staged.planName ?? "", members: Object.keys(staged.members ?? {}), splitTaskId: partialState.splitTaskId ?? "", error: staged.error ?? "", ...(staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError }) }, now)
           return { ok: false, error: (staged.error ?? "cellwork_start: staging the planning team failed") + " — the partial plan slot is recorded on this cell; call `cellwork_start` again and it RESUMES that slot" }
         }
         /** The record carrying the approved team, the two planning members and the split ticket's id. */
@@ -592,7 +595,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
         // THE SPLIT TICKET'S BOARD ID IS RECORDED HERE (contract C11, defect D2/D3): every later lookup
         // reads it FIRST, so a staged ticket whose owner was lost still resolves. An ownerless row this
         // call CLAIMED for `cell-splitter` is journaled, so the repair is auditable.
-        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, ...(staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {}) }, now)
+        recordTransition(caller.workspace, stagedState, { event: "planning-team-staged", teamId: stagedState.teamId, members: Object.keys(staged.members ?? {}), tasks: staged.tasks ?? {}, splitTaskId: stagedState.splitTaskId ?? "", ...(staged.ownerRepaired === true ? { splitTicketOwnerRepaired: staged.tasks?.splitId ?? "" } : {}), ...(staged.ownerRepairError === undefined ? {} : { ownerRepairError: staged.ownerRepairError }) }, now)
       }
       /** The live team's counts, when one is recorded and readable. */
       const counts = teamCounts(teamRecordOf(ctx, caller.workspace, stagedState.teamId))

@@ -2697,6 +2697,14 @@ export function apply(ctx: any): void {
       const state = readMailbox(workspace)
       /** The member whose inbox was asked for, when the call named one. */
       const wanted = args?.member === undefined ? undefined : resolve(String(args.member))
+      // ── CR repair M: AN EXPLICIT `member` MUST RESOLVE, or the call REFUSES ──
+      // Falling back to the caller's own inbox answered a question nobody asked with the wrong mail, so
+      // a typo read as "nothing unread" — a wrong answer dressed as an empty one. The refusal names the
+      // spelling AND the roster it was resolved against, exactly like the `send` branch, so the caller
+      // can see why the name did not land.
+      if (args?.member !== undefined && wanted === undefined) {
+        return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` }
+      }
       // ── D16c: THE CALLER'S OWN MEMBER ID, NOT ITS SESSION ID ──
       // A message is ADDRESSED to the roster member id (`M1`), while a member's session id is the
       // `executorRef` the record kept at spawn — TWO DIFFERENT STRINGS. Keying the self path on the

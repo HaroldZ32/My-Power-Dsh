@@ -18,7 +18,9 @@
 //     is blocked by the task it reviews;
 //   * every owner role exists in the roster or is a cell role;
 //   * a task MAY declare its board `member` (several members per role, several tasks per member), the
-//     name must be usable, and one member may not carry two different owner roles.
+//     name must be usable and carry a non-empty identity, and one member may not carry two different
+//     owner roles — the identity is the SAME `roleKey` activation groups by, so two spellings of one name
+//     are ONE seat here too (CR R-B1).
 //
 // Everything here is pure apart from `node:fs`; the window reader and the clock are injected.
 import { existsSync, readdirSync, readFileSync } from "node:fs"
@@ -50,7 +52,10 @@ export interface SplitTaskInput {
    *
    * Several tasks MAY share one member and several members MAY share one owner role — that is how one
    * role gets more than one concurrent seat instead of queueing every task on a single agent. The name
-   * is judged by {@link memberProblem} and resolved by {@link resolvedMember}.
+   * is judged by {@link memberProblem} and resolved by {@link resolvedMember}, and tasks are matched to
+   * each other by the SAME identity key activation uses ({@link roleKey}): two spellings that collapse
+   * into one seat are ONE member here too, and are refused when that seat would write and verify its own
+   * work (CR R-B1).
    */
   member?: string
   /** Paths the task may write. */
@@ -175,21 +180,38 @@ export interface SubmitDeps {
   now: Date
 }
 
-/** A split's key normalised for comparison: lowercase, runs of non-alphanumerics collapsed to `-`. */
+/**
+ * The ONE identity key every member comparison uses: lowercase, runs of non-letter/non-digit characters
+ * collapsed to `-`, edge separators trimmed.
+ *
+ * UNICODE-AWARE ON PURPOSE (T28). The key exists so two SPELLINGS of one name collapse to one identity —
+ * `"Seat A"` and `"seat-a"` must stay the same seat — and that property is the reason it lowercases and
+ * normalises. It is NOT an English-only filter: this bundle's users write Chinese, so `\p{L}`/`\p{N}` keep
+ * words in ANY script, and `"工程师甲"` keys to itself instead of reducing to an empty string (which would
+ * both refuse the name as `member-invalid` and merge every Chinese name into ONE anonymous seat). ASCII
+ * spellings are unchanged, so no existing identity moves.
+ *
+ * @param role - a role or member spelling from a split, a board row or the cell record.
+ * @returns the comparison key; "" when the name carries no letter or digit at all.
+ */
 export function roleKey(role: string): string {
-  return role.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+  return role.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "")
 }
 
 /** The longest board member name a split may declare; a longer name is refused, never truncated. */
 const MEMBER_NAME_MAX_CHARS = 64
 
 /**
- * Why a declared board member name cannot be used, or null when it can (C1).
+ * Why a declared board member name cannot be used, or null when it can (C1, CR R-B1).
  *
  * The name is TRIMMED before judging, because the trimmed string is what the board would carry: a
  * whitespace-only name is EMPTY (a row with no name can never be dispatched) and the length limit applies
  * to the name itself rather than to its padding. A control character or a path separator is refused so a
- * name cannot smuggle a path or break the line a board row is rendered on.
+ * name cannot smuggle a path or break the line a board row is rendered on. The IDENTITY rule is the one
+ * activation enforces: members are identified by {@link roleKey}, so a name whose key is empty (nothing but
+ * punctuation, in any script) is not a seat — every such name would collapse into the SAME anonymous
+ * member, so it is refused here instead of being silently merged at activation. A name in ANY script is
+ * fine: the key keeps Unicode letters and digits, so `"工程师甲"` is a seat of its own.
  *
  * @param member - the declared `member` field.
  * @returns a one-sentence reason, or null when the name is usable.
@@ -200,6 +222,9 @@ function memberProblem(member: string): string | null {
   if (name === "") return "member is empty — name the board member this task is raised for, or omit `member` to use the owner role"
   if (name.length > MEMBER_NAME_MAX_CHARS) return "member " + JSON.stringify(name) + " is longer than " + String(MEMBER_NAME_MAX_CHARS) + " characters"
   if (/[\u0000-\u001f\u007f/\\]/.test(name)) return "member " + JSON.stringify(name) + " contains a control character or a path separator"
+  // THE IDENTITY RULE (CR R-B1): activation identifies members with `roleKey`, so an empty key is not a
+  // seat — every such name would collapse into ONE anonymous member on the board.
+  if (roleKey(name) === "") return "member " + JSON.stringify(name) + " has no identity: the activation key (letters and digits, in any script) is empty, so it would collapse into ONE seat with every other such name — include at least one letter or digit"
   return null
 }
 
@@ -298,27 +323,32 @@ export function validateGraph(tasks: readonly SplitTaskInput[], roster: readonly
       if (!keys.has(reference)) findings.push({ taskKey: task.key, code: "unknown-blocker", detail: "blockedBy names " + JSON.stringify(reference) + ", which is not a task key in this split" })
     }
   }
-  // ONE MEMBER, ONE ROLE (C1). A member is a real seat, so two tasks naming the same member under
-  // DIFFERENT owner roles would raise ONE agent with two jobs. A shared ROLE is legal — that is how
-  // several members of one role are declared — and an unusable name is already charged as member-invalid.
-  /** The usable declared member names, each with the owner roles its tasks declare. */
-  const memberRoles = new Map<string, { roles: Set<string>; keys: string[] }>()
+  // ONE MEMBER, ONE ROLE (C1). A member is a real seat, so two tasks that RESOLVE to the same seat under
+  // DIFFERENT owner roles would raise ONE agent with two jobs. The seat is identified with the SAME key
+  // activation groups by — `roleKey` of the resolved member name — so two spellings of one name are
+  // compared as ONE seat instead of slipping through as two (CR R-B1). A shared ROLE stays legal, and an
+  // unusable declared name is already charged as member-invalid.
+  /** The member identity → its display name and the owner roles its tasks declare, in first-seen order. */
+  const memberRoles = new Map<string, { roles: Map<string, string>; keys: string[]; display: string }>()
   for (const task of tasks) {
-    if (task.member === undefined || memberProblem(task.member) !== null) continue
-    /** The name as the board would carry it. */
-    const name = task.member.trim()
-    /** The entry accumulated for that member, when it was declared before. */
-    const entry = memberRoles.get(name)
+    // An unusable declared name has no identity to group by; `member-invalid` already covers that task.
+    if (task.member !== undefined && memberProblem(task.member) !== null) continue
+    /** The member name this task resolves to, which is what activation raises a seat for. */
+    const name = resolvedMember(task)
+    /** The identity activation will use for that name. */
+    const identity = roleKey(name)
+    /** The entry accumulated for that identity, when a task resolved to it before. */
+    const entry = memberRoles.get(identity)
     if (entry === undefined) {
-      memberRoles.set(name, { roles: new Set([roleKey(task.ownerRole)]), keys: [task.key] })
+      memberRoles.set(identity, { roles: new Map([[roleKey(task.ownerRole), task.ownerRole]]), keys: [task.key], display: name })
     } else {
-      entry.roles.add(roleKey(task.ownerRole))
+      entry.roles.set(roleKey(task.ownerRole), task.ownerRole)
       entry.keys.push(task.key)
     }
   }
-  for (const [name, entry] of memberRoles) {
+  for (const entry of memberRoles.values()) {
     if (entry.roles.size <= 1) continue
-    findings.push({ taskKey: entry.keys[0], code: "member-role-conflict", detail: "member " + JSON.stringify(name) + " is declared with DIFFERENT owner roles by tasks " + entry.keys.map((key) => JSON.stringify(key)).join(", ") + " — one member has one role; declare a separate member per role, or align the owner roles" })
+    findings.push({ taskKey: entry.keys[0], code: "member-role-conflict", detail: "tasks " + entry.keys.map((key) => JSON.stringify(key)).join(", ") + " all resolve to ONE board member (" + JSON.stringify(entry.display) + ") but declare DIFFERENT owner roles (" + [...entry.roles.values()].map((role) => JSON.stringify(role)).join(", ") + ") — one member has one role; declare a separate member per role, or align the owner roles" })
   }
   // ACYCLICITY: a depth-first walk over the resolved edges; the first back edge names the cycle's entry.
   /** The keys currently on the walk's stack. */
@@ -382,8 +412,10 @@ export function validateGraph(tasks: readonly SplitTaskInput[], roster: readonly
       findings.push({ taskKey: left.key, code: "write-scope-overlap", detail: "tasks " + JSON.stringify(left.key) + " and " + JSON.stringify(right.key) + " declare overlapping write scopes with NO dependency path between them — add an edge or make the scopes disjoint" })
     }
   }
-  // ONE REVIEW PER VERIFIED TASK, owned by a DIFFERENT role — or, when BOTH sides declare a member, by a
-  // DIFFERENT member (two seats of one role may review each other; one member may not review itself).
+  // ONE REVIEW PER VERIFIED TASK, by a DIFFERENT writer. When ANY side declares a member, the writer is the
+  // identity activation will raise — the SAME `roleKey` — so two spellings that collapse into one seat are
+  // refused here instead of being merged later (CR R-B1). A fully member-less pair keeps the original
+  // owner-role comparison, byte-identical to the pre-member behaviour.
   for (const task of tasks) {
     if (task.verify !== true || task.kind === "review") continue
     /** The review tasks that name this task as their target. */
@@ -392,13 +424,13 @@ export function validateGraph(tasks: readonly SplitTaskInput[], roster: readonly
       findings.push({ taskKey: task.key, code: "review-count", detail: "verify: true requires EXACTLY one review task blocked by " + JSON.stringify(task.key) + "; this split declares " + String(reviews.length) })
       continue
     }
-    /** The work task's declared member, when it declared one. */
-    const workMember = task.member
-    /** The review task's declared member, when it declared one. */
-    const reviewMember = reviews[0].member
-    if (workMember !== undefined && reviewMember !== undefined) {
-      if (resolvedMember(task) === resolvedMember(reviews[0])) {
-        findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is raised for the SAME member as the work it reviews (" + JSON.stringify(resolvedMember(task)) + ") — the verifier must be a different member" })
+    if (task.member !== undefined || reviews[0].member !== undefined) {
+      /** The identity activation will raise for the work task. */
+      const workIdentity = roleKey(resolvedMember(task))
+      /** The identity activation will raise for its review. */
+      const reviewIdentity = roleKey(resolvedMember(reviews[0]))
+      if (workIdentity === reviewIdentity) {
+        findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " resolves to the SAME board member as the work it reviews (" + JSON.stringify(resolvedMember(task)) + ", identity " + JSON.stringify(workIdentity) + ") — the verifier must be a different member" })
       }
     } else if (roleKey(reviews[0].ownerRole) === roleKey(task.ownerRole)) {
       findings.push({ taskKey: task.key, code: "self-review", detail: "the review task " + JSON.stringify(reviews[0].key) + " is owned by the SAME role as the work it reviews (" + JSON.stringify(task.ownerRole) + ") — the verifier must be a different declared role" })

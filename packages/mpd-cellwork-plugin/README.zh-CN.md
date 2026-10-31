@@ -25,7 +25,7 @@
 | 调用者 | 被拒绝的调用 |
 |---|---|
 | 队长 | 除 `cellwork_*`（但**不含** `cellwork_handoff`）、`agent_teams_*`、`ask_user_question`、`todo_write`、`mpd_memory_*`，以及唯一的验证循环开启器 `mpd_verify_open`（**精确名字**；其余 `mpd_verify_*` 一律仍被拒绝）之外的全部 |
-| 验证者 | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` |
+| 验证者 | `write`、`edit`、`mpd_hashline_edit`、`mcp__ast_grep__rewrite`、`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict`，以及两个 bundle spawn 工具 `mpd_role_spawn` / `mpd_workmate_spawn`——验证者**绝不委派**：裁决是它自己的活，FAIL 才是把工作退回写作者的通道 |
 | 处于上下文检查点的成员 | 除 `cellwork_handoff`、`cellwork_context`、`cellwork_status` 之外的全部 |
 | 副队长 | **迷你队长**：队长白名单**去掉** `cellwork_start`/`cellwork_stop`，再加上四个子 cell 动词 `cellwork_subteam`、`cellwork_activate`、`cellwork_dispatch`、`cellwork_supervise`；完全没有文件工作工具 |
 | 规划器（`cell-planner`） | 文档带内的 `read`/`grep`/`glob`——`.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**`；任意深度、workspace 根内外、**按 basename** 命中的 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`；根上仅 `README.md`、`README.zh-CN.md`、`CHANGELOG.md`、`LICENSE*.md`——以及它制定计划所需的其它一切工具 |
@@ -37,8 +37,10 @@
 规划器那一行属于本仓库自己的侦察规则，而不是 cellwork 的发明：它的可读带**就是**顶层 `mpd` 队长保留的那条带
 （一条 parity 测试同时导入两份清单，因此不可能漂移），路径按**拼写**判定、绝不解析符号链接，并且 `..` 段
 **只**在 basename 是三个指令文件之一时放行——读兄弟项目的 `AGENT.md` 正是它存在的理由。在 cell 之内，规划器
-从不自己做侦察：`cellwork_recon` 传绝对深度上限，`mpd_role_spawn` 传调用者记录的深度 + 1，因此嵌套咨询是
-叶子，而不是撞上一个它看不见的宿主深度默认值。
+从不自己做侦察，而且一次咨询就是**叶子**：`mpd_role_spawn` 传调用者记录的深度 + 1，**并且**在子会话自己的
+工具作用域里拒绝两个 spawn 工具，因此子会话绝不可能再次委派；已经处于深度 2 或更深的调用者会被直接拒绝。
+cell 规划器位于深度 1、保留自己的路线，它发起的咨询落在深度 2、本身就是一个叶子；`cellwork_recon` 不受这条
+深度下限约束，因为它自己的深度由 `cellwork.depthMax` 封顶。
 
 ## 磁盘状态
 
@@ -102,38 +104,50 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   仍在等待压缩屏障、或屏障放弃并记录了 `fenced: true` + `fencedReason`；被围栏的成员绝不被发消息。
   `cellwork_dispatch {reassign:[{task_id, owner}]}` 就是修复：对每一对，在派发**之前**先把该行在看板上
   claim 给那个成员、记 `task-reassigned`（from → to），然后投递——失败会报告在
-  `reassigned`/`reassignInvalid` 里、绝不抛错；终态行、未知成员或被围栏的**目标**一律拒绝。改派之后目标
+  `reassigned`/`reassignInvalid` 里、绝不抛错；终态行、未知成员或被围栏的**目标**一律拒绝；**启动失败**
+  （FAILED）或仍在**启动中**（PROVISIONING）的目标同样拒绝（为它 claim 的行永远不会被接手），投递 handle
+  取最新的**非空**值——cell 记录的 `executorRef` 为空时回退到活跃名册的 handle。改派之后目标
   拥有一个在飞任务，因此同一趟会把它的**其它**就绪行报告为 BUSY（每个成员每趟一个任务）：这是已写明的
   规则，不是回归。每个代码任务的验证循环在派发之前打开。
 - **C1 —— `member` 就是座位。** 切分任务可以声明 `member`；省略时成员名**就是** owner role。多个任务可以
-  共用一个成员，多个成员也可以共用一个 owner role（这才是同一个 role 的真正并行）。名字为空、超过 64 字符、
-  或含控制字符/路径分隔符时按 `member-invalid` 拒绝；同一成员被两个**不同** owner role 声明按
-  `member-role-conflict` 拒绝；`self-review` 在双方都声明成员时比较**解析后的**成员名。激活对每个不同的
+  共用一个成员，多个成员也可以共用一个 owner role（这才是同一个 role 的真正并行）。座位的**身份**是激活、
+  切分校验与派发共用的同一套归一化：**任何文字**的字母与数字保留、大小写折叠、其它字符的连续段折叠成一个
+  `-`——因此 `"Seat A"`/`"seat-a"` 是**一个**座位，`"工程师 A"`/`"工程师-a"` 是**一个**座位，
+  `"工程师甲"`/`"工程师乙"` 是**两个**。身份为空的名称（纯标点 `---` 或空串）、超过 64 字符、或含控制
+  字符/路径分隔符的名称按 `member-invalid` 拒绝；两个任务解析到**同一个**座位却声明**不同** owner role 按
+  `member-role-conflict` 拒绝；`self-review` 在双方都声明成员时比较的就是这同一个身份。激活对每个不同的
   `member` 只拉起一个成员，合约同时点名 owner role 与成员（`Owner: **<role>** (member `<name>`)`）。
 - **C11 —— 切分票按 id 查找，丢失的 owner 会被修复。** staging 把被 stage 的切分票的**看板 id** 记为
   `splitTaskId`；每次查找先试这个 id、再退回按 owner 匹配，因此需求变更既能标记切分过期、又能重新派发
   **同一行**。切分票缺失/无 owner 是点名修复方式的硬错误，而 staging 自己会通过把该行 claim 给
   `cell-splitter`（`agent_teams_task {action:"claim", claimant:"cell-splitter"}`）来修复丢失的 owner，而
-  不是铸出重复票。
+  不是铸出重复票。**即使修复被拒绝，id 依旧会被记录**（journal 在旁边带 `ownerRepairError`），因此 id 优先
+  的查找继续有效；成功的修复记为 `splitTicketOwnerRepaired`。重切分路径只复用**一行**：需求更新优先选
+  **活跃的**切分器行（先按记录的 id，再按 `cell-splitter` 拥有的任意活行），把它用到的 id 写回 cell 记录
+  （字段 `splitTaskId`，答复里报告为 `recordedSplitTaskId`），只有当记录的行已终态且没有活行时才追加替代行（同样的 cell role、subject 带新
+  修订号）。
 - **邮件日志格式变了，且单向兼容。** `send` 行如今总是带 `wakeSent: false`，唤醒结果作为**单独的** `wake`
   记录（`t:"wake"`、`sent`、`reason?`、`at`）追加在其后。本构建能正确折叠更旧的日志（`wake` 之前的行保留
   自己的 `wakeSent`）；来自**旧构建**的读者会把新行读成"未唤醒"——一条「一个 bundle 一个 workspace」的
   边界，如实写明而非隐藏。
-- **激活可续做。** `cellwork_activate` 每创建一个产物就立即检查点——在飞修订号（`activationInFlight`）、已拉起的
-  每个成员、已铸出的每个看板 id、已打开的每个循环（`activatedLoops`）——记在 `cell-activation-partial`
-  journal 事件下；阶段绝不回退——首次激活仍是 `split`，对已在执行的 cell 做局部重切分则保持 `executing`。
-  用**同一个**被接受的修订号重试会从这份记录续做：成员按名字与活跃名册对账
+- **激活可续做，并附带写明的崩溃边界。** 一趟激活运行期间，每个产物只往 journal 加**一条**紧凑的
+  `cell-activation-progress` 行（stage、key、ordinal、total），仅此而已。累积的 id——在飞修订号
+  （`activationInFlight`）、已拉起的成员、已铸出的看板 id（`activatedTasks`）与已打开的循环
+  （`activatedLoops`）——只在**这一趟失败**时**一次性**写进 cell 记录，即 `cell-activation-partial` 行；
+  同一趟的每一行共用同一个不递减的趟时刻，因此 journal 是单调的（D7：119 份完整快照约占 490 KB journal 的
+  40%，且最后一行的戳比它上面的行还早）。阶段绝不回退——首次激活仍是 `split`，对已在执行的 cell 做局部
+  重切分则保持 `executing`。
+  一次**返回的失败**之后重试，会从这份记录续做：成员按名字与活跃名册对账
   （重复的 `add_member` 直接复用，绝不致命）、每个切分键复用已记录的看板 id、为**每个**还没有循环的代码任务补开
   验证循环——**例外**是升级前的 cell 里保留下来的任务：它的 `activatedLoops` 没有条目，但冻结合约上已经写明循环
   id，因此合约**不会**被重写，也不会再开第二条循环。只有在派发成功之后才写入 `activatedRevision`。**更新的**被
   接受修订号会**取代**更旧的在飞部分激活——记入 journal（`activation-in-flight-superseded`），更旧的部分产物被
   放弃，其已记录的行被核对（保留的 id 复用、被去掉的工作标记 `cancelled`）——而**更低**的修订号、激活已物化的
   修订号与激活过期切分，仍按既有教学式错误拒绝。返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的
-  成员名。续做不是事务：残余窗口是一次看板/验证调用加一次 cell 记录写入，该窗口可能留下的重复看板行是可检出但
-  不可删除的（团队平面没有取消动词）。一趟激活的 journal 是紧凑的：每个产物创建时只写**一条**
-  `cell-activation-progress` 行，完整快照只在失败时**写一次**（`cell-activation-partial`），同一趟的每一行
-  共用同一个不递减的趟时刻，因此 journal 是单调的（D7：119 份完整快照约占 490 KB journal 的 40%，且最后
-  一行的戳比它上面的行还早）。
+  成员名。
+  **崩溃边界：** 进程在激活中途**死亡**时完全没有部分状态。成员仍按名字与活跃名册对账，但看板任务与验证循环
+  只通过已记录的表获知，因此死亡那一趟创建的任务或循环会在重试时**再创建一次**——可检出、不可删除（团队平面
+  没有取消动词）。一次返回失败的残余窗口是一次看板/验证调用加一次 cell 记录写入；一次崩溃的窗口则是整趟激活。
 - **无损的工具结果。** cellwork 的每个工具结果都能通过 harness 的无损 JSON 走查：任务投影绝不带 `undefined`
   自有键（可选的 `owner` 直接省略，绝不写成 `undefined`），结果里也没有非有限数、负零或环。
 - **B5 侦察边界。** `cellwork_recon` 用精确的 `Explorer`/`Researcher` 标签与绝对深度上限启动只读子代理，
@@ -156,7 +170,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 - **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以
-  `"not in this cell's tree"` 拒绝。一次发送会把该行追加到**目标 cell** 的 `mail.jsonl`——跨 cell 发送时就是
+  `"not in this cell's tree"` 拒绝。显式给出的名字既不是 `captain`、也不是**目标 cell** 的成员时会被
+  **拒绝**——答复列出该 cell 的成员——绝不悄悄投进调用者自己的收件箱。一次发送会把该行追加到**目标 cell** 的
+  `mail.jsonl`——跨 cell 发送时就是
   **收件方 cell** 的文件，该 cell 的 `cellwork_inbox` 从这里读取——而**发送方**的 journal 会以
   `cell:<cellId>` 戳并带 `toCell:<target>` 记录这次发送。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
   cell 不尝试唤醒——并出现在**那个** cell 的 `cellwork_supervise` 上。Lead 没有 executor handle，成员 → 队长的

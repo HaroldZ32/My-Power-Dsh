@@ -1,12 +1,12 @@
-# typed: 2026-10-31T06:03:18Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-dist-fresh.ts (pinned bun 1.4.0)
+# typed: 2026-10-31T07:00:44Z  branch: fix/cellwork-vedit-wave  base: 56873072  command: node scripts/verify-dist-fresh.ts (pinned bun 1.4.0)
   FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 919e212b8d0c… 17ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
-  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 9b632c726851… 26ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 9b632c726851… 28ms  <- packages/mpd-tui-plugin/src/index.ts
   FRESH   packages/mpd-ulw-plugin/dist/index.js  sha b3a00548bce7… 22ms  <- packages/mpd-ulw-plugin/src/index.ts
-  FRESH   packages/mpd-verify-plugin/dist/index.js  sha a8fe874803bc… 20ms  <- packages/mpd-verify-plugin/src/index.ts
-  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha fc7aecb67d83… 22ms  <- packages/mpd-workmate-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha 1c05c4894209… 22ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 654a487d207b… 23ms  <- packages/mpd-workmate-plugin/src/index.ts
 [verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
 [verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
 [verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
   packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
-[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 698ms
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 707ms
 EXIT=0

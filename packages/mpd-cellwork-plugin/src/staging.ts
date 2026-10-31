@@ -83,6 +83,14 @@ export interface StageResult {
    */
   ownerRepaired?: boolean
   /**
+   * The sentence an OWNERLESS split ticket's repair reported, when the claim was refused (contract C11).
+   *
+   * Kept APART from `error` on purpose (CR #6): the ticket's board id is still recorded and still
+   * resolvable by the id-first lookup, so the caller can journal "row known, owner missing" instead of
+   * losing the id along with the failed repair.
+   */
+  ownerRepairError?: string
+  /**
    * The name of the plan slot this cell stages under (`"cell " + cellId`), so a caller can journal WHICH
    * plan a partial failure left behind and a retry can recognize its own slot.
    */
@@ -275,6 +283,9 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
       teamId: existingTeamId,
       tasks: { splitId: ticket.splitTaskId },
       ...(ticket.ownerRepaired ? { ownerRepaired: true } : {}),
+      // A REFUSED REPAIR IS REPORTED, never swallowed (CR #6): the id above is still recorded, and the
+      // caller journals that the row is KNOWN but still UNOWNED.
+      ...(ticket.repairError === "" ? {} : { ownerRepairError: ticket.repairError }),
       ...(record === undefined ? {} : {
         members: {
           [PLANNER_MEMBER]: planningMemberRow(PLANNER_MEMBER, PLANNER_ROLE, deps.cell, deps.now),
@@ -350,7 +361,7 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
     /** The staged split ticket, resolved by the recorded id first and by its owner second. */
     const recoveredTicket = await resolveSplitTicket(deps, recoveredId, "", false)
     if (recoveredTicket.boardReadable && recoveredTicket.splitTaskId === "") return { ok: false, error: "the planning team " + recoveredId + " is approved but " + recoveredTicket.repairError, teamId: recoveredId, members: recovered, planName, partial: true }
-    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...(recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}) }
+    return { ok: true, alreadyStaged: true, teamId: recoveredId, members: recovered, tasks: { splitId: recoveredTicket.splitTaskId }, planName, ...(recoveredTicket.ownerRepaired ? { ownerRepaired: true } : {}), ...(recoveredTicket.repairError === "" ? {} : { ownerRepairError: recoveredTicket.repairError }) }
   }
   // No usable plan of ours is staged: create one and fill it. `approval:"required"` is the default, and
   // the explicit approve call below is what executes it (nothing is spawned before that).
@@ -442,7 +453,13 @@ export async function stagePlanningTeam(deps: StageDeps): Promise<StageResult> {
   // A MISSING TICKET IS A HARD ERROR only when the board WAS readable and carried none: an unreadable
   // record proves nothing, so the approval's own answer is recorded instead of refusing a staged team.
   if (ticket.boardReadable && splitId === "") return { ok: false, error: "the planning team " + teamId + " was approved but " + ticket.repairError, teamId, members, planName, partial: true }
-  if (ticket.repairError !== "") return { ok: false, error: ticket.repairError, teamId, members, planName, partial: true }
+  if (ticket.repairError !== "") {
+    // THE ID SURVIVES A FAILED REPAIR (CR #6): the split ticket is still BLOCKED by the requirements row
+    // right after approval, so the claim legitimately fails. The id is answered anyway — that is what keeps
+    // the ID-first lookup (C11) alive for every later retry — while the refusal keeps naming the repair
+    // verb and `ownerRepairError` carries the reason the caller journals BESIDE the recorded id.
+    return { ok: false, error: ticket.repairError, teamId, members, planName, tasks: { splitId }, ownerRepairError: ticket.repairError, partial: true }
+  }
   return {
     ok: true,
     teamId,

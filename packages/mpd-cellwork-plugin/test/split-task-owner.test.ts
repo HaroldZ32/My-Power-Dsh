@@ -14,6 +14,10 @@ import { tmpdir } from "node:os"
 import { findSplitTicket, resolveSplitTicket, SPLIT_TICKET_REPAIR, SPLITTER_MEMBER, type SplitTicketRow } from "../src/staging.ts"
 import { newCellState } from "../src/state.ts"
 import type { StageDeps } from "../src/staging.ts"
+import { roleKey, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "../src/split.ts"
+import { materializeSplit, type ActivateDeps } from "../src/activate.ts"
+import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
+import type { WindowReading } from "../src/budget.ts"
 
 /** One board row the fake board keeps, mutated in place by a claim. */
 interface FakeRow {
@@ -160,4 +164,160 @@ test("C11: an UNREADABLE team record proves nothing, so no missing-ticket error 
   const resolved = await resolveSplitTicket(depsFor(board, "T2", false), "team-1", "T2", true)
   expect(resolved).toEqual({ splitTaskId: "", ownerRepaired: false, repairError: "", boardReadable: false })
   expect(board.calls).toEqual([])
+})
+
+// ── T28: the shared IDENTITY KEY is unicode-aware ───────────────────────────
+//
+// `roleKey` is the ONE key `split.ts` validation and `activate.ts` grouping both call. It normalises
+// SPELLINGS (so "Seat A" and "seat-a" are one seat) and must not become an English-only filter: this
+// bundle's users write Chinese, so a Chinese member name has to be a seat of its own rather than an empty
+// key that is refused (and that would merge every Chinese name into ONE anonymous member).
+
+/** The roster the identity graphs are validated against. */
+const IDENTITY_ROSTER: readonly string[] = ["Senior Engineer", "Reviewer"]
+
+/** A CERTIFIED window large enough that a tiny task passes the 1/4 rule (never a guessed number). */
+const CERTIFIED_WINDOW: WindowReading = { provider: "test", model: "test-model", window: 1000000, provenance: "catalog", maxOutputTokens: 8192 }
+
+/**
+ * Submit one identity graph through the REAL split writer.
+ *
+ * @param tasks - the graph to measure and validate.
+ * @returns the persisted verdict.
+ */
+async function submitIdentityGraph(tasks: readonly SplitTaskInput[]): Promise<SplitVerdict> {
+  /** The fresh temp workspace this arm writes under. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-identity-"))
+  /** The submission a splitter would have sent. */
+  const submission: SplitSubmission = { revision: 1, tasks }
+  return submitSplit({
+    workspace,
+    cellId: "cell-identity",
+    config: DEFAULT_CELLWORK_CONFIG,
+    roster: IDENTITY_ROSTER,
+    // The window reader answers the SAME certified reading for every role: this arm measures identity.
+    window: async (): Promise<WindowReading> => CERTIFIED_WINDOW,
+    now: new Date("2026-10-31T00:00:00.000Z"),
+  }, submission)
+}
+
+/** One work task owned by a NAMED member of one role; no review task, because these arms test identity. */
+function identityTask(key: string, member: string, writeScope: string): SplitTaskInput {
+  return { key, subject: "Task " + key, description: "Do " + key + ".", kind: "work", ownerRole: "Senior Engineer", member, writeScopes: [writeScope], blockedBy: [], independent: false, inputs: [], verify: false }
+}
+
+/** The graph that must be ACCEPTED: two seats of ONE role, both named in Chinese. */
+function chineseGraph(): SplitTaskInput[] {
+  return [identityTask("cn-a", "工程师甲", "src/a.ts"), identityTask("cn-b", "工程师乙", "src/b.ts")]
+}
+
+test("T28: the identity key keeps unicode letters/digits and still collapses ASCII spellings", () => {
+  // THE ASCII PROPERTY T19 PINNED: two spellings of one name stay ONE identity.
+  expect(roleKey("Seat A")).toBe("seat-a")
+  expect(roleKey("seat-a")).toBe("seat-a")
+  expect(roleKey("Senior Engineer")).toBe("senior-engineer")
+  // CHINESE NAMES ARE SEATS: each keys to itself, and two different names are two identities.
+  expect(roleKey("工程师甲")).toBe("工程师甲")
+  expect(roleKey("工程师乙")).toBe("工程师乙")
+  expect(roleKey("工程师甲")).not.toBe(roleKey("工程师乙"))
+  // A MIXED-SCRIPT NAME keys to a distinct stable form, not to either pure name.
+  expect(roleKey("工程师 A")).toBe("工程师-a")
+  expect(roleKey("工程师 A")).not.toBe(roleKey("工程师甲"))
+  // Case folding and separator runs still apply inside a unicode name.
+  expect(roleKey("工程师·甲")).toBe("工程师-甲")
+  // PUNCTUATION-ONLY NAMES HAVE NO IDENTITY, so they stay refused rather than becoming one anonymous seat.
+  expect(roleKey("---")).toBe("")
+  expect(roleKey("...")).toBe("")
+  expect(roleKey("___")).toBe("")
+})
+
+test("T28: split validation ACCEPTS Chinese member names as distinct seats and still refuses a nameless one", async () => {
+  /** The accepted verdict for the two-Chinese-seat graph. */
+  const accepted = await submitIdentityGraph(chineseGraph())
+  expect(accepted.accepted).toBe(true)
+  // The verdict carries the RESOLVED names, one per task, and they are the Chinese spellings.
+  expect(accepted.tasks.map((task) => task.member)).toEqual(["工程师甲", "工程师乙"])
+  // The two members are two identities, so no `member-role-conflict` and no collapse happened.
+  expect(new Set(accepted.tasks.map((task) => roleKey(task.member))).size).toBe(2)
+  /** The graph whose only member has no identity at all. */
+  const nameless = await submitIdentityGraph([identityTask("cn-a", "---", "src/a.ts")])
+  expect(nameless.accepted).toBe(false)
+  expect(nameless.findings.map((finding) => finding.code)).toContain("member-invalid")
+  // The refusal TEACHES the rule: a letter or digit, in any script, is what makes an identity.
+  /** The nameless member's own finding. */
+  const finding = nameless.findings.find((candidate) => candidate.code === "member-invalid")
+  expect(String(finding?.detail)).toContain("letters and digits, in any script")
+})
+
+test("T28: activation raises TWO Chinese-named members of one role, never one merged seat", async () => {
+  /** The accepted verdict the activation materialises. */
+  const verdict = await submitIdentityGraph(chineseGraph())
+  expect(verdict.accepted).toBe(true)
+  /** The temp workspace the contracts are written under. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-identity-activate-"))
+  /** The cell record activation appends to; a staged team id is what makes it addressable. */
+  const cell = { ...newCellState({ cellId: "cell-identity-activate", objective: "two seats", captainSessionId: "session-captain", now: new Date() }), teamId: "team-1" }
+  /** Every tool call the activation made, so the raises can be read back. */
+  const calls: Array<{ name: string; arguments: Record<string, unknown> }> = []
+  /** The board ids and loop ids this double mints. */
+  const counters = { task: 0, loop: 0 }
+  /** The adapter slice: the team/verify tools, answered in-process. */
+  const fakeDsh = {
+    /**
+     * Answer one tool call against the counters.
+     * @param input - the tool call.
+     * @returns the normalized result.
+     */
+    async executeTool(input: { name: string; arguments?: Record<string, unknown> }): Promise<{ ok: boolean; value?: unknown; error?: unknown }> {
+      calls.push({ name: input.name, arguments: input.arguments ?? {} })
+      /** The action, for the team tool. */
+      const action = String(input.arguments?.action ?? "")
+      if (input.name === "agent_teams_plan" && action === "add_member") {
+        /** The member row the raise carried. */
+        const member = input.arguments?.member as Record<string, unknown> | undefined
+        return { ok: true, value: { spawned: "session-" + String(member?.name ?? "") } }
+      }
+      if (input.name === "agent_teams_plan" && action === "create_task") {
+        counters.task += 1
+        return { ok: true, value: { task: { id: "T" + String(counters.task) } } }
+      }
+      if (input.name === "mpd_verify_open") {
+        counters.loop += 1
+        return { ok: true, value: { loopId: "loop-" + String(counters.loop) } }
+      }
+      return { ok: true, value: {} }
+    },
+    /** The team executor seam: absent, so the dispatch reports and the pass still succeeds. */
+    teamExecutor: (): undefined => undefined,
+  }
+  /** The deps the materialisation reads. */
+  const deps: ActivateDeps = {
+    dsh: fakeDsh as unknown as ActivateDeps["dsh"],
+    workspace,
+    cell,
+    config: DEFAULT_CELLWORK_CONFIG,
+    captainAgent: { id: "session-captain" },
+    split: verdict,
+    personaFor: (): null => null,
+    recordFor: (): { teamId: string; members: []; tasks: [] } => ({ teamId: "team-1", members: [], tasks: [] }),
+    // The progress sink is a no-op here: this arm measures the RAISES, not the journal.
+    progress: (): void => {},
+    now: new Date(),
+  }
+  /** The materialisation. */
+  const result = await materializeSplit(deps)
+  expect(result.ok).toBe(true)
+  if (!result.ok) return
+  // TWO members, one per Chinese name — the pre-T28 key would have merged them into ONE empty identity.
+  expect(Object.keys(result.outcome.members).sort()).toEqual(["工程师乙", "工程师甲"].sort())
+  /** The raises this pass made. */
+  const raises = calls.filter((call) => call.name === "agent_teams_plan" && String(call.arguments.action ?? "") === "add_member")
+  expect(raises.length).toBe(2)
+  expect(raises.map((call) => String((call.arguments.member as Record<string, unknown>).name)).sort()).toEqual(["工程师乙", "工程师甲"].sort())
+  // The ROLE still routes them: both members carry the roster role, not their Chinese name.
+  expect(raises.map((call) => String((call.arguments.member as Record<string, unknown>).role))).toEqual(["Senior Engineer", "Senior Engineer"])
+  // The board tasks are owned by the CHINESE names, one each.
+  /** The task appends this pass made. */
+  const tasks = calls.filter((call) => call.name === "agent_teams_plan" && String(call.arguments.action ?? "") === "create_task")
+  expect(tasks.map((call) => String((call.arguments.task as Record<string, unknown>).owner)).sort()).toEqual(["工程师乙", "工程师甲"].sort())
 })
