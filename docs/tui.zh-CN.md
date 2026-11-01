@@ -3,8 +3,8 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.17.0** 及其内置的准入
-（admission）配置文件——它是第一个在声明的 peer 范围里接受 DeepSeek Harness `0.2.1-rc.3` 的
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.18.0** 及其内置的准入
+（admission）配置文件——它是第一个在声明的 peer 范围里接受 DeepSeek Harness `0.2.1-rc.5` 的
 dsh-tui 版本。§11.10 是本波次的修订：其中记录了这次移动、没有变化的接缝清单以及被触及的各个载体。
 **此前的钉定版本是 0.16.1，那段表述作为历史保持可读**：0.16.1 是第一个在声明的 peer 范围里包含
 harness `0.2.1-rc.2` 的 dsh-tui 版本（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），§11.8 是
@@ -1337,7 +1337,7 @@ TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_
 |---|---|---|
 | 本页对标宿主（§ 前言） | **0.16.1** | **0.17.0** —— 第一个在声明的 peer 范围里接受 harness `0.2.1-rc.3` 的 dsh-tui 版本：其 39 个 `@deepseek-ai/dsh-*` peer 中有 36 个追加了 `0.2.1-rc.3` 这一段，而 0.16.1 的 peer 列表里没有这一段（读取自已发布的 0.17.0 tarball） |
 | §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.16.1 不变 | **仍是十五个，且 0.17.0 没有破坏适配器的任何东西**：`lib/types/dsh-adapter/` 下的十五个接缝声明逐字节相同，`dsh-adapter/plugin-host.d.ts` 与 `adapter/standard/negotiate.d.ts` 逐字节相同，`tui-profile/registry/registry-0.15.json` 及随包发布的全部契约文件也逐字节相同——因此准入 profile 仍是 **v0.15**，`manifestVersion`/`$schema` **不移动**。0.17.0 真正的改动要么是增量的、要么不在本路径上：面板 kit 组件 `Markdown`/`CodeBlock`（`panels.d.ts`）、两个宿主 panel-CSV 辅助函数合并进 `tuiDisplayPrefs.applySidePanelPanels`、一个 Windows 通知通道，以及一棵新的 `cli/` 目录树 |
-| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.16.1`，harness 为 `0.2.1-rc.2` | **载体为 `0.17.0`，harness 为 `0.2.1-rc.3`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.17.0`）、`dsh-plugin.json` 的 `compat.hosts`（`…@0.17.0`），以及 `skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格和每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串。harness 的 pin 本身记在 `package.json` 的三个 `@deepseek-ai/dsh-experimental-*` 依赖里（`0.2.1-rc.3`） |
+| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.16.1`，harness 为 `0.2.1-rc.2` | **载体为 `0.18.0`，harness 为 `0.2.1-rc.5`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.18.0`）、`dsh-plugin.json` 的 `compat.hosts`（`…@0.18.0`），以及 `skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格和每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串。harness 的 pin 本身记在 `package.json` 的三个 `@deepseek-ai/dsh-experimental-*` 依赖里（`0.2.1-rc.5`） |
 | 适配器的版本闸门 | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`、`PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`，以及 `hostVersion` 夹具 `0.14.0/0.15.0/0.16.0/0.17.0` | **不变** —— 它们编码的是宿主**何时**改变行为，而不是当前宿主是哪个；盲目全量替换版本号会把它们改坏 |
 | “在 dsh-tui >= 0.16.1 上……”这类范围表述（§6.2 与使用者指南） | 一个闸门阈值 | **不变** —— 这是范围，不是目标版本 |
 

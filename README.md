@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.16.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -156,7 +156,7 @@ names it: pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.16.4 | 0.2.1-rc.3 | 0.17.0 | the current release |
+| 0.16.4 | 0.2.1-rc.5 | 0.18.0 | the current release |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.1 | 0.2.1-rc.3 | 0.17.0 | previous |
@@ -236,7 +236,7 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.3**.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.5**.
   Expect breakage while upstream stabilizes, and pin the harness version you use.
 - **The TUI surface trails the Web surface in named places, not everywhere.** The rows of the table
   above that do not read "same facts" are open deviations, each recorded with its evidence in

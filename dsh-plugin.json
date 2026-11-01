@@ -52,7 +52,7 @@
   },
   "compat": {
     "hosts": [
-      "@deepseek-harness-tui/dsh-tui@0.17.0"
+      "@deepseek-harness-tui/dsh-tui@0.18.0"
     ]
   },
   "x-mpd-tui-surfaces": {
