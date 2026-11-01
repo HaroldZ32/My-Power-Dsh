@@ -1,0 +1,8 @@
+# Diagnostic-only overlay (NOT applied): routes the same job through the OFFICIAL provider with the
+# stale model id the compat overlay names. Tests whether the historical green runs could have been
+# served by deepseek-official (the AGENTS.md §7 "fallback") while still labelled "deepseek".
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash

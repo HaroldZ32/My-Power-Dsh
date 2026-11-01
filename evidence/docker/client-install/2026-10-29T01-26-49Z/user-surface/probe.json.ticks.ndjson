@@ -1,0 +1,16 @@
+{"scopes":155,"phase":"apply","tick":0,"at":"2026-10-29T01:33:13.955Z","agentCount":0,"commands":0,"entries":155,"rootEntries":155,"agentEntries":0,"active":55,"noFiber":44,"failed":0}
+{"scopes":310,"phase":"tick-1","tick":1,"at":"2026-10-29T01:33:19.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-2","tick":2,"at":"2026-10-29T01:33:25.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-3","tick":3,"at":"2026-10-29T01:33:31.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-4","tick":4,"at":"2026-10-29T01:33:37.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-5","tick":5,"at":"2026-10-29T01:33:43.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-6","tick":6,"at":"2026-10-29T01:33:49.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-7","tick":7,"at":"2026-10-29T01:33:55.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"agent-pre-step","tick":0,"at":"2026-10-29T01:33:56.200Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-8","tick":8,"at":"2026-10-29T01:34:01.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-9","tick":9,"at":"2026-10-29T01:34:07.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-10","tick":10,"at":"2026-10-29T01:34:13.956Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-11","tick":11,"at":"2026-10-29T01:34:19.956Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-12","tick":12,"at":"2026-10-29T01:34:25.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-13","tick":13,"at":"2026-10-29T01:34:31.958Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}
+{"scopes":310,"phase":"tick-14","tick":14,"at":"2026-10-29T01:34:37.957Z","agentCount":1,"commands":34,"entries":155,"rootEntries":155,"agentEntries":155,"active":122,"noFiber":10,"failed":0}

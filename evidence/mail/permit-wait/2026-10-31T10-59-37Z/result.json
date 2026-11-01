@@ -1,0 +1,123 @@
+{
+  "review": {
+    "lane": "R3",
+    "boardTask": "T8",
+    "workTask": "T3",
+    "subject": "Permit store + agent_teams_mail permit/wait, and the tool-surface re-baseline 5,600 → 6,400",
+    "contract": ".mpd/plans/mail-unify.md §7 / AC-4 (plus the tool-surface guard in test/tool-surface.test.ts)",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee (identical at gate start and review end)",
+    "hashes": {
+      "src/mail-permit.ts (new)": "292510b5f11a58b205d5b9ee97921c153bd8023dd87f78ce3a2490c2c38bbc05",
+      "src/index.ts": "48015ad044eaaf437683546b61e28472aaa5c80b540d99c91938393a3e546c86",
+      "test/mail-permit.test.ts (new)": "b8b3fc1e662df8b0741d00272a8c78bc0de098fcff05cddc319ea67b93451c03",
+      "test/tool-surface.test.ts": "6328984a32bddaae1ffb01465b3314143dfe7c00ccc8a84919d08e1b52d2bd3f",
+      "test/tool-output-schema.test.ts": "7d7825741c359c41fb75265f578007249c42f1da45e9ff7dce0c490ffad0534f"
+    },
+    "sandwich": "Every T3 file hash was IDENTICAL at gate start (10:59:37Z) and review end (11:04:29Z). One shared file DID move: mailbox-store.ts (09abfcd1 → 8172402a at 19:02, dist 19:03) — that is T17's in-flight reference-resolution change, NOT T3; my gate run predates it and it is T19's lane."
+  },
+  "verdict": {
+    "task": "approve",
+    "ac4": "PASS",
+    "riskLevel": "low (code) + one Medium PROCESS finding",
+    "justification": "AC-4's four items are met and independently reproduced; the re-baselined 6,289 is exactly real, is entirely the permit/wait interface (7 new parameters + 2 enum values + one two-sentence description), and no other assertion was weakened or deleted (the action-list assertion was re-scoped ADDITIVELY by design). The one finding is procedural: T3 changed the constant before reporting, against the captain's standing rule — the number itself can stand."
+  },
+  "budgetAudit": {
+    "measuredTotal": 6289,
+    "claimedTotal": 6289,
+    "toolsAndCommands": "5 tools + 1 command (<= 6 arm untouched)",
+    "perTool": { "agent_teams_plan": 1767, "agent_teams_task": 880, "agent_teams_dispatch": 782, "agent_teams_mail": 2275, "agent_teams_control": 489, "command": 96 },
+    "otherToolsUnchangedVsR2": "plan 1767=1767, task 880=880, dispatch 782=782, control 489=489",
+    "mailTool": { "before": 1400, "after": 2275, "delta": 875 },
+    "deltaDecomposition": {
+      "newParameterKeys": 669,
+      "actionEnum": 16,
+      "description": 183,
+      "punctuationResidual": 7,
+      "total": 875,
+      "newParameters": [
+        { "key": "holder", "chars": 83, "description": "permit: member id/name the grant is for." },
+        { "key": "scope", "chars": 120, "description": "permit: what may be waited for (default `answer`)." },
+        { "key": "ttlMs", "chars": 99, "description": "permit: grant lifetime in ms (default 60000, max 600000)." },
+        { "key": "permitId", "chars": 80, "description": "wait: the captain-issued permit id." },
+        { "key": "messageId", "chars": 83, "description": "wait: the message id being waited on." },
+        { "key": "timeoutMs", "chars": 112, "description": "wait: block in ms (default 15000; capped by the permit and 60000)." },
+        { "key": "questionId", "chars": 92, "description": "permit: narrow the grant to this question id." }
+      ]
+    },
+    "contentBearing": "YES. Every character of the 669 is a required permit/wait argument plus its semantics (holder, scope enum, TTL default+bound, the narrow key, the allow/cap rules); the descriptions are 31-60 characters each, the two enum values are +16, and the description growth is exactly the two sentences that tell a caller permits exist, who may issue one, and that everything else stays non-blocking. No prose padding found.",
+    "assertionChanges": "The file's diff has exactly TWO hunks: (1) the bound 5,000 → 6,400 with the comment history (4,996 / 5,414 / 6,289 + reasons); (2) the action-list assertion RE-SCOPED ADDITIVELY from 4 to 6 actions (`permit`, `wait` added, nothing removed) — necessary and strengthening. The `<= 6` arm, the retired-names arm, the action-enum shape arms and every other assertion are untouched. No deletion anywhere. tool-output-schema.test.ts gains a permit/wait drive block (additive).",
+    "comment": "Records 6,289 and the AC-4 reason and keeps the earlier re-baseline history; one wording nit (N1).",
+    "metricBound": "The arm's `costOf` measures name + description + parameters only; the declared OUTPUT schema also grew (+218 chars: ok/reason/permit/permitScope/answers/polls/waitedMs) and is outside the 6,289. Declared measurement bound, not padding."
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-4",
+      "result": "PASS",
+      "items": [
+        { "item": "refusal without a permit NAMES the captain", "evidence": "Tool arm: a member's `permit` is refused, the refusal contains 'only this team's captain' AND the lead session, nothing written (readPermits []); a `wait` with no permit is refused with 'no permit' + 'your captain' + the lead session. Code: `captainSpelling()` names the recorded lead id, the no-team/no-captain facts, or the caller-is-captain fact." },
+        { "item": "TTL expiry refused", "evidence": "Probe P6 (checkPermit at expiresAt → {reason:'expired'}); tool arm mints a 1 ms grant through the REAL tool, waits 5 ms and gets 'expired'." },
+        { "item": "a valid wait returns the answer or times out", "evidence": "Probe W2 (answer present → returned, 1 poll) and the tool arm: the answer arriving DURING the wait returns {ok:true, answers:[{questionId, answerTo, selected:['A. red']}], polls>1}; the timeout arm returns {ok:false, reason:'timeout', polls, waitedMs} after >=200 ms and well before the 5 s stuck-guard." },
+        { "item": "no unbounded busy loop", "evidence": "waitForReply is bounded TWICE: a wall-clock deadline and a poll ceiling ceil(timeout/interval)+1. Probe W1 timeoutMs 0 → 1 poll + timeout; W3 a FROZEN clock → 6 polls + timeout (ceiling, not hope); W4 an aborted call → 1 poll + 'aborted'. The tool caps the effective timeout by the request, WAIT_MAX_TIMEOUT_MS (60 s) and the permit remainder (probe P9), and every non-wait action stays immediate." }
+      ]
+    },
+    { "id": "AC-1/2/3", "result": "NOT-CHECKED", "reason": "Other lanes (T12/T14, T7/T16, T9)." },
+    { "id": "AC-5/6", "result": "NOT-CHECKED", "reason": "T4 / T6 lanes." },
+    { "id": "AC-7", "result": "PASS (T3 scope)", "reason": "bun test team-core 454/0, typecheck, comments, docs, rows, manifest all green at 10:59:37Z; dist freshness and the combined sweep belong to T10." }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "Medium",
+      "title": "PROCESS: T3 re-baselined the tool-surface constant (5,600 → 6,400) BEFORE reporting the measurement, against the captain's standing 'measure first, come back before changing' rule",
+      "where": "packages/mpd-team-core-plugin/test/tool-surface.test.ts · the context-budget arm",
+      "what": "The number T3 recorded is correct and content-bearing (I re-measured 6,289 independently), but the constant was changed in the same step rather than reported and left to the captain. The captain conditionally accepted it; the rule breach happened regardless.",
+      "why": "A user-mandated guard whose bound can be raised by the very task it constrains is only a guard if the raise is authorised BEFORE it lands; measuring first is what keeps the guard honest.",
+      "direction": "The captain decides whether the conditional acceptance stands (the evidence supports it). For the remaining tasks: report the measurement and the proposed number, then change it only after the captain's word.",
+      "evidence": "tool-surface.test.ts diff; budgetAudit above"
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "The new comment says the permit/wait surface 'MEASURED 6,289 on top of the 5,414 above', which reads as a 6,289 delta rather than the new TOTAL",
+      "where": "packages/mpd-team-core-plugin/test/tool-surface.test.ts · the re-baseline comment",
+      "what": "The assertion measures the TOTAL, and the measured total is 6,289 (5,414 + 875). 'On top of' suggests 6,289 added to 5,414.",
+      "why": "A future reader cannot reconcile the comment with the asserted number (6,400) without re-measuring.",
+      "direction": "Reword to 'the whole surface now MEASURES 6,289 (5,414 + 875 for permit/wait)'.",
+      "evidence": "budgetAudit"
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "title": "The wait answer carries `permitId`, but the tool's DECLARED output schema does not list it",
+      "where": "packages/mpd-team-core-plugin/src/index.ts · agent_teams_mail output schema vs the wait branch returns (`{ ok, reason, permitId, permitScope, polls, waitedMs }` / `{ ok:true, permitId, permitScope, answers|messages, polls, waitedMs }`)",
+      "what": "The schema declares ok/reason/permit/permitScope/answers/messages/polls/waitedMs but not permitId, while the tool returns it and the shipped arms assert `outcome.permitId`. Declared and actual output differ.",
+      "why": "A caller (and the schema-driven output checker) has no contract for a field the tool guarantees; a future schema tightening would break the arms.",
+      "direction": "Add `permitId: { type: \"string\" }` to the output schema (or drop the field and return it under `permit`), so declaration and behaviour match.",
+      "evidence": "index.ts lines 2844/2858/2860; mail-permit.test.ts asserts outcome.permitId"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "The 5,600 intermediate bound was never committed", "reason": "The working-tree diff is 5,000 → 6,400 and its comment documents BOTH steps (4,996/5,414 then 6,289); the arithmetic matches my measurement. Not a finding." },
+    { "item": "The budget metric excludes the output schema (+218 chars)", "reason": "Pre-existing definition of the arm's `costOf` (name+description+parameters), not a T3 change; recorded as a declared measurement bound." },
+    { "item": "T15's durable-wake block inside the same send branch", "reason": "T15's lane (T16); the mail-permit/index hashes T3 owns were stable start-to-end." },
+    { "item": "mailbox-store.ts changing mid-review (09abfcd1 → 8172402a)", "reason": "T17's in-flight reference-resolution change, not T3; my gates ran before it and it is T19's lane. The permit module and its probes do not depend on it." },
+    { "item": "A permit-holder fallback that accepts a caller by display NAME when its id differs", "reason": "Deliberate D16c tolerance for a re-minted session id, bounded by the issuer check (the permit must come from this team's lead). Tested behaviour, not a defect." },
+    { "item": "Scope-`answer` waits return only rows carrying an `answer` payload", "reason": "That is what the scope names; a plain message reply is scope `message`'s subject. Set aside." },
+    { "item": "The README pair change (docs lane)", "reason": "AC-6 is T6's; the README table and the new sections document permit/wait accurately as far as I read them." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890; contract sha identical at gate start and review end.",
+    "Read: mail-permit.ts (record/fold/build/issue/check/wait), the index.ts permit/wait branches and refusal helpers, the tool-surface and tool-output-schema diffs, README diff, and the AC-4 tool-level arms.",
+    "Ran: six gates (team-core 454/0, typecheck, comments, docs, rows, manifest) and 22 probes: a re-implementation of the surface-cost capture, permit issue/fold/validity rules, and the wait loop's timeout/frozen-clock/abort/scope behaviour.",
+    "Did NOT run: dist-fresh (T10 bound), the combined multi-package suite, the Docker lane. The mailbox-store change that landed mid-review (T17) was not exercised by my gate run.",
+    "T3's writer transcript was not readable from this seat; every number above was re-measured/re-derived."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/permit-wait/2026-10-31T10-59-37Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (B1-B6 budget + P1-P9 permit + W1-W7 wait)"
+  }
+}

@@ -21,7 +21,7 @@ service is the **fallback** for a composition that runs the official executor, r
 | `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend raises a durable child through `ctx.subagents.startActivation` on the pinned host (harness 0.2.1+) and keeps the retired `ctx.subagents.startContinuable` only as the older-host fallback (`CONTINUABLE_START_MEMBERS`, probed newest-first by `continuableStartMember`), while the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, persists a declared `kind` from `task.kind` or its top-level alias (an unknown word is refused), and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
 | `agent_teams_task` | `claim`, `contract`, `release`, `complete`, `fail`, `depend` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending`; `complete`/`fail` are the terminal verbs (owner-only, optional `note`/`expected_revision`, a `FAIL` releases its dependents); `depend` APPENDS `blocked_by` edges to an EXISTING row — idempotent (a re-added reference is a reported no-op), refused for a terminal row, for an unknown `task_id`, for a caller who is neither the row's owner nor the team's Lead, and for a SELF-EDGE or ANY CYCLE (2-node or transitive); every refusal returns BEFORE any write, so `blockedBy` and `revision` are unchanged — a cyclic edge could never satisfy the readiness rule, and `depend` appends only, so the row would be permanently not-ready — and it reports a reference that names no task: kept verbatim in `blockedBy`, named in the answer, and persisted on the row as `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing in the TEAM-SCOPED ledger; `release` frees it and reopens the row |
-| `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |
+| `agent_teams_mail` | `send`, `unread`, `read`, `summary`, `permit`, `wait` | the team mailbox: ONE durable stream carrying `message`/`question`/`answer` rows, with a read state the official one cannot provide; `permit` issues a wait grant (this team's Lead only) and `wait` blocks inside it — the whole protocol is in [`docs/mail.md`](../../docs/mail.md) |
 | `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
@@ -187,6 +187,39 @@ data: {"rev":8}
   SUPPLIED `member` must RESOLVE: an unknown name is REFUSED with the value named and the roster listed
   (`"<name>" is not a member of this team (members: …)`), and NO mail is returned — a typo never falls
   back to the caller's own inbox.
+- **ONE STREAM, THREE KINDS.** A row carries `kind` (`message` | `question` | `answer`) plus
+  `replyTo`/`threadId` and the payload its kind names; a legacy row with no `kind` folds as `message`.
+  A question offers LABELS and an answer echoes those label STRINGS verbatim — there is no option index
+  anywhere, which is the mechanical fix for the 2026-10-31 relay defect. The envelope, the validators and
+  the tolerant fold live in [`mpd-mail-protocol`](../mpd-mail-protocol/README.md); the operator's view,
+  the addressing rules and the declared bounds are in [`docs/mail.md`](../../docs/mail.md).
+- **ADDRESSING** accepts a member id, a member name, `captain`/`lead` (the record's `leadSessionId`,
+  recorded as `toName: "captain"`), or `"*"` — a broadcast that mints ONE ROW PER RECIPIENT (members plus
+  the lead, sender excluded, deduplicated) with a shared envelope and thread. There is no multi-recipient
+  row, so per-recipient acknowledgement and the per-recipient bound stay honest; a broadcast that resolves
+  to nobody is refused rather than reported as "sent 0". "Self" is checked against BOTH spellings of the
+  sender (roster id and session id), because a row is addressed by roster id while a session names itself
+  by session id.
+- **ACKNOWLEDGEMENT IS THE ADDRESSEE'S.** `read` records `by` (the acking member's name, folded as
+  `readBy`) and refuses an id addressed to anybody else — there is NO administrative escape. Consequence,
+  stated: a captain cannot clear a stalled member's backlog on its behalf; a permit grants a WAIT, never an
+  acknowledgement. The acknowledgement identity is the caller's ROSTER id (`ownMember.id`, else its session
+  id for a lead with no roster row).
+- **THE WAKE IS A DURABLE LINE, NOT A LOG LINE.** After each row is written, the best-effort wake-up is
+  attempted and its outcome appended as `{t:"wake", id, sent, reason?, at}` — `reason` is required whenever
+  `sent` is false, and a row with NO wake record is one whose attempt never happened (a reader must treat
+  that as "not woken"). The shape is the canonical twin of the cellwork plane's record; the reasons each
+  plane writes are enumerated in [`docs/mail.md`](../../docs/mail.md).
+- **THE FOLD'S PROBLEM LIST IS EXPOSED.** A duplicated send id keeps the FIRST write and is REPORTED (I8):
+  the anomalies ride on the folded state as `problems` and the web projection renders them. `problems` is
+  OPTIONAL on the state (a caller-built view over a message list is not a fold result), with three
+  compensating guarantees: `fold`/`readMailbox` always populate it, `scopeToTeam` carries it through, and
+  two test arms assert `{messages: [], problems: []}` on a clean log.
+- **DECLARED BOUNDS.** The tool INFERS `kind` from the `question`/`answer` payload and takes no `kind` or
+  `threadId` parameter (a reply joins a thread through `replyTo`); the store API still accepts both for
+  callers that build rows directly. The registered tool surface is asserted under a measured budget:
+  **5,600 → 6,400 characters, measured 6,289** after `permit`/`wait` landed — every further widening needs
+  the captain's PRIOR approval.
 - **Everything is workspace-scoped** through `dsh.workspaceRoot(exec)`, never the process cwd.
 
 ### Nested teams (subcells)

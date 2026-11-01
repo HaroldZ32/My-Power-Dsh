@@ -1,0 +1,35 @@
+{
+  "startedAt": "2026-10-31T07:45:44.223Z",
+  "finishedAt": "2026-10-31T07:52:59.833Z",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "compose": "Docker Compose version v5.6.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 503,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-wl2FWL",
+  "liveRequested": false,
+  "browserEnabled": false,
+  "requiredPrefixes": [
+    "userSurface."
+  ],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T mpd-client",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=false passed=163 failed=0 null=79 NULL=[qa.mcpCall,oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noPromptVariableError,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noPromptVariableError,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noPromptVariableError,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors,ui.mpdSettingsSectionNegativeControl,ui.teamBoard,userSurface.row.mpd-better-sidebar,userSurface.row.mpd-agent-team,userSurface.row.mpd-tool-agent-team,userSurface.row.persona,userSurface.row.agent-instructions,userSurface.row.time-context,userSurface.row.tool-bash,userSurface.row.tool-pwsh,userSurface.row.tool-fs,userSurface.row.tool-fs-search,userSurface.row.tool-jobs,userSurface.row.tool-schedule,userSurface.row.skill-filesystem,userSurface.row.tool-skill,userSurface.row.command-goal,userSurface.row.tool-goal,userSurface.row.planning,userSurface.row.plan-mode,userSurface.row.compaction,userSurface.row.compaction-basic,userSurface.row.command-compact,userSurface.row.tool-result-pruner,userSurface.row.delegation,userSurface.row.tool-subagent-control,userSurface.row.tool-subagent-list-agents,userSurface.row.tool-subagent,userSurface.row.tool-subagent-fork,userSurface.row.tool-workflow,userSurface.row.tool-ask-user,userSurface.row.tool-todo,userSurface.row.tool-web,userSurface.row.present,userSurface.row.tool-plugin-market]",
+  "exitCode": 0
+}

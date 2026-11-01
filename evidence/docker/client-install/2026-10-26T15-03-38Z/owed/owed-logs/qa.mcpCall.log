@@ -1,0 +1,2 @@
+[mcp-call] ok=true (enum recorded tools=122, mcp__ast_grep__=true, mcp__lsp__=true, ast_grep call recorded, call result has the fixture line=true, lsp dependency staged from checkout-store) -> /opt/mpd/evidence/dsh-qa/mcp-call/2026-10-26T15-17-50.155Z
+[mcp-call] PASS

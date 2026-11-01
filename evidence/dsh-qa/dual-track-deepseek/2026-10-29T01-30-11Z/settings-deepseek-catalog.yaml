@@ -1,0 +1,7 @@
+# Diagnostic candidate (NOT applied to the repo or to ~/.dsh): a settings.yaml section
+# that defines the `deepseek` pi-ai route the compat-track overlay selects, using the
+# installed catalog (model ids deepseek-flash / deepseek-v4-pro).
+llm-pi-ai:
+  providers:
+    deepseek:
+      apiKeyEnv: DEEPSEEK_API_KEY

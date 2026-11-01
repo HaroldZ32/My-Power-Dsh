@@ -603,6 +603,34 @@ describe("the mail route", () => {
     // saying "queued", which is a different sentence from "delivered and unread".
     expect(one.messages[0].deliveredAt).toBeUndefined()
     expect(one.messages[0].readAt).toBeUndefined()
+    // THE ENVELOPE (contract §5, AC-8): the projection carries the protocol's own fields. A LEGACY row
+    // has no `kind` and projects as a `message`, with its thread minted from its own id.
+    expect(one.messages[0].kind).toBe("message")
+    expect(one.messages[0].threadId).toBe("m1")
+    appendRecord(workspace, { t: "send", id: "m2", kind: "question", fromId: "s-cap", fromName: "captain", toId: "s-arch", toName: "Architect", subject: "which", body: "which store?", at: "2026-09-30T09:05:00.000Z", threadId: "m2", question: { questionId: "q1", question: "which store?", options: [{ label: "A. one" }] } })
+    /** The payload after a `question` row, whose options a panel must be able to render. */
+    const withQuestion = buildTeamMail(workspace)
+    expect(withQuestion.records).toBe(2)
+    expect(withQuestion.messages[1].kind).toBe("question")
+    expect(withQuestion.messages[1].question?.questionId).toBe("q1")
+    expect(withQuestion.messages[1].question?.options.map((option) => option.label)).toEqual(["A. one"])
+    // AC-8, COMPLETED (R2's N3): all FIVE envelope fields the projection carries are asserted — the
+    // earlier arm checked `kind`/`threadId`/`question` and would have stayed green if `replyTo` or
+    // `answer` were dropped. `readBy` rides along with the acknowledgement.
+    appendRecord(workspace, { t: "send", id: "m3", kind: "answer", replyTo: "m2", threadId: "m2", fromId: "s-arch", fromName: "Architect", toId: "s-cap", toName: "captain", subject: "a", body: "b", at: "2026-09-30T09:10:00.000Z", answer: { questionId: "q1", answerTo: "m2", selected: ["A. one"] } })
+    appendRecord(workspace, { t: "read", id: "m3", at: "2026-09-30T09:11:00.000Z", by: "captain" })
+    /** The payload after the answer row and its acknowledgement. */
+    const withAnswer = buildTeamMail(workspace)
+    /** The answer row this arm inspects. */
+    const answerRow = withAnswer.messages[2]
+    expect(answerRow.kind).toBe("answer")
+    expect(answerRow.threadId).toBe("m2")
+    expect(answerRow.replyTo).toBe("m2")
+    expect(answerRow.answer?.selected).toEqual(["A. one"])
+    expect(answerRow.readBy).toBe("captain")
+    // R2's N2: an EMPTY problem list is the honest "nothing was skipped", and it is PRESENT (a clean
+    // log must be distinguishable from a projection that simply does not report).
+    expect(withAnswer.problems).toEqual([])
   })
 })
 

@@ -1,0 +1,101 @@
+{
+  "review": {
+    "lane": "R2 (adversarial review of the T17 change)",
+    "boardTask": "T19",
+    "workTask": "T17",
+    "subject": "Workspace-wide reference resolution in sendMany — cross-team information leak through the I4 refusal, and the skipped authorization",
+    "contract": ".mpd/plans/mail-unify.md §5 (ownership) + §4 I4/I5 (label echo / references)",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee",
+    "hashes": {
+      "src/mailbox-store.ts (T17 hunk)": "8172402a4bc4615609b5f15b79cceca6135fa90c5e69d9efb73d9c2018c0c674",
+      "src/mailbox-store.test.ts family": "unchanged during this review",
+      "dist/index.js": "68a231c2f029a0f9b684a4bb56921e6364b90de45e504eafb5afb2aeee3eca35"
+    },
+    "attribution": "The defect is T17's: before its hunk, `validateReferences` ran against the TEAM-SCOPED slice, so a foreign question was simply `reference-unknown` (no label echo) and the answer was refused. T17 widened the reference check to `state.messages` (workspace) while leaving the ownership lookup on `scoped.messages`, which both enables the leak and skips the authorization. The cellwork dist is T18's in-flight package (cellwork inlines team-core) and is NOT charged here."
+  },
+  "verdict": {
+    "task": "request-changes",
+    "t17": "FAIL",
+    "riskLevel": "high",
+    "justification": "The Lead's worry is REAL: a member of team X can read team Y's offered label strings out of an I4 refusal (probe 1a), the echo runs BEFORE any authorization, and with a CORRECT label the foreign answer is ACCEPTED because the ownership lookup only searches the caller's team slice (probe 1c). The same path lets a non-recipient learn a foreign thread id (probe 4a). Fix the order/scope of the checks before this lands."
+  },
+  "probes": [
+    {
+      "probe": "1 — a cross-team answer with a WRONG label (non-recipient)",
+      "result": "FAIL — refused as `invalid-envelope` WITH team Y's labels inline",
+      "observed": "detail = 'selected label is not offered by the question: \"Z. made-up\" (valid labels: A. secret-one, B. secret-two)'; no authorization sentence; no row written beyond Y's question."
+    },
+    {
+      "probe": "1c — a cross-team answer with a CORRECT label (non-recipient)",
+      "result": "FAIL — ACCEPTED (authorization never runs)",
+      "observed": "{ok:true}; a row written to the caller's own team member with answerTo = team Y's question id and threadId = team Y's thread id."
+    },
+    {
+      "probe": "2 — a question the caller IS addressed in still echoes labels",
+      "result": "PASS (unchanged)",
+      "observed": "same-team addressee's wrong label → refusal WITH 'valid labels: A. x-one, B. x-two'."
+    },
+    {
+      "probe": "2b — same-team NON-recipient with a wrong label",
+      "result": "Sub-case of the order defect",
+      "observed": "also echoes the labels, because the echo precedes the ownership check."
+    },
+    {
+      "probe": "3 — order: authorization-before-echo",
+      "result": "FAIL",
+      "observed": "sendMany order is validateEnvelope → validateReferences(workspace; performs the I4 echo) → ownership on the SCOPED byId; a foreign question is absent from the scoped map, so the ownership block is SKIPPED entirely, not merely late."
+    },
+    {
+      "probe": "4 — thread/message visibility across teams",
+      "result": "FAIL (thread id), plus an existence oracle",
+      "observed": "4a: a plain reply whose replyTo is a FOREIGN message id is accepted and the returned/stored row carries the foreign THREAD id (`threadId` = team Y's question id). 4b: a nonexistent id is refused with 'names no message', so a caller can probe which workspace ids exist."
+    },
+    {
+      "probe": "5 — same-team behaviour unchanged",
+      "result": "PASS",
+      "observed": "the addressee's echo and the valid-answer path behave exactly as in R2/T7."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "title": "Cross-team LABEL LEAK through the I4 refusal: the label echo runs before any authorization and resolves the question workspace-wide",
+      "where": "packages/mpd-team-core-plugin/src/mailbox-store.ts · sendMany (`validateReferences(envelope, state.messages)` before the ownership block)",
+      "what": "A member of team X that knows (or guesses) a team Y question id sends an answer with an invented label. `validateReferences` finds the question in the workspace fold, calls `validateAnswer(answer, target.question)`, and the I4 mismatch sentence — which inlines the FULL VALID LABEL LIST — is returned to team X. Probe 1a reproduces it exactly. The same echo also reaches a SAME-TEAM non-recipient (probe 2b), because the echo precedes the ownership check there too.",
+      "why": "I4's label list is a correction aid for the question's addressee. Handing it to anyone who can name a message id turns the refusal into a cross-team disclosure channel: option labels can carry the actual decision content of another wave/cell (this is precisely the data the 'no index' protocol is protecting).",
+      "direction": "Resolve the referenced question for the AUTHORIZATION check from the workspace fold, run the ownership check FIRST, and only then validate the echo. A non-recipient must be refused with a `not-recipient` sentence that names the question id and NOT its labels (no `labels` field, no label text). `validateReferences` should not be the thing that echoes labels on this path — split existence/reference resolution from the echo, or gate the echo behind the proven addressee.",
+      "evidence": "probes 1a / 2b in output.log; T17's own arm 'a cross-team answer is still refused WITH the valid label list when the echo is wrong' asserts the leak as intended"
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "title": "The ownership rule is SKIPPED for a question outside the caller's team slice: a foreign answer is accepted and a foreign thread id is exposed",
+      "where": "packages/mpd-team-core-plugin/src/mailbox-store.ts · sendMany (`const asked = byId.get(...)` where `byId` is built from `scoped.messages`)",
+      "what": "When the referenced question is in another team, `asked` is undefined and the whole ownership block (only-a-recipient-may-answer; answer-goes-back-to-the-asker) is skipped instead of refusing. Probe 1c: the answer is written (ok:true) into the caller's own team with answerTo = the foreign question. The thread resolution uses the WORKSPACE map (`workspaceById`), so the written row also inherits and returns the foreign thread id (probes 1c and 4a). Probe 4b adds an existence oracle: a bogus id is refused, a foreign one is accepted.",
+      "why": "Contract §5's 'only a recipient of a question may answer it' must hold on the workspace-wide path; silently skipping it means team X can mint a row that claims to answer team Y's question, and the returned thread id discloses an id it could not see. The thread leak is exactly the Lead's probe 4.",
+      "direction": "Use the workspace fold for the ownership lookup too (`asked` from `state.messages`), so a legitimate cross-team answer (the caller IS the question's addressee) still passes while a non-recipient is refused; only then inherit the thread (or restrict inheritance to the authorized path). Keep the existence refusal generic enough that it does not distinguish owner beyond what a legitimate reply already needs.",
+      "evidence": "probes 1c / 4a / 4b in output.log"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "The legitimate cross-team answer case T17 was written for (the answerer IS the question's addressee)", "reason": "The workspace-wide resolution is the right direction and its shipped arms pass; the defect is the missing authorization/ordering, not the widening itself." },
+    { "item": "The cellwork dist being stale", "reason": "T18's in-flight package (cellwork inlines team-core); pre-declared by the Lead, not charged to T17." },
+    { "item": "The existence oracle for a bogus id (probe 4b)", "reason": "An inherent consequence of workspace-wide reference checks and low value once the authorization is enforced; mentioned inside F2 rather than raised separately." },
+    { "item": "T17's test file / docs", "reason": "Its arms pass; the arm that asserts the label list for a cross-team wrong echo is the evidence of the leak, not a test-quality issue." },
+    { "item": "The backlog bound / stamps staying team-scoped", "reason": "Verified unchanged by T17's own arms and my probes; not the subject of this adversarial question." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890 (contract sha stable). The affected file is T17's hunk; the package suite on this exact tree ran green (459/0) at 11:06:19Z, i.e. the existing arms do not catch either finding.",
+    "Read: sendMany (the T17 hunk and the ownership/thread block), validateReferences/validateAnswer's label echo, and T17's new mail-workspace-references.test.ts arms.",
+    "Ran: 7 black-box probes over `sendMany` (cross-team wrong/valid label, same-team addressee/non-recipient, foreign reply/thread, bogus id).",
+    "Did NOT run: the package gates again for this review (the same tree was green at 11:06), dist-fresh (T10), the tool-level harness (the tool passes the same `teamId`/`answer` values the probes use; the store is the affected seam)."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/team-mailbox/2026-10-31T11-10-00Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

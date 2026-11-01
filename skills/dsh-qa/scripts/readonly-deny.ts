@@ -40,10 +40,13 @@
 //   WHAT CARRIES THE PROOF — RE-POINTED 2026-10-17 at the mechanism that enforces read-only authority
 //   NOW (two assertions, and the first one CHANGED):
 //   1. the deny is applied to the CHILD's OWN scoped tool registry through the adapter's
-//      `restrictAgentToolsRetained(agent, [...READONLY_DENY])` (wave 1's RETAINED applier: it prunes only
-//      the names the host reports as unknown and reports what it APPLIED), and the roles row says so on
-//      disk: `read-only child: applied 8 denials to its own tool scope` (R5 row log, searched together with the
-//      boot output and the logger probe). THIS REPLACES the instrumented start-spec probe
+//      `restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])` (wave 1's RETAINED
+//      applier: it prunes only the names the host reports as unknown and reports what it APPLIED), and
+//      the roles row says so on disk: `read-only child: applied 10 denials (+ the leaf spawn boundary)
+//      to its own tool scope` — TEN since CR repair E, when the SAME restriction also took the two bundle
+//      spawn tools (`mpd_role_spawn`, `mpd_workmate_spawn`) so a consult is a LEAF by construction (R5
+//      row log, searched together with the boot output and the logger probe). THIS REPLACES the
+//      instrumented start-spec probe
 //      (`[ADAPTER-PROBE] toolFilter=`) this case used to read: that path is gone from the product, so a
 //      "the eight were SENT on the start spec" assertion measures an instrumentation we removed, not the
 //      contract — the verification lane measured the old arm red while the child leaked NOTHING. and
@@ -90,6 +93,15 @@ const SLUG: string = "readonly-deny"
 
 // The eight names every deny list must carry: live-registered AND write-capable.
 const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
+/**
+ * The LEAF boundary's own pair (CR repair E), denied in the SAME child-scope restriction as the
+ * canonical eight: a consult that could raise another consult is not the leaf the depth cap exists to
+ * draw. The host treats `maxDepth` as an absolute cap, so relying on it alone would let a consult at
+ * depth 1 raise a child that then fails — the pair makes every consult a leaf BY CONSTRUCTION.
+ */
+const EXPECTED_LEAF_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
+/** Every name ONE read-only child's scope must end up denying: the canonical eight PLUS the leaf pair. */
+const EXPECTED_CHILD_DENY: readonly string[] = [...EXPECTED_DENY, ...EXPECTED_LEAF_DENY]
 // The LSP row's DECLARED dependency (`packages/mpd-mcp-lsp/src/launch.ts` resolves this name). Two of
 // the eight names above are cclsp's own tools, and the row exposes ZERO tools without it, so the
 // positive lane's `denyListMatchesTheEight` can only hold while this dependency resolves from the tree
@@ -126,9 +138,11 @@ const LOGGER_PROBE_PREFIX: string = "[LOGGER-PROBE] "
  * field plus a stub double, which is what this case used to instrument); the row applies it on the child's
  * own scoped tool registry through the adapter's `restrictAgentToolsRetained` (wave 1's retained applier,
  * which reports the APPLIED count and prunes only host-reported unknown names), and logs this line. The
- * count is built from {@link EXPECTED_DENY}, so an "applied 0 denials" regression cannot match it.
+ * count is built from {@link EXPECTED_CHILD_DENY} — the canonical eight PLUS the leaf pair — and the
+ * sentence carries the leaf marker, so neither an "applied 0 denials" regression nor a PRE-LEAF row
+ * (which denied the eight and left a consult free to delegate) can match it.
  */
-const CHILD_SCOPE_RECORD: string = "read-only child: applied " + EXPECTED_DENY.length + " denials to its own tool scope"
+const CHILD_SCOPE_RECORD: string = "read-only child: applied " + EXPECTED_CHILD_DENY.length + " denials (+ the leaf spawn boundary) to its own tool scope"
 /** The ROLES row's own record that the child-scope apply FAILED — the control lane's provenance signal. */
 const CHILD_SCOPE_FAILURE: string = "read-only child: the deny could NOT be applied"
 
@@ -335,15 +349,24 @@ interface ProbeOptions {
 }
 
 /**
- * Extract the string literals of a `const|var READONLY_DENY = [...]` declaration (source or built bundle).
+ * Extract the string literals of a `const|var <NAME>[: TYPE] = [...]` tool-name declaration (source or
+ * bundle).
+ *
+ * GENERIC OVER THE DECLARATION NAME so ONE reader serves both lists this case now encodes: the canonical
+ * `READONLY_DENY` and the leaf boundary's `LEAF_SPAWN_DENY` (CR repair E). A second copy of the regex
+ * would let the two readers drift apart about what a declaration looks like. The OPTIONAL TYPE ANNOTATION
+ * is part of that shape, not an accident: `LEAF_SPAWN_DENY` is declared `: readonly string[]` in source
+ * while `READONLY_DENY` is inferred, and the built bundle drops the annotation entirely — one reader must
+ * accept all three spellings or it reports "cannot locate" on a declaration that is right there.
  * @param text The source or built bundle bytes to scan.
- * @param label Which artefact is being scanned, so a miss names its subject.
+ * @param declaration The declared constant's name, e.g. `READONLY_DENY` or `LEAF_SPAWN_DENY`.
+ * @param label Which artefact is being scanned, so a miss names its subject AND the declaration.
  * @returns The declared tool names, in declaration order.
  */
-function parseDenyArray(text: string, label: string): string[] {
+function parseToolArray(text: string, declaration: string, label: string): string[] {
   // The declaration match, required before any literal can be read out of it.
-  const m = /(?:export\s+)?(?:const|var)\s+READONLY_DENY\s*=\s*\[([^\]]*)\]/.exec(text)
-  if (!m) fail("cannot locate READONLY_DENY in " + label)
+  const m = new RegExp("(?:export\\s+)?(?:const|var)\\s+" + declaration + "\\s*(?::\\s*[^=]+)?=\\s*\\[([^\\]]*)\\]").exec(text)
+  if (!m) fail("cannot locate " + declaration + " in " + label)
   return [...m[1].matchAll(/"([^"]*)"/g)].map((x) => x[1])
 }
 
@@ -510,12 +533,18 @@ function selfTest(): void {
   const wmDistPath = join(repoRoot, "packages", "mpd-workmate-plugin", "dist", "index.js")
 
   // The deny list extracted from the roles plugin's source.
-  const srcDeny = parseDenyArray(rolesSrc, "roles src")
+  const srcDeny = parseToolArray(rolesSrc, "READONLY_DENY", "roles src")
   // The deny list extracted from the roles plugin's built row.
-  const distDeny = parseDenyArray(rolesDist, "roles dist")
+  const distDeny = parseToolArray(rolesDist, "READONLY_DENY", "roles dist")
   checks.push(["roles src carries exactly the expected eight names", JSON.stringify(srcDeny) === JSON.stringify(EXPECTED_DENY)])
   checks.push(["roles dist carries exactly the expected eight names", JSON.stringify(distDeny) === JSON.stringify(EXPECTED_DENY)])
   checks.push(["roles src === roles dist (dist is not stale)", JSON.stringify(srcDeny) === JSON.stringify(distDeny)])
+  // CR repair E (the leaf boundary): the CANONICAL eight is no longer the whole child deny. The pair is
+  // declared beside it in BOTH files, and the pre-leaf state — the eight alone — is exactly what made a
+  // read-only consult able to raise another consult, so a missing or drifted leaf list reddens here.
+  checks.push(["roles src declares exactly the leaf spawn pair", JSON.stringify(parseToolArray(rolesSrc, "LEAF_SPAWN_DENY", "roles src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+  checks.push(["roles dist declares the same leaf spawn pair (dist is not stale)", JSON.stringify(parseToolArray(rolesDist, "LEAF_SPAWN_DENY", "roles dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+  checks.push(["the child's ONE restriction is the canonical eight PLUS the leaf pair (no second layer)", rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])")])
   for (const dead of DEAD_NAMES) {
     checks.push(["roles src has no dead name " + dead, !rolesSrc.includes(dead)])
     checks.push(["roles dist has no dead name " + dead, !rolesDist.includes(dead)])
@@ -524,12 +553,17 @@ function selfTest(): void {
   // covers both "stale dist" and "the fix never reached that package".
   if (existsSync(wmDistPath)) {
     // The deny list extracted from the workmate plugin's built row.
-    const wmDeny = parseDenyArray(readFileSync(wmDistPath, "utf8"), "workmate dist")
+    const wmDeny = parseToolArray(readFileSync(wmDistPath, "utf8"), "READONLY_DENY", "workmate dist")
     checks.push(["workmate dist is rebuilt and denies exactly the eight names", JSON.stringify(wmDeny) === JSON.stringify(EXPECTED_DENY)])
+    // THE LEAF PAIR IS A CROSS-ROW INVARIANT (CR repair E): the two rows keep their OWN copy of it (no
+    // runtime cross-package import) while `test/leaf-boundary.test.ts` pins them equal, so this case
+    // reads the built bytes of BOTH — a row that dropped its copy would leave a delegating consult.
+    checks.push(["workmate dist declares the same leaf spawn pair", JSON.stringify(parseToolArray(readFileSync(wmDistPath, "utf8"), "LEAF_SPAWN_DENY", "workmate dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
   } else {
     checks.push(["workmate dist exists", false])
   }
   checks.push(["workmate src still declares a deny list", /READONLY_DENY\s*=\s*\[/.test(wmSrc)])
+  checks.push(["workmate src declares the same leaf spawn pair", JSON.stringify(parseToolArray(wmSrc, "LEAF_SPAWN_DENY", "workmate src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
 
   // The three MCP write-tools in the list must be names the shipped MCP servers really expose.
   // The built ast_grep MCP server, whose own tool names the deny list must match.
@@ -671,12 +705,15 @@ function selfTest(): void {
   // with `restrictAgentToolsRetained`, which passes the CANONICAL list whole and prunes only the names the
   // host reports as unknown. An unpruned apply makes a cclsp-less host reject the WHOLE list and deny
   // NOTHING, so a revert to the plain call is the original defect — the arms below must redden on it.
-  checks.push(["the child-scope sentence the ROW emits reports the APPLIED count", rolesSrc.includes("read-only child: applied \" + outcome.applied.length + \" denials to its own tool scope")])
-  checks.push(["the row applies the deny on the CHILD's own scoped tool registry (restrictAgentToolsRetained)", rolesSrc.includes("const applyChildReadonlyDeny = (agent: unknown): void =>") && rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])")])
+  // THE SENTENCE MOVED WITH CR repair E: it must carry the leaf marker AND report the applied count, so a
+  // row that regressed to the PRE-LEAF text ("8 denials to its own tool scope", no parenthetical) reddens.
+  checks.push(["the child-scope sentence the ROW emits reports the APPLIED count and names the leaf boundary", rolesSrc.includes("read-only child: applied \" + outcome.applied.length + \" denials (+ the leaf spawn boundary) to its own tool scope")])
+  checks.push(["the row applies the deny on the CHILD's own scoped tool registry (restrictAgentToolsRetained)", rolesSrc.includes("const applyChildReadonlyDeny = (agent: unknown): void =>") && rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])")])
   // WHY THE WHOLE LIST AND THE ABSENCE ARM: pre-filtering the list before the applier is the defect the
   // repair removed, and the plain call is what that repair replaced. The absence literal stops at the
-  // paren on purpose — `restrictAgentToolsRetained(` must NOT satisfy it.
-  checks.push(["the applier passes the canonical list WHOLE and the plain restrictAgentTools call is GONE", rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])") && !rolesSrc.includes("dsh.restrictAgentTools(")])
+  // paren on purpose — `restrictAgentToolsRetained(` must NOT satisfy it. The WHOLE list now means BOTH
+  // declared lists passed as spread, never a hand-filtered or truncated one.
+  checks.push(["the applier passes the canonical list WHOLE and the plain restrictAgentTools call is GONE", rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])") && !rolesSrc.includes("dsh.restrictAgentTools(")])
   // WHY THE PRUNED REPORT: on a host that lost a toolchain the applier prunes rather than fails, so the
   // pruned names are the ONLY trace of a security-relevant narrowing; a silent prune would be invisible.
   checks.push(["the retained applier's pruned-names report is carried into the row log", rolesSrc.includes("outcome.pruned.length") && rolesSrc.includes("outcome.pruned.join(\", \")")])
@@ -1305,7 +1342,7 @@ function runReal(): Promise<void> {
     // The run's single verdict: no ledger entry may report a failed step.
     const allOk = Object.values(steps).every((s) => s.ok !== false)
     writeFileSync(join(outDir, "result.json"), JSON.stringify({
-      ok: allOk, slug: SLUG, defect: DEFECT_SIGNATURE, expectedDenyList: EXPECTED_DENY, deadNames: DEAD_NAMES,
+      ok: allOk, slug: SLUG, defect: DEFECT_SIGNATURE, expectedDenyList: EXPECTED_DENY, expectedChildDenyList: EXPECTED_CHILD_DENY, deadNames: DEAD_NAMES,
       method: "a local DeepSeek Messages SSE stub (lib/messages-sse.ts) drives the parent into one mpd_role_spawn in a FRESH dsh process (throwaway key), with a negative control that re-injects the pre-fix names in the sandbox copy",
       steps,
     }, null, 2))

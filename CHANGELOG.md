@@ -14,7 +14,7 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased — cell-work repairs from two live VEdit sessions, project-declared gates, and a named verify writer
+## 0.16.4 — 2026-10-31 — cell-work repairs from two live VEdit sessions, project-declared gates, and a named verify writer
 
 Two cell-work sessions in a real project (`VEdit`, running the published 0.16.3 file set) produced a
 defect list, and this wave closes every item on it. The frozen contract is

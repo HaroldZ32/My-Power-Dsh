@@ -19,6 +19,7 @@ import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
 import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
+import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
 
 /** The route the Web team view polls. Exported so the client and the route cannot drift. */
 export const TEAM_STATE_PATH = "/plugins/mpd-team/state"
@@ -475,10 +476,35 @@ export interface TeamWebMail {
   ok: boolean
   /** The workspace the mailbox was read from. */
   workspace: string
-  /** One row per message, in the fold's order, in the FOLD's own vocabulary. */
-  messages: Array<{ id: string; fromName: string; toName: string; subject: string; body: string; sentAt: string; deliveredAt?: string; readAt?: string }>
+  /**
+   * One row per message, in the fold's order, in the FOLD's own vocabulary — including the mail
+   * envelope (`kind`, `threadId`, `question`, `answer`), so a panel renders a question's LABELS instead
+   * of asking a reader to count options (contract §5).
+   */
+  messages: Array<{
+    id: string
+    fromName: string
+    toName: string
+    subject: string
+    body: string
+    sentAt: string
+    kind: string
+    threadId: string
+    replyTo?: string
+    question?: MailQuestion
+    answer?: MailAnswer
+    deliveredAt?: string
+    readAt?: string
+    readBy?: string
+  }>
   /** How many records the fold consumed, so a reader can tell an empty mailbox from an unread one. */
   records: number
+  /**
+   * The anomalies the fold reported — a duplicated id, a state row for a send line that never arrived
+   * (R2's N2). Rendered, not swallowed: an operator has to be able to see that the unified log, which a
+   * second writer now appends to, had something to report.
+   */
+  problems: string[]
 }
 
 /**
@@ -564,7 +590,7 @@ export function buildTeamTasks(workspace: string): TeamWebTasks {
  */
 export function buildTeamMail(workspace: string): TeamWebMail {
   /** The folded mailbox, asked for its own messages rather than re-deriving them. */
-  const state = readMailbox(workspace) as { messages?: unknown[] }
+  const state = readMailbox(workspace) as { messages?: unknown[]; problems?: unknown[] }
   // THE FOLD'S OWN FIELD NAMES. A `MailMessage` carries `fromName`/`toName`/`subject`/`body`/`sentAt`
   // and optional `deliveredAt`/`readAt` — there is no `from`/`to`/`content`/`ts`. Projecting invented
   // names yielded a payload of empty strings and `read: false` for every message, which a panel would
@@ -580,14 +606,24 @@ export function buildTeamMail(workspace: string): TeamWebMail {
       subject: String(entry.subject ?? ""),
       body: String(entry.body ?? ""),
       sentAt: String(entry.sentAt ?? ""),
+      // THE ENVELOPE (contract §5): a panel must be able to render a question's options and an
+      // answer's echoed labels, and to group rows by thread, without re-deriving any of it.
+      kind: String(entry.kind ?? "message"),
+      threadId: String(entry.threadId ?? ""),
+      ...(entry.replyTo === undefined ? {} : { replyTo: String(entry.replyTo) }),
+      ...(entry.question === undefined ? {} : { question: entry.question as MailQuestion }),
+      ...(entry.answer === undefined ? {} : { answer: entry.answer as MailAnswer }),
       ...(entry.deliveredAt === undefined ? {} : { deliveredAt: String(entry.deliveredAt) }),
       ...(entry.readAt === undefined ? {} : { readAt: String(entry.readAt) }),
+      ...(entry.readBy === undefined ? {} : { readBy: String(entry.readBy) }),
     }
   })
   // THE RECORD COUNT COMES FROM THE RECORDS, not from the fold: the fold returns `{ messages }` and
   // nothing else, so asking it for a count invented a field that does not exist and read as 0 — which
   // would have told every panel "nothing was ever sent" about a mailbox holding messages.
-  return { ok: true, workspace, messages, records: readRecords(workspace).length }
+  // THE FOLD'S PROBLEM LIST RIDES ALONG (R2's N2): the panel is one of the two surfaces that read this
+  // wrapper, so a duplicate id that the fold reported must not stop being visible here.
+  return { ok: true, workspace, messages, records: readRecords(workspace).length, problems: (Array.isArray(state.problems) ? state.problems : []).map(String) }
 }
 
 /**

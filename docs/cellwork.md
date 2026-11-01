@@ -383,31 +383,39 @@ renders through the untouched flat path (byte-identical by construction). The th
 
 ## Cell-aware mail
 
-Agents in a cell talk to each other without routing through the user interface or through the captain:
+Agents in a cell talk to each other without routing through the user interface or through the captain. The
+mail itself rides ONE durable stream shared with the team plane — `<workspace>/.mpd/team/mailbox.jsonl`; the
+kinds, the label rule, addressing and acknowledgement ownership are documented once in [`mail.md`](./mail.md).
 
-- **Intra-team** mail is the existing `agent_teams_mail` (member ↔ member, no captain in the path).
-- **Member ↔ captain and cross-cell** mail is `cellwork_send`. It resolves the recipient in the cell tree
-  — a member name, the literal `captain`, or the cross-cell form `"<cellId>/<captain|member>"`, where
-  `<cellId>` must be a sub-cell THIS cell registered or this cell's parent (`cell.subcellIds` /
-  `cell.parentCellId`); anything else is refused as `"not in this cell's tree"`. A supplied name that is
-  neither `captain` nor a member of the TARGET cell is REFUSED — the answer lists that cell's members —
-  and never quietly delivered to the caller's own inbox. A send appends the row
-  to the TARGET cell's `mail.jsonl` — for a cross-cell send, the RECIPIENT cell's file, where that
-  cell's `cellwork_inbox` reads it — and the SENDER's journal records the send under a `cell:<cellId>`
-  stamp with `toCell:<target>`.
-- Mail is **durable first, woken best-effort**. A row whose wake-up never went out stays UNDELIVERED
-  (`unreadMail` plus the `wakeFailures[]` rows, each `{id,to,subject,reason}`); `cellwork_inbox` reads
-  and acknowledges unread rows, and `cellwork_supervise` surfaces both the unread count and every
-  undelivered row — not only the pending board. A cross-cell row is durable-only (no wake-up is
-  attempted across cells) and shows on the recipient cell's sweep. A member → captain row is read by
-  the captain's inbox because the captain is not a mailbox member and the Lead handle cannot be woken
-  directly.
-- **The log FORMAT changed, and the change is ONE-WAY.** A `send` row now always carries
-  `wakeSent: false`, and the wake-up outcome is appended AFTER it as a separate `wake` record
-  (`t:"wake"`, `sent`, `reason?`, `at`), so "durable first, wake second" is observable in the log
-  instead of inferred. This build folds an OLDER log correctly (a pre-`wake` row keeps its own
-  `wakeSent`), but a reader from a PREVIOUS build would read a new row as "not woken". State it rather
-  than hide it.
+- **`cellwork_send`** resolves the recipient in the cell tree — a member name, the literal `captain`, or the
+  cross-cell form `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or
+  this cell's parent (`cell.subcellIds` / `cell.parentCellId`); anything else is refused as `"not in this
+  cell's tree"`. A supplied name that is neither `captain` nor a member of the TARGET cell is REFUSED — the
+  answer lists that cell's members — and never quietly delivered to the caller's own inbox.
+- **Where a row lands.** In the workspace mailbox, stamped with the cell's `teamId` and an additive `cellId`
+  the view scopes by (a cross-cell sender also stamps `fromCell`). The write goes through the shared store's
+  atomic fan-out, so every rule runs before the first append. A pre-unification `<cell>/mail.jsonl` is still
+  read and merged into the view in `at` order; an acknowledgement for one of THOSE rows is appended back to
+  that file, while a unified row is acknowledged through the store's ownership-checked path. The SENDER's
+  journal records the send under a `cell:<cellId>` stamp with `toCell:<target>`.
+- **Structured mail, the same protocol.** `kind` (`message` | `question` | `answer`), inferred from `options`
+  or from `selected`/`custom` when omitted; `options` + `multiSelect` for a question; `replyTo` (an answer's
+  `answerTo`); `selected` (the offered labels copied VERBATIM) and/or `custom` for an answer; `questionId`
+  (defaults to the question's own message id, or to the answered question's key); `broadcast: true` for one
+  row per seat of the target cell, the sender excluded. An unknown label is refused WITH the valid label list.
+- **Durable first, woken best-effort.** The row is written BEFORE any wake-up is attempted, and the attempt's
+  outcome is a separate `wake` record (`{t:"wake", id, sent, reason?, at}` — the canonical shape, with its
+  reasons, in [`mail.md`](./mail.md)). A row whose wake-up never went out stays UNDELIVERED, and
+  `cellwork_supervise` surfaces both the unread count and every such row (`unreadMail` plus
+  `wakeFailures[]`), not only the pending board. A cross-cell row is durable-only (no wake-up is attempted
+  across cells) and shows on the recipient cell's sweep. A member → captain row is read by the captain's
+  inbox because the captain is not a mailbox member and the Lead handle cannot be woken directly.
+- **The log format changed, and the change is ONE-WAY.** A `send` row carries `wakeSent: false` (the legacy
+  spelling) and the wake-up outcome is the separate `wake` record that follows it, so "durable first, wake
+  second" is observable in the log instead of inferred. This build folds an OLDER log correctly (a pre-`wake`
+  row keeps its own `wakeSent`), but a reader from a PREVIOUS build would read a new row as "not woken" — and
+  would not find a new row in the cell file at all, because rows written now live in the workspace mailbox.
+  State it rather than hide it.
 
 ## State on disk
 
@@ -419,7 +427,7 @@ Everything lives under the workspace, in gitignored runtime state:
 |---|---|
 | `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason` marker), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields — `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
 | `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign` and `checkpoint-unrecoverable` |
-| `mail.jsonl` | the cell's own mail rows — a same-cell send, or a cross-cell send addressed to this cell; written by the sender, read here by `cellwork_inbox`; a `send` row is followed by a separate `wake` record stating what the wake-up attempt did |
+| `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here — it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |
 | `split/<rev>.refused.json` | the full finding list of a REFUSED submission at that revision, written beside an accepted record, never on top of it |

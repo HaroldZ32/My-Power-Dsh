@@ -1,0 +1,2 @@
+[2026-10-28T15:31:47.266Z] [mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[2026-10-28T15:31:47.364Z] [mpd-config] entry-config update: state re-loaded from the "mpd-config" document (0 knob(s) in force) — no restart needed

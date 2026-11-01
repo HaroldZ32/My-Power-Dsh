@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "extensions": [
+        "zig"
+      ],
+      "command": [
+        "zig-lsp"
+      ],
+      "rootDir": "."
+    }
+  ]
+}

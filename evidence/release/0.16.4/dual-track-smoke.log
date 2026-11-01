@@ -1,0 +1,4 @@
+# typed: 2026-10-31T07:27:13Z  commit: 1bc8a2ea  command: .toolchain/node_modules/.bin/bun skills/dsh-qa/scripts/dual-track-smoke.ts
+[llm-dual-track] official ok=true (9930ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-10-31T07-27-46.613Z
+[llm-dual-track] deepseek ok=false (5696ms, exit=1) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-10-31T07-27-52.311Z
+EXIT=1

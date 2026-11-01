@@ -1,0 +1,8 @@
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui] decision-event seam: no intercept point attempted — the mediated plugin host was not injected (read at apply time; the seam discloses its own verdict once it binds)
+[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped
+[mpd-tui-adapter] host contact bound: /opt/mpd/.qa-user-surface/user-surface-mount-TKhCrD/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui (lib/types/ui.js)
+[mpd-tui] settings section mpd route options: provider=live(2) model=declared(4) reasoningEffort=declared(4) catalog=live
+[mpd-tui] decision-event seam is ready but NOT activated: tui.dsh/v1alpha1#DecisionEvents registration was refused (first refusal: the calling activation has no verified dsh-plugin.json Component identity). No input/rewind/session-switch/compact interception is claimed.
+mpd-tui panel enable keeper: standing down READ-ONLY on host 0.17.0 — the host owns the sidebar enable list (>= 0.16.1); this keeper never writes it again

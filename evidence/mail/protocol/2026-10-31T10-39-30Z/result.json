@@ -1,0 +1,106 @@
+{
+  "review": {
+    "lane": "R1 (F3 closure re-review)",
+    "boardTask": "T14",
+    "workTask": "T13",
+    "subject": "Verify T13's closure of T12's F3 (a payload-less folded question row must not let an invalid answer through)",
+    "contract": ".mpd/plans/mail-unify.md §4 I5/I8 (amended)",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "reviewedTree": "working tree — packages/mpd-mail-protocol/ is UNTRACKED at the base head; the captain commits",
+    "contractSha": {
+      "atGateStartUtc": "2026-10-31T10:39:30Z",
+      "atGateStart": "7de5b81c25636963d93488bb1a14bfabc1dc6e813f5dcc70505bd06c61ec1123",
+      "atReviewEndUtc": "2026-10-31T10:40:13Z",
+      "atReviewEnd": "847b3fe2a98113a9a68510a78eb29b347ffb5f1ce1d8ee8ab3a420166481d3d9",
+      "note": "The contract was edited again while this review ran (224 → 226 lines). §4 I5/I8 and §8 AC-1 are TEXT-IDENTICAL at both hashes; the tail gained task-graph rows T11–T16. Judged against the latest text."
+    },
+    "hashes": {
+      "src/index.ts (unchanged)": "ab5bd237d475d8aeae0fc9113b15fc16779dd02692cd144387dec9c1cf0972ed",
+      "src/types.ts (changed by T13)": "6bbe60cee5f968dd328536721bf0600ed385b244c423c74d60149ca94cb864ea",
+      "src/validate.ts (changed by T13)": "400c0252f153432a543cd8ae78eb6aed22d803b5ebc5cbe424e802bd820e2e3b",
+      "src/fold.ts (unchanged)": "b88d1fb929b9dea367340c63da4448f7ab1749994cc62d8a626dd112efbd6bed",
+      "test/validate.test.ts (changed)": "107762874d47aae5646b7bea602f0401cdf8a815e5651f0f89ebeef45adbd63f",
+      "test/fold.test.ts (unchanged)": "0abf73d23b07acaad8d8ad346e00dafb2eb48c246bd04cd86d47c0611ef1c0a0",
+      "dist/index.js (rebuilt)": "2fd9c52e3f4079040076a75a350e69f15cd8c25148c93b8880bf8fe1a9383376"
+    },
+    "sandwich": "All package hashes were IDENTICAL at 2026-10-31T10:39:30Z and 10:40:13Z — the reviewed bytes did not move during the re-review."
+  },
+  "verdict": {
+    "task": "approve",
+    "f3": "CLOSED",
+    "riskLevel": "low",
+    "justification": "The payload-less-target branch now refuses instead of short-circuiting to ok: it reports `question-payload-missing` naming the target AND runs the context-free answer rules, so T12's P10 shape (empty questionId + unoffered label) is refused with a two-problem list, the whole list grows to three when the selection is also empty, and the positive control with the payload present still refuses on the echo (I4) with no payload-missing code. Fail-closed is the correct reading of amended I5 (equality is unprovable without the target's key). The protocol suite is 46/0; the two red gates are OTHER lanes' in-flight files, not this package."
+  },
+  "claimsAudit": [
+    {
+      "claim": "T13 closed F3: a payload-less folded question row no longer lets an answer with an empty questionId + unoffered label through",
+      "result": "CONFIRMED",
+      "evidence": "Probe T14-P10 against `{...questionMessage(), question: undefined}` returns exactly [question-payload-missing (message names the target M1), answer-question-id]; it is a refusal, not ok. Shipped arm `P10 — a question row with no payload REFUSES the answer and names the missing payload` passes (46-test run)."
+    },
+    {
+      "claim": "The refusal carries the WHOLE problem list (I8), not just the first problem",
+      "result": "CONFIRMED",
+      "evidence": "Probe T14-WHOLE (payload-less, empty key AND empty selection) returns THREE problems: question-payload-missing + answer-question-id + answer-selection. The new branch has no early return; it delegates to the same context-free `validateAnswer`."
+    },
+    {
+      "claim": "The refusal names the payload-less target",
+      "result": "CONFIRMED",
+      "evidence": "The message is `the referenced \\`question\\` row M1 carries no question payload, so its offered labels cannot be checked` (probe output; the shipped arm asserts it contains 'M1')."
+    },
+    {
+      "claim": "Positive control: the in-context echo still runs when the payload is present",
+      "result": "CONFIRMED",
+      "evidence": "Probe T14-P10b returns [answer-question-id, answer-unknown-label] and NOT question-payload-missing; probe T14-OK returns ok for a correct key + offered label. The shipped control arm asserts the same and that the two branches are distinguishable."
+    },
+    {
+      "claim": "The new problem code is a first-class part of the vocabulary (typed, not a prose string)",
+      "result": "CONFIRMED",
+      "evidence": "types.ts · MailProblemCode gained `question-payload-missing` and the doc comment classifies it with the I5 codes; the package typechecks cleanly (the repo-wide tsgo errors are in another package — see gates)."
+    },
+    {
+      "claim": "No regression in the surrounding rules",
+      "result": "CONFIRMED",
+      "evidence": "46 package tests / 0 fail (44 before + the two F3 arms); probes still show the envelope pre-flight refusing an empty key, `reference-not-question` for a payload-less PLAIN message, and the fold keeping + reporting the payload-less question row (I8)."
+    }
+  ],
+  "gates": [
+    { "id": "bun-test-mail-protocol", "command": "bun test packages/mpd-mail-protocol", "exit": 0, "decidingOutput": "46 pass, 0 fail, 2 files (44 before + P10/P10b)" },
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 1,
+      "decidingOutput": "$ tsgo --noEmit — 4 errors, ALL in packages/mpd-cellwork-plugin/src/protocol.ts (TS2304 mailId/mailSequence, lines 801-802), i.e. T4's in-flight file. ZERO diagnostics in packages/mpd-mail-protocol.",
+      "attribution": "NOT T13. Re-ran at 10:40:13Z with the same four errors in the same file; T4 still in_progress. T10 closes the wave sweep."
+    },
+    {
+      "id": "verify-comments",
+      "command": "bun run verify:comments",
+      "exit": 1,
+      "decidingOutput": "scanned 513 files / 45922 declarations; VERDICT: FAIL — 1 violation across 1 file: packages/mpd-team-core-plugin/src/mail-permit.ts (comment — questionId), i.e. T3's in-flight file. ZERO violations in packages/mpd-mail-protocol.",
+      "attribution": "NOT T13. Re-ran at 10:40:13Z with the same single violation in the same file; T3 still in_progress. T10 closes the wave sweep."
+    }
+  ],
+  "findings": [],
+  "declinedToJudge": [
+    { "item": "verify-dist-fresh (the protocol dist changed to 2fd9c52e…)", "reason": "The Lead declared dist freshness a wave-level bound owned by T10 and told me not to charge stale dists to T13; the dist mtime (18:30) follows the source edits (18:29), but it is not certified here. Not judged." },
+    { "item": "The repo-wide typecheck and verify:comments are RED", "reason": "Both failures are in other lanes' in-flight files (cellwork protocol.ts — T4; team-core mail-permit.ts — T3), reproduced twice at 10:39:30Z and 10:40:13Z with zero protocol-package diagnostics. T10's integration sweep owns them; not charged to T13." },
+    { "item": "The `question-payload-missing` code is not enumerated in the package README", "reason": "The README does not enumerate ANY problem code (it describes MailCheck and names I4's labels list), so the new code is consistent with the established docs shape; T6 owns docs/READMEs. Not a T13 defect." },
+    { "item": "The P10 arm asserts the exact problem ORDER", "reason": "Brittle to a future reordering, but the order is currently stable and the assertion discriminates the code set; no behaviour at stake. Set aside." },
+    { "item": "A valid answer against a payload-less target is now REFUSED (fail-closed)", "reason": "This is the correct reading of amended I5: equality with the question row's key is unprovable when the row has no payload, and silently accepting would recreate F3 one step later. Declared behaviour, not a defect." },
+    { "item": "Contract edited mid-review (224 → 226 lines)", "reason": "§4 I5/I8 and §8 AC-1 text identical at both hashes; the change is the task graph (T11–T16). Not a T13 finding." }
+  ],
+  "bounds": [
+    "Reviewed the WORKING TREE at HEAD e9be8890; packages/mpd-mail-protocol/ is untracked, so there is no git diff — the T13 delta was read from the changed files and confirmed by behaviour. All package hashes were identical at 10:39:30Z and 10:40:13Z (sandwich).",
+    "Read: validate.ts · validateReferences (the new payload-less branch) and its callers/helpers; types.ts · MailProblemCode; the two new test arms; the fold's I8 behaviour re-probed.",
+    "Ran: `bun test packages/mpd-mail-protocol` (46/0), `bun run typecheck` (red: T4's file only), `bun run verify:comments` (red: T3's file only), both re-run once, plus probes T14-P10/P10b/WHOLE/OK/FAIL-CLOSED/not-a-question/fold/envelope.",
+    "Did NOT run: verify-dist-fresh (Lead-declared T10 bound), `bun run verify:gates` aggregate (dirty tree, writers in flight), the Docker lane.",
+    "The T13 writer's transcript was not readable from this seat; every claim above was re-derived from the code, the shipped arms and my own probes."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/protocol/2026-10-31T10-39-30Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (T14 probes printed to output.log)"
+  }
+}

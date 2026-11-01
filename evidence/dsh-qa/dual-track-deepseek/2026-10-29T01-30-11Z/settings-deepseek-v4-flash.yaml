@@ -1,0 +1,9 @@
+# Diagnostic candidate (NOT applied): declares the `deepseek-v4-flash` model id the compat-track
+# overlay names, so the case's own overlay can stay untouched. Tests whether a hand-declared
+# model id on the installed `deepseek` catalog provider is accepted and served.
+llm-pi-ai:
+  providers:
+    deepseek:
+      apiKeyEnv: DEEPSEEK_API_KEY
+      models:
+        - id: deepseek-v4-flash

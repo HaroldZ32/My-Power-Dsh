@@ -81,6 +81,10 @@
       "name": "@mpd-dsh/hashline",
       "version": "0.2.3",
     },
+    "packages/mpd-mail-protocol": {
+      "name": "@mpd-dsh/mail-protocol",
+      "version": "0.1.0",
+    },
     "packages/mpd-mcp-astgrep": {
       "name": "@mpd-dsh/mcp-astgrep",
       "version": "0.2.3",
@@ -406,6 +410,8 @@
     "@mpd-dsh/graph-core": ["@mpd-dsh/graph-core@workspace:packages/mpd-graph-core"],
 
     "@mpd-dsh/hashline": ["@mpd-dsh/hashline@workspace:packages/mpd-hashline-plugin"],
+
+    "@mpd-dsh/mail-protocol": ["@mpd-dsh/mail-protocol@workspace:packages/mpd-mail-protocol"],
 
     "@mpd-dsh/mcp-astgrep": ["@mpd-dsh/mcp-astgrep@workspace:packages/mpd-mcp-astgrep"],
 

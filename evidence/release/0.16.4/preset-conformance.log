@@ -1,0 +1,7 @@
+# typed: 2026-10-31T07:27:13Z  commit: 1bc8a2ea  command: node skills/dsh-qa/scripts/preset-conformance.ts (real mount)
+[preset-conformance] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/preset-conformance/2026-10-31T07-27-13.702Z
+  sessionHeader: {"ok":true,"agentPreset":"mpd","log":"/tmp/mpd-preset-main-M7qIS9/home/sessions/--tmp-mpd-preset-main-M7qIS9-ws--/session-fd0edab2-d265-48d1-a455-b4479079ce5f/session.v4.jsonl.zstd"}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)","mutations":["preset-mpd row: persona prefix: -> text:"],"override":"id-target on preset-mpd via --patch"}
+[preset-conformance] PASS
+EXIT=0

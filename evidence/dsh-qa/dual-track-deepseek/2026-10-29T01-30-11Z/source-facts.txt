@@ -1,0 +1,114 @@
+# Source facts for NO_ADAPTER (read 2026-10-29T01:35:37Z, harness 0.2.1-rc.3)
+
+## dsh-llm LlmRuntime.registration — the NO_ADAPTER throw
+2042:			return this.registration(provider).retryPolicy;
+2043-		}
+2044-		/**
+2045-		* Resolve provider-side request-image pricing for one exact route, or
+2046-		* `undefined` when the provider is unregistered or declares none. Unknown
+--
+2064:			return this.registration(provider).adapter.imageRequestTarget(provider, model, image);
+2065-		}
+2066-		/**
+2067-		* Resolve the exact text one durable file occurrence contributes to every
+2068-		* provider request in the current execution environment.
+--
+2087:			const models = await this.registration(provider).adapter.listModels(provider);
+2088-			const seen = /* @__PURE__ */ new Set();
+2089-			return models.map((model) => {
+2090-				if (typeof model.provider !== "string" || model.provider !== provider || typeof model.id !== "string" || model.id.length === 0 || typeof model.name !== "string" || model.name.length === 0 || model.description !== void 0 && typeof model.description !== "string" || seen.has(model.id)) throw new LlmError(`adapter returned invalid or duplicate model metadata for provider "${provider}"`, "INVALID_CATALOG");
+2091-				seen.add(model.id);
+--
+2112:			return this.resolveModelInfoFor(this.registration(provider), model, signal);
+2113-		}
+2114-		async resolveModelInfoFor(registration, model, signal) {
+2115-			const resolved = await registration.adapter.resolveModel(registration.provider.id, model, signal);
+2116-			return this.normalizeModelInfo(registration, model, resolved);
+--
+2223:			const registration = this.registration(provider);
+2224-			const adapterCall = await registration.adapter.prepareCall(provider, model, signal);
+2225-			signal?.throwIfAborted();
+2226-			const modelInfo = this.normalizeModelInfo(registration, model, adapterCall.model);
+2227-			const proposed = configure === void 0 ? config : {
+--
+2262:		registration(provider) {
+2263-			const registration = this.adapters.get(provider);
+2264-			if (!registration) throw new LlmError(`no adapter registered for provider "${provider}"`, "NO_ADAPTER");
+2265-			return registration;
+2266-		}
+
+## dsh-llm registerAdapter — routes are owned by registered adapters
+1666:* with `ctx.llm.registerAdapter(providers, adapter)`. Every provider HTTP request must include
+1667-* `attributionHeaders()`; prove the headers are added in the wire request or library header hook. The direct-fetch
+1668-* DeepSeek and library-backed pi-ai adapters meet this contract through different internals.
+1669-*/
+1670-var LlmAdapter = class {
+1671-	/**
+1672-	* Describe one provider route owned by this adapter.
+1673-	* @param provider - a route passed to `registerAdapter()` for this instance.
+1674-	* @returns detached display metadata whose id must equal `provider`.
+1675-	*/
+1676-	providerInfo(provider) {
+1677-		return {
+1678-			id: provider,
+--
+1842:		registerAdapter(providers, adapter) {
+1843-			const owned = /* @__PURE__ */ new Set();
+1844-			let released = false;
+1845-			const dispose = this.ctx.effect(function* () {
+
+## dsh-llm-pi-ai Config and registration gate
+1083:const Config = z.object({ providers: z.dict(profile).default({}).volatile() });
+
+## dsh-settings importLegacyDocument — settings.yaml -> active profile patch
+346:	async importLegacyDocument() {
+347-		const profile = this.ownerContext.profileContext;
+348-		const path = join(profile.home, "settings.yaml");
+349-		if (!existsSync(path)) return;
+350-		const imported = `${path}.imported`;
+351-		await rename(path, imported);
+352-		const sections = parse(await readFile(imported, "utf8"));
+353-		for (const [section, values] of Object.entries(sections ?? {})) {
+354-			const ns = LEGACY_SECTION_ENTRIES[section] ?? section;
+
+## dsh-app-boot PROFILE_TEMPLATES.headless
+551:const PROFILE_TEMPLATES = {
+552-	acp: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-acp-app"] },
+553-	web: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] },
+554-	headless: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] },
+555-	sdk: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-sdk-app"] },
+556-	"sdk-minimal": { bundles: ["@deepseek-ai/dsh-sdk-minimal"] }
+557-};
+558-/** Installation-owned bundle tuples normalized to the shipped template. */
+
+## dsh-app-boot: --profile initializes the profile from the shipped template
+947:	const installationOwned = INSTALLATION_OWNED_PROFILE_TUPLES[name];
+948-	const template = PROFILE_TEMPLATES[name];
+949-	const bundles = manifest.dsh?.profile?.bundles;
+950-	if (template === void 0 || bundles === void 0) return manifest;
+951-	if (!(installationOwned !== void 0 && sameBundles(bundles, installationOwned))) return manifest;
+952-	const normalized = withBundles(manifest, template.bundles);
+953-	writeProfileManifest(dir, normalized);
+954-	return normalized;
+955-}
+956-/**
+957-* Remove {@link RETIRED_BUNDLES} from a profile's bundle list, writing the
+958-* manifest back only when it listed one.
+959-*/
+
+## dsh-llm-pi-ai ensureRegistrationFacts — zero routes means NO registerAdapter call
+	const ensureRegistrationFacts = () => {
+		const facts = registrationFacts(profiles());
+		if (deepEqualJson(facts, registeredFacts)) return;
+		const routes = [...profiles().keys()];
+		if (registration === void 0) {
+			if (routes.length === 0) {
+				registeredFacts = facts;
+				return;
+			}
+			registration = ctx.llm.registerAdapter(routes, adapter);
+		} else registration.replace(routes);
+		registeredFacts = facts;
+	};
+	ensureRegistrationFacts();
+	ctx.on("loader/volatile-update", () => {

@@ -1,0 +1,871 @@
+{
+  "case": "user-surface-mount",
+  "startedAt": "2026-10-29T01:33:10.741Z",
+  "finishedAt": "2026-10-29T01:34:41.192Z",
+  "ok": true,
+  "complete": true,
+  "mode": "profile-artifact",
+  "assertions": [
+    {
+      "name": "userSurface.row.mpd-better-sidebar",
+      "ok": null,
+      "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.mpd-better-sidebar",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.row.mcp-astgrep",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mcp-git",
+      "ok": true,
+      "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+      "raw": "disabled=true in both the patch and the boot (state=null)"
+    },
+    {
+      "name": "userSurface.row.mcp-shell",
+      "ok": true,
+      "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+      "raw": "disabled=true in both the patch and the boot (state=null)"
+    },
+    {
+      "name": "userSurface.row.mcp-lsp",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mcp-codegraph",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mpd-web-compat",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mpd-dsh-adapter",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-dsh-adapter.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-config",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-config.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-goal",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-goal.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-team-watchdog",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-team-watchdog.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-tools",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-modelchain",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_modelchain_resolve,mpd_memory_save,mpd_memory_recall state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-ext",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-ext.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-roles",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-roles.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-verify",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-verify.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-ulw",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_ultrawork,mpd_ulw state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-hashline",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_hashline_read,mpd_hashline_edit,mpd_hashline_format,mpd_hashline_restore state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-boulder",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_boulder_status,mpd_boulder_start,mpd_boulder_complete,mpd_boulder_task_timer,mpd_boulder_plan_progress,mpd_boulder_plans state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-comment-checker",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_comment_check state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-codegraph",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-codegraph.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-memory",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_memory_write,mpd_memory_read,mpd_memory_reflect,mpd_memory_reflect_complete,mpd_memory_status state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-workmate",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_workmate_list,mpd_workmate_init,mpd_workmate_spawn,mpd_workmate_reflect,mpd_workmate_match,mpd_workmate_rename,mpd_workmate_delete state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-team-core",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-team-core.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-team-compact",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal,mpd_team_compact_run,mpd_team_compact_status state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-cellwork",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-cellwork.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-bootstrap",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-bootstrap.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-project-init",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-tui-adapter",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mpd-tui",
+      "ok": true,
+      "reason": "the row's own log sink exists and is non-empty after the boot",
+      "raw": "sink=<ws>/.mpd/logs/mpd-tui.log bytes>0 state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-agent-team",
+      "ok": null,
+      "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.mpd-agent-team",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.row.mpd-roster-provider",
+      "ok": true,
+      "reason": "a name the row's own module declares is live in the boot's registry",
+      "raw": "live=get_goal state=2"
+    },
+    {
+      "name": "userSurface.row.mpd-tool-agent-team",
+      "ok": null,
+      "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.mpd-tool-agent-team",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=false patch=cordis.patch.yml"
+    },
+    {
+      "name": "userSurface.row.mpd-ui-agent-team",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mcp-context7",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.mcp-grepapp",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.preset-mpd",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.persona",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:95 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.persona",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:95 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.agent-instructions",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.agent-instructions",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.time-context",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:172 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.time-context",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:172 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.tool-bash",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-bash",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-pwsh",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-pwsh",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-fs",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-fs",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-fs-search",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-fs-search",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-jobs",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-jobs",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-schedule",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:219 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.tool-schedule",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:219 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.skill-filesystem",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.skill-filesystem",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-skill",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-skill",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.command-goal",
+      "ok": null,
+      "reason": "composed but never instantiated in this plane (no fiber, not disabled) and the row names no tool/command/sink — NOT individually proven",
+      "raw": "state=null runtime=false disabled=false patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.command-goal",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=false patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-goal",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-goal",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.planning",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:257 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.planning",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:257 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.plan-mode",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.plan-mode",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.compaction",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:290 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.compaction",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:290 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.compaction-basic",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.compaction-basic",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.command-compact",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.command-compact",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-result-pruner",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-result-pruner",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.delegation",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:327 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.delegation",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:327 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.tool-subagent-control",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-subagent-control",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-subagent-list-agents",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-subagent-list-agents",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-subagent",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-subagent",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-subagent-fork",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-subagent-fork",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.workflow-ptc",
+      "ok": true,
+      "reason": "the loader holds an ACTIVE fiber with a runtime for this row (its apply() ran); the row names no inspectable tool/command and writes no sink",
+      "raw": "state=2 runtime=true disabled=false"
+    },
+    {
+      "name": "userSurface.row.tool-workflow",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-workflow",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-ask-user",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:361 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.tool-ask-user",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:361 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.tool-todo",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-todo",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.tool-web",
+      "ok": null,
+      "reason": "preset-scoped row: the artifact declares it inside the `mpd` preset, the boot materialises preset rows per session (the root copy is disabled) and the row names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.bound.tool-web",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "state=null runtime=false disabled=true presetOwned=true agentPreset=mpd patch=presets/mpd.patch.yml"
+    },
+    {
+      "name": "userSurface.row.present",
+      "ok": null,
+      "reason": "preset-owned row: the artifact declares it inside the `mpd` preset (materialised per session), the root loader holds no entry of its own, and it names no tool/command/sink this plane can read — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:381 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.bound.present",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:381 agentPreset=mpd loaderEntries=155"
+    },
+    {
+      "name": "userSurface.row.tool-plugin-manager",
+      "ok": true,
+      "reason": "declared disabled and the loader agrees: composed, deliberately not applied",
+      "raw": "disabled=true in both the patch and the boot (state=null)"
+    },
+    {
+      "name": "userSurface.row.tool-plugin-market",
+      "ok": null,
+      "reason": "preset-owned row declared DISABLED: the preset carries it as data and this plane exposes no entry — composed, NOT individually proven",
+      "raw": "patch=presets/mpd.patch.yml:393 declared disabled=true; loader entry absent"
+    },
+    {
+      "name": "userSurface.bound.tool-plugin-market",
+      "ok": true,
+      "reason": "declared bound: the artifact composes this row but this plane cannot prove it individually, so its own row stays NULL and is never read as a pass",
+      "raw": "patch=presets/mpd.patch.yml:393 declared disabled=true; loader entry absent"
+    },
+    {
+      "name": "userSurface.rowsEnumerated",
+      "ok": true,
+      "reason": "the installed artifact's own layers were enumerated at run time",
+      "raw": "version=0.16.2 layers=cordis.patch.yml,mpd.patch.yml rows=69 disabled=mcp-git,mcp-shell,tool-plugin-manager,tool-plugin-market"
+    },
+    {
+      "name": "userSurface.rowsWitness",
+      "ok": true,
+      "reason": "no declared row is defective in the real boot (36 witnessed, 33 declared bounds)",
+      "raw": "witnessCounts={\"declared-bound\":33,\"loader-active\":10,\"disabled-by-design\":3,\"sink\":12,\"registration\":11} failed=-"
+    },
+    {
+      "name": "userSurface.rowsDeclaredBound",
+      "ok": true,
+      "reason": "33 row(s) are COMPOSED BUT NOT PROVEN on this plane; their ids are listed so no reader mistakes them for a pass",
+      "raw": "bound=mpd-better-sidebar(declared-bound),mpd-agent-team(declared-bound),mpd-tool-agent-team(declared-bound),persona(declared-bound),agent-instructions(declared-bound),time-context(declared-bound),tool-bash(declared-bound),tool-pwsh(declared-bound),tool-fs(declared-bound),tool-fs-search(declared-bound),tool-jobs(declared-bound),tool-schedule(declared-bound),skill-filesystem(declared-bound),tool-skill(declared-bound),command-goal(declared-bound),tool-goal(declared-bound),planning(declared-bound),plan-mode(declared-bound),compaction(declared-bound),compaction-basic(declared-bound),command-compact(declared-bound),tool-result-pruner(declared-bound),delegation(declared-bound),tool-subagent-control(declared-bound),tool-subagent-list-agents(declared-bound),tool-subagent(declared-bound),tool-subagent-fork(declared-bound),tool-workflow(declared-bound),tool-ask-user(declared-bound),tool-todo(declared-bound),tool-web(declared-bound),present(declared-bound),tool-plugin-market(declared-bound)"
+    },
+    {
+      "name": "userSurface.commandCorpus",
+      "ok": true,
+      "reason": "the expected set is exactly the published seven",
+      "raw": "expected=ulw,ultrawork,cellwork,mpd-codegraph,agent-teams,mpd,mpd-model"
+    },
+    {
+      "name": "userSurface.command.ulw",
+      "ok": true,
+      "reason": "registered in the live command registry AND drawn in the command palette",
+      "raw": "registry=true paletteCount=4 paletteRows=ulw plane=shared plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.ultrawork",
+      "ok": true,
+      "reason": "registered in the live command registry AND drawn in the command palette",
+      "raw": "registry=true paletteCount=1 paletteRows=ultrawork plane=shared plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.cellwork",
+      "ok": true,
+      "reason": "registered in the live command registry AND drawn in the command palette",
+      "raw": "registry=true paletteCount=1 paletteRows=cellwork plane=shared plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.mpd-codegraph",
+      "ok": true,
+      "reason": "registered in the live command registry AND drawn in the command palette",
+      "raw": "registry=true paletteCount=1 paletteRows=mpd-codegraph plane=shared plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.agent-teams",
+      "ok": true,
+      "reason": "registered in the live command registry AND drawn in the command palette",
+      "raw": "registry=true paletteCount=1 paletteRows=agent-teams plane=shared plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.mpd",
+      "ok": true,
+      "reason": "drawn in the command palette on its documented TUI-only plane (a registry listing is not required there)",
+      "raw": "registry=true paletteCount=3 paletteRows=mpd plane=TUI-only plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.command.mpd-model",
+      "ok": true,
+      "reason": "drawn in the command palette on its documented TUI-only plane (a registry listing is not required there)",
+      "raw": "registry=true paletteCount=1 paletteRows=mpd-model plane=TUI-only plane",
+      "gating": true
+    },
+    {
+      "name": "userSurface.negativeControl",
+      "ok": true,
+      "reason": "a command no row contributes is absent from both surfaces while the palette stayed alive on both sides",
+      "raw": "registry=false controlCount=null controlRows=- aliveBefore=96 aliveAfter=96"
+    },
+    {
+      "name": "userSurface.findings",
+      "ok": true,
+      "reason": "no non-gating finding on this run",
+      "raw": "-"
+    },
+    {
+      "name": "userSurface.profileRowListWins",
+      "ok": true,
+      "reason": "every non-preset row the profile's artifact declares is composed by the boot",
+      "raw": "profileRows=36 bootEntries=155 missing=-"
+    },
+    {
+      "name": "userSurface.bundleResolution",
+      "ok": true,
+      "reason": "the loader resolves profile copy 0.16.2 while the profile's artifact is 0.16.2",
+      "raw": "source=profile dir=/opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd version=0.16.2 profileVersion=0.16.2 sameCopyDigests=true"
+    },
+    {
+      "name": "userSurface.isolation",
+      "ok": true,
+      "reason": "every session-store key is inside the sandbox",
+      "raw": "checked=1 keys=--opt-mpd-.qa-user-surface-user-surface-mount-5CvLyX-ws--"
+    },
+    {
+      "name": "userSurface.probe",
+      "ok": true,
+      "reason": "the instrumentation row mounted and recorded the live loader and registries",
+      "raw": "phase=tick-14 loaderEntries=155 commands=34 tools=117"
+    }
+  ],
+  "facts": {
+    "profileDir": "/opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/dshhome/profiles/dsh-tui",
+    "bundleDir": "/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd",
+    "bundleVersion": "0.16.2",
+    "patchFiles": [
+      "/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/cordis.patch.yml",
+      "/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd/presets/mpd.patch.yml"
+    ],
+    "rowCount": 69,
+    "resolution": {
+      "dir": "/opt/mpd/.qa-user-surface/user-surface-mount-5CvLyX/dshhome/profiles/dsh-tui/node_modules/@mpd-dsh/mpd",
+      "version": "0.16.2",
+      "source": "profile"
+    },
+    "sinks": [
+      {
+        "id": "mpd-bootstrap",
+        "bytes": 121
+      },
+      {
+        "id": "mpd-cellwork",
+        "bytes": 131
+      },
+      {
+        "id": "mpd-codegraph",
+        "bytes": 230
+      },
+      {
+        "id": "mpd-config",
+        "bytes": 440
+      },
+      {
+        "id": "mpd-dsh-adapter",
+        "bytes": 5873
+      },
+      {
+        "id": "mpd-ext",
+        "bytes": 740
+      },
+      {
+        "id": "mpd-goal",
+        "bytes": 79
+      },
+      {
+        "id": "mpd-mcp-codegraph",
+        "bytes": 900
+      },
+      {
+        "id": "mpd-mcp-lsp",
+        "bytes": 1875
+      },
+      {
+        "id": "mpd-patch-guards",
+        "bytes": 577
+      },
+      {
+        "id": "mpd-roles",
+        "bytes": 701
+      },
+      {
+        "id": "mpd-roster",
+        "bytes": 144
+      },
+      {
+        "id": "mpd-team-core",
+        "bytes": 780
+      },
+      {
+        "id": "mpd-team-watchdog",
+        "bytes": 331
+      },
+      {
+        "id": "mpd-tui",
+        "bytes": 1122
+      },
+      {
+        "id": "mpd-verify",
+        "bytes": 317
+      }
+    ],
+    "witnessCounts": {
+      "declared-bound": 33,
+      "loader-active": 10,
+      "disabled-by-design": 3,
+      "sink": 12,
+      "registration": 11
+    },
+    "registryCommands": [
+      "agent-teams",
+      "ast-grep",
+      "auth",
+      "cellwork",
+      "compact",
+      "cordis-dev",
+      "data-scientist",
+      "debug-prompt",
+      "debugging",
+      "dsh-qa",
+      "dsh-tui-guide",
+      "feedback",
+      "frontend",
+      "git-master",
+      "goal",
+      "init-deep",
+      "lsp-setup",
+      "mpd",
+      "mpd-codegraph",
+      "mpd-model",
+      "permission",
+      "plan",
+      "programming",
+      "refactor",
+      "remove-ai-slops",
+      "review-work",
+      "svn-master",
+      "ultimate-browsing",
+      "ultrawork",
+      "ulw",
+      "ulw-execute",
+      "ulw-plan",
+      "ulw-research",
+      "visual-qa"
+    ],
+    "paletteCounts": {
+      "ulw": 4,
+      "ultrawork": 1,
+      "cellwork": 1,
+      "mpd-codegraph": 1,
+      "agent-teams": 1,
+      "mpd": 3,
+      "mpd-model": 1
+    },
+    "agentPreset": "mpd"
+  },
+  "doesNotProve": [
+    "a live model turn: no credential is staged and no turn is driven (the row and command surfaces do not need one)",
+    "the Web plane: the palette witness is the TUI, and /mpd + /mpd-model are documented TUI-only",
+    "a packed/tarball install: the subject is whatever profile --profile names",
+    "that a row's apply() produced the user-visible behaviour of its feature: this case proves the row is mounted and its capability is registered, not that the feature works"
+  ]
+}

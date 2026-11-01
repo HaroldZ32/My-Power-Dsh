@@ -1,0 +1,20 @@
+
+=== PROBES (T19 — T17 workspace-wide references; adversarial) ===
+[probe] 1a cross-team answer, wrong label: reason and whether TEAM Y's labels are echoed => {"ok":false,"reason":"invalid-envelope","detail":"selected label is not offered by the question: \"Z. made-up\" (valid labels: A. secret-one, B. secret-two)","leaksLabelText":true,"mentionsValidLabels":true}
+[probe] 1b nothing was written => 1
+[probe] 1c cross-team answer with a VALID label (authorization reachable?) => {"ok":true,"writtenRows":[{"toId":"x-target-session","teamId":"team-x","answerTo":"mail-20261031100000-001","threadId":"mail-20261031100000-001"}]}
+[probe] 2 same-team, the ADDRESSEE echoes a wrong label (unchanged?) => {"ok":false,"reason":"unknown-recipient","detail":"\"X Member\" is not a member of this team"}
+[probe] 2b same-team NON-recipient, wrong label: reason and echo => {"ok":false,"reason":"unknown-recipient","detail":"\"X Member\" is not a member of this team","leaksLabelText":false}
+[probe] 4a plain reply to a FOREIGN message (accepted? thread leaked?) => {"ok":true,"replyTo":"mail-20261031100000-001","threadId":"mail-20261031100000-001","yQuestionId":"mail-20261031100000-001"}
+[probe] 4b a FOREIGN/nonexistent id is an existence oracle => {"ok":false,"reason":"invalid-envelope","detail":"`replyTo` names no message in this mailbox: \"mail-19700101000000-999\""}
+=== EXIT: probes rc=0 ===
+
+=== PROBES RERUN (valid same-team fixture) ===
+[probe] 1a cross-team answer, wrong label: reason and whether TEAM Y's labels are echoed => {"ok":false,"reason":"invalid-envelope","detail":"selected label is not offered by the question: \"Z. made-up\" (valid labels: A. secret-one, B. secret-two)","leaksLabelText":true,"mentionsValidLabels":true}
+[probe] 1b nothing was written => 1
+[probe] 1c cross-team answer with a VALID label (authorization reachable?) => {"ok":true,"writtenRows":[{"toId":"x-target-session","teamId":"team-x","answerTo":"mail-20261031100000-001","threadId":"mail-20261031100000-001"}]}
+[probe] 2 same-team, the ADDRESSEE echoes a wrong label (unchanged?) => {"ok":false,"reason":"invalid-envelope","detail":"selected label is not offered by the question: \"Z. nope\" (valid labels: A. x-one, B. x-two)"}
+[probe] 2b same-team NON-recipient, wrong label: reason and echo => {"ok":false,"reason":"invalid-envelope","detail":"selected label is not offered by the question: \"Z. nope\" (valid labels: A. x-one, B. x-two)","leaksLabelText":true}
+[probe] 4a plain reply to a FOREIGN message (accepted? thread leaked?) => {"ok":true,"replyTo":"mail-20261031100000-001","threadId":"mail-20261031100000-001","yQuestionId":"mail-20261031100000-001"}
+[probe] 4b a FOREIGN/nonexistent id is an existence oracle => {"ok":false,"reason":"invalid-envelope","detail":"`replyTo` names no message in this mailbox: \"mail-19700101000000-999\""}
+=== EXIT: probes rc=0 ===

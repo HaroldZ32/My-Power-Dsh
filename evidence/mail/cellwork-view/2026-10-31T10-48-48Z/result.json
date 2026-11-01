@@ -1,0 +1,129 @@
+{
+  "review": {
+    "lane": "R4",
+    "boardTask": "T9",
+    "workTask": "T4",
+    "subject": "Cellwork cell view over the unified mailbox (structured question/answer, cross-cell addressing, ack-once)",
+    "contract": ".mpd/plans/mail-unify.md §6 / AC-3 + AC-5",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "reviewedTree": "working tree — the four reviewed source files are TRACKED modifications; test/mail-unified.test.ts is UNTRACKED (new)",
+    "contractSha": {
+      "atGateStartUtc": "2026-10-31T10:48:48Z",
+      "atGateStart": "cd980363d4eb550399b9376111403e1db93b8dbd683d5b10739b49bb20e92374",
+      "atReviewEndUtc": "2026-10-31T10:57:23Z",
+      "atReviewEnd": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee",
+      "note": "The contract was edited WHILE this review ran (229 → 239 lines). The §6, AC-3 and AC-5 TEXT is identical at both hashes (verified by re-reading and section hashing), so the judgement below holds; the new tail adds accepted bounds/known defects."
+    },
+    "hashes": {
+      "src/mail.ts": "8840135892d8b7884b77c57f47a7d3db0c95942dc87cbbdf5d966fa22b7f8e8b",
+      "src/protocol.ts": "a1b8517868f19be4e089ab0edc61c2417a7ce469eace51b1cab2d497a6149000",
+      "src/guard.ts": "7d0178a989fdb307a4477cc5edfebbc2df3e360fa0a48525acc09d8c8981921a",
+      "src/staging.ts": "432e263623e34f3efedb4618565805f12380cd5635e99bf8fc8aff727c8ba13d",
+      "test/mail-order.test.ts": "f89248a7e9b8aa07f70bd180b4e10d598117bd261778ea9f27dfeda464e99e7b",
+      "test/mail-unified.test.ts (new)": "a02d514fbccce1e38080ab948bb88d483272e731439e84b10561b8cad1891d77",
+      "dist/index.js at MY gate run": "c0d6bc4efe6fde25b54d9f31feb87f476cff562754878b254a9db6d35bc7cfb7",
+      "dist/index.js at review end": "9d1f3529c689c5d450c561b950d1ab698380742096d35cac2957aaf910b5d07f"
+    },
+    "sandwich": "T4's four SOURCE hashes (and both test files) were IDENTICAL at gate start and at review end. The dist changed only because T15's team-core store edit landed mid-review (mailbox-store.ts mtime 18:51, cellwork dist 18:53) and bun INLINES it — the Lead pre-declared that delta as T15's, not T4's."
+  },
+  "verdict": {
+    "task": "request-changes",
+    "ac3": "PASS for the enumerated items; the §6 cross-cell structured round-trip FAILS (F1)",
+    "ac5": "PASS",
+    "riskLevel": "medium-high",
+    "justification": "The cell view is a genuine, well-tested unification for the SAME-CELL exchange (178/178, question/answer/ack-once/legacy/rendering all green, and my own probes reproduce them), and AC-5 is fully met. But two lifecycle/cross-cell defects survive: a cross-cell structured answer cannot round-trip at all (two independent layers, F1 High — the question's key is resolved from the wrong cell view and the reference is validated in the wrong team scope), and a seat whose session id changes (reseed) or was synthetic can never acknowledge its own mail or answer its own question (F2 Medium — the store then silently re-delivers the row forever)."
+  },
+  "leadFocus": {
+    "distAttribution": "CONFIRMED AND HONOURED. At my gate run the cellwork dist was c0d6bc4e…; it is now 9d1f3529… because T15's mailbox-store edit (mtime 18:51) is inlined by bun into this package's bundle (dist mtime 18:53). I judged T4 on source/test hashes, which did not move, and I do NOT charge the inline fan-out to T4."
+  },
+  "gates": [
+    { "id": "bun-test-cellwork", "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "decidingOutput": "178 pass, 0 fail, 2187 expect() calls, 19 files" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "$ tsgo --noEmit (no diagnostics)" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=53 failed=0 violations=0 links=473 dead=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match the 2-file bundle patch layer" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "packed-content 1124 files, 0 required absent; VERDICT: PASS" }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-3",
+      "result": "PASS for the enumerated items (and 178/178 suites green); F1/F2 are §6 defects the criterion does not enumerate",
+      "items": [
+        { "item": "existing suites stay green (`flow` B9/C2.2/C2.3, `mail-order`, `cellwork`, `supervise-lossless`)", "evidence": "All present and passing in the 178-test run: B9 (log line 165 'writes a durable row and cellwork_inbox acknowledges it exactly once'), C2.2 (173 'mail addresses a member, `captain` and a cross-subcell recipient…'), C2.3 (174), the eight mail-order D6/N1 arms (140-147), plus cellwork/supervise-lossless files." },
+        { "item": "member addressing", "evidence": "P5 member-to-member send ok; shipped arms." },
+        { "item": "captain addressing", "evidence": "Shipped arms 'a question to the captain opens the thread…' and the round-trip arm; P7." },
+        { "item": "cross-cell addressing", "evidence": "P8 plain messages cross BOTH ways (down:true, up:true); flow C2.2 green. NOTE: a cross-cell structured ANSWER does not work — F1." },
+        { "item": "ack-once semantics (normal path)", "evidence": "P1b CONTROL: first inbox returns 1 / acknowledges 1, second returns 0; P4 legacy: same; shipped B9 + the round-trip arm's second read." },
+        { "item": "ack-once after a seat reseed", "evidence": "FAILS — F2: P1 returns the row again on every call with acknowledged 0 and zero read records in the store." }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "result": "PASS",
+      "reason": "The checkpoint refusal now states that `cellwork_send`/`cellwork_inbox` are refused AND that a structured question cannot be asked or answered at a checkpoint (guard.ts diff; probe P6 checkpointNamesQuestion=true, checkpointNamesBothTools=true), and the planner relay prose points at `kind:\"question\"` and reading the `answer` via `cellwork_inbox` (P6 relayHasQuestionKind=true, relayHasReadAnswer=true). NO allowlist change: the guard diff is the refusal sentence only, the allowlist constants are untouched, and no new cellwork tool names exist (cellwork_send/inbox are pre-existing)."
+    },
+    { "id": "AC-1", "result": "NOT-CHECKED", "reason": "Protocol lane (T12/T14 closed it)." },
+    { "id": "AC-2", "result": "NOT-CHECKED", "reason": "Team mailbox lane (R2/T7; T15 repair in flight)." },
+    { "id": "AC-4", "result": "NOT-CHECKED", "reason": "Permit/wait lane (R3/T8 — next)." },
+    { "id": "AC-6", "result": "NOT-CHECKED", "reason": "Docs lane (T6)." },
+    { "id": "AC-7", "result": "PASS (T4 scope) / full form NOT-CHECKED", "reason": "Six AC-7 commands exited 0 at 10:48:48Z (dist freshness excluded as the Lead-declared T10 bound); the combined three-package run is the Lead's close evidence (674/674) and T10's sweep." },
+    { "id": "AC-8", "result": "NOT-CHECKED", "reason": "Web projection lane (R2/T7)." }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "High",
+      "title": "A cross-cell structured ANSWER cannot round-trip: the question's key is resolved from the TARGET cell's view, and the reference is validated in the TARGET cell's team scope",
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts · the `cellwork_send` answer branch (`const view = foldCellMail(readCellMail(caller.workspace, targetCellId))` then `questionId = … asked?.question?.questionId ?? \"\"`), and the `teamId: target.teamId` stamping; packages/mpd-team-core-plugin/src/mailbox-store.ts · sendMany (`scopeToTeam(state, input.teamId)` → `validateReferences(envelope, scoped.messages)`)",
+      "what": "Probe P8: the parent captain's question to `cell-sub/captain` succeeds (row written into the sub cell's view); the sub captain's answer to `cell-parent/captain` is REFUSED with 'an answer must carry the question's non-empty `questionId`' — because the answer path resolves the answered question from `readCellMail(targetCellId)` = the PARENT's view, where the question row (cellId = sub) does not exist. Probe P8b passes the key EXPLICITLY and still fails: '`replyTo` names no message in this mailbox … `answerTo` names no message …' — because the answer row is scoped to `target.teamId` (the parent's team) while the question row was stamped with the SUB cell's team. Plain cross-cell messages work both ways (P8 control).",
+      "why": "§1 says any cell agent may ask any other cell agent, and §6 is the cross-cell mapping; a parent/sub-cell question is the canonical use (the sub-captain needs a decision). Today the question crosses but the answer is impossible in BOTH directions, so the structured relay — the wave's core capability — is same-cell only. The first refusal is also misleading (it blames a missing key instead of a visibility problem), which would send a model hunting the wrong cause.",
+      "direction": "Layer 1 (T4): resolve the answered question from the SENDER's own cell view (`caller.cell.cellId`) — or from the union of the sender's and target's views — instead of `targetCellId`; name the real problem when the row is not visible. Layer 2 (store, coordinate with T15's in-flight edit): `sendMany` validates references against ONE team's scope, but a cross-cell conversation's rows live in two different teams; either validate references against the workspace mailbox (the 'same folded mailbox' §4 I5 actually describes) or let the view pass the conversation's team. Layer 1 is cellwork-only; layer 2 needs the captain's routing decision. Add a cross-cell question/answer arm to mail-unified.test.ts — no shipped arm covers it.",
+      "evidence": "probes.ts P8 and P8b in output.log"
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "title": "A seat's mail address is the session id AT SEND TIME, so a reseeded seat (or one addressed through the synthetic never-raised key) can never acknowledge its own mail nor answer its own question",
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts · seatId/seatAddress and the inbox ack (`acknowledgeCellMail(..., { byId: caller.sessionId, byName: seat })`), plus `fromMemberId: caller.member`; the reseed writes a NEW handle onto the cell record (protocol-core.ts promoteAfterHandoff → startContinuableAgent; dispatch.ts `handleFor` comment)",
+      "what": "Probe P1: the cell record says the planner's session is CURRENT, and a row addressed to its PREVIOUS session (STALE) is returned by every inbox call with `acknowledged: 0` and ZERO read records — the store's ownership check compares `toId` (STALE) with `byId` (CURRENT) and silently refuses. P1b control (row addressed to CURRENT) acknowledges once and disappears. The same identity gap blocks answers: P2c (question addressed to STALE, answered after the reseed) and P2 (question addressed to the synthetic `seat:cell/name` key) are both refused with 'only a recipient of the question may answer it'. The reseed is a supported path (bounded compaction failure), and the old name-addressed log tolerated it.",
+      "why": "§6 requires 'seat-scoped unread/ack-once … PRESERVED'. The unread side is seat-scoped (name match), but the ack/answer side is session-scoped, so a legitimate lifecycle event (reseed) makes every earlier row permanently un-acknowledgeable and every open question unanswerable — the inbox re-delivers forever with no error and no way out. That is exactly the relay failure this wave exists to remove, reintroduced at the identity seam.",
+      "direction": "Use a STABLE seat key on the cellwork plane (e.g. `seat:<cellId>/<name>`) for `toId`/`fromMemberId` AND for the inbox's `byId`, so a reseed changes nothing; keep `unreadFor`'s name matching. Alternatively teach `acknowledgeCellMail` to resolve the ack identity per row from the seat name. Either way, surface the refusal (N1) instead of reporting `acknowledged: 0`. Local to the cell view; no store change needed.",
+      "evidence": "probes.ts P1/P1b/P2/P2b/P2c in output.log"
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "An ownership refusal during the inbox ack is invisible: `markRead` returns moved ids only, `acknowledgeCellMail` drops `refused`, and the tool reports `acknowledged: 0` with the same rows and no reason",
+      "where": "packages/mpd-cellwork-plugin/src/mail.ts · acknowledgeCellMail; packages/mpd-team-core-plugin/src/mailbox-store.ts · markRead (`acknowledge(...).moved`); protocol.ts · cellwork_inbox answer",
+      "what": "Probe P1: the seat sees its row returned, `acknowledged: 0`, and nothing else — no refusal, no reason. A stalled seat cannot tell that its ack was refused for identity reasons.",
+      "why": "A silent zero is indistinguishable from 'nothing to ack' from the model's side; it makes F2 undiagnosable in the field.",
+      "direction": "Return the refusal list (or a one-line reason) on the inbox answer; `AckResult.refused` already exists one layer down.",
+      "evidence": "probes.ts P1 in output.log"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "The cellwork dist rewriting mid-review (c0d6bc4e → 9d1f3529)", "reason": "Caused by T15's team-core store edit being inlined by bun, not by T4 (the Lead pre-declared this attribution; T4's source hashes did not move). Not charged to T4." },
+    { "item": "The combined three-package test run (674/674 at T4's close)", "reason": "Not re-run by me: T3/T15 are in flight on files the combined run touches, so a red there would not be T4's. T4's own package run is 178/178, which I re-ran." },
+    { "item": "verify-dist-fresh", "reason": "Wave-level bound owned by T10 (Lead instruction); the dist is not certified here." },
+    { "item": "`selected`/`custom`/`questionId` are tool args beyond §6's optional list", "reason": "Additive and required by the answer flow; §6 lists a minimum, not an exhaustive schema. Contract-text note only." },
+    { "item": "The five wake sentences vs §6's 'four wake-reason sentences'", "reason": "The strings are byte-identical to the pre-wave code (diff), so 'PRESERVED' holds; the count wording predates this wave. Set aside." },
+    { "item": "`nextCellMailId` mirrors the store's id formula", "reason": "A maintenance coupling, but the shipped arm asserts the question's questionId equals its message id, so drift reddens. Set aside." },
+    { "item": "The legacy-log ack has no ownership check", "reason": "Migration rows only, reached only through the seat's own name-matched inbox list; it preserves the pre-wave behaviour exactly. Set aside." },
+    { "item": "Cellwork rows' visibility on the team plane (teamId stamp)", "reason": "The team plane's scoping is T2/T7's lane; the cell view scopes by cellId as §6 requires." },
+    { "item": "Contract edited mid-review (229 → 239 lines)", "reason": "§6, AC-3 and AC-5 text identical at both hashes; the tail adds accepted bounds/known defects. Not a T4 finding." }
+  ],
+  "bounds": [
+    "Reviewed the WORKING TREE at HEAD e9be8890. T4's four source files and both test files were byte-identical at gate start (10:48:48Z) and review end (10:57:23Z).",
+    "Read: the mail.ts rewrite in full (view read/fold/ack/delivery), the protocol.ts send + inbox wiring and schema, the guard/staging diffs, the new mail-unified.test.ts, the flow/mail-order arms it must keep green, and the reseed path in protocol-core.ts/dispatch.ts.",
+    "Ran: six gates (178/178 cellwork) and twelve probes (P1, P1b, P2, P2b, P2c, P3, P4, P5, P6, P7, P8, P8b) through the REAL registered tools on fake adapters, including a two-cell parent/sub harness for the cross-cell round-trip.",
+    "Did NOT run: dist-fresh (T10 bound), the combined multi-package suite (T3/T15 in flight), the Docker lane.",
+    "T4's writer transcript was not readable from this seat; every claim above was re-derived from source + shipped arms + my own probes."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/cellwork-view/2026-10-31T10-48-48Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (P1–P8b printed to output.log)"
+  }
+}

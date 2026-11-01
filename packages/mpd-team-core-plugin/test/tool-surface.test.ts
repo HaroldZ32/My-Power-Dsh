@@ -77,12 +77,26 @@ describe("the consolidated surface", () => {
     }
   })
 
-  test("the context budget holds: the whole surface stays under 5,000 characters", () => {
+  test("the context budget holds: the whole surface stays under 6,400 characters", () => {
     /** The context cost of the whole registered surface, in characters. */
     const total = captured.tools.reduce((sum, tool) => sum + costOf(tool), 0) + captured.commands.length * 96
     // 7,643 before the consolidation. A new tool or a longer description has to justify itself against
     // this number, because every turn pays it.
-    expect(total).toBeLessThan(5000)
+    //
+    // RE-BASELINED 2026-10-31 by the mail-plane unification (contract `.mpd/plans/mail-unify.md` §5).
+    // MEASURED, not guessed: the surface stood at 4,996 — four characters under the old 5,000 bound —
+    // so no addition could fit without either deleting another tool's schema or moving this number.
+    // AC-2 requires the mailbox tool to carry the protocol envelope (`question`/`answer`/`replyTo`,
+    // ~420 characters of schema), which measured 5,414 with everything else untouched. The bound moves
+    // to 5,600 with that measurement recorded here, so the guard still refuses a silent re-inflation
+    // instead of being removed.
+    //
+    // RE-BASELINED AGAIN 2026-10-31 by T3 (permit-bounded wait, contract §7, AC-4): `agent_teams_mail`
+    // gains `permit` (holder/scope/ttlMs/questionId) and `wait` (permitId/messageId/timeoutMs), which
+    // MEASURED 6,289 on top of the 5,414 above — the new descriptions are already the shortest spelling
+    // that still says what each argument means. The bound moves to 6,400, again recorded rather than
+    // removed, so the next addition still has to justify itself.
+    expect(total).toBeLessThan(6400)
     expect(captured.tools.length + captured.commands.length).toBeLessThanOrEqual(6)
   })
 
@@ -105,8 +119,9 @@ describe("the consolidated surface", () => {
     expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "contract", "depend", "fail", "release"])
     // dispatch absorbed dispatch/dispatch_release
     expect(actions("agent_teams_dispatch").sort()).toEqual(["release", "run"])
-    // mail absorbed mailbox (and the older observation-only counter)
-    expect(actions("agent_teams_mail").sort()).toEqual(["read", "send", "summary", "unread"])
+    // mail absorbed mailbox (and the older observation-only counter); `permit`/`wait` join with the
+    // permit-bounded wait (contract §7)
+    expect(actions("agent_teams_mail").sort()).toEqual(["permit", "read", "send", "summary", "unread", "wait"])
     // control absorbed halt/resume
     expect(actions("agent_teams_control").sort()).toEqual(["halt", "resume"])
   })

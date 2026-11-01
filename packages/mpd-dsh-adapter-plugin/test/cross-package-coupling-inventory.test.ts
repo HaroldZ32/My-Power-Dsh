@@ -333,6 +333,26 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import { ID_ORDER } from \"../../mpd-graph-core/src/rank.ts\"",
+  // THE MAIL-UNIFY WAVE (2026-11-01, contract `.mpd/plans/mail-unify.md` §4): ELEVEN new edges, frozen
+  // in the change that grew them. `packages/mpd-mail-protocol` is the ONE vocabulary the team mailbox
+  // and the cellwork cell view share, so both planes import its types/validators instead of cloning the
+  // rules — that is the coupling the unification is built on, not a leak. `mpd-cellwork-plugin` also
+  // reads and writes the team store's unified mailbox (`.mpd/team/mailbox.jsonl`) instead of keeping a
+  // second log, so its rows are validated, bounded and acknowledged by the same store the team plane
+  // uses. The four `.ts`-extension specifiers a review suggested are DELIBERATELY NOT adopted:
+  // extensionless is the repository's dominant cross-package form (every entry above proves it), and the
+  // same suggestion was declared STALE twice before this wave.
+  "packages/mpd-cellwork-plugin/src/mail.ts :: import { acknowledge, appendRecord, fold as foldMailbox, mailboxPath, readMailbox, readRecords } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAck, MailMessage as TeamMailMessage, MailSendLine } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAnswer, MailKind, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { sendMany } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { SendInput, SendManyResult } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { fanOutTargets } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-team-core-plugin/src/index.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-team-core-plugin/src/mailbox-store.ts :: import { fanOutTargets, foldMail, inheritedThreadId, validateEnvelope, validateReferences } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-team-core-plugin/src/mailbox-store.ts :: import type { MailAddress, MailAnswer, MailEnvelope, MailKind, MailMessage as ProtocolMailMessage, MailProblem, MailQuestion, MailSendRecord } from \"../../mpd-mail-protocol/src/index\"",
+  "packages/mpd-team-core-plugin/src/team-web.ts :: import type { MailAnswer, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a
