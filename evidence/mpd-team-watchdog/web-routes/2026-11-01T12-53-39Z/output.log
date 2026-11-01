@@ -1,0 +1,42 @@
+# mpd-team-watchdog web routes — server half
+# recorded: 2026-11-01T12:53:39Z (UTC)
+
+$ bun test packages/mpd-team-watchdog-plugin
+(pass) §7.2/§7.3 — the knobs' live-vs-file divergence > the status view prints the per-knob table with restartRequired [0.45ms]
+
+ 151 pass
+ 0 fail
+ 753 expect() calls
+Ran 151 tests across 15 files. [2.16s]
+exit=0
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 721ms
+exit=0
+
+$ node scripts/verify-comment-coverage.ts
+
+scanned 520 TypeScript file(s) of 520 in the source set; inspected 46481 declaration(s); skipped 22251 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+$ bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts
+ 2 pass
+ 0 fail
+ 2 expect() calls
+Ran 2 tests across 1 file. [1362.00ms]
+exit=0
+$ bun test packages/mpd-team-watchdog-plugin/test/web.test.ts
+
+ 11 pass
+ 0 fail
+ 97 expect() calls
+Ran 11 tests across 1 file. [136.00ms]
