@@ -3,14 +3,26 @@
   "branch": "feature/harness-0.2.1-rc5",
   "date": "2026-11-01",
   "subject": {
-    "harness_pin": { "from": "0.2.1-rc.3", "to": "0.2.1-rc.5", "carrier": "package.json dependencies (3 @deepseek-ai/dsh-experimental-*)" },
-    "tui_pin": { "from": "0.17.0", "to": "0.18.0", "carrier": "dsh-plugin.json compat.hosts + dsh-distribution.json host-tui ref + docker lanes + tui-mount TUI_HOST_SPEC" },
+    "harness_pin": {
+      "from": "0.2.1-rc.3",
+      "to": "0.2.1-rc.5",
+      "carrier": "package.json dependencies (3 @deepseek-ai/dsh-experimental-*)"
+    },
+    "tui_pin": {
+      "from": "0.17.0",
+      "to": "0.18.0",
+      "carrier": "dsh-plugin.json compat.hosts + dsh-distribution.json host-tui ref + docker lanes + tui-mount TUI_HOST_SPEC"
+    },
     "why_tui_moved": "measured peer bands: dsh-tui 0.17.0 declares 39 @deepseek-ai/* peers; 36 are dsh-* OR-lists and ALL 36 stop at 0.2.1-rc.3 (0 admit rc.4/rc.5). dsh-tui 0.18.0 has the same 39/36 shape and ALL 36 contain 0.2.1-rc.4 AND 0.2.1-rc.5. A TUI pin whose peer band excludes the harness pin is REFUSED by `dsh plugin --profile dsh-tui add` (AGENTS.md §8), so the pair must move together.",
     "own_version_bumped": false
   },
   "harness_binary_basis": {
     "installed_global": "0.2.1-rc.3",
-    "isolated_copies": [".qa-tmp/dsh-rc3", ".qa-tmp/dsh-rc4", ".qa-tmp/dsh-rc5"],
+    "isolated_copies": [
+      ".qa-tmp/dsh-rc3",
+      ".qa-tmp/dsh-rc4",
+      ".qa-tmp/dsh-rc5"
+    ],
     "method": "npm i --prefix <dir> @deepseek-ai/dsh@<version>; PATH prepended for the QA lane; bundle-lifecycle selects dsh from PATH only",
     "package_version_matrix": "all 113 @deepseek-ai/* packages move uniformly rc.3 -> rc.4 -> rc.5; cordis 4.0.5 in all three; no dependency-resolution drift"
   },
@@ -21,14 +33,31 @@
   },
   "qa_lane": {
     "case": "skills/dsh-qa/scripts/bundle-lifecycle.ts",
-    "phases": ["install", "composed", "boot", "noHomeCopy", "layerDurability", "uninstall"],
+    "phases": [
+      "install",
+      "composed",
+      "boot",
+      "noHomeCopy",
+      "layerDurability",
+      "uninstall"
+    ],
     "baseline_flake_before_fix": {
       "sample": 9,
       "pass": 6,
       "fail": 3,
-      "per_version": { "0.2.1-rc.3": "2/3", "0.2.1-rc.4": "3/3", "0.2.1-rc.5": "1/3" },
+      "per_version": {
+        "0.2.1-rc.3": "2/3",
+        "0.2.1-rc.4": "3/3",
+        "0.2.1-rc.5": "1/3"
+      },
       "failing_check": "probePass only; http/adapterSeams/adapterToolCall/corpusFromBundle/noPresetRefusal/presetProbeOk stayed green",
-      "failing_signature": ["TOOL_PARAM_SCHEMAS=0/0", "TEAM_COMPACT_TOOLS=0/2", "AGENT_TEAMS_TOOLS=0/7", "SKILLS=fail:mpd-dsh-adapter: harness service \"skills\" is unavailable — cannot list skills", "[roles-probe] FAIL"],
+      "failing_signature": [
+        "TOOL_PARAM_SCHEMAS=0/0",
+        "TEAM_COMPACT_TOOLS=0/2",
+        "AGENT_TEAMS_TOOLS=0/7",
+        "SKILLS=fail:mpd-dsh-adapter: harness service \"skills\" is unavailable — cannot list skills",
+        "[roles-probe] FAIL"
+      ],
       "verdict": "version-INDEPENDENT (rc.3 reddened as often as rc.5); NOT a compatibility regression"
     },
     "root_cause": {
@@ -68,8 +97,60 @@
   },
   "bounds": [
     "the flake rates are a local sample (9 pre-fix, 5 post-fix), not a statistical claim",
-    "the Docker real-machine lanes were NOT run in this wave (they need rootless Docker); the docker/*.yml defaults were moved but not exercised",
-    "the TUI 0.17.0 -> 0.18.0 move is a literal pin change; the TUI plane itself was not re-run against 0.18.0 in this wave (tui-mount needs a prepared sandbox root: --sandbox-root <root> --install)",
-    "npm registry reads were used for the peer-band claim; the 0.18.0 tarball was not diffed against 0.17.0 for API changes"
-  ]
+    "npm registry reads were used for the peer-band claim; the 0.18.0 tarball was not diffed against 0.17.0 for API changes",
+    "the Docker lanes ran on the LOCAL re-packed artifact; CI packs in-container from the same tree"
+  ],
+  "docker_lanes": {
+    "driver": "node scripts/docker-e2e.ts (rootless Docker 29.9.2 / Compose v5.6.1, ubuntu:24.04)",
+    "runs": [
+      {
+        "lane": "source --no-browser",
+        "exit": 0,
+        "passed": 163,
+        "failed": 0,
+        "null_": 79,
+        "note": "credential-free regression"
+      },
+      {
+        "lane": "source --live",
+        "exit": 0,
+        "passed": 204,
+        "failed": 0,
+        "null_": 38
+      },
+      {
+        "lane": "oneclick --live",
+        "exit": 0,
+        "passed": 203,
+        "failed": 0,
+        "null_": 39
+      }
+    ],
+    "tui_plane_on_0180": [
+      "tui.boot",
+      "tui.compose",
+      "tui.hostInstall",
+      "tui.pluginAddBundle",
+      "tui.mergedPanelOpens",
+      "tui.mergedPanelOrder",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.hostDashboardKeyIntact",
+      "tui.noDirectTuiSeam",
+      "tui.noFatalSignatures",
+      "tui.laneExit"
+    ],
+    "live_model_arms": [
+      "live.web.mpdToolCalled",
+      "live.tui.mpdToolCalled",
+      "live.headless.mpdToolCalled"
+    ],
+    "oneclick_arms": [
+      "oneclick.scratchRepo",
+      "oneclick.requiredPaths",
+      "oneclick.filesAllowlist",
+      "oneclick.distByteIdentical"
+    ],
+    "local_pre_run_defect": "first --no-browser run failed pack.staticCoherence + pack.distFreshRebuild because the LOCAL gitignored dist/mpd-package was stale; re-packed with node scripts/pack-mpd.ts, then 3/3 lanes passed"
+  }
 }
