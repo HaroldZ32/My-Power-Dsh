@@ -1,0 +1,9 @@
+skills/dsh-qa/scripts/lib/cellwork-command-probe.ts:159:  cellsAfterEmpty: CellRecordProbe[]
+skills/dsh-qa/scripts/lib/cellwork-command-probe.ts:222:  const record: ProbeRecord = { at: new Date().toISOString(), objective, cwd: process.cwd(), listed: null, descriptors: null, empty: null, filled: null, cells: [], cellsAfterEmpty: [], errors: [] }
+skills/dsh-qa/scripts/lib/cellwork-command-probe.ts:287:    record.cellsAfterEmpty = readCells(record.cwd)
+skills/dsh-qa/scripts/cellwork-command.ts:106:export function evaluateCells(cells: unknown, objective: string, cellsAfterEmpty?: unknown): { ok: boolean; ids: string[]; problems: Problems } {
+skills/dsh-qa/scripts/cellwork-command.ts:112:  if (!Array.isArray(cellsAfterEmpty)) {
+skills/dsh-qa/scripts/cellwork-command.ts:114:  } else if (cellsAfterEmpty.length !== 0) {
+skills/dsh-qa/scripts/cellwork-command.ts:116:    const stray = (cellsAfterEmpty as Array<Record<string, unknown>>).map((row) => String(row.cellId ?? ""))
+skills/dsh-qa/scripts/cellwork-command.ts:117:    problems.push("the EMPTY invocation wrote " + String(cellsAfterEmpty.length) + " cell(s) (" + stray.join(", ") + "), but the usage answer must leave the cell root empty")
+skills/dsh-qa/scripts/cellwork-command.ts:348:    const cells = evaluateCells(probe?.cells, OBJECTIVE, probe?.cellsAfterEmpty)

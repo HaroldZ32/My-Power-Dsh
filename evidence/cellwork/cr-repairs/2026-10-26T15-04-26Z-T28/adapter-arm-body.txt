@@ -1,0 +1,12 @@
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-plane.test.ts :: r: 1, text: "t" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   })    test("THROWS an actionable error when the agent scope exposes no section seam", () => {
+packages/mpd-dsh-adapter-plugin/test/adapter-team-surface.test.ts :: bagentProvider({})     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   }) })  describe("teamLiveTeams: the contained fold over the live registry", () => {   test("r
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: ser is passed through verbatim.     expect(typeof dispose).toBe("function")     dispose()   })    test("a non-callable registry answer degrades to a no-op disposer, never a leak", () => {     /** A ct
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: ent_teams_demo" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   })    test("a missing tools service THROWS with the frozen message (parity with the injected 
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: r: 1, text: "x" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   }) })  describe("agentScope: identity-preserving per-agent scope", () => {   test("context IS
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: f?: (member: string) => unknown }   /** How many times the activation double's `dispose()` was called — the slot-release witness. */   disposals?: { count: number } }  /** The doubles one arm drives, 
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: cord the release, so an arm can prove a leaked slot was handed back. */         dispose(): Promise<void> {           if (options.disposals !== undefined) options.disposals.count += 1           return 
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: wait expect(h.executor.spawn(h.lead, { ...REQUEST })).rejects.toThrow(/reported no child id/)     // The registry stayed empty: a member with no handle is a member no call could reach.     expect(h.ex
+--- adapter arm names ---
+   with NEITHER backend every call REFUSES with a sentence, never a TypeError
+   a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks
+   a spawn that reports no id is refused here too

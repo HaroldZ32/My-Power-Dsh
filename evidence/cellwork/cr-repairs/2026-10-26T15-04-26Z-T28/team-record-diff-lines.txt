@@ -1,0 +1,5 @@
+9:-    // The member that failed says so; the one that spawned keeps its handle.
+10:-    expect(record.members.map((member) => member.status)).toEqual(["running", "failed"])
+12:+    // that actually spawned is on the roster. The old rule kept a `failed` row, which the capacity and
+14:+    expect(record.members.map((member) => member.name)).toEqual(["Senior Engineer"])
+15:+    expect(record.members.map((member) => member.status)).toEqual(["running"])

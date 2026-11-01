@@ -153,6 +153,26 @@ async function invoke(route: CapturedRoute, req: unknown): Promise<CapturedRespo
   return captured
 }
 
+/** Every property NAME in one JSON value at any depth, so a leaked field cannot hide in a nested object. */
+function propertyNamesDeep(value: unknown): string[] {
+  /** The names collected so far, in walk order. */
+  const names: string[] = []
+  /** Walk one JSON value: an object contributes its keys and recurses, an array only recurses. */
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item)
+      return
+    }
+    if (node === null || typeof node !== "object") return
+    for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
+      names.push(key)
+      walk(child)
+    }
+  }
+  walk(value)
+  return names
+}
+
 /** One mounted surface: the server double, the adapter the routes read, and the effect counter. */
 interface Mounted {
   /** The registrations captured by the server double. */
@@ -234,6 +254,38 @@ describe("registration", () => {
     for (const callback of bound) callback("webServer")
     expect(server.routes.length).toBe(WATCHDOG_ROUTES.length)
     expect(effects).toBe(WATCHDOG_ROUTES.length)
+  })
+
+  test("a REPLACED web-server object gets its own registration, and the same object is never registered twice", () => {
+    /** A temp workspace the routes would mutate if a handler ran. */
+    const workspace = sandbox()
+    /** The server the first attempt registers on. */
+    const firstServer = serverDouble()
+    /** The NEW object a host binds when it replaces the `webServer` service. */
+    const replacedServer = serverDouble()
+    /** The binding callbacks `registerWatchdogWeb` installed. */
+    const bound: Array<(name: string) => void> = []
+    /** The object `dsh.webServerOf()` answers right now; the replacement flips it. */
+    let current: ServerDouble = firstServer
+    /** The adapter whose probe follows that object. */
+    const adapter = adapterFor({ server: (): ServerDouble => current, roots: [workspace], bound })
+    /** How many registrations the row's effect seam owned across every attempt. */
+    let effects = 0
+    /** The row's effect seam, shared by the first attempt and every retry. */
+    const effect: WatchdogEffect = (register: () => unknown): unknown => { effects += 1; return register() }
+    // The FIRST server carries both routes, and the boot line is told so.
+    expect(registerWatchdogWeb(adapter, effect, { stateDir: DEFAULT_STATE_DIR })).toBe(true)
+    expect(firstServer.routes.map((route) => route.path)).toEqual([...WATCHDOG_ROUTES])
+    // THE REPLACEMENT: a new object holds NO routes, so the retry must register BOTH on it. Tracking
+    // the paths globally would skip them here and leave the live server with no route at all.
+    current = replacedServer
+    for (const callback of bound) callback("webServer")
+    expect(replacedServer.routes.map((route) => route.path)).toEqual([...WATCHDOG_ROUTES])
+    expect(effects).toBe(WATCHDOG_ROUTES.length * 2)
+    // AND THE SAME OBJECT IS NEVER REGISTERED TWICE: repeating the bind adds nothing on it.
+    for (const callback of bound) callback("webServer")
+    expect(replacedServer.routes.length).toBe(WATCHDOG_ROUTES.length)
+    expect(effects).toBe(WATCHDOG_ROUTES.length * 2)
   })
 })
 
@@ -363,6 +415,29 @@ describe("the mutations", () => {
     const again = await invoke(routeAt(mounted.server, RESUME_PATH), requestDouble("POST", JSON.stringify({ teamId: "team-1" })))
     expect(again.status).toBe(200)
     expect(again.body).toEqual({ ok: true, resumed: false })
+  })
+
+  test("the 200 hold answer keeps the consumer fields and carries NO filesystem path at any depth", async () => {
+    /** A temp workspace whose absolute path must never appear in the answer. */
+    const workspace = sandbox()
+    /** The mounted surface. */
+    const mounted = mount(workspace)
+    /** The accepted hold. */
+    const held = await invoke(routeAt(mounted.server, HOLD_PATH), requestDouble("POST", JSON.stringify({ teamId: "team-1", reason: "maintenance", ttlMs: 5000 })))
+    expect(held.status).toBe(200)
+    /** The success payload, narrowed to the shape the client half is written against. */
+    const body = held.body as { ok: boolean; hold: { applied: boolean; changed?: boolean; hold: { teamId: string; cause: string; ttlMs: number } } }
+    // THE KEPT FIELDS ARE STILL THERE: the route's own contract, unchanged by the narrowing.
+    expect(body.ok).toBe(true)
+    expect(body.hold.applied).toBe(true)
+    expect(body.hold.hold.teamId).toBe("team-1")
+    expect(body.hold.hold.cause).toBe("maintenance")
+    expect(body.hold.hold.ttlMs).toBe(5000)
+    // THE POINT OF THIS ARM: the store's absolute `path` — and any other path-shaped field — is gone
+    // from EVERY depth of the serialized answer, and no field value names the sidecar either.
+    expect(Object.keys(body.hold).sort()).toEqual(["applied", "changed", "hold"])
+    expect(propertyNamesDeep(body)).not.toContain("path")
+    expect(JSON.stringify(body)).not.toContain(workspace)
   })
 })
 

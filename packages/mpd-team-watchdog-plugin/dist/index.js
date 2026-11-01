@@ -3725,7 +3725,7 @@ function handlerFor(dsh, path, deps, parse, mutate) {
   };
 }
 function registerWatchdogWeb(dsh, effect, deps) {
-  const mounted = new Set;
+  const mountedByServer = new WeakMap;
   const serverOf = () => {
     try {
       const server = dsh.webServerOf();
@@ -3746,7 +3746,7 @@ function registerWatchdogWeb(dsh, effect, deps) {
       warnLine(deps, `the hold for ${body.teamId} was not persisted: ${applied.error ?? "unknown error"}`);
       return { status: 500, body: { ok: false, error: "mpd-team-watchdog: the hold could not be persisted" } };
     }
-    return { status: 200, body: { ok: true, hold: applied } };
+    return { status: 200, body: { ok: true, hold: { applied: true, hold: applied.hold, changed: applied.changed } } };
   };
   const resume = (workspace, body) => {
     const cleared = applyResume(workspace, deps.stateDir, { team_id: body.teamId }, deps.registry);
@@ -3762,9 +3762,11 @@ function registerWatchdogWeb(dsh, effect, deps) {
   const attempt = () => {
     const server = serverOf();
     if (server === undefined)
-      return mounted.size === WATCHDOG_ROUTES.length;
+      return false;
     if (typeof effect !== "function")
       return false;
+    const mounted = mountedByServer.get(server) ?? new Set;
+    mountedByServer.set(server, mounted);
     for (const route of routes) {
       if (mounted.has(route.path))
         continue;

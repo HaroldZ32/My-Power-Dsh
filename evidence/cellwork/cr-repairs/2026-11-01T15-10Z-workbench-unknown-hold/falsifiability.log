@@ -1,0 +1,17 @@
+# Falsifiability: the four new arms against the PRE-FIX source (git show HEAD:packages/mpd-bundle-plugin/src/web-client.ts)
+# new test file + real built artifact in place; date -u: 2026-11-01T15:11Z
+
+## 1) swap the HEAD source in, rebuild the artifact, run the workbench arms
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (882479 bytes)
+(fail) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > a refused watchdog read renders the unknown sentence and never claims 'not held' [6.86ms]
+(fail) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unreadable watchdog payload (no ok:true) is unknown too, and its holds are not trusted [5.88ms]
+(fail) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unknown hold freezes Pause (button AND action) while Resume stays live [5.57ms]
+ 18 pass
+ 3 fail
+ 137 expect() calls
+
+## 2) restore the fixed source + artifact, rebuild, sha256 -c the snapshot
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (884633 bytes)
+packages/mpd-bundle-plugin/src/web-client.ts: OK
+packages/mpd-bundle-plugin/client.js: OK
+packages/mpd-bundle-plugin/test/workbench-view.test.ts: OK

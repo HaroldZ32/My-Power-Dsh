@@ -1,0 +1,6 @@
+c91bf642d8e213311205a16b6dfe2112365974aa0109ae759cf15a9164c3e062  packages/mpd-cellwork-plugin/dist/index.js
+e2ca043fc1568c2cddf18b9be97953a9773a41744921c700be31f4b4953cc926  packages/mpd-team-core-plugin/dist/index.js
+9d0d47a9b2688049fa35273eba5a3308d5f923cce3aa6abe1b481b6d647d7931  packages/mpd-tui-plugin/dist/index.js
+2db05ba9840548ad49bfd5cb84e07243a4737df9882ad1a8af554dde3f068d3c  packages/mpd-team-compact-plugin/dist/index.js
+6d54e8887f590b5a5102feae773b986b23b023f7537f064a0a00cf9c03e8b89f  skills/dsh-qa/scripts/lib/cellwork-command-probe.ts
+8bdc2bc3214d45092bdcc6f4884b2deb648a5c8e69bb6597894e8dbdb1e57681  skills/dsh-qa/scripts/cellwork-command.ts

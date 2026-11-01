@@ -327,19 +327,25 @@ function handlerFor<Value>(
  * Mount the two routes against whatever web server this composition exposes right now.
  *
  * The first attempt runs at apply; a server that binds LATER is picked up by
- * `dsh.onServiceBound(["webServer", "httpServer"], ...)`, and the retry is idempotent per path, so a
- * rebind never registers the same route twice. A composition with NO web server (a headless profile)
- * mounts nothing, calls no effect and throws nothing: the row stays tool-only.
+ * `dsh.onServiceBound(["webServer", "httpServer"], ...)`, and the retry is idempotent PER SERVER
+ * OBJECT: a rebind onto the same server never registers a route twice, while a REPLACED server
+ * object (Cordis swapping the service) gets its own registration. A composition with NO web server
+ * (a headless profile) mounts nothing, calls no effect and throws nothing: the row stays tool-only.
  *
  * @param dsh - the adapter; the server, the fence and the binding event all come through it.
  * @param effect - the row's `ctx.effect`; undefined means the routes would have no lifetime, so none
  * are registered.
  * @param deps - the state directory, the hold registry and the diagnostic sink.
- * @returns whether both routes were mounted at the time of the call.
+ * @returns whether both routes are mounted on the CURRENT server after this call; false when no
+ * server is bound yet, even if an earlier one carried both routes.
  */
 export function registerWatchdogWeb(dsh: DshAdapter, effect: WatchdogEffect | undefined, deps: WatchdogWebDeps): boolean {
-  /** Paths already registered, so a rebind mounts only what is still missing. */
-  const mounted = new Set<string>()
+  /**
+   * The paths already registered ON EACH SERVER OBJECT, so a REPLACED server gets its own
+   * registration while the SAME object is never registered twice. Keyed weakly because a host that
+   * swaps its `webServer` service must stay able to collect the object it replaced.
+   */
+  const mountedByServer = new WeakMap<WebServerLike, Set<string>>()
   /** The host's web server as it exists right now, or undefined when it does not (yet). */
   const serverOf = (): WebServerLike | undefined => {
     try {
@@ -350,7 +356,7 @@ export function registerWatchdogWeb(dsh: DshAdapter, effect: WatchdogEffect | un
       return undefined
     }
   }
-  /** The hold mutation: persist the sidecar and report the store's own answer under `ok:true`. */
+  /** The hold mutation: persist the sidecar and report the narrowed answer under `ok:true`. */
   const hold = (workspace: string, body: HoldBody): RouteAnswer => {
     /** The TTL a hold created without an explicit one inherits; 0 when the provider fails. */
     let fallbackTtl = 0
@@ -367,7 +373,11 @@ export function registerWatchdogWeb(dsh: DshAdapter, effect: WatchdogEffect | un
       warnLine(deps, `the hold for ${body.teamId} was not persisted: ${applied.error ?? "unknown error"}`)
       return { status: 500, body: { ok: false, error: "mpd-team-watchdog: the hold could not be persisted" } }
     }
-    return { status: 200, body: { ok: true, hold: applied } }
+    // THE WIRE SHAPE IS NARROWER THAN THE STORE'S (CodeRabbit, security): `applyHold` also returns
+    // the sidecar's absolute filesystem `path`, which a client has no use for and which must never
+    // leave the server. The three kept fields are the ones a consumer reads — the verdict, already
+    // proven true by the guard above, the durable record, and whether the write changed the file.
+    return { status: 200, body: { ok: true, hold: { applied: true, hold: applied.hold, changed: applied.changed } } }
   }
   /** The resume mutation: a not-held team is the documented 200 no-op, a failed clear is a 500. */
   const resume = (workspace: string, body: ResumeBody): RouteAnswer => {
@@ -386,8 +396,13 @@ export function registerWatchdogWeb(dsh: DshAdapter, effect: WatchdogEffect | un
   const attempt = (): boolean => {
     /** The server this attempt registers on, or undefined when the service is not bound. */
     const server = serverOf()
-    if (server === undefined) return mounted.size === WATCHDOG_ROUTES.length
+    // NO SERVER, NO MOUNT: a registration on a PREVIOUS server object says nothing about this
+    // attempt, so it reports failure instead of a stale success.
+    if (server === undefined) return false
     if (typeof effect !== "function") return false
+    /** The paths already mounted on THIS server object; a replacement object starts with none. */
+    const mounted = mountedByServer.get(server) ?? new Set<string>()
+    mountedByServer.set(server, mounted)
     for (const route of routes) {
       if (mounted.has(route.path)) continue
       try {

@@ -1,0 +1,12 @@
+[cellwork-command] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/qa/2026-10-26T13-07-09.919Z-command
+  install: {"ok":true,"exit":0}
+  boot: {"ok":true,"exit":0,"stubRequests":3}
+  listing: {"ok":true,"names":["agent-teams","cellwork","compact","feedback","goal","mpd","mpd-model","permission","plan","ultrawork","ulw"],"problems":[]}
+  usage: {"ok":true,"kind":"error","problems":[]}
+  activation: {"ok":true,"kind":"success","problems":[]}
+  cells: {"ok":true,"ids":["cell-20261026T130721279Z"],"problems":[]}
+  directive: {"ok":true,"problems":[]}
+  commandLifecycle: {"ok":true,"names":["cellwork","cellwork"],"problems":[]}
+  cwd: {"ok":true,"recorded":"/tmp/mpd-cellwork-command-NmLNKt/ws","expected":"/tmp/mpd-cellwork-command-NmLNKt/ws"}
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-cellwork-command-NmLNKt-ws--"]}
+  probeErrors: []

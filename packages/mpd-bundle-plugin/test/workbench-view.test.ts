@@ -91,6 +91,9 @@ const WATCHDOG_HELD = {
 /** The watchdog payload with no hold at all. */
 const WATCHDOG_CLEAR = { ...WATCHDOG_HELD, stuck: false, held: [], banner: null };
 
+/** The page's UNKNOWN-hold sentence: a failed watchdog read may never be reported as "not held". */
+const HOLD_UNKNOWN = "unknown — the watchdog state could not be read";
+
 /** Every read route canned for the session-less (workspace-level) spelling. */
 const READS = {
   "/plugins/mpd-team/state": STATE_TEAM,
@@ -351,6 +354,113 @@ describe("the workbench empty state is explicit, never a blank page", () => {
       expect(text).toContain("HTTP 200");
       // THE POINT: an unreadable answer must not be rendered as the confident "no team" claim.
       expect(text).not.toContain("No team in this session.");
+      client.hooks.runCleanups();
+    } finally {
+      restore(client);
+    }
+  });
+});
+
+describe("a failed watchdog read is an UNKNOWN hold, never the claim 'not held'", () => {
+  test("a refused watchdog read renders the unknown sentence and never claims 'not held'", async () => {
+    /** The client under test, whose watchdog route answers a failure status. */
+    const client = loadMpdClient({
+      responses: READS,
+      requestResponses: { "GET /plugins/mpd-team-watchdog/state": { status: 500 } },
+    });
+    try {
+      /** The workbench registration. */
+      const entry = workbenchOf(client);
+      /** The page's whole text. */
+      const text = textOf(await client.hooks.render(entry.component, {}));
+      // THE POINT: a failed read yields `hold: null` too, so the page must say it does not KNOW rather
+      // than reuse the confident "not held" copy — the two states are different claims.
+      expect(text).toContain(HOLD_UNKNOWN);
+      expect(text).not.toContain("not held");
+      // The failure is still named, so a reader can see WHY the hold is unknown.
+      expect(text).toContain("Could not read /plugins/mpd-team-watchdog/state");
+      // And the rest of the page is untouched: the team and its board still render.
+      expect(text).toContain("team-abc");
+      expect(text).toContain("T1");
+      client.hooks.runCleanups();
+    } finally {
+      restore(client);
+    }
+  });
+
+  test("an unreadable watchdog payload (no ok:true) is unknown too, and its holds are not trusted", async () => {
+    /** The client under test, whose watchdog body carries a hold but no `ok` marker. */
+    const client = loadMpdClient({
+      responses: { ...READS, "/plugins/mpd-team-watchdog/state": { held: [{ teamId: "team-abc", since: 1762000000000, cause: "silence" }], banner: null } },
+    });
+    try {
+      /** The workbench registration. */
+      const entry = workbenchOf(client);
+      /** The page's whole text. */
+      const text = textOf(await client.hooks.render(entry.component, {}));
+      expect(text).toContain(HOLD_UNKNOWN);
+      expect(text).not.toContain("not held");
+      // A body that never said `ok` is evidence of neither state, so no hold is claimed either.
+      expect(text).not.toContain("held — silence");
+      client.hooks.runCleanups();
+    } finally {
+      restore(client);
+    }
+  });
+
+  test("an unknown hold freezes Pause (button AND action) while Resume stays live", async () => {
+    /** The client under test, whose watchdog read is refused and whose resume route answers. */
+    const client = loadMpdClient({
+      responses: READS,
+      requestResponses: {
+        "GET /plugins/mpd-team-watchdog/state": { status: 500 },
+        "POST /plugins/mpd-team-watchdog/resume": { ok: true },
+      },
+    });
+    try {
+      /** The workbench registration. */
+      const entry = workbenchOf(client);
+      /** The rendered page. */
+      const tree = await client.hooks.render(entry.component, {});
+      // THE PROPERTIES: Pause is refused while the state is unknown; Resume is still offered.
+      expect(buttonOf(tree, "Pause")?.props.disabled).toBe(true);
+      expect(buttonOf(tree, "Resume")?.props.disabled).toBe(false);
+      /** The fetch log's length before the programmatic pause. */
+      const before = client.calls.fetched.length;
+      // THE ACTION GUARD, not just the attribute: a programmatic call must not slip past it, which the
+      // fetch stub's own call log proves — a refused pause issues no request at all.
+      /** The page after the refused pause. */
+      const paused = await clickAndSettle(client, tree, entry.component, {}, "Pause");
+      expect(client.calls.fetched.length).toBe(before);
+      expect(client.calls.fetched.some((call) => call.method === "POST")).toBe(false);
+      expect(textOf(paused)).toContain(HOLD_UNKNOWN);
+      // RESUME IS THE OPPOSITE BY DESIGN: that route defines an absent hold as a successful no-op, so
+      // the page still issues the write while the hold state is unknown.
+      await clickAndSettle(client, paused, entry.component, {}, "Resume");
+      /** The POST the page issued after the resume press. */
+      const post = client.calls.fetched.find((call) => call.method === "POST");
+      expect(post?.url).toBe("/plugins/mpd-team-watchdog/resume");
+      client.hooks.runCleanups();
+    } finally {
+      restore(client);
+    }
+  });
+
+  test("a successful read with no hold still says 'not held' and offers Pause", async () => {
+    /** The client under test, whose watchdog route answers `ok: true` with no holds. */
+    const client = loadMpdClient({ responses: READS });
+    try {
+      /** The workbench registration. */
+      const entry = workbenchOf(client);
+      /** The rendered page. */
+      const tree = await client.hooks.render(entry.component, {});
+      /** The page's whole text. */
+      const text = textOf(tree);
+      // THE PAIR THAT MATTERS: the KNOWN-empty state is the one allowed to say "not held".
+      expect(text).toContain("not held");
+      expect(text).not.toContain(HOLD_UNKNOWN);
+      expect(buttonOf(tree, "Pause")?.props.disabled).toBe(false);
+      expect(buttonOf(tree, "Resume")?.props.disabled).toBe(true);
       client.hooks.runCleanups();
     } finally {
       restore(client);

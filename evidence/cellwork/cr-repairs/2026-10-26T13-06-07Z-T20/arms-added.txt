@@ -1,0 +1,98 @@
+CR 4377306675: a promoted subcaptain resolves to ITS OWN sub-cell — dispatch/supervise/activate accepted — and the captain stays on its own cell
+CR 4377306675: the parent REFUSES a silent stop while its sub-cell is live, and the forced way is journaled
+CR 4377306686: the team record is read from the CALLER's workspace, not the process root
+CR 4377306694: a repeated finalize of the SAME content (no trailing newline) is IDEMPOTENT, not CHANGED
+CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch`
+CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all
+CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits
+CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan
+CR 4377316529: an approval that stops mid-way PERSISTS the team id and its members, and the retry reuses that team
+CR 4377316529: an approved-but-UNRECORDED team is recovered and its missing member repaired, never re-approved
+cr R2: a pass cancelled BEFORE the barrier never polls, and records cancellation not timeout
+cr R2: a pass cancelled DURING the barrier stops at the poll that saw the abort
+D-06 — the adapter identity is recorded, once > a mounted mpdDsh: NO fallback line, and every tool registers through the mount
+D-06 — the adapter identity is recorded, once > no mounted mpdDsh: ONE labelled fallback line and a private adapter in the ctx's own registry
+D-08 — the autoCheck default matches the shipped row > the schema defaults commentChecker.autoCheck to FALSE
+D-09 — memory.vcs accepts the mode the memory row honours > the Settings knob offers the same three options
+D-09 — memory.vcs accepts the mode the memory row honours > the union declares git, svn AND both
+D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the exception half names every mount-captured group, so it cannot silently vanish
+D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the live half names every group that reads the config service per use
+D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the section notice renders BOTH halves plus the not-lost clause, and never the blanket sentence
+D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the watchdog is a SCOPE-QUALIFIED EXCEPTION, never a member of the live list
+D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped
+D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte
+D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a write the host did not carry back is LOUD, never silent drift
+D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · all eight host builtins survive a keeper pass
+D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive
+D1 — resolveDelegationGateMode is fail-closed > only the two exact spellings are honoured
+D1 — the decision table: mode × session class × tool > an unexpected tool name is a pass-through, never a throw
+D1 — the decision table: mode × session class × tool > the allow mode releases every session, and any other tool is somebody else's rule
+D1 — the decision table: mode × session class × tool > the captain mode refuses the top-level session ONLY — the seeded fork included
+D1 — the decision table: mode × session class × tool > the deny default refuses all three spawn tools for the captain, a child AND a headerless session
+D1 — the decision table: mode × session class × tool > the whole 3×3 table, cell by cell: every mode covers exactly one set of ranks
+D1 — the install reaches the seam and reports its mode > a composition without the guard seam reports the absence instead of installing nothing silently
+D1 — the install reaches the seam and reports its mode > a headerless or throwing call is a pass-through — a guard never takes a tool call down
+D1 — the install reaches the seam and reports its mode > a throwing guard seam is reported as an install failure, not an abort
+D1 — the install reaches the seam and reports its mode > the gate is preset-scoped: the mpd captain and every child are refused, another preset's top level is not
+D1 — the install reaches the seam and reports its mode > with the seam present the guard denies a covered tool and follows the knob
+D1 — the refusal sentence steers to the sanctioned paths > the refusal names the three sanctioned routes, the knob and its two modes
+D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > `normalizeWheelDelta` is the ONE sign decision, and a zero delta stays a zero
+D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the HORIZONTAL axis consumes the same helper, and only the axis it names
+D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob OFF is today's behaviour on BOTH directions, and it is the default
+D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob ON inverts BOTH directions
+D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob resolves from `<workspace>/.mpd/mpd.jsonc` through the REAL mpd-config layer
+D3 · an edge CROSSES or TERMINATES, and the picture says which > a board with NO groups draws exactly the flat picture, byte for byte
+D3 · an edge CROSSES or TERMINATES, and the picture says which > a dependency LEAVING the box PASSES THROUGH its side: the crossing glyph, not a port
+D3 · an edge CROSSES or TERMINATES, and the picture says which > an outside dependency TERMINATES on the box: the port glyph, and the arrow above it
+D3 · an edge CROSSES or TERMINATES, and the picture says which > cr R2: a served column HOLE is closed for the layout, and the frame edges land on the drawn columns
+D3 · a nested model draws its frame > a group the tree cannot place is COLLAPSED and reported, never drawn as a half box
+D3 · a nested model draws its frame > a NESTED frame stands strictly INSIDE its parent, and the two never exchange a cell
+D3 · a nested model draws its frame > the frame is drawn around its interior, and it spans EVERY interior row
+D3 · a nested model draws its frame > the frame's interior is the subcell's OWN DAG: its tasks and its arrows are inside the box
+D3 · never half a GROUP > a frame the window would CUT loses its own cells and keeps the interior's text
+D3 · never half a GROUP > a frame WHOLLY inside the window, or wholly outside it, is left alone
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a list the harness accepts is returned unchanged, and the probe restriction is released
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > an attempt that applies nothing and returns no disposer is still an acceptance
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a non-Error rejection carrying the message text is parsed as well
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > any OTHER failure is rethrown with no retry at all
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a rejection that names nothing prunable is rethrown rather than retried blindly
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a SECOND failure is rethrown, whatever it is (the retry cap)
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a SINGLE unknown name is parsed too (the harness's singular message spelling)
+D3 — restrictToolsTolerant: the harness's verdict is the only pruner > the unknown names are pruned and retried ONCE, keeping the canonical order of the survivors
+D3 · the group frame's glyph family > every glyph is exactly ONE CELL, and the family is DISJOINT from the node family
+D3 · the group frame's glyph family > the frame is DOUBLE-LINED while the node box stays the rounded single-line set
+D3 · the group frame's glyph family > the two edge roles are DIFFERENT glyphs, and each is the box-drawing character for its role
+D3 · the group hit identity > a cell on or inside a frame resolves to the INNERMOST group that holds it
+D3 · the group hit identity > outside every frame it resolves to nothing, and a task still outranks its frame
+D3 · the group hit identity > the panel's click handler names the group when the pointer lands on a frame
+D3 · the width guard degrades by COLLAPSING the group > a board with NO groups keeps the pre-group fallback exactly
+D3 · the width guard degrades by COLLAPSING the group > a narrow panel falls back to the rail/list and NAMES every group collapsed
+D3 · the width guard degrades by COLLAPSING the group > a panel with room draws the BOXES, and reports no collapse
+D5 — allow: every shape the rule set does NOT deny stays dispatchable > a fully-formed call with options is allowed
+D5 — allow: every shape the rule set does NOT deny stays dispatchable > a multi-question call is allowed when EVERY item carries a non-empty options list
+D5 — allow: every shape the rule set does NOT deny stays dispatchable > an `options` entry may carry extra fields — only `label` is the rule's subject
+D5 — allow: every shape the rule set does NOT deny stays dispatchable > the validator never mutates the call it was handed
+D5: a parent cell with NO team yet yields a ROOT sub-team, and the directive says so
+D5: a registered sub-cell records the parent cell's TEAM id, and the parent cell keeps only its own
+D5 — deny: `arguments` is not an object > a non-object call is refused, naming the received shape
+D5 — deny: `options` present and malformed > `options` that is not an array is refused
+D5 — deny: `options` present and malformed > an EMPTY `options` array is refused — a choice card with no option is the broken card
+D5 — deny: `options` present and malformed > an option without a non-empty string `label` is refused, naming its position
+D5 — deny: `questions` missing, not an array, or empty > a missing `questions` field is refused
+D5 — deny: `questions` missing, not an array, or empty > an EMPTY `questions` array is refused — a call with no question renders nothing
+D5 — deny: `questions` missing, not an array, or empty > a non-array `questions` value is refused and names the shape
+D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing, empty or non-string `id` is refused
+D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing or empty `question` is refused — THE measured defect (a card with no text)
+D5 — deny: a question item lacks a non-empty string `id` or `question` > a non-object item is refused, naming its position
+D5 — deny: a question item lacks a non-empty string `id` or `question` > the denial names the OFFENDING item, so a 4-item call points at item 4
+D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > `options: undefined` is refused exactly like a missing key
+D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it
+D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a question with no `options` key at all is refused, naming the offending item
+D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > the refusal tells the model to re-issue with an options array on every item
+D5 — the install reaches the seam and reports its outcome > a composition without the guard seam reports the absence instead of installing nothing silently
+D5 — the install reaches the seam and reports its outcome > a throwing guard seam is reported as an install failure, not an abort
+D5 — the install reaches the seam and reports its outcome > with the seam present the row installs exactly one guard, and it decides both ways
+D5 — the name test: only `ask_user_question` is this guard's subject > a headless or unreadable execution is a pass-through — a guard never takes a tool call down
+D5 — the name test: only `ask_user_question` is this guard's subject > a non-target tool name passes untouched, whatever its arguments
+D5 — the name test: only `ask_user_question` is this guard's subject > the target name is decided by the validator, and the constant is the host's own spelling
+the nesting walk reads the team list once > CR 4377306770: a three-level tree costs ONE list read per build, not one per level

@@ -1973,6 +1973,7 @@
     "header.members": "{count} members",
     "header.hold": "Hold",
     "hold.none": "not held",
+    "hold.unknown": "unknown — the watchdog state could not be read",
     "hold.held": "held — {cause}",
     "hold.unknownCause": "(no cause recorded)",
     "tasks.empty": "This board has no tasks.",
@@ -1998,6 +1999,7 @@
     "header.members": "{count} 名成员",
     "header.hold": "暂停状态",
     "hold.none": "未暂停",
+    "hold.unknown": "未知 — 无法读取暂停状态",
     "hold.held": "已暂停 — {cause}",
     "hold.unknownCause": "（未记录原因）",
     "tasks.empty": "这块任务板是空的。",
@@ -2018,7 +2020,7 @@
   }
 
   /** The snapshot before the first read answers: nothing known, and nothing claimed. */
-  const EMPTY_WORKBENCH: WorkbenchData = { team: null, tasks: [], workspace: [], staged: false, hold: null, loaded: false }
+  const EMPTY_WORKBENCH: WorkbenchData = { team: null, tasks: [], workspace: [], staged: false, hold: null, holdKnown: false, loaded: false }
 
   /** One task row as `/plugins/mpd-team/state` serves it (only the three cells this page renders). */
   interface WorkbenchTaskPayload {
@@ -2124,6 +2126,16 @@
     staged: boolean
     /** The live hold on {@link WorkbenchData.team}, or null when the team is not held. */
     hold: WorkbenchHold | null
+    /**
+     * Whether the WATCHDOG route actually answered, i.e. whether {@link WorkbenchData.hold} is a fact.
+     *
+     * A failed `/plugins/mpd-team-watchdog/state` read yields `hold: null` too, and that value is
+     * indistinguishable from a team nobody holds. This flag keeps the two apart: without it the page
+     * would state "not held" about an UNKNOWN state and would offer Pause on an absent-fact. Pause
+     * follows it; Resume does not, because the repository-owned resume route defines an absent hold
+     * as a successful no-op.
+     */
+    holdKnown: boolean
     /** Whether the STATE route has answered at least once, so "no team" is never claimed before an answer. */
     loaded: boolean
   }
@@ -2324,6 +2336,10 @@
         workspace,
         staged: (plan.value?.plan ?? null) !== null,
         hold: team === null ? null : workbenchHoldOf(watchdog.value, team.id),
+        // THE WATCHDOG READ'S OWN ANSWER, not a reading of `hold`: the reader above returns a value
+        // ONLY for an `ok: true` payload, so null here means the route failed and the page knows
+        // nothing about the hold — which is not the same claim as "not held".
+        holdKnown: watchdog.value !== null,
         // `loaded` is the STATE route's own answer: a failed read is never reported as "no team".
         loaded: state.value !== null,
       },
@@ -2428,6 +2444,15 @@
       /** The team the write addresses; a page with no team has nothing to hold. */
       const team = data.team
       if (team === null || busy !== "") return
+      // THE GUARD THE BUTTON ALSO CARRIES, repeated HERE so a programmatic call cannot slip past it:
+      // with the watchdog route unread, an absent hold may be a hold this page simply cannot see, so
+      // Pause is refused.
+      if (kind === "hold" && !data.holdKnown) return
+      // THE MIRROR FOR RESUME, deliberately NOT symmetrical: a KNOWN-empty hold is nothing to clear, so
+      // the call is refused exactly when the button is. An UNKNOWN state is NOT refused — the route
+      // treats an absent hold as a successful no-op, which is why Resume stays live while it cannot be
+      // read.
+      if (kind === "resume" && data.holdKnown && data.hold === null) return
       setBusy(kind)
       setWriteError("")
       void (async (): Promise<void> => {
@@ -2455,10 +2480,12 @@
     const phaseColor = team === null ? "#8a8f98" : STATUS_COLOR[team.phase] ?? "#8a8f98"
     /** The hold's stamped instant, or "" when the payload carried none. */
     const stamp = data.hold === null ? "" : workbenchTime(data.hold.since)
-    /** The hold line: the recorded cause and the moment it started, or the explicit "not held". */
-    const holdText = data.hold === null
-      ? say("hold.none")
-      : interpolate(say("hold.held"), { cause: data.hold.cause === "" ? say("hold.unknownCause") : data.hold.cause }) + (stamp === "" ? "" : " · " + stamp)
+    /** The hold line: the UNKNOWN state first (a failed read is not "not held"), then cause, then none. */
+    const holdText = !data.holdKnown
+      ? say("hold.unknown")
+      : data.hold === null
+        ? say("hold.none")
+        : interpolate(say("hold.held"), { cause: data.hold.cause === "" ? say("hold.unknownCause") : data.hold.cause }) + (stamp === "" ? "" : " · " + stamp)
     /** The error line: the WRITE channel first, because that is the action the user just took. */
     const errorText = writeError !== "" ? writeError : readError
     /** The empty-state headline, which is never a blank page. */
@@ -2473,14 +2500,17 @@
       team === null ? null : h("div", { style: { display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", flexWrap: "wrap" } },
         h("button", {
           type: "button",
-          disabled: busy !== "" || data.hold !== null,
-          style: { ...BUTTON_STYLE, opacity: busy !== "" || data.hold !== null ? 0.5 : 1 },
+          // PAUSE NEEDS A KNOWN HOLD: a failed watchdog read must not offer a write on an unknown state.
+          disabled: busy !== "" || data.hold !== null || !data.holdKnown,
+          style: { ...BUTTON_STYLE, opacity: busy !== "" || data.hold !== null || !data.holdKnown ? 0.5 : 1 },
           onClick: () => act("hold"),
         }, busy === "hold" ? say("actions.pausing") : say("actions.pause")),
         h("button", {
           type: "button",
-          disabled: busy !== "" || data.hold === null,
-          style: { ...BUTTON_STYLE, opacity: busy !== "" || data.hold === null ? 0.5 : 1 },
+          // RESUME STAYS LIVE WITHOUT A KNOWN HOLD: that route defines an absent hold as a successful
+          // no-op, so it is refused only when the page KNOWS there is nothing to clear.
+          disabled: busy !== "" || (data.holdKnown && data.hold === null),
+          style: { ...BUTTON_STYLE, opacity: busy !== "" || (data.holdKnown && data.hold === null) ? 0.5 : 1 },
           onClick: () => act("resume"),
         }, busy === "resume" ? say("actions.resuming") : say("actions.resume")),
         h("span", { style: dim }, say("header.hold") + ": " + holdText),

@@ -1,0 +1,53 @@
+(pass) a failed raise leaves no zombie and no held slot > R3: the failed row is DROPPED and the next raise of a DIFFERENT member succeeds 
+(pass) a failed raise leaves no zombie and no held slot > R3: the happy path is unchanged — a live append raises, records its handle and stays running 
+(pass) agentPromptSection: ONE agent's own prompt registry > a non-callable registry answer degrades to a no-op disposer 
+(pass) agentPromptSection: ONE agent's own prompt registry > forwards the section VERBATIM, receiver-bound, and passes the disposer back 
+(pass) a legacy `failed` row is not a live member on any surface > the `/state` payload and the workspace listing do not count or list it 
+(pass) a legacy `failed` row is not a live member on any surface > the graph model renders TASKS only, so a failed member can never be one of its nodes 
+(pass) a legacy `failed` row is not a live member on any surface > the plan `status` answer names only the members the team has 
+(pass) C7-4 F1 — a mid-run append lands on the APPROVED record > after approval, add_member appends to the live roster AND raises the member 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > an absent seam is a no-op disposer plus two false capability flags, never a throw 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > a stub register returning a NON-function still yields a safe no-op disposer 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > registerCommand passes the definition through and hands back the host's own disposer 
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > an attempt that applies nothing and returns no disposer is still an acceptance 
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: with no team resolved the WHOLE fold is returned, legacy row included 
+(pass) ORDERING: a failing persona can never disarm the read-only discipline > an EMPTY or whitespace persona registers NOTHING, so it cannot collide on the slot 
+(pass) registerHostTool: VERBATIM registration (AC2) > a non-callable registry answer degrades to a no-op disposer, never a leak 
+(pass) registerPromptSection > a non-callable registry answer degrades to a no-op disposer 
+(pass) registerPromptSection > forwards the section VERBATIM and passes the registry's disposer through 
+(pass) registerSubagentProvider: the disposal-returning registration seam > a non-callable registry answer degrades to a no-op disposer, never a leak 
+(pass) registerSubagentProvider: the disposal-returning registration seam > forwards the provider VERBATIM and passes the registry's disposer back 
+(pass) resolveRunRoute — malformed fallbacks are dropped, and the effort rule still applies > malformed entries are counted and never fail the run 
+(pass) routePositivelyListed — the exact predicate the chain acts on > both halves must match, and nothing else counts 
+(pass) S-b — the feed notifies on a change, once per window > the disposer is idempotent, and a disposed subscription stops notifying 
+(pass) S-c — the watcher is armed lazily and does not leak > subscribe→dispose repeatedly does not accumulate a handle per cycle 
+(pass) S-c — the watcher is armed lazily and does not leak > two watches per workspace are armed on the first subscriber and CLOSED by the last disposer 
+(pass) S-d — degradation, never failure > dispose closes the watches, clears the pending window and stops the store hook 
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery 
+(pass) spawnAgent follows the generation too > 0.2.1: an activation WITHOUT dispose is tolerated, because the release is optional 
+(pass) spawnAgent follows the generation too > 0.2.1: a REJECTING dispose still returns the report — teardown failure is not the answer 
+(pass) spawnAgent follows the generation too > 0.2.1: a THROWING dispose still returns the report 
+(pass) spawnAgent follows the generation too > 0.2.1: the settled consult disposes its activation EXACTLY ONCE, after the result 
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it 
+(pass) the derived state > `blocked` is DERIVED, and OPT-1 releases a task whose blocker FAILED — counted apart 
+(pass) the derived state > member progress names the current task and counts what is done 
+(pass) the derived state > the summary separates ready from blocked, and counts only REAL edges 
+(pass) the events route > the client going away disposes the subscription, and no frame follows 
+(pass) the legacy read path > a file of only blank lines folds to empty 
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing 
+(pass) the model is computed with the shared core and cached per team > dispose closes the watcher, and a disposed cache serves nothing 
+(pass) the native backend > a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks 
+(pass) the native backend > membership answers for a handle THIS adapter raised, and is a MISS for anyone else 
+(pass) the native member route (agentRoutes -> agentOptions) > an unconfigured route still raises the member and writes exactly ONE log line quoting the sentence 
+(pass) the native team backend raises a member on the 0.2.1 seam > a backend that reports NO child id is refused rather than recorded as a member 
+(pass) the native team backend raises a member on the 0.2.1 seam > spawn() calls startActivation with the mandatory delivery policy and the member's route 
+(pass) the native team backend still raises a member on the RETIRED seam > spawn() calls startContinuable and, because that release had no such field, adds no delivery 
+(pass) the official backend > membership is ASKED of the host, so a member raised elsewhere is still identified 
+(pass) the persona section is the HOST's slot, with interpolation OFF > a roster child receives deployment:persona-prefix at order 0, interpolate false 
+(pass) the persona section is the HOST's slot, with interpolation OFF > the agent may arrive BARE as well as wrapped in {agent} 
+(pass) the registration is ONE guard, released on teardown > exactly one guard is installed and the row's dispose runs the registry's disposer 
+(pass) the staged plan > sessions do not share a staging slot 
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread 
+(pass) the task lifecycle stamps > a hand-built legacy record with NO lifecycle fields still reads, and stamps from the next claim 
+(pass) the terminal verbs > the attempt counter is MONOTONIC across claims and closures 
+(pass) tool plane > registerTools registers every definition and disposes them together 

@@ -1,0 +1,9 @@
+packages/mpd-tui-plugin/src/graph.ts: OK
+packages/mpd-tui-plugin/src/dag-groups.ts: OK
+packages/mpd-tui-plugin/test/dag-groups.test.ts: OK
+packages/mpd-team-compact-plugin/src/index.ts: OK
+packages/mpd-team-compact-plugin/test/compaction.test.ts: OK
+packages/mpd-team-compact-plugin/dist/index.js: OK
+packages/mpd-tui-plugin/dist/index.js: OK
+skills/dsh-qa/scripts/lib/cellwork-command-probe.ts: OK
+skills/dsh-qa/scripts/cellwork-command.ts: OK

@@ -1,0 +1,21 @@
+=== artifact BEFORE/AFTER vs HEAD 1b5bace6 (pre-repair bytes) ===
+CHANGED   packages/mpd-tui-plugin/dist/index.js  head=684fa6f777a2 wt=9d0d47a9b268
+CHANGED   packages/mpd-team-compact-plugin/dist/index.js  head=12650b78c367 wt=2db05ba98405
+CHANGED   skills/dsh-qa/scripts/lib/cellwork-command-probe.ts  head=8186a35ae98e wt=6d54e8887f59
+CHANGED   packages/mpd-tui-plugin/src/dag-groups.ts  head=a5a48f7c2bd5 wt=161a501fabca
+CHANGED   packages/mpd-team-compact-plugin/src/index.ts  head=f743616690e7 wt=b07427de750b
+
+=== F1 (4377306778): the ONE index source in the BUILT dist ===
+function drawnRankOf
+drawnRankOf references: 3
+colBottoms references:  6
+covered references:     7
+6378:function drawnRankOf(columns) {
+6892:    const rankOfBox = drawnRankOf(columns).rankOf;
+6995:    const rankOfBox = drawnRankOf(columns).rankOf;
+
+=== F2 (4377306758): the barrier cancellation in the BUILT dist ===
+waitOnePoll
+waitOnePoll
+outcome: "cancelled"
+the pass was cancelled during the idle barrier; nothing was compacted for this member
