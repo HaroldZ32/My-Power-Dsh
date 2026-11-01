@@ -2669,6 +2669,19 @@ export function apply(ctx: any): void {
         || lineage.some((id) => id === mailTeam.leadSessionId || (mailTeam.leadHistory ?? []).includes(id))
       )
       /**
+       * The DURABLE address this caller acts under, used by EVERY mailbox operation.
+       *
+       * WHY NOT THE RAW SESSION ID (CodeRabbit CR3): a forked or resumed session presents the Lead through
+       * `leadHistory` or its lineage, so `callerIsLead` is true while its own session id differs from the
+       * record's `leadSessionId`. Using the raw id for `selfId`/`fromId`/`issuerId`/the ack then breaks
+       * four things at once: rows addressed to the lead stop arriving at the lead's own acknowledgement,
+       * a `*` broadcast includes the captain's own row, an answer to that captain is refused because the
+       * asker id differs from the addressed lead id, and a permit the captain issued looks FOREIGN to the
+       * `wait` that follows it. ONE address fixes all four: the roster id when the team names this caller,
+       * the record's LEAD id when it is the captain, else its session id.
+       */
+      const callerAddress = ownMember?.id ?? (callerIsLead ? leadId : callerId)
+      /**
        * How a permit refusal names this caller's captain, or says why no captain can be named (AC-4).
        *
        * A refusal that only says "denied" leaves the caller with no next step, so every permit/wait
@@ -2691,7 +2704,7 @@ export function apply(ctx: any): void {
           // THE SENDER'S OWN ROSTER ID, not its session id (R2's F1): the roster is addressed by `M1`
           // while a member's session is a different string, so handing the resolver the session id let
           // the member's own roster row survive a `*` broadcast — and let it message itself.
-          selfId: ownMember?.id ?? callerId,
+          selfId: callerAddress,
         }, String(args?.to ?? ""))
         if (!resolved.ok) return { refused: resolved.detail }
         // A broadcast to nobody is NOT a send: report that instead of "sent 0 message(s)", which would
@@ -2699,6 +2712,9 @@ export function apply(ctx: any): void {
         if (resolved.targets.length === 0) return { refused: "there is nobody to address — this team has no other members and records no lead" }
         /** The store's verdict: one row per recipient, or the refusal and why nothing was written. */
         const result = sendMailMany(workspace, {
+          // `fromId` stays the caller's SESSION id, which is what the protocol's `MailMessage` documents;
+          // the DURABLE address rides `fromMemberId` below, so BOTH spellings are recorded and no reader
+          // of the row loses the session (the store's sender set unions the two).
           fromId: callerId,
           fromName: callerName,
           // `toId`/`toName` describe the FIRST recipient; the fan-out itself is driven by `targets`.
@@ -2719,7 +2735,7 @@ export function apply(ctx: any): void {
           ...(args?.answer === undefined ? {} : { answer: args.answer as MailAnswer }),
           // THE SENDER'S ROSTER ID: a row is addressed to `M1` while the answering session names
           // itself by session id, so the ownership rules need both spellings recorded at send time.
-          ...(ownMember === undefined ? {} : { fromMemberId: ownMember.id }),
+          ...(callerAddress === callerId ? {} : { fromMemberId: callerAddress }),
           // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
           // team identity is recorded HERE, at the one moment the sending team is known.
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
@@ -2777,7 +2793,7 @@ export function apply(ctx: any): void {
         }
         /** The store's verdict: the appended grant, or the sentence saying why nothing was written. */
         const issued = issuePermit(workspace, {
-          issuerId: callerId,
+          issuerId: callerAddress,
           issuerName: callerName,
           holderId: holder.id,
           holderName: holder.name,
@@ -2812,7 +2828,7 @@ export function apply(ctx: any): void {
         }
         /** The permit's verdict: ownership, expiry, the issuer's authority and the effective timeout. */
         const checked = checkPermit(permit, {
-          holderId: ownMember?.id ?? callerId,
+          holderId: callerAddress,
           holderName: ownMember?.name ?? callerName,
           sessionId: callerId,
           leadIds: [leadId, ...(mailTeam?.leadHistory ?? [])].filter((id) => id !== ""),
@@ -2826,8 +2842,10 @@ export function apply(ctx: any): void {
         /** The folded row the caller says it waits on. */
         const target = state.messages.find((message) => message.id === messageId)
         if (target === undefined) return { refused: `wait: no message "${messageId}" is recorded for this team — pass the id the send returned` }
-        /** Whether the permit's scope covers this target at all (a question for `answer`). */
-        const targetCheck = checkWaitTarget(checked.permit, target)
+        /** The holder identity the permit was validated against, reused for the target ownership rule. */
+        const waitHolder = { holderId: callerAddress, holderName: ownMember?.name ?? callerName, sessionId: callerId }
+        /** Whether this target is one the HOLDER sent and the permit's scope covers (scope + ownership). */
+        const targetCheck = checkWaitTarget(checked.permit, target, waitHolder)
         if (!targetCheck.ok) return { refused: `wait: ${targetCheck.detail}` }
         // BOUNDED POLLING: one mailbox read per interval for at most the permit-bounded timeout. The
         // loop has a poll ceiling as well as a deadline (see `waitForReply`), so it cannot spin.
@@ -2863,7 +2881,7 @@ export function apply(ctx: any): void {
       if (args?.action === "read") {
         // OWNERSHIP (contract §5): the acknowledgement is made AS THE CALLER'S OWN MEMBER ROW, and the
         // store refuses a row addressed to anybody else. There is no administrative escape.
-        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: ownMember?.id ?? callerId, byName: ownMember?.name ?? callerName }, now())
+        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: callerAddress, byName: ownMember?.name ?? callerName }, now())
         return { moved: outcome.moved, ...(outcome.refused.length === 0 ? {} : { refused: outcome.refused.map((entry) => entry.reason).join("; ") }) }
       }
 
@@ -2912,7 +2930,7 @@ export function apply(ctx: any): void {
       // one. ONE resolver, the same `callerIdentity` the board uses (C7-4 F2) — resolved ONCE at the
       // top of this tool, so `send`, `read` and `unread` can never disagree about who is calling.
       /** The inbox owner: the named member, else the caller's OWN member row, else its session id. */
-      const memberId = wanted?.id ?? ownMember?.id ?? callerId
+      const memberId = wanted?.id ?? callerAddress
       // ── D16b: THE SAME PER-TEAM FILTER THE SEND BOUND APPLIES ──
       // `memberId` is a per-team id (`M1`, `M2`, …) every team reuses, so an unscoped fold hands a new
       // team's `M1` a finished wave's unread mail — and an `undelivered` count the send bound no longer

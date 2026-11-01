@@ -324,16 +324,25 @@ export function issuePermit(workspace: string, input: IssuePermitInput, now: Dat
 }
 
 /** Why a wait was refused: one token per rule, so a caller can act on the reason instead of prose. */
-export type PermitRefusal = "unknown" | "invalid" | "expired" | "foreign-holder" | "foreign-issuer" | "wrong-question" | "not-a-question"
+export type PermitRefusal = "unknown" | "invalid" | "expired" | "foreign-holder" | "foreign-issuer" | "foreign-target" | "wrong-question" | "not-a-question"
 
-/** The identity a permit is validated against — resolved by the tool boundary from the team record. */
-export interface PermitCaller {
+/**
+ * The identity a permit HOLDER is matched by — the same two spellings the permit and the ack use.
+ *
+ * ONE shape for the permit check and the target check, so "who is this caller" cannot be answered two
+ * different ways inside one wait (CodeRabbit CR5).
+ */
+export interface WaitHolder {
   /** The caller's roster id when the team names it, else its session id (the D16c two-spelling rule). */
   holderId: string
   /** The caller's display name, the tolerant fallback when its session id was re-minted. */
   holderName: string
   /** The caller's own session id, accepted beside the roster id because a member is addressed both ways. */
   sessionId?: string
+}
+
+/** The identity a permit is validated against — resolved by the tool boundary from the team record. */
+export interface PermitCaller extends WaitHolder {
   /** Every session id that may issue for this team (its Lead, plus the recorded Lead history). */
   leadIds?: readonly string[]
   /** The raw `timeoutMs` the wait asked for; absent uses {@link WAIT_DEFAULT_TIMEOUT_MS}. */
@@ -400,11 +409,25 @@ export type WaitTargetCheck = { ok: true } | { ok: false; reason: PermitRefusal;
  * any row can be replied to. When the captain NARROWED the grant with a `questionId`, the target must
  * carry that question id in BOTH scopes — otherwise a narrowed grant would be inert on a `message`
  * permit, and a wait it was never meant to cover would be admitted.
+ *
+ * OWNERSHIP (CodeRabbit CR5): the target must be a row the permit's holder SENT. A wait is an ASKER
+ * waiting for the reply to its OWN question — the row it names is addressed to whoever must answer — so
+ * the identity that has to match is `fromId`, not `toId`. Without the rule a grant scoped only to "a
+ * question" let its holder wait on ANOTHER member's question and read that member's `selected` labels
+ * out of the answers the wait assembles, which is exactly the cross-member leak the ownership rules
+ * exist to prevent. Answering a question addressed to the holder is a SEND, never a wait, so no
+ * legitimate wait is lost by requiring `fromId`.
  * @param permit - the validated permit.
  * @param target - the folded message the wait names.
+ * @param holder - the waiting caller's identity, matched by the SAME spellings {@link checkPermit} uses.
  * @returns ok, or the refusal token and the sentence naming the mismatch.
  */
-export function checkWaitTarget(permit: PermitRecord, target: MailMessage): WaitTargetCheck {
+export function checkWaitTarget(permit: PermitRecord, target: MailMessage, holder: WaitHolder): WaitTargetCheck {
+  /** Every id spelling of the holder: its roster id, and its session id when the tool resolved one. */
+  const spellings = new Set<string>([holder.holderId, ...(holder.sessionId === undefined ? [] : [holder.sessionId])].filter((id) => id !== ""))
+  if (!spellings.has(target.fromId)) {
+    return { ok: false, reason: "foreign-target", detail: `permit ${permit.permitId} was issued to "${permit.holderName}", so it waits only on rows it SENT — "${target.id}" was sent by "${target.fromName}"` }
+  }
   if (permit.scope === "answer" && target.kind !== "question") {
     return { ok: false, reason: "not-a-question", detail: `permit ${permit.permitId} has scope "answer", so it waits on a question; "${target.id}" is a ${target.kind} row` }
   }

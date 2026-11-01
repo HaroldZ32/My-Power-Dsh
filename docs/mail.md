@@ -84,8 +84,10 @@ Mail is non-blocking by default. A blocking wait is a GRANTED EXCEPTION, recorde
   (its recorded `leadSessionId` and lead history) may issue one, and only for a member of its own team.
   TTL defaults to 60 s and is clamped to 600 s; `questionId` narrows the grant to one question.
 - `agent_teams_mail { action: "wait", permitId, messageId, timeoutMs? }` — refuses without a permit, on an
-  expired or foreign permit, and on a target the permit's scope does not cover; every refusal names the
-  caller's captain. The timeout defaults to 15 s and is clamped to 60 s.
+  expired or foreign permit, on a target the permit's scope does not cover, and on a target the HOLDER did
+  not send: a wait is an ASKER waiting on its own question, so answering one addressed to you is a `send`,
+  never a wait, and another member's question would leak the labels its answers carry. Every refusal names
+  the caller's captain. The timeout defaults to 15 s and is clamped to 60 s.
 - The wait polls the mailbox at 50 ms and is bounded TWICE: a wall-clock deadline and a poll ceiling
   (`ceil(timeoutMs / interval) + 1`), so it cannot spin even under an injected clock. `timeoutMs: 0` is
   exactly one read and a timeout. A cancelled call returns `reason: "aborted"`.

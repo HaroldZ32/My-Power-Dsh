@@ -342,7 +342,7 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 |---|---|
 | `state.json` | cell 记录：阶段、队长 session、深度、父 cell、team id、规划器/切分器 handle、被 stage 的切分票看板 id（`splitTaskId`）、成员及其模式（含可选的 `fenced`/`fencedReason` 标记）、切分修订号、检查点、journal 游标，以及两个可选的「在飞激活」字段——`activationInFlight`（正在物化的被接受修订号）与 `activatedLoops`（切分键 → 验证循环 id） |
 | `journal.jsonl` | 只追加的迁移：阶段、派发、检查点、压缩、晋升、拒绝，以及取代行（`split-superseded`、`activation-in-flight-superseded`）；一趟激活每个产物写一条紧凑的 `cell-activation-progress` 行、失败时只写一条完整的 `cell-activation-partial` 行，修复行是 `task-reassigned`、`dispatch-reassign` 与 `checkpoint-unrecoverable` |
-| `mail.jsonl` | 本 cell 自己的邮件行——同 cell 发送，或跨 cell 发往本 cell 的邮件；由发送方写入、本 cell 的 `cellwork_inbox` 读取；`send` 行之后跟着一条单独的 `wake` 记录，说明唤醒尝试的结果 |
+| `mail.jsonl`（旧格式） | 统一**之前**的按 cell 邮件日志，仍会被**读取**并合并进视图；新邮件**不再**写在这里——它们住在 workspace 存储 `<workspace>/.mpd/team/mailbox.jsonl`，盖上本 cell 的 `teamId` 与 `cellId`（跨 cell 发送者还会盖上 `fromCell`），由 `cellwork_inbox` 读取，并在那里随后跟一条单独的 `wake` 记录说明唤醒尝试的结果；对**这些**旧格式行的确认会追加回本文件，而统一之后的行则在存储里确认 |
 | `requirements.md` | 经校验的需求文档，带修订号；一次变更会提升修订号并把切分标记为过期 |
 | `split/<rev>.json` | 切分器的提案，加上插件的实测估算与接受/拒绝裁定 |
 | `split/<rev>.refused.json` | 该修订号下一次**被拒绝**提交的完整 finding 列表；写在被接受记录旁边，绝不覆盖它 |

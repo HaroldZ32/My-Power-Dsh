@@ -2774,7 +2774,11 @@ function checkPermit(permit, caller, now) {
   const timeoutMs = Math.max(0, Math.min(requested, WAIT_MAX_TIMEOUT_MS, remaining));
   return { ok: true, permit, timeoutMs };
 }
-function checkWaitTarget(permit, target) {
+function checkWaitTarget(permit, target, holder) {
+  const spellings = new Set([holder.holderId, ...holder.sessionId === undefined ? [] : [holder.sessionId]].filter((id) => id !== ""));
+  if (!spellings.has(target.fromId)) {
+    return { ok: false, reason: "foreign-target", detail: `permit ${permit.permitId} was issued to "${permit.holderName}", so it waits only on rows it SENT — "${target.id}" was sent by "${target.fromName}"` };
+  }
   if (permit.scope === "answer" && target.kind !== "question") {
     return { ok: false, reason: "not-a-question", detail: `permit ${permit.permitId} has scope "answer", so it waits on a question; "${target.id}" is a ${target.kind} row` };
   }
@@ -7032,6 +7036,7 @@ function apply(ctx) {
       const ownMember = mailTeam === undefined ? undefined : callerIdentity(mailTeam, callerId, sessionTitleOf(exec), lineage).ownMember;
       const leadId = String(mailTeam?.leadSessionId ?? "");
       const callerIsLead = mailTeam !== undefined && leadId !== "" && (mailTeam.leadSessionId === callerId || (mailTeam.leadHistory ?? []).includes(callerId) || lineage.some((id) => id === mailTeam.leadSessionId || (mailTeam.leadHistory ?? []).includes(id)));
+      const callerAddress = ownMember?.id ?? (callerIsLead ? leadId : callerId);
       const captainSpelling = () => {
         if (mailTeam === undefined)
           return "this caller resolves no team record, so no captain can have issued a permit";
@@ -7045,7 +7050,7 @@ function apply(ctx) {
         const resolved = resolveRecipients({
           members: roster.map((member) => ({ id: member.id, name: member.name })),
           ...leadId === "" ? {} : { lead: { id: leadId, name: "captain" } },
-          selfId: ownMember?.id ?? callerId
+          selfId: callerAddress
         }, String(args?.to ?? ""));
         if (!resolved.ok)
           return { refused: resolved.detail };
@@ -7065,7 +7070,7 @@ function apply(ctx) {
           ...args?.threadId === undefined ? {} : { threadId: String(args.threadId) },
           ...args?.question === undefined ? {} : { question: args.question },
           ...args?.answer === undefined ? {} : { answer: args.answer },
-          ...ownMember === undefined ? {} : { fromMemberId: ownMember.id },
+          ...callerAddress === callerId ? {} : { fromMemberId: callerAddress },
           ...mailTeam === undefined ? {} : { teamId: mailTeam.teamId }
         }, resolved.targets, now());
         if (!result.ok)
@@ -7106,7 +7111,7 @@ ${message.body}`, exec.signal);
           return { refused: `permit: "${String(args?.holder ?? "")}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
         }
         const issued = issuePermit(workspace, {
-          issuerId: callerId,
+          issuerId: callerAddress,
           issuerName: callerName,
           holderId: holder.id,
           holderName: holder.name,
@@ -7134,7 +7139,7 @@ ${message.body}`, exec.signal);
           return { refused: `wait: no permit "${permitId}" is recorded — a blocking wait needs a permit from your captain: ${captainSpelling()}; without one every mail call stays non-blocking` };
         }
         const checked = checkPermit(permit, {
-          holderId: ownMember?.id ?? callerId,
+          holderId: callerAddress,
           holderName: ownMember?.name ?? callerName,
           sessionId: callerId,
           leadIds: [leadId, ...mailTeam?.leadHistory ?? []].filter((id) => id !== ""),
@@ -7146,7 +7151,8 @@ ${message.body}`, exec.signal);
         const target = state2.messages.find((message) => message.id === messageId);
         if (target === undefined)
           return { refused: `wait: no message "${messageId}" is recorded for this team — pass the id the send returned` };
-        const targetCheck = checkWaitTarget(checked.permit, target);
+        const waitHolder = { holderId: callerAddress, holderName: ownMember?.name ?? callerName, sessionId: callerId };
+        const targetCheck = checkWaitTarget(checked.permit, target, waitHolder);
         if (!targetCheck.ok)
           return { refused: `wait: ${targetCheck.detail}` };
         const outcome = await waitForReply({
@@ -7174,7 +7180,7 @@ ${message.body}`, exec.signal);
         return { ok: true, permitId, permitScope: checked.permit.scope, answers, polls: outcome.polls, waitedMs: outcome.waitedMs };
       }
       if (args?.action === "read") {
-        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: ownMember?.id ?? callerId, byName: ownMember?.name ?? callerName }, now());
+        const outcome = acknowledge(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], { byId: callerAddress, byName: ownMember?.name ?? callerName }, now());
         return { moved: outcome.moved, ...outcome.refused.length === 0 ? {} : { refused: outcome.refused.map((entry) => entry.reason).join("; ") } };
       }
       if (args?.action === "summary") {
@@ -7191,7 +7197,7 @@ ${message.body}`, exec.signal);
       if (args?.member !== undefined && wanted === undefined) {
         return { refused: `"${String(args.member)}" is not a member of this team (members: ${roster.map((member) => member.name).join(", ") || "none"})` };
       }
-      const memberId = wanted?.id ?? ownMember?.id ?? callerId;
+      const memberId = wanted?.id ?? callerAddress;
       const scoped = scopeToTeam(state, mailTeam?.teamId);
       return {
         messages: unreadOf(scoped, memberId).map((message) => ({

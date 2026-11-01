@@ -663,6 +663,88 @@ describe("the mail envelope and addressing through the REAL tool surface", () =>
   })
 })
 
+// ── CodeRabbit CR3 (Major, Functional Correctness): a FORKED or RESUMED captain presents the Lead
+// through `leadHistory`/lineage, so `callerIsLead` is true while its own session id differs from the
+// record's `leadSessionId`. Every mailbox operation must then act under ONE durable address (the lead
+// id), or four things break at once: its own acknowledgement, a `*` broadcast, answer routing, and the
+// permit issuer check. ──
+describe("CR3 — a LINEAGE-only captain acts under the DURABLE lead id", () => {
+  test("broadcast excludes the captain's own row, and the captain can acknowledge a member's question", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The resumed session's own id — DIFFERENT from the record's lead session. */
+    const resumed = "lead-session-resumed"
+    /** The lineage the harness records: its parent is the approving Lead, and it is not a delegation child. */
+    const lineage = { parentSession: LEAD }
+    // (a) THE BROADCAST: `selfId` must be the lead id, or the captain's own row is a recipient of itself.
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, resumed, lineage) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    expect((fan.messages ?? []).map((message) => message.toName).sort()).toEqual(["Reviewer", "Senior Engineer"])
+    // (b) THE ACK: a member asks `captain`, and the resumed captain acknowledges — its own row.
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "may I?", body: "b" }, "child-Senior-Engineer") as { message?: { id?: string; toId?: string }; refused?: string }
+    expect(asked.refused).toBeUndefined()
+    // The question was addressed to the DURABLE lead id, which is what the resumed session acts as.
+    expect(asked.message?.toId).toBe(LEAD)
+    /** The question row's id, which is the row the captain acknowledges. */
+    const askedId = String(asked.message?.id ?? "")
+    /** The captain's acknowledgement of its OWN addressed row. */
+    const acked = await h.call("agent_teams_mail", { action: "read", ids: [askedId] }, resumed, lineage) as { moved?: string[]; refused?: string }
+    expect(acked.refused).toBeUndefined()
+    expect(acked.moved).toEqual([askedId])
+  })
+
+  test("a permit the resumed captain issues is NOT foreign to the wait that uses it", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The resumed session's own id — DIFFERENT from the record's lead session. */
+    const resumed = "lead-session-resumed"
+    /** The lineage the harness records: its parent is the approving Lead. */
+    const lineage = { parentSession: LEAD }
+    // The member's own question, which the wait is legitimately about.
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "q", body: "b", question: { questionId: "q1", question: "which?", options: [{ label: "A. one" }] } }, "child-Senior-Engineer") as { message?: { id?: string } }
+    /** The permit the RESUMED captain grants this member. */
+    const granted = await h.call("agent_teams_mail", { action: "permit", holder: "Senior Engineer", scope: "answer", ttlMs: 60_000 }, resumed, lineage) as { permit?: { permitId?: string }; refused?: string }
+    expect(granted.refused).toBeUndefined()
+    /** The member's bounded wait: it must reach the TIMEOUT, not be refused as a foreign issuer. */
+    const waited = await h.call("agent_teams_mail", { action: "wait", permitId: String(granted.permit?.permitId ?? ""), messageId: String(asked.message?.id ?? ""), timeoutMs: 0 }, "child-Senior-Engineer") as { ok?: boolean; reason?: string; refused?: string }
+    expect(waited.refused).toBeUndefined()
+    expect(waited.ok).toBe(false)
+    expect(waited.reason).toBe("timeout")
+  })
+})
+
+// ── CodeRabbit CR5 (Minor, Security & Privacy): the wait path scoped rows to the TEAM only, so a permit
+// holder could wait on ANOTHER member's question and read that member's `selected` labels out of the
+// answers the wait assembles. A wait is an ASKER waiting on its own question, so the row must be one the
+// holder SENT. ──
+describe("CR5 — a wait target must be a row the permit HOLDER sent", () => {
+  test("another member's question is refused; the holder's own question reaches the timeout", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session that holds the permit. */
+    const holder = "child-Senior-Engineer"
+    /** The permit the captain grants this member. */
+    const granted = await h.call("agent_teams_mail", { action: "permit", holder: "Senior Engineer", scope: "answer", ttlMs: 60_000 }, LEAD) as { permit?: { permitId?: string } }
+    /** The permit id every wait below names. */
+    const permitId = String(granted.permit?.permitId ?? "")
+    // ANOTHER member's question: the holder is not its asker, so its answers are not the holder's to read.
+    const foreign = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "theirs", body: "b", question: { questionId: "q2", question: "which?", options: [{ label: "A. one" }] } }, "child-Reviewer") as { message?: { id?: string } }
+    /** The holder's attempt to wait on somebody ELSE's question, which must be refused. */
+    const peek = await h.call("agent_teams_mail", { action: "wait", permitId, messageId: String(foreign.message?.id ?? ""), timeoutMs: 0 }, holder) as { refused?: string }
+    expect(peek.refused).toContain("was sent by")
+    // CONTROL: the holder's OWN question is admitted, and a zero-length wait is exactly one read + timeout.
+    const own = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "mine", body: "b", question: { questionId: "q3", question: "which?", options: [{ label: "A. one" }] } }, holder) as { message?: { id?: string } }
+    /** The holder's wait on its OWN question, which the ownership rule must admit. */
+    const waited = await h.call("agent_teams_mail", { action: "wait", permitId, messageId: String(own.message?.id ?? ""), timeoutMs: 0 }, holder) as { ok?: boolean; reason?: string; refused?: string }
+    expect(waited.refused).toBeUndefined()
+    expect(waited.reason).toBe("timeout")
+  })
+})
+
 // ── CR repair M (a CodeRabbit finding on the mail tool) — an EXPLICIT `member` that does not resolve
 // must REFUSE, never fall back to the caller's own inbox. The fallback answered a question nobody asked
 // with the wrong inbox, so a typo read as "nothing unread" instead of "that name is not on this team". ──

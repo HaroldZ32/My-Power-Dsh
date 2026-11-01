@@ -75,7 +75,9 @@ cellwork 邮件当时是自由文本，于是每一次被转述的「选项编�
   （记录中的 `leadSessionId` 及其历史）可以签发，且只能签给本队成员。TTL 默认 60 秒，上限 600 秒；
   `questionId` 可把授权收窄到单个问题。
 - `agent_teams_mail { action: "wait", permitId, messageId, timeoutMs? }`——没有 permit、permit 已过期或属于
-  他人、目标不在该 permit 的 scope 内，都会被拒绝；每条拒绝都会点出调用者的队长。超时默认 15 秒，上限 60 秒。
+  他人、目标不在该 permit 的 scope 内、以及目标**不是该 holder 自己发出的**，都会被拒绝：等待是**提问者**在等
+  自己那个问题的回答，所以去回答「发给你的问题」属于 `send` 而不是 wait，而别人的问题会泄露其回答携带的标签。
+  每条拒绝都会点出调用者的队长。超时默认 15 秒，上限 60 秒。
 - 等待每 50 毫秒轮询一次邮箱，并且被**双重**限界：实际时钟截止点，以及轮询上限
   （`ceil(timeoutMs / interval) + 1`），所以即使时钟被注入也不会空转。`timeoutMs: 0` 恰好是一次读取加一次
   超时。调用被取消时返回 `reason: "aborted"`。

@@ -217,19 +217,36 @@ describe("the wait target must be what the permit's scope covers", () => {
   test("scope `answer` waits on a QUESTION, and on the one question when the grant names it", () => {
     /** A grant narrowed to one question id. */
     const narrowed = permit({ questionId: "q-colour" })
-    expect(checkWaitTarget(narrowed, targetRow("question", "q-colour"))).toEqual({ ok: true })
+    expect(checkWaitTarget(narrowed, targetRow("question", "q-colour"), caller())).toEqual({ ok: true })
     // A plain message is not a question, so an answer-scope grant cannot wait on it.
-    expect(checkWaitTarget(narrowed, targetRow("message"))).toMatchObject({ ok: false, reason: "not-a-question" })
+    expect(checkWaitTarget(narrowed, targetRow("message"), caller())).toMatchObject({ ok: false, reason: "not-a-question" })
     // A DIFFERENT question is refused rather than silently waited on.
-    expect(checkWaitTarget(narrowed, targetRow("question", "q-size"))).toMatchObject({ ok: false, reason: "wrong-question" })
+    expect(checkWaitTarget(narrowed, targetRow("question", "q-size"), caller())).toMatchObject({ ok: false, reason: "wrong-question" })
+  })
+
+  test("CR5 — the target must be a row the HOLDER sent, so another member's question is refused", () => {
+    /** A plain answer-scope grant for the default holder (`M1` / `child-Senior-Engineer`). */
+    const grant = permit()
+    /** The holder's OWN question: the row a wait is legitimately about. */
+    const own = targetRow("question", "q-colour")
+    expect(checkWaitTarget(grant, own, caller())).toEqual({ ok: true })
+    // THE SAME SHAPE sent by ANOTHER member. Its answers are not this holder's to read, and before this
+    // rule the wait assembled them and exposed their `selected` labels.
+    /** The foreign question, identical but for its sender. */
+    const foreign = { ...own, id: "mail-foreign", fromId: "child-Reviewer", fromName: "Reviewer" }
+    /** The refusal for a target this holder did not send. */
+    const refused = checkWaitTarget(grant, foreign, caller())
+    expect(refused).toMatchObject({ ok: false, reason: "foreign-target" })
+    // The refusal names the sender, so the holder learns WHY it may not wait on it.
+    expect((refused as { detail: string }).detail).toContain("Reviewer")
   })
 
   test("scope `message` waits on any row, because any row can be replied to", () => {
-    expect(checkWaitTarget(permit({ scope: "message" }), targetRow("message"))).toEqual({ ok: true })
+    expect(checkWaitTarget(permit({ scope: "message" }), targetRow("message"), caller())).toEqual({ ok: true })
     // A NARROWED grant is never inert: on a message-scope permit the target must still be the named
     // question, so a grant the captain scoped to one question cannot wait on anything else.
-    expect(checkWaitTarget(permit({ scope: "message", questionId: "q-colour" }), targetRow("message"))).toMatchObject({ ok: false, reason: "wrong-question" })
-    expect(checkWaitTarget(permit({ scope: "message", questionId: "q-colour" }), targetRow("question", "q-colour"))).toEqual({ ok: true })
+    expect(checkWaitTarget(permit({ scope: "message", questionId: "q-colour" }), targetRow("message"), caller())).toMatchObject({ ok: false, reason: "wrong-question" })
+    expect(checkWaitTarget(permit({ scope: "message", questionId: "q-colour" }), targetRow("question", "q-colour"), caller())).toEqual({ ok: true })
   })
 })
 
