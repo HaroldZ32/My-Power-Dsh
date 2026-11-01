@@ -156,7 +156,7 @@ names it: pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.16.4 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.16.4 | 0.2.1-rc.3 | 0.17.0 | the current release |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.1 | 0.2.1-rc.3 | 0.17.0 | previous |
@@ -165,6 +165,11 @@ names it: pin both.
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
+
+The **next** release carries the `0.2.1-rc.5` / `0.18.0` pair: both manifests already pin it
+([`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`), and the
+row above moves when that release publishes. Until then the newest row stays what the registry
+actually serves.
 
 ## Quick start
 

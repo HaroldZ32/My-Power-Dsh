@@ -139,7 +139,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.16.4 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
+| 0.16.4 | 0.2.1-rc.3 | 0.17.0 | 本次发布 |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | 上一版本 |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | `previous` |
 | 0.16.1 | 0.2.1-rc.3 | 0.17.0 | `previous` |
@@ -147,6 +147,10 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.2 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
+
+**下一次**发布才会带上 `0.2.1-rc.5` / `0.18.0` 这一对：两个清单已经钉好了
+（[`package.json`](./package.json) 与 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`），
+上表首行会在那次发布真正发布后随之移动；在那之前，最新一行仍是 registry 实际提供的版本。
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous` —— harness 0.2.1 适配发布 |
 
 ## 快速上手
