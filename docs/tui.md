@@ -4,10 +4,14 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.17.0** and its built-in admission
-profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.3`. §11.10
-is this wave's amendment: it records the move, the unchanged seam inventory and the carriers it
-touched. **The pin before it was 0.16.1, and that statement stays readable as history**: 0.16.1 is the
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.18.0** and its built-in admission
+profile. 0.18.0's declared `@deepseek-ai/dsh-*` peer bands run through DeepSeek Harness
+`0.2.1-rc.4` and `0.2.1-rc.5` — all 36 of its `dsh-*` lists carry both, while 0.17.0's stop at
+`0.2.1-rc.3` (read from the published tarballs). **§11.11 is this wave's amendment**: it records the
+move and the carriers it touched. **The pin before it was 0.17.0, and that statement stays readable as
+history**: 0.17.0 is the first dsh-tui release whose declared peer bands admitted harness
+`0.2.1-rc.3`, and **§11.10** is that wave's amendment. **The pin before that was 0.16.1, and that
+statement stays readable as history**: 0.16.1 is the
 first dsh-tui release whose declared peer bands included harness `0.2.1-rc.2` (all 36 of its
 `@deepseek-ai/dsh-*` peers listed it), and §11.8 is that wave's amendment.
 **The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
@@ -1652,3 +1656,29 @@ passed, 0 failed, 45 null (the four `oneclick.*` rows by mode; the credential-ga
 `boot.llmTurn` true and the `ui.*` rows true. ONE bound stands: the **one-click lane against the
 published package was NOT run** in this wave, so its rows stay null — what these stamps measured is the
 checkout install, never the packed artifact.
+
+### 11.11 Amendment after the DSH-TUI 0.18.0 / harness 0.2.1-rc.5 adaptation wave (2026-11-01)
+
+This wave moves the pin pair again and changes no plugin source. §11.10 stays as written: it records
+the 0.17.0 wave, not this one.
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.17.0** | **0.18.0** — all 36 of its `@deepseek-ai/dsh-*` OR-lists include harness `0.2.1-rc.4` and `0.2.1-rc.5`, which no 0.17.0 list carries (read from the published tarballs) |
+| Harness pin (`package.json`, the three `@deepseek-ai/dsh-experimental-*`) | `0.2.1-rc.3` | **`0.2.1-rc.5`** — those pins carry exact peers, so host and TUI had to move together: an rc.5 harness with a 0.17.0 host is refused by `dsh plugin --profile dsh-tui add` |
+| §3.3 / §7 — the pin carriers | `0.17.0` carriers, harness `0.2.1-rc.3` | **`0.18.0` carriers and harness `0.2.1-rc.5`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.18.0`), `dsh-plugin.json`'s `compat.hosts` (`…@0.18.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy |
+| The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE`, `PANEL_CSV_SELF_HEAL_SINCE`, the `hostVersion` fixtures | **unchanged** — they encode WHEN the host changed behaviour, never which host is current |
+
+**Honest bounds.** All three Docker real-machine lanes RAN on this wave's final tree in a bare
+`ubuntu:24.04`: `evidence/docker/client-install/2026-11-01T08-40-39Z/result.json` (`--no-browser`:
+163 passed, 0 failed, 79 null), `…/2026-11-01T08-48-50Z/result.json` (`--live`: 204 passed, 0 failed,
+38 null) and `evidence/docker/client-install-oneclick/2026-11-01T09-04-57Z/result.json`
+(`oneclick --live`: 203 passed, 0 failed, 39 null). The twelve `tui.*` assertions are true against
+**0.18.0** — `tui.boot`, `tui.compose`, `tui.hostInstall`, `tui.pluginAddBundle`, `tui.mergedPanelOpens`,
+`tui.mergedPanelOrder`, `tui.mpdTuiRow`, `tui.agentTeamRows`, `tui.hostDashboardKeyIntact`,
+`tui.noDirectTuiSeam`, `tui.noFatalSignatures`, `tui.laneExit` — and the host in play is proven by
+`dsh-tui@0.18.0 lib/types/presetPrefs.js#writePresetPref`. The live turns called an mpd tool in all
+three planes (`live.web`, `live.tui`, `live.headless`). Bounds that stand: the `ui.*` rows stay null
+(the browser lane is opt-in and was not asked), and the artifact under test is the tree the lane packs
+itself, never a registry publication — the released version that carries this pair is set by the
+release wave, not by this amendment.

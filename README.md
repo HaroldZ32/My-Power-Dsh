@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.16.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -166,6 +166,11 @@ names it: pin both.
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
 
+The **next** release carries the `0.2.1-rc.5` / `0.18.0` pair: both manifests already pin it
+([`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`), and the
+row above moves when that release publishes. Until then the newest row stays what the registry
+actually serves.
+
 ## Quick start
 
 1. **Install**, restart `dsh`, and start a session on the **MPD (Main Working Agent)** preset.
@@ -236,7 +241,7 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.3**.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.5**.
   Expect breakage while upstream stabilizes, and pin the harness version you use.
 - **The TUI surface trails the Web surface in named places, not everywhere.** The rows of the table
   above that do not read "same facts" are open deviations, each recorded with its evidence in

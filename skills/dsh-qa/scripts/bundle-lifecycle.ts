@@ -371,7 +371,17 @@ async function runReal(): Promise<void> {
       // page requires the `?token=` the boot log prints).
       /** The liveness probe against the bundle-owned workmate route. */
       const response = await fetch("http://127.0.0.1:" + PORT + "/plugins/mpd-workmate/list", { signal: AbortSignal.timeout(4000) })
-      if (response.status === 200) { up = true; await response.text(); break }
+      if (response.status === 200) { up = true; await response.text() }
+      // WHY the verdict gates the teardown: the probe's `apply` is ASYNC and prints its
+      // `[roles-probe] PASS|FAIL` line LAST — after `resolveLivePreset` (bounded 2000 ms
+      // poll), `executeTool`, `listSkills()` and `loadSkill()` have all awaited. Killing the
+      // child the instant HTTP answers SIGTERMs it mid-assertion; cordis then disposes the
+      // services, the probe's remaining reads see an empty registry/service
+      // (`TOOL_PARAM_SCHEMAS=0/0`, `SKILLS=fail: … unavailable`) and it prints FAIL. So HTTP
+      // readiness only means "the probe is running": the teardown consent is the verdict
+      // ON DISK, matched with the SAME regex the parse below uses. A boot that never prints
+      // one still dies at the unchanged deadline, so an absent probe fails rather than hangs.
+      if (up && /roles-probe\] (PASS|FAIL)/.test(readFileSync(bootLog, "utf8"))) break
     } catch { /* not up yet */ }
   }
   web.kill("SIGTERM")

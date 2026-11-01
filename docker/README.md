@@ -32,7 +32,7 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.3` (the default pin — override it with
+5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.5` (the default pin — override it with
    `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
    `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
@@ -94,9 +94,9 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.17.0` — the dsh-tui release this
-    bundle now targets. 0.17.0 is the FIRST host whose declared peer bands include harness
-    `0.2.1-rc.3` (36 of its 39 `@deepseek-ai/dsh-*` peers append that band), so it serves both the
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.18.0` — the dsh-tui release this
+    bundle now targets. Its declared `@deepseek-ai/dsh-*` peers run through harness `0.2.1-rc.4`/`rc.5`
+    (all 36 of its 39 append both bands), where `0.17.0`'s stop at `0.2.1-rc.3`, so it serves both the
     `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.16.1` declared those bands only up to `0.2.1-rc.2`,
     `0.15.0` covered only up to `0.2.0-rc.2`, and
     `0.11.2` stops at `0.2.0-rc.1`, where `dsh plugin --profile dsh-tui add` is REFUSED on peer
