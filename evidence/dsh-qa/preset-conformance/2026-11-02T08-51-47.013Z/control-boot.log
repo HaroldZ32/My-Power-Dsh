@@ -1,0 +1,28 @@
+dsh: startup failed: 1 required plugin did not activate
+
+Failed plugins (1):
+  credentials
+    Package: @deepseek-ai/dsh-credentials-local
+    Error: credentials-local: invalid document at /tmp/mpd-preset-control-Ow7k8c/home/.credentials.yaml: DUPLICATE_KEY at line 22, column 3
+        at parseCredentialsDocument (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:143:40)
+        at LocalCredentialProvider.loadInitial (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:651:20)
+        at async [cordis.init] (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:449:3)
+        at file:///tmp/mpd-preset-control-Ow7k8c/home/profiles/w/#credentials
+        at file:///tmp/mpd-preset-control-Ow7k8c/home/profiles/w/#include
+
+Plugins waiting for services (12):
+  Plugin                 Missing services
+  connection (required)  credentials
+  authorization          credentials
+  deepseek-account       credentials, authorization
+  session-log-download   connection
+  open-in-app            connection
+  directory-picker       connection
+  session-controller     fileUploads
+  schedule               sessionController
+  account-controller     deepseekAccount
+  file-upload            connection
+  ui-deliverables        connection, sessionController
+  mpd-better-sidebar     connection
+
+Full diagnostics: /tmp/mpd-preset-control-Ow7k8c/home/logs/startup-2026-11-02T08-53-26.319Z-450fc5e8-8ba2-4148-ab8e-f51f578ab92f.log

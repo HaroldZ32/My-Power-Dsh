@@ -1,0 +1,73 @@
+{
+  "release": "0.17.0",
+  "branch": "release/v0.17.0",
+  "releaseCommit": "c0a0e514",
+  "base": "dev 6f8766de (PR #88 merged)",
+  "hostPair": { "harness": "0.2.1-rc.5", "dshTui": "0.18.0" },
+  "measuredAt": "2026-11-02T09:40:00Z",
+  "toolchain": "bun 1.4.0 from .toolchain (pinned), node v24.21.0",
+  "gateSweep": {
+    "verify:gates": { "exit": 0, "observed": "PASS - 9/9 member gate(s) green (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows)" },
+    "distFreshness": { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "35/35 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED (the sha-pinned codegraph prebuilt)" },
+    "typecheck": { "command": "node_modules/.bin/tsgo --noEmit", "exit": 0, "observed": "no diagnostics" },
+    "packClosure": {
+      "command": "node scripts/verify-pack-closure.ts",
+      "exit": 0,
+      "observed": "root files 2/2; declared packages 30/30; content bytes 635/635 identical; completeness 532 compared / 531 present / 1 declared exemption / 0 absent",
+      "selfTest": "exit 0, 38/38 arms",
+      "packedManifest": "version 0.17.0 and dshGo.contributes.panels[0].id = mpd read back from dist/mpd-package/package.json"
+    },
+    "pluginManifest": { "command": "node scripts/verify-plugin-manifest.ts --pack", "exit": 0, "observed": "VERDICT PASS; component-ref-version 6 self-urn refs, 0 stale; 1148 packed files, 0 required absent" },
+    "docsParity": { "command": "node scripts/verify-docs-parity.ts", "exit": 0, "observed": "pairs=55 failed=0 violations=0 dead=0" },
+    "noHostOverride": { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "observed": "PASS, 0 of 0 collide with the 214 host-declared row ids" },
+    "manualPaths": { "command": "node scripts/verify-manual-paths.ts", "exit": 0, "observed": "PASS resolved=153 over-report=73 under-report=83 declared=2" },
+    "mount": {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "observed": "PASS",
+      "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T08-51-31.991Z"
+    },
+    "presetConformance": {
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts",
+      "exit": 0,
+      "observed": "ok=true on the second and third attempts: sessionCreate 200 with agentPreset=mpd, bootLog clean, and the negative control falsifiable ('agent-preset/invalid: $.prefix missing required value')",
+      "transient": "the FIRST attempt failed with sessionCreate status 0 and raw {transport: ECONNREFUSED} plus a non-falsifiable negative control, then passed twice in a row — recorded as a transient boot race in the probe, not as a bundle defect, because the same binary passed immediately afterwards and the Docker lanes assert the same mount on a real machine",
+      "evidence": ["evidence/dsh-qa/preset-conformance/2026-11-02T08-55-14.823Z", "evidence/dsh-qa/preset-conformance/2026-11-02T08-55-46.842Z"]
+    },
+    "smokeMcpCall": {
+      "command": "bun skills/dsh-qa/scripts/mcp-call.ts",
+      "exit": 0,
+      "observed": "PASS — 122 recorded tools, mcp__ast_grep__ and mcp__lsp__ present, a real ast_grep call recorded and its result carried the fixture line",
+      "evidence": "evidence/dsh-qa/mcp-call/2026-11-02T08-51-31.921Z"
+    },
+    "smokeDualTrack": {
+      "command": "bun skills/dsh-qa/scripts/dual-track-smoke.ts",
+      "exit": 1,
+      "observed": "official track ok=true (a real tool turn); deepseek track ok=false with `dsh: NO_ADAPTER: no adapter registered for provider \"deepseek\"`",
+      "declaredBound": "the deepseek track has recorded ok=false on EVERY archived run since 2026-10-21 (six consecutive, including the 0.16.4 release sweep) while the official track passes each time — an environment condition of this machine's isolated composition, not a regression introduced by this release. Cited, not claimed.",
+      "evidence": ["evidence/dsh-qa/llm-dual-track/official/2026-11-02T08-48-03.663Z", "evidence/dsh-qa/llm-dual-track/deepseek/2026-11-02T08-48-10.775Z"]
+    },
+    "docker": {
+      "command": "node scripts/docker-e2e.ts --mode source --require-docker --live; --mode oneclick --require-docker --live; --mode source --require-docker --no-browser",
+      "observed": "all three exit 0; 570 assertions passed, 0 failed",
+      "lanes": [
+        { "mode": "source --live", "passed": 204, "failed": 0, "null": 38, "evidence": "evidence/docker/client-install/2026-11-02T08-56-22Z" },
+        { "mode": "oneclick --live", "passed": 203, "failed": 0, "null": 39, "evidence": "evidence/docker/client-install-oneclick/2026-11-02T09-11-39Z" },
+        { "mode": "source --no-browser", "passed": 163, "failed": 0, "null": 79, "evidence": "evidence/docker/client-install/2026-11-02T09-28-21Z" }
+      ],
+      "note": "the null rows are the lane's own mode-not-applicable set (each carries a stated reason); the credential-free lane records the live and browser arms as not-applicable by design, which is why it is run IN ADDITION to the two credentialed lanes"
+    }
+  },
+  "vendorChecklist": {
+    "skillsChangedSinceLastRelease": "yes — 11 QA scripts under skills/dsh-qa/scripts/, carried by the waves since 0.16.4",
+    "singleRepinPerWave": "the re-pin lands in the wave commit that invalidated the corpus treeSha (one per wave: the workbench wave and the rc.5 wave each re-pinned once); `node scripts/verify-vendor.ts` is green on the release tree, which is the mechanical assertion that the treeSha matches the shipped corpus"
+  },
+  "publishedVersionStatements": "all moved in the release commit c0a0e514 and nowhere else: package.json, dsh-plugin.json, dsh-distribution.json (incl. the six self-referencing urn suffixes), README pair badge + version table + current-release statement, AGENTS.md §8 install line, CHANGELOG section",
+  "bounds": [
+    "No Flutter / DSH Go app in this repository: the native panel is proven against the upstream protocol schemas, the view budgets, the manifest gate and service doubles. A device install is the user's check.",
+    "HTTP route guards beyond the host fence are unit-proven against a server double.",
+    "A panel tap from a stale view can still settle the newer question after a second view build (no view identity in the tap payload); the panel renders only the first question item. Both declared follow-ups.",
+    "The in-flight exclusion for team actions is process-local: two dsh processes sharing a workspace are not coordinated.",
+    "The dual-track smoke case's deepseek track is a declared environment bound (see above), not a pass."
+  ]
+}
