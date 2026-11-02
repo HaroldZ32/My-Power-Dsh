@@ -51,6 +51,18 @@ read-only discipline.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
   the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).
+- `mpdQuestions` service (`ctx.get("mpdQuestions")`): `list({ sessionId? })` / `answer({ id, answers })` —
+  the question relay's parking lot, consumed by the DSH Go panel. It is provided ONLY when the row
+  really registered the harness `user-questions/request` waterfall answerer; a composition without that
+  seam stays inert and reports `questions=absent reason=…` on the boot line.
+- The QUESTION RELAY — `ask_user_question` answered from a client with no DSH surface attached:
+  `GET /plugins/mpd-roles/questions?sessionId=` returns `{ ok: true, pending }`, and
+  `POST /plugins/mpd-roles/questions/answer` with `{ id, answers: [{ id, selected, custom? }] }` returns
+  `{ ok: true, answered: true }` (404 for an unknown id, 400 for an unknown LABEL or a malformed body,
+  413 above the 64 KiB cap). `selected` entries are option LABELS, never indices. Both routes take the
+  host request fence first and answer `no-store` JSON; the relay awaits the downstream answerer first,
+  parks only a `NO_PROVIDER` rejection and only while a client has polled within `attachWindowMs`, and an
+  unanswered question rethrows that original error after `ttlMs` (120 s default, capacity 16).
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a
