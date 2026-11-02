@@ -14,6 +14,59 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.0 — 2026-11-02 — a drive surface: team actions over HTTP, a question relay, and a DSH Go panel
+
+Four waves since 0.16.4 — the mailbox, the host pair, the Workbench page, and the drive surface. The
+headline is that the bundle can now be moved by something that is **not a model turn**: a script, a
+panel, a phone. Each surface below says what it can and cannot do.
+
+**Added — a drive surface (the wave's centre).** Three seams that share one property: nothing in them
+needs a live tool call. (1) The team action plane — `approve` and dispatch's pass were inline bodies
+inside the two `agent_teams_*` tool handlers; they are now exec-free functions published as
+`mpdTeamActions` and reachable over `POST /plugins/mpd-team/approve` and
+`POST /plugins/mpd-team/dispatch`. A caller with no live agent is refused **before the first write**, and
+an in-process in-flight slot per session refuses a second concurrent caller instead of queueing it (the
+slot is process-local — two dsh processes are still not coordinated). (2) A question relay —
+`ask_user_question` reaches the harness's `user-questions` waterfall, which a phone cannot answer; the
+`mpd-roles` row now registers one more answerer that calls `next()` **first** and only parks what nobody
+claimed, with a 15 s attach window and a 120 s expiry that re-throws the **original** error. Answers match
+option labels, never indices, and a batch must cover the whole parked request. (3) A DSH Go native panel —
+a protocol-1 `dshGo` manifest with one panel (`mpd`), a static fallback view, and a live host half that
+pushes a 0.5 Hz narrowed snapshot and drives approve / dispatch / one-tap answers. Five adapter seams
+(`askUserQuestion`, `onUserQuestionRequest`, `dshGoPresent`, `dshGoPanel`, `dshGoRefresh`) carry all of it.
+
+**Added — the Workbench page.** A whole-page `conversation.view` island (id `mpd-workbench`) plus the
+team watchdog's two fenced pause/resume routes, so the same registration serves the desktop tab strip and
+a web-only host.
+
+**Added — one agent-to-agent mailbox.** A single mailbox plane with question/answer envelopes, broadcast
+and a permit-bounded wait, a durable captain address, and workable ownership of the wait target.
+
+**Changed — the host pair moves to DSH `0.2.1-rc.5` and DSH-TUI `0.18.0`.** The two pins must travel
+together: `dsh-tui@0.17.0`'s peer OR-lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a 0.17.0
+host is refused by `dsh plugin --profile dsh-tui add`. An rc.5-pinned bundle was also proven to mount,
+boot, serve and uninstall on an **rc.4** host, which is the DSH Go phone case.
+
+**Fixed — the release packer could not pack a directory.** `cpAssets` passed every `files` entry to
+`cpSync` without `recursive`, so no directory entry could ever ship — adding the DSH Go view directory
+exposed it. `writeManifest` also rebuilt the packed manifest from a literal and silently dropped the new
+root `dshGo` block (measured `undefined` in the artifact). `packages/mpd-mail-protocol`'s committed dist
+had no packer table entry at all, so the closure gate had been red on `dev` since `41c5706f`; it joined
+`INLINED_PKGS`, which adds that one path to the artifact. The closure gate now requires the manifest's
+declared view file **by name in both trees**, requires the **packed** manifest to carry `dshGo`, and
+reddens naming the file it cannot find (38/38 self-test arms).
+
+**Fixed — a boot probe teardown race.** The QA lifecycle case SIGTERM'd on HTTP 200 while the roles-probe
+verdict landed ~751 ms later, disposing services mid-assert; teardown now waits for the verdict.
+
+**Bounds.** No Flutter / DSH Go app exists in this repository, so the native half is proven against the
+upstream protocol schemas, the view budgets, the manifest gate and service doubles — a device install is
+the reader's check, and DSH Go's own slots are local-engine only (its relay blocks `/dsh-go/*`). HTTP route
+guards beyond the host fence are unit-proven against a server double, exactly as the watchdog's routes
+are. A panel tap from a stale view can still settle the newer question after a second view build,
+because a tap carries no view identity — declared as a follow-up, together with the panel's deliberate
+one-item / four-button answer limit.
+
 ## 0.16.4 — 2026-10-31 — cell-work repairs from two live VEdit sessions, project-declared gates, and a named verify writer
 
 Two cell-work sessions in a real project (`VEdit`, running the published 0.16.3 file set) produced a

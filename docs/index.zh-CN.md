@@ -62,6 +62,7 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 | [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | DSH-TUI 版本 —— 安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
 | [`tui-parity.zh-CN.md`](tui-parity.zh-CN.md) | 在两个端之间做选择的用户 | 界面对齐台账：每个 Web 界面一行，列出它的 TUI 对应物、支撑该结论的证据等级，以及仍然开放的偏差。 |
 | [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
+| [`drive-surface.zh-CN.md`](drive-surface.zh-CN.md) | 集成方、客户端作者 | 非模型客户端可驱动的三组接缝：免 exec 的团队动作及其两条 POST 路由、带挂载门的提问中继，以及 DSH Go 原生面板 —— 含守卫次序与诚实边界。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | 所有人 | 发布说明，最新的在最前，每个已发布版本一节。 |

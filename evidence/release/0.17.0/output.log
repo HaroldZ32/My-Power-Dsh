@@ -1,0 +1,33 @@
+# v0.17.0 gate sweep and real-machine acceptance (2026-11-02T09:38:59Z)
+## branch release/v0.17.0 head c0a0e514 base dev 6f8766de
+
+## static
+verify:gates                PASS 9/9
+verify-dist-fresh           35/35 fresh
+verify-pack-closure         0 absent, 635/635 bytes, self-test 38/38
+verify-plugin-manifest      PASS, 1148 packed files, component-ref-version 0 stale
+verify-docs-parity          pairs=55 failed=0 dead=0
+verify-no-host-override     PASS (214 host ids, 0 collisions)
+verify-manual-paths         PASS resolved=153
+tsgo --noEmit               exit 0
+packed package.json         version 0.17.0, dshGo panel mpd
+
+## mount and smoke
+bundle-lifecycle            PASS   evidence/dsh-qa/bundle-lifecycle/2026-11-02T08-51-31.991Z
+preset-conformance          ok=true agentPreset=mpd (2nd and 3rd attempt; the 1st was ECONNREFUSED)
+mcp-call                    PASS   122 tools, real ast_grep call recorded
+dual-track-smoke            exit 1 — official ok=true, deepseek ok=false
+  deepseek failure: dsh: NO_ADAPTER: no adapter registered for provider "deepseek"
+  history: ok=false on EVERY archived run since 2026-10-21 (6 consecutive), including the 0.16.4 sweep
+  -> declared environment bound, cited not claimed
+
+## docker real-machine lanes (credentialed x2, then credential-free)
+  the whole install, mode=source -> [report] ok=true complete=false passed=204 failed=0 null=38 scrubbed=true -> /out/result.json
+  the whole install, mode=oneclick -> [report] ok=true complete=false passed=203 failed=0 null=39 scrubbed=true -> /out/result.json
+  the whole install, mode=source -> [report] ok=true complete=false passed=163 failed=0 null=79 scrubbed=true -> /out/result.json
+
+## evidence dirs
+  docker  evidence/docker/client-install/2026-11-02T08-56-22Z (source --live)
+  docker  evidence/docker/client-install-oneclick/2026-11-02T09-11-39Z (oneclick --live)
+  docker  evidence/docker/client-install/2026-11-02T09-28-21Z (source --no-browser)
+  qa      evidence/dsh-qa/{bundle-lifecycle,preset-conformance,mcp-call,llm-dual-track}/…

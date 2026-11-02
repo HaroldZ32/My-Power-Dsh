@@ -504,7 +504,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.16.4` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.0` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -526,7 +526,7 @@ lane hold this line.
   (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
   gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
-  0.2.1-rc.3), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  0.2.1-rc.5), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
   official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.

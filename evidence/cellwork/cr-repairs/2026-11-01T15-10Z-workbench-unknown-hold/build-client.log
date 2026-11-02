@@ -1,0 +1,3 @@
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (884633 bytes)
+(node:3) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

@@ -1,0 +1,35 @@
+===== distfresh (rc 0) =====
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 718ms
+===== tests (rc 0) =====
+ 695 pass
+ 0 fail
+ 4385 expect() calls
+Ran 695 tests across 52 files. [3.52s]
+===== typecheck (rc 0) =====
+$ tsgo --noEmit
+===== comments (rc 0) =====
+
+scanned 518 TypeScript file(s) of 518 in the source set; inspected 46285 declaration(s); skipped 22123 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+===== docs (rc 0) =====
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=491 checked=459 resolved=459 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=129
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=491 dead=0 — PASS
+===== rows (rc 0) =====
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 37 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-cellwork, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-project-init, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+===== manifest (rc 0) =====
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1132 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+===== nohost (rc 0) =====
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 214
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 214 host-declared row ids)

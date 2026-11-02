@@ -64,6 +64,7 @@ bilingual band this hub documents.
 | [`tui.md`](tui.md) | users of a TUI session | The DSH-TUI edition — the install command, the TUI-native surfaces, the admission and distribution artifacts, the per-package compatibility ledger and the explicit NOT-CLAIMED list. |
 | [`tui-parity.md`](tui-parity.md) | users choosing between the two surfaces | The surface-parity ledger: one row per Web surface, its TUI counterpart, the evidence level behind the claim, and the deviations that are still open. |
 | [`design.md`](design.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring, TUI edition wiring. |
+| [`drive-surface.md`](drive-surface.md) | integrators, client authors | The three seams a non-model client drives: the exec-free team actions and their two POST routes, the question relay with its attach gate, and the DSH Go native panel — with the guard order and the honest bounds. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | contributors | How to contribute: development setup, gates, the git model, documentation rules, evidence, pull requests. |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | everyone | Release notes, newest first, one section per released version. |

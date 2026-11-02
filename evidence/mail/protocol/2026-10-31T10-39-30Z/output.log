@@ -1,0 +1,135 @@
+evidence dir: evidence/mail/protocol/2026-10-31T10-39-30Z
+review start UTC: 2026-10-31T10:39:30Z  HEAD: e9be8890cbae5d09772911cc45936b7d58b0d2ab
+contract sha: 7de5b81c25636963d93488bb1a14bfabc1dc6e813f5dcc70505bd06c61ec1123
+T13-reviewed hashes at start:
+b88d1fb929b9dea367340c63da4448f7ab1749994cc62d8a626dd112efbd6bed  packages/mpd-mail-protocol/src/fold.ts
+ab5bd237d475d8aeae0fc9113b15fc16779dd02692cd144387dec9c1cf0972ed  packages/mpd-mail-protocol/src/index.ts
+6bbe60cee5f968dd328536721bf0600ed385b244c423c74d60149ca94cb864ea  packages/mpd-mail-protocol/src/types.ts
+400c0252f153432a543cd8ae78eb6aed22d803b5ebc5cbe424e802bd820e2e3b  packages/mpd-mail-protocol/src/validate.ts
+0abf73d23b07acaad8d8ad346e00dafb2eb48c246bd04cd86d47c0611ef1c0a0  packages/mpd-mail-protocol/test/fold.test.ts
+107762874d47aae5646b7bea602f0401cdf8a815e5651f0f89ebeef45adbd63f  packages/mpd-mail-protocol/test/validate.test.ts
+2fd9c52e3f4079040076a75a350e69f15cd8c25148c93b8880bf8fe1a9383376  packages/mpd-mail-protocol/dist/index.js
+
+=== GATE: bun-test-mail-protocol :: bun test packages/mpd-mail-protocol ===
+bun test v1.4.2 (744846f84)
+
+packages/mpd-mail-protocol/test/fold.test.ts:
+(pass) legacy rows and the message default > a row without `kind` folds as `message`, with itself as its thread [0.46ms]
+(pass) legacy rows and the message default > the team stamp and the addressing survive verbatim [0.03ms]
+(pass) legacy rows and the message default > the field whitelist means an index field can never ride into a folded message [0.03ms]
+(pass) I7 — thread inheritance > a reply inherits its replyTo's thread recursively, and an explicit ROOT id wins [0.17ms]
+(pass) I7 — thread inheritance > an explicit threadId naming NO folded message is kept and REPORTED (F2 / amended I7) [0.06ms]
+(pass) I7 — thread inheritance > an explicit threadId equal to the row's own id is a legitimate thread root [0.02ms]
+(pass) I7 — thread inheritance > a replyTo naming no folded message re-roots on the reply's own id and is REPORTED (N1) [0.04ms]
+(pass) fold tolerance > junk, torn rows, unknown record kinds and unknown state rows are skipped without a throw [0.10ms]
+(pass) fold tolerance > an unknown kind folds as `message` and is reported [0.02ms]
+(pass) fold tolerance > matching payloads survive, and a payload of the wrong kind is dropped and reported [0.04ms]
+(pass) fold tolerance > a duplicated message id keeps the FIRST write and reports the duplicate (N2 / amended I8) [0.04ms]
+
+packages/mpd-mail-protocol/test/validate.test.ts:
+(pass) I1 — no index field anywhere > the compile-time proof and the runtime scan agree [0.16ms]
+(pass) I1 — no index field anywhere > an envelope carrying a smuggled index field is refused, naming where it sits [0.27ms]
+(pass) I2 — at least one option, non-empty and unique labels > the base question is valid, and labelsOf lists its labels in order [0.15ms]
+(pass) I2 — at least one option, non-empty and unique labels > a duplicated label is refused: no answer could disambiguate it [0.04ms]
+(pass) I2 — at least one option, non-empty and unique labels > an empty label is refused [0.04ms]
+(pass) I2 — at least one option, non-empty and unique labels > a question without options is refused [0.03ms]
+(pass) I2 — at least one option, non-empty and unique labels > a question with an empty questionId is refused (F1: the correlation key) [0.02ms]
+(pass) I3 — single-select versus multi-select cardinality > a single-select answer with two labels is refused [0.04ms]
+(pass) I3 — single-select versus multi-select cardinality > a single-select answer with exactly one label is accepted [0.02ms]
+(pass) I3 — single-select versus multi-select cardinality > a single-select answer may be custom-only, but not empty [0.03ms]
+(pass) I3 — single-select versus multi-select cardinality > a single-select answer refuses a selected label PLUS custom (N5 / amended I3) [0.06ms]
+(pass) I3 — single-select versus multi-select cardinality > a multi-select answer needs at least one label [0.04ms]
+(pass) I4 — the verbatim echo > an unknown label is refused WITH the full valid label list [0.05ms]
+(pass) I4 — the verbatim echo > the match is EXACT: case and whitespace differences are refused [0.06ms]
+(pass) I4 — the verbatim echo > a non-string selection is refused instead of coerced [0.03ms]
+(pass) I4 — the verbatim echo > a question built with withOrdinal accepts its own labels verbatim [0.06ms]
+(pass) I4 — the verbatim echo > without the question, only structure is checked [0.01ms]
+(pass) I5 — references against the folded mailbox > a well-formed answer referencing the question message is accepted [0.09ms]
+(pass) I5 — references against the folded mailbox > an unknown answerTo is refused [0.02ms]
+(pass) I5 — references against the folded mailbox > an answer must reference a question row, not a plain message [0.02ms]
+(pass) I5 — references against the folded mailbox > an unknown replyTo is refused [0.01ms]
+(pass) I5 — references against the folded mailbox > the resolved question's labels drive the echo check through the mailbox path [0.03ms]
+(pass) F1 — the correlation key (amended I5) > an empty answer questionId is refused before any question is resolved [0.03ms]
+(pass) F1 — the correlation key (amended I5) > a questionId that differs from the referenced question is refused [0.11ms]
+(pass) F1 — the correlation key (amended I5) > a matching questionId is accepted through the mailbox path [0.03ms]
+(pass) F3 — the payload-less question target (T12's probe P10) > P10 — a `question` row with no payload REFUSES the answer and names the missing payload [0.06ms]
+(pass) F3 — the payload-less question target (T12's probe P10) > P10b — CONTROL: the same answer still meets the in-context echo once the payload is there [0.06ms]
+(pass) N3/N4/I8 — the whole problem list in one refusal > a zero-label, zero-custom answer is refused without the question (N3) [0.04ms]
+(pass) N3/N4/I8 — the whole problem list in one refusal > independent failures are ALL reported, not only the first (N4) [0.04ms]
+(pass) N3/N4/I8 — the whole problem list in one refusal > a malformed question reports its option, text and key failures together (N4) [0.03ms]
+(pass) envelope structure > a message row carrying a question payload is refused [0.04ms]
+(pass) envelope structure > question and answer rows must carry their payload [0.04ms]
+(pass) envelope structure > an unknown kind is refused [0.03ms]
+(pass) I6 — fan-out planning > the sender is excluded, duplicates collapse, and first-seen order is kept [0.07ms]
+(pass) ordinal convention > the prefix is stable per index and never repeats at the Z/A boundary [0.03ms]
+
+ 46 pass
+ 0 fail
+ 100 expect() calls
+Ran 46 tests across 2 files. [131.00ms]
+=== EXIT: bun-test-mail-protocol rc=0 ===
+
+=== GATE: typecheck :: bun run typecheck ===
+$ tsgo --noEmit
+packages/mpd-cellwork-plugin/src/protocol.ts(801,16): error TS2304: Cannot find name 'mailId'.
+packages/mpd-cellwork-plugin/src/protocol.ts(801,29): error TS2304: Cannot find name 'mailSequence'.
+packages/mpd-cellwork-plugin/src/protocol.ts(802,34): error TS2304: Cannot find name 'mailId'.
+packages/mpd-cellwork-plugin/src/protocol.ts(802,47): error TS2304: Cannot find name 'mailSequence'.
+error: script "typecheck" exited with code 1
+=== EXIT: typecheck rc=1 ===
+
+=== GATE: verify-comments :: bun run verify:comments ===
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 513 TypeScript file(s) of 513 in the source set; inspected 45922 declaration(s); skipped 21918 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-team-core-plugin/src/mail-permit.ts (1)
+  408: comment — questionId
+
+error: script "verify:comments" exited with code 1
+=== EXIT: verify-comments rc=1 ===
+
+=== SUMMARY ===
+=== GATE: bun-test-mail-protocol :: bun test packages/mpd-mail-protocol ===
+=== EXIT: bun-test-mail-protocol rc=0 ===
+=== GATE: typecheck :: bun run typecheck ===
+=== EXIT: typecheck rc=1 ===
+=== GATE: verify-comments :: bun run verify:comments ===
+=== EXIT: verify-comments rc=1 ===
+
+=== PROBES (T14/F3 closure; source read only, nothing edited) ===
+[probe] T14-P10 payload-less target (empty key + unoffered label) => [{"code":"question-payload-missing","message":"the referenced `question` row M1 carries no question payload, so its offered labels cannot be checked"},{"code":"answer-question-id","message":"an answer must carry the question's non-empty `questionId`"}]
+[probe] T14-P10b control (payload present) => [{"code":"answer-question-id","message":"an answer must carry the question's non-empty `questionId`"},{"code":"answer-unknown-label","message":"selected label is not offered by the question: \"Z. Something else\""}]
+[probe] T14-WHOLE list (payload-less; empty key + empty selection) => [{"code":"question-payload-missing","message":"the referenced `question` row M1 carries no question payload, so its offered labels cannot be checked"},{"code":"answer-question-id","message":"an answer must carry the question's non-empty `questionId`"},{"code":"answer-selection","message":"an answer must select at least one offered label or give `custom`"}]
+[probe] T14-OK with payload => "ok"
+[probe] T14-FAIL-CLOSED valid answer vs payload-less target => [{"code":"question-payload-missing","message":"the referenced `question` row M1 carries no question payload, so its offered labels cannot be checked"}]
+[probe] T14-not-a-question target => [{"code":"reference-not-question","message":"`answerTo` must name a `question` row; M1 is a `message` row"}]
+[probe] T14-fold keeps payload-less row + reports it => {"kinds":["question","answer"],"problems":["line 1: a `question` row has no question payload"]}
+[probe] T14-envelope pre-flight empty key => [{"code":"answer-question-id","message":"an answer must carry the question's non-empty `questionId`"}]
+=== EXIT: probes rc=0 ===
+
+=== GATE RECHECK typecheck :: bun run typecheck ===
+$ tsgo --noEmit
+packages/mpd-cellwork-plugin/src/protocol.ts(801,16): error TS2304: Cannot find name 'mailId'.
+packages/mpd-cellwork-plugin/src/protocol.ts(801,29): error TS2304: Cannot find name 'mailSequence'.
+packages/mpd-cellwork-plugin/src/protocol.ts(802,34): error TS2304: Cannot find name 'mailId'.
+packages/mpd-cellwork-plugin/src/protocol.ts(802,47): error TS2304: Cannot find name 'mailSequence'.
+error: script "typecheck" exited with code 1
+=== EXIT recheck-typecheck rc=1 ===
+
+=== GATE RECHECK verify-comments :: bun run verify:comments ===
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 513 TypeScript file(s) of 513 in the source set; inspected 45922 declaration(s); skipped 21918 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-team-core-plugin/src/mail-permit.ts (1)
+  408: comment — questionId
+
+error: script "verify:comments" exited with code 1
+=== EXIT recheck-comments rc=1 ===

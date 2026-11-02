@@ -1,0 +1,8 @@
+{
+  "gate": "bun run verify:docs",
+  "exit": 0,
+  "pairs": 54,
+  "links": 491,
+  "dead": 0,
+  "generatedAt": "2026-10-31T11-28-08Z"
+}

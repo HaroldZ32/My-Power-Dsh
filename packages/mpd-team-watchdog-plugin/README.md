@@ -432,6 +432,38 @@ The tick routes its own ESCALATE hold through `session-watchdog-hold` via the ad
 internal tool seam (falling back to a direct write, with a warning, only when the seam is
 unreachable).
 
+## The web surface — two fenced routes
+
+`src/web.ts` serves the same two actions over HTTP, so a web client can pause and resume a team
+without a tool call:
+
+| Route | Body | Answer |
+|---|---|---|
+| `POST /plugins/mpd-team-watchdog/hold` | `{teamId, reason?, ttlMs?}` | 200 `{ok:true, hold:…}` |
+| `POST /plugins/mpd-team-watchdog/resume` | `{teamId}` | 200 `{ok:true, resumed:boolean}` |
+
+- **Exact, effect-owned registrations.** Both mount with `kind: "exact"` through the adapter's
+  `webServerOf()` (never `ctx.get("webServer")`), and the row's effect owns each registration, so a
+  disposed row takes its routes with it. A web server that binds LATE is retried through
+  `dsh.onServiceBound(["webServer", "httpServer"], …)`, idempotently per path; a composition with no
+  web server mounts nothing and throws nothing.
+- **The fence runs FIRST and is fail-closed.** `dsh.webRequestRejection` answers before the method
+  guard, the body read and any mutation, so a refused request never reaches the hold store — and an
+  absent Connection service answers 401 rather than admitting the request.
+- **Statuses.** `405` for a non-POST on either route (with `allow: POST`), `400` for a body that is not
+  JSON, a blank `teamId`, a mistyped `reason`/`ttlMs`, or a request that cannot be attributed to ONE
+  workspace, `401|403` from the fence, `413` for a body over 64 KiB, and `500` for a store failure whose
+  message never carries a filesystem path. No handler throws.
+- **The workspace is resolved agentlessly.** A route request carries no agent exec, so the workspace is
+  the ONE live session root when the host has exactly one, and the adapter's env → `process.cwd()` root
+  when no session is registered. A host serving SEVERAL live workspace roots cannot attribute a
+  body-only request to one of them, so it answers `400` instead of mutating a guessed root.
+- **`teamId` is shape-validated only.** It must be a non-empty string; the hold does not require the
+  team to exist, so a client may pause a team the record has not written yet.
+
+The client consumer is the web **workbench** page (`mpd-workbench`, `packages/mpd-bundle-plugin`),
+whose Pause/Resume buttons POST exactly these two routes.
+
 ## Fail-safe
 
 * the tick body never throws out: any error is caught, counted and logged;
@@ -496,3 +528,5 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/config-file.ts` | the §7.2/§7.3 file layer of `.mpd/mpd.jsonc` (tolerant JSONC) |
 | `src/holds.ts` | the synchronous hold reader the w7 gates consult |
 | `src/paths.ts` | every path, resolved per call |
+| `src/web.ts` | the two fenced web routes (hold / resume), mounted on the host's server through the adapter |
+| `test/web.test.ts` | the route arms: method guard, fence-before-work, body cap, agentless workspace, store round-trip |

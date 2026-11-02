@@ -3,7 +3,7 @@
   "private": false,
   "type": "module",
   "buildToolchain": "bun@1.4.0",
-  "version": "0.16.4",
+  "version": "0.17.0",
   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "icon": "./icon.svg",
@@ -38,6 +38,7 @@
     "cordis.patch.yml",
     "docs/**",
     "dsh-distribution.json",
+    "dsh-go",
     "dsh-plugin.json",
     "extensions/**",
     "icon.svg",
@@ -70,6 +71,31 @@
     "client": {
       "inject": [],
       "platform": "web"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "en": "MPD",
+      "zh": "MPD"
+    },
+    "icon": "bolt",
+    "contributes": {
+      "panels": [
+        {
+          "id": "mpd",
+          "title": {
+            "en": "MPD Workbench",
+            "zh": "MPD 工作台"
+          },
+          "icon": "bolt",
+          "placement": [
+            "session.tab",
+            "features"
+          ],
+          "view": "./dsh-go/views/mpd.json"
+        }
+      ]
     }
   },
   "scripts": {
@@ -110,9 +136,9 @@
     "typescript5": "npm:typescript@5.9.3"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.3",
-    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.3",
-    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.5",
     "@dsh-std/sdk": "0.1.1-rc.2"
   },
   "peerDependencies": {

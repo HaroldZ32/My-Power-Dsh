@@ -18,7 +18,7 @@
 | `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` 通过**团队执行器**执行它（原生后端在被钉住的宿主上（harness 0.2.1+）经 `ctx.subagents.startActivation` 拉起持久子会话，只把已退役的 `ctx.subagents.startContinuable` 留作老宿主的回退 —— `CONTINUABLE_START_MEMBERS`，由 `continuableStartMember` 从新到旧探测；官方 `dsh.team*` 调用是**回退**），并按 mpd 记录解析 `blocked_by`/`owner`，持久化声明的 `kind`（取自 `task.kind` 或其顶层别名，未知词会被**拒绝**）；0 成员且 0 任务的计划会被**拒绝**；`delete` 归档；`status` 在该后端生效时把记录与官方读数并排给出 |
 | `agent_teams_task` | `claim`、`contract`、`release`、`complete`、`fail`、`depend` | 在 mpd 记录上认领任务**并**冻结契约（单调 `attempt`）；读回契约；`release` 释放配对并把任务行退回 `pending`；`complete`/`fail` 是终结动词（仅所有者或队长可用，可带 `note`/`expected_revision`，`FAIL` 会释放其依赖方）；`depend` 只向**既有**行**追加** `blocked_by` 依赖边——重复添加是幂等空操作（会如实报告），已终结的行、未知的 `task_id`、既非该行所有者又非队长的调用者、以及**自环**或**任何环**（双节点或传递环）都会被**拒绝**；所有拒绝都在**任何写入之前**返回，`blockedBy` 与 `revision` 保持原样——成环的边永远无法满足就绪规则，而 `depend` 只会追加、永不删边，任务行会因此永久 not-ready——并报告点名不到任何任务的引用：按原文保留在 `blockedBy`、在结果里点名、并持久化为该行的 `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并在**按团队分键的台账**里记录配对；`release` 释放配对并重开任务行 |
-| `agent_teams_mail` | `send`、`unread`、`read`、`summary` | 团队信箱：durable，且带官方**给不了**的已读状态 |
+| `agent_teams_mail` | `send`、`unread`、`read`、`summary`、`permit`、`wait` | 团队信箱：**一条** durable 流，承载 `message`/`question`/`answer` 记录，且带官方**给不了**的已读状态；`permit` 签发等待授权（仅本队 Lead），`wait` 在该授权内阻塞——完整协议见 [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md) |
 | `agent_teams_control` | `halt`、`resume` | 只停派工、别的什么都不做的暂停 |
 
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
@@ -68,6 +68,8 @@
 
 Server-Sent Events，与四个 JSON 路由同属 `/plugins/mpd-team/*` 家族（宿主遇到重复的 exact 路由会抛错，
 而 `/plugins/events` 属于 harness 自己的 HMR 行）。工作区与会话**按请求**解析，与 JSON 路由的解析方式完全一致。
+同一家族里的两条**变更**路由 —— `POST /plugins/mpd-team/approve` 与 `POST /plugins/mpd-team/dispatch`
+—— 记录在下面的**动作平面**一节；本节只讲读取/事件流家族。
 
 ```
 HTTP/1.1 200 OK
@@ -104,6 +106,102 @@ data: {"rev":8}
 - 事件流跟随的是**团队记录与 teams 索引**。sidecar 文件（暂存计划、契约、hold、信箱）不由它推送。
 - `revision` 是**按进程**的。两个进程服务同一个工作区时，各自数自己的窗口。
 
+## 动作平面——免 exec 的动作与两条路由
+
+这两段函数体过去内联在 `agent_teams_plan` / `agent_teams_dispatch` 的处理器里，于是唯一能驱动它们的
+界面，是带着活的工具调用上下文（`exec.agent`）去 spawn 与 send 的模型回合；浏览器面板、手机、DSH Go
+原生面板都没有这种上下文。现在 `src/team-actions.ts` 以两个**免 exec** 的函数持有这两段函数体 ——
+相同的校验顺序、相同的存储写入、相同的返回字段 —— 于是同一套序列有三种入口：工具处理器、
+`mpdTeamActions` 服务，以及两条 HTTP 路由。这正是「一个按钮」（浏览器面板、手机、DSH Go 原生面板）
+能够驱动团队的原因。
+
+### 服务（`mpdTeamActions`）
+
+行以 id `mpdTeamActions`（导出的常量 `TEAM_ACTIONS_SERVICE`）在**工具之前**发布它，因此在本行
+激活期间解析该服务的消费方，拿到的一定是活着的成员。
+
+| 成员 | 签名 | 契约 |
+|---|---|---|
+| `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | 以 `sessionId` 那个会话的活 agent 身份，批准它暂存的计划 |
+| `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | 为该会话的团队跑**一次**派发；`limit` 为 `0` 或缺省表示不限，`dryRun` 只做配对决策、不发送 |
+
+`TeamActionResult<Payload>` 是 `({ ok: true } & Payload) | { ok: false; error: string; unexpected?: true }`
+—— 是**结果**、绝不是 reject：路由必须作答而不是把异常抛进宿主，面板也要能渲染拒绝理由。`unexpected`
+标记被捕获的**抛错**（见下文「同一工作区 + 会话同时只跑一个动作」）：句子仍留在 `error` 里供本行日志与
+工具路径使用，而路由改为回答通用 `500`，不再转发它。
+
+- `approve` 的载荷：`plan`（真实批准时是已持久化、标记为已批准的计划；`dryRun` 预览时是原样的暂存
+  计划）、`team`（它写入的记录；**仅**在 `dryRun` 上缺席）、`created`
+  （`{ members: [{ name, id }], tasks: [{ subject, id }] }` —— 批准时是真实 id，预览时为空串 ——
+  当某个 blocker 没有指向任何任务时另有 `unresolved`），以及 spawn 中途停下时的 `stoppedAt`。
+- `dispatch` 的载荷：`pairs`（传输层真正接受的配对 —— `taskId`、`subject`、`memberId`、
+  `memberName`，可选 `note`）、`skipped`（每个未派发的任务，带 `taskId`、`subject`、`reason`），
+  以及按需出现的 `forgotten`、`holdRead`、`reaped`、`halted` 或 `refused`。
+- **「不活跃」是一个答案，不是抛错。** 活跃注册表不认识的会话，两个成员都答
+  `{ ok: false, error: "session <id> is not live" }`；会话无法归属到某个工作区时答
+  `{ ok: false, error: <解析器给出的消息> }`。两个成员都不会因为一个坏 session id 抛错。
+- **活跃性按会话匹配，而不只按 agent id。** `dsh.liveAgent(sessionId)` 是按 **agent id** 匹配的，因此服务
+  与两条路由都会退回到 `liveAgents()` 扫描并匹配 `session.id` —— 这正是 `workspaceRootForSessionOf`
+  与 TUI 适配器已有的回退。宿主给 agent 的 id 与它所属会话的 id 不同时，所有界面都认为它活着；拒绝句子
+  仍是 `session <id> is not live`，保持不变。
+- **caller 就是工具路径的 caller。** 工作区、会话 id 与 `lineage` 都完全按 `where(exec)` 的推导方式、
+  从解析出的活 agent 得出：恢复或被 fork 的 Lead 会带上 harness 记录的父会话，因此服务（以及两条路由）
+  解析到与它自己的工具调用**相同**的团队；被记录的**委派子会话**贡献**空** lineage，绝不继承其队长的团队。
+
+**这两个函数是免 exec 的。** `approveTeam(deps, caller)` 与 `runDispatch(deps, caller, input)`
+不读取任何 cordis 上下文、也不读取工具 exec：时钟、执行器、批准副作用、团队解析器、watchdog 读数、
+服务查找、行日志、空闲守卫的派发窗口，以及两道批准期守卫，全部经 `TeamActionDeps` 显式传入。
+caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signal? }`。动作面带来的差异之一是 agent
+缺失：当 `caller.agent` 缺席时，两个函数都在**第一次写存储之前**回答
+`{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` —— 不写记录、
+不 spawn、不跑批准副作用、不开派发窗口。工具调用方永远带着 agent，因此其行为不变。这道拒绝也正是
+路由得以安全存在的原因：路由没有可继承的工具调用上下文，因此它绝不能在「发现自己无法行动」的过程中
+去 spawn、send，或把团队写了一半。
+
+**同一工作区 + 会话同时只跑一个动作。** 两个函数都持有一个进程内 in-flight 槽，键为
+`workspace + sessionId`，在**第一个 `await` 之前**检查、在 `finally` 中释放。第二个调用方会被**拒绝** ——
+`an approval for this session is already running` / `a dispatch pass for this session is already running`
+—— 而不是排队：排队会把重复隐藏起来，让操作者看不见。正是它让两次并发批准无法从同一份暂存计划铸出
+**两个**团队，也让两次并发派发无法在任何 compare-and-set 拒绝之前把同一配对投递两次。该槽是
+**进程内**的：它不协调共享同一工作区的两个 dsh 进程 —— 这是一条明说的边界。
+
+**策略拒绝与意外失败是两种回答。** 函数体返回的那些句子（校验与策略）保持 `{ ok: false, error }`，
+路由以 `400` 和该句子作答。任何走到 catch 的异常都会被标记 `unexpected: true` 并保留原消息：存储失败的
+文本可能带着文件系统路径，因此 `POST` 路由回答文档化的通用 `500` 并把细节写进本行日志，而**工具**路径
+仍然原样抛出真实句子。
+
+### 两条路由（`POST /plugins/mpd-team/approve`、`POST /plugins/mpd-team/dispatch`）
+
+| 路由 | 请求体 | 成功（`200`） |
+|---|---|---|
+| `POST /plugins/mpd-team/approve` | 会被解析、随后**忽略**；空体或 `{}` 均可 | `{ ok: true, team: { id, name, memberCount, taskCount }, created: string[] }` —— `created` 先列成员的执行器句柄，再列看板任务 id |
+| `POST /plugins/mpd-team/dispatch` | `{ limit?: number, dryRun?: boolean }`；`limit` 为 `>= 0` 的有限数字，`dryRun` 为布尔值；空体表示一次不限量的派发 | `{ ok: true, pairs: [{ taskId, memberId, memberName }], skipped: [{ taskId, subject, reason }] }` |
+
+- **会话只来自 `?sessionId=`，不来自别处。** 它由读取路由所用的同一个 `workspaceForRequest` 解析，
+  因此请求只会作用于该会话自己的工作组；请求体字段**不能**选择会话（边界处多余的字段会被丢弃）。
+  没有点名任何会话的请求是 `400`。
+- **顺序就是契约。** 宿主围栏（`dsh.webRequestRejection`，经适配器委托）在方法守卫、请求体流、
+  会话查找和存储**之前**先答 `401`/`403`；随后是本模块自己的 `405`（带 `allow: POST`）；再是字节上限；
+  再是 JSON 解析与派发体的字段校验；再是会话存在性与活跃性；最后才执行动作。这就是已发布的
+  `mpd-team-watchdog-plugin/src/web.ts` 纪律，套用到一次变更操作上。
+- **上限是 64 KiB，按原始字节计**（`MAX_ACTION_BODY_BYTES = 64 * 1024` = 65,536 字节），在流式读取时、
+  且**在任何解析之前**执行：超限的请求体得到 `413`，永远不会变成 JavaScript 值。空请求体按
+  `undefined` 接纳。
+- **成功载荷就是上面的窄投影** —— 绝不是存储对象，绝不含路径。
+
+| 状态码 | 何时 |
+|---|---|
+| `200` | 动作成功；返回上面的投影 |
+| `400` | JSON 非法、派发体非法（`limit`/`dryRun`，或请求体不是 JSON 对象）、请求没有点名会话，或动作拒绝（包括工作区无法归属） |
+| `405` | 任何非 `POST` 方法；应答带 `allow: POST` |
+| `409` | 点名的会话没有活 agent —— 动作**绝不会**执行 |
+| `413` | 请求体超过 65,536 字节，未解析即拒绝 |
+| `500` | 意外抛错，或动作结果被标记 `unexpected`；客户端只得到**一句**通用话、且不含路径（细节进本行日志） |
+
+两条路由都委托给已发布的 `mpdTeamActions` 成员，而不是第二份序列，因此一个按钮与一次工具调用跑的是
+同一个批准或派发过程。只有当组合提供动作面（`actions`）时它们才被注册：一个无法行动的插件行不该
+对外宣告一个只会失败的端点，只读组合只挂载读取路由。
+
 ## 语义
 
 - **计划是评审点，不是队列。** `agent_teams_plan {action:"create"}` 只写计划就返回；唯一能造出队友的动作是 `agent_teams_plan {action:"approve"}`。
@@ -137,6 +235,31 @@ data: {"rev":8}
   别人的队列。显式给出的 `member` **必须能解析**：未知名字会被**拒绝**，拒绝信息点名该值并列出名册
   （`"<name>" is not a member of this team (members: …)`），且**不返回任何邮件**——拼写错误绝不会回退到
   调用者自己的收件箱。
+- **一条流，三种 kind。** 记录带 `kind`（`message` | `question` | `answer`），外加 `replyTo`/`threadId` 及
+  其 kind 指定的载荷；没有 `kind` 的旧记录折叠为 `message`。问题提供**标签**，答案逐字回显这些**标签字符串**
+  ——任何地方都没有选项序号，这就是 2026-10-31 relay 缺陷的机械修复。信封、校验器与容错折叠在
+  [`mpd-mail-protocol`](../mpd-mail-protocol/README.zh-CN.md) 里；使用者视角、寻址规则与已声明边界见
+  [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md)。
+- **寻址**接受成员 id、成员名、`captain`/`lead`（记录中的 `leadSessionId`，记为 `toName: "captain"`），
+  或 `"*"`——广播会为**每个收件人**铸造**一条**记录（全部成员加 lead，排除发送者、去重），共享同一信封与
+  线程。没有「多收件人记录」，因此按收件人确认与按收件人上限才诚实；解析结果为空时会被拒绝，而不是回答
+  「已发送 0 条」。判断「自己」会同时比对发送者的**两种写法**（roster id 与会话 id），因为记录按 roster id
+  寻址，而会话按自己的会话 id 命名自己。
+- **确认属于收件人。** `read` 记录 `by`（确认者显示名，折叠为 `readBy`），并拒绝指向他人的 id——**没有**管理
+  员后门。后果明说：队长不能代停滞成员清理积压；permit 授予的是**等待**，从不是确认。确认身份是调用者的
+  **ROSTER id**（`ownMember.id`；没有 roster 行的 lead 用会话 id）。
+- **唤醒是一条 durable 记录，不是进程日志。** 每条记录写入后才会尝试尽力而为的唤醒，其结果追加为
+  `{t:"wake", id, sent, reason?, at}`——`sent` 为 false 时 `reason` 必填；没有任何 wake 记录的行意味着尝试
+  从未发生（读者必须按「未唤醒」处理）。该形状与 cellwork 面的记录互为规范孪生；两侧各自写哪些原因，在
+  [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md) 里逐条列出。
+- **折叠的问题列表是被暴露的。** 重复的 send id 保留**第一条**写入并**报告**（I8）：异常随折叠状态以
+  `problems` 暴露，web 投影会渲染它们。`problems` 在状态上是**可选**的（调用方构造的、只是消息列表的视图不是
+  折叠结果），并有三条补偿保证：`fold`/`readMailbox` 总是填充它，`scopeToTeam` 会带着它穿过，两条测试臂
+  断言干净日志得到 `{messages: [], problems: []}`。
+- **已声明的边界。** 工具从 `question`/`answer` 载荷**推断** `kind`，不提供 `kind` 或 `threadId` 参数（回复
+  通过 `replyTo` 归入线程）；直接构造记录的调用方仍可向存储 API 显式传入二者。已注册的工具表面由一条实测
+  预算断言：`permit`/`wait` 落地后为 **5,600 → 6,400 字符，实测 6,289**——任何进一步放宽都必须**先**获得队长
+  批准。
 - **一切按工作区定位**，经 `dsh.workspaceRoot(exec)`，绝不用进程 cwd。
 
 ### 嵌套团队（子单元）

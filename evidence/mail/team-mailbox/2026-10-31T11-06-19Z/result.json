@@ -1,0 +1,87 @@
+{
+  "review": {
+    "lane": "R2 (re-review)",
+    "boardTask": "T16",
+    "workTask": "T15",
+    "subject": "Repair of T2 per R2 findings: F1 self-broadcast (both spellings), N1 durable wake, N2 fold problems, N3 AC-8 arm",
+    "contract": ".mpd/plans/mail-unify.md §5 (R2's findings / AC-2 + AC-8 context)",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee",
+    "hashes": {
+      "src/mailbox-store.ts": "8172402a4bc4615609b5f15b79cceca6135fa90c5e69d9efb73d9c2018c0c674",
+      "src/index.ts": "48015ad044eaaf437683546b61e28472aaa5c80b540d99c91938393a3e546c86",
+      "src/team-web.ts": "620494a15c0ef19f10f7c96d426d1db640fb53b2f957a146d8fa30f58ae9c51d",
+      "test/mailbox-store.test.ts": "742cd85c2e05103e53ba8819d6a64c5bdb28d302395d92205e3e9a6d99ccaf7f",
+      "test/pr42-review-repairs.test.ts": "c38cbc20f6c874be43d0b74f61ee4404f9c7d28aa7545c75fcb1cf07e8070afe",
+      "test/team-web.test.ts": "33fb4898f0ce744d554d2b5a5af92391277fb2ccf23bb2b3ff10de6ce257ef88"
+    },
+    "sandwich": "All hashes above were IDENTICAL at gate start (11:06:19Z) and review end. ATTRIBUTION: mailbox-store.ts also contains T17's later hunk (workspace-wide reference resolution, mtime 19:02); that hunk is T19's lane and my probes are indifferent to it. The cellwork dist delta is T18's in-flight package (cellwork inlines team-core) — not charged here."
+  },
+  "verdict": {
+    "task": "approve",
+    "riskLevel": "low",
+    "justification": "All four R2 findings are closed and I proved the N2 concern the captain flagged — the optional `problems` field cannot hide an anomaly: `fold`/`readMailbox` always populate it, a clean log yields a PRESENT empty list, every tolerated anomaly (duplicate id, unresolved replyTo, rootless threadId) is surfaced through the wrapper AND carried through `scopeToTeam` into the web projection, and the stamps follow first-wins with the content. F1's both-spellings self rule, the durable wake line with its mandatory reason, and the completed AC-8 arm are all live (459/0). One non-blocking residual Nit: no TEAM-plane surface renders the wake outcome yet."
+  },
+  "findingsAudit": [
+    {
+      "finding": "F1 (R2 Medium) — a MEMBER's `*` broadcast included its own roster row, and a member could message its own roster id",
+      "result": "CLOSED",
+      "evidence": "Store: `senderIds` = {fromId, fromMemberId}; the per-target check refuses `self` for EITHER spelling (probe F1a: by roster id AND by session id → reason 'self'). Tool: `selfId: ownMember?.id ?? callerId` (probe F1b vs F1c: roster-id selfId excludes M1; the OLD session-id shape would include it). End-to-end tool arm 'a MEMBER's `*` excludes its OWN roster row, and a member cannot message itself' passes and asserts messages = [Reviewer, captain], plus the direct self-send refusal. My fan-out probe writes rows [M2, lead-session] — no self row."
+    },
+    {
+      "finding": "N1 (R2 Nit) — a wake failure was only a process log line",
+      "result": "CLOSED",
+      "evidence": "`recordWake` appends a durable `MailWakeLine` with a TYPE-required reason when sent:false; probe N1 shows the line as the last record with reason 'the Lead has no executor handle', the success case carries no reason, and the mailbox fold ignores the foreign record (1 message, problems []). The tool arm writes TWO wake lines for a fan-out (one sent:true, one sent:false with 'recorded, not woken')."
+    },
+    {
+      "finding": "N2 (R2 Nit) — the team wrapper dropped the protocol fold's problems (a duplicate id was invisible)",
+      "result": "CLOSED",
+      "evidence": "Probes: clean log → `problems` PRESENT and [] ; duplicate id → messages keep the FIRST subject/stamps AND problems names the duplicate; `scopeToTeam` carries the same list; the web projection surfaces it (`buildTeamMail(ws).problems` non-empty); unresolved `replyTo` and a rootless explicit `threadId` both surface through the wrapper. The shipped arms assert a duplicate, the clean-`[]`, and `scopeToTeam(...).problems === state.problems`. Optionality is harmless: `fold`/`readMailbox` always set it, and the only caller-built state (the wait path) is not a fold result."
+    },
+    {
+      "finding": "N3 (R2 Nit) — AC-8's arm asserted only 3 of the 5 envelope fields",
+      "result": "CLOSED",
+      "evidence": "The team-web arm now asserts kind, threadId, replyTo, question.questionId/options, answer.selected AND readBy on a real answer row, and `problems` = [] — probe AC-8 reproduces all five fields plus readBy and a present empty problem list."
+    }
+  ],
+  "gates": [
+    { "id": "bun-test-team-core", "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "decidingOutput": "459 pass, 0 fail, 29 files" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "no diagnostics" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=54 failed=0 violations=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "VERDICT: PASS" }
+  ],
+  "findings": [
+    {
+      "id": "N1-residual",
+      "severity": "Nit",
+      "title": "The durable wake outcome is not rendered by any TEAM-plane surface yet (only the raw log and the cell view read it)",
+      "where": "packages/mpd-team-core-plugin/src/index.ts · mail tool `summary`/`unread` answers; src/team-web.ts · buildTeamMail",
+      "what": "`recordWake` writes the line and the cellview fold reads `wake` rows for CELL rows, but the team mail tool's summary/unread and the web mail projection do not expose wakeSent/wakeReason. An operator diagnoses a failed wake by reading the JSONL (or `grep`), not from a tool answer.",
+      "why": "R2's direction was 'write a durable wake outcome (reason) beside the row', which is now true; surfacing it on a team-plane view would close the diagnosis loop for the LEAD case (the one this repository hits most), but is not required by the accepted fix.",
+      "direction": "Optional follow-up: include per-message wake state in the summary rows or the web projection. Non-blocking.",
+      "evidence": "probes.ts N1 lines; no team-plane renderer currently reads MailWakeLine"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "T17's workspace-wide reference-resolution hunk in the SAME mailbox-store.ts", "reason": "A later change (mtime 19:02) reviewed under T19, not T15's repair; my probes do not depend on it." },
+    { "item": "The cellwork dist delta", "reason": "Cellwork inlines team-core; the Lead pre-declared the current dist as T18's in-flight package. Not charged." },
+    { "item": "The `.problems` field being optional", "reason": "The Lead accepted the optionality because requiring it breaks T3's fixtures; I proved it cannot hide an anomaly (always populated by the fold, clean logs assert a PRESENT [])." },
+    { "item": "README / docs wording for the repairs", "reason": "AC-6 is T6's lane." },
+    { "item": "`markRead`'s wrapper returning moved-only (ack refusals dropped) on the team side", "reason": "Pre-existing T2 surface; the cellwork diagnosis gap was raised as N1 in R4 and is T18's lane." },
+    { "item": "The allowlist/tool-surface and permit/wait paths", "reason": "T3's lane (R3/T8), unchanged here." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890; all T15 files byte-identical from 11:06:19Z to review end.",
+    "Read: mailbox-store fold/readMailbox/recordWake/scopeToTeam/sendMany self rules, the tool's send/member-broadcast wiring, team-web's problems projection, and the three T15 test diffs.",
+    "Ran: six gates (459/0) and the T16 probes (clean/duplicate/ghost-reference problems, durable wake, both-spellings self, roster-vs-session resolver, AC-8 projection).",
+    "Did NOT run: dist-fresh (T10 bound), the combined multi-package suite, Docker. T17's hunk and T18's cellwork package are out of this lane."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/team-mailbox/2026-10-31T11-06-19Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

@@ -1,0 +1,8 @@
+--- F4377306805 BEFORE: the QA case output fields at HEAD (no cellsAfterEmpty present) ---
+0
+cellsAfterEmpty: 0 occurrences
+output.log
+probe-overlay.yml
+probe.json
+raw
+result.json

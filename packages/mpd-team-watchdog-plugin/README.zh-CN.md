@@ -358,6 +358,33 @@ if (hold?.held) return noteDispatchDecline(/* … */, "held by the team watchdog
 tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdog-hold`（只有在接缝不可达
 时才回退为直接写入，并给出告警）。
 
+## Web 面 —— 两条带护栏的路由
+
+`src/web.ts` 把同样两个动作以 HTTP 路由提供，因此 Web 客户端无需工具调用即可暂停与恢复一个团队：
+
+| 路由 | 请求体 | 应答 |
+|---|---|---|
+| `POST /plugins/mpd-team-watchdog/hold` | `{teamId, reason?, ttlMs?}` | 200 `{ok:true, hold:…}` |
+| `POST /plugins/mpd-team-watchdog/resume` | `{teamId}` | 200 `{ok:true, resumed:boolean}` |
+
+* **精确（exact）注册、由 effect 持有。** 两者都以 `kind: "exact"` 经 adapter 的 `webServerOf()`
+  （绝不 `ctx.get("webServer")`）注册，并由该行的 effect 持有，因此行被销毁时路由随之消失。**晚绑定**的
+  Web 服务器经 `dsh.onServiceBound(["webServer", "httpServer"], …)` 重试，且按路径幂等；没有 Web
+  服务器的组合不注册任何路由，也不抛异常。
+* **护栏先执行，且失败即关闭（fail-closed）。** `dsh.webRequestRejection` 在方法守卫、请求体读取与任何
+  改动之前应答，因此被拒绝的请求永远到不了 hold 存储；Connection 服务缺失时回答 401，而不是放行。
+* **状态码。** 非 POST 在两条路由上都是 `405`（带 `allow: POST`）；`400` 用于请求体不是 JSON、`teamId`
+  为空、`reason`/`ttlMs` 类型不符，或请求无法归属到**唯一**工作区；护栏拒绝是 `401|403`；请求体超过
+  64 KiB 是 `413`；存储失败是 `500`，且消息绝不携带文件系统路径。没有任何处理器向外抛异常。
+* **工作区按无 agent 方式解析。** 路由请求不携带 agent exec，因此当宿主恰好只有一个活跃会话根时它就是
+  该根；没有任何会话注册时用 adapter 的 env → `process.cwd()` 根。若宿主服务于**多个**活跃工作区根，
+  这个只带请求体的请求无法归给其中一个，于是回答 `400`，而不是去改动一个猜来的根。
+* **`teamId` 只做形状校验。** 它必须是非空字符串；hold 并不要求该团队已存在，因此客户端可以暂停一个
+  记录里还没写下的团队。
+
+它的客户端消费方是 Web 端的 **workbench** 页面（`mpd-workbench`，见 `packages/mpd-bundle-plugin`），
+其暂停/恢复按钮正是 POST 这两条路由。
+
 ## 失效保护
 
 * tick 主体绝不向外抛异常：任何错误都会被捕获、计数并记录；
@@ -412,3 +439,5 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/sidecars.ts` | hold、事件日志与读取水位 |
 | `src/actions.ts` | 三个工具动作 |
 | `src/paths.ts` | 所有路径，按调用解析 |
+| `src/web.ts` | 两条带护栏的 Web 路由（hold / resume），经 adapter 挂载到宿主的服务器上 |
+| `test/web.test.ts` | 路由测试：方法守卫、护栏先于一切、请求体上限、无 agent 的工作区解析、存储往返 |

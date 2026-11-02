@@ -1,0 +1,171 @@
+{
+  "review": {
+    "lane": "R2",
+    "boardTask": "T7",
+    "workTask": "T2",
+    "subject": "Team mailbox: kind/replyTo/threadId/question/answer, captain addressing, broadcast fan-out, ack ownership",
+    "contract": ".mpd/plans/mail-unify.md §5 / AC-2 + AC-8",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "reviewedTree": "working tree — the four reviewed source files and the four test files are TRACKED and modified (M); the captain commits",
+    "contractSha": {
+      "atGateStartUtc": "2026-10-31T10:28:26Z",
+      "atGateStart": "eb47eb6e145252a695f57b24d44385a8ada12b600bc32459fafa4824bbe96843",
+      "atReviewEndUtc": "2026-10-31T10:35:54Z",
+      "atReviewEnd": "7de5b81c25636963d93488bb1a14bfabc1dc6e813f5dcc70505bd06c61ec1123",
+      "note": "The contract was edited WHILE this review ran (197 → 224 lines; the tail gained ACCEPTED OPERATIONAL CONSEQUENCE / ACCEPTED TEST RE-BASELINE / KNOWN DEFECT entries). The §5 and AC-2/AC-8 TEXT was identical at both hashes, so the judgement below holds against both; the new tail is cited where it declares a bound."
+    },
+    "hashes": {
+      "src/mailbox-store.ts": "48de667e1997401e60a588f816c3ff7609f6b393fae5b89712fc72ea1a7924de",
+      "src/index.ts": "469f12efb8d2fbc90d13f7bd6a6e01851aa3729653a36fadf43d51e2aae74792",
+      "src/team-web.ts": "825436882ac2f465a20cbbd200e2ff219bbcfe2a98061845c010c6faa8ed7586",
+      "test/mailbox-store.test.ts": "57257f8da33ff8bfad670ee7aabad9f4d1646b4e451485740a70fc6cd0c54aeb",
+      "test/pr42-review-repairs.test.ts": "a8b8885ea9c9e8b4707990474be1e8ca1e7899f27097244a7dae134006a5eca2",
+      "test/team-web.test.ts": "120abfab045dde8ac3185531797ad295e4fe0320e5e637b2d414a6b9923defed",
+      "test/tool-surface.test.ts": "beaa3f277447d86a719637b878cf366a1af961166139f43bb63c388780829fb3",
+      "dist/index.js (gate-certified build)": "e6e65d5a8ec6c0d6df1fb31aba2a1e73697bd6071e00e4bd68b78dea355ebca5",
+      "dist/index.js (on disk at review end)": "de59ab384efd1e634869d921d12595d6f0c5669b26be0f2b7e1f1cc2a6d3d6d6"
+    },
+    "sandwich": "The three reviewed SOURCE hashes were identical at 2026-10-31T10:28:26Z and 10:35:54Z. dist/index.js was rewritten by a CONCURRENT writer at 18:30 local (src untouched), so the on-disk dist is no longer the build the gate certified — a wave-level bound for T10, not a T2 defect (see bounds)."
+  },
+  "verdict": {
+    "task": "request-changes",
+    "ac2": "PASS",
+    "ac8": "PASS",
+    "riskLevel": "medium-low",
+    "justification": "AC-2 (all six items) and AC-8 pass on evidence I re-ran myself, the four focus points the Lead named are confirmed except one: a MEMBER's `to:\"*\"` broadcast includes the sender's own roster row and a member can message its own roster id, because the tool hands the resolver the session id while roster targets are M-ids and the store's self guard compares only `fromId` (F1, Medium). Everything else is green (424 tests, seven gates); repair F1 or record it as an accepted consequence in §12 before T10."
+  },
+  "focusPoints": [
+    {
+      "point": "1) TOOL-SURFACE BUDGET re-baseline 5,000 → 5,600",
+      "result": "CONFIRMED",
+      "evidence": "My own capture (same `costOf` formula as the arm) measures total 5,414: plan 1,767 + task 880 + dispatch 782 + mail 1,400 + control 489 + 1 command × 96 = 5,414; tools+commands = 6. The writer's pre-change 4,996 is arithmetically consistent: every other tool is untouched by the diff, so the old mail tool was 4,996 − (5,414 − 1,400) = 982, and the delta is +418 ≈ the comment's '~420 characters of schema'. The diff touches ONE expect (5,000 → 5,600) plus its comment; the tool-count arm (`<= 6`) and every other assertion are intact — no deletion, no weakening. The re-baseline is also recorded as an ACCEPTED TEST RE-BASELINE in contract §12."
+    },
+    {
+      "point": "2) ACK OWNERSHIP — the H1 arm now refuses the lead's ack",
+      "result": "CONFIRMED",
+      "evidence": "Shipped arm passes (log line 88) and asserts: lead ack → `moved: []` AND `refused` contains 'only its recipient may acknowledge it'; addressee ack → `refused` undefined AND `moved: [first]`; summary undelivered 8 → 7; the next send is accepted. My store probes reproduce the primitive: S10 stranger ack `moved: []` with the addressee named in the reason, S11 the row is STILL unread, S12 the addressee's ack moves it and records `readBy`. The refusal is non-vacuous (the sentence comes from the ownership branch and the same id is provably acknowledgeable by its addressee), and exactly one slot moves. Contract §12 records the accepted consequence (no admin escape ⇒ a captain cannot clear a stalled backlog)."
+    },
+    {
+      "point": "3) STAMP PASS-THROUGH — cellId/fromCell must carry no team semantics",
+      "result": "CONFIRMED",
+      "evidence": "Probe S8: `cellId: cell-1` / `fromCell: cell-0` / `teamId: team-a` all survive the fold. S9: `scopeToTeam(state, 'team-a')` → 1 row, `scopeToTeam(state, 'cell-1')` → 0 rows. The shipped arm 'the cellwork pass-through stamps' asserts the same; the per-team bound / unstamped-row arms stay green in the 424-test run."
+    },
+    {
+      "point": "4) CAPTAIN ADDRESSING + FAN-OUT",
+      "result": "PARTIAL — captain OK, member broadcast FAILS (F1)",
+      "evidence": "S5 `to:'captain'` as the lead → `{id: lead-session, name: 'captain'}`; S7 a team with no lead refuses `captain` and names the roster; S6 the LEAD's `*` → [M1, M2] with the sender excluded; the tool arm (log line 89) proves `toName: 'captain'` is DURABLE and the fan-out is one row per recipient. BUT probe S19 for a MEMBER caller (`selfId` = session-M1, members M1/M2, lead) returns targets [M1, M2, lead-session] — the sender's own roster row is included — and S20 writes those rows; S21 shows the same member can message its own roster id with `ok: true`. See F1."
+    }
+  ],
+  "claimsAudit": [
+    { "claim": "424 tests / 0 fail", "result": "CONFIRMED", "evidence": "`bun test packages/mpd-team-core-plugin`: 424 pass, 0 fail, 1899 expect() calls, 27 files." },
+    { "claim": "surface 4,996 → 5,414; bound 5,000 → 5,600", "result": "CONFIRMED", "evidence": "S1 5,414; S3/S4 breakdown; diff has one assert changed; §12 records the accepted re-baseline." },
+    { "claim": "H1 lead-ack refusal + addressee ack moves one slot", "result": "CONFIRMED", "evidence": "log line 88; S10-S12." },
+    { "claim": "cellId/fromCell are inert on the team plane", "result": "CONFIRMED", "evidence": "S8/S9; shipped stamp arm." },
+    { "claim": "captain addressable and `*` excludes the sender", "result": "PARTIAL", "evidence": "S5/S6/S7 + tool arm for the lead; S19/S20/S21 fail the member case — F1." },
+    { "claim": "question/answer round-trips end to end", "result": "CONFIRMED", "evidence": "S13 (kind, selected label, same thread), store arms, tool arm (log line 89)." },
+    { "claim": "T2's own gate output", "result": "NOT AVAILABLE TO ME", "evidence": "The writer's transcript was not readable from this seat; every number above was RE-RUN from scratch." }
+  ],
+  "gates": [
+    { "id": "bun-test-team-core", "command": "bun test packages/mpd-team-core-plugin", "exit": 0, "decidingOutput": "424 pass, 0 fail, 1899 expect() calls, 27 files" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "$ tsgo --noEmit (no diagnostics)" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS (every declaration commented, every named function typed)" },
+    { "id": "verify-dist-fresh", "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "decidingOutput": "FRESH packages/mpd-team-core-plugin/dist/index.js sha e6e65d5a8ec6… (and FRESH packages/mpd-mail-protocol sha 55fa1314ecdf…); 35/35 targets fresh at 10:28:36Z" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=53 failed=0 violations=0 links=473 dead=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match the 2-file bundle patch layer" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "packed-content 1124 files, 0 required absent; VERDICT: PASS" }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-2",
+      "result": "PASS",
+      "items": [
+        { "item": "`question`/`answer` round-trip", "evidence": "S13: question kind, answer `selected: ['B. two']`, same thread; store arm 'an ANSWER echoes the offered labels VERBATIM'; tool arm log line 89." },
+        { "item": "per-recipient ack", "evidence": "S14 fan-out rows [senior, researcher]; S15 acking one leaves the other unread; H1 arm for the same primitive." },
+        { "item": "backlog bound per fan-out row", "evidence": "S16 researcher at 8 → broadcast refused `backlog-full` naming researcher; S17 zero rows written (atomic); store arm 'the backlog bound is PER FAN-OUT ROW'." },
+        { "item": "`to:\"captain\"` addressable", "evidence": "S5 target = leadSessionId with `toName: 'captain'`; S7 no-lead refusal names the roster; tool arm asserts the durable `toName`." },
+        { "item": "non-recipient answer refused", "evidence": "S18 `not-recipient` naming the addressee; store arm 'only a RECIPIENT of a question may answer it'." },
+        { "item": "non-addressee ack refused", "evidence": "S10 `moved: []` + refusal naming the addressee; S11 row still unread; store arm + H1 lead-ack refusal." }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "result": "PASS (with Nit N3)",
+      "reason": "The projection carries kind, threadId, replyTo, question, answer and readBy (S23 proves all five envelope fields are projected). The shipped test asserts kind/threadId/question but NOT replyTo/answer — coverage Nit N3, behaviour correct."
+    },
+    { "id": "AC-1", "result": "NOT-CHECKED", "reason": "Protocol lane: PASS with one Nit in T12; T13/T14 handle the residual." },
+    { "id": "AC-3", "result": "NOT-CHECKED", "reason": "Cellwork lane (T4/T9 — R4)." },
+    { "id": "AC-4", "result": "NOT-CHECKED", "reason": "Permit/wait lane (T3/T8 — R3)." },
+    { "id": "AC-5", "result": "NOT-CHECKED", "reason": "Guard/prompt lane (T3/T4)." },
+    { "id": "AC-6", "result": "NOT-CHECKED", "reason": "Docs lane (T6)." },
+    { "id": "AC-7", "result": "PASS (T2 scope) / full form NOT-CHECKED", "reason": "All seven commands exited 0 at 10:28:36Z, including dist-fresh at that moment; the other two packages' suites and the final rebuild are T3/T4/T10." }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "Medium",
+      "title": "A MEMBER's `*` broadcast includes the sender's own roster row, and a member can message its own roster id — the tool hands the resolver the SESSION id while roster targets are M-ids",
+      "where": "packages/mpd-team-core-plugin/src/index.ts · the `agent_teams_mail` send branch (`resolveRecipients({ ..., selfId: callerId })` and `fromMemberId: ownMember.id`); packages/mpd-team-core-plugin/src/mailbox-store.ts · sendMany (the self guard compares `target.id === input.fromId` only)",
+      "what": "For a member caller the directory mixes two id spaces: `selfId` is the session id (`callerId`), while `members` are roster ids (`M1`). Probe S19 resolves `*` to [M1, M2, lead-session] for a caller whose own roster row IS M1; S20 writes all three rows. S21 sends to the caller's own roster id and returns `ok: true` (the store's self check never fires because target.id 'M1' ≠ fromId 'session-M1'). The lead caller is unaffected (its session id IS the lead id), and the shipped tool arm only broadcasts AS THE LEAD, which is why the suite is green.",
+      "why": "Contract §5 says `\"*\"` is a fan-out to every member plus the lead, EXCLUDING THE SENDER, and the mailbox's own rule is that a member cannot message itself (the store test pins it at the store seam). At the tool seam both rules are defeated for members because the roster id and the session id are different strings — exactly the D16c class the same file documents. Effects: a member's broadcast mints a self-addressed row (its own inbox grows, its summary counts it, and a cell/team view renders it as a message it sent to itself).",
+      "direction": "Pass the caller's own ROSTER id as the resolver's `selfId` (`ownMember?.id ?? callerId`) and compare the target against BOTH `input.fromId` and `input.fromMemberId` in sendMany's self guard. Add a tool-level arm for a MEMBER's `*` (and a member's self-send) — the lead-only arm cannot see this seam. Small, local change in T2's two files.",
+      "evidence": "probes.ts S19/S20/S21 in output.log"
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "The wake-failure record is a PROCESS log line, while §5 says 'recorded with a reason, exactly like today's cellwork captain path' — and the code comment claims that equivalence",
+      "where": "packages/mpd-team-core-plugin/src/index.ts · the delivery loop (`rowLogLine(... the transport refused it ...)`)",
+      "what": "For a lead recipient (and any member with no handle) the row stays durable and undelivered, but the failure is only `rowLogLine` — the cellwork captain path records a durable `wake` record with one of four reasons. The inline comment says 'recorded with the reason here, exactly like the cellwork captain path (contract §5)', which overstates what the code does.",
+      "why": "A process log line is not readable from the mailbox, so an operator diagnosing 'the lead never woke' has no durable reason on this plane. The Lead declared the log-line behaviour an accepted bound; the mismatch that remains is the comment and PR-body honesty, not the behaviour.",
+      "direction": "Either write a durable wake outcome (reason) beside the row, or amend §5/§12 to declare the log-line bound AND soften the comment so it does not claim cellwork parity. Record it with the other accepted bounds in §12.",
+      "evidence": "index.ts diff (delivery loop); contract §5 bullet 2"
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "title": "The team mailbox's `fold` wrapper DROPS the protocol fold's problem list, so duplicated ids / unresolved references are invisible on this plane",
+      "where": "packages/mpd-team-core-plugin/src/mailbox-store.ts · fold (`foldMail(records).messages` — `.problems` discarded)",
+      "what": "Probe S22: a log with two `send` rows sharing `d1` folds to ONE message (first write wins, correct) and the wrapper exposes only `{ messages }` — no problems. The protocol fold reported the duplicate; the team plane never surfaces it. The same wrapper re-reads stamps from the raw lines and lets the LAST duplicate's `cellId`/`fromCell` ride the FIRST message's body.",
+      "why": "The unified store is exactly where a second writer (cellwork) begins appending, so a duplicate id is the one anomaly an operator most needs to see; silently keeping the first write is tolerable, silently hiding it is not. The web projection and the mail tool both read through this wrapper, so no surface reports it.",
+      "direction": "Expose `problems` on `MailboxState` (or log them with the mailbox path) and keep the stamps first-wins to match the content policy. Non-blocking for this wave.",
+      "evidence": "probes.ts S22 in output.log; protocol fold contract I8"
+    },
+    {
+      "id": "N3",
+      "severity": "Nit",
+      "title": "AC-8's test asserts only 3 of the 5 envelope fields the projection carries",
+      "where": "packages/mpd-team-core-plugin/test/team-web.test.ts · the mail-route arm",
+      "what": "The projection carries `kind`, `threadId`, `replyTo`, `question`, `answer` and `readBy` (probe S23 proves all of them), but the shipped arm asserts only `kind`, `threadId` and `question.questionId/options` — no `replyTo` and no `answer` assertion.",
+      "why": "AC-8 says the projection carries the new fields 'and its test asserts them'; a future edit could drop `replyTo`/`answer` from the projection and the suite would stay green.",
+      "direction": "Append one `answer` row with `replyTo` and assert both fields in the same arm.",
+      "evidence": "team-web.test.ts diff; probes.ts S23"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "The ack-ownership operational consequence (a captain can no longer clear a stalled member's backlog; a stalled seat blocks senders at bound 8)", "reason": "Explicitly ACCEPTED in contract §12 with a phase-2 permit candidate. Set aside." },
+    { "item": "The tool-surface re-baseline 5,000 → 5,600", "reason": "ACCEPTED in contract §12 after a real, re-measured 5,414; I verified no other assertion was weakened. Set aside." },
+    { "item": "`unread` can list another member's inbox via the `member` argument", "reason": "§5's ownership rules cover answering and acknowledging only; this is the pre-existing surface's documented behaviour, not a T2 change. Not judged." },
+    { "item": "Rows addressed to a session id become un-ackable if a lead session changes", "reason": "Outside §5's contract; a legacy-data edge, not a T2 rule. Not judged." },
+    { "item": "Id minting (`mail-<second>-<count>`) can collide across two PROCESSES writing one workspace in the same second", "reason": "Pre-existing scheme; single-process read→append is synchronous, so the harness's normal path cannot interleave. A two-process hazard belongs to T10/T4's integration risk list, not a T2 rule. Noted, not judged." },
+    { "item": "The `markRead` export now requires MailAck and `acknowledge` was added", "reason": "No external caller outside the package (grep: only index.ts via `acknowledge`, tests via `markRead`); the QA script imports `send` whose signature is unchanged; typecheck green. Set aside." },
+    { "item": "The contract was edited mid-review (197 → 224 lines)", "reason": "§5, AC-2 and AC-8 text identical at both measured hashes; the tail only ADDS accepted bounds/known defects, which I cite. Not a T2 finding." },
+    { "item": "`dist/index.js` rewritten by a concurrent writer at 18:30", "reason": "Outside T2 (completed 18:26; the source hashes stayed fixed); the gate certified the build at 10:28:36Z. Recorded as a wave-level bound for T10, not charged to T2." },
+    { "item": "T4/T3/T6 work, the cellwork view over the unified store, and the docs/README pairs", "reason": "Other lanes (R4/R3/T6); not read for judgement." },
+    { "item": "The dispatched-by-fallback and contract-key defects recorded in the new §12 tail", "reason": "Wave-level defects the captain already recorded; they are not T2's code. Not judged here." }
+  ],
+  "bounds": [
+    "Reviewed the WORKING TREE at HEAD e9be8890; the four source and four test files are tracked modifications. The three reviewed SOURCE hashes were identical at the start (10:28:26Z) and end (10:35:54Z) of the review.",
+    "dist/index.js was rewritten by a concurrent writer at 18:30 local while src stayed byte-identical; the freshness gate certified the e6e65d5a build as FRESH at 10:28:36Z, and the file on disk at review end is de59ab38…. T10's integration rebuild (pinned toolchain) is the closure.",
+    "Read: mailbox-store.ts in full; the index.ts diff plus its untouched mail-tool context; team-web.ts's projection; the four test diffs and the shipped arms; contract §4/§5/§8/§12 at both hashes.",
+    "Ran: seven gates (all exit 0 at the gate moment) and 24 probes (S1–S24) written for this review, including a re-implementation of the tool-surface cost measurement.",
+    "Did NOT run: the tool-level harness beyond the shipped arms — F1 is evidenced at the store seam plus the exact values the tool passes (the shipped tool arm broadcasts only as the LEAD, so it cannot see the member case); Docker lane; `bun run verify:gates` aggregate (dirty tree, wave in flight).",
+    "The writer's own gate output was not readable from this seat; its numbers were quoted via the Lead and re-measured independently (5,414 matches)."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/team-mailbox/2026-10-31T10-28-26Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (S1–S24 printed to output.log)"
+  }
+}

@@ -23,7 +23,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index.ts"
-import { send as sendRawMail } from "../src/mailbox-store.ts"
+import { readRecords, send as sendRawMail } from "../src/mailbox-store.ts"
 import { readPlan } from "../src/plan-store.ts"
 import { activeTeamId, readTeam, teamRecordPath, writeTeam, type TeamRecord } from "../src/team-store.ts"
 import { isLiveTeam, readArchivedPlanIndex, reapReapedTeams } from "../src/team-lifecycle.ts"
@@ -572,8 +572,15 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
     /** The id the operator acknowledges. */
     const first = String(queued.messages?.[0]?.id ?? "")
     expect(first).not.toBe("")
-    /** The acknowledgement, through the tool's `read` action. */
-    const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[] }
+    // ── OWNERSHIP (contract §5): the ack belongs to the row's ADDRESSEE, not to whoever sent it. The
+    // old unauthenticated `markRead` let the lead acknowledge a member's row; that primitive is gone,
+    // and the lead's attempt is now the mechanical proof that no administrative escape survived.
+    const byLead = await h.call("agent_teams_mail", { action: "read", ids: [first] }, LEAD) as { moved?: string[]; refused?: string }
+    expect(byLead.moved).toEqual([])
+    expect(byLead.refused).toContain("only its recipient may acknowledge it")
+    /** The acknowledgement, through the tool's `read` action, made AS THE ADDRESSEE. */
+    const acked = await h.call("agent_teams_mail", { action: "read", ids: [first] }, "child-Senior-Engineer") as { moved?: string[]; refused?: string }
+    expect(acked.refused).toBeUndefined()
     expect(acked.moved).toEqual([first])
     /** The summary after the ack: the SAME set the bound measures drops by exactly one. */
     const after = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { summary?: Array<{ memberId?: string; undelivered?: number }> }
@@ -582,6 +589,159 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
     const accepted = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "after-ack", body: "b" }, LEAD) as { message?: { id?: string }; refused?: string }
     expect(accepted.refused).toBeUndefined()
     expect(accepted.message?.id).toBeDefined()
+  })
+})
+
+// ── AC-2 ON THE REAL TOOL SURFACE (contract `.mpd/plans/mail-unify.md` §5): addressing a lead as
+// `captain`, a broadcast as ONE ROW PER RECIPIENT, and the question/answer envelope end to end. The
+// store arms prove the rules; these prove the TOOL wires them (a schema param that never reaches the
+// store would pass every store arm). ──
+describe("the mail envelope and addressing through the REAL tool surface", () => {
+  test("`captain` is addressable, `*` fans out one row per member, and a question/answer exchange round-trips", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session the stub executor recorded, which is the identity `callerIdentity` resolves. */
+    const member = "child-Senior-Engineer"
+    // A MEMBER asks its captain: `captain` resolves to the team's `leadSessionId`, recorded as such.
+    /** The recorded row addressed to the captain, whose name is the ROLE whatever alias was used. */
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "may I?", body: "b" }, member) as { message?: { id?: string; toName?: string; threadId?: string }; refused?: string }
+    expect(asked.refused).toBeUndefined()
+    expect(asked.message?.toName).toBe("captain")
+    // THE BROADCAST FANS OUT: one row per OTHER member, the sender excluded, no single multi-`to` row.
+    /** The broadcast's answer: one row per recipient, with the `broadcast` marker set. */
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, LEAD) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    expect((fan.messages ?? []).map((message) => message.toName).sort()).toEqual(["Reviewer", "Senior Engineer"])
+    // A QUESTION and its ANSWER through the tool: the payload alone decides the kind, and the answer
+    // echoes the offered LABEL verbatim — the mechanical replacement for counting options.
+    /** The question payload the lead sends. */
+    const question = { questionId: "q1", question: "which store?", options: [{ label: "A. one" }, { label: "B. two" }] }
+    /** The recorded question row, whose kind comes from the payload alone. */
+    const quiz = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "q", body: "b", question }, LEAD) as { message?: { id?: string; kind?: string; threadId?: string }; refused?: string }
+    expect(quiz.refused).toBeUndefined()
+    expect(quiz.message?.kind).toBe("question")
+    /** The answer payload, echoing one offered label. */
+    const answer = { questionId: "q1", answerTo: String(quiz.message?.id ?? ""), selected: ["B. two"] }
+    /** The recorded answer row, which must join the QUESTION's thread. */
+    const replied = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "a", body: "b", answer }, member) as { message?: { kind?: string; threadId?: string; replyTo?: string }; refused?: string }
+    expect(replied.refused).toBeUndefined()
+    expect(replied.message?.kind).toBe("answer")
+    // I7: the answer replies to the question row, so it joins the QUESTION's thread.
+    expect(replied.message?.replyTo).toBe(quiz.message?.id)
+    expect(replied.message?.threadId).toBe(quiz.message?.threadId)
+  })
+
+  test("a MEMBER's `*` excludes its OWN roster row, and a member cannot message itself (R2's F1)", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session the stub executor recorded; its roster id is `M1`, NOT this string. */
+    const member = "child-Senior-Engineer"
+    // THE SEAM THE LEAD-ONLY ARM CANNOT SEE: `selfId` used to be the SESSION id while the roster is
+    // addressed by `M1`, so the member's own row survived the fan-out.
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, member) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    // The other member AND the captain — never the sender's own roster row.
+    expect((fan.messages ?? []).map((message) => message.toName)).toEqual(["Reviewer", "captain"])
+    // …and addressing its own roster id directly is the store's own self rule, reached through the tool.
+    const self = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "me", body: "b" }, member) as { refused?: string }
+    expect(self.refused).toBe("a team member cannot message itself")
+    // R2's N1: EVERY attempt left a DURABLE wake line with its reason — one `sent:true` for the member
+    // the stub transport reached, one `sent:false` for the captain it cannot reach. A process log line
+    // would be invisible here, which is exactly the defect.
+    /** The `wake` lines the fan-out left, in log order. */
+    const wakes = readRecords(h.workspace).filter((record) => (record as { t?: string }).t === "wake") as Array<{ id?: string; sent?: boolean; reason?: string }>
+    expect(wakes).toHaveLength(2)
+    expect(wakes.filter((line) => line.sent === true)).toHaveLength(1)
+    /** The refused attempt, which must carry why. */
+    const refusedWake = wakes.filter((line) => line.sent === false)
+    expect(refusedWake).toHaveLength(1)
+    expect(refusedWake[0].reason).toContain("recorded, not woken")
+  })
+})
+
+// ── CodeRabbit CR3 (Major, Functional Correctness): a FORKED or RESUMED captain presents the Lead
+// through `leadHistory`/lineage, so `callerIsLead` is true while its own session id differs from the
+// record's `leadSessionId`. Every mailbox operation must then act under ONE durable address (the lead
+// id), or four things break at once: its own acknowledgement, a `*` broadcast, answer routing, and the
+// permit issuer check. ──
+describe("CR3 — a LINEAGE-only captain acts under the DURABLE lead id", () => {
+  test("broadcast excludes the captain's own row, and the captain can acknowledge a member's question", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The resumed session's own id — DIFFERENT from the record's lead session. */
+    const resumed = "lead-session-resumed"
+    /** The lineage the harness records: its parent is the approving Lead, and it is not a delegation child. */
+    const lineage = { parentSession: LEAD }
+    // (a) THE BROADCAST: `selfId` must be the lead id, or the captain's own row is a recipient of itself.
+    const fan = await h.call("agent_teams_mail", { action: "send", to: "*", subject: "all hands", body: "b" }, resumed, lineage) as { messages?: Array<{ toName?: string }>; broadcast?: boolean; refused?: string }
+    expect(fan.refused).toBeUndefined()
+    expect(fan.broadcast).toBe(true)
+    expect((fan.messages ?? []).map((message) => message.toName).sort()).toEqual(["Reviewer", "Senior Engineer"])
+    // (b) THE ACK: a member asks `captain`, and the resumed captain acknowledges — its own row.
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "may I?", body: "b" }, "child-Senior-Engineer") as { message?: { id?: string; toId?: string }; refused?: string }
+    expect(asked.refused).toBeUndefined()
+    // The question was addressed to the DURABLE lead id, which is what the resumed session acts as.
+    expect(asked.message?.toId).toBe(LEAD)
+    /** The question row's id, which is the row the captain acknowledges. */
+    const askedId = String(asked.message?.id ?? "")
+    /** The captain's acknowledgement of its OWN addressed row. */
+    const acked = await h.call("agent_teams_mail", { action: "read", ids: [askedId] }, resumed, lineage) as { moved?: string[]; refused?: string }
+    expect(acked.refused).toBeUndefined()
+    expect(acked.moved).toEqual([askedId])
+  })
+
+  test("a permit the resumed captain issues is NOT foreign to the wait that uses it", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The resumed session's own id — DIFFERENT from the record's lead session. */
+    const resumed = "lead-session-resumed"
+    /** The lineage the harness records: its parent is the approving Lead. */
+    const lineage = { parentSession: LEAD }
+    // The member's own question, which the wait is legitimately about.
+    const asked = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "q", body: "b", question: { questionId: "q1", question: "which?", options: [{ label: "A. one" }] } }, "child-Senior-Engineer") as { message?: { id?: string } }
+    /** The permit the RESUMED captain grants this member. */
+    const granted = await h.call("agent_teams_mail", { action: "permit", holder: "Senior Engineer", scope: "answer", ttlMs: 60_000 }, resumed, lineage) as { permit?: { permitId?: string }; refused?: string }
+    expect(granted.refused).toBeUndefined()
+    /** The member's bounded wait: it must reach the TIMEOUT, not be refused as a foreign issuer. */
+    const waited = await h.call("agent_teams_mail", { action: "wait", permitId: String(granted.permit?.permitId ?? ""), messageId: String(asked.message?.id ?? ""), timeoutMs: 0 }, "child-Senior-Engineer") as { ok?: boolean; reason?: string; refused?: string }
+    expect(waited.refused).toBeUndefined()
+    expect(waited.ok).toBe(false)
+    expect(waited.reason).toBe("timeout")
+  })
+})
+
+// ── CodeRabbit CR5 (Minor, Security & Privacy): the wait path scoped rows to the TEAM only, so a permit
+// holder could wait on ANOTHER member's question and read that member's `selected` labels out of the
+// answers the wait assembles. A wait is an ASKER waiting on its own question, so the row must be one the
+// holder SENT. ──
+describe("CR5 — a wait target must be a row the permit HOLDER sent", () => {
+  test("another member's question is refused; the holder's own question reaches the timeout", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await approveTeam(h)
+    /** The member session that holds the permit. */
+    const holder = "child-Senior-Engineer"
+    /** The permit the captain grants this member. */
+    const granted = await h.call("agent_teams_mail", { action: "permit", holder: "Senior Engineer", scope: "answer", ttlMs: 60_000 }, LEAD) as { permit?: { permitId?: string } }
+    /** The permit id every wait below names. */
+    const permitId = String(granted.permit?.permitId ?? "")
+    // ANOTHER member's question: the holder is not its asker, so its answers are not the holder's to read.
+    const foreign = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "theirs", body: "b", question: { questionId: "q2", question: "which?", options: [{ label: "A. one" }] } }, "child-Reviewer") as { message?: { id?: string } }
+    /** The holder's attempt to wait on somebody ELSE's question, which must be refused. */
+    const peek = await h.call("agent_teams_mail", { action: "wait", permitId, messageId: String(foreign.message?.id ?? ""), timeoutMs: 0 }, holder) as { refused?: string }
+    expect(peek.refused).toContain("was sent by")
+    // CONTROL: the holder's OWN question is admitted, and a zero-length wait is exactly one read + timeout.
+    const own = await h.call("agent_teams_mail", { action: "send", to: "captain", subject: "mine", body: "b", question: { questionId: "q3", question: "which?", options: [{ label: "A. one" }] } }, holder) as { message?: { id?: string } }
+    /** The holder's wait on its OWN question, which the ownership rule must admit. */
+    const waited = await h.call("agent_teams_mail", { action: "wait", permitId, messageId: String(own.message?.id ?? ""), timeoutMs: 0 }, holder) as { ok?: boolean; reason?: string; refused?: string }
+    expect(waited.refused).toBeUndefined()
+    expect(waited.reason).toBe("timeout")
   })
 })
 

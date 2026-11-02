@@ -9,7 +9,11 @@ import { callerContext, type CallerContext, type TeamsServiceView } from "./call
 import type { CellworkConfig } from "./config"
 import { applyReassignments, dispatchOwnerOnly, fenceReasonOf, nameKey, reassignPairs, sendThroughExecutor, type DispatchRecordView, type DispatchReport, type ReassignOutcome } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
-import { appendCellMail, deliverCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
+import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
+import { sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
+import type { SendInput, SendManyResult } from "../../mpd-team-core-plugin/src/mailbox-store"
+import { fanOutTargets } from "../../mpd-mail-protocol/src/index"
+import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from "../../mpd-mail-protocol/src/index"
 import {
   applyCheckpoint,
   checkpointDirective,
@@ -63,6 +67,75 @@ function argString(args: Record<string, unknown>, key: string): string {
 }
 
 /**
+ * The STABLE id one cell seat is addressed by in the shared mailbox.
+ *
+ * WHY NOT THE SESSION ID (T9/F2). A seat's session id changes on a bounded compaction reseed, so every
+ * row addressed to the previous id became unacknowledgeable and its questions unanswerable — the store's
+ * ownership rules compare ids and silently refused. The key derives from the CELL and the seat NAME
+ * only, so a reseeded seat still acknowledges and answers its own mail. The row keeps the seat/roster
+ * spelling on `fromMemberId` for the team plane, and the session id stays the RUNTIME handle (wake-ups),
+ * never the durable address.
+ * @param cell - the cell the seat belongs to.
+ * @param name - the seat's board name (`captain` for the captain).
+ * @returns the stable address id, normalized so two spellings of one name address one seat.
+ */
+function seatKey(cell: CellState, name: string): string {
+  return "seat:" + cell.cellId + "/" + nameKey(name)
+}
+
+/**
+ * One addressable seat of a cell.
+ * @param cell - the cell the seat belongs to.
+ * @param name - the seat's board name (`captain` for the captain).
+ * @returns the address the store mints a fan-out row for.
+ */
+function seatAddress(cell: CellState, name: string): MailAddress {
+  return { id: seatKey(cell, name), name }
+}
+
+/**
+ * Parse a `cellwork_send` `options` argument into the protocol's option shape.
+ *
+ * The protocol validator owns the RULES (non-empty, unique labels); this parse owns only the SHAPE a
+ * typed payload needs, so a malformed array is refused before anything is written.
+ * @param value - the raw argument.
+ * @returns the options, or the refusal sentence.
+ */
+function parseMailOptions(value: unknown): MailOption[] | ProtocolFailure {
+  if (!Array.isArray(value) || value.length === 0) {
+    return { ok: false, error: "cellwork_send: `kind:\"question\"` requires a non-empty `options` array of {label, description?}" }
+  }
+  /** The options accepted so far, in offer order. */
+  const options: MailOption[] = []
+  for (const entry of value) {
+    /** The option read as a record, since the harness validated only the array. */
+    const option = typeof entry === "object" && entry !== null ? entry as Record<string, unknown> : null
+    /** The option's label, which the echo will quote verbatim. */
+    const label = option !== null && typeof option.label === "string" ? option.label : ""
+    if (label.trim() === "") return { ok: false, error: "cellwork_send: every option needs a non-empty `label`" }
+    options.push({ label, ...(typeof option?.description === "string" && option.description !== "" ? { description: option.description } : {}) })
+  }
+  return options
+}
+
+/**
+ * Parse a `cellwork_send` `selected` argument into the label list the answer echoes.
+ * @param value - the raw argument.
+ * @returns the labels (possibly empty), or the refusal sentence when the shape is wrong.
+ */
+function parseMailSelected(value: unknown): string[] | ProtocolFailure {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) return { ok: false, error: "cellwork_send: `selected` must be an array of offered label strings" }
+  /** The strings accepted so far. */
+  const selected: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== "string") return { ok: false, error: "cellwork_send: every `selected` entry must be an offered label string" }
+    selected.push(entry)
+  }
+  return selected
+}
+
+/**
  * One harness content block holding text.
  *
  * @param value - the text.
@@ -70,6 +143,39 @@ function argString(args: Record<string, unknown>, key: string): string {
  */
 function render(value: string): Array<{ type: "text"; text: string }> {
   return [{ type: "text", text: value }]
+}
+
+/**
+ * Render one inbox row as text, with the question's offered labels or the answer's selected labels
+ * spelled out explicitly — so a reader never has to count options or positions (contract §6).
+ * @param message - one inbox row, as the tool returned it.
+ * @returns the row's text block.
+ */
+function mailBlock(message: Record<string, unknown>): string {
+  /** The row's header line: who sent what. */
+  const lines: string[] = ["[" + String(message.from ?? "") + "] " + String(message.subject ?? "")]
+  /** The envelope kind, defaulted for a legacy row. */
+  const kind = typeof message.kind === "string" ? message.kind : "message"
+  /** The question payload, when this row carries one. */
+  const question = typeof message.question === "object" && message.question !== null ? message.question as Record<string, unknown> : undefined
+  /** The answer payload, when this row carries one. */
+  const answer = typeof message.answer === "object" && message.answer !== null ? message.answer as Record<string, unknown> : undefined
+  if (kind === "question" && question !== undefined) {
+    /** The offered options, read defensively off a loose row. */
+    const options = Array.isArray(question.options) ? question.options as Array<Record<string, unknown>> : []
+    lines.push("QUESTION " + String(question.questionId ?? "") + (question.multiSelect === true ? " (multi-select)" : ""))
+    lines.push(String(question.question ?? ""))
+    for (const option of options) lines.push("  - " + String(option.label ?? ""))
+  }
+  if (kind === "answer" && answer !== undefined) {
+    /** The echoed labels, in selection order. */
+    const selected = Array.isArray(answer.selected) ? answer.selected.map((entry: unknown) => String(entry)) : []
+    lines.push("ANSWER to " + String(answer.answerTo ?? ""))
+    lines.push("  selected: " + (selected.length === 0 ? "(custom only)" : selected.join(" | ")))
+    if (typeof answer.custom === "string" && answer.custom !== "") lines.push("  custom: " + answer.custom)
+  }
+  lines.push(String(message.body ?? ""))
+  return lines.join("\n")
 }
 
 /**
@@ -135,8 +241,6 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   const config = deps.config
   /** Every registration's disposer. */
   const disposers: Array<() => void> = []
-  /** The per-process mail id sequence. */
-  let mailSequence = 0
   /** The compaction barriers currently running, keyed `cellId/member`, so one turn cannot start two. */
   const inFlight = new Set<string>()
   /** The team service, probed per call. */
@@ -615,13 +719,21 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_send ────────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended to that same log as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
-        to: { type: "string", description: "`captain`, a cell member's board name, or `<cellId>/<captain|member>` for a cross-cell recipient in this cell's tree." },
-        subject: { type: "string", description: "One-line subject." },
-        body: { type: "string", description: "The message text, delivered verbatim." },
+        to: { type: "string", description: "`captain`, a cell member's board name, or `<cellId>/<captain|member>` for a cross-cell recipient in this cell's tree. With `broadcast:true`, its cell part selects the target cell (`*` means this cell)." },
+        subject: { type: "string", description: "One-line subject (also a question's header)." },
+        body: { type: "string", description: "The message text, delivered verbatim (also a question's text)." },
+        kind: { type: "string", description: "`message`, `question` or `answer`; omitted means it is INFERRED from `options` (question) or `selected`/`custom` (answer), else `message`." },
+        options: { type: "array", description: "A question's offered options, labels unique within the question.", items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" } }, required: ["label"], additionalProperties: false } },
+        multiSelect: { type: "boolean", description: "A question may take several labels instead of exactly one." },
+        replyTo: { type: "string", description: "The message id this row replies to; an answer's question message id (its `answerTo`)." },
+        broadcast: { type: "boolean", description: "Fan out one row per seat of the target cell, sender excluded." },
+        selected: { type: "array", description: "An answer's offered labels, copied VERBATIM from the question.", items: { type: "string" } },
+        custom: { type: "string", description: "An answer's free text; alone it replaces the one label of a single-select answer." },
+        questionId: { type: "string", description: "A question's stable key (defaults to its message id) or the answered question's key (defaults to the referenced question's)." },
       },
       required: ["to", "subject", "body"],
       additionalProperties: false,
@@ -633,7 +745,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           ok: { type: "boolean" },
           error: { type: "string" },
           id: { type: "string" },
+          ids: { type: "array", items: { type: "string" }, description: "One id per row; a broadcast has several." },
           to: { type: "string" },
+          broadcast: { type: "boolean" },
+          rows: { type: "array", items: { type: "object" }, description: "One `{id, to, wakeSent, wakeReason?}` per fan-out row." },
           crossCell: { type: "string", description: "The cell id the row was written into, when the send crossed cells." },
           fromCell: { type: "string", description: "The sender's own cell id, mirrored onto a cross-cell row." },
           wakeSent: { type: "boolean" },
@@ -645,6 +760,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return render("cellwork_send refused: " + String(result.error ?? "unknown refusal"))
+        if (result.broadcast === true) {
+          /** The per-row outcomes the answer carries. */
+          const rows = Array.isArray(result.rows) ? result.rows as Array<Record<string, unknown>> : []
+          return render("mail fan-out: " + String(rows.length) + " row(s) -> " + rows.map((row) => String(row.to ?? "")).join(", ") + " (" + String(result.ids instanceof Array ? result.ids.join(", ") : "") + ")")
+        }
         // THE ANSWER NAMES WHICH HALF FAILED (repair N1): "no wake-up" plus a reason that says the
         // transport refused it reads differently from a reason that says the RECORD of it was lost.
         return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; " + String(result.wakeReason ?? "no wake-up was attempted") + ")"))
@@ -656,32 +776,48 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The caller's context. */
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
-      // NARROWED ONCE, for the callbacks below: a closure cannot rely on the property narrowing above,
-      // so the cell is bound to a local and every later read (including the two appends) uses it.
+      // NARROWED ONCE, for the closures below: a closure cannot rely on the property narrowing above.
       /** The caller's own cell. */
       const cell = caller.cell
       if (cell === null || caller.member === "") return { ok: false, error: "cellwork_send: this session belongs to no active cell" }
-      /** The requested recipient. */
+      /** The requested recipient (or the target cell, with `broadcast`). */
       const requested = argString(argv, "to").trim()
       if (requested === "") return { ok: false, error: "cellwork_send: `to` is required (`captain`, a member name, or `<cellId>/<captain|member>` for a cell in this cell's tree)" }
-      /** The subject. */
+      /** The subject (also a question's header). */
       const subject = argString(argv, "subject").trim()
-      /** The body. */
+      /** The body (also a question's text). */
       const body = argString(argv, "body")
       if (subject === "" || body.trim() === "") return { ok: false, error: "cellwork_send: `subject` and `body` are both required" }
+      /** Whether this call fans out one row per seat of the target cell. */
+      const broadcast = argv.broadcast === true
+      /** The explicit kind, `""` when the payload must be inferred. */
+      const kindArg = argString(argv, "kind").trim()
+      /** The message this row replies to; an answer's `replyTo` is its question message id. */
+      const replyTo = argString(argv, "replyTo").trim()
+      /** The explicit correlation key, `""` when it must be defaulted. */
+      const questionIdArg = argString(argv, "questionId").trim()
+      /** Whether a question may take several labels instead of exactly one. */
+      const multiSelect = argv.multiSelect === true
+      /** The raw `options` argument, when the caller passed one. */
+      const rawOptions: unknown = argv.options
+      /** The raw `selected` argument, when the caller passed one. */
+      const rawSelected: unknown = argv.selected
+      /** The answer's free-form text. */
+      const custom = argString(argv, "custom")
       /**
        * The CROSS-CELL spelling `<cellId>/<name>`.
        *
        * A sub-cell and its parent address each other by the same rule (§4.9's "cross-cell"), and the
        * recipient may only be a cell IN THIS CELL'S TREE — a sub-cell it registered, or its own parent.
-       * Cell ids and member names alike contain no `/`, so the last slash is the separator.
+       * Cell ids and member names alike contain no `/`, so the last slash is the separator. With
+       * `broadcast`, the part before the slash only selects the target cell (`*` = this cell).
        */
       const slash = requested.lastIndexOf("/")
-      /** The cell the row is addressed to: the caller's own cell, or the tree member named before the slash. */
+      /** The cell the rows belong to: the caller's own, or the tree member named before the slash. */
       const targetCellId = slash < 0 ? cell.cellId : requested.slice(0, slash).trim()
-      /** The name the recipient answers to inside the target cell. */
+      /** The name the recipient answers to (ignored by a broadcast). */
       const requestedName = slash < 0 ? requested : requested.slice(slash + 1).trim()
-      if (requestedName === "") return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" }
+      if (!broadcast && requestedName === "") return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" }
       /** Whether this send crosses into another cell of the tree. */
       const crossCell = targetCellId !== cell.cellId
       /** The target cell's record, when this send crosses cells. */
@@ -695,60 +831,180 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         if (!read.ok) return { ok: false, error: "cellwork_send: the cross-cell recipient's record at " + read.path + " cannot be read (" + read.reason + ": " + read.detail + ") — nothing was sent", path: read.path }
         target = read.state
       }
-      /** Whether the recipient is the target cell's captain. */
-      const toCaptain = nameKey(requestedName) === "captain"
-      /** The member row the recipient names, when it is a member of the target cell. */
-      const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName))
-      if (!toCaptain && recipientMember === undefined) {
-        return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
-      }
-      /** The canonical recipient name. */
-      const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName)
-      if (!crossCell && nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
-      /** The instant this row is stamped with. */
+      /** The instant every row and wake record is stamped with. */
       const now = new Date()
-      // THE ID EXISTS BEFORE ANYTHING IS WRITTEN (D6): the durable row and the `wake` record that follows
-      // it must name the SAME message, so the id is minted first and both appends quote it.
-      /** The id already used by the log this row is appended to, so a cross-cell id cannot shadow one. */
-      const taken = new Set(readCellMail(caller.workspace, targetCellId).map((record) => record.id))
-      /** The next unused id: the per-process sequence advanced until it is free in the target log. */
-      let id = mailId(now, (mailSequence += 1))
-      while (taken.has(id)) id = mailId(now, (mailSequence += 1))
-      /**
-       * The wake-up attempt, handed to {@link deliverCellMail} so it runs AFTER the durable row landed.
-       *
-       * It resolves its refusal instead of throwing there, because "no wake-up was attempted" and "the
-       * transport failed" are different facts a reader needs; the wrapper classifies a throw as the latter.
-       */
-      const attemptWake = async (): Promise<{ sent: boolean; reason?: string }> => {
-        if (crossCell) return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" }
-        if (toCaptain) return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" }
-        if (caller.sessionId !== cell.captainSessionId) return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" }
-        if (String(recipientMember?.executorRef ?? "") === "") return { sent: false, reason: "the recipient has no executor handle (never raised)" }
-        /** The delivery binding, when the executor exists. */
-        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
-        if (send === undefined) return { sent: false, reason: "this composition exposes no team executor" }
-        await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + body + "\n\n(full row: cell " + cell.cellId + ")")
-        return { sent: true }
+      /** Whether the payload carries a question's options. */
+      const hasOptions = rawOptions !== undefined
+      /** Whether the payload carries an answer's labels or free text. */
+      const hasAnswerPayload = rawSelected !== undefined || custom.trim() !== ""
+      /** The envelope kind: explicit, else INFERRED from the payload, else `message` (contract §6). */
+      let kind: MailKind
+      if (kindArg === "") kind = hasOptions ? "question" : hasAnswerPayload ? "answer" : "message"
+      else if (kindArg === "message" || kindArg === "question" || kindArg === "answer") kind = kindArg
+      else return { ok: false, error: "cellwork_send: `kind` must be `message`, `question` or `answer`" }
+      if (kind !== "question" && (hasOptions || multiSelect)) {
+        return { ok: false, error: "cellwork_send: `options`/`multiSelect` belong to a `question` row; this payload is a `" + kind + "`" }
       }
-      // THE ROW LANDS WHERE THE RECIPIENT READS IT: a cross-cell message is appended to the TARGET cell's
-      // log (its `cellwork_inbox` reads that log), while the SENDER's journal records that it went out.
-      /** The durable-first delivery: the row, then the wake-up attempt, then the attempt's outcome. */
-      const delivery = await deliverCellMail({
-        appendSend: () => appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent: false, ...(crossCell ? { fromCell: cell.cellId } : {}) }),
-        attemptWake,
-        appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id, sent: outcome.sent, ...(outcome.reason === undefined ? {} : { reason: outcome.reason }), at: now.toISOString() }),
-      })
-      if (!delivery.landed) return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent and no wake-up was attempted (mail is durable first)" }
-      appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id, from: caller.member, to, ...(crossCell ? { toCell: targetCellId } : {}), subject, wakeSent: delivery.wakeSent }, now)
-      return { ok: true, id, to, wakeSent: delivery.wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}), ...(delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason }) }
+      if (kind !== "answer" && (hasAnswerPayload || (kind === "message" && questionIdArg !== ""))) {
+        return { ok: false, error: "cellwork_send: `selected`/`custom`/`questionId` belong to an `answer` row; this payload is a `" + kind + "`" }
+      }
+      /** The question payload, built only for a `question` row. */
+      let question: MailQuestion | undefined
+      /** The answer payload, built only for an `answer` row. */
+      let answer: MailAnswer | undefined
+      /** The correlation key every fan-out row shares (I6); a question defaults it to its own first id. */
+      let questionId = questionIdArg
+      if (kind === "question") {
+        /** The parsed options, or the refusal they answer with. */
+        const parsedOptions = parseMailOptions(rawOptions)
+        if (!Array.isArray(parsedOptions)) return parsedOptions
+        questionId = questionIdArg !== "" ? questionIdArg : nextCellMailId(caller.workspace, now)
+        question = { questionId, header: subject, question: body, options: parsedOptions, ...(multiSelect ? { multiSelect: true } : {}) }
+      }
+      if (kind === "answer") {
+        if (replyTo === "") return { ok: false, error: "cellwork_send: `kind:\"answer\"` requires `replyTo` = the message id of the QUESTION row being answered" }
+        /**
+         * The question being answered, resolved ACROSS the workspace mailbox by row id (T9/F1 layer 1).
+         *
+         * A cross-cell row is stamped with the RECIPIENT cell's `cellId`, so a cross-cell question lives
+         * in the recipient's view while the answer is composed from a different cell — resolving it from
+         * the target cell's view alone missed it and produced the misleading missing-questionId refusal.
+         * The target cell's folded view stays as the SECOND source, for a pre-unification legacy row.
+         */
+        const asked = findWorkspaceMailById(caller.workspace, replyTo)
+          ?? foldCellMail(readCellMail(caller.workspace, targetCellId)).find((message) => message.id === replyTo)
+        // THE REAL PROBLEM, NAMED (T9/F1): an absent row and a non-question row are different defects,
+        // and neither is "the answer must carry a questionId" — that sentence sent the caller looking for
+        // a key it never had to invent.
+        if (asked === undefined) {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names no message in this workspace's mailbox — pass the QUESTION row's message id (every `cellwork_inbox` row shows its id)" }
+        }
+        if (asked.kind === "answer") {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names an ANSWER row, not a question — an answer answers a question, not another answer" }
+        }
+        if (asked.question === undefined) {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names a " + JSON.stringify(String(asked.kind ?? "message")) + " row with no question payload (no questionId, no options) — only a question can be answered" }
+        }
+        questionId = questionIdArg !== "" ? questionIdArg : asked.question.questionId
+        /** The parsed selected labels, or the refusal they answer with. */
+        const parsedSelected = parseMailSelected(rawSelected)
+        if (!Array.isArray(parsedSelected)) return parsedSelected
+        answer = { questionId, answerTo: replyTo, selected: parsedSelected, ...(custom.trim() === "" ? {} : { custom }) }
+      }
+      /** The recipients, one durable row each. */
+      let outbound: MailAddress[]
+      if (broadcast) {
+        /** Every seat of the target cell, captain first. */
+        const seats: MailAddress[] = [
+          seatAddress(target, "captain"),
+          ...Object.values(target.members).map((member) => seatAddress(target, member.name)),
+        ]
+        /** The seats this sender may reach: never itself (a same-cell broadcast), never a duplicate id. */
+        const candidates = seats.filter((seat) => crossCell || nameKey(seat.name) !== nameKey(caller.member))
+        outbound = fanOutTargets(seatKey(cell, caller.member), candidates)
+        if (outbound.length === 0) return { ok: false, error: "cellwork_send: a broadcast has no other seat to address in cell " + targetCellId }
+      } else {
+        /** Whether the recipient is the target cell's captain. */
+        const toCaptain = nameKey(requestedName) === "captain"
+        /** The member row the recipient names, when it is a member of the target cell. */
+        const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName))
+        if (!toCaptain && recipientMember === undefined) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
+        }
+        /** The canonical recipient name. */
+        const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName)
+        if (!crossCell && nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
+        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipientMember?.name ?? to))]
+      }
+      /** The roster the store validates the recipients against. */
+      const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name))
+      /** The team lead the store addresses as `captain`. */
+      const leadIds = [seatKey(target, "captain")]
+      /** The one send the store validates and fans out atomically; message ids are minted inside it. */
+      const input: SendInput = {
+        // THE SENDER'S STABLE SEAT KEY, not its session id (T9/F2): the store's ownership rules compare
+        // ids, and the row's recipient identity is the same stable key — so a reseeded seat can still
+        // answer the question it was asked under its previous session.
+        fromId: seatKey(cell, caller.member),
+        fromName: caller.member,
+        toId: outbound[0].id,
+        toName: outbound[0].name,
+        subject,
+        body,
+        memberIds,
+        leadIds,
+        teamId: target.teamId,
+        cellId: targetCellId,
+        fromMemberId: caller.member,
+        ...(crossCell ? { fromCell: cell.cellId } : {}),
+        ...(kind === "message" ? {} : { kind }),
+        ...(replyTo === "" ? {} : { replyTo }),
+        ...(question === undefined ? {} : { question }),
+        ...(answer === undefined ? {} : { answer }),
+      }
+      /** The store's atomic fan-out outcome, or the refusal that wrote nothing. */
+      let sent: SendManyResult
+      try {
+        sent = sendMany(caller.workspace, input, outbound, now)
+      } catch (error) {
+        return { ok: false, error: "cellwork_send: the message row(s) could not be written — no message was sent and no wake-up was attempted (mail is durable first): " + errorText(error) }
+      }
+      if (!sent.ok) return { ok: false, error: "cellwork_send refused: " + sent.detail }
+      /** One delivered row's outcome, in fan-out order. */
+      const delivered: Array<{ id: string; to: string; wakeSent: boolean; wakeReason?: string }> = []
+      for (let index = 0; index < sent.messages.length; index += 1) {
+        /** The durable row this iteration reports on. */
+        const message = sent.messages[index]
+        /** The address it was minted for, so the wake can resolve the member row. */
+        const address = outbound[index]
+        /** The member row behind that address, when it is not the captain. */
+        const recipientMember = Object.values(target.members).find((member) => seatKey(target, member.name) === address.id)
+        /**
+         * The wake-up attempt: the durable row ALREADY landed through the store, so this only wakes a
+         * live handle. Every refusal keeps the four durable-only sentences the cell plane documents.
+         */
+        const attemptWake = async (): Promise<{ sent: boolean; reason?: string }> => {
+          if (crossCell) return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" }
+          if (nameKey(address.name) === "captain") return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" }
+          if (caller.sessionId !== cell.captainSessionId) return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" }
+          if (String(recipientMember?.executorRef ?? "") === "") return { sent: false, reason: "the recipient has no executor handle (never raised)" }
+          /** The delivery binding, when the executor exists. */
+          const wake = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
+          if (wake === undefined) return { sent: false, reason: "this composition exposes no team executor" }
+          await wake(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + body + "\n\n(full row: cell " + cell.cellId + ")")
+          return { sent: true }
+        }
+        /** The durable-first delivery of THIS row; `appendSend` is true because the store already wrote it. */
+        const delivery = await deliverCellMail({
+          appendSend: () => true,
+          attemptWake,
+          appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id: message.id, sent: outcome.sent, ...(outcome.reason === undefined ? {} : { reason: outcome.reason }), at: now.toISOString() }),
+        })
+        delivered.push({ id: message.id, to: message.toName, wakeSent: delivery.wakeSent, ...(delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason }) })
+        appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id: message.id, from: caller.member, to: message.toName, ...(crossCell ? { toCell: targetCellId } : {}), subject, wakeSent: delivery.wakeSent }, now)
+      }
+      if (!broadcast) {
+        /** The one row this send minted. */
+        const only = delivered[0]
+        return { ok: true, id: only.id, to: only.to, wakeSent: only.wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}), ...(only.wakeReason === undefined ? {} : { wakeReason: only.wakeReason }) }
+      }
+      /** The fan-out answer: one id per row, the same shape a single send keeps for its first row. */
+      return {
+        ok: true,
+        broadcast: true,
+        to: "*",
+        id: delivered[0].id,
+        ids: delivered.map((row) => row.id),
+        rows: delivered,
+        ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}),
+      }
     },
   }))
 
   // ── cellwork_inbox ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_inbox",
-    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`). The rows are durable; reading them appends `read` records, so a second call does not return them again.",
+    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`). A `question` row renders its offered labels explicitly and an `answer` row renders its selected labels, so nothing has to be counted; reply with `cellwork_send {kind:\"answer\", replyTo:<question id>, selected:[...]}`. The rows are durable; reading them acknowledges each row ONCE (the shared store's `read` record, or the legacy log's for a pre-unification row).",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     output: {
       schema: {
@@ -759,6 +1015,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           seat: { type: "string" },
           messages: { type: "array", items: { type: "object" } },
           acknowledged: { type: "number" },
+          refused: { type: "array", items: { type: "object" } },
         },
         required: ["ok"],
       },
@@ -768,8 +1025,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         if (result.ok === false) return render("cellwork_inbox refused: " + String(result.error ?? "unknown refusal"))
         /** The delivered rows. */
         const messages = Array.isArray(result.messages) ? result.messages as Array<Record<string, unknown>> : []
-        if (messages.length === 0) return render("no unread cell mail for " + String(result.seat ?? "?") + " — if a question is blocked here, ask the captain to check `cellwork_supervise`")
-        return render(messages.map((message) => "[" + String(message.from) + "] " + String(message.subject) + "\n" + String(message.body)).join("\n\n---\n\n"))
+        /** The acknowledgements the store refused, which used to be invisible (T9/N1). */
+        const refused = Array.isArray(result.refused) ? result.refused as Array<Record<string, unknown>> : []
+        /**
+         * The sentence that keeps `acknowledged: 0` from being silent: WHICH row stayed unread and WHY.
+         *
+         * A seat whose acknowledgement the ownership rule refused saw the same rows come back forever with
+         * no diagnosis; the reason is the diagnosis (the row is addressed to a different identity).
+         */
+        const refusalNote = refused.length === 0 ? "" : "\n\nacknowledgement refused for " + String(refused.length) + " row(s), which stay unread: " + refused.map((entry) => String(entry.id ?? "?") + " (" + String(entry.reason ?? "no reason given") + ")").join("; ")
+        if (messages.length === 0) return render("no unread cell mail for " + String(result.seat ?? "?") + " — if a question is blocked here, ask the captain to check `cellwork_supervise`" + refusalNote)
+        return render(messages.map((message: Record<string, unknown>) => mailBlock(message)).join("\n\n---\n\n") + refusalNote)
       },
     },
     execute: async (_args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
@@ -777,21 +1043,40 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
       if (caller.cell === null || caller.member === "") return { ok: false, error: "cellwork_inbox: this session belongs to no active cell" }
-      /** The seat's own names. */
+      /** The seat's own name (`captain` for the captain). */
       const seat = caller.member === "captain" ? "captain" : caller.member
-      /** The folded mail. */
+      /** The folded mail of this cell's view. */
       const messages: CellMailMessage[] = foldCellMail(readCellMail(caller.workspace, caller.cell.cellId))
       /** The unread rows addressed here. */
       const unread = unreadFor(messages, [seat])
       /** The instant of the acknowledgement. */
       const now = new Date()
-      /** How many acknowledgements were appended. */
-      let acknowledged = 0
-      for (const message of unread) {
-        if (appendCellMail(caller.workspace, caller.cell.cellId, { t: "read", id: message.id, by: seat, at: now.toISOString() })) acknowledged += 1
+      /** The ack-once outcome: the store moves its rows, the legacy append moves the migrated ones. */
+      // THE ACK IDENTITY IS THE STABLE SEAT KEY, never the session id (T9/F2): a reseeded seat must
+      // acknowledge the rows addressed to its seat before the reseed, or the store silently refuses and
+      // the inbox re-delivers them forever.
+      const ack = acknowledgeCellMail(caller.workspace, caller.cell.cellId, unread.map((message) => message.id), { byId: seatKey(caller.cell, seat), byName: seat }, now)
+      if (ack.moved.length > 0) appendJournal(caller.workspace, caller.cell.cellId, { event: "mail-read", cell: "cell:" + caller.cell.cellId, seat, ids: ack.moved }, now)
+      return {
+        ok: true,
+        seat,
+        messages: unread.map((message) => ({
+          id: message.id,
+          from: message.from,
+          subject: message.subject,
+          body: message.body,
+          at: message.at,
+          kind: message.kind,
+          threadId: message.threadId,
+          ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+          ...(message.question === undefined ? {} : { question: message.question }),
+          ...(message.answer === undefined ? {} : { answer: message.answer }),
+        })),
+        acknowledged: ack.moved.length,
+        // A REFUSED ACK IS REPORTED, not counted as zero silently (T9/N1): each entry names the row and
+        // the store's own sentence for why it stayed unread.
+        refused: ack.refused,
       }
-      if (acknowledged > 0) appendJournal(caller.workspace, caller.cell.cellId, { event: "mail-read", cell: "cell:" + caller.cell.cellId, seat, ids: unread.slice(0, acknowledged).map((message) => message.id) }, now)
-      return { ok: true, seat, messages: unread.map((message) => ({ id: message.id, from: message.from, subject: message.subject, body: message.body, at: message.at })), acknowledged }
     },
   }))
 

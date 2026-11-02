@@ -1,0 +1,15 @@
+ packages/mpd-cellwork-plugin/dist/index.js         | 232 +++++++++++-----
+ packages/mpd-cellwork-plugin/src/caller.ts         | 146 ++++++++--
+ packages/mpd-cellwork-plugin/src/flow.ts           |  12 +-
+ packages/mpd-cellwork-plugin/src/guard.ts          |  10 +-
+ packages/mpd-cellwork-plugin/src/index.ts          |  72 ++++-
+ packages/mpd-cellwork-plugin/src/protocol-core.ts  |   5 +-
+ packages/mpd-cellwork-plugin/src/protocol.ts       |   8 +-
+ packages/mpd-cellwork-plugin/src/requirements.ts   |  22 +-
+ packages/mpd-cellwork-plugin/src/staging.ts        | 133 ++++++++--
+ packages/mpd-cellwork-plugin/test/cellwork.test.ts |  47 +++-
+ packages/mpd-cellwork-plugin/test/flow.test.ts     | 295 ++++++++++++++++++++-
+ packages/mpd-team-core-plugin/dist/index.js        |  31 ++-
+ packages/mpd-team-core-plugin/src/graph-model.ts   |  51 +++-
+ .../mpd-team-core-plugin/test/graph-model.test.ts  |  39 ++-
+ 14 files changed, 933 insertions(+), 170 deletions(-)

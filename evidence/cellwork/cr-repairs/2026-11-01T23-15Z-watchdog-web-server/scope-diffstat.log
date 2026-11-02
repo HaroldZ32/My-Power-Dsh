@@ -1,0 +1,4 @@
+ packages/mpd-team-watchdog-plugin/dist/index.js    |  8 ++-
+ packages/mpd-team-watchdog-plugin/src/web.ts       | 33 +++++++---
+ packages/mpd-team-watchdog-plugin/test/web.test.ts | 75 ++++++++++++++++++++++
+ 3 files changed, 104 insertions(+), 12 deletions(-)

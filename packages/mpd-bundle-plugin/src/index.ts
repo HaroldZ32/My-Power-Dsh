@@ -14,6 +14,8 @@
 import { registerModelConfigRoute } from "./model-config-web.js"
 import type { ConfigServiceLike } from "./model-config-web.js"
 import { registerWatchdogRoutes, WATCHDOG_WEB_READER, DEFAULT_TEAM_STATE_DIR } from "./watchdog-web.js"
+import { registerDshGoPanel } from "./dshgo-panel.js"
+import type { PanelBridge } from "./dshgo-panel.js"
 
 /** The loader entry id the bundle patch's self-registration row names. */
 export const name = "@mpd-dsh/mpd"
@@ -160,6 +162,32 @@ function apply(ctx: any): void {
   // binding event, and the adapter owns which service names count as "the web server".
   if (dsh !== undefined && typeof dsh.onServiceBound === "function") {
     dsh.onServiceBound(["webServer", "httpServer"], () => { registerRoutes() })
+  }
+  // ── THE DSH GO NATIVE PANEL (`.mpd/plans/mpd-drive-surface.md` §4.4, task E) ────────────
+  // The LIVE half of the host surface the `dshGo` manifest declares statically: it publishes
+  // `panel('mpd', …)` through the same adapter, so a profile that never runs the DSH Go local engine
+  // stays silent (one `dshGo=absent` log token, one service-bound subscription, no polling) and a
+  // host that binds the bridge later still gets the panel. Registered HERE rather than in a row of
+  // its own because the bundle package already owns the web surface of the same team store, and the
+  // panel reads exactly what those routes read (`mpdTeams`, `mpdTeamActions`, `mpdQuestions`).
+  try {
+    /** The live registration; its `dispose` releases every poller this row owns. */
+    const panel = registerDshGoPanel({
+      dsh: dsh as PanelBridge,
+      ctx,
+      log: (line: string): void => { rowLogLine("mpd-bundle", line) },
+    })
+    if (typeof ctx?.effect === "function") {
+      try {
+        // The bridge keeps the panel row after this release; what ends here is OUR polling, so a
+        // reloaded profile cannot leave an interval behind against a store it no longer serves.
+        ctx.effect(() => () => { panel.dispose() }, "mpd-dshgo-panel")
+      } catch {
+        // An effect seam that refuses the release leaves the intervals to the host's own teardown.
+      }
+    }
+  } catch {
+    // A native panel must never take the row down: a failed registration costs that surface only.
   }
 }
 

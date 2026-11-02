@@ -1,0 +1,164 @@
+{
+  "review": {
+    "lane": "R1 (re-review)",
+    "boardTask": "T12",
+    "workTask": "T11",
+    "subject": "Repair of T1 per R1 findings (F1, F2, N1–N6) against the AMENDED contract",
+    "contract": ".mpd/plans/mail-unify.md §4 (I1–I8, amended 2026-10-31) / §8 AC-1",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "reviewedTree": "working tree — packages/mpd-mail-protocol/ is UNTRACKED at the base head; .mpd/plans/mail-unify.md is gitignored runtime state (git status reports neither, by design)",
+    "hashesReadAtUtc": ["2026-10-31T10:22:46Z", "2026-10-31T10:25:37Z"],
+    "hashStability": "IDENTICAL at both reads (sandwich), so the reviewed bytes did not move during the review",
+    "hashes": {
+      "contract .mpd/plans/mail-unify.md": "0425d6137680cddc7b1fc6220ef93c3afb52252ed39eb7314b4ff112e3d1c7ca",
+      "src/index.ts": "ab5bd237d475d8aeae0fc9113b15fc16779dd02692cd144387dec9c1cf0972ed",
+      "src/types.ts": "a06ebfa0de46fb99d5ff09c214a6e5a08c917dc7d1c47af494de690153e936f3",
+      "src/validate.ts": "761572773e449cf2897ca08cd84909aa811a72ed49e912a76579c7ed58501ea6",
+      "src/fold.ts": "b88d1fb929b9dea367340c63da4448f7ab1749994cc62d8a626dd112efbd6bed",
+      "test/validate.test.ts": "c559a4d07d2a5494d94a9a65381b900012cbbe3bee8b870db2142bdf510d0105",
+      "test/fold.test.ts": "0abf73d23b07acaad8d8ad346e00dafb2eb48c246bd04cd86d47c0611ef1c0a0",
+      "dist/index.js": "55fa1314ecdf74f1fedf5b5947aba94c8389e24ff3514f3ac499e3cfb5322153",
+      "README.md": "23b8406b91e0cd98b78213c7fb5b15a4a83b1286e1fc2a52f702404efb4b25f6",
+      "README.zh-CN.md": "e7db008a6fcf5e24af010bfd71cdfe0d5a54ab40ef2ae1f56aee4338c9980859"
+    }
+  },
+  "verdict": {
+    "task": "approve",
+    "ac1": "PASS",
+    "riskLevel": "low",
+    "justification": "Every claimed repair is confirmed against the amended contract: F1/F2/N1–N6 are closed in code, documented in BOTH README languages and pinned by 11 new test arms (44 pass / 0 fail), and the amended I1–I8 rules hold under my own probes; the only red gate is mpd-team-core-plugin's stale dist, which the Lead declared to be T2's in-flight target and a wave-level bound for T10 — the protocol target itself is FRESH at sha 55fa1314ecdf…. One non-blocking Nit remains in a corrupt-mailbox edge (F3)."
+  },
+  "claimsAudit": [
+    {
+      "claim": "44 tests (+11 arms)",
+      "result": "CONFIRMED",
+      "evidence": "`bun test packages/mpd-mail-protocol`: 44 pass / 0 fail / 95 expect() calls / 2 files (prior review: 33). Net +11 arms: fold +3 net (I7 root-id arm rewritten, 3 new), validate +8 (I2 question-id; I3 label+custom; F1 ×3; N3/N4/I8 ×3)."
+    },
+    {
+      "claim": "F1 closed — amended I5 answer.questionId required, non-empty, equal",
+      "result": "CONFIRMED",
+      "evidence": "validateQuestion emits question-id; validateAnswer emits answer-question-id for empty/missing key even before the question resolves; validateReferences compares the key when the question payload is present. Probes: P1 mismatch -> [answer-question-id], P1b empty -> [answer-question-id], P1c empty question key -> [question-id], P1d match -> ok, P1e envelope pre-flight -> [answer-question-id]. Tests: 3 F1 arms + I2 key arm."
+    },
+    {
+      "claim": "F2 closed — amended I7 explicit threadId naming no folded message reported",
+      "result": "CONFIRMED",
+      "evidence": "foldSend reports and KEEPS an explicit threadId that names no folded message and is not the row's own id. Probe P2 reports 'explicit `threadId` \"T9\" names no folded message; kept as declared'; P2a (own id) and P2c (folded root M1) are problem-free. Tests pin all three."
+    },
+    {
+      "claim": "N1 closed — unresolved replyTo reported",
+      "result": "CONFIRMED",
+      "evidence": "Probe P2b: threads ['M1','M2'] plus the problem '`replyTo` \"M-ghost\" names no folded message; the reply re-roots on its own id'. Test asserts both the re-root and the report."
+    },
+    {
+      "claim": "N2 closed — duplicate send id, FIRST write wins, reported (amended I8)",
+      "result": "CONFIRMED",
+      "evidence": "Probe P7: body 'first' (previous behaviour kept the second write), plus problem 'duplicate `send` id \"M1\"; the FIRST write wins and this row is ignored'. Test pins body, id order and problem text."
+    },
+    {
+      "claim": "N3 closed — zero-label, zero-custom answer refused without the question",
+      "result": "CONFIRMED",
+      "evidence": "Probe P4: validateEnvelope({kind:'answer', answer:{selected: []}}) -> [answer-selection]. The context-free refusal sits before the question-undefined early return. Test pins it."
+    },
+    {
+      "claim": "N4 closed — validators return the WHOLE problem list (amended I8)",
+      "result": "CONFIRMED",
+      "evidence": "Probe P8 returns three codes at once: [answer-question-id, answer-selection, reference-unknown]; P8b returns [question-id, question-empty, question-empty]. Tests assert the multi-code refusals; the old early returns are gone."
+    },
+    {
+      "claim": "N5 closed — amended I3 (label+custom refused on single-select, allowed on multi)",
+      "result": "CONFIRMED",
+      "evidence": "Probe P3 single-select label+custom -> [answer-selection]; P3b multi-select label+custom -> ok; P3c custom-only -> ok. Test pins the refusal."
+    },
+    {
+      "claim": "N6 closed — amended I1 bound declared (README + denylist documented, proof widened)",
+      "result": "CONFIRMED",
+      "evidence": "Contract §4 I1 now carries the BOUND text; types.ts documents the enumerated denylist AND the `position`/`choice`/`idx` residual with the containment argument; MAIL_PAYLOADS_CARRY_NO_INDEX now also constrains MailSendRecord and MailMessage; README.md and README.zh-CN.md BOTH state the boundary and list the nine names. Probe P6 still returns [] for position/choice/idx — that is the DECLARED residual now, not a defect."
+    },
+    {
+      "claim": "Probes P1/P1b/P2/P2b/P3/P4/P6/P7/P8 re-run",
+      "result": "CONFIRMED",
+      "evidence": "I re-ran every one myself (plus P1c/P1d/P1e/P2a/P2c/P3b/P3c/P8b/P10) in evidence/mail/protocol/2026-10-31T10-23-17Z/probes.ts; each shows the repaired behaviour, none reproduces the old defect."
+    },
+    {
+      "claim": "protocol dist target FRESH, sha 55fa1314ecdf…",
+      "result": "CONFIRMED",
+      "evidence": "verify-dist-fresh line: 'FRESH packages/mpd-mail-protocol/dist/index.js sha 55fa1314ecdf…'; my own sha256 is 55fa1314ecdf74f1fedf5b5947aba94c8389e24ff3514f3ac499e3cfb5322153."
+    }
+  ],
+  "gates": [
+    { "id": "bun-test-mail-protocol", "command": "bun test packages/mpd-mail-protocol", "exit": 0, "decidingOutput": "44 pass, 0 fail, 95 expect() calls, 2 files" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "$ tsgo --noEmit (no diagnostics)" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "512 files scanned, 45728 declarations inspected, VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=53 failed=0 violations=0 links=473 dead=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match the 2-file bundle patch layer (the library contributes no row)" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "all manifest/packaging rules ok; VERDICT: PASS" },
+    {
+      "id": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "decidingOutput": "FRESH packages/mpd-mail-protocol/dist/index.js sha 55fa1314ecdf… ; STALE packages/mpd-team-core-plugin/dist/index.js ONLY (T2 in flight) ; NOT COVERED 1 = packages/mpd-mcp-codegraph/dist/serve.js (declared vendored prebuilt) ; FAIL 1 of 35 targets",
+      "note": "EXPECTED red, outside T11's scope: the single stale target is T2's package, pre-declared by the Lead as a wave-level bound that T10 closes at integration. The protocol target this review owns is FRESH."
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "result": "PASS",
+      "reason": "All seven named arms are covered by discriminating assertions (refusals assert MailProblemCode, and I4's refusal asserts the label list), and the amended §4's extra rules (I5 key equality, I7 explicit-root reporting, I8 whole-list/duplicate/recipient reporting, amended I3) are additionally pinned by the 11 new arms. 44/44 green.",
+      "evidence": "gate bun-test-mail-protocol; output.log lines 4-59"
+    },
+    { "id": "AC-2", "result": "NOT-CHECKED", "reason": "Team mailbox lane (T2/T7 — R2); T2 in progress." },
+    { "id": "AC-3", "result": "NOT-CHECKED", "reason": "Cellwork lane (T4/T9 — R4)." },
+    { "id": "AC-4", "result": "NOT-CHECKED", "reason": "Permit/wait lane (T3/T8 — R3)." },
+    { "id": "AC-5", "result": "NOT-CHECKED", "reason": "Guard/prompt lane (T3/T4)." },
+    { "id": "AC-6", "result": "NOT-CHECKED", "reason": "Docs lane (T6). The package README pair is updated in BOTH languages and verify:docs is green (checked here)." },
+    { "id": "AC-7", "result": "PASS (T11 scope) / full form NOT-CHECKED", "reason": "bun test (mail-protocol), typecheck, verify:comments, verify:docs, verify:rows, verify:manifest all green; verify-dist-fresh red on T2's target only (Lead-declared bound). The two other packages' suites remain T2/T3/T4 lanes." },
+    { "id": "AC-8", "result": "NOT-CHECKED", "reason": "Web projection lane (T2/T7)." }
+  ],
+  "contractRules": [
+    { "rule": "I1 no index field + DECLARED BOUND", "result": "PASS", "note": "enumerated denylist documented; compile-time proof now covers MailSendRecord and MailMessage; boundary stated in contract, types.ts, README.md and README.zh-CN.md; containment arguments named. P6's [] for position/choice/idx is the declared residual, not a defect." },
+    { "rule": "I2 >=1 option + non-empty unique labels (+ non-empty questionId)", "result": "PASS", "note": "question-id added; whole-list behaviour holds (P8b)." },
+    { "rule": "I3 single vs multi, amended (label+custom refused)", "result": "PASS", "note": "P3/P3b/P3c confirm all three branches." },
+    { "rule": "I4 verbatim echo with the valid label list", "result": "PASS", "note": "unchanged and still exact; the in-context echo runs through validateReferences when the question payload exists." },
+    { "rule": "I5 references + correlation key", "result": "PASS (edge Nit F3)", "note": "required+non-empty+equal enforced and tested; a payload-less folded question row short-circuits the answer checks — F3." },
+    { "rule": "I6 broadcast fan-out", "result": "PASS", "note": "unchanged; fanOutTargets dedupes/excludes sender, tested." },
+    { "rule": "I7 thread id is first message id; explicit id with no root reported", "result": "PASS", "note": "P2 reported+kept; P2a own id and P2c folded root clean; inheritance chain still tested." },
+    { "rule": "I8 fold reports every anomaly it can see; validators return the WHOLE list", "result": "PASS", "note": "duplicate first-wins+report (P7), unresolved replyTo (P2b), explicit id (P2), dropped payloads (test), multi-code refusals (P8/P8b)." }
+  ],
+  "findings": [
+    {
+      "id": "F3",
+      "severity": "Nit",
+      "title": "validateReferences skips ALL answer checks when the referenced question row carries no payload",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · validateReferences (the `else if (target.question !== undefined)` branch)",
+      "what": "When `answerTo` names a folded `question` row whose `question` payload is absent (a row the fold keeps after reporting 'a `question` row has no question payload'), validateReferences calls no answer validator at all. Probe P10 returns ok for an answer with an EMPTY questionId and a selected label the question never offered, even though amended I5 says the answer's questionId is REQUIRED and non-empty.",
+      "why": "Reachable only through an already-corrupt mailbox whose anomaly the fold reports (I8), so the blast radius is small and a caller that reads fold problems is warned. But validateReferences is documented as the I5 gate, and it currently accepts an answer whose context-free I5 field is empty — the amended rule makes that field required regardless of the target's payload.",
+      "direction": "In that branch, still call validateAnswer(envelope.answer) (context-free rules: non-empty questionId/answerTo, label-or-custom) and add a problem saying the referenced question carries no payload. Non-blocking for this wave; the cheap fix lives entirely in the protocol package.",
+      "evidence": "probes.ts P10 in output.log"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "I1's position/choice/idx residual (probe P6)", "reason": "Now DECLARED by the amended contract §4 I1 BOUND and stated in both README languages; the contract explicitly assigns containment to the fold whitelist and the T2/T4 tool schemas. Not a defect of the repair." },
+    { "item": "validateEnvelope's early return when `kind` is unknown", "reason": "Every skipped check dispatches ON the kind, so there is nothing well-defined to validate; the index scan still runs and the kind problem is reported. Judged acceptable under I8." },
+    { "item": "A forward-referenced explicit threadId (root appears LATER in the log) is reported as unresolved", "reason": "The amended I7 says 'naming NO FOLDED message', which is exactly the streaming-visible predicate; an append-only log puts a reply after its target. Behaviour matches the amended text." },
+    { "item": "A duplicate send row's own other anomalies are not reported beyond the duplicate", "reason": "The duplicate row is ignored as a whole and the duplicate itself is reported; enumerating a row that is not applied would be noise. Set aside." },
+    { "item": "Test title 'without the question, only structure is checked' is now narrower than the code (context-free I5/I3 rules also run)", "reason": "Cosmetic title drift; the assertion itself is still true. Set aside." },
+    { "item": "AC-1's §8 text still says 'cover I1–I7' while §4 now carries I8", "reason": "Contract-text observation for the captain, not T11: the repair's suite DOES pin I8's arms, so the acceptance criterion is met with room to spare." },
+    { "item": "team-core / cellwork package suites, docs/mail pair, web projection (AC-2/3/4/5/6/8)", "reason": "Other lanes (T7/T8/T9/T6/T2); not T11's scope and not re-reviewed here." },
+    { "item": "Packages still untracked and the amended contract gitignored", "reason": "The captain is the only git writer; commit state is not the repair's subject. Recorded in the review metadata instead." }
+  ],
+  "bounds": [
+    "Reviewed the WORKING TREE at HEAD e9be8890; packages/mpd-mail-protocol/ is untracked and .mpd/plans/mail-unify.md is gitignored, so neither appears in git status. Hashes were identical at 2026-10-31T10:22:46Z and 10:25:37Z — the reviewed bytes did not move.",
+    "Read: contract §4 + §8 (amended, 197 lines), src/{index,types,validate,fold}.ts, test/{validate,fold}.test.ts, README.md and README.zh-CN.md (invariants + API sections), package.json. dist/index.js only through the freshness gate.",
+    "Ran: 7 gates (bun test, typecheck, verify:comments, verify:docs, verify:rows, verify:manifest, verify-dist-fresh) and probes P1–P10 written for this re-review.",
+    "Did NOT run: bun test packages/mpd-team-core-plugin / packages/mpd-cellwork-plugin (T2 in flight), bun run verify:gates (dirty tree, wave in flight), the Docker lane (release-last; pure library package).",
+    "verify-dist-fresh is RED for one target that is NOT T11's: packages/mpd-team-core-plugin/dist/index.js (T2 in flight). Pre-declared by the Lead; T10 closes it at integration."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/protocol/2026-10-31T10-23-17Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (P1–P10 printed to output.log)"
+  }
+}

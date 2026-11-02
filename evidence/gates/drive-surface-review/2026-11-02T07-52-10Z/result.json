@@ -1,0 +1,91 @@
+{
+  "wave": "drive-surface — CodeRabbit reconciliation (PR #88)",
+  "branch": "feature/mpd-drive-surface",
+  "revisionUnderReview": "9b84a267 (the PR head CodeRabbit read)",
+  "reviewedAt": "2026-11-02T05:59:08Z",
+  "review": {
+    "tool": "CodeRabbit",
+    "state": "COMMENTED — 7 inline findings + 1 additional",
+    "note": "the first pass was SKIPPED automatically ('this repository does not receive automatic reviews because it has fewer than 10 stars'); the review was triggered explicitly with @coderabbitai review and completed in 15m01s"
+  },
+  "reconciliation": [
+    {
+      "id": 4439332666,
+      "where": "docs/drive-surface.md",
+      "finding": "the session-id rule was stated for every seam, but the relay's GET takes sessionId as an optional filter and its answer route uses the opaque question id — a client following the text could reject valid relay calls",
+      "disposition": "FIXED",
+      "change": "§1 now separates the two: the team-action routes own the `?sessionId=`-only rule, the relay GET documents the optional filter and the answer route documents the opaque id; both languages changed in the same commit"
+    },
+    {
+      "id": 4439332672,
+      "where": "docs/drive-surface.zh-CN.md (pair)",
+      "finding": "the panel was described as giving every option a button; it renders only the first question item, at most four buttons, and each tap submits one label",
+      "disposition": "FIXED",
+      "change": "§4 states the three limits and the consequence (a multi-item set cannot be answered from the panel because the relay refuses a partial batch); both languages"
+    },
+    {
+      "id": 4439332676,
+      "where": "packages/mpd-roles-plugin/src/index.ts",
+      "finding": "with no ctx.effect the relay has no lifetime owner and nothing disposes it, yet the boot token still said questions=relay",
+      "disposition": "FIXED",
+      "change": "the token gains `lifetime=unowned` and one warning line records it; an owned ctx is byte-identical to before"
+    },
+    {
+      "id": 4439332682,
+      "where": "packages/mpd-team-core-plugin (README + code)",
+      "finding": "approveTeam/runDispatch wrapped every failure into { ok:false, error } and the route answered 400 with that text, so a filesystem failure could put a raw path on the wire against the documented generic 500",
+      "disposition": "FIXED",
+      "change": "an unexpected throw is marked on the result; the route answers the generic 500 and logs the detail, while an expected policy refusal keeps 400 and its sentence; the TOOL path still rethrows the real sentence"
+    },
+    {
+      "id": 4439332687,
+      "where": "packages/mpd-team-core-plugin/src/index.ts",
+      "finding": "callerForSession and the routes' liveness probe resolve through dsh.liveAgent(sessionId), which matches the AGENT id; a host whose agent id differs from its session id would refuse a live session",
+      "disposition": "FIXED",
+      "change": "liveAgentForSession() falls back to a liveAgents() scan matching session.id (the fallback workspaceRootForSession already makes), used by both; the refusal sentence and its position before any store write are unchanged"
+    },
+    {
+      "id": 4439332689,
+      "where": "packages/mpd-team-core-plugin/src/team-actions.ts",
+      "finding": "MAJOR — the two bodies were previously reachable only from a model turn, so calls were serial; now the tool, the service, both routes and a panel tap can run them at once, and two approvals can mint two teams while two dispatch passes can deliver the same task message twice before either CAS rejects",
+      "disposition": "FIXED",
+      "change": "an in-process in-flight slot per action, keyed by workspace+sessionId, checked BEFORE the first await and released in finally; a second caller is REFUSED with one sentence rather than queued. Explicit bound: the slot is process-local and does not coordinate two dsh processes"
+    },
+    {
+      "id": 4439332724,
+      "where": "scripts/verify-pack-closure.ts",
+      "finding": "the required dsh-go directory was accepted when it was merely non-empty, so a package carrying some other file and no views/mpd.json passed while the manifest pointed at a missing view",
+      "disposition": "FIXED",
+      "change": "the declared view path is READ from the root manifest and required BY NAME in both trees; a new self-test arm reproduces the exact hole (non-empty directory in BOTH trees, declared file absent) and reddens naming the file — 36/36 arms, was 35"
+    },
+    {
+      "id": "additional: question-relay.ts:334-352",
+      "where": "packages/mpd-roles-plugin/src/question-relay.ts",
+      "finding": "a batch answering only some of a parked request's questions settled the whole request, and a single-select question accepted several labels",
+      "disposition": "FIXED",
+      "change": "the batch must COVER the request (one entry per item, no duplicates, no foreign ids) and a question without multiSelect accepts at most one label; a refusal settles nothing and the request stays parked for a retry; the panel consequence (it renders the first item only) is documented rather than worked around"
+    }
+  ],
+  "counts": { "findings": 8, "fixed": 8, "stale": 0, "declined": 0 },
+  "checksAfterRepair": {
+    "distFreshness": { "exit": 0, "observed": "35/35 fresh, 1 NOT COVERED (sha-pinned codegraph prebuilt)" },
+    "typecheck": { "exit": 0, "observed": "no diagnostics" },
+    "packageTests": { "exit": 0, "observed": "29 packages green, 0 failures; touched packages now: adapter 307, team-core 499, roles 253, bundle 283 — every repair added arms (was 307/494/240/283 at the pre-CodeRabbit revision)" },
+    "staticGates": { "command": "bun run verify:gates", "exit": 0, "observed": "9/9 members green" },
+    "docsParity": { "exit": 0, "observed": "pairs=55 failed=0 violations=0 dead=0" },
+    "packClosure": { "exit": 0, "observed": "root files 2/2, 635/635 bytes identical, 0 absent; self-test 36/36" },
+    "pluginManifest": { "exit": 0, "observed": "VERDICT PASS, 1148 packed files, 0 required absent" },
+    "mount": {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "observed": "PASS",
+      "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T07-52-17.073Z"
+    },
+    "docker": "NOT re-run for this round: the repairs touch behaviour the lanes exercise only through already-green arms (install, mount, TUI, user surface), and a lane costs ~40 minutes. The PR's docker evidence stands for revision 9b84a267 + the two commits after it are covered by the mount lane above. Stated as a bound, not as a pass."
+  },
+  "bounds": [
+    "The in-flight slot is process-local: two dsh processes sharing one workspace can still race an approval. Recorded in the code comment and the package README.",
+    "The gate now requires the declared view by NAME in both trees, but it still does not certify artifact FRESHNESS (the standing T-91 bound).",
+    "Relay batch coverage is id-keyed, and the refusal precedence (shape, duplicate, unknown id, missing, too many labels, unknown label) is a fixed order the contract did not pin — documented in code rather than left implicit."
+  ]
+}

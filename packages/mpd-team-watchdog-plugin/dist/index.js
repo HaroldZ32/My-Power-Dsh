@@ -1604,6 +1604,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -1774,6 +1872,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -2105,6 +2208,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -2155,7 +2260,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -2370,6 +2477,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextEnvelope = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return await next();
+        };
+        return handler(request, nextEnvelope);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -3584,6 +3755,210 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
       });
     }
   });
+}
+
+// packages/mpd-team-watchdog-plugin/src/web.ts
+var HOLD_PATH = "/plugins/mpd-team-watchdog/hold";
+var RESUME_PATH = "/plugins/mpd-team-watchdog/resume";
+var WATCHDOG_ROUTES = [HOLD_PATH, RESUME_PATH];
+var MAX_BODY_BYTES = 64 * 1024;
+var encoder = new TextEncoder;
+var decoder = new TextDecoder;
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function warnLine(deps, line) {
+  try {
+    deps.warn?.(line);
+  } catch {}
+}
+async function readBody(request) {
+  const req = request;
+  if (req === undefined || typeof req[Symbol.asyncIterator] !== "function")
+    return { ok: false, status: 400 };
+  const parts = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const part = typeof chunk === "string" ? encoder.encode(chunk) : chunk instanceof Uint8Array ? chunk : encoder.encode(String(chunk));
+    size += part.byteLength;
+    if (size > MAX_BODY_BYTES)
+      return { ok: false, status: 413 };
+    parts.push(part);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const part of parts) {
+    bytes.set(part, at);
+    at += part.byteLength;
+  }
+  const raw = decoder.decode(bytes);
+  if (raw.trim() === "")
+    return { ok: false, status: 400 };
+  try {
+    return { ok: true, value: JSON.parse(raw) };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
+function recordOf(body) {
+  return body !== null && typeof body === "object" && !Array.isArray(body) ? body : undefined;
+}
+function parseHoldBody(body) {
+  const record = recordOf(body);
+  if (record === undefined)
+    return { ok: false, error: "the request body must be a JSON object" };
+  const teamId = typeof record.teamId === "string" ? record.teamId.trim() : "";
+  if (teamId === "")
+    return { ok: false, error: "teamId must be a non-empty string" };
+  if (record.reason !== undefined && typeof record.reason !== "string")
+    return { ok: false, error: "reason must be a string when present" };
+  if (record.ttlMs !== undefined && !(typeof record.ttlMs === "number" && Number.isFinite(record.ttlMs) && record.ttlMs >= 0)) {
+    return { ok: false, error: "ttlMs must be a finite number >= 0 when present" };
+  }
+  return { ok: true, value: { teamId, reason: record.reason, ttlMs: record.ttlMs } };
+}
+function parseResumeBody(body) {
+  const record = recordOf(body);
+  if (record === undefined)
+    return { ok: false, error: "the request body must be a JSON object" };
+  const teamId = typeof record.teamId === "string" ? record.teamId.trim() : "";
+  if (teamId === "")
+    return { ok: false, error: "teamId must be a non-empty string" };
+  return { ok: true, value: { teamId } };
+}
+function workspaceForRequest(dsh) {
+  const live = new Set;
+  try {
+    for (const root2 of dsh.workspaceRootsAll() ?? []) {
+      if (typeof root2 === "string" && root2 !== "")
+        live.add(root2);
+    }
+  } catch {}
+  if (live.size === 1)
+    return [...live][0];
+  if (live.size > 1)
+    throw new Error("this host serves several workspaces and the request names none");
+  let root = "";
+  try {
+    root = dsh.workspaceRoot();
+  } catch {
+    root = "";
+  }
+  if (typeof root !== "string" || root === "")
+    throw new Error("no workspace root is resolvable");
+  return root;
+}
+function handlerFor(dsh, path, deps, parse, mutate) {
+  return async (req, res) => {
+    const out = res;
+    const json = (status, body, headers = {}) => {
+      out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
+      out.end(JSON.stringify(body));
+    };
+    try {
+      const rejection = dsh.webRequestRejection(req);
+      if (rejection !== undefined) {
+        json(rejection, { ok: false, error: `mpd-team-watchdog: the request is not authenticated for ${path}` });
+        return;
+      }
+      if (req?.method !== "POST") {
+        json(405, { ok: false, error: "mpd-team-watchdog: this route accepts POST only" }, { allow: "POST" });
+        return;
+      }
+      const read = await readBody(req);
+      if (!read.ok) {
+        json(read.status, {
+          ok: false,
+          error: read.status === 413 ? `mpd-team-watchdog: the request body exceeds ${MAX_BODY_BYTES} bytes` : "mpd-team-watchdog: the request body is not valid JSON"
+        });
+        return;
+      }
+      const body = parse(read.value);
+      if (!body.ok) {
+        json(400, { ok: false, error: `mpd-team-watchdog: ${body.error}` });
+        return;
+      }
+      let workspace = "";
+      try {
+        workspace = workspaceForRequest(dsh);
+      } catch {
+        json(400, { ok: false, error: "mpd-team-watchdog: the request cannot be attributed to one workspace" });
+        return;
+      }
+      const answer = mutate(workspace, body.value);
+      json(answer.status, answer.body);
+    } catch (error) {
+      warnLine(deps, `route ${path} failed: ${messageOf(error)}`);
+      try {
+        json(500, { ok: false, error: "mpd-team-watchdog: the request could not be completed" });
+      } catch {}
+    }
+  };
+}
+function registerWatchdogWeb(dsh, effect, deps) {
+  const mountedByServer = new WeakMap;
+  const serverOf = () => {
+    try {
+      const server = dsh.webServerOf();
+      return server !== undefined && server !== null && typeof server.register === "function" ? server : undefined;
+    } catch {
+      return;
+    }
+  };
+  const hold = (workspace, body) => {
+    let fallbackTtl = 0;
+    try {
+      fallbackTtl = deps.holdTtlMs?.() ?? 0;
+    } catch {
+      fallbackTtl = 0;
+    }
+    const applied = applyHold(workspace, deps.stateDir, { team_id: body.teamId, cause: body.reason, ttl_ms: body.ttlMs }, deps.registry, fallbackTtl);
+    if (!applied.applied) {
+      warnLine(deps, `the hold for ${body.teamId} was not persisted: ${applied.error ?? "unknown error"}`);
+      return { status: 500, body: { ok: false, error: "mpd-team-watchdog: the hold could not be persisted" } };
+    }
+    return { status: 200, body: { ok: true, hold: { applied: true, hold: applied.hold, changed: applied.changed } } };
+  };
+  const resume = (workspace, body) => {
+    const cleared = applyResume(workspace, deps.stateDir, { team_id: body.teamId }, deps.registry);
+    if (cleared.resumed || cleared.reason === "not-held")
+      return { status: 200, body: { ok: true, resumed: cleared.resumed } };
+    warnLine(deps, `the hold for ${body.teamId} was not cleared: ${cleared.reason ?? "unknown reason"}`);
+    return { status: 500, body: { ok: false, error: "mpd-team-watchdog: the hold could not be cleared" } };
+  };
+  const routes = [
+    { path: HOLD_PATH, handler: handlerFor(dsh, HOLD_PATH, deps, parseHoldBody, hold) },
+    { path: RESUME_PATH, handler: handlerFor(dsh, RESUME_PATH, deps, parseResumeBody, resume) }
+  ];
+  const attempt = () => {
+    const server = serverOf();
+    if (server === undefined)
+      return false;
+    if (typeof effect !== "function")
+      return false;
+    const mounted = mountedByServer.get(server) ?? new Set;
+    mountedByServer.set(server, mounted);
+    for (const route of routes) {
+      if (mounted.has(route.path))
+        continue;
+      try {
+        effect(() => server.register({ kind: "exact", path: route.path, handler: route.handler }));
+        mounted.add(route.path);
+      } catch (error) {
+        warnLine(deps, `registering ${route.path} failed: ${messageOf(error)}`);
+      }
+    }
+    return mounted.size === WATCHDOG_ROUTES.length;
+  };
+  const first = attempt();
+  try {
+    dsh.onServiceBound(["webServer", "httpServer"], () => {
+      attempt();
+    });
+  } catch (error) {
+    warnLine(deps, "the web-server binding subscription is unavailable: " + messageOf(error));
+  }
+  return first;
 }
 
 // packages/mpd-team-watchdog-plugin/src/channel.ts
@@ -5497,6 +5872,19 @@ function apply(ctx, config = {}) {
     disposers = engine.install();
   } catch (error) {
     warn(resolved.logPrefix, "registration degraded: " + errorMessage(error));
+  }
+  try {
+    const effect = typeof context.effect === "function" ? (register) => context.effect?.(register) : undefined;
+    const mounted = registerWatchdogWeb(dsh, effect, {
+      stateDir: resolved.stateDir,
+      registry,
+      holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      warn: (line) => warn(resolved.logPrefix, line)
+    });
+    if (mounted)
+      warn(resolved.logPrefix, "web routes: " + WATCHDOG_ROUTES.join(" "));
+  } catch (error) {
+    warn(resolved.logPrefix, "web route registration degraded: " + errorMessage(error));
   }
   let timer;
   let intervalMs = engine.getKnobs().tickIntervalMs;

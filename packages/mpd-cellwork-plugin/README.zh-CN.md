@@ -72,8 +72,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派）、`cellwork_supervise`（队长的
 只读巡检，含每个被围栏成员与其仍拥有的未关闭行）、`cellwork_context`（成员自己的占用）、`cellwork_handoff`
 （检查点交接文档；第一份仍在等待屏障时**第二份**被拒绝）、`cellwork_subteam`（子队长的子 cell 登记）、
-`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件——`send` 行先落盘，唤醒尝试是单独的 `wake` 记录）。它们
-落在本文档所述**同一份记录与同一个守卫**之上。
+`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件，走 workspace 邮箱——`send` 通过共享存储铸造
+`message`/`question`/`answer` 记录，`send` 行先落盘，唤醒尝试是单独的 `wake` 记录；协议见
+[`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md)）。它们落在本文档所述**同一份记录与同一个守卫**之上。
 
 ## 配置
 
@@ -126,10 +127,13 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   **活跃的**切分器行（先按记录的 id，再按 `cell-splitter` 拥有的任意活行），把它用到的 id 写回 cell 记录
   （字段 `splitTaskId`，答复里报告为 `recordedSplitTaskId`），只有当记录的行已终态且没有活行时才追加替代行（同样的 cell role、subject 带新
   修订号）。
-- **邮件日志格式变了，且单向兼容。** `send` 行如今总是带 `wakeSent: false`，唤醒结果作为**单独的** `wake`
-  记录（`t:"wake"`、`sent`、`reason?`、`at`）追加在其后。本构建能正确折叠更旧的日志（`wake` 之前的行保留
-  自己的 `wakeSent`）；来自**旧构建**的读者会把新行读成"未唤醒"——一条「一个 bundle 一个 workspace」的
-  边界，如实写明而非隐藏。
+- **邮件日志格式变了，且单向兼容。** 记录如今住在 **workspace 邮箱**
+  （`<workspace>/.mpd/team/mailbox.jsonl`）里，盖上 `teamId` + `cellId`（跨 cell 发送还盖 `fromCell`），
+  于是 cell 视图与团队面读的是同一条流。`send` 行带着旧拼写 `wakeSent: false`，唤醒结果作为**单独的**
+  `wake` 记录（`t:"wake"`、`sent`、`reason?`、`at`）追加在其后。本构建能正确折叠更旧的日志（`wake` 之前的
+  行保留自己的 `wakeSent`，统一之前的 `<cell>/mail.jsonl` 仍会被读取并按 `at` 顺序合并）；来自**旧构建**的
+  读者会把新行读成"未唤醒"——并且在 cell 文件里根本找不到它。一条「一个 bundle 一个 workspace」的边界，
+  如实写明而非隐藏。
 - **激活可续做，并附带写明的崩溃边界。** 一趟激活运行期间，每个产物只往 journal 加**一条**紧凑的
   `cell-activation-progress` 行（stage、key、ordinal、total），仅此而已。累积的 id——在飞修订号
   （`activationInFlight`）、已拉起的成员、已铸出的看板 id（`activatedTasks`）与已打开的循环
@@ -171,10 +175,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以
   `"not in this cell's tree"` 拒绝。显式给出的名字既不是 `captain`、也不是**目标 cell** 的成员时会被
-  **拒绝**——答复列出该 cell 的成员——绝不悄悄投进调用者自己的收件箱。一次发送会把该行追加到**目标 cell** 的
-  `mail.jsonl`——跨 cell 发送时就是
-  **收件方 cell** 的文件，该 cell 的 `cellwork_inbox` 从这里读取——而**发送方**的 journal 会以
-  `cell:<cellId>` 戳并带 `toCell:<target>` 记录这次发送。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
+  **拒绝**——答复列出该 cell 的成员——绝不悄悄投进调用者自己的收件箱。一次发送通过共享存储的原子扇出写入 **workspace 邮箱**，盖上该 cell 的
+  `teamId` 与视图用于筛选的 `cellId`；**发送方**的 journal 会以 `cell:<cellId>` 戳并带 `toCell:<target>`
+  记录这次发送。`cellwork_send` 同时说这套结构化协议——`kind`（有问题 `options` 时推断为 question，有
+  `selected`/`custom` 时推断为 answer）、`options` + `multiSelect`、`replyTo`、`selected`/`custom`、
+  `questionId`，以及 `broadcast: true`（目标 cell 的每个席位一行，排除发送者）；未知标签会被拒绝，并附上
+  完整的合法标签列表。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
   cell 不尝试唤醒——并出现在**那个** cell 的 `cellwork_supervise` 上。Lead 没有 executor handle，成员 → 队长的
   行由队长在 `cellwork_inbox` 读取（并在 `cellwork_supervise` 上呈现）；唤醒从未发出的行保持**未投递**状态，
   同样会在那里呈现（`unreadMail` 加上 `wakeFailures[]` 行，每行 `{id,to,subject,reason}`），而不只是出现在

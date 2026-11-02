@@ -689,6 +689,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -859,6 +957,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1190,6 +1293,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1240,7 +1345,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -1455,6 +1562,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextEnvelope = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return await next();
+        };
+        return handler(request, nextEnvelope);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2507,7 +2678,7 @@ function verifierDelegationRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a VERIFIER of the cell, and A VERIFIER " + "NEVER DELEGATES: the verdict is the seat's OWN work, so handing the question to another agent would " + "put its report inside a judgement you sign. Reading, `bash`, `grep`, `glob`, the gates and the five " + "`mpd_verify_*` calls stay available — read the frozen contract and the documentation (never the " + "implementation), run the gates, and record the verdict with `mpd_verify_record` (a PASS needs the " + "documents it cites and its gate evidence ids). If the evidence to judge is not there, a FAIL bounces " + "the work back to its writer as a repair task: that is the channel, not a consult.";
 }
 function checkpointRefusal(toolName) {
-  return "cellwork: `" + toolName + "` is refused — this session reached its CONTEXT CHECKPOINT, so the " + "work stops at this boundary. Call `cellwork_handoff` now with the task, the current state, the " + "decisions (and why), the artifacts, the verified facts, the open questions and the single next " + "step, then END YOUR TURN. The plugin compacts this agent's context and promotes it (or reseeds it " + "from that handoff), so anything you did not write down is lost. `cellwork_status` and " + "`cellwork_context` stay readable meanwhile.";
+  return "cellwork: `" + toolName + "` is refused — this session reached its CONTEXT CHECKPOINT, so the " + "work stops at this boundary. Call `cellwork_handoff` now with the task, the current state, the " + "decisions (and why), the artifacts, the verified facts, the open questions and the single next " + "step, then END YOUR TURN. The plugin compacts this agent's context and promotes it (or reseeds it " + "from that handoff), so anything you did not write down is lost. `cellwork_send` and " + "`cellwork_inbox` are refused here too, so a structured `question` cannot be asked or answered at a " + "checkpoint — the handoff's OPEN QUESTIONS are the channel. `cellwork_status` and " + "`cellwork_context` stay readable meanwhile.";
 }
 function subcaptainRefusal(toolName) {
   return "cellwork: `" + toolName + "` is refused — this session is a SUBCAPTAIN of the cell: it builds and " + "dispatches the next-level team under the SAME rules as the captain, so it dispatches rather than works, " + "and it never edits a file, runs a shell, does reconnaissance or verifies. Allowed here: `cellwork_*` " + "except `cellwork_handoff`, `cellwork_start` and `cellwork_stop` (stage the sub-cell with " + "`cellwork_subteam`, materialise an accepted split with `cellwork_activate`, dispatch with " + "`cellwork_dispatch` and sweep with `cellwork_supervise`), `agent_teams_*`, `ask_user_question`, " + "`todo_write` and `mpd_memory_*`. Only the CAPTAIN opens or closes a cell: if this cell needs that, " + "send the request with `cellwork_send` and end your turn.";
@@ -3607,9 +3778,11 @@ function plannerPrompt(deps) {
     "5. Close only when all six sections are filled: " + REQUIRED_SECTION_NAMES.join(" · ") + ".",
     "",
     "THE RELAY (you cannot talk to the user directly):",
-    '- Mail the captain ONE structured question: `cellwork_send {to:"captain", subject, body}` — or',
-    "  `agent_teams_mail` when the cell-aware sender is not mounted. Put the question, why it matters, and",
-    "  the options you see in the body, so the captain can put it to the user with `ask_user_question`.",
+    '- Ask the captain with ONE STRUCTURED question: `cellwork_send {to:"captain", subject, body, kind:"question",',
+    '  options:[{label:"A. …"},{label:"B. …"}]}`. The offered labels are what the captain relays to the user,',
+    "  so give every label its own ordinal (`A. …`, `B. …`) and state in `body` what you need decided.",
+    "- Read the captain's reply with `cellwork_inbox`: it renders the `answer` block with the selected label(s)",
+    '  VERBATIM. Answer the captain the same way: `kind:"answer", replyTo:<the question\'s message id>, selected:[…]`.',
     "- Then WAIT for the captain's answer. Do not invent an answer, do not proceed on an assumption.",
     "- If reconnaissance is needed before you can ask a good question, call `cellwork_recon`",
     '  {role:"Explorer"|"Researcher", task} — a one-shot READ-ONLY consult; you get its report back.',
@@ -4960,67 +5133,766 @@ function writeHandoff(workspace, cellId, member, ordinal, text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/mail.ts
-import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync5 } from "node:fs";
+import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync6 } from "node:fs";
+import { join as join5 } from "node:path";
+
+// packages/mpd-team-core-plugin/src/mailbox-store.ts
+import { appendFileSync as appendFileSync2, existsSync as existsSync5, mkdirSync as mkdirSync3, readFileSync as readFileSync5 } from "node:fs";
 import { join as join4 } from "node:path";
+
+// packages/mpd-mail-protocol/src/types.ts
+function isMailKind(value) {
+  return value === "message" || value === "question" || value === "answer";
+}
+var INDEX_FIELD_NAMES = [
+  "index",
+  "indexes",
+  "indices",
+  "optionIndex",
+  "optionIndices",
+  "selectedIndex",
+  "selectedIndices",
+  "optionNumber",
+  "optionNumbers"
+];
+// packages/mpd-mail-protocol/src/validate.ts
+function problem(code, message, labels) {
+  return labels === undefined ? { code, message } : { code, message, labels: [...labels] };
+}
+function check(problems) {
+  return problems.length === 0 ? { ok: true } : { ok: false, problems: [...problems] };
+}
+function appendProblems(target, nested) {
+  if (!nested.ok)
+    target.push(...nested.problems);
+}
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function findIndexFields(value) {
+  const found = [];
+  const seen = new Set;
+  const walk = (current, path, depth) => {
+    if (depth > 16 || current === null || typeof current !== "object")
+      return;
+    if (seen.has(current))
+      return;
+    seen.add(current);
+    if (Array.isArray(current)) {
+      current.forEach((entry, index) => walk(entry, path + "[" + String(index) + "]", depth + 1));
+      return;
+    }
+    for (const [key, entry] of Object.entries(current)) {
+      const childPath = path + "." + key;
+      if (INDEX_FIELD_NAMES.includes(key))
+        found.push(childPath);
+      walk(entry, childPath, depth + 1);
+    }
+  };
+  walk(value, "$", 0);
+  return found;
+}
+function labelsOf(question) {
+  const options = question.options;
+  if (!Array.isArray(options))
+    return [];
+  return options.map((option) => String(option?.label ?? "")).filter((label) => label !== "");
+}
+function validateQuestion(question) {
+  if (!isPlainObject(question))
+    return check([problem("kind-payload", "a question payload must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(question)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (typeof question.questionId !== "string" || question.questionId.trim() === "") {
+    problems.push(problem("question-id", "a question must carry a non-empty `questionId`; every answer copies it"));
+  }
+  const options = question.options;
+  if (!Array.isArray(options) || options.length === 0) {
+    problems.push(problem("question-empty", "a question must offer at least one option"));
+  }
+  const labels = [];
+  if (Array.isArray(options)) {
+    options.forEach((option, index) => {
+      const label = option?.label;
+      if (typeof label !== "string" || label.trim() === "") {
+        problems.push(problem("option-label", "option " + String(index + 1) + " has an empty label"));
+        return;
+      }
+      if (labels.includes(label)) {
+        problems.push(problem("option-label", "duplicate option label: " + JSON.stringify(label) + " — labels must be unique within a question"));
+        return;
+      }
+      labels.push(label);
+    });
+  }
+  if (typeof question.question !== "string" || question.question.trim() === "") {
+    problems.push(problem("question-empty", "the question text is empty"));
+  }
+  return check(problems);
+}
+function validateAnswer(answer, question) {
+  if (!isPlainObject(answer))
+    return check([problem("kind-payload", "an answer payload must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(answer)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (typeof answer.questionId !== "string" || answer.questionId.trim() === "") {
+    problems.push(problem("answer-question-id", "an answer must carry the question's non-empty `questionId`"));
+  }
+  const selected = answer.selected;
+  const selectedIsArray = Array.isArray(selected);
+  if (!selectedIsArray) {
+    problems.push(problem("answer-selection", "`selected` must be an array of offered label strings"));
+  }
+  const picked = [];
+  if (selectedIsArray) {
+    selected.forEach((entry, index) => {
+      if (typeof entry !== "string" || entry.trim() === "") {
+        problems.push(problem("answer-selection", "selected entry " + String(index + 1) + " is not a non-empty label string"));
+        return;
+      }
+      picked.push(entry);
+    });
+  }
+  const custom = answer.custom;
+  if (custom !== undefined && (typeof custom !== "string" || custom.trim() === "")) {
+    problems.push(problem("answer-selection", "`custom`, when present, must be non-empty text"));
+  }
+  if (typeof answer.answerTo !== "string" || answer.answerTo.trim() === "") {
+    problems.push(problem("reference-unknown", "an answer must name the question message it answers (`answerTo`)"));
+  }
+  const hasCustom = typeof custom === "string" && custom.trim() !== "";
+  if (question === undefined) {
+    if (selectedIsArray && picked.length === 0 && !hasCustom) {
+      problems.push(problem("answer-selection", "an answer must select at least one offered label or give `custom`"));
+    }
+    return check(problems);
+  }
+  const offered = labelsOf(question);
+  for (const label of picked) {
+    if (!offered.includes(label)) {
+      problems.push(problem("answer-unknown-label", "selected label is not offered by the question: " + JSON.stringify(label), offered));
+    }
+  }
+  if (typeof question.questionId !== "string" || question.questionId.trim() === "") {
+    problems.push(problem("question-id", "the referenced question has an empty `questionId`, so no answer can be correlated"));
+  } else if (typeof answer.questionId === "string" && answer.questionId.trim() !== "" && answer.questionId !== question.questionId) {
+    problems.push(problem("answer-question-id", "`questionId` " + JSON.stringify(answer.questionId) + " does not match the referenced question's `questionId` " + JSON.stringify(question.questionId)));
+  }
+  if (selectedIsArray) {
+    if (question.multiSelect === true) {
+      if (picked.length < 1) {
+        problems.push(problem("answer-selection", "a multi-select answer must select at least one offered label"));
+      }
+    } else if (picked.length > 1) {
+      problems.push(problem("answer-selection", "a single-select answer must select exactly one label; got " + String(picked.length)));
+    } else if (picked.length === 1) {
+      if (hasCustom) {
+        problems.push(problem("answer-selection", "a single-select answer must not combine a selected label with `custom`; give exactly one or the other"));
+      }
+    } else if (!hasCustom) {
+      problems.push(problem("answer-selection", "a single-select answer must select exactly one label or give `custom`"));
+    }
+  }
+  return check(problems);
+}
+function validateEnvelope(envelope) {
+  if (!isPlainObject(envelope))
+    return check([problem("envelope", "a mail envelope must be an object")]);
+  const problems = [];
+  for (const path of findIndexFields(envelope)) {
+    problems.push(problem("index-field", "an index-shaped field is forbidden in a mail payload: " + path));
+  }
+  if (!isMailKind(envelope.kind)) {
+    problems.push(problem("kind-payload", "`kind` must be `message`, `question` or `answer`; got " + JSON.stringify(envelope.kind)));
+    return check(problems);
+  }
+  if (envelope.kind === "message") {
+    if (envelope.question !== undefined)
+      problems.push(problem("kind-payload", "a `message` row must not carry a question payload"));
+    if (envelope.answer !== undefined)
+      problems.push(problem("kind-payload", "a `message` row must not carry an answer payload"));
+  } else if (envelope.kind === "question") {
+    if (envelope.question === undefined)
+      problems.push(problem("kind-payload", "a `question` row must carry its question payload"));
+    else
+      appendProblems(problems, validateQuestion(envelope.question));
+    if (envelope.answer !== undefined)
+      problems.push(problem("kind-payload", "a `question` row must not carry an answer payload"));
+  } else {
+    if (envelope.answer === undefined)
+      problems.push(problem("kind-payload", "an `answer` row must carry its answer payload"));
+    else
+      appendProblems(problems, validateAnswer(envelope.answer));
+    if (envelope.question !== undefined)
+      problems.push(problem("kind-payload", "an `answer` row must not carry a question payload"));
+  }
+  return check(problems);
+}
+function validateReferences(envelope, messages) {
+  const problems = [];
+  const byId = new Map(messages.map((message) => [message.id, message]));
+  if (envelope.replyTo !== undefined) {
+    if (typeof envelope.replyTo !== "string" || !byId.has(envelope.replyTo)) {
+      problems.push(problem("reference-unknown", "`replyTo` names no message in this mailbox: " + JSON.stringify(envelope.replyTo)));
+    }
+  }
+  if (envelope.kind === "answer" && envelope.answer !== undefined) {
+    const target = byId.get(envelope.answer.answerTo);
+    if (target === undefined) {
+      problems.push(problem("reference-unknown", "`answerTo` names no message in this mailbox: " + JSON.stringify(envelope.answer.answerTo)));
+    } else if (target.kind !== "question") {
+      problems.push(problem("reference-not-question", "`answerTo` must name a `question` row; " + target.id + " is a `" + target.kind + "` row"));
+    } else if (target.question !== undefined) {
+      appendProblems(problems, validateAnswer(envelope.answer, target.question));
+    } else {
+      problems.push(problem("question-payload-missing", "the referenced `question` row " + target.id + " carries no question payload, so its offered labels cannot be checked"));
+      appendProblems(problems, validateAnswer(envelope.answer));
+    }
+  }
+  return check(problems);
+}
+function inheritedThreadId(envelope, byId) {
+  if (typeof envelope.threadId === "string" && envelope.threadId !== "")
+    return envelope.threadId;
+  if (typeof envelope.replyTo === "string" && envelope.replyTo !== "")
+    return byId.get(envelope.replyTo)?.threadId;
+  return;
+}
+function fanOutTargets(senderId, targets) {
+  const out = [];
+  const seen = new Set;
+  for (const target of targets) {
+    if (target.id === "" || target.id === senderId || seen.has(target.id))
+      continue;
+    seen.add(target.id);
+    out.push({ id: target.id, name: target.name });
+  }
+  return out;
+}
+// packages/mpd-mail-protocol/src/fold.ts
+function isPlainObject2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function textOf(value) {
+  if (typeof value === "string")
+    return value;
+  return value === undefined || value === null ? "" : String(value);
+}
+function objectOf(value) {
+  return isPlainObject2(value) ? value : undefined;
+}
+function foldSend(state, record, line) {
+  const id = record.id;
+  if (typeof id !== "string" || id === "") {
+    state.problems.push("line " + String(line) + ": a `send` row has no id, skipped");
+    return;
+  }
+  if (state.byId.has(id)) {
+    state.problems.push("line " + String(line) + ": duplicate `send` id " + JSON.stringify(id) + "; the FIRST write wins and this row is ignored");
+    return;
+  }
+  const kindValue = record.kind;
+  const kind = isMailKind(kindValue) ? kindValue : "message";
+  if (kindValue !== undefined && !isMailKind(kindValue)) {
+    state.problems.push("line " + String(line) + ": unknown kind " + JSON.stringify(kindValue) + ", folded as `message`");
+  }
+  const replyTo = typeof record.replyTo === "string" && record.replyTo !== "" ? record.replyTo : undefined;
+  const statedThread = typeof record.threadId === "string" && record.threadId !== "" ? record.threadId : undefined;
+  let question = objectOf(record.question);
+  let answer = objectOf(record.answer);
+  if (kind === "question" && question === undefined) {
+    state.problems.push("line " + String(line) + ": a `question` row has no question payload");
+  }
+  if (kind === "answer" && answer === undefined) {
+    state.problems.push("line " + String(line) + ": an `answer` row has no answer payload");
+  }
+  if (kind !== "question" && question !== undefined) {
+    state.problems.push("line " + String(line) + ": a `" + kind + "` row carries a question payload, dropped");
+    question = undefined;
+  }
+  if (kind !== "answer" && answer !== undefined) {
+    state.problems.push("line " + String(line) + ": a `" + kind + "` row carries an answer payload, dropped");
+    answer = undefined;
+  }
+  if (replyTo !== undefined && !state.byId.has(replyTo)) {
+    state.problems.push("line " + String(line) + ": `replyTo` " + JSON.stringify(replyTo) + " names no folded message; the reply re-roots on its own id");
+  }
+  if (statedThread !== undefined && statedThread !== id && !state.byId.has(statedThread)) {
+    state.problems.push("line " + String(line) + ": explicit `threadId` " + JSON.stringify(statedThread) + " names no folded message; kept as declared");
+  }
+  const inherited = inheritedThreadId({
+    kind,
+    ...replyTo === undefined ? {} : { replyTo },
+    ...statedThread === undefined ? {} : { threadId: statedThread }
+  }, state.byId);
+  const message = {
+    id,
+    kind,
+    fromId: textOf(record.fromId),
+    fromName: textOf(record.fromName),
+    toId: textOf(record.toId),
+    toName: textOf(record.toName),
+    subject: textOf(record.subject),
+    body: textOf(record.body),
+    sentAt: textOf(record.at),
+    threadId: inherited ?? id,
+    ...typeof record.teamId === "string" && record.teamId !== "" ? { teamId: record.teamId } : {},
+    ...replyTo === undefined ? {} : { replyTo },
+    ...question === undefined ? {} : { question },
+    ...answer === undefined ? {} : { answer }
+  };
+  state.byId.set(id, message);
+}
+function foldStateRecord(state, record, line) {
+  const id = record.id;
+  if (typeof id !== "string" || id === "") {
+    state.problems.push("line " + String(line) + ": a `" + String(record.t) + "` row has no id, skipped");
+    return;
+  }
+  const message = state.byId.get(id);
+  if (message === undefined) {
+    state.problems.push("line " + String(line) + ": a `" + String(record.t) + "` row references unfolded message " + JSON.stringify(id));
+    return;
+  }
+  if (record.t === "delivered") {
+    message.deliveredAt = textOf(record.at);
+    return;
+  }
+  message.readAt = textOf(record.at);
+  const by = record.by;
+  if (typeof by === "string" && by !== "")
+    message.readBy = by;
+}
+function foldMail(records) {
+  const state = { byId: new Map, problems: [] };
+  records.forEach((raw, index) => {
+    if (!isPlainObject2(raw)) {
+      state.problems.push("line " + String(index + 1) + ": not a JSON object, skipped");
+      return;
+    }
+    if (raw.t === "send") {
+      foldSend(state, raw, index + 1);
+      return;
+    }
+    if (raw.t === "delivered" || raw.t === "read") {
+      foldStateRecord(state, raw, index + 1);
+      return;
+    }
+  });
+  return { messages: [...state.byId.values()], problems: state.problems };
+}
+// packages/mpd-team-core-plugin/src/mailbox-store.ts
+function mailboxPath(workspace) {
+  return join4(workspace, ".mpd", "team", "mailbox.jsonl");
+}
+function fold(records) {
+  const folded = foldMail(records);
+  const messages = folded.messages;
+  const stamps = new Map;
+  for (const raw of records) {
+    if (raw === null || typeof raw !== "object")
+      continue;
+    const line = raw;
+    if (line.t !== "send" || typeof line.id !== "string" || line.id === "")
+      continue;
+    if (stamps.has(line.id))
+      continue;
+    const cellId = typeof line.cellId === "string" && line.cellId !== "" ? line.cellId : undefined;
+    const fromCell = typeof line.fromCell === "string" && line.fromCell !== "" ? line.fromCell : undefined;
+    const fromMemberId = typeof line.fromMemberId === "string" && line.fromMemberId !== "" ? line.fromMemberId : undefined;
+    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined)
+      continue;
+    stamps.set(line.id, {
+      ...cellId === undefined ? {} : { cellId },
+      ...fromCell === undefined ? {} : { fromCell },
+      ...fromMemberId === undefined ? {} : { fromMemberId }
+    });
+  }
+  return {
+    messages: messages.map((message) => ({ ...message, ...stamps.get(message.id) ?? {} })),
+    problems: [...folded.problems]
+  };
+}
+function readRecords(workspace) {
+  const path = mailboxPath(workspace);
+  if (!existsSync5(path))
+    return [];
+  let text2 = "";
+  try {
+    text2 = readFileSync5(path, "utf8");
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const line of text2.split(`
+`)) {
+    if (line.trim() === "")
+      continue;
+    try {
+      out.push(JSON.parse(line));
+    } catch {}
+  }
+  return out;
+}
+function readMailbox(workspace) {
+  return fold(readRecords(workspace));
+}
+function appendRecord(workspace, record) {
+  mkdirSync3(join4(workspace, ".mpd", "team"), { recursive: true });
+  appendFileSync2(mailboxPath(workspace), JSON.stringify(record) + `
+`);
+}
+function inboxOf(state, memberId) {
+  return state.messages.filter((message) => message.toId === memberId);
+}
+function isOutstanding(message) {
+  return message.deliveredAt === undefined && message.readAt === undefined;
+}
+function undeliveredOf(state, memberId) {
+  return inboxOf(state, memberId).filter(isOutstanding);
+}
+function scopeToTeam(state, teamId) {
+  if (teamId === undefined || teamId === "")
+    return state;
+  return {
+    messages: state.messages.filter((message) => message.teamId === teamId),
+    ...state.problems === undefined ? {} : { problems: state.problems }
+  };
+}
+function problemsSentence(check2) {
+  return check2.problems.map((problem2) => problem2.labels === undefined ? problem2.message : `${problem2.message} (valid labels: ${problem2.labels.join(", ")})`).join("; ");
+}
+function unauthorizedAnswer(messageId) {
+  return "only a recipient of the question may answer it: " + messageId;
+}
+function sendMany(workspace, input, targets, now) {
+  const replyTo = input.replyTo !== undefined && input.replyTo !== "" ? input.replyTo : input.kind === "answer" && input.answer !== undefined && input.answer.answerTo !== "" ? input.answer.answerTo : undefined;
+  const envelope = {
+    kind: input.kind ?? "message",
+    ...replyTo === undefined ? {} : { replyTo },
+    ...input.threadId === undefined || input.threadId === "" ? {} : { threadId: input.threadId },
+    ...input.question === undefined ? {} : { question: input.question },
+    ...input.answer === undefined ? {} : { answer: input.answer }
+  };
+  const addressable = new Set([...input.memberIds, ...input.leadIds ?? []]);
+  const senderIds = new Set([input.fromId, ...input.fromMemberId === undefined || input.fromMemberId === "" ? [] : [input.fromMemberId]]);
+  for (const target of targets) {
+    if (senderIds.has(target.id))
+      return { ok: false, reason: "self", detail: "a team member cannot message itself" };
+    if (!addressable.has(target.id))
+      return { ok: false, reason: "unknown-recipient", detail: `"${target.name || target.id}" is not a member of this team` };
+  }
+  const envelopeCheck = validateEnvelope(envelope);
+  if (!envelopeCheck.ok) {
+    return { ok: false, reason: "invalid-envelope", detail: problemsSentence(envelopeCheck) };
+  }
+  const state = readMailbox(workspace);
+  const scoped = scopeToTeam(state, input.teamId);
+  const workspaceById = new Map(state.messages.map((message) => [message.id, message]));
+  if (envelope.kind === "answer" && envelope.answer !== undefined) {
+    if (envelope.replyTo !== undefined && envelope.replyTo !== envelope.answer.answerTo) {
+      return { ok: false, reason: "invalid-envelope", detail: "an answer's `replyTo` must be the question message it answers (`answerTo`)" };
+    }
+    const asked = workspaceById.get(envelope.answer.answerTo);
+    if (asked === undefined || asked.kind !== "question") {
+      return { ok: false, reason: "not-recipient", detail: unauthorizedAnswer(envelope.answer.answerTo) };
+    }
+    const senderIds2 = new Set([input.fromId, ...input.fromMemberId === undefined || input.fromMemberId === "" ? [] : [input.fromMemberId]]);
+    const askerIds = new Set([asked.fromId, ...asked.fromMemberId === undefined ? [] : [asked.fromMemberId]].filter((id) => id !== ""));
+    if (!senderIds2.has(asked.toId)) {
+      return { ok: false, reason: "not-recipient", detail: unauthorizedAnswer(envelope.answer.answerTo) };
+    }
+    for (const target of targets) {
+      if (!askerIds.has(target.id)) {
+        return { ok: false, reason: "not-recipient", detail: `an answer goes back to the asker ("${asked.fromName}"), not to "${target.name || target.id}"` };
+      }
+    }
+  }
+  const referenceCheck = validateReferences(envelope, state.messages);
+  if (!referenceCheck.ok) {
+    return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) };
+  }
+  const cap = input.maxUndelivered ?? 8;
+  for (const target of targets) {
+    const backlog = undeliveredOf(scoped, target.id).length;
+    if (cap > 0 && backlog >= cap) {
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+    }
+  }
+  const at = now.toISOString();
+  const stem = `mail-${at.replace(/[-:.TZ]/g, "").slice(0, 14)}-`;
+  const ids = targets.map((_target, index) => stem + (state.messages.length + 1 + index).toString().padStart(3, "0"));
+  const threadById = envelope.kind === "answer" ? workspaceById : new Map(scoped.messages.map((message) => [message.id, message]));
+  const threadId = inheritedThreadId(envelope, threadById) ?? ids[0];
+  const messages = targets.map((target, index) => ({
+    id: ids[index],
+    kind: envelope.kind,
+    ...envelope.replyTo === undefined ? {} : { replyTo: envelope.replyTo },
+    threadId,
+    ...envelope.question === undefined ? {} : { question: envelope.question },
+    ...envelope.answer === undefined ? {} : { answer: envelope.answer },
+    fromId: input.fromId,
+    fromName: input.fromName,
+    toId: target.id,
+    toName: target.name,
+    subject: input.subject,
+    body: input.body,
+    sentAt: at,
+    ...input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId },
+    ...input.cellId === undefined || input.cellId === "" ? {} : { cellId: input.cellId },
+    ...input.fromCell === undefined || input.fromCell === "" ? {} : { fromCell: input.fromCell },
+    ...input.fromMemberId === undefined || input.fromMemberId === "" ? {} : { fromMemberId: input.fromMemberId }
+  }));
+  for (const message of messages)
+    appendRecord(workspace, { t: "send", ...message, at });
+  return { ok: true, messages };
+}
+function acknowledge(workspace, ids, ack, now) {
+  const state = readMailbox(workspace);
+  const byId = new Map(state.messages.map((message) => [message.id, message]));
+  const moved = [];
+  const refused = [];
+  for (const id of ids) {
+    const message = byId.get(id);
+    if (message === undefined || message.readAt !== undefined)
+      continue;
+    if (message.toId !== ack.byId) {
+      refused.push({ id, reason: `${id} was addressed to "${message.toName}", not to "${ack.byName}" — only its recipient may acknowledge it` });
+      continue;
+    }
+    appendRecord(workspace, { t: "read", id, at: now.toISOString(), by: ack.byName });
+    moved.push(id);
+  }
+  return { moved, refused };
+}
+
+// packages/mpd-cellwork-plugin/src/mail.ts
 var CELL_MAIL_FILE = "mail.jsonl";
 function cellMailPath(workspace, cellId) {
-  return join4(cellDir(workspace, cellId), CELL_MAIL_FILE);
+  return join5(cellDir(workspace, cellId), CELL_MAIL_FILE);
 }
-function mailId(now, sequence) {
-  return "cellmail-" + now.toISOString().replace(/[-:.TZ]/g, "") + "-" + String(sequence);
+function nextCellMailId(workspace, now) {
+  const stem = "mail-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14) + "-";
+  const count = readMailbox(workspace).messages.length;
+  return stem + String(count + 1).padStart(3, "0");
 }
-function appendCellMail(workspace, cellId, record) {
+function textOf2(value) {
+  if (typeof value === "string")
+    return value;
+  return value === undefined || value === null ? "" : String(value);
+}
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function appendLegacyCellMail(workspace, cellId, record) {
   try {
-    const path = cellMailPath(workspace, cellId);
-    mkdirSync3(cellDir(workspace, cellId), { recursive: true });
-    appendFileSync2(path, JSON.stringify(record) + `
+    mkdirSync4(cellDir(workspace, cellId), { recursive: true });
+    appendFileSync3(cellMailPath(workspace, cellId), JSON.stringify(record) + `
 `, "utf8");
     return true;
   } catch {
     return false;
   }
 }
-function readCellMail(workspace, cellId) {
+function appendCellMail(workspace, cellId, record) {
+  try {
+    appendRecord(workspace, { ...record, cellId });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function normalizeRawRecord(value, cellId) {
+  if (!isObject(value))
+    return;
+  const id = textOf2(value.id);
+  if (id === "")
+    return;
+  if (value.t === "read") {
+    return { t: "read", id, by: textOf2(value.by), at: textOf2(value.at) };
+  }
+  if (value.t === "wake") {
+    return {
+      t: "wake",
+      id,
+      sent: value.sent === true,
+      ...typeof value.reason === "string" && value.reason !== "" ? { reason: value.reason } : {},
+      at: textOf2(value.at)
+    };
+  }
+  if (value.t !== "send")
+    return;
+  const question = isObject(value.question) ? value.question : undefined;
+  const answer = isObject(value.answer) ? value.answer : undefined;
+  const kind = value.kind === "message" || value.kind === "question" || value.kind === "answer" ? value.kind : undefined;
+  const from = textOf2(value.from) === "" ? textOf2(value.fromName) : textOf2(value.from);
+  const to = textOf2(value.to) === "" ? textOf2(value.toName) : textOf2(value.to);
+  return {
+    t: "send",
+    id,
+    cellId: textOf2(value.cellId) === "" ? cellId : textOf2(value.cellId),
+    from,
+    to,
+    subject: textOf2(value.subject),
+    body: textOf2(value.body),
+    at: textOf2(value.at) === "" ? textOf2(value.sentAt) : textOf2(value.at),
+    wakeSent: value.wakeSent === true,
+    ...typeof value.wakeReason === "string" && value.wakeReason !== "" ? { wakeReason: value.wakeReason } : {},
+    ...kind === undefined ? {} : { kind },
+    ...typeof value.replyTo === "string" && value.replyTo !== "" ? { replyTo: value.replyTo } : {},
+    ...typeof value.threadId === "string" && value.threadId !== "" ? { threadId: value.threadId } : {},
+    ...question === undefined ? {} : { question },
+    ...answer === undefined ? {} : { answer },
+    ...typeof value.teamId === "string" && value.teamId !== "" ? { teamId: value.teamId } : {},
+    ...typeof value.fromId === "string" && value.fromId !== "" ? { fromId: value.fromId } : {},
+    ...typeof value.toId === "string" && value.toId !== "" ? { toId: value.toId } : {},
+    ...typeof value.fromCell === "string" && value.fromCell !== "" ? { fromCell: value.fromCell } : {},
+    ...typeof value.fromMemberId === "string" && value.fromMemberId !== "" ? { fromMemberId: value.fromMemberId } : {}
+  };
+}
+function readLegacyCellMail(workspace, cellId) {
   let text2;
   try {
-    text2 = readFileSync5(cellMailPath(workspace, cellId), "utf8");
+    text2 = readFileSync6(cellMailPath(workspace, cellId), "utf8");
   } catch {
     return [];
   }
-  const records = [];
+  const out = [];
   for (const line of text2.split(`
 `)) {
     if (line.trim() === "")
       continue;
     try {
-      const parsed = JSON.parse(line);
-      if (parsed !== null && typeof parsed === "object" && (parsed.t === "send" || parsed.t === "read" || parsed.t === "wake"))
-        records.push(parsed);
+      const normalized = normalizeRawRecord(JSON.parse(line), cellId);
+      if (normalized !== undefined)
+        out.push(normalized);
     } catch {}
   }
-  return records;
+  return out;
+}
+function readUnifiedCellMail(workspace, cellId) {
+  const out = [];
+  for (const raw of readRecords(workspace)) {
+    if (!isObject(raw))
+      continue;
+    if (raw.t === "send" && raw.cellId !== cellId)
+      continue;
+    const normalized = normalizeRawRecord(raw, cellId);
+    if (normalized !== undefined)
+      out.push(normalized);
+  }
+  return out;
+}
+function findWorkspaceMailById(workspace, id) {
+  if (id === "")
+    return;
+  for (const raw of readRecords(workspace)) {
+    if (!isObject(raw) || raw.t !== "send" || raw.id !== id)
+      continue;
+    const normalized = normalizeRawRecord(raw, "");
+    if (normalized !== undefined && normalized.t === "send")
+      return normalized;
+  }
+  return;
+}
+function readCellMail(workspace, cellId) {
+  const merged = [...readLegacyCellMail(workspace, cellId), ...readUnifiedCellMail(workspace, cellId)];
+  const indexed = merged.map((record, index) => ({ record, index }));
+  indexed.sort((left, right) => left.record.at.localeCompare(right.record.at) || left.index - right.index);
+  return indexed.map((entry) => entry.record);
+}
+function toSendLine(record) {
+  return {
+    t: "send",
+    id: record.id,
+    fromId: record.fromId ?? record.from,
+    fromName: record.from,
+    toId: record.toId ?? record.to,
+    toName: record.to,
+    subject: record.subject,
+    body: record.body,
+    at: record.at,
+    cellId: record.cellId,
+    fromMemberId: record.fromMemberId ?? record.from,
+    ...record.fromCell === undefined ? {} : { fromCell: record.fromCell },
+    ...record.teamId === undefined ? {} : { teamId: record.teamId },
+    ...record.kind === undefined ? {} : { kind: record.kind },
+    ...record.replyTo === undefined ? {} : { replyTo: record.replyTo },
+    ...record.threadId === undefined ? {} : { threadId: record.threadId },
+    ...record.question === undefined ? {} : { question: record.question },
+    ...record.answer === undefined ? {} : { answer: record.answer }
+  };
 }
 function foldCellMail(records) {
-  const byId = new Map;
+  const sends = [];
+  const reads = [];
+  const wakes = new Map;
+  const claims = new Map;
   for (const record of records) {
     if (record.t === "send") {
-      byId.set(record.id, { ...record, read: false });
+      sends.push(toSendLine(record));
+      if (record.wakeSent || record.wakeReason !== undefined) {
+        claims.set(record.id, { wakeSent: record.wakeSent, ...record.wakeReason === undefined ? {} : { wakeReason: record.wakeReason } });
+      }
       continue;
     }
-    const message = byId.get(record.id);
-    if (message === undefined)
-      continue;
     if (record.t === "read") {
-      message.read = true;
+      reads.push({ t: "read", id: record.id, at: record.at, ...record.by === "" ? {} : { by: record.by } });
       continue;
     }
-    message.wakeSent = record.sent === true;
-    if (record.reason === undefined || record.reason === "")
-      delete message.wakeReason;
-    else
-      message.wakeReason = record.reason;
+    wakes.set(record.id, { sent: record.sent, ...record.reason === undefined ? {} : { reason: record.reason } });
   }
-  return [...byId.values()];
+  const folded = fold([...sends, ...reads]).messages;
+  return folded.map((message) => {
+    const wake = wakes.get(message.id);
+    const claim = claims.get(message.id);
+    const wakeSent = wake === undefined ? claim?.wakeSent === true : wake.sent === true;
+    const wakeReason = wake === undefined ? claim?.wakeReason : wake.sent ? undefined : wake.reason;
+    return {
+      t: "send",
+      id: message.id,
+      cellId: message.cellId ?? "",
+      from: message.fromName,
+      to: message.toName,
+      subject: message.subject,
+      body: message.body,
+      at: message.sentAt,
+      kind: message.kind,
+      threadId: message.threadId,
+      read: message.readAt !== undefined,
+      wakeSent,
+      ...message.fromCell === undefined ? {} : { fromCell: message.fromCell },
+      ...message.replyTo === undefined ? {} : { replyTo: message.replyTo },
+      ...message.question === undefined ? {} : { question: message.question },
+      ...message.answer === undefined ? {} : { answer: message.answer },
+      ...message.readBy === undefined ? {} : { readBy: message.readBy },
+      ...wakeReason === undefined ? {} : { wakeReason },
+      ...message.teamId === undefined ? {} : { teamId: message.teamId },
+      ...message.fromId === undefined ? {} : { fromId: message.fromId },
+      ...message.toId === undefined ? {} : { toId: message.toId },
+      ...message.fromMemberId === undefined ? {} : { fromMemberId: message.fromMemberId }
+    };
+  });
+}
+function acknowledgeCellMail(workspace, cellId, ids, ack, now) {
+  const unifiedIds = new Set(readUnifiedCellMail(workspace, cellId).filter((record) => record.t === "send").map((record) => record.id));
+  const viaStore = ids.filter((id) => unifiedIds.has(id));
+  const outcome = acknowledge(workspace, viaStore, ack, now);
+  const refused = outcome.refused.map((entry) => ({ id: entry.id, reason: entry.reason }));
+  const viaLegacy = ids.filter((id) => !unifiedIds.has(id));
+  const movedLegacy = [];
+  for (const id of viaLegacy) {
+    if (appendLegacyCellMail(workspace, cellId, { t: "read", id, by: ack.byName, at: now.toISOString() })) {
+      movedLegacy.push(id);
+    } else {
+      refused.push({ id, reason: "the legacy `mail.jsonl` read record could not be written — the row stays unread" });
+    }
+  }
+  return { moved: [...outcome.moved, ...movedLegacy], legacy: movedLegacy, refused };
 }
 function unreadFor(messages, names) {
   const keys = new Set(names.filter((name) => name !== "").map(nameKey));
@@ -5228,7 +6100,7 @@ function nextStepOf(text2) {
 }
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 function readArgs2(args) {
   if (typeof args !== "object" || args === null || Array.isArray(args))
     return {};
@@ -5237,8 +6109,64 @@ function readArgs2(args) {
 function argString2(args, key) {
   return typeof args[key] === "string" ? args[key] : "";
 }
+function seatKey(cell, name) {
+  return "seat:" + cell.cellId + "/" + nameKey(name);
+}
+function seatAddress(cell, name) {
+  return { id: seatKey(cell, name), name };
+}
+function parseMailOptions(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return { ok: false, error: 'cellwork_send: `kind:"question"` requires a non-empty `options` array of {label, description?}' };
+  }
+  const options = [];
+  for (const entry of value) {
+    const option = typeof entry === "object" && entry !== null ? entry : null;
+    const label = option !== null && typeof option.label === "string" ? option.label : "";
+    if (label.trim() === "")
+      return { ok: false, error: "cellwork_send: every option needs a non-empty `label`" };
+    options.push({ label, ...typeof option?.description === "string" && option.description !== "" ? { description: option.description } : {} });
+  }
+  return options;
+}
+function parseMailSelected(value) {
+  if (value === undefined)
+    return [];
+  if (!Array.isArray(value))
+    return { ok: false, error: "cellwork_send: `selected` must be an array of offered label strings" };
+  const selected = [];
+  for (const entry of value) {
+    if (typeof entry !== "string")
+      return { ok: false, error: "cellwork_send: every `selected` entry must be an offered label string" };
+    selected.push(entry);
+  }
+  return selected;
+}
 function render(value) {
   return [{ type: "text", text: value }];
+}
+function mailBlock(message) {
+  const lines = ["[" + String(message.from ?? "") + "] " + String(message.subject ?? "")];
+  const kind = typeof message.kind === "string" ? message.kind : "message";
+  const question = typeof message.question === "object" && message.question !== null ? message.question : undefined;
+  const answer = typeof message.answer === "object" && message.answer !== null ? message.answer : undefined;
+  if (kind === "question" && question !== undefined) {
+    const options = Array.isArray(question.options) ? question.options : [];
+    lines.push("QUESTION " + String(question.questionId ?? "") + (question.multiSelect === true ? " (multi-select)" : ""));
+    lines.push(String(question.question ?? ""));
+    for (const option of options)
+      lines.push("  - " + String(option.label ?? ""));
+  }
+  if (kind === "answer" && answer !== undefined) {
+    const selected = Array.isArray(answer.selected) ? answer.selected.map((entry) => String(entry)) : [];
+    lines.push("ANSWER to " + String(answer.answerTo ?? ""));
+    lines.push("  selected: " + (selected.length === 0 ? "(custom only)" : selected.join(" | ")));
+    if (typeof answer.custom === "string" && answer.custom !== "")
+      lines.push("  custom: " + answer.custom);
+  }
+  lines.push(String(message.body ?? ""));
+  return lines.join(`
+`);
 }
 function refusalText2(failure) {
   return "the cell record at " + failure.path + " cannot be read (" + failure.reason + ": " + failure.detail + ") — nothing was changed";
@@ -5259,7 +6187,6 @@ function installCellworkProtocol(deps) {
   const dsh = deps.dsh;
   const config = deps.config;
   const disposers = [];
-  let mailSequence = 0;
   const inFlight = new Set;
   const teams = () => {
     const service = deps.ctx.get?.("mpdTeams", false);
@@ -5648,13 +6575,21 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended to that same log as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
-        to: { type: "string", description: "`captain`, a cell member's board name, or `<cellId>/<captain|member>` for a cross-cell recipient in this cell's tree." },
-        subject: { type: "string", description: "One-line subject." },
-        body: { type: "string", description: "The message text, delivered verbatim." }
+        to: { type: "string", description: "`captain`, a cell member's board name, or `<cellId>/<captain|member>` for a cross-cell recipient in this cell's tree. With `broadcast:true`, its cell part selects the target cell (`*` means this cell)." },
+        subject: { type: "string", description: "One-line subject (also a question's header)." },
+        body: { type: "string", description: "The message text, delivered verbatim (also a question's text)." },
+        kind: { type: "string", description: "`message`, `question` or `answer`; omitted means it is INFERRED from `options` (question) or `selected`/`custom` (answer), else `message`." },
+        options: { type: "array", description: "A question's offered options, labels unique within the question.", items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" } }, required: ["label"], additionalProperties: false } },
+        multiSelect: { type: "boolean", description: "A question may take several labels instead of exactly one." },
+        replyTo: { type: "string", description: "The message id this row replies to; an answer's question message id (its `answerTo`)." },
+        broadcast: { type: "boolean", description: "Fan out one row per seat of the target cell, sender excluded." },
+        selected: { type: "array", description: "An answer's offered labels, copied VERBATIM from the question.", items: { type: "string" } },
+        custom: { type: "string", description: "An answer's free text; alone it replaces the one label of a single-select answer." },
+        questionId: { type: "string", description: "A question's stable key (defaults to its message id) or the answered question's key (defaults to the referenced question's)." }
       },
       required: ["to", "subject", "body"],
       additionalProperties: false
@@ -5666,7 +6601,10 @@ missing sections: ` + result.missing.join(", ") : ""));
           ok: { type: "boolean" },
           error: { type: "string" },
           id: { type: "string" },
+          ids: { type: "array", items: { type: "string" }, description: "One id per row; a broadcast has several." },
           to: { type: "string" },
+          broadcast: { type: "boolean" },
+          rows: { type: "array", items: { type: "object" }, description: "One `{id, to, wakeSent, wakeReason?}` per fan-out row." },
           crossCell: { type: "string", description: "The cell id the row was written into, when the send crossed cells." },
           fromCell: { type: "string", description: "The sender's own cell id, mirrored onto a cross-cell row." },
           wakeSent: { type: "boolean" },
@@ -5678,6 +6616,10 @@ missing sections: ` + result.missing.join(", ") : ""));
         const result = typeof value === "object" && value !== null ? value : {};
         if (result.ok === false)
           return render("cellwork_send refused: " + String(result.error ?? "unknown refusal"));
+        if (result.broadcast === true) {
+          const rows = Array.isArray(result.rows) ? result.rows : [];
+          return render("mail fan-out: " + String(rows.length) + " row(s) -> " + rows.map((row) => String(row.to ?? "")).join(", ") + " (" + String(result.ids instanceof Array ? result.ids.join(", ") : "") + ")");
+        }
         return render("mail " + String(result.id ?? "") + " -> " + String(result.to ?? "") + (result.wakeSent === true ? " (wake-up sent)" : " (durable; " + String(result.wakeReason ?? "no wake-up was attempted") + ")"));
       }
     },
@@ -5696,10 +6638,18 @@ missing sections: ` + result.missing.join(", ") : ""));
       const body = argString2(argv, "body");
       if (subject === "" || body.trim() === "")
         return { ok: false, error: "cellwork_send: `subject` and `body` are both required" };
+      const broadcast = argv.broadcast === true;
+      const kindArg = argString2(argv, "kind").trim();
+      const replyTo = argString2(argv, "replyTo").trim();
+      const questionIdArg = argString2(argv, "questionId").trim();
+      const multiSelect = argv.multiSelect === true;
+      const rawOptions = argv.options;
+      const rawSelected = argv.selected;
+      const custom = argString2(argv, "custom");
       const slash = requested.lastIndexOf("/");
       const targetCellId = slash < 0 ? cell.cellId : requested.slice(0, slash).trim();
       const requestedName = slash < 0 ? requested : requested.slice(slash + 1).trim();
-      if (requestedName === "")
+      if (!broadcast && requestedName === "")
         return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" };
       const crossCell = targetCellId !== cell.cellId;
       let target = cell;
@@ -5712,52 +6662,150 @@ missing sections: ` + result.missing.join(", ") : ""));
           return { ok: false, error: "cellwork_send: the cross-cell recipient's record at " + read.path + " cannot be read (" + read.reason + ": " + read.detail + ") — nothing was sent", path: read.path };
         target = read.state;
       }
-      const toCaptain = nameKey(requestedName) === "captain";
-      const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName));
-      if (!toCaptain && recipientMember === undefined) {
-        return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" };
-      }
-      const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName);
-      if (!crossCell && nameKey(to) === nameKey(caller.member))
-        return { ok: false, error: "cellwork_send: a seat cannot message itself" };
       const now = new Date;
-      const taken = new Set(readCellMail(caller.workspace, targetCellId).map((record) => record.id));
-      let id = mailId(now, mailSequence += 1);
-      while (taken.has(id))
-        id = mailId(now, mailSequence += 1);
-      const attemptWake = async () => {
-        if (crossCell)
-          return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" };
-        if (toCaptain)
-          return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" };
-        if (caller.sessionId !== cell.captainSessionId)
-          return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" };
-        if (String(recipientMember?.executorRef ?? "") === "")
-          return { sent: false, reason: "the recipient has no executor handle (never raised)" };
-        const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent);
-        if (send === undefined)
-          return { sent: false, reason: "this composition exposes no team executor" };
-        await send(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + `
+      const hasOptions = rawOptions !== undefined;
+      const hasAnswerPayload = rawSelected !== undefined || custom.trim() !== "";
+      let kind;
+      if (kindArg === "")
+        kind = hasOptions ? "question" : hasAnswerPayload ? "answer" : "message";
+      else if (kindArg === "message" || kindArg === "question" || kindArg === "answer")
+        kind = kindArg;
+      else
+        return { ok: false, error: "cellwork_send: `kind` must be `message`, `question` or `answer`" };
+      if (kind !== "question" && (hasOptions || multiSelect)) {
+        return { ok: false, error: "cellwork_send: `options`/`multiSelect` belong to a `question` row; this payload is a `" + kind + "`" };
+      }
+      if (kind !== "answer" && (hasAnswerPayload || kind === "message" && questionIdArg !== "")) {
+        return { ok: false, error: "cellwork_send: `selected`/`custom`/`questionId` belong to an `answer` row; this payload is a `" + kind + "`" };
+      }
+      let question;
+      let answer;
+      let questionId = questionIdArg;
+      if (kind === "question") {
+        const parsedOptions = parseMailOptions(rawOptions);
+        if (!Array.isArray(parsedOptions))
+          return parsedOptions;
+        questionId = questionIdArg !== "" ? questionIdArg : nextCellMailId(caller.workspace, now);
+        question = { questionId, header: subject, question: body, options: parsedOptions, ...multiSelect ? { multiSelect: true } : {} };
+      }
+      if (kind === "answer") {
+        if (replyTo === "")
+          return { ok: false, error: 'cellwork_send: `kind:"answer"` requires `replyTo` = the message id of the QUESTION row being answered' };
+        const asked = findWorkspaceMailById(caller.workspace, replyTo) ?? foldCellMail(readCellMail(caller.workspace, targetCellId)).find((message) => message.id === replyTo);
+        if (asked === undefined) {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names no message in this workspace's mailbox — pass the QUESTION row's message id (every `cellwork_inbox` row shows its id)" };
+        }
+        if (asked.kind === "answer") {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names an ANSWER row, not a question — an answer answers a question, not another answer" };
+        }
+        if (asked.question === undefined) {
+          return { ok: false, error: "cellwork_send: `replyTo` " + JSON.stringify(replyTo) + " names a " + JSON.stringify(String(asked.kind ?? "message")) + " row with no question payload (no questionId, no options) — only a question can be answered" };
+        }
+        questionId = questionIdArg !== "" ? questionIdArg : asked.question.questionId;
+        const parsedSelected = parseMailSelected(rawSelected);
+        if (!Array.isArray(parsedSelected))
+          return parsedSelected;
+        answer = { questionId, answerTo: replyTo, selected: parsedSelected, ...custom.trim() === "" ? {} : { custom } };
+      }
+      let outbound;
+      if (broadcast) {
+        const seats = [
+          seatAddress(target, "captain"),
+          ...Object.values(target.members).map((member) => seatAddress(target, member.name))
+        ];
+        const candidates = seats.filter((seat) => crossCell || nameKey(seat.name) !== nameKey(caller.member));
+        outbound = fanOutTargets(seatKey(cell, caller.member), candidates);
+        if (outbound.length === 0)
+          return { ok: false, error: "cellwork_send: a broadcast has no other seat to address in cell " + targetCellId };
+      } else {
+        const toCaptain = nameKey(requestedName) === "captain";
+        const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName));
+        if (!toCaptain && recipientMember === undefined) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" };
+        }
+        const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName);
+        if (!crossCell && nameKey(to) === nameKey(caller.member))
+          return { ok: false, error: "cellwork_send: a seat cannot message itself" };
+        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipientMember?.name ?? to))];
+      }
+      const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name));
+      const leadIds = [seatKey(target, "captain")];
+      const input = {
+        fromId: seatKey(cell, caller.member),
+        fromName: caller.member,
+        toId: outbound[0].id,
+        toName: outbound[0].name,
+        subject,
+        body,
+        memberIds,
+        leadIds,
+        teamId: target.teamId,
+        cellId: targetCellId,
+        fromMemberId: caller.member,
+        ...crossCell ? { fromCell: cell.cellId } : {},
+        ...kind === "message" ? {} : { kind },
+        ...replyTo === "" ? {} : { replyTo },
+        ...question === undefined ? {} : { question },
+        ...answer === undefined ? {} : { answer }
+      };
+      let sent;
+      try {
+        sent = sendMany(caller.workspace, input, outbound, now);
+      } catch (error) {
+        return { ok: false, error: "cellwork_send: the message row(s) could not be written — no message was sent and no wake-up was attempted (mail is durable first): " + errorText5(error) };
+      }
+      if (!sent.ok)
+        return { ok: false, error: "cellwork_send refused: " + sent.detail };
+      const delivered = [];
+      for (let index = 0;index < sent.messages.length; index += 1) {
+        const message = sent.messages[index];
+        const address = outbound[index];
+        const recipientMember = Object.values(target.members).find((member) => seatKey(target, member.name) === address.id);
+        const attemptWake = async () => {
+          if (crossCell)
+            return { sent: false, reason: "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)" };
+          if (nameKey(address.name) === "captain")
+            return { sent: false, reason: "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`" };
+          if (caller.sessionId !== cell.captainSessionId)
+            return { sent: false, reason: "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`" };
+          if (String(recipientMember?.executorRef ?? "") === "")
+            return { sent: false, reason: "the recipient has no executor handle (never raised)" };
+          const wake = sendThroughExecutor(dsh.teamExecutor(), exec.agent);
+          if (wake === undefined)
+            return { sent: false, reason: "this composition exposes no team executor" };
+          await wake(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + `
 
 ` + body + `
 
 (full row: cell ` + cell.cellId + ")");
-        return { sent: true };
+          return { sent: true };
+        };
+        const delivery = await deliverCellMail({
+          appendSend: () => true,
+          attemptWake,
+          appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id: message.id, sent: outcome.sent, ...outcome.reason === undefined ? {} : { reason: outcome.reason }, at: now.toISOString() })
+        });
+        delivered.push({ id: message.id, to: message.toName, wakeSent: delivery.wakeSent, ...delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason } });
+        appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id: message.id, from: caller.member, to: message.toName, ...crossCell ? { toCell: targetCellId } : {}, subject, wakeSent: delivery.wakeSent }, now);
+      }
+      if (!broadcast) {
+        const only = delivered[0];
+        return { ok: true, id: only.id, to: only.to, wakeSent: only.wakeSent, ...crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}, ...only.wakeReason === undefined ? {} : { wakeReason: only.wakeReason } };
+      }
+      return {
+        ok: true,
+        broadcast: true,
+        to: "*",
+        id: delivered[0].id,
+        ids: delivered.map((row) => row.id),
+        rows: delivered,
+        ...crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}
       };
-      const delivery = await deliverCellMail({
-        appendSend: () => appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent: false, ...crossCell ? { fromCell: cell.cellId } : {} }),
-        attemptWake,
-        appendWake: (outcome) => appendCellMail(caller.workspace, targetCellId, { t: "wake", id, sent: outcome.sent, ...outcome.reason === undefined ? {} : { reason: outcome.reason }, at: now.toISOString() })
-      });
-      if (!delivery.landed)
-        return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent and no wake-up was attempted (mail is durable first)" };
-      appendJournal(caller.workspace, cell.cellId, { event: "mail", cell: "cell:" + cell.cellId, id, from: caller.member, to, ...crossCell ? { toCell: targetCellId } : {}, subject, wakeSent: delivery.wakeSent }, now);
-      return { ok: true, id, to, wakeSent: delivery.wakeSent, ...crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}, ...delivery.wakeReason === undefined ? {} : { wakeReason: delivery.wakeReason } };
     }
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_inbox",
-    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`). The rows are durable; reading them appends `read` records, so a second call does not return them again.",
+    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`). A `question` row renders its offered labels explicitly and an `answer` row renders its selected labels, so nothing has to be counted; reply with `cellwork_send {kind:\"answer\", replyTo:<question id>, selected:[...]}`. The rows are durable; reading them acknowledges each row ONCE (the shared store's `read` record, or the legacy log's for a pre-unification row).",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     output: {
       schema: {
@@ -5767,7 +6815,8 @@ missing sections: ` + result.missing.join(", ") : ""));
           error: { type: "string" },
           seat: { type: "string" },
           messages: { type: "array", items: { type: "object" } },
-          acknowledged: { type: "number" }
+          acknowledged: { type: "number" },
+          refused: { type: "array", items: { type: "object" } }
         },
         required: ["ok"]
       },
@@ -5776,14 +6825,17 @@ missing sections: ` + result.missing.join(", ") : ""));
         if (result.ok === false)
           return render("cellwork_inbox refused: " + String(result.error ?? "unknown refusal"));
         const messages = Array.isArray(result.messages) ? result.messages : [];
+        const refused = Array.isArray(result.refused) ? result.refused : [];
+        const refusalNote = refused.length === 0 ? "" : `
+
+acknowledgement refused for ` + String(refused.length) + " row(s), which stay unread: " + refused.map((entry) => String(entry.id ?? "?") + " (" + String(entry.reason ?? "no reason given") + ")").join("; ");
         if (messages.length === 0)
-          return render("no unread cell mail for " + String(result.seat ?? "?") + " — if a question is blocked here, ask the captain to check `cellwork_supervise`");
-        return render(messages.map((message) => "[" + String(message.from) + "] " + String(message.subject) + `
-` + String(message.body)).join(`
+          return render("no unread cell mail for " + String(result.seat ?? "?") + " — if a question is blocked here, ask the captain to check `cellwork_supervise`" + refusalNote);
+        return render(messages.map((message) => mailBlock(message)).join(`
 
 ---
 
-`));
+`) + refusalNote);
       }
     },
     execute: async (_args, exec) => {
@@ -5796,14 +6848,27 @@ missing sections: ` + result.missing.join(", ") : ""));
       const messages = foldCellMail(readCellMail(caller.workspace, caller.cell.cellId));
       const unread = unreadFor(messages, [seat]);
       const now = new Date;
-      let acknowledged = 0;
-      for (const message of unread) {
-        if (appendCellMail(caller.workspace, caller.cell.cellId, { t: "read", id: message.id, by: seat, at: now.toISOString() }))
-          acknowledged += 1;
-      }
-      if (acknowledged > 0)
-        appendJournal(caller.workspace, caller.cell.cellId, { event: "mail-read", cell: "cell:" + caller.cell.cellId, seat, ids: unread.slice(0, acknowledged).map((message) => message.id) }, now);
-      return { ok: true, seat, messages: unread.map((message) => ({ id: message.id, from: message.from, subject: message.subject, body: message.body, at: message.at })), acknowledged };
+      const ack = acknowledgeCellMail(caller.workspace, caller.cell.cellId, unread.map((message) => message.id), { byId: seatKey(caller.cell, seat), byName: seat }, now);
+      if (ack.moved.length > 0)
+        appendJournal(caller.workspace, caller.cell.cellId, { event: "mail-read", cell: "cell:" + caller.cell.cellId, seat, ids: ack.moved }, now);
+      return {
+        ok: true,
+        seat,
+        messages: unread.map((message) => ({
+          id: message.id,
+          from: message.from,
+          subject: message.subject,
+          body: message.body,
+          at: message.at,
+          kind: message.kind,
+          threadId: message.threadId,
+          ...message.replyTo === undefined ? {} : { replyTo: message.replyTo },
+          ...message.question === undefined ? {} : { question: message.question },
+          ...message.answer === undefined ? {} : { answer: message.answer }
+        })),
+        acknowledged: ack.moved.length,
+        refused: ack.refused
+      };
     }
   }));
   const onPreStep = (payload, decision) => {
@@ -5845,7 +6910,7 @@ missing sections: ` + result.missing.join(", ") : ""));
     try {
       let handoffText = "";
       try {
-        handoffText = readFileSync6(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
+        handoffText = readFileSync7(handoffPath(caller.workspace, caller.cell.cellId, caller.member, member.handoffs), "utf8");
       } catch {
         handoffText = "(the handoff document could not be read back; the journal names its path)";
       }

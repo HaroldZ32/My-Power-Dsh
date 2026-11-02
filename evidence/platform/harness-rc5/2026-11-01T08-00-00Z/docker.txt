@@ -1,0 +1,32 @@
+DOCKER REAL-MACHINE LANES (rootless, Docker 29.9.2 / Compose v5.6.1, ubuntu:24.04 build)
+
+lane 1  node scripts/docker-e2e.ts --mode source --require-docker --no-browser
+        exit 0   passed=163 failed=0 null=79 (credential-free: live.* + ui.* declared NULL by design)
+lane 2  node scripts/docker-e2e.ts --mode source --require-docker --live
+        exit 0   passed=204 failed=0 null=38
+lane 3  node scripts/docker-e2e.ts --mode oneclick --require-docker --live
+        exit 0   passed=203 failed=0 null=39
+
+TUI PLANE ON dsh-tui@0.18.0 (this was the PR's largest unverified surface; now exercised):
+  tui.boot / tui.compose / tui.hostInstall / tui.pluginAddBundle            = true
+  tui.mergedPanelOpens / tui.mergedPanelOrder / tui.mpdTuiRow               = true
+  tui.agentTeamRows / tui.hostDashboardKeyIntact / tui.noDirectTuiSeam      = true
+  tui.noFatalSignatures / tui.laneExit                                      = true
+  evidence that 0.18.0 is the host in play: dsh-tui@0.18.0 lib/types/presetPrefs.js#writePresetPref
+
+LIVE MODEL ARMS (real turns, all three planes):
+  live.web.mpdToolCalled / live.tui.mpdToolCalled / live.headless.mpdToolCalled = true
+
+ONECLICK INSTALL (lane 3):
+  oneclick.scratchRepo / oneclick.requiredPaths / oneclick.filesAllowlist / oneclick.distByteIdentical = true
+
+LOCAL PRE-RUN DEFECT FOUND AND FIXED BEFORE THESE PASSES:
+  the first --no-browser run failed 2 arms (pack.staticCoherence, pack.distFreshRebuild) because the
+  LOCAL dist/mpd-package artifact was stale (cut before this wave). dist/mpd-package is gitignored and
+  CI packs in-container, so this affected the local lane only. Re-packed with node scripts/pack-mpd.ts
+  and all three lanes then passed with 0 failures.
+
+EVIDENCE DIRS
+  evidence/docker/client-install/2026-11-01T08-40-39Z            (lane 1)
+  evidence/docker/client-install/2026-11-01T08-48-50Z            (lane 2)
+  evidence/docker/client-install-oneclick/2026-11-01T09-04-57Z   (lane 3)

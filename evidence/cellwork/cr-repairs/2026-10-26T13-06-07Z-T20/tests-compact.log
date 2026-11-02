@@ -1,0 +1,36 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-compact-plugin/test/compaction.test.ts:
+(pass) t48 F6 HINGE: every drive goes to the MEMBER's own scoped engine, never a host-plane one [1.44ms]
+(pass) t48 F6 IDENTITY: the member engine and the host-plane engine are DIFFERENT objects [0.15ms]
+(pass) t48 CAPTAIN EXCLUSION: the captain session is never driven [0.36ms]
+(pass) t48 NEGATIVE CONTROL: a team with ONE non-terminal task is REFUSED, nothing is driven [0.24ms]
+(pass) t48 NEGATIVE CONTROL: an empty task list is NOT 'finished' [0.17ms]
+(pass) t48 BARRIER: a busy member defers the whole pass (wait semantics + timeout outcome) [5.63ms]
+(pass) cr R2: a pass cancelled BEFORE the barrier never polls, and records cancellation not timeout [0.41ms]
+(pass) cr R2: a pass cancelled DURING the barrier stops at the poll that saw the abort [0.40ms]
+(pass) t48 BARRIER: an idle member is compacted once every member is idle [0.25ms]
+(pass) t48 NULL IS NOT AN ERROR: a null result is recorded as no-safe-range [0.26ms]
+(pass) t48 F5: an engine failure code and the lifecycle error class are classified DIFFERENTLY [0.21ms]
+(pass) t48 F5: a lifecycle error mid-pass is recorded against the member and does not abort the pass [0.34ms]
+(pass) t48 F9: every compactNow drive receives a REAL AbortSignal, never undefined [0.35ms]
+(pass) t48 F9: an aborted drive is a CANCELLATION; an unrecognised failure stays unclassified [0.06ms]
+(pass) t48 F9: a pre-aborted pass signal is recorded as cancelled, never as a raw TypeError [0.26ms]
+(pass) t48 STAGED: a member with no session id is skipped EXPLICITLY, never silently [0.26ms]
+(pass) t48 NOT-LIVE: a dormant team is recorded, not ignored [0.22ms]
+(pass) t48 AUDIT: written under .mpd/team-compact and NEVER under .mpd/team [0.54ms]
+(pass) t48 AUDIT: a second pass is a second FILE — an earlier destructive pass is never hidden [0.28ms]
+(pass) t48 TERMINAL SET: mirror of the OFFICIAL lifecycle, with the non-terminal half excluded [0.03ms]
+(pass) t48: listTeamIds reports exactly the LIVE teams the adapter folds [0.20ms]
+(pass) t48: a team the readout does not carry reads as undefined, never a throw [0.23ms]
+(pass) t48 T4: a team is READ FROM THE MPD RECORD — the native default composition is not blind [0.33ms]
+(pass) t48 NO SILENT NOTIFICATION: the pass writes an audit and returns; it never messages a member [0.23ms]
+(pass) t48 plugin: apply() registers both tools and subscribes to BOTH triggers [0.18ms]
+(pass) t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-throwing [0.30ms]
+(pass) t48 plugin: every registered tool declares an OBJECT-ROOTED parameters schema [0.09ms]
+(pass) write-on-change: sameAuditOutcome is true only for an identical outcome [0.09ms]
+
+ 28 pass
+ 0 fail
+ 136 expect() calls
+Ran 28 tests across 1 file. [145.00ms]

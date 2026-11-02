@@ -1,0 +1,75 @@
+{
+  "slice": "mpd-team-watchdog web routes: POST /hold and POST /resume (server half only)",
+  "recordedAt": "2026-11-01T12:53:55.347Z",
+  "routes": {
+    "hold": {
+      "path": "/plugins/mpd-team-watchdog/hold",
+      "body": {
+        "teamId": "string",
+        "reason": "string?",
+        "ttlMs": "number?"
+      },
+      "success": "{ok:true, hold: applyHold(...)}"
+    },
+    "resume": {
+      "path": "/plugins/mpd-team-watchdog/resume",
+      "body": {
+        "teamId": "string"
+      },
+      "success": "{ok:true, resumed: boolean}"
+    },
+    "failures": [
+      "400 invalid JSON / blank teamId / unattributable workspace",
+      "401|403 the host fence",
+      "405 non-POST with allow: POST",
+      "413 body over 64 KiB",
+      "500 store failure, non-leaking message"
+    ]
+  },
+  "files": {
+    "added": [
+      "packages/mpd-team-watchdog-plugin/src/web.ts",
+      "packages/mpd-team-watchdog-plugin/test/web.test.ts"
+    ],
+    "modified": [
+      "packages/mpd-team-watchdog-plugin/src/index.ts",
+      "packages/mpd-team-watchdog-plugin/dist/index.js"
+    ]
+  },
+  "gates": {
+    "packageTests": {
+      "command": "bun test packages/mpd-team-watchdog-plugin",
+      "pass": 151,
+      "fail": 0,
+      "files": 15,
+      "newArms": 11
+    },
+    "distFresh": {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "result": "35/35 targets fresh, 1 declared NOT COVERED",
+      "exit": 0,
+      "buildToolchain": "bun 1.4.0 (pinned)"
+    },
+    "commentCoverage": {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "result": "PASS 520 files / 46481 declarations",
+      "exit": 0
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "result": "tsgo --noEmit clean",
+      "exit": 0
+    },
+    "d6NoDirectTeamAccess": {
+      "command": "bun test packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts",
+      "result": "PASS 0 findings over 181 src files",
+      "exit": 0
+    }
+  },
+  "bounds": [
+    "The workspace for a body-only request is resolved agentlessly: one live session root, else the adapter's env->cwd root; several live roots answer 400 (no session is named by the contract body).",
+    "A teamId is validated for shape only; applyHold/applyResume do not require the team to exist in the workspace (same behaviour as the session-watchdog-hold/-resume tools).",
+    "The success payload carries applyHold's full result verbatim, including its absolute `path`, as the contract's `<whatever applyHold returns>` requires.",
+    "No README (EN / zh-CN) update was made; the package's module table does not yet name src/web.ts."
+  ]
+}

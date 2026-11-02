@@ -1,0 +1,287 @@
+== scope hashes (my measurement; the relay carried no hash list)
+533bf1f7dcee8065c0f78b88924a1f6fc6a2869f96f1a7815bbdcdf483aa8b5d  packages/mpd-team-core-plugin/src/index.ts
+81aeac59c2a922fe1a4daf2b696101a079d69e1eca0b567295cb648f87242547  packages/mpd-team-core-plugin/src/team-store.ts
+ab2d71d91347cb61ae9eebe861b65164224492a8e15713e176d62c3ed06c1977  packages/mpd-team-core-plugin/src/team-web.ts
+145770a430f792160f404869d173ac50962785837fa311ca005b96f948e87d4c  packages/mpd-team-core-plugin/test/agent-slot-hygiene.test.ts
+2af5d4f02aec0b3b5ecaa767d4a435ccb148f30a04ed53fe8698dcba8d739da5  packages/mpd-dsh-adapter-plugin/src/index.ts
+
+== hash sandwich: start 2026-10-26T15:04:26Z
+950f4df08dfc0d54c8b620f2f31d73fbb42f8d15367122f9d0a3294140efcfd3  evidence/cellwork/cr-repairs/2026-10-26T15-04-26Z-T28/scope-start.sha256
+== settle window 50 s
+950f4df08dfc0d54c8b620f2f31d73fbb42f8d15367122f9d0a3294140efcfd3  evidence/cellwork/cr-repairs/2026-10-26T15-04-26Z-T28/scope-postsettle.sha256
+
+== suites
+team-core exit=0
+ 363 pass
+ 0 fail
+Ran 363 tests across 25 files. [1.72s]
+adapter exit=0
+ 289 pass
+ 0 fail
+Ran 289 tests across 19 files. [2.47s]
+full exit=0
+ 6 skip
+ 0 fail
+Ran 2654 tests across 158 files. [33.23s]
+
+== the SIX new arms + the UPDATED arm (names, from the suites)
+(pass) a failed raise leaves no zombie and no held slot > R3: the failed row is DROPPED and the next raise of a DIFFERENT member succeeds 
+(pass) a failed raise leaves no zombie and no held slot > R3: the happy path is unchanged — a live append raises, records its handle and stays running 
+(pass) agentPromptSection: ONE agent's own prompt registry > a non-callable registry answer degrades to a no-op disposer 
+(pass) agentPromptSection: ONE agent's own prompt registry > forwards the section VERBATIM, receiver-bound, and passes the disposer back 
+(pass) a legacy `failed` row is not a live member on any surface > the `/state` payload and the workspace listing do not count or list it 
+(pass) a legacy `failed` row is not a live member on any surface > the graph model renders TASKS only, so a failed member can never be one of its nodes 
+(pass) a legacy `failed` row is not a live member on any surface > the plan `status` answer names only the members the team has 
+(pass) C7-4 F1 — a mid-run append lands on the APPROVED record > after approval, add_member appends to the live roster AND raises the member 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > an absent seam is a no-op disposer plus two false capability flags, never a throw 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > a stub register returning a NON-function still yields a safe no-op disposer 
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > registerCommand passes the definition through and hands back the host's own disposer 
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > an attempt that applies nothing and returns no disposer is still an acceptance 
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: with no team resolved the WHOLE fold is returned, legacy row included 
+(pass) ORDERING: a failing persona can never disarm the read-only discipline > an EMPTY or whitespace persona registers NOTHING, so it cannot collide on the slot 
+(pass) registerHostTool: VERBATIM registration (AC2) > a non-callable registry answer degrades to a no-op disposer, never a leak 
+(pass) registerPromptSection > a non-callable registry answer degrades to a no-op disposer 
+(pass) registerPromptSection > forwards the section VERBATIM and passes the registry's disposer through 
+(pass) registerSubagentProvider: the disposal-returning registration seam > a non-callable registry answer degrades to a no-op disposer, never a leak 
+(pass) registerSubagentProvider: the disposal-returning registration seam > forwards the provider VERBATIM and passes the registry's disposer back 
+(pass) resolveRunRoute — malformed fallbacks are dropped, and the effort rule still applies > malformed entries are counted and never fail the run 
+(pass) routePositivelyListed — the exact predicate the chain acts on > both halves must match, and nothing else counts 
+(pass) S-b — the feed notifies on a change, once per window > the disposer is idempotent, and a disposed subscription stops notifying 
+(pass) S-c — the watcher is armed lazily and does not leak > subscribe→dispose repeatedly does not accumulate a handle per cycle 
+(pass) S-c — the watcher is armed lazily and does not leak > two watches per workspace are armed on the first subscriber and CLOSED by the last disposer 
+(pass) S-d — degradation, never failure > dispose closes the watches, clears the pending window and stops the store hook 
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery 
+(pass) spawnAgent follows the generation too > 0.2.1: an activation WITHOUT dispose is tolerated, because the release is optional 
+(pass) spawnAgent follows the generation too > 0.2.1: a REJECTING dispose still returns the report — teardown failure is not the answer 
+(pass) spawnAgent follows the generation too > 0.2.1: a THROWING dispose still returns the report 
+(pass) spawnAgent follows the generation too > 0.2.1: the settled consult disposes its activation EXACTLY ONCE, after the result 
+(pass) task contracts and attempts > the attempt counter is monotonic ACROSS claims, and a board revision cannot stand in for it 
+(pass) the derived state > `blocked` is DERIVED, and OPT-1 releases a task whose blocker FAILED — counted apart 
+(pass) the derived state > member progress names the current task and counts what is done 
+(pass) the derived state > the summary separates ready from blocked, and counts only REAL edges 
+(pass) the events route > the client going away disposes the subscription, and no frame follows 
+(pass) the legacy read path > a file of only blank lines folds to empty 
+(pass) the legacy read path > a workspace with no mailbox yet reads as empty rather than throwing 
+(pass) the model is computed with the shared core and cached per team > dispose closes the watcher, and a disposed cache serves nothing 
+(pass) the native backend > a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks 
+(pass) the native backend > membership answers for a handle THIS adapter raised, and is a MISS for anyone else 
+(pass) the native member route (agentRoutes -> agentOptions) > an unconfigured route still raises the member and writes exactly ONE log line quoting the sentence 
+(pass) the native team backend raises a member on the 0.2.1 seam > a backend that reports NO child id is refused rather than recorded as a member 
+(pass) the native team backend raises a member on the 0.2.1 seam > spawn() calls startActivation with the mandatory delivery policy and the member's route 
+(pass) the native team backend still raises a member on the RETIRED seam > spawn() calls startContinuable and, because that release had no such field, adds no delivery 
+(pass) the official backend > membership is ASKED of the host, so a member raised elsewhere is still identified 
+(pass) the persona section is the HOST's slot, with interpolation OFF > a roster child receives deployment:persona-prefix at order 0, interpolate false 
+(pass) the persona section is the HOST's slot, with interpolation OFF > the agent may arrive BARE as well as wrapped in {agent} 
+(pass) the registration is ONE guard, released on teardown > exactly one guard is installed and the row's dispose runs the registry's disposer 
+(pass) the staged plan > sessions do not share a staging slot 
+(pass) the summary a status view renders > it counts total / unread / undelivered per member, and names what is oldest-unread 
+(pass) the task lifecycle stamps > a hand-built legacy record with NO lifecycle fields still reads, and stamps from the next claim 
+(pass) the terminal verbs > the attempt counter is MONOTONIC across claims and closures 
+(pass) tool plane > registerTools registers every definition and disposes them together 
+
+== REQUIRED OUTCOME 1+3: the failed raise drops the row and a DIFFERENT member's retry succeeds
+FILE LEN 13784
+// THE ZOMBIE-MEMBER DEFECT (contract `.mpd/plans/agent-slot-hygiene.md`, frozen 2026-10-26T14:40Z).
+//
+// WHAT BROKE, MEASURED. `agent_teams_plan {action:"add_member"}` on a LIVE team appended the member and
+// then raised it. A failed raise left the row at `status: "failed"` — a teammate the roster rendered and
+// the capacity accounting counted — and the activation slot it started was never handed back. Five such
+// attempts in the cellwork wave (`web-engineer`, `web-renderer`, `dag-web`, `web-builder`, `web-build`)
+// ended with the harness refusing a FRESH name with `subagent limit reached (active child limit: 8)`.
+//
+// THE RULE THESE ARMS PIN. A failed raise leaves NOTHING: the row is dropped from the roster, the
+// executor hands the activation back, and the next raise of a different member succeeds. A `failed` row
+// a legacy record still carries is not a live member on any surface — the plan's `status` answer, the
+// `/state` payload, the workspace listing or the graph model.
+import { afterEach, describe, expect, test } from "bun:test"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
+import { buildTeamState, buildWorkspaceTeams } from "../src/team-web"
+import { GraphModels } from "../src/graph-model"
+import { addTeamMember, createTeam, readTeam, writeTeam, type TeamRecord } from "../src/team-store"
+
+/** The frozen instant every fixture here is stamped with. */
+const NOW = new Date("2026-10-26T14:40:00.000Z")
+
+/** The sandboxes this file created, removed after every arm. */
+const sandboxes: string[] = []
+afterEach(() => { for (const dir of sandboxes.splice(0)) rmSync(dir, { recursive: true, force: true }) })
+
+/** One registered tool, typed for the two fields these arms drive. */
+interface CapturedTool {
+  /** The registered name. */
+  name: string
+  /** The runner, called with the harness's own exec shape. */
+  execute: (args: unknown, exec: unknown) => Promise<unknown>
+}
+
+/** The sandbox one arm drives. */
+interface Harness {
+  /** The temp workspace every call resolves to. */
+  workspace: string
+...
+test("R3: the failed row is DROPPED and the next raise of a DIFFERENT member succeeds", async () => {
+    /** The sandbox: the FIRST raise of `web-engineer` fails, every later one succeeds. */
+    const h = harness(["web-engineer"])
+    /** The live team, approved with one healthy member. */
+    const team = await approveTeam(h, "lead-member")
+    // The first live append FAILS at the raise: a fresh name, a broken pool behind it.
+    /** The failed append's answer. */
+    const failed = await h.call("agent_teams_plan", { action: "add_member", member: { name: "web-engineer", prompt: "You build the web." } }, h.lead) as { team?: TeamRecord; stoppedAt?: string; appended?: string }
+    expect(failed.stoppedAt).toContain("active child limit")
+    // NO ZOMBIE: the roster carries the member that is really there and nothing else.
+    /** The record as the failed call left it. */
+    const afterFailure = readTeam(h.workspace, team.teamId) as TeamRecord
+    expect(afterFailure.members.map((member) => member.name)).toEqual(["lead-member"])
+    expect(afterFailure.members.some((member) => member.status === "failed")).toBe(false)
+    // The answer SAYS what happened instead of promising an apperid row.
+    expect(String(failed.appended)).toContain("REMOVED")
+    // THE SLOT IS FREE: a DIFFERENT member appends and raises normally.
+    /** The healthy append's answer. */
+    const healthy = await h.call("agent_teams_plan", { action: "add_member", member: { name: "web-splitter", prompt: "You split the work." } }, h.lead) as { team?: TeamRecord; spawned?: string }
+    expect(healthy.spawned).toBe("child-web-splitter")
+    /** The record after the healthy append. */
+    const after = readTeam(h.workspace, team.teamId) as TeamRecord
+    expect(after.members.map((member) => [member.name, member.status])).toEqual([["lead-member", "running"], ["web-splitter", "running"]])
+    expect(after.members.find((member) => member.name === "web-splitter")?.executorRef).toBe("child-web-splitter")
+    // The double really did see the failed attempt and the recovery, in that order.
+    expect(h.raised).toEqual(["lead-member", "web-engineer", "web-splitter"])
+  })
+
+  test("R3: the happy path is unchanged — a live append raises, records its handle and stays running", async () => {
+    /** The sandbox with no injected failure. */
+    const h = harness()
+    /** The live team. */
+    const team = await approveTeam(h, "lead-member")
+    /** A healthy append. */
+    const appended = await h.call("agent_teams_plan", { action: "add_member", member: { name: "builder", prompt: "You build." } }, h.lead) as { team?: TeamRecord; spawned?: string; member?: { status?: string } }
+    expect(appended.spawned).toBe("child-builder")
+    expect(appended.member?.status).toBe("running")
+    /** The record the append wrote. */
+    const record = readTeam(h.workspace, team.teamId) as TeamRecord
+    expect(record.members.map((member) => member.name)).toEqual(["lead-member", "builder"])
+    expect(record.members.find((member) => member.name === "builder")?.status).toBe("running")
+  })
+})
+
+describe("a legacy `failed` row is not a live member on any surface", () => {
+  /**
+   * Write a record carrying a hand-added `failed` row — the shape a build before this contract left behind.
+   * @param h - the sandbox.
+   * @returns the record as written, with its ghost row.
+   */
+  function withGhost(h: Harness): TeamRecord {
+    /** A live team, created through the store and given one real member the store accepts. */
+    const created = createTeam(h.workspace, { teamId: "team-ghost", name: "ghost team", description: "one ghost", leadSessionId: h.lead }, NOW)
+    /** The record with the one REAL member the team was approved with. */
+    const record = addTeamMember(created, { name: "lead-member", description: "the real one" }, NOW)
+    /** The same record plus the zombie a failed raise used to leave. */
+    const ghosted: TeamRecord = {
+      ...record,
+      members: [...record.members, { id: "M9", name: "web-engineer", description: "never raised", status: "failed", spawnedAt: NOW.toISOString() }],
+    }
+    writeTeam(h.workspace, ghosted)
+    return ghosted
+  }
+
+  test("the plan `status` answer names only the members the team has", async () => {
+    /** The sandbox. */
+    const h = harness()
+    withGhost(h)
+    /** The status answer. */
+    const status = await h.call("agent_teams_plan", { action: "status" }, h.lead) as { members?: Array<{ name?: string }> }
+    /** The roster names the answer carries. */
+    const names = (status.members ?? []).map((member) => String(member.name))
+    expect(names).toContain("lead-member")
+    expect(names).not.toContain("web-engineer")
+  })
+
+  test("the `/state` payload and the workspace listing do not count or list it", () => {
+    /** The sandbox. */
+    const h = harness()
+    /** The ghosted record. */
+    const ghosted = withGhost(h)
+    /** The `/state` payload for it. */
+    const payload = buildTeamState(ghosted, h.workspace, h.lead, { kind: "native", reason: "the arm's own executor" })
+    expect(payload.members.map((member) => member.name)).toEqual(["lead-member"])
+    // AND THE LISTING'S COUNT: the number a workspace panel prints must not add a member nobody raised.
+    /** The workspace listing for the same record. */
+    const listing = buildWorkspaceTeams([ghosted], ghosted.teamId)
+    expect(listing.records[0]?.members).toBe(1)
+  })
+
+  test("the graph model renders TASKS only, so a failed member can never be one of its nodes", () => {
+    /** The sandbox. */
+    const h = harness()
+    /** The ghosted record. */
+    const ghosted = withGhost(h)
+    /** A cache wired to a fixed revision, which is all this arm needs. */
+    const models = new GraphModels({ revision: (): number => 0, notify: (): void => {} })
+    /** The served model. */
+    const model = models.get(h.workspace, ghosted)
+    expect(model).toBeDefined()
+    expect(model?.nodes.map((node) => node.id)).not.toContain("web-engineer")
+    expect(model?.nodes.map((node) => node.id)).not.toContain("M9")
+    models.dispose()
+  })
+})
+
+
+== REQUIRED OUTCOME 2: the adapter releases the slot before refusing an id-less start
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-plane.test.ts :: r: 1, text: "t" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   })    test("THROWS an actionable error when the agent scope exposes no section seam", () => {
+packages/mpd-dsh-adapter-plugin/test/adapter-team-surface.test.ts :: bagentProvider({})     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   }) })  describe("teamLiveTeams: the contained fold over the live registry", () => {   test("r
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: ser is passed through verbatim.     expect(typeof dispose).toBe("function")     dispose()   })    test("a non-callable registry answer degrades to a no-op disposer, never a leak", () => {     /** A ct
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: ent_teams_demo" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   })    test("a missing tools service THROWS with the frozen message (parity with the injected 
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts :: r: 1, text: "x" })     expect(typeof dispose).toBe("function")     expect(() => dispose()).not.toThrow()   }) })  describe("agentScope: identity-preserving per-agent scope", () => {   test("context IS
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: f?: (member: string) => unknown }   /** How many times the activation double's `dispose()` was called — the slot-release witness. */   disposals?: { count: number } }  /** The doubles one arm drives, 
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: cord the release, so an arm can prove a leaked slot was handed back. */         dispose(): Promise<void> {           if (options.disposals !== undefined) options.disposals.count += 1           return 
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts :: wait expect(h.executor.spawn(h.lead, { ...REQUEST })).rejects.toThrow(/reported no child id/)     // The registry stayed empty: a member with no handle is a member no call could reach.     expect(h.ex
+--- adapter arm names ---
+   with NEITHER backend every call REFUSES with a sentence, never a TypeError
+   a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks
+   a spawn that reports no id is refused here too
+
+== REQUIRED OUTCOME 4: graph model renders TASK nodes only (artifact + arm)
+removeTeamMember      3
+releaseActivation     3
+status !== "failed"   3
+isLiveMember/terminal 63
+
+== the UPDATED team-record arm must be an UPDATE, not a relaxation
+19
+9:-    // The member that failed says so; the one that spawned keeps its handle.
+10:-    expect(record.members.map((member) => member.status)).toEqual(["running", "failed"])
+12:+    // that actually spawned is on the roster. The old rule kept a `failed` row, which the capacity and
+14:+    expect(record.members.map((member) => member.name)).toEqual(["Senior Engineer"])
+15:+    expect(record.members.map((member) => member.status)).toEqual(["running"])
+
+== the FAN-OUT: dist freshness repo-wide (the writer rebuilt 24 dependents)
+dist exit=0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 755ms
+
+== typecheck + comments
+typecheck exit=0
+$ tsgo --noEmit
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+== scope metadata (stat only)
+ M packages/mpd-dsh-adapter-plugin/dist/index.js
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+ M packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts
+ M packages/mpd-team-core-plugin/dist/index.js
+ M packages/mpd-team-core-plugin/src/index.ts
+ M packages/mpd-team-core-plugin/src/team-store.ts
+ M packages/mpd-team-core-plugin/src/team-web.ts
+ M packages/mpd-team-core-plugin/test/team-record.test.ts
+?? packages/mpd-team-core-plugin/test/agent-slot-hygiene.test.ts
+--- dirty dists across the repo (the fan-out rebuild) ---
+0
+
+== hash sandwich: end 2026-10-26T15:05:58Z
+950f4df08dfc0d54c8b620f2f31d73fbb42f8d15367122f9d0a3294140efcfd3  evidence/cellwork/cr-repairs/2026-10-26T15-04-26Z-T28/scope-end.sha256
+SANDWICH OK: start == end (after settle)

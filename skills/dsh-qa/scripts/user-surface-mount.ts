@@ -52,7 +52,7 @@
 // is ever supplied by this case.
 //
 // PREREQ: absent-dsh-binary dsh install @deepseek-ai/dsh so the real harness binary is on PATH
-// PREREQ: absent-dsh-binary dsh-tui npm i -g @deepseek-harness-tui/dsh-tui@0.17.0 (the TUI plane the palette witness needs)
+// PREREQ: absent-dsh-binary dsh-tui npm i -g @deepseek-harness-tui/dsh-tui@0.18.0 (the TUI plane the palette witness needs)
 // PREREQ: absent-runtime tmux apt-get install tmux (a real PTY is required; stdout must not be a pipe)
 // PREREQ: absent-fixture tui-profile:install the bundle into a dsh-tui profile (dsh plugin --profile dsh-tui add .)
 //
@@ -1163,7 +1163,7 @@ async function main(): Promise<number> {
   }
   if (!tuiBinaryPresent() || !tmuxPresent()) {
     /** Which prerequisite is missing, in the suite's marker grammar. */
-    const missing = !tuiBinaryPresent() ? { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.17.0" } : { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux" }
+    const missing = !tuiBinaryPresent() ? { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.18.0" } : { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux" }
     /** `--no-skip` turns the skip into the failure it is when a lane asked for it. */
     const strict = process.argv.includes("--no-skip")
     console.log("[mpd-qa] " + (strict ? "FAIL" : "SKIP") + " case=" + SLUG + " lane=real reason=" + missing.code + " prereq=" + missing.probe + ' remedy="' + missing.remedy + '"')

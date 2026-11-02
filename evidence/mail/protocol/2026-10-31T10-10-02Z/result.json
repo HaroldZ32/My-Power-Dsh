@@ -1,0 +1,231 @@
+{
+  "review": {
+    "lane": "R1",
+    "boardTask": "T5",
+    "workTask": "T1",
+    "subject": "packages/mpd-mail-protocol: types, validators, fold, unit tests",
+    "contract": ".mpd/plans/mail-unify.md §4 / AC-1",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "reviewedTree": "working tree — packages/mpd-mail-protocol/ is UNTRACKED at the base head (??), so this review is of the on-disk package the captain has not committed yet",
+    "hashesReadAtUtc": "2026-10-31T10:11:51Z",
+    "hashes": {
+      "src/index.ts": "ab5bd237d475d8aeae0fc9113b15fc16779dd02692cd144387dec9c1cf0972ed",
+      "src/types.ts": "18201793b5ec7e8272a0cc98b0f3b4cb2dae9a9573d9c9477c1f5b1cdc97ba68",
+      "src/validate.ts": "e62a2c0cefde982f1e92c83adeacb6450de97e00b95ed2cd8606f88b87887629",
+      "src/fold.ts": "80541ef5c90a406d42416c6aa5a070feeb58ec08b2d81f8d9cc3157970f2ea48",
+      "test/validate.test.ts": "1e8e7984f5815c5eb6c3fb1d6070f62db68d647a867669dc0a737b5960db3d8b",
+      "test/fold.test.ts": "c82823672f4ecc3eadc95fd32bd8115aa18e1c3ad7dc9e641e5a38f4514d42d9",
+      "dist/index.js": "f00e0c39356a57ecc6ee0bf7a2c82f00a3147fca59e3f84c8085f8aaaf0091b3",
+      "package.json": "7a8e006afbf0aae87b333fbd6ea030ff6e7420c8fd2b929dc7390a39530c9ce7"
+    }
+  },
+  "verdict": {
+    "task": "request-changes",
+    "ac1": "PASS",
+    "riskLevel": "low-medium",
+    "justification": "AC-1 is met — all seven named arms are covered by 33 green tests and the T1-scope gate set is green — but two Medium contract-integrity gaps (the answer's questionId is neither required non-empty nor compared with the referenced question, and I7's 'a thread's id is its first message id' is unenforced for an explicit threadId) must be resolved, or the frozen contract amended, before T2/T4 build on those two correlation keys."
+  },
+  "gates": [
+    {
+      "id": "bun-test-mail-protocol",
+      "command": "bun test packages/mpd-mail-protocol",
+      "exit": 0,
+      "decidingOutput": "33 pass, 0 fail, 71 expect() calls, Ran 33 tests across 2 files"
+    },
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "decidingOutput": "$ tsgo --noEmit (no diagnostics)"
+    },
+    {
+      "id": "verify-comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "decidingOutput": "scanned 512 TypeScript file(s) of 512; inspected 45626 declaration(s); VERDICT: PASS"
+    },
+    {
+      "id": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "decidingOutput": "FRESH packages/mpd-mail-protocol/dist/index.js sha f00e0c39356a... <- packages/mpd-mail-protocol/src/index.ts"
+    },
+    {
+      "id": "verify-docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "decidingOutput": "pairs=53 failed=0 violations=0 links=473 dead=0 — PASS (includes the new package README pair)"
+    },
+    {
+      "id": "verify-manifest",
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "decidingOutput": "files-allowlist: 25 pattern(s), 0 required path(s) not admitted; packed-content 1124 file(s), 0 required path(s) absent; VERDICT: PASS"
+    },
+    {
+      "id": "verify-rows",
+      "command": "bun run verify:rows",
+      "exit": 0,
+      "decidingOutput": "37 row ids match the 2-file bundle patch layer (the library correctly contributes NO row)"
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "result": "PASS",
+      "reason": "33 tests across test/validate.test.ts + test/fold.test.ts cover every named arm: unique labels (I2 duplicate/empty/no-option arms), verbatim echo (I4 exact case+whitespace arm), unknown label refused WITH the label list (asserts entry.labels equals both offered labels and the message contains the refused string), single vs multi (I3), fan-out row count (I6: 2 recipients, sender excluded, duplicates collapsed), fold tolerance (junk/null/torn/foreign wake/unknown state rows, 5 reported problems), thread inheritance (I7 M1<-M2<-M3 chain, explicit T9). Negative arms assert MailProblemCode, not merely ok:false.",
+      "evidence": "gate bun-test-mail-protocol; evidence/mail/protocol/2026-10-31T10-10-02Z/output.log"
+    },
+    {
+      "id": "AC-2",
+      "result": "NOT-CHECKED",
+      "reason": "Team mailbox lane (T2/T7 — R2); T2 is in_progress at review time."
+    },
+    {
+      "id": "AC-3",
+      "result": "NOT-CHECKED",
+      "reason": "Cellwork lane (T4/T9 — R4)."
+    },
+    {
+      "id": "AC-4",
+      "result": "NOT-CHECKED",
+      "reason": "Permit/wait lane (T3/T8 — R3)."
+    },
+    {
+      "id": "AC-5",
+      "result": "NOT-CHECKED",
+      "reason": "Guard/prompt lane (T3/T4)."
+    },
+    {
+      "id": "AC-6",
+      "result": "NOT-CHECKED",
+      "reason": "Docs lane (T6). The package README pair exists and the docs gate is green, but docs/mail*.md and the cellwork pair are T6's."
+    },
+    {
+      "id": "AC-7",
+      "result": "NOT-CHECKED (full form) / T1-scope subset PASS",
+      "reason": "All seven AC-7 commands were run at 2026-10-31T10:10Z and every one exited 0 (see gates[]). The only AC-7 element not exercised is `bun test packages/mpd-team-core-plugin` + `packages/mpd-cellwork-plugin`, deliberately omitted because T2 is mid-edit (R2/T9 own those); the full sweep belongs to T10.",
+      "evidence": "evidence/mail/protocol/2026-10-31T10-10-02Z/output.log"
+    },
+    {
+      "id": "AC-8",
+      "result": "NOT-CHECKED",
+      "reason": "Web projection lane (T2/T7)."
+    }
+  ],
+  "contractRules": [
+    { "rule": "I1 no index field", "result": "PASS (residual)", "note": "compile-time proof MAIL_PAYLOADS_CARRY_NO_INDEX + runtime findIndexFields; Nit N5 records the enumerated-name and payload-coverage residual." },
+    { "rule": "I2 >=1 option, non-empty unique labels", "result": "PASS", "note": "validateQuestion refuses empty options, blank labels and duplicate labels; questionId emptiness is F1's scope." },
+    { "rule": "I3 single vs multi cardinality", "result": "PASS", "note": "validateAnswer refuses 2 labels on single, 0 labels on multi, 0-label-0-custom on single; N4 records the label+custom latitude." },
+    { "rule": "I4 verbatim echo with valid list", "result": "PASS", "note": "validateAnswer/validateReferences populate MailProblem.labels on answer-unknown-label; exact match, no trim/case fold." },
+    { "rule": "I5 references in the same folded mailbox", "result": "PASS (with F1)", "note": "validateReferences checks replyTo exists and answerTo exists + is a question row; it never compares answer.questionId with that question's questionId — F1." },
+    { "rule": "I6 broadcast is a fan-out", "result": "PASS", "note": "fanOutTargets excludes sender and collapses duplicate ids; no multi-recipient row exists in MailSendRecord." },
+    { "rule": "I7 thread id is the first message id; reply inherits replyTo's thread", "result": "PARTIAL", "note": "inheritance clause holds via inheritedThreadId + foldMail; the 'first message id' clause is unenforced for an explicit threadId — F2." }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "Medium",
+      "title": "An answer's questionId is neither required to be non-empty nor compared with the question it answers",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · validateAnswer / validateReferences; packages/mpd-mail-protocol/src/types.ts · MailAnswer.questionId",
+      "what": "validateReferences resolves answer.answerTo to a folded question row and then echo-checks the labels, but never compares answer.questionId with target.question.questionId. validateAnswer only requires answerTo to be a non-empty string. Probes P1 (questionId 'Q-OTHER' vs referenced question 'Q1') and P1b (questionId '') both return {ok:true}. validateQuestion likewise accepts questionId ''.",
+      "why": "The frozen contract makes questionId the correlation key of a broadcast fan-out ('same questionId, same threadId', §4 I6/§5): every recipient's answer carries the SAME questionId so the asker can aggregate answers to one question. A writer (a model) can therefore state the wrong key, pass every validator, and the asker either ignores the answer or attributes it to a different question — exactly the silent drift class the protocol exists to remove, one field over from the label echo. The package's own types.ts doc says questionId is 'copied from its question payload', and nothing enforces the copy.",
+      "direction": "In validateReferences, when target.question is present, require answer.questionId === target.question.questionId (new MailProblemCode or reference-unknown) and require it non-empty; alternatively the captain amends the frozen contract to declare questionId decorative, in which case T2/T4 must correlate by answerTo (message id) only. Do not leave the two reads disagreeing.",
+      "evidence": "probes P1, P1b, P5 in output.log"
+    },
+    {
+      "id": "F2",
+      "severity": "Medium",
+      "title": "I7's 'a thread's id is its first message id' is not enforced: an explicit threadId naming no message is accepted silently, and a shipped test codifies it",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · inheritedThreadId; packages/mpd-mail-protocol/src/fold.ts · foldSend; packages/mpd-mail-protocol/test/fold.test.ts · 'a reply inherits its replyTo's thread recursively, and an explicit threadId wins'",
+      "what": "foldSend trusts any non-empty explicit threadId (inheritedThreadId returns it without a lookup) and records no problem. Probe P2 folds a send row with threadId 'T9' and no message T9 anywhere: result threadId 'T9', problems []. The fold test asserts exactly that (M4 -> 'T9'), so the deviation is pinned as intended behaviour. validateReferences does not check threadId at all (I5 names only replyTo/answerTo).",
+      "why": "Contract §4 I7 states the invariant in one sentence: 'a thread's id is its first message id'. A consumer that follows the documented type ('The thread id, RESOLVED by the fold') and looks the thread root up as a message id will find nothing, so a thread can have no root and the invariant minted by the protocol is unverifiable after the fact. It also means a sender can forge/extend another thread by stating its id.",
+      "direction": "Resolve an explicit threadId through the folded mailbox (it must equal an already-folded message id, or the row's own id) and report a problem when it does not — keeping the fold tolerant, as it does for other anomalies; or amend I7 to say a thread id is 'the first message id OR a sender-declared string', and update the test's intent comment. Pick one; the current state has the contract and the test asserting opposite things.",
+      "evidence": "probes P2 in output.log"
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "A replyTo that names no folded message silently re-roots the reply, with no problem line",
+      "where": "packages/mpd-mail-protocol/src/fold.ts · foldSend / inheritedThreadId",
+      "what": "Probe P2b: [M1, M2{replyTo:'M-ghost'}] folds to threads ['M1','M2'] with problems []. Every other tolerated anomaly in the fold (junk line, torn send, unknown state row, wrong-kind payload) pushes a problem; an unresolvable reference does not.",
+      "why": "The fold's stated discipline is 'one line per malformed row the fold skipped; never fatal, so a torn log still folds' — reporting is how a torn log stays diagnosable. A silently re-rooted reply turns one thread into two with no trace, which is the same corruption class the fold reports elsewhere.",
+      "direction": "Keep the tolerant fallback (own id) but push a problem line naming the unresolved replyTo, as foldStateRecord does for an unfolded message.",
+      "evidence": "probes P2b in output.log"
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "title": "A duplicated send id silently overwrites the earlier message (last write wins) and is not reported",
+      "where": "packages/mpd-mail-protocol/src/fold.ts · foldSend (state.byId.set); test/fold.test.ts · 'a duplicated message id folds once, in its first log position'",
+      "what": "Probe P7: two send rows share M1; the folded body is the SECOND row's text, the message keeps its first log position, and problems is []. The test asserts this as intended ('body' === 'second write').",
+      "why": "An append-only log should be a provenance record; silently replacing an earlier message's subject/body after delivered/read rows may already point at it means a recipient's ack now refers to content that changed, and the duplicate is invisible in problems[].",
+      "direction": "Report the duplicate as a problem line and state the policy (first-wins or last-wins) in the fold's doc comment and the test's intent; a repair is not required by the contract, a declared behaviour is.",
+      "evidence": "probes P7 in output.log"
+    },
+    {
+      "id": "N3",
+      "severity": "Nit",
+      "title": "An answer with no selection and no custom passes validateEnvelope — the question-independent half of I3 is not checked",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · validateAnswer (early return when question is undefined)",
+      "what": "Probe P4: validateEnvelope({kind:'answer', answer:{questionId:'Q1', answerTo:'M1', selected: []}}) returns {ok:true}. validateAnswer returns before the cardinality block whenever the question is not supplied, so a definitively invalid answer (zero labels, zero custom) passes the documented pre-flight check.",
+      "why": "The empty-and-customless answer is invalid for BOTH single and multi select, so it needs no question to refuse; the package advertises validateEnvelope as the answer-time check a sender can run before it folds anything. Catching it only later (validateReferences) costs a round trip and lets a bad row reach the log if the writer uses the envelope check alone.",
+      "direction": "Refuse selected.length === 0 && no custom before the question-undefined early return; keep the multi-select minimum check where the question is needed.",
+      "evidence": "probes P4 in output.log"
+    },
+    {
+      "id": "N4",
+      "severity": "Nit",
+      "title": "Early returns truncate the problem list, contradicting the file header's 'WHOLE list in one refusal' claim",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · validateAnswer (non-array selected), validateQuestion (non-array/empty options)",
+      "what": "Probe P8: an answer with a non-array selected AND an empty answerTo reports only the answer-selection problem; the missing answerTo is not reported. validateQuestion likewise returns after the options problem and never checks question text.",
+      "why": "validate.ts's header states every function 'keeps going after one rule fails so a sender sees the WHOLE list in one refusal'; these two returns make that claim false. A sender fixing one problem at a time is the loop the protocol is meant to shorten.",
+      "direction": "Either drop the early returns (guard the later reads instead) or soften the header claim to 'most rules'; a repair is cheap.",
+      "evidence": "probes P8 in output.log"
+    },
+    {
+      "id": "N5",
+      "severity": "Nit",
+      "title": "Single-select accepts one label PLUS custom, while the contract and the README say 'exactly one label (or a custom-only answer)'",
+      "where": "packages/mpd-mail-protocol/src/validate.ts · validateAnswer (single-select branch); packages/mpd-mail-protocol/README.md · invariants table row I3",
+      "what": "Probe P3: {selected:['A. Unify the stores'], custom:'but only partly'} returns {ok:true}. Contract §4 I3 says a single-select answers with 'EXACTLY ONE selected label (or a custom-only answer)', and the package README row I3 says the same ('or gives custom alone').",
+      "why": "The behaviour is benign and arguably useful, but the frozen contract and the shipped README both state a stricter rule than the validator enforces; a later reader cannot tell which is authoritative. No user-visible break today.",
+      "direction": "Decide: tighten validateAnswer to refuse label+custom on single-select, or amend the contract/README to 'one label with an optional note'; add the chosen arm to the suite either way.",
+      "evidence": "probes P3 in output.log"
+    },
+    {
+      "id": "N6",
+      "severity": "Nit",
+      "title": "I1's runtime scan is an enumerated denylist, and the compile-time proof does not cover MailSendRecord's own keys",
+      "where": "packages/mpd-mail-protocol/src/types.ts · INDEX_FIELD_NAMES / MAIL_PAYLOADS_CARRY_NO_INDEX",
+      "what": "Probe P6: findIndexFields reports [] for {position, choice, optionPosition, idx}. The compile-time proof covers MailEnvelope, MailOption, MailQuestion, MailAnswer; MailSendRecord extends MailEnvelope, so keys MailSendRecord adds itself would not redden HasNoIndexField.",
+      "why": "I1 says 'NO index field exists in any payload'. Two bounded gaps: a differently-spelled positional field escapes the scan, and the type proof does not extend to the send-record type. The blast radius is contained — the fold's field whitelist drops unknown keys before they reach a reader, and the T2/T4 tool schemas are declared additionalProperties:false — but the invariant is documented as absolute.",
+      "direction": "Either add MailSendRecord/MailMessage to the compile-time conjunction and a pattern fallback (e.g. a /index|position|choice|option(no|num)/i scan) or state the enumerated boundary explicitly in the contract so the residual is declared, not implied.",
+      "evidence": "probes P6 in output.log"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "ordinalPrefix past-Z numbering (index 26 -> '27)')", "reason": "Cosmetic/presentation only; the contract calls the ordinal a documented convention rather than a checked shape, and the function is total. Set aside." },
+    { "item": "labelsOf coercing non-string labels with String()", "reason": "Unreachable on the acceptance path: validateQuestion refuses non-string labels, and the fold whitelists the payload; no echo check can be fooled by it. Set aside." },
+    { "item": "Fold does not content-validate folded question/answer payloads (a duplicate-label or zero-option question written straight into the log is carried)", "reason": "§12 makes tolerance the fold's mandate and assigns validation to the writer path; changing it would be a design amendment, not a defect of this package. Set aside." },
+    { "item": "README/README.zh-CN accuracy beyond the two divergences cited in F2/N5", "reason": "T6 owns the docs lane (AC-6) and will rewrite/extend them; only the contradiction with shipped behaviour is reported here. Not judged." },
+    { "item": "dist/index.js contents", "reason": "Not read by hand; freshness and byte identity are the gate's subject (FRESH, sha f00e0c39..., deterministic rebuild-and-diff). Not judged by inspection." },
+    { "item": "Whether mpd-team-core-plugin actually consumes foldMail / these validators", "reason": "Integration seam belongs to T2 (R2/T7); the package's own contract is met without it. Not judged here." },
+    { "item": "Package name @mpd-dsh/mail-protocol vs directory mpd-mail-protocol", "reason": "Both spellings already occur across packages/* (e.g. @mpd-dsh/team-core-plugin vs @mpd-dsh/hashline), so no convention is violated. Set aside." },
+    { "item": "cordis.patch.yml / preset row for the new package", "reason": "Contract §4 says library only, no row; verify:rows (37 ids) and the grep for the package name confirm it contributes none. Not a finding." }
+  ],
+  "bounds": [
+    "Reviewed the WORKING TREE (packages/mpd-mail-protocol/** untracked at HEAD e9be8890), not a commit; the captain is the only git writer and nothing was committed.",
+    "Read: src/index.ts, src/types.ts, src/validate.ts, src/fold.ts, test/validate.test.ts, test/fold.test.ts, package.json, README.md; dist/index.js only through the freshness gate.",
+    "Ran: the seven gates in gates[] plus a purpose-written probe script (probes.ts) exercising behaviour the shipped suites do not assert. All at 2026-10-31T10:10-10:12Z UTC.",
+    "Did NOT run: `bun test packages/mpd-team-core-plugin` / `packages/mpd-cellwork-plugin` (AC-7 full form — T2 mid-edit, R2/R4 own them), `bun run verify:gates` (aggregate expects a clean tree and a clean skills corpus; wave in flight), `bun run verify:docker` (Docker lane is release-last and not required for a pure library package).",
+    "Did NOT review T2/T3/T4 code or docs (in flight / other lanes). No package source was edited; findings are described, never applied."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/protocol/2026-10-31T10-10-02Z/",
+    "files": ["result.json", "output.log", "probes.ts"],
+    "command": "bun probes.ts (P1-P8 printed to output.log)"
+  }
+}

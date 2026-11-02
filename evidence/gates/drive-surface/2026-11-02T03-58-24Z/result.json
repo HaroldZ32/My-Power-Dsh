@@ -1,0 +1,91 @@
+{
+  "wave": "drive-surface",
+  "branch": "feature/mpd-drive-surface",
+  "base": "1aa24dc4 (dev after PR #87)",
+  "measuredAt": "2026-11-02T03:58:24Z",
+  "toolchain": "bun 1.4.0 from .toolchain (recorded buildToolchain), node v24.21.0",
+  "scope": [
+    "packages/mpd-dsh-adapter-plugin: five drive-surface seams (askUserQuestion, onUserQuestionRequest, dshGoPresent, dshGoPanel, dshGoRefresh) + capabilities.askUser/.dshGo",
+    "packages/mpd-team-core-plugin: exec-free approveTeam/runDispatch, the mpdTeamActions service, POST /plugins/mpd-team/{approve,dispatch}",
+    "packages/mpd-roles-plugin: the question relay, the mpdQuestions service, GET /plugins/mpd-roles/questions + POST /plugins/mpd-roles/questions/answer",
+    "package.json + dsh-go/views/mpd.json: the DSH Go protocol-1 manifest and its static fallback view",
+    "packages/mpd-bundle-plugin: the live DSH Go panel host half (panel id mpd)",
+    "scripts/pack-mpd.ts + scripts/verify-pack-closure.ts: directory-shaped files entry repair, dshGo manifest pass-through, mpd-mail-protocol completeness repair, a required-directory byte arm",
+    "docs/drive-surface.{md,zh-CN.md} + both docs index files"
+  ],
+  "checks": {
+    "distFreshness": {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED file listed (packages/mpd-mcp-codegraph/dist/serve.js, sha-pinned prebuilt)",
+      "rebuild": "35 targets rebuilt from the repo root with .toolchain/node_modules/.bin/bun; the adapter edit inlined into every dependent, which is why all 25 were stale before the rebuild"
+    },
+    "typecheck": { "command": "node_modules/.bin/tsgo --noEmit", "exit": 0, "observed": "no diagnostics" },
+    "packageTests": {
+      "command": "bun test packages/<pkg> for every package with a test dir (pinned toolchain)",
+      "exit": 0,
+      "observed": "29 packages, 29 green, 0 failing. Totals of the touched packages: adapter 305, team-core 491, roles 240, bundle 277.",
+      "note": "a repo-root `bun test` is deliberately NOT used: it scans evidence/** fixtures and reddens on them (AGENTS.md §11)"
+    },
+    "staticGates": {
+      "command": "bun run verify:gates",
+      "exit": 0,
+      "observed": "PASS - 9/9 member gate(s) green (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows)"
+    },
+    "hostOverride": {
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "observed": "PASS: every id-target is bundle-owned (0 of 0 collide with the 214 host-declared row ids)"
+    },
+    "manualPaths": {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS resolved=153 over-report=73 under-report=83 declared=2"
+    },
+    "docsParity": {
+      "command": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "observed": "pairs=55 failed=0 violations=0 exempt=24 derived=3 links=507 dead=0 - PASS (was pairs=54 before this wave's new doc pair)"
+    },
+    "packClosure": {
+      "command": "node scripts/verify-pack-closure.ts",
+      "exit": 0,
+      "observed": "root files 2/2; declared packages 30/30 present; content bytes 633 compared / 633 identical / 0 drift; completeness 530 compared / 529 present / 1 declared exemption / 0 absent",
+      "selfTest": "node scripts/verify-pack-closure.ts --self-test -> exit 0, 35/35 arms (baseline before this wave: exit 1, 31/34, reddened by the pre-existing mpd-mail-protocol completeness row)"
+    },
+    "pluginManifest": {
+      "command": "node scripts/verify-plugin-manifest.ts --pack",
+      "exit": 0,
+      "observed": "VERDICT: PASS; packed-content: npm pack --dry-run lists 1146 files, 0 required paths absent"
+    },
+    "dshGoBytes": {
+      "command": "cmp dsh-go/views/mpd.json dist/mpd-package/dsh-go/views/mpd.json",
+      "exit": 0,
+      "observed": "identical, sha256 e9cf52198a21a013e8fba83cbaa817ce3509048bdf1f9c665380f0c92e0fcfef (949 B on both sides); the packed manifest carries the dshGo block"
+    },
+    "mount": {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "observed": "PASS - boot checks all true (http, adapterProvided, adapterSeams, adapterToolCall, corpusFromBundle, noPresetRefusal, probePass, presetProbeOk), install/composed/noHomeCopy/layerDurability/uninstall all ok",
+      "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T03-19-48.023Z"
+    },
+    "docker": {
+      "command": "node scripts/docker-e2e.ts --mode source|oneclick --require-docker --live, then --mode source --require-docker --no-browser",
+      "exit": null,
+      "observed": "PENDING at the time this row was written; the lane's own record is the evidence (evidence/docker/drive-surface/)"
+    }
+  },
+  "packerRepairsDisclosed": {
+    "directoryFilesEntry": "package.json's `files` gained the directory entry `dsh-go`; cpAssets copies a directory recursively now (it previously threw ERR_FS_EISDIR on any directory entry, so no directory entry could ever have been packed)",
+    "manifestPassThrough": "writeManifest() rebuilt the packed manifest from a literal and dropped the new root dshGo block; it is now passed through verbatim (measured: dshGo was undefined in the artifact before the fix)",
+    "mailProtocolCompleteness": "PRE-EXISTING defect repair, not part of the feature: packages/mpd-mail-protocol/dist/index.js was committed by 41c5706f with no packer table entry, so the closure gate reddened on dev before this branch. It joined INLINED_PKGS (the documented no-patch-row library class, like mpd-graph-core), which ADDS that one path to the release artifact.",
+    "requiredDirectoryArm": "REQUIRED_ROOT_FILES now names dsh-go and the gate stat-walks a required root entry: a directory is compared file-by-file, and a packed tree missing an inner file reddens with that file named (new self-test arm 14b, derived from the real tree rather than hard-coded)"
+  },
+  "bounds": [
+    "No Flutter/DSH Go app exists in this workspace: the native panel is proven against the upstream protocol schemas, the view budget walk, the manifest gate and service doubles. A device install is the reader's check.",
+    "HTTP route guards beyond the host fence are unit-proven against a server double (the fence answers before a bare request reaches 405/400/413), exactly as the team watchdog's routes are.",
+    "The relay's fallback behaviour is proven when nobody else answers; the desktop-plus-phone case is 'the desktop wins' by construction, not by a live two-answerer run.",
+    "The closure gate has no arm for a byte-DIFFERING file inside a required directory entry, and an invented extra file inside an artifact dsh-go is not detected (pre-existing scope of the manifest rule).",
+    "mpd-team-core's action routes reuse the team plane's existing mount seam without the watchdog's per-server WeakMap tracker: the read routes register in the same call untracked, so a second tracker would diverge."
+  ]
+}

@@ -21,7 +21,7 @@ service is the **fallback** for a composition that runs the official executor, r
 | `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend raises a durable child through `ctx.subagents.startActivation` on the pinned host (harness 0.2.1+) and keeps the retired `ctx.subagents.startContinuable` only as the older-host fallback (`CONTINUABLE_START_MEMBERS`, probed newest-first by `continuableStartMember`), while the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, persists a declared `kind` from `task.kind` or its top-level alias (an unknown word is refused), and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
 | `agent_teams_task` | `claim`, `contract`, `release`, `complete`, `fail`, `depend` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending`; `complete`/`fail` are the terminal verbs (owner-only, optional `note`/`expected_revision`, a `FAIL` releases its dependents); `depend` APPENDS `blocked_by` edges to an EXISTING row — idempotent (a re-added reference is a reported no-op), refused for a terminal row, for an unknown `task_id`, for a caller who is neither the row's owner nor the team's Lead, and for a SELF-EDGE or ANY CYCLE (2-node or transitive); every refusal returns BEFORE any write, so `blockedBy` and `revision` are unchanged — a cyclic edge could never satisfy the readiness rule, and `depend` appends only, so the row would be permanently not-ready — and it reports a reference that names no task: kept verbatim in `blockedBy`, named in the answer, and persisted on the row as `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing in the TEAM-SCOPED ledger; `release` frees it and reopens the row |
-| `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |
+| `agent_teams_mail` | `send`, `unread`, `read`, `summary`, `permit`, `wait` | the team mailbox: ONE durable stream carrying `message`/`question`/`answer` rows, with a read state the official one cannot provide; `permit` issues a wait grant (this team's Lead only) and `wait` blocks inside it — the whole protocol is in [`docs/mail.md`](../../docs/mail.md) |
 | `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
@@ -101,7 +101,9 @@ happened instead of every 1000–2000 ms.
 Server-Sent Events, under the same `/plugins/mpd-team/*` family as the four JSON routes (the host
 throws on a duplicate exact route, and `/plugins/events` belongs to the harness's own HMR row).
 The workspace and session are resolved from the request **per request**, exactly as the JSON routes
-resolve them.
+resolve them. The two MUTATING routes in that same family — `POST /plugins/mpd-team/approve` and
+`POST /plugins/mpd-team/dispatch` — are documented under **The action plane** below; this section
+covers the read/stream family only.
 
 ```
 HTTP/1.1 200 OK
@@ -140,6 +142,116 @@ data: {"rev":8}
 - The feed follows the **team record and the teams index**. The sidecar files (the staged plan, the
   contracts, the hold, the mailbox) are not published by it.
 - `revision` is **per process**. Two processes serving the same workspace each count their own windows.
+
+## The action plane — exec-free actions and their two routes
+
+The two bodies used to live inline in the `agent_teams_plan` / `agent_teams_dispatch` handlers, which
+made the only surface that could drive them a model turn carrying a live tool-call context
+(`exec.agent`) to spawn and send; a browser panel, a phone or a native DSH Go panel has no such
+context. `src/team-actions.ts` holds those bodies now as two exec-free functions — same validation
+order, same store writes, same reply fields — and the row exposes the SAME sequence three ways: the
+tool handlers, the `mpdTeamActions` service and two HTTP routes. That is what lets a button (a browser
+panel, a phone, a native DSH Go panel) drive a team.
+
+### The service (`mpdTeamActions`)
+
+The row publishes it under the id `mpdTeamActions` (the exported constant `TEAM_ACTIONS_SERVICE`)
+BEFORE its tools, so a consumer that resolves it during this row's own activation finds a live member.
+
+| Member | Signature | Contract |
+|---|---|---|
+| `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | approve the plan staged by `sessionId`, as that session's live agent |
+| `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | one dispatch pass for that session's team; `limit` `0`/absent means no cap, `dryRun` decides the pairing and sends nothing |
+
+`TeamActionResult<Payload>` is `({ ok: true } & Payload) | { ok: false; error: string; unexpected?: true }`
+— a RESULT, never a rejection, because a route must answer instead of throwing into the host and a panel
+has to render the refusal. `unexpected` marks a caught THROW (see "One action at a time" below): the
+sentence stays in `error` for the row log and the tool path, while a route answers the generic `500`
+instead of forwarding it.
+
+- `approve`'s payload: `plan` (on a real approval the persisted plan, marked approved; on the `dryRun`
+  preview the staged plan unchanged), `team` (the record it wrote; ABSENT only on `dryRun`), `created`
+  (`{ members: [{ name, id }], tasks: [{ subject, id }] }` — real ids on approval, empty strings on the
+  preview — plus `unresolved` when a blocker named no task), and `stoppedAt` when a spawn stopped the
+  sequence.
+- `dispatch`'s payload: `pairs` (the pairings the transport accepted — `taskId`, `subject`, `memberId`,
+  `memberName`, optional `note`), `skipped` (every task left out, with `taskId`, `subject`, `reason`)
+  and, when relevant, `forgotten`, `holdRead`, `reaped`, `halted` or `refused`.
+- **"not live" is an answer, not a throw.** A session the live registry does not know answers
+  `{ ok: false, error: "session <id> is not live" }` from BOTH members; a session whose workspace cannot
+  be attributed answers `{ ok: false, error: <the resolver's message> }`. Neither member throws for a
+  bad session id.
+- **Liveness matches the SESSION, not only the agent id.** `dsh.liveAgent(sessionId)` answers by AGENT id,
+  so the service AND the routes fall back to a `liveAgents()` scan matching `session.id` — the same
+  fallback `workspaceRootForSessionOf` and the TUI adapter already make. A host that gives an agent an id
+  different from its session id is therefore live to every surface, and the refusal sentence is unchanged.
+- **The caller is the TOOL path's caller.** The workspace, session id and `lineage` are derived exactly
+  as `where(exec)` derives them, from the resolved live agent: a resumed or forked Lead contributes the
+  parent session the harness recorded, so the service (and both routes) resolves the SAME team its own
+  tool calls resolve; a recorded DELEGATION CHILD contributes an EMPTY lineage and never inherits its
+  captain's team.
+
+**The functions are exec-free.** `approveTeam(deps, caller)` and `runDispatch(deps, caller, input)`
+read no cordis context and no tool exec: the clock, the executor, the approval effects, the team
+resolver, the watchdog reading, the service lookup, the row log, the idle guard's dispatch window and
+the two approval-time guards all arrive on `TeamActionDeps`. The caller is explicit too —
+`{ workspace, sessionId, lineage, agent?, signal? }`. The surface-driven difference from the tool body
+is the missing agent: with `caller.agent` absent both functions answer
+`{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` **before the
+first store write** — no record, no spawn, no approval effect, no dispatch window. A tool caller always
+carries an agent, so its behaviour is unchanged. That refusal is what makes a route safe: a route has no
+tool-call context to inherit, so it must never spawn, send or half-write a team just to discover that it
+cannot act.
+
+**One action at a time, per workspace + session.** Both functions take an in-process in-flight slot keyed
+by `workspace + sessionId`, checked BEFORE the first `await` and released in a `finally`. A second caller
+is REFUSED — `an approval for this session is already running` / `a dispatch pass for this session is
+already running` — never queued, because a queue would hide the duplicate from the operator. That is what
+keeps two concurrent approvals from minting TWO teams out of one staged plan, and two concurrent passes
+from delivering the same pairing before either compare-and-set can reject it. The slot is **process-local**:
+it does not coordinate two dsh processes sharing one workspace, which is a stated bound.
+
+**A policy refusal and an unexpected failure are different answers.** The sentences the body returns
+(validation and policy) stay `{ ok: false, error }`, and a route answers `400` with them. Anything that
+reaches a catch is marked `unexpected: true` and keeps its message: a store failure's text may embed a
+filesystem path, so the `POST` routes answer the documented generic `500` and log the detail, while the
+TOOL path still rethrows the real sentence unchanged.
+
+### The two routes (`POST /plugins/mpd-team/approve`, `POST /plugins/mpd-team/dispatch`)
+
+| Route | Body | Success (`200`) |
+|---|---|---|
+| `POST /plugins/mpd-team/approve` | parsed, then IGNORED; empty or `{}` is accepted | `{ ok: true, team: { id, name, memberCount, taskCount }, created: string[] }` — `created` lists the members' executor handles, then the board's task ids |
+| `POST /plugins/mpd-team/dispatch` | `{ limit?: number, dryRun?: boolean }`; `limit` a finite number `>= 0`, `dryRun` a boolean; an empty body is one uncapped pass | `{ ok: true, pairs: [{ taskId, memberId, memberName }], skipped: [{ taskId, subject, reason }] }` |
+
+- **The session comes from `?sessionId=` and nowhere else.** It is resolved by the same
+  `workspaceForRequest` the read routes use, so a request acts on the workspace that session owns; a
+  body field cannot select a session (extra fields are dropped at the boundary). A request that names
+  no session is a `400`.
+- **The order is the contract.** The host fence (`dsh.webRequestRejection`, delegated through the
+  adapter) answers `401`/`403` BEFORE the method guard, the body stream, the session lookup and the
+  store; then this module's own `405` (with `allow: POST`); then the byte cap; then the JSON parse
+  and the dispatch body's field validation; then session presence and liveness; only then the action.
+  It is the shipped
+  `mpd-team-watchdog-plugin/src/web.ts` discipline applied to a mutation.
+- **The cap is 64 KiB on the RAW BYTES** (`MAX_ACTION_BODY_BYTES = 64 * 1024` = 65,536 bytes),
+  enforced while streaming and BEFORE any parse: an oversized body is a `413` and never becomes a
+  JavaScript value. An empty body is admitted as `undefined`.
+- **The success payload is the narrow projection above** — never a store object, never a path.
+
+| Status | When |
+|---|---|
+| `200` | the action succeeded; the projection above |
+| `400` | malformed JSON, an invalid dispatch body (`limit`/`dryRun`, or a body that is not a JSON object), a request naming no session, or an action refusal (including an unattributable workspace) |
+| `405` | any method other than `POST`; the answer carries `allow: POST` |
+| `409` | the named session has no live agent — the action NEVER runs |
+| `413` | the body exceeds 65,536 bytes, refused unparsed |
+| `500` | an unexpected throw, or an action result marked `unexpected`; the client gets ONE generic sentence and no path (the detail goes to the row log) |
+
+Both routes delegate to the published `mpdTeamActions` members, never to a second copy of the
+sequence, so a button and a tool call run the same approval or dispatch pass. They are registered ONLY
+when the composition supplies the action surface: a row that cannot act does not advertise an endpoint
+that can only fail, and a read-only composition mounts the read routes alone.
 
 ## Semantics
 
@@ -187,6 +299,39 @@ data: {"rev":8}
   SUPPLIED `member` must RESOLVE: an unknown name is REFUSED with the value named and the roster listed
   (`"<name>" is not a member of this team (members: …)`), and NO mail is returned — a typo never falls
   back to the caller's own inbox.
+- **ONE STREAM, THREE KINDS.** A row carries `kind` (`message` | `question` | `answer`) plus
+  `replyTo`/`threadId` and the payload its kind names; a legacy row with no `kind` folds as `message`.
+  A question offers LABELS and an answer echoes those label STRINGS verbatim — there is no option index
+  anywhere, which is the mechanical fix for the 2026-10-31 relay defect. The envelope, the validators and
+  the tolerant fold live in [`mpd-mail-protocol`](../mpd-mail-protocol/README.md); the operator's view,
+  the addressing rules and the declared bounds are in [`docs/mail.md`](../../docs/mail.md).
+- **ADDRESSING** accepts a member id, a member name, `captain`/`lead` (the record's `leadSessionId`,
+  recorded as `toName: "captain"`), or `"*"` — a broadcast that mints ONE ROW PER RECIPIENT (members plus
+  the lead, sender excluded, deduplicated) with a shared envelope and thread. There is no multi-recipient
+  row, so per-recipient acknowledgement and the per-recipient bound stay honest; a broadcast that resolves
+  to nobody is refused rather than reported as "sent 0". "Self" is checked against BOTH spellings of the
+  sender (roster id and session id), because a row is addressed by roster id while a session names itself
+  by session id.
+- **ACKNOWLEDGEMENT IS THE ADDRESSEE'S.** `read` records `by` (the acking member's name, folded as
+  `readBy`) and refuses an id addressed to anybody else — there is NO administrative escape. Consequence,
+  stated: a captain cannot clear a stalled member's backlog on its behalf; a permit grants a WAIT, never an
+  acknowledgement. The acknowledgement identity is the caller's ROSTER id (`ownMember.id`, else its session
+  id for a lead with no roster row).
+- **THE WAKE IS A DURABLE LINE, NOT A LOG LINE.** After each row is written, the best-effort wake-up is
+  attempted and its outcome appended as `{t:"wake", id, sent, reason?, at}` — `reason` is required whenever
+  `sent` is false, and a row with NO wake record is one whose attempt never happened (a reader must treat
+  that as "not woken"). The shape is the canonical twin of the cellwork plane's record; the reasons each
+  plane writes are enumerated in [`docs/mail.md`](../../docs/mail.md).
+- **THE FOLD'S PROBLEM LIST IS EXPOSED.** A duplicated send id keeps the FIRST write and is REPORTED (I8):
+  the anomalies ride on the folded state as `problems` and the web projection renders them. `problems` is
+  OPTIONAL on the state (a caller-built view over a message list is not a fold result), with three
+  compensating guarantees: `fold`/`readMailbox` always populate it, `scopeToTeam` carries it through, and
+  two test arms assert `{messages: [], problems: []}` on a clean log.
+- **DECLARED BOUNDS.** The tool INFERS `kind` from the `question`/`answer` payload and takes no `kind` or
+  `threadId` parameter (a reply joins a thread through `replyTo`); the store API still accepts both for
+  callers that build rows directly. The registered tool surface is asserted under a measured budget:
+  **5,600 → 6,400 characters, measured 6,289** after `permit`/`wait` landed — every further widening needs
+  the captain's PRIOR approval.
 - **Everything is workspace-scoped** through `dsh.workspaceRoot(exec)`, never the process cwd.
 
 ### Nested teams (subcells)

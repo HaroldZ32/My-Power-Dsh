@@ -1,0 +1,6 @@
+27e6c91a44170a90125895d3840d9b59628e176bfa93ed72c220a4cfab4f00e4  packages/mpd-bundle-plugin/src/web-client.ts
+4a469f125a42b91f1519ca449a9da183dea44706a85080f12e57e2c7770ee300  packages/mpd-bundle-plugin/test/workbench-view.test.ts
+93abe705063415e502f3afe3a981eaecff816dd502177f628eb5b726e750ff79  packages/mpd-bundle-plugin/client.js
+# VENDOR_LOCK.json still records the PRE-BUILD fingerprint (the captain re-pins it):
+      "sha256": "c68a18846f2ed5474e7c1927cfa0b7672a3c529dc2415c53c251bc19a9153474",
+# measured: 2026-11-01T15:12Z

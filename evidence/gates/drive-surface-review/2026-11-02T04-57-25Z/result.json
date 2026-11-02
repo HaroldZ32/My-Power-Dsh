@@ -1,0 +1,123 @@
+{
+  "wave": "drive-surface — review reconciliation",
+  "branch": "feature/mpd-drive-surface",
+  "revision": "38150e37 (repairs on top of 87491827, the revision the independent review read)",
+  "measuredAt": "2026-11-02T04:57:25Z",
+  "toolchain": "bun 1.4.0 from .toolchain (pinned), node v24.21.0",
+  "reviewVerdictAt87491827": {
+    "verdict": "DO NOT SHIP (1 blocker, 2 high, 1 medium, 1 low, 1 nit)",
+    "agent": "Reviewer (read-only consult) — independent of every writer in this wave",
+    "whatItProvedTheGreenSuiteMissed": "the suite certified the wrong contract: the wave's own tests encoded the defective reply shape, so 1313 passing tests across four packages coexisted with a harness-boundary crash"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "BLOCKER",
+      "symptom": "the user-questions/request waterfall reply was a bare DshQuestionAnswer[] where the harness expects AskUserQuestionAnswer = { answers: [...] }; cordis waterfall() returns the OUTERMOST listener's value, so the roles row's array replaced the envelope and dsh-tool-ask-user threw on result.answers.map",
+      "impact": "every answered ask_user_question broke, including one a desktop TUI answered, because the roles row registers at boot and is an outer listener",
+      "repair": "DshQuestionAnswerEnvelope added; onUserQuestionRequest is envelope-in/envelope-out and forwards next()'s value UNCHANGED by identity (no re-map); the relay speaks the envelope while its parking lot stays an array; every failure path still rethrows the original error object",
+      "regressionArm": "a module-boundary arm runs the harness's own consumption projection (result.answers.map) and asserts it does not throw; negative control with the old mapping restored: 2 red (toBe object-vs-array, and the TypeError)",
+      "contractAmended": ".mpd/plans/mpd-drive-surface.md §4.1 and §4.3 (the frozen contract itself pinned the wrong shape)"
+    },
+    {
+      "id": "F2",
+      "severity": "HIGH",
+      "symptom": "a panel tap resolved its option by INDEX into the LIVE parking lot, so a view held across a question change settled a question the user never saw",
+      "repair": "the view captures { parkedId, itemIds, raw labels } when it is built; a tap answers from that capture, and the live lot is read for one fact only (does that parked id still exist). Gone -> toast + refresh, no answer call, no index fallback",
+      "regressionArm": "6 arms, all red before the repair (the new-parked-id arm received 'Answered' where it must receive 'That question is gone')"
+    },
+    {
+      "id": "F3",
+      "severity": "HIGH",
+      "symptom": "the first pending question was invisible on a freshly opened panel: view() read a cache only data() fills, and the seed suppressed the refresh, so neither the callout nor the option buttons existed",
+      "repair": "view() is a live read of the SAME reader data() uses (readPanelState); the view-side cache was deleted",
+      "regressionArm": "a panel published with NO data subscription now renders the callout and one button per option"
+    },
+    {
+      "id": "F4",
+      "severity": "MEDIUM",
+      "symptom": "callerForSession hardcoded lineage: [], so a resumed or forked lead could not reach its team through mpdTeamActions or the routes where its own tool call succeeds",
+      "repair": "lineage derives from the resolved live agent with the same helpers where(exec) uses (sessionIsDelegatedChild -> [], else sessionLineageOf); liveness refusal and its sentence unchanged, still before any store write",
+      "regressionArm": "a differential test asserts the tool path and the service path resolve the SAME parent team; negative control with lineage []: 2 red"
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "repair": "docs/drive-surface.{md,zh-CN.md} advertise approve's success without a top-level unresolved; unresolved is a member of created (TeamApprovePayload)"
+    },
+    {
+      "id": "F6",
+      "severity": "NIT",
+      "resolution": "ACCEPTED and DECLARED, not removed: readyTasks is the fourth snapshot key, bounded (<=10 rows, title <=120, subtitle <=80) and carrying no acceptance text. The contract §4.4 now declares it, because the three-key shape had no task titles to render."
+    }
+  ],
+  "reReview": {
+    "verdict": "SHIP WITH FINDINGS (risk LOW-MEDIUM: no blocker, no high)",
+    "agent": "Reviewer (read-only consult) — the same reviewer that found the blocker",
+    "repaired": { "F1": "REPAIRED", "F2": "REPAIRED as filed, one residual below", "F3": "REPAIRED", "F4": "REPAIRED", "F5": "REPAIRED", "F6": "REPAIRED (declared)" },
+    "newFindings": [
+      {
+        "severity": "MEDIUM",
+        "where": "packages/mpd-bundle-plugin — viewFor / createPanelActions.answerWith",
+        "symptom": "the per-session capture is overwritten by every view build, so a tap from a STILL-DISPLAYED older view resolves against the newer capture and can settle the question the user never saw",
+        "disposition": "DECLARED BOUND, not fixed. The DSH Go tap payload carries no view identity (InvokeEvent has surface/id/action/value/locale), so with a fixed action map a client cannot tell the engine which view it tapped. The narrow repair would be a per-view revision in the action id, which the registration-time action map cannot produce. Filed as a follow-up."
+      },
+      {
+        "severity": "LOW",
+        "where": "packages/mpd-bundle-plugin — questionReadOf labels vs the test file",
+        "symptom": "raw-vs-clipped label handling is correct but unarmed: no arm uses a label longer than the 80-char clip",
+        "disposition": "DECLARED — coverage gap, no code defect; a follow-up arm."
+      },
+      {
+        "severity": "NIT",
+        "where": "packages/mpd-bundle-plugin — questionReadOf itemIds filter",
+        "symptom": "filtering empty ids can shift the answer's question-item id when the first item id is empty (the schema sets no minLength)",
+        "disposition": "DECLARED — requires schema-valid but malformed input; a follow-up."
+      }
+    ]
+  },
+  "honestyNoteOnNegativeControls": "The 'red before the repair' runs (old envelope mapping: 2 red; old index addressing: 6 red; empty lineage: 2 red) were executed by the repairing agents in their own sessions and are NOT archived in this directory. What IS reproducible here is the arms' discriminating shape: identity assertions (toBe), a replay of the harness's own result.answers.map projection, a view built before any data subscription, a tap after a parked-id change, and a differential tool-vs-service team resolution. Treat the red-before-green claim as reported-by-the-repairer, not as reproduced-by-this-record.",
+  "checks": {
+    "distFreshness": { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 35/35 targets fresh (each rebuilt twice, byte-identical), 1 NOT COVERED (the sha-pinned codegraph prebuilt)" },
+    "typecheck": { "command": "node_modules/.bin/tsgo --noEmit", "exit": 0, "observed": "no diagnostics" },
+    "packageTests": {
+      "command": "bun test packages/<pkg> for all 29 packages with tests (pinned toolchain)",
+      "exit": 0,
+      "observed": "29 packages green, 0 failures; touched packages after the repairs: adapter 307, team-core 494, roles 240, bundle 283 (was 305/491/240/277 before the repairs — every repair added arms)"
+    },
+    "staticGates": { "command": "bun run verify:gates", "exit": 0, "observed": "PASS - 9/9 member gate(s) green" },
+    "hostOverride": { "command": "node scripts/verify-no-host-override.ts", "exit": 0 },
+    "manualPaths": { "command": "node scripts/verify-manual-paths.ts", "exit": 0 },
+    "docsParity": { "command": "node scripts/verify-docs-parity.ts", "exit": 0, "observed": "pairs=55 failed=0 violations=0 dead=0 — PASS" },
+    "packClosure": {
+      "command": "node scripts/verify-pack-closure.ts",
+      "exit": 0,
+      "observed": "root files 2/2; agent references 2/2; declared packages 30/30; content bytes 635 compared / 635 identical / 0 drift; completeness 532 compared / 531 present / 1 declared exemption / 0 absent",
+      "selfTest": "exit 0, 35/35 arms",
+      "note": "on this tree the gate must be run AFTER the pack: a run against a stale artifact reddens on drift that the pack then clears (measured)"
+    },
+    "pluginManifest": { "command": "node scripts/verify-plugin-manifest.ts --pack", "exit": 0, "observed": "VERDICT: PASS; npm pack --dry-run lists 1148 files, 0 required paths absent" },
+    "dshGoBytes": { "command": "cmp dsh-go/views/mpd.json dist/mpd-package/dsh-go/views/mpd.json", "exit": 0, "observed": "identical, sha256 e9cf5219… (949 B both sides); the packed manifest carries the dshGo block" },
+    "mount": {
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "exit": 0,
+      "observed": "PASS on the repaired revision — boot checks all true (http, adapterProvided, adapterSeams, adapterToolCall, corpusFromBundle, noPresetRefusal, probePass, presetProbeOk), install/composed/noHomeCopy/layerDurability/uninstall all ok",
+      "evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T04-57-49.263Z",
+      "superseded": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T03-19-48.023Z measured the pre-repair revision and is kept as history"
+    },
+    "docker": {
+      "command": "node scripts/docker-e2e.ts --mode source --require-docker --live, --mode oneclick --require-docker --live, --mode source --require-docker --no-browser",
+      "exit": null,
+      "observed": "RUNNING on the repaired revision at the time this record was written; its own record lands under evidence/docker/drive-surface/",
+      "abandonedRun": "a first lane batch was STARTED on 87491827 (the pre-repair revision) and killed on purpose once the review returned a blocker: a lane measured on a revision the tree no longer matches cannot be cited, so it is not evidence of anything here"
+    }
+  },
+  "bounds": [
+    "No Flutter/DSH Go app in this workspace: the native panel is proven against the upstream protocol schemas, the view budget walk, the manifest gate and service doubles. A device install is the reader's check.",
+    "Route guards beyond the host fence are unit-proven against a server double (the fence answers before a bare request reaches 405/400/413), exactly as the team watchdog's routes are.",
+    "The relay's fallback behaviour is proven when nobody else answers; 'desktop plus phone' is 'the desktop wins' by construction, not by a live two-answerer run.",
+    "F1 was repaired against the installed harness SOURCES plus a module-boundary arm that replays the harness's own consumption projection — no live model round-trip was run.",
+    "The closure gate has no arm for a byte-DIFFERING file inside a required directory entry, and an invented extra file inside an artifact dsh-go is not detected (pre-existing scope of the manifest rule).",
+    "mpd-team-core's action routes reuse the team plane's existing mount seam without the watchdog's per-server WeakMap tracker: the read routes register in the same call untracked, so a second tracker would diverge."
+  ]
+}

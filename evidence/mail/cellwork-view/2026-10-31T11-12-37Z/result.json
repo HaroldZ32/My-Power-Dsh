@@ -1,0 +1,89 @@
+{
+  "review": {
+    "lane": "R4 (re-review of the T18 repair)",
+    "boardTask": "T20",
+    "workTask": "T18",
+    "subject": "Cellwork: cross-cell answer visibility, stable seat keys, acknowledgement refusal reasons",
+    "contract": ".mpd/plans/mail-unify.md §6 (R4's findings), with T17's workspace-wide references as the other half of the cross-cell fix",
+    "reviewerSession": "4404a19a-9a07-4c78-9199-63069553868d",
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+    "baseHead": "e9be8890cbae5d09772911cc45936b7d58b0d2ab",
+    "contractSha": "ea40f6f05887a2d8c5fd3540539353eadb741c9070c1dbb129f3f1cd512b82ee",
+    "hashes": {
+      "src/protocol.ts": "43be9424bce7547e551046b8bf57295077caf7dd70943a0ba203a93a36e6c220",
+      "src/mail.ts": "556bff00acde34c6e148ff604f68f1f638dfce0e0525056ccb257a2904df9ce8",
+      "src/guard.ts (unchanged)": "7d0178a989fdb307a4477cc5edfebbc2df3e360fa0a48525acc09d8c8981921a",
+      "src/staging.ts (unchanged)": "432e263623e34f3efedb4618565805f12380cd5635e99bf8fc8aff727c8ba13d",
+      "test/mail-repairs.test.ts (new)": "2b936489ba81711199fd30d060110e334d6767afa57a42e2cace74560ba1037b",
+      "test/mail-unified.test.ts (unchanged)": "a02d514fbccce1e38080ab948bb88d483272e731439e84b10561b8cad1891d77",
+      "dist/index.js": "45169d924af63c191af124a09e580f2b77d10b58250013e2e9480657a42bc36f",
+      "team-core src/mailbox-store.ts (T17's, unchanged here)": "8172402a4bc4615609b5f15b79cceca6135fa90c5e69d9efb73d9c2018c0c674"
+    },
+    "sandwich": "All cellwork hashes were identical at gate start (11:12:37Z) and review end (11:14:50Z). No other writer touched the package during this review."
+  },
+  "verdict": {
+    "task": "approve",
+    "t18": "PASS",
+    "riskLevel": "low",
+    "justification": "All three R4 findings are closed end-to-end by my own tool-level probes: a reseeded seat acknowledges the rows addressed to its stable seat key exactly once and answers its seat-key question; a pre-fix row still cannot be acknowledged, but the refusal is now CARRIED and RENDERED with the store's reason; and a cross-cell question is answered in BOTH directions without an explicit questionId, with the parent inbox holding the echoed labels. 182/182 tests, 6/6 gates green. One non-blocking Nit on the migration refusal's wording."
+  },
+  "findingsAudit": [
+    {
+      "finding": "F1 (R4 High, layer 1) — a cross-cell structured ANSWER could not round-trip: the question's key was resolved from the TARGET cell's view",
+      "result": "CLOSED",
+      "evidence": "protocol.ts resolves the answered row with `findWorkspaceMailById(workspace, replyTo)` first and the target view as the legacy fallback; the refusals now name the real defect. Probes: F1 (parent→sub question, sub→parent answer WITHOUT questionId → ok; sub sees the question, parent's inbox holds selected ['A. unify']; the REVERSE direction also ok) and F1c ('names no message in this workspace's mailbox' / 'names a \"message\" row with no question payload', not the old missing-key wording). The T18 arm covers both directions too."
+    },
+    {
+      "finding": "F2 (R4 Medium) — a seat's address was its session id at send time, so a reseeded/never-raised seat could never ack its mail or answer its question",
+      "result": "CLOSED",
+      "evidence": "`seatKey(cell,name) = \"seat:<cellId>/<nameKey>\"` is the address (`seatAddress`) AND the send identity (`fromId: seatKey(cell, caller.member)`) AND the ack identity (`byId: seatKey(caller.cell, seat)`). Probes: F2 a row addressed to the seat key is acknowledged exactly once by a reseeded session (first acked 1, refused [], second 0); F2b the reseeded seat answers the seat-key question (ok). The shipped T18 arm ('a reseeded seat acknowledges … and answers it') matches."
+    },
+    {
+      "finding": "N1 (R4 Nit) — an ownership refusal during the inbox ack was invisible (`acknowledged: 0`, no reason)",
+      "result": "CLOSED",
+      "evidence": "`acknowledgeCellMail` now uses `acknowledge` (not the moved-only wrapper) and returns `refused: [{id, reason}]`; the tool returns it and the RENDER prints 'acknowledgement refused for N row(s), which stay unread: …'. Probe N1 (a pre-fix session-addressed row): acknowledged 0, refused[0].id = the row, reason = 'only its recipient may acknowledge it', and the rendered text carries it. The shipped arm asserts the same including the render."
+    }
+  ],
+  "regression": [
+    { "item": "same-cell question/answer + broadcast + legacy ack-once + member-to-member", "result": "PASS — 182/182 in the package, the four B9/C2.2/C2.3/D6 arms and the mail-order suite green; my R1 probe shows member-to-member durable + the preserved wake sentence." },
+    { "item": "AC-5 text", "result": "PASS — probe R2: the checkpoint refusal still names both tools and states a structured question cannot be asked/answered at a checkpoint." },
+    { "item": "cross-cell non-recipient authorization (T17's still-open gap)", "result": "KNOWN BOUND, not charged to T18: probe F1b shows a NON-recipient seat can still 'answer' the cross-cell question because the store's ownership lookup is team-scoped (T19's F2). T18's design is COMPATIBLE with the fix (the legitimate answerer's `fromId` = the question's `toId` seat key), so the T17 repair must not break it." }
+  ],
+  "gates": [
+    { "id": "bun-test-cellwork", "command": "bun test packages/mpd-cellwork-plugin", "exit": 0, "decidingOutput": "182 pass, 0 fail, 20 files (178 + T18's 4 arms)" },
+    { "id": "typecheck", "command": "bun run typecheck", "exit": 0, "decidingOutput": "no diagnostics" },
+    { "id": "verify-comments", "command": "bun run verify:comments", "exit": 0, "decidingOutput": "VERDICT: PASS" },
+    { "id": "verify-docs", "command": "bun run verify:docs", "exit": 0, "decidingOutput": "pairs=54 failed=0 violations=0 — PASS" },
+    { "id": "verify-rows", "command": "bun run verify:rows", "exit": 0, "decidingOutput": "37 row ids match" },
+    { "id": "verify-manifest", "command": "bun run verify:manifest", "exit": 0, "decidingOutput": "VERDICT: PASS" }
+  ],
+  "findings": [
+    {
+      "id": "N1-migration-wording",
+      "severity": "Nit",
+      "title": "The refusal sentence for a pre-fix (session-addressed) row reads circularly: the addressee name and the caller name are identical",
+      "where": "packages/mpd-team-core-plugin/src/mailbox-store.ts · acknowledge's refusal sentence, surfaced by the cellwork inbox",
+      "what": "Probe N1's reason: 'mail-prefix-row was addressed to \"cell-planner\", not to \"cell-planner\" — only its recipient may acknowledge it'. The stored `toName` is the seat name and the caller's `byName` is the same seat name, so the sentence names the same person twice and does not reveal that the TO ID differed (a pre-fix session id vs the stable seat key).",
+      "why": "The whole point of N1's fix is a diagnosable reason; for the migration case the sentence is legible only if the reader already knows the old addressing scheme. Low impact (the row id and the rule are correct).",
+      "direction": "Include the ids or a short parenthetical in the refusal (e.g. 'addressed to seat \"…\" via \"<toId>\"'), or phrase the migration case as 'the row predates the stable seat key'. Optional.",
+      "evidence": "probes.ts N1 line"
+    }
+  ],
+  "declinedToJudge": [
+    { "item": "T17's workspace-wide reference authorization gap (T19 F2)", "reason": "T17's lane; T18's fix is compatible with the pending repair (F1b recorded as a known bound so the repair does not break the legitimate case)." },
+    { "item": "Pre-fix session-addressed rows being un-acknowledgeable/unanswerable", "reason": "Declared migration bound: new rows use the stable seat key, and the refusal is now reported with its reason (N1 closure). The old rows are history, not a live rule." },
+    { "item": "The cellwork dist freshness", "reason": "T10 owns the rebuild; the dist was rebuilt for T18 (45169d92) but is not certified here." },
+    { "item": "Docs/README wording for the T18 repairs", "reason": "T6's lane." },
+    { "item": "The store's refusal sentence itself (owned by T2/T17)", "reason": "Raised as the N1 Nit at the surface where it is read; the store sentence's broader wording is the store lane's business." }
+  ],
+  "bounds": [
+    "Reviewed the working tree at HEAD e9be8890; all cellwork hashes stable across the review (11:12:37Z → 11:14:50Z).",
+    "Read: protocol.ts's seatKey/seatAddress/send-input/answer-resolution/inbox-ack blocks, mail.ts's acknowledgeCellMail, T18's new mail-repairs.test.ts arms, and the unchanged guard/staging.",
+    "Ran: six gates (182/0) and tool-level probes over the REAL registered tools: reseed ack + answer, pre-fix refusal reason + render, cross-cell round-trip both directions, the non-recipient bound), absent/non-question refusals, member-to-member, AC-5 text.",
+    "Did NOT run: dist-fresh (T10), the combined multi-package suite, Docker."
+  ],
+  "evidence": {
+    "directory": "evidence/mail/cellwork-view/2026-10-31T11-12-37Z/",
+    "files": ["result.json", "output.log", "probes.ts"]
+  }
+}

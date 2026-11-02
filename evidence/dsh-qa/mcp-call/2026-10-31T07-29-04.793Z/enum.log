@@ -1,0 +1,36 @@
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+dsh: reasoning:
+The user asks: list all available tool names in the current session that start with mcp__ prefix, one per line, and do not call any tools.
+
+From the function list I have, the mcp__ tools:
+
+ast_grep: rewrite, scan, search
+codegraph: codegraph_explore
+context7: query-docs, resolve-library-id
+grep_app: searchGitHub
+lsp: find_definition, find_implementation, find_references, find_workspace_symbols, get_diagnostics, get_hover, get_incoming_calls, get_outgoing_calls, prepare_call_hierarchy, rename_symbol, rename_symbol_strict, restart_server
+
+List them one per line.
+
+Let me count: 3 + 1 + 2 + 1 + 13 = 20. LSP tools: find_definition, find_implementation, find_references, find_workspace_symbols, get_diagnostics, get_hover, get_incoming_calls, get_outgoing_calls, prepare_call_hierarchy, rename_symbol, rename_symbol_strict, restart_server = 12. Let me recount: 1 find_definition, 2 find_implementation, 3 find_references, 4 find_workspace_symbols, 5 get_diagnostics, 6 get_hover, 7 get_incoming_calls, 8 get_outgoing_calls, 9 prepare_call_hierarchy, 10 rename_symbol, 11 rename_symbol_strict, 12 restart_server. So 12. Total 3+1+2+1+12 = 19.
+
+Do not call any tools.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server

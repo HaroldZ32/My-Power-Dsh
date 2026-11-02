@@ -27,11 +27,12 @@ import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
+import { QUESTION_ROUTES, installQuestionRelay, registerQuestionWeb, type PendingQuestion, type QuestionEffect } from "./question-relay.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter, type DshQuestionAnswer } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -1160,6 +1161,62 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("askUserQuestion=absent reason=threw")
     warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")")
+  }
+  // ── THE QUESTION RELAY: `ask_user_question` over HTTP for any client ──────────────────────────
+  // Installed at the SAME site as the boundary guard above, with the OPPOSITE job: the guard refuses
+  // a malformed call, the relay ANSWERS a well-formed one when no DSH surface would. It is the LAST
+  // answerer in the harness waterfall (`next()` first), so a real question UI keeps priority; only a
+  // `NO_PROVIDER` rejection parks, and only while a client is polling (`list()` within
+  // `attachWindowMs`), so an unattended engine never hangs a turn. Two fenced routes expose the
+  // parking lot to a phone or a script, and the `mpdQuestions` service exposes it to the DSH Go
+  // panel. A composition without the seam stays INERT: one boot token, no service, no route, no throw.
+  try {
+    /** The relay's install outcome, reported on the team-plane boot signature below. */
+    const questionRelay = installQuestionRelay(dsh, {
+      warn: (line) => warnOnce("question-relay:" + line, line),
+    })
+    if (questionRelay.installed) {
+      ctx.provide("mpdQuestions", {
+        /** Every parked question a client may answer, newest last; a session filter narrows it. */
+        list: (input: { sessionId?: string }): PendingQuestion[] => questionRelay.relay.list(input?.sessionId),
+        /** Settle one parked question by id; false when it is unknown, expired, or its batch breaks a rule (a question left unanswered, a duplicate/unknown id, several labels on a single-select question, an unknown label). */
+        answer: (input: { id: string; answers: DshQuestionAnswer[] }): boolean => questionRelay.relay.answer(input),
+      })
+      /** The ctx's effect seam, the route and relay lifetime owner; absent in a bare test ctx. */
+      const effect: QuestionEffect | undefined =
+        typeof ctx.effect === "function" ? (register: () => unknown): unknown => ctx.effect?.(register) : undefined
+      /** Whether this ctx can own the relay's lifetime; false means the answerer and routes are never released. */
+      const lifetimeOwned = effect !== undefined
+      /** Whether both question routes mounted at apply; false is normal on a headless profile. */
+      let routesMounted = false
+      try {
+        routesMounted = registerQuestionWeb(dsh, effect, {
+          relay: questionRelay.relay,
+          warn: (line) => warnOnce("question-relay:" + line, line),
+        })
+      } catch (error) {
+        warnOnce("question-relay:web", "question web route registration degraded (" + errText(error) + ")")
+      }
+      try {
+        // The relay's own lifetime: a disposed row releases the answerer AND rejects every parked
+        // waiter with its original error, instead of leaving a promise nobody can settle.
+        effect?.(() => () => { questionRelay.dispose() })
+      } catch (error) {
+        warnOnce("question-relay:dispose", "the question relay's release could not be registered (" + errText(error) + ")")
+      }
+      // NO LIFETIME OWNER IS A LEAK, NOT A SILENT DETAIL (R2b): without `ctx.effect` the row has
+      // already provided `mpdQuestions` and registered the waterfall answerer, but nothing disposes
+      // either on teardown. ONE warning records it, and the boot token below says `lifetime=unowned`.
+      if (!lifetimeOwned) {
+        warnOnce("question-relay:lifetime", "the question relay has no lifetime owner: ctx.effect is unavailable, so its waterfall answerer and routes are never disposed")
+      }
+      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0) + (lifetimeOwned ? "" : " lifetime=unowned"))
+    } else {
+      guardOutcome.push("questions=absent reason=" + questionRelay.reason)
+    }
+  } catch (error) {
+    guardOutcome.push("questions=absent reason=threw")
+    warnOnce("question-relay:threw", "the question relay could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

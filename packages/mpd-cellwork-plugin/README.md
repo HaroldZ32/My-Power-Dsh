@@ -84,8 +84,10 @@ The protocol tools: `cellwork_dispatch` (one owner-only dispatch pass, plus `rea
 `cellwork_supervise` (the captain's read-only sweep, including every fenced member and the open rows it
 still owns), `cellwork_context` (a member's own occupancy), `cellwork_handoff` (the checkpoint document;
 a SECOND one is refused while the first waits for the barrier), `cellwork_subteam` (a subcaptain's
-sub-cell registration), `cellwork_send` / `cellwork_inbox` (durable cell mail — the `send` row lands
-first and the wake-up attempt is a separate `wake` record). They land on the SAME record and guard
+sub-cell registration), `cellwork_send` / `cellwork_inbox` (durable cell mail over the
+workspace mailbox — `send` mints `message`/`question`/`answer` rows through the shared store, the `send`
+row lands first and the wake-up attempt is a separate `wake` record; the protocol is in
+[`docs/mail.md`](../../docs/mail.md)). They land on the SAME record and guard
 documented here.
 
 ## Config
@@ -173,11 +175,14 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   a LIVE splitter row (the recorded id, then any live row owned by `cell-splitter`), writes the id it
   used back to the cell record's `splitTaskId` (reported as `recordedSplitTaskId`), and only appends a replacement — same cell role,
   new revision in the subject — when the recorded row is terminal and no live row exists.
-- **The mail log format changed, one-way.** A `send` row now always carries `wakeSent: false`, and the
-  wake-up outcome is a SEPARATE `wake` record (`t:"wake"`, `sent`, `reason?`, `at`) appended after it.
-  This build folds an older log correctly (a pre-`wake` row keeps its own `wakeSent`); a reader from a
-  PREVIOUS build reads a new row as "not woken" — a one-bundle-workspace bound, stated rather than
-  hidden.
+- **The mail log format changed, one-way.** Rows now live in the WORKSPACE mailbox
+  (`<workspace>/.mpd/team/mailbox.jsonl`), stamped `teamId` + `cellId` (plus `fromCell` on a cross-cell
+  send), so the cell view and the team plane read one stream. A `send` row carries the legacy
+  `wakeSent: false` and the wake-up outcome is a SEPARATE `wake` record (`t:"wake"`, `sent`, `reason?`,
+  `at`) appended after it. This build folds an older log correctly (a pre-`wake` row keeps its own
+  `wakeSent`, and a pre-unification `<cell>/mail.jsonl` is still read and merged in `at` order); a reader
+  from a PREVIOUS build reads a new row as "not woken" — and does not find it in the cell file at all. A
+  one-bundle-workspace bound, stated rather than hidden.
 - **Lossless tool results.** Every cellwork tool result survives the harness's lossless-JSON walk: a task
   projection never carries an `undefined` own key (the optional `owner` is OMITTED, never set to `undefined`),
   and no result carries a non-finite number, a negative zero or a cycle.
@@ -207,11 +212,15 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's
   parent (`cell.subcellIds` / `cell.parentCellId`); anything else is refused as `"not in this cell's
   tree"`. A supplied name that is neither `captain` nor a member of the TARGET cell is REFUSED — the
-  answer lists that cell's members — never quietly delivered to the caller's own inbox. A send appends
-  the row to the TARGET cell's `mail.jsonl` — for a cross-cell send, the
-  RECIPIENT cell's file, where that cell's `cellwork_inbox` reads it — and the SENDER's journal records
-  the send under a `cell:<cellId>` stamp with `toCell:<target>`. A cross-cell row mirrors `fromCell`, is
-  durable-only — no wake-up is attempted across cells — and appears on THAT cell's `cellwork_supervise`.
+  answer lists that cell's members — never quietly delivered to the caller's own inbox. A send writes
+  into the WORKSPACE mailbox through the shared store's atomic fan-out, stamped with the cell's `teamId`
+  and a `cellId` the view scopes by; the SENDER's journal records it under a `cell:<cellId>` stamp with
+  `toCell:<target>`. `cellwork_send` also speaks the structured protocol — `kind` (inferred from
+  `options` for a question, from `selected`/`custom` for an answer), `options` + `multiSelect`, `replyTo`,
+  `selected`/`custom`, `questionId`, and `broadcast: true` for one row per seat of the target cell (the
+  sender excluded); an unknown label is refused WITH the valid label list. A cross-cell row mirrors
+  `fromCell`, is durable-only — no wake-up is attempted across cells — and appears on THAT cell's
+  `cellwork_supervise`.
   The Lead has no executor handle, so a member→captain row is read by the captain's `cellwork_inbox` and
   surfaced on `cellwork_supervise`; a row whose wake-up never went out stays UNDELIVERED and is surfaced
   there too (`unreadMail` plus the `wakeFailures[]` rows, each `{id,to,subject,reason}`), not only on the

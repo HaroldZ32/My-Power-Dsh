@@ -3,12 +3,14 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.17.0** 及其内置的准入
-（admission）配置文件——它是第一个在声明的 peer 范围里接受 DeepSeek Harness `0.2.1-rc.3` 的
-dsh-tui 版本。§11.10 是本波次的修订：其中记录了这次移动、没有变化的接缝清单以及被触及的各个载体。
-**此前的钉定版本是 0.16.1，那段表述作为历史保持可读**：0.16.1 是第一个在声明的 peer 范围里包含
-harness `0.2.1-rc.2` 的 dsh-tui 版本（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），§11.8 是
-那一波次的修订。**此前的钉定版本是 0.14.0，那段表述作为历史保持可读**：0.14.0 是新增 **Claude 后端 peer**
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.18.0** 及其内置的准入
+（admission）配置文件。0.18.0 声明的 `@deepseek-ai/dsh-*` peer 范围覆盖 DeepSeek Harness
+`0.2.1-rc.4` 与 `0.2.1-rc.5` —— 其 36 条 `dsh-*` 名单全部同时包含两者，而 0.17.0 的名单止于
+`0.2.1-rc.3`（读取自已发布的 tarball）。**§11.11 是本波次的修订**：其中记录了这次移动与被触及的载体。
+**此前的钉定版本是 0.17.0，那段表述作为历史保持可读**：0.17.0 是第一个在声明的 peer 范围里接受
+harness `0.2.1-rc.3` 的 dsh-tui 版本，**§11.10** 是那一波次的修订。**再此前是 0.16.1，那段表述同样
+作为历史保持可读**：0.16.1 是第一个在声明的 peer 范围里包含 harness `0.2.1-rc.2` 的 dsh-tui 版本
+（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），§11.8 是那一波次的修订。**此前的钉定版本是 0.14.0，那段表述作为历史保持可读**：0.14.0 是新增 **Claude 后端 peer**
 （`@anthropic-ai/claude-agent-sdk` 0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），
 并把 `PanelBar` 改成**轮播**（只画当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标）的那个
 版本；§11.6 是那一波次的修订，其中列出了那次移动触及的各个载体。
@@ -1351,3 +1353,26 @@ PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` �
 未被询问的 `ui.teamBoard`）—— 记录到 `live.web`、`live.tui`、`live.headless` 三路的 `mpdToolCalled` 与
 `assistantReplied` 均为真，`boot.llmTurn` 为真，`ui.*` 各行为真。仍有一条边界成立：**针对已发布包的
 一键车道本波次没有跑**，因此它的行保持 null —— 这些 stamp 度量的是检出安装，绝不是打包产物。
+
+### 11.11 DSH-TUI 0.18.0 / harness 0.2.1-rc.5 适配波次后的修订（2026-11-01）
+
+本波次再次移动成对的版本钉，未改动任何插件源码。§11.10 保持原样：它记录的是 0.17.0 那一波，不是这一波。
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| 本页对标宿主（§ 前言） | **0.17.0** | **0.18.0** —— 其 36 条 `@deepseek-ai/dsh-*` OR 名单全部包含 harness `0.2.1-rc.4` 与 `0.2.1-rc.5`，而 0.17.0 的名单一条都不含（读取自已发布的 tarball） |
+| harness pin（`package.json` 的三个 `@deepseek-ai/dsh-experimental-*`） | `0.2.1-rc.3` | **`0.2.1-rc.5`** —— 这些 pin 带精确 peer，所以宿主与 TUI 必须一起移动：rc.5 的 harness 配 0.17.0 的宿主，会被 `dsh plugin --profile dsh-tui add` 拒绝 |
+| §3.3 / §7 —— 版本钉住载体 | 载体为 `0.17.0`，harness 为 `0.2.1-rc.3` | **载体为 `0.18.0`，harness 为 `0.2.1-rc.5`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.18.0`）、`dsh-plugin.json` 的 `compat.hosts`（`…@0.18.0`）、`skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格，以及每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串 |
+| 适配器的版本闸门 | `PANEL_CSV_HOST_OWNED_SINCE`、`PANEL_CSV_SELF_HEAL_SINCE`、`hostVersion` 夹具 | **不变** —— 它们编码的是宿主**何时**改变行为，而不是当前宿主是哪个 |
+
+**诚实的边界。** 本波次的三条 Docker 真机车道都在最终树上跑过（裸 `ubuntu:24.04`）：
+`evidence/docker/client-install/2026-11-01T08-40-39Z/result.json`（`--no-browser`：163 通过、0 失败、
+79 条 null）、`…/2026-11-01T08-48-50Z/result.json`（`--live`：204 通过、0 失败、38 条 null）与
+`evidence/docker/client-install-oneclick/2026-11-01T09-04-57Z/result.json`（`oneclick --live`：203 通过、
+0 失败、39 条 null）。十二条 `tui.*` 断言在 **0.18.0** 上全部为真 —— `tui.boot`、`tui.compose`、
+`tui.hostInstall`、`tui.pluginAddBundle`、`tui.mergedPanelOpens`、`tui.mergedPanelOrder`、`tui.mpdTuiRow`、
+`tui.agentTeamRows`、`tui.hostDashboardKeyIntact`、`tui.noDirectTuiSeam`、`tui.noFatalSignatures`、
+`tui.laneExit` —— 实际在用的宿主由 `dsh-tui@0.18.0 lib/types/presetPrefs.js#writePresetPref` 证明。
+真模型回合在三个平面（`live.web`、`live.tui`、`live.headless`）上都调到了 mpd 工具。仍然成立的边界：
+`ui.*` 各行保持 null（浏览器车道需显式开启且本次未请求）；被测产物是车道自己打出来的树，绝不是 registry
+上的发布件 —— 承载这一对版本的正式发布号由发布波次决定，不由本修订决定。

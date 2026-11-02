@@ -2,10 +2,10 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.16.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -156,7 +156,8 @@ names it: pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.16.4 | 0.2.1-rc.3 | 0.17.0 | the current release |
+| 0.17.0 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.16.4 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.1 | 0.2.1-rc.3 | 0.17.0 | previous |
@@ -165,6 +166,12 @@ names it: pin both.
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
+
+The newest row **is** that pair: `0.17.0` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
+two move as a set — `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
+0.17.0 host is refused by `dsh plugin --profile dsh-tui add`. The pins live in
+[`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`; the rows below it
+are kept as history — what earlier releases actually pinned.
 
 ## Quick start
 
@@ -236,7 +243,7 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.3**.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.5**.
   Expect breakage while upstream stabilizes, and pin the harness version you use.
 - **The TUI surface trails the Web surface in named places, not everywhere.** The rows of the table
   above that do not read "same facts" are open deviations, each recorded with its evidence in
@@ -281,7 +288,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.16.4**). Annotated tags are listed under
+version (the current release is **v0.17.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements
