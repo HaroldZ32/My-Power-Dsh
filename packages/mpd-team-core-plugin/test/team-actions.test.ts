@@ -9,7 +9,7 @@
 // EVERY ARM READS THE STORE FILES, not just the reply: a reply can claim a team exists while the record
 // on disk is empty, and the file shape is what the rest of the bundle actually reads.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -53,14 +53,28 @@ interface Fixture {
 }
 
 /**
+ * The gates one arm uses to hold an action mid-flight.
+ *
+ * A CONCURRENT arm needs the first call SUSPENDED inside its own await, otherwise it would complete
+ * before the second caller is fired and prove nothing about the in-flight slot.
+ */
+interface FixtureGates {
+  /** Resolved when the executor's `spawn` may answer; absent means it answers at once. */
+  spawnGate?: Promise<void>
+  /** Resolved when the executor's `send` may answer; absent means it answers at once. */
+  sendGate?: Promise<void>
+}
+
+/**
  * Build the deps bundle: a real store, a recording executor and NO cordis context.
  *
  * The store functions are the module-level ones the actions import directly, so the fixture only has
  * to fake the three seams that belong to the row: the executor, the approval effects and the settings
  * around them.
+ * @param gates - the optional gates that hold a spawn or a send until the arm releases it.
  * @returns the deps and the observations they record.
  */
-function fixture(): Fixture {
+function fixture(gates: FixtureGates = {}): Fixture {
   /** The sandbox workspace this arm's stores write into. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-team-actions-"))
   sandboxes.push(workspace)
@@ -73,10 +87,12 @@ function fixture(): Fixture {
     providers: (): string[] => ["spawn"],
     spawn: async (_caller: unknown, request: DshTeamSpawnRequest): Promise<{ handle: string; executor: "native" }> => {
       observed.spawns.push(request.name)
+      if (gates.spawnGate !== undefined) await gates.spawnGate
       return { handle: "child-" + request.name.replace(/\s+/g, "-"), executor: "native" }
     },
     send: async (_caller: unknown, handle: string, content: string): Promise<void> => {
       observed.sent.push(`${handle}:${content}`)
+      if (gates.sendGate !== undefined) await gates.sendGate
     },
     interrupt: async (): Promise<void> => {},
     membership: (): undefined => undefined,
@@ -271,5 +287,126 @@ describe("runDispatch — the `run` body, exec-free", () => {
     expect(result.pairs.map((pair) => pair.taskId)).toEqual(["T1"])
     expect(observed.sent).toEqual([])
     expect(existsSync(join(observed.workspace, ".mpd", "team", "dispatch.json"))).toBe(false)
+  })
+})
+
+// ── R1a: the in-flight slot — ONE action per workspace+session at a time ─────
+//
+// WHY THIS EXISTS. Approval used to be reachable only from a model turn, so two callers could not
+// overlap. It is now reachable from a tool, the `mpdTeamActions` service, two POST routes and a panel
+// tap, and the window between "the plan looks staged" and "the plan is archived" is wide enough for a
+// second call to see the SAME unapproved plan and mint a SECOND team with a second member set. The
+// slot is REFUSED, never queued: a queue would hide the duplicate from the operator.
+
+/**
+ * Bound one promise so a NON-refusal fails the arm instead of hanging on the spawn/send gate.
+ *
+ * A refused second caller answers immediately; a second caller that wrongly proceeds suspends on the
+ * SAME gate as the first, and awaiting it would only time the whole test out with no sentence to read.
+ * @param promise - the call under test.
+ * @param ms - how long a genuine answer may take.
+ * @param what - the failure sentence to reject with when the bound expires.
+ * @returns the promise's value, or a rejection naming what never answered.
+ */
+async function within<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  /** The timer that rejects the bound. */
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error(what)), ms) }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+describe("in-flight exclusion — a second concurrent caller is refused", () => {
+  test("two concurrent approvals: the second is REFUSED, ONE team is written and ONE member set spawned", async () => {
+    /** The gate the first approval suspends inside its one spawn. */
+    let release = (): void => {}
+    /** Released by the arm once the second call has been answered. */
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    /** The seams, with the spawn held open. */
+    const { deps, observed } = fixture({ spawnGate: gate })
+    stageWave(observed.workspace)
+    /** The first approval; it is suspended inside `spawn` from the moment it is called. */
+    const first = approveTeam(deps, { ...LIVE, workspace: observed.workspace })
+    // THE PRECONDITION: the first call really is in flight, past the plan read and inside its spawn.
+    expect(observed.spawns).toEqual(["Senior Engineer"])
+    /** The second caller's answer, bounded so a NON-refusal fails fast rather than hanging. */
+    let second: Awaited<ReturnType<typeof approveTeam>>
+    try {
+      second = await within(approveTeam(deps, { ...LIVE, workspace: observed.workspace }), 250, "the second approval was not refused — it waited on the same spawn")
+    } finally {
+      release()
+    }
+    expect(second).toEqual({ ok: false, error: "an approval for this session is already running" })
+    /** The first approval's answer. */
+    const outcome = await first
+    if (!outcome.ok) throw new Error(outcome.error)
+    // EXACTLY ONE OF EACH: one spawn, one record on disk.
+    expect(observed.spawns).toHaveLength(1)
+    expect(readdirSync(join(observed.workspace, ".mpd", "team", "teams")).filter((name) => name.endsWith(".json"))).toHaveLength(1)
+    // AND THE SLOT IS FREE AGAIN after the refusal AND the completed pass: a fresh wave approves.
+    stageWave(observed.workspace)
+    /** The next wave's approval, which a leaked slot would refuse. */
+    const next = await approveTeam(deps, { ...LIVE, workspace: observed.workspace })
+    expect(next.ok).toBe(true)
+  })
+
+  test("two concurrent dispatch passes: the second is REFUSED and the message is sent ONCE", async () => {
+    /** The gate the first pass suspends inside its one send. */
+    let release = (): void => {}
+    /** Released by the arm once the second call has been answered. */
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    /** The seams, with the send held open. */
+    const { deps, observed } = fixture({ sendGate: gate })
+    stageWave(observed.workspace)
+    await approveTeam(deps, { ...LIVE, workspace: observed.workspace })
+    /** The first pass; it is suspended inside `send` from the moment it is called. */
+    const first = runDispatch(deps, { ...LIVE, workspace: observed.workspace }, {})
+    // THE PRECONDITION: the first pass has already delivered its one pairing.
+    expect(observed.sent).toHaveLength(1)
+    /** The second pass's answer, bounded so a NON-refusal fails fast rather than hanging. */
+    let second: Awaited<ReturnType<typeof runDispatch>>
+    try {
+      second = await within(runDispatch(deps, { ...LIVE, workspace: observed.workspace }, {}), 250, "the second dispatch pass was not refused — it waited on the same send")
+    } finally {
+      release()
+    }
+    expect(second).toEqual({ ok: false, error: "a dispatch pass for this session is already running" })
+    /** The first pass's answer. */
+    const outcome = await first
+    if (!outcome.ok) throw new Error(outcome.error)
+    expect(observed.sent).toHaveLength(1)
+    // THE SLOT IS FREE AGAIN: a follow-up pass is accepted (and finds nothing left to pair).
+    const next = await runDispatch(deps, { ...LIVE, workspace: observed.workspace }, {})
+    expect(next.ok).toBe(true)
+  })
+
+  test("a slot is released after a THROW: the failure is MARKED and the next call still runs", async () => {
+    /** This arm's seams. */
+    const { deps, observed } = fixture()
+    stageWave(observed.workspace)
+    /** The failure a store write can throw: its message really does embed a filesystem path. */
+    const refusal = `EACCES: permission denied, open '${join(observed.workspace, ".mpd", "team", "teams", "x.json")}'`
+    /** The clock, so the throwing seam can be put back for the retry. */
+    const clock = deps.now
+    deps.now = (): Date => { throw new Error(refusal) }
+    /** The unexpected failure, returned rather than rejected. */
+    const failed = await approveTeam(deps, { ...LIVE, workspace: observed.workspace })
+    expect(failed.ok).toBe(false)
+    if (failed.ok) throw new Error("unreachable: the clock threw")
+    // THE MARK THE ROUTE READS, and the message the TOOL still rethrows.
+    expect(failed.unexpected).toBe(true)
+    expect(failed.error).toBe(refusal)
+    // THE SLOT SURVIVED THE THROW: nothing was spawned and a retry still runs.
+    expect(observed.spawns).toEqual([])
+    deps.now = clock
+    /** The retry. */
+    const retried = await approveTeam(deps, { ...LIVE, workspace: observed.workspace })
+    expect(retried.ok).toBe(true)
+    expect(observed.spawns).toEqual(["Senior Engineer"])
   })
 })

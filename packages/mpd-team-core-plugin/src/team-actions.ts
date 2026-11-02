@@ -13,6 +13,15 @@
 // always carries an agent, so its behaviour is unchanged; a route that has no live session must never
 // spawn or send, and it must never half-write a team to discover that.
 //
+// AND TWO SURFACE-DRIVEN ADDITIONS (CodeRabbit review of PR #88, plan §4.2 amendments 1–2):
+//   1. An IN-FLIGHT SLOT per action, keyed by workspace + session, refused before the first await.
+//      Approval and dispatch used to be reachable only from a model turn, which made calls serial; they
+//      are now reachable from a tool, the `mpdTeamActions` service, two POST routes and a panel tap, and
+//      two overlapping approvals could mint TWO teams from ONE staged plan.
+//   2. An UNEXPECTED throw is MARKED on the result so a route can answer the documented generic 500
+//      instead of forwarding a message that may embed a filesystem path; the sentence is retained for
+//      the row log and for the TOOL path, which keeps rethrowing it unchanged.
+//
 // NOTHING HERE READS A CORDIS CONTEXT OR AN `exec`. Everything the bodies need from the row —
 // the clock, the executor, the approval effects, the team resolver, the watchdog reading, the service
 // lookup, the row log, the idle guard's dispatch window and the two approval-time guards — arrives on
@@ -155,10 +164,15 @@ export interface TeamDispatchPayload {
  *
  * A result, never a rejection: the HTTP routes must answer instead of throwing into the host, and the
  * tool handlers turn a refusal back into the thrown error a tool caller has always observed.
+ *
+ * `unexpected` marks a caught THROW (a store failure, not a policy refusal). It exists for the ROUTE,
+ * which answers the documented generic 500 for it instead of forwarding a message that may carry a
+ * filesystem path; `error` still holds the real sentence for the row log and for the tool path, which
+ * rethrows it unchanged.
  */
 export type TeamActionResult<Payload = Record<string, unknown>> =
   | ({ ok: true } & Payload)
-  | { ok: false; error: string }
+  | { ok: false; error: string; unexpected?: true }
 
 /**
  * The `mpdTeamActions` service: the two actions, addressed by SESSION rather than by a tool exec.
@@ -193,6 +207,44 @@ function refusalOf(error: unknown): string {
 }
 
 /**
+ * Mark one caught THROW as unexpected, keeping its sentence for the row log and the tool path.
+ *
+ * The distinction is WHICH SURFACE decides: a validation/policy sentence is already returned by the
+ * body and stays a 400; anything that reached this helper is a real failure (a store write, a broken
+ * record) whose text may embed a filesystem path, so the route must not put it on the wire.
+ * @param error - the caught value, converted with {@link refusalOf}.
+ * @returns the refusal envelope the route reads as a 500.
+ */
+function unexpectedRefusalOf(error: unknown): { ok: false; error: string; unexpected: true } {
+  return { ok: false, error: refusalOf(error), unexpected: true }
+}
+
+/**
+ * The in-flight slots, ONE set per action, keyed by {@link actionSlotKey}.
+ *
+ * PROCESS-LOCAL BY DESIGN (plan §4.2 amendment 1). This is an in-process guard, NOT a lock: it stops
+ * two callers in THIS dsh process — the tool, the service, a POST route, a panel tap — from running the
+ * same approval or dispatch pass at once, and it does NOT coordinate two dsh processes. Two processes
+ * sharing one workspace can still race, which is a stated bound rather than a property this repairs.
+ */
+const approvalsInFlight = new Set<string>()
+
+/** The dispatch pass's in-flight slots; separate from approval's, so one never blocks the other. */
+const dispatchesInFlight = new Set<string>()
+
+/**
+ * The slot key one caller occupies: its workspace plus its session, NUL-separated.
+ *
+ * NUL is the separator because neither half is a path or an id that can contain it, so two different
+ * pairs cannot forge the same key.
+ * @param caller - the action's caller.
+ * @returns the in-flight key for that caller.
+ */
+function actionSlotKey(caller: TeamActionCaller): string {
+  return `${caller.workspace}\u0000${caller.sessionId}`
+}
+
+/**
  * Approve the plan staged by one session: the `agent_teams_plan {action:"approve"}` body, exec-free.
  *
  * THE ORDER IS THE CONTRACT and is preserved exactly: the staged plan must exist and not be approved,
@@ -201,6 +253,10 @@ function refusalOf(error: unknown): string {
  * minted and their blockers resolved in a second pass, the record and plan are written, the plan is
  * archived only when nothing stopped, and the bundled effects run last. Every refusal is the same
  * sentence the tool produced; the caller turns it back into a throw.
+ *
+ * THE IN-FLIGHT SLOT IS TAKEN BEFORE THE FIRST AWAIT and released in `finally`, so two callers for one
+ * workspace + session can never both see an unapproved plan and mint two teams. The second caller is
+ * REFUSED, not queued: a queue would hide the duplicate from the operator.
  * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
  * @param caller - who is approving, in which workspace and under which cancellation.
  * @param input - the optional `dryRun` preview.
@@ -210,6 +266,33 @@ export async function approveTeam(
   deps: TeamActionDeps,
   caller: TeamActionCaller,
   input: TeamApproveInput = {},
+): Promise<TeamActionResult<TeamApprovePayload>> {
+  /** The one in-flight slot this approval occupies, keyed by workspace + session. */
+  const slot = actionSlotKey(caller)
+  if (approvalsInFlight.has(slot)) return { ok: false, error: "an approval for this session is already running" }
+  approvalsInFlight.add(slot)
+  try {
+    return await approveTeamBody(deps, caller, input)
+  } finally {
+    // RELEASED ON EVERY EXIT — a policy refusal, an unexpected throw, a completed approval.
+    approvalsInFlight.delete(slot)
+  }
+}
+
+/**
+ * The approval BODY, with no in-flight bookkeeping of its own.
+ *
+ * Never call this directly: {@link approveTeam} owns the slot, so a direct call would reintroduce the
+ * duplicate-approval window the slot exists to close.
+ * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
+ * @param caller - who is approving, in which workspace and under which cancellation.
+ * @param input - the optional `dryRun` preview.
+ * @returns the approval's payload, or one refusal sentence.
+ */
+async function approveTeamBody(
+  deps: TeamActionDeps,
+  caller: TeamActionCaller,
+  input: TeamApproveInput,
 ): Promise<TeamActionResult<TeamApprovePayload>> {
   // THE ONE PERMITTED DIFFERENCE FROM THE TOOL PATH: no live agent means no spawn and no send, so the
   // action refuses BEFORE the first store write rather than leaving a half-built team on disk.
@@ -246,15 +329,22 @@ export async function approveTeam(
     // carry no self-edge and no cycle. This sits BELOW the empty-plan sentence (which keeps its
     // precedence) and ABOVE `dry_run`, like the scope check: a preview of a call that cannot
     // succeed would read as a successful dry run.
-    deps.assertPlanGraph(plan)
-    // ── TWO UNORDERED TASKS MAY NOT SHARE A WRITE SCOPE (R2) ──────────────
-    // The plan can declare `write_scopes` on every task, and it could declare two tasks that may
-    // write the SAME paths while neither runs after the other — the exact condition under which two
-    // teammates edit one file concurrently. The refusal names the pair and the two remedies the
-    // contract allows (an edge, or disjoint scopes); there is deliberately NO override flag.
-    // THE CHECK SITS ABOVE `dry_run` for the same reason the empty-plan check does: a preview of a
-    // call that CANNOT succeed reads as a successful dry run and invites exactly that approval.
-    deps.assertScopesOrdered(plan)
+    // THE TWO APPROVAL-TIME GUARDS ARE EXPECTED REFUSALS, so their throws are converted HERE and never
+    // reach the outer catch: a policy sentence keeps its 400 and its text, while the outer catch marks
+    // anything else as UNEXPECTED for the route to sanitize into the generic 500.
+    try {
+      deps.assertPlanGraph(plan)
+      // ── TWO UNORDERED TASKS MAY NOT SHARE A WRITE SCOPE (R2) ──────────────
+      // The plan can declare `write_scopes` on every task, and it could declare two tasks that may
+      // write the SAME paths while neither runs after the other — the exact condition under which two
+      // teammates edit one file concurrently. The refusal names the pair and the two remedies the
+      // contract allows (an edge, or disjoint scopes); there is deliberately NO override flag.
+      // THE CHECK SITS ABOVE `dry_run` for the same reason the empty-plan check does: a preview of a
+      // call that CANNOT succeed reads as a successful dry run and invites exactly that approval.
+      deps.assertScopesOrdered(plan)
+    } catch (error) {
+      return { ok: false, error: refusalOf(error) }
+    }
     // ── THE NESTING SEAM, AT THE MOMENT THE RECORD IS BORN (cellwork wave 4) ──
     // The parent is DERIVED from the records (contract D2 option b): a promoted subcaptain is on
     // the parent team's roster, so approving its sub-team nests it without any argument. Derived
@@ -404,9 +494,11 @@ export async function approveTeam(
     await deps.bundleApprovalEffects(plan, caller)
     return { ok: true, plan: approved, team: approvedRecord, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
   } catch (error) {
-    // A THROW IS A REFUSAL TOO: the store's own guards (R2/R11), a broken record or an unexpected
-    // store failure all leave the same sentence for the caller, and no rejection escapes an action.
-    return { ok: false, error: refusalOf(error) }
+    // A THROW HERE IS UNEXPECTED — a store write, a broken record, a failed archive — because every
+    // POLICY refusal above (the empty shell, the graph, the scopes) is returned or converted before it
+    // can reach this catch. The sentence is kept for the row log and the tool path; `unexpected` tells
+    // the route to answer the generic 500 instead of putting a possible filesystem path on the wire.
+    return unexpectedRefusalOf(error)
   }
 }
 
@@ -419,6 +511,12 @@ export async function approveTeam(
  * record is resolved (a missing team is a REFUSAL PAYLOAD, not a throw), the board and roster are
  * projected, the ledger is pruned, the pure engine decides, and only then are messages delivered and
  * pairings compare-and-set onto the record before the ledger is merged.
+ *
+ * THE IN-FLIGHT SLOT IS TAKEN BEFORE THE FIRST AWAIT and released in `finally`. Its key is the CALLER
+ * (`workspace + sessionId`), never the team id: a pass may legitimately resolve NO team yet (nothing is
+ * staged, the record is ambiguous), and the duplicate this closes — two passes computing the same pairs
+ * and each delivering before the compare-and-set could reject the second — happens before any team
+ * lookup would be meaningful.
  * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
  * @param caller - who is dispatching, in which workspace and under which cancellation.
  * @param input - the optional cap and the `dryRun` preview.
@@ -428,6 +526,33 @@ export async function runDispatch(
   deps: TeamActionDeps,
   caller: TeamActionCaller,
   input: TeamDispatchInput = {},
+): Promise<TeamActionResult<TeamDispatchPayload>> {
+  /** The one in-flight slot this pass occupies, keyed by workspace + session. */
+  const slot = actionSlotKey(caller)
+  if (dispatchesInFlight.has(slot)) return { ok: false, error: "a dispatch pass for this session is already running" }
+  dispatchesInFlight.add(slot)
+  try {
+    return await runDispatchBody(deps, caller, input)
+  } finally {
+    // RELEASED ON EVERY EXIT — a refusal payload, an unexpected throw, a completed pass.
+    dispatchesInFlight.delete(slot)
+  }
+}
+
+/**
+ * The dispatch BODY, with no in-flight bookkeeping of its own.
+ *
+ * Never call this directly: {@link runDispatch} owns the slot, so a direct call would reintroduce the
+ * duplicate-delivery window the slot exists to close.
+ * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
+ * @param caller - who is dispatching, in which workspace and under which cancellation.
+ * @param input - the optional cap and the `dryRun` preview.
+ * @returns the pass's payload, or one refusal sentence.
+ */
+async function runDispatchBody(
+  deps: TeamActionDeps,
+  caller: TeamActionCaller,
+  input: TeamDispatchInput,
 ): Promise<TeamActionResult<TeamDispatchPayload>> {
   // Same rule as approval: a pass with no live agent can neither send nor be authorized, and it must
   // refuse before the consistency pass writes a ledger row.
@@ -641,8 +766,11 @@ export async function runDispatch(
     writeLedger(workspace, merged)
     return { ok: true, pairs: sent, skipped, forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
   } catch (error) {
-    // Same rule as approval: an unexpected store failure is a sentence, never a rejection.
-    return { ok: false, error: refusalOf(error) }
+    // UNEXPECTED, like approval's catch: a missing team is a `refused` PAYLOAD above, a per-pair send
+    // failure is a `skipped` row, and the hold readings are contained — so anything that reaches here
+    // is a real store failure whose sentence may embed a path. Marked for the route's generic 500; the
+    // sentence survives for the row log and for the tool path, which rethrows it unchanged.
+    return unexpectedRefusalOf(error)
   }
 }
 

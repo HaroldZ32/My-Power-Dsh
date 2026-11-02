@@ -15,8 +15,12 @@ the bundle's oldest mutating route, the team watchdog's pause/resume pair.
 ## 1. What a caller has to supply
 
 Every seam is addressed by a **session id**, because the bundle's state root is resolved per session
-(`session header cwd → DSH_WORKSPACE_ROOT → process.cwd()`). The HTTP routes take it as the
-`?sessionId=` query parameter — never as a body field, so a request cannot smuggle its own scope.
+(`session header cwd → DSH_WORKSPACE_ROOT → process.cwd()`). The **team action** routes take it as the
+`?sessionId=` query parameter — never as a body field, so a request cannot smuggle its own scope. The
+**question relay** is the exception and is deliberately looser: its `GET` takes `sessionId` as an optional
+*filter* (omit it and the whole queue is listed), and its answer route needs no session at all — the opaque
+parked-question id already names a request that belongs to the session that asked it. A client that applies
+the team-action rule to the relay will reject valid relay calls.
 
 A **live agent** is the second thing. Approving a plan raises child agents, and dispatching a pass sends
 messages; both hand the harness a live `Agent` object, which a session id alone does not produce. A
@@ -105,9 +109,13 @@ is bound, polls the team record and the relay at 0.5 Hz, and pushes a narrowed s
 changes: team status and counts, the staged plan's readiness, the ready tasks and the parked question
 with its option labels. Every filesystem path stays out of the payload.
 
-Taps map to three action families — `approve`, `dispatch`, and one `answer` button per option — which
-call the services above and answer with a toast. A tap in a conversation-less placement answers
-"open a conversation first" instead of failing silently, and a handler never rejects.
+Taps map to three action families — `approve`, `dispatch`, and an `answer` button per option — which call
+the services above and answer with a toast. The answer buttons are **bounded on purpose**: the panel renders
+only the FIRST question item of a parked request, shows at most **four** option buttons, and each tap
+submits exactly **one** label. A question set carrying more than one item therefore cannot be answered from
+the panel — the relay refuses a partial batch and leaves the request parked for a client that can answer all
+of it. A tap in a conversation-less placement answers "open a conversation first" instead of failing
+silently, and a handler never rejects.
 
 ### Where it works
 

@@ -78,6 +78,16 @@ export const TEAM_ACTION_ROUTES: readonly string[] = [TEAM_APPROVE_PATH, TEAM_DI
 export const MAX_ACTION_BODY_BYTES = 64 * 1024
 
 /**
+ * The ONE generic 500 sentence a mutating route answers when it cannot complete the request.
+ *
+ * It is a constant because TWO paths must say the same thing: an action result MARKS an unexpected
+ * throw (so the caught sentence — which may embed a filesystem path — stays on the row log and out of
+ * the response), and a handler-level throw is contained here. A client must never be able to tell the
+ * two apart, and neither may carry a path.
+ */
+const GENERIC_FAILURE = "mpd-team-core: the request could not be completed"
+
+/**
  * What one mutating route needs from the row: the two actions, addressed by session, plus liveness.
  *
  * The row passes the `mpdTeamActions` service's OWN members here, so the routes and the service cannot
@@ -1029,15 +1039,25 @@ export function registerTeamRoutes(
              * an unexpected rejection from a store is still an answer rather than a dead request. */
             const result = await run(sessionId, body.value)
             if (!result.ok) {
+              // TWO KINDS OF FAILURE, TWO STATUSES (plan §4.2 amendment 2). An EXPECTED refusal — a
+              // validation or policy sentence the action returns — keeps its 400 and its text. An
+              // UNEXPECTED throw is MARKED by the action: its sentence may embed a filesystem path, so it
+              // goes to the row log and the client gets the documented generic 500 body instead. The
+              // TOOL path is untouched — it rethrows the real sentence, because sanitizing is the route's.
+              if (result.unexpected === true) {
+                deps.warn(`route ${path} failed: ${result.error}`)
+                json(res, 500, { ok: false, error: GENERIC_FAILURE })
+                return
+              }
               json(res, 400, { ok: false, error: `mpd-team-core: ${result.error}` })
               return
             }
             json(res, 200, { ok: true, ...project(result) })
           } catch (error) {
-            // NEVER THROW OUT OF A HANDLER. The detail goes to the row log; the CLIENT message is one
-            // sentence and carries no filesystem path.
+            // NEVER THROW OUT OF A HANDLER. The detail goes to the row log; the CLIENT message is the
+            // SAME generic sentence the marked-unexpected arm answers, and carries no filesystem path.
             deps.warn(`route ${path} failed: ${String((error as Error)?.message ?? error)}`)
-            try { json(res, 500, { ok: false, error: "mpd-team-core: the request could not be completed" }) } catch { /* the response is already gone */ }
+            try { json(res, 500, { ok: false, error: GENERIC_FAILURE }) } catch { /* the response is already gone */ }
           }
         },
       }), `mpd-team-core: web route ${path}`)

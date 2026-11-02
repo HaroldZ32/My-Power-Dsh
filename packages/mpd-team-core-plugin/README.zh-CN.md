@@ -125,8 +125,10 @@ data: {"rev":8}
 | `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | 以 `sessionId` 那个会话的活 agent 身份，批准它暂存的计划 |
 | `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | 为该会话的团队跑**一次**派发；`limit` 为 `0` 或缺省表示不限，`dryRun` 只做配对决策、不发送 |
 
-`TeamActionResult<Payload>` 是 `({ ok: true } & Payload) | { ok: false; error: string }` —— 是**结果**、
-绝不是 reject：路由必须作答而不是把异常抛进宿主，面板也要能渲染拒绝理由。
+`TeamActionResult<Payload>` 是 `({ ok: true } & Payload) | { ok: false; error: string; unexpected?: true }`
+—— 是**结果**、绝不是 reject：路由必须作答而不是把异常抛进宿主，面板也要能渲染拒绝理由。`unexpected`
+标记被捕获的**抛错**（见下文「同一工作区 + 会话同时只跑一个动作」）：句子仍留在 `error` 里供本行日志与
+工具路径使用，而路由改为回答通用 `500`，不再转发它。
 
 - `approve` 的载荷：`plan`（真实批准时是已持久化、标记为已批准的计划；`dryRun` 预览时是原样的暂存
   计划）、`team`（它写入的记录；**仅**在 `dryRun` 上缺席）、`created`
@@ -138,6 +140,10 @@ data: {"rev":8}
 - **「不活跃」是一个答案，不是抛错。** 活跃注册表不认识的会话，两个成员都答
   `{ ok: false, error: "session <id> is not live" }`；会话无法归属到某个工作区时答
   `{ ok: false, error: <解析器给出的消息> }`。两个成员都不会因为一个坏 session id 抛错。
+- **活跃性按会话匹配，而不只按 agent id。** `dsh.liveAgent(sessionId)` 是按 **agent id** 匹配的，因此服务
+  与两条路由都会退回到 `liveAgents()` 扫描并匹配 `session.id` —— 这正是 `workspaceRootForSessionOf`
+  与 TUI 适配器已有的回退。宿主给 agent 的 id 与它所属会话的 id 不同时，所有界面都认为它活着；拒绝句子
+  仍是 `session <id> is not live`，保持不变。
 - **caller 就是工具路径的 caller。** 工作区、会话 id 与 `lineage` 都完全按 `where(exec)` 的推导方式、
   从解析出的活 agent 得出：恢复或被 fork 的 Lead 会带上 harness 记录的父会话，因此服务（以及两条路由）
   解析到与它自己的工具调用**相同**的团队；被记录的**委派子会话**贡献**空** lineage，绝不继承其队长的团队。
@@ -145,12 +151,24 @@ data: {"rev":8}
 **这两个函数是免 exec 的。** `approveTeam(deps, caller)` 与 `runDispatch(deps, caller, input)`
 不读取任何 cordis 上下文、也不读取工具 exec：时钟、执行器、批准副作用、团队解析器、watchdog 读数、
 服务查找、行日志、空闲守卫的派发窗口，以及两道批准期守卫，全部经 `TeamActionDeps` 显式传入。
-caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signal? }`。与工具函数体相比，
-**唯一**允许的差异是 agent 缺失：当 `caller.agent` 缺席时，两个函数都在**第一次写存储之前**回答
+caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signal? }`。动作面带来的差异之一是 agent
+缺失：当 `caller.agent` 缺席时，两个函数都在**第一次写存储之前**回答
 `{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` —— 不写记录、
 不 spawn、不跑批准副作用、不开派发窗口。工具调用方永远带着 agent，因此其行为不变。这道拒绝也正是
 路由得以安全存在的原因：路由没有可继承的工具调用上下文，因此它绝不能在「发现自己无法行动」的过程中
 去 spawn、send，或把团队写了一半。
+
+**同一工作区 + 会话同时只跑一个动作。** 两个函数都持有一个进程内 in-flight 槽，键为
+`workspace + sessionId`，在**第一个 `await` 之前**检查、在 `finally` 中释放。第二个调用方会被**拒绝** ——
+`an approval for this session is already running` / `a dispatch pass for this session is already running`
+—— 而不是排队：排队会把重复隐藏起来，让操作者看不见。正是它让两次并发批准无法从同一份暂存计划铸出
+**两个**团队，也让两次并发派发无法在任何 compare-and-set 拒绝之前把同一配对投递两次。该槽是
+**进程内**的：它不协调共享同一工作区的两个 dsh 进程 —— 这是一条明说的边界。
+
+**策略拒绝与意外失败是两种回答。** 函数体返回的那些句子（校验与策略）保持 `{ ok: false, error }`，
+路由以 `400` 和该句子作答。任何走到 catch 的异常都会被标记 `unexpected: true` 并保留原消息：存储失败的
+文本可能带着文件系统路径，因此 `POST` 路由回答文档化的通用 `500` 并把细节写进本行日志，而**工具**路径
+仍然原样抛出真实句子。
 
 ### 两条路由（`POST /plugins/mpd-team/approve`、`POST /plugins/mpd-team/dispatch`）
 
@@ -178,7 +196,7 @@ caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signa
 | `405` | 任何非 `POST` 方法；应答带 `allow: POST` |
 | `409` | 点名的会话没有活 agent —— 动作**绝不会**执行 |
 | `413` | 请求体超过 65,536 字节，未解析即拒绝 |
-| `500` | 意外抛错；客户端只得到**一句**话、且不含路径（细节进本行日志） |
+| `500` | 意外抛错，或动作结果被标记 `unexpected`；客户端只得到**一句**通用话、且不含路径（细节进本行日志） |
 
 两条路由都委托给已发布的 `mpdTeamActions` 成员，而不是第二份序列，因此一个按钮与一次工具调用跑的是
 同一个批准或派发过程。只有当组合提供动作面（`actions`）时它们才被注册：一个无法行动的插件行不该

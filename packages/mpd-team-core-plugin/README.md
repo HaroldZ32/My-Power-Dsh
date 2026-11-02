@@ -163,9 +163,11 @@ BEFORE its tools, so a consumer that resolves it during this row's own activatio
 | `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | approve the plan staged by `sessionId`, as that session's live agent |
 | `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | one dispatch pass for that session's team; `limit` `0`/absent means no cap, `dryRun` decides the pairing and sends nothing |
 
-`TeamActionResult<Payload>` is `({ ok: true } & Payload) | { ok: false; error: string }` — a RESULT,
-never a rejection, because a route must answer instead of throwing into the host and a panel has to
-render the refusal.
+`TeamActionResult<Payload>` is `({ ok: true } & Payload) | { ok: false; error: string; unexpected?: true }`
+— a RESULT, never a rejection, because a route must answer instead of throwing into the host and a panel
+has to render the refusal. `unexpected` marks a caught THROW (see "One action at a time" below): the
+sentence stays in `error` for the row log and the tool path, while a route answers the generic `500`
+instead of forwarding it.
 
 - `approve`'s payload: `plan` (on a real approval the persisted plan, marked approved; on the `dryRun`
   preview the staged plan unchanged), `team` (the record it wrote; ABSENT only on `dryRun`), `created`
@@ -179,6 +181,10 @@ render the refusal.
   `{ ok: false, error: "session <id> is not live" }` from BOTH members; a session whose workspace cannot
   be attributed answers `{ ok: false, error: <the resolver's message> }`. Neither member throws for a
   bad session id.
+- **Liveness matches the SESSION, not only the agent id.** `dsh.liveAgent(sessionId)` answers by AGENT id,
+  so the service AND the routes fall back to a `liveAgents()` scan matching `session.id` — the same
+  fallback `workspaceRootForSessionOf` and the TUI adapter already make. A host that gives an agent an id
+  different from its session id is therefore live to every surface, and the refusal sentence is unchanged.
 - **The caller is the TOOL path's caller.** The workspace, session id and `lineage` are derived exactly
   as `where(exec)` derives them, from the resolved live agent: a resumed or forked Lead contributes the
   parent session the harness recorded, so the service (and both routes) resolves the SAME team its own
@@ -189,13 +195,27 @@ render the refusal.
 read no cordis context and no tool exec: the clock, the executor, the approval effects, the team
 resolver, the watchdog reading, the service lookup, the row log, the idle guard's dispatch window and
 the two approval-time guards all arrive on `TeamActionDeps`. The caller is explicit too —
-`{ workspace, sessionId, lineage, agent?, signal? }`. The ONE permitted difference from the tool body
+`{ workspace, sessionId, lineage, agent?, signal? }`. The surface-driven difference from the tool body
 is the missing agent: with `caller.agent` absent both functions answer
 `{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` **before the
 first store write** — no record, no spawn, no approval effect, no dispatch window. A tool caller always
 carries an agent, so its behaviour is unchanged. That refusal is what makes a route safe: a route has no
 tool-call context to inherit, so it must never spawn, send or half-write a team just to discover that it
 cannot act.
+
+**One action at a time, per workspace + session.** Both functions take an in-process in-flight slot keyed
+by `workspace + sessionId`, checked BEFORE the first `await` and released in a `finally`. A second caller
+is REFUSED — `an approval for this session is already running` / `a dispatch pass for this session is
+already running` — never queued, because a queue would hide the duplicate from the operator. That is what
+keeps two concurrent approvals from minting TWO teams out of one staged plan, and two concurrent passes
+from delivering the same pairing before either compare-and-set can reject it. The slot is **process-local**:
+it does not coordinate two dsh processes sharing one workspace, which is a stated bound.
+
+**A policy refusal and an unexpected failure are different answers.** The sentences the body returns
+(validation and policy) stay `{ ok: false, error }`, and a route answers `400` with them. Anything that
+reaches a catch is marked `unexpected: true` and keeps its message: a store failure's text may embed a
+filesystem path, so the `POST` routes answer the documented generic `500` and log the detail, while the
+TOOL path still rethrows the real sentence unchanged.
 
 ### The two routes (`POST /plugins/mpd-team/approve`, `POST /plugins/mpd-team/dispatch`)
 
@@ -226,7 +246,7 @@ cannot act.
 | `405` | any method other than `POST`; the answer carries `allow: POST` |
 | `409` | the named session has no live agent — the action NEVER runs |
 | `413` | the body exceeds 65,536 bytes, refused unparsed |
-| `500` | an unexpected throw; the client gets ONE sentence and no path (the detail goes to the row log) |
+| `500` | an unexpected throw, or an action result marked `unexpected`; the client gets ONE generic sentence and no path (the detail goes to the row log) |
 
 Both routes delegate to the published `mpdTeamActions` members, never to a second copy of the
 sequence, so a button and a tool call run the same approval or dispatch pass. They are registered ONLY

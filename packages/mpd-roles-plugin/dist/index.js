@@ -837,33 +837,52 @@ function copyAnswers(answers) {
     return copy;
   });
 }
-function answersMatch(view, answers) {
+function answerRefusalOf(view, answers) {
   if (!Array.isArray(answers) || answers.length === 0)
-    return false;
-  const answered = new Set;
+    return "shape";
+  const parkedIds = new Set(view.questions.map((question) => question.id));
+  const byId = new Map(view.questions.map((question) => [question.id, question]));
+  const seen = new Set;
+  const entries = [];
   for (const entry of answers) {
     if (entry === null || typeof entry !== "object")
-      return false;
+      return "shape";
     const raw = entry;
     if (typeof raw.id !== "string" || raw.id === "")
-      return false;
-    if (answered.has(raw.id))
-      return false;
-    answered.add(raw.id);
-    const question = view.questions.find((candidate) => candidate.id === raw.id);
-    if (question === undefined)
-      return false;
-    if (!Array.isArray(raw.selected))
-      return false;
-    const labels = new Set((question.options ?? []).map((option) => option.label));
-    for (const label of raw.selected) {
-      if (typeof label !== "string" || !labels.has(label))
-        return false;
-    }
-    if (raw.custom !== undefined && typeof raw.custom !== "string")
-      return false;
+      return "shape";
+    if (seen.has(raw.id))
+      return "duplicate";
+    seen.add(raw.id);
+    if (!parkedIds.has(raw.id))
+      return "unknown-id";
+    entries.push({ id: raw.id, selected: raw.selected, custom: raw.custom });
   }
-  return true;
+  for (const question of view.questions) {
+    if (!seen.has(question.id))
+      return "missing";
+  }
+  for (const entry of entries) {
+    const question = byId.get(entry.id);
+    if (question === undefined)
+      return "unknown-id";
+    if (!Array.isArray(entry.selected))
+      return "shape";
+    const labels = new Set((question.options ?? []).map((option) => option.label));
+    if (question.multiSelect !== true && entry.selected.length > 1)
+      return "too-many-labels";
+    for (const label of entry.selected) {
+      if (typeof label !== "string")
+        return "shape";
+      if (!labels.has(label))
+        return "label";
+    }
+    if (entry.custom !== undefined && typeof entry.custom !== "string")
+      return "shape";
+  }
+  return;
+}
+function answersMatch(view, answers) {
+  return answerRefusalOf(view, answers) === undefined;
 }
 function nextIdOf(sequence, at) {
   return "q" + sequence.toString(36) + "-" + at.toString(36);
@@ -1146,6 +1165,24 @@ function listHandlerOf(dsh, deps) {
     }
   };
 }
+function refusalLineOf(refusal) {
+  switch (refusal) {
+    case "missing":
+      return "the answers must cover every question the request asked (one answer per question item)";
+    case "duplicate":
+      return "the answers name the same question id twice";
+    case "unknown-id":
+      return "an answer names a question this request does not carry";
+    case "too-many-labels":
+      return "a question that is not multi-select accepts at most one label";
+    case "shape":
+      return "an answer entry is malformed";
+    case "label":
+      return "an answer selected a label this question does not offer";
+    default:
+      return "the answer batch was refused";
+  }
+}
 function answerHandlerOf(dsh, deps) {
   return async (req, res) => {
     try {
@@ -1168,15 +1205,16 @@ function answerHandlerOf(dsh, deps) {
         writeJson(res, 400, { ok: false, error: `mpd-roles: ${body.error}` });
         return;
       }
-      const known = deps.relay.list().some((row) => row.id === body.value.id);
+      const parkedRow = deps.relay.list().find((row) => row.id === body.value.id);
       if (deps.relay.answer(body.value)) {
         writeJson(res, 200, { ok: true, answered: true });
         return;
       }
-      writeJson(res, known ? 400 : 404, {
-        ok: false,
-        error: known ? "mpd-roles: an answer selected a label this question does not offer" : "mpd-roles: no pending question has that id"
-      });
+      if (parkedRow === undefined) {
+        writeJson(res, 404, { ok: false, error: "mpd-roles: no pending question has that id" });
+        return;
+      }
+      writeJson(res, 400, { ok: false, error: "mpd-roles: " + refusalLineOf(answerRefusalOf(parkedRow, body.value.answers)) });
     } catch (error) {
       warnLine(deps, `route ${ANSWER_PATH} failed: ${messageOf(error)}`);
       try {
@@ -4399,6 +4437,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         answer: (input) => questionRelay.relay.answer(input)
       });
       const effect = typeof ctx.effect === "function" ? (register) => ctx.effect?.(register) : undefined;
+      const lifetimeOwned = effect !== undefined;
       let routesMounted = false;
       try {
         routesMounted = registerQuestionWeb(dsh, effect, {
@@ -4415,7 +4454,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       } catch (error) {
         warnOnce("question-relay:dispose", "the question relay's release could not be registered (" + errText(error) + ")");
       }
-      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0));
+      if (!lifetimeOwned) {
+        warnOnce("question-relay:lifetime", "the question relay has no lifetime owner: ctx.effect is unavailable, so its waterfall answerer and routes are never disposed");
+      }
+      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0) + (lifetimeOwned ? "" : " lifetime=unowned"));
     } else {
       guardOutcome.push("questions=absent reason=" + questionRelay.reason);
     }

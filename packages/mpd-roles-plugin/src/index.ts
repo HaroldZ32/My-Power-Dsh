@@ -1179,12 +1179,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       ctx.provide("mpdQuestions", {
         /** Every parked question a client may answer, newest last; a session filter narrows it. */
         list: (input: { sessionId?: string }): PendingQuestion[] => questionRelay.relay.list(input?.sessionId),
-        /** Settle one parked question by id; false when it is unknown, expired or its labels are refused. */
+        /** Settle one parked question by id; false when it is unknown, expired, or its batch breaks a rule (a question left unanswered, a duplicate/unknown id, several labels on a single-select question, an unknown label). */
         answer: (input: { id: string; answers: DshQuestionAnswer[] }): boolean => questionRelay.relay.answer(input),
       })
       /** The ctx's effect seam, the route and relay lifetime owner; absent in a bare test ctx. */
       const effect: QuestionEffect | undefined =
         typeof ctx.effect === "function" ? (register: () => unknown): unknown => ctx.effect?.(register) : undefined
+      /** Whether this ctx can own the relay's lifetime; false means the answerer and routes are never released. */
+      const lifetimeOwned = effect !== undefined
       /** Whether both question routes mounted at apply; false is normal on a headless profile. */
       let routesMounted = false
       try {
@@ -1202,7 +1204,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       } catch (error) {
         warnOnce("question-relay:dispose", "the question relay's release could not be registered (" + errText(error) + ")")
       }
-      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0))
+      // NO LIFETIME OWNER IS A LEAK, NOT A SILENT DETAIL (R2b): without `ctx.effect` the row has
+      // already provided `mpdQuestions` and registered the waterfall answerer, but nothing disposes
+      // either on teardown. ONE warning records it, and the boot token below says `lifetime=unowned`.
+      if (!lifetimeOwned) {
+        warnOnce("question-relay:lifetime", "the question relay has no lifetime owner: ctx.effect is unavailable, so its waterfall answerer and routes are never disposed")
+      }
+      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0) + (lifetimeOwned ? "" : " lifetime=unowned"))
     } else {
       guardOutcome.push("questions=absent reason=" + questionRelay.reason)
     }

@@ -32,6 +32,12 @@ const QUESTIONS: DshQuestionItem[] = [
   { id: "scope", question: "Which scope should the wave cover?", options: [{ label: "Guard only" }, { label: "Guard and prompt" }] },
 ]
 
+/** A TWO-item set, for the route arms that assert a partial batch is refused (plan §4.3, R2a). */
+const PAIR: DshQuestionItem[] = [
+  { id: "scope", question: "Which scope should the wave cover?", options: [{ label: "Guard only" }, { label: "Guard and prompt" }] },
+  { id: "notes", question: "Anything else?", options: [{ label: "verbose" }, { label: "terse" }], multiSelect: true },
+]
+
 /** The relays this file created, disposed after every arm so no park timer outlives the file. */
 const relays: QuestionRelay[] = []
 
@@ -60,25 +66,37 @@ async function tick(): Promise<void> {
 }
 
 /**
- * Park one question on the relay and return the handle a client answers with.
+ * Park one question set on the relay and return the handle a client answers with.
  *
  * @param relay - the relay to park on.
+ * @param questions - the question items the request carries.
  * @param sessionId - the session the question belongs to, when the arm filters by one.
  * @returns the parked id, the pending handle promise and the harness's original rejection.
  */
-async function park(relay: QuestionRelay, sessionId?: string): Promise<{ id: string; pending: Promise<DshQuestionAnswerEnvelope>; original: Error }> {
+async function parkSet(relay: QuestionRelay, questions: DshQuestionItem[], sessionId?: string): Promise<{ id: string; pending: Promise<DshQuestionAnswerEnvelope>; original: Error }> {
   // The poll IS the attach gate: without it the relay refuses to park (plan §4.3).
   relay.list()
   /** The harness rejection that makes the request parkable. */
   const original: Error = Object.assign(new Error("no user-questions answerer"), { code: "NO_PROVIDER" })
   /** The pending handle promise the route will settle. */
-  const pending = relay.handle({ questions: QUESTIONS, ...(sessionId === undefined ? {} : { sessionId }) }, () => Promise.reject(original))
+  const pending = relay.handle({ questions, ...(sessionId === undefined ? {} : { sessionId }) }, () => Promise.reject(original))
   // Observed from the start, so a park that an arm never answers cannot surface as unhandled.
   pending.catch(() => undefined)
   await tick()
   /** The parked rows, newest last; the last one is the question this helper parked. */
   const rows = relay.list()
   return { id: rows[rows.length - 1].id, pending, original }
+}
+
+/**
+ * Park the default one-item question set; the arms that need another set call {@link parkSet}.
+ *
+ * @param relay - the relay to park on.
+ * @param sessionId - the session the question belongs to, when the arm filters by one.
+ * @returns the parked id, the pending handle promise and the harness's original rejection.
+ */
+async function park(relay: QuestionRelay, sessionId?: string): Promise<{ id: string; pending: Promise<DshQuestionAnswerEnvelope>; original: Error }> {
+  return parkSet(relay, QUESTIONS, sessionId)
 }
 
 /** One captured route registration from the web-server double. */
@@ -552,6 +570,119 @@ describe("POST /plugins/mpd-roles/questions/answer", () => {
     expect(await parked.pending).toEqual({ answers })
   })
 
+  test("a PARTIAL batch is 400 with the missing-item reason and the request stays parked", async () => {
+    /** The mounted surface. */
+    const mounted = mount()
+    /** The TWO-item parked request the partial batch answers. */
+    const parked = await parkSet(mounted.relay, PAIR)
+    /** The answer route's handler, invoked twice below. */
+    const route = routeAt(mounted.server, ANSWER_PATH)
+    /** A batch answering only the first of the two parked question items. */
+    const partial: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard only"] }]
+    /** The refusal the route wrote. */
+    const refused = await invoke(route, requestDouble("POST", JSON.stringify({ id: parked.id, answers: partial })))
+    expect(refused.status).toBe(400)
+    // The ONE-LINE reason names the rule that failed, and the body carries nothing else.
+    expect(refused.body).toEqual({ ok: false, error: "mpd-roles: the answers must cover every question the request asked (one answer per question item)" })
+    // NO ECHO OF THE INPUT: neither the parked id nor the submitted label appears in the reply.
+    /** The serialized reply, so an echoed value anywhere in it is caught. */
+    const echoed = JSON.stringify(refused.body)
+    expect(echoed).not.toContain(parked.id)
+    expect(echoed).not.toContain("Guard only")
+    // THE REQUEST IS STILL PARKED: a partial batch must never settle the model's tool call.
+    expect(mounted.relay.list().map((row) => row.id)).toEqual([parked.id])
+    expectNoPath(refused.body)
+    /** The complete batch the corrected retry sends. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only"] },
+      { id: "notes", selected: ["terse"] },
+    ]
+    /** The answer the corrected retry wrote. */
+    const accepted = await invoke(route, requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
+    expect(accepted.status).toBe(200)
+    expect(await parked.pending).toEqual({ answers })
+  })
+
+  test("a DUPLICATE answer id is 400 with its own reason, and the reply echoes nothing", async () => {
+    /** The mounted surface. */
+    const mounted = mount()
+    /** The two-item parked request. */
+    const parked = await parkSet(mounted.relay, PAIR)
+    /** Both items answered, the first one twice. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only"] },
+      { id: "notes", selected: [] },
+      { id: "scope", selected: ["Guard and prompt"] },
+    ]
+    /** The refusal the route wrote. */
+    const refused = await invoke(routeAt(mounted.server, ANSWER_PATH), requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
+    expect(refused.status).toBe(400)
+    expect((refused.body as { error: string }).error).toBe("mpd-roles: the answers name the same question id twice")
+    expect(mounted.relay.list().map((row) => row.id)).toEqual([parked.id])
+    // NO ECHO OF THE INPUT: neither the parked id nor any answered id/label appears in the sentence.
+    /** The serialized reply, so an echoed value anywhere in it is caught. */
+    const text = JSON.stringify(refused.body)
+    expect(text).not.toContain(parked.id)
+    expect(text).not.toContain("scope")
+    expect(text).not.toContain("notes")
+    expect(text).not.toContain("Guard only")
+    expectNoPath(refused.body)
+  })
+
+  test("an answer id THIS request never carried is 400 with its own reason", async () => {
+    /** The mounted surface. */
+    const mounted = mount()
+    /** The two-item parked request. */
+    const parked = await parkSet(mounted.relay, PAIR)
+    /** Complete coverage plus one id the request never carried. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only"] },
+      { id: "notes", selected: [] },
+      { id: "ghost", selected: [] },
+    ]
+    /** The refusal the route wrote. */
+    const refused = await invoke(routeAt(mounted.server, ANSWER_PATH), requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
+    expect(refused.status).toBe(400)
+    expect((refused.body as { error: string }).error).toBe("mpd-roles: an answer names a question this request does not carry")
+    expect(mounted.relay.list().map((row) => row.id)).toEqual([parked.id])
+    expect(JSON.stringify(refused.body)).not.toContain("ghost")
+    expectNoPath(refused.body)
+  })
+
+  test("two labels on a NON-multiSelect question are 400 with its own reason", async () => {
+    /** The mounted surface. */
+    const mounted = mount()
+    /** The two-item parked request, whose first item is single-select. */
+    const parked = await parkSet(mounted.relay, PAIR)
+    /** A single-select question answered with two labels. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only", "Guard and prompt"] },
+      { id: "notes", selected: [] },
+    ]
+    /** The refusal the route wrote. */
+    const refused = await invoke(routeAt(mounted.server, ANSWER_PATH), requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
+    expect(refused.status).toBe(400)
+    expect((refused.body as { error: string }).error).toBe("mpd-roles: a question that is not multi-select accepts at most one label")
+    expect(mounted.relay.list().map((row) => row.id)).toEqual([parked.id])
+    expectNoPath(refused.body)
+  })
+
+  test("two labels on a multiSelect question are accepted (the single-label rule is not over-applied)", async () => {
+    /** The mounted surface. */
+    const mounted = mount()
+    /** The two-item parked request, whose second item is multi-select. */
+    const parked = await parkSet(mounted.relay, PAIR)
+    /** The complete batch, with two labels on the multi-select item. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard and prompt"] },
+      { id: "notes", selected: ["verbose", "terse"] },
+    ]
+    /** The answer the route wrote. */
+    const reply = await invoke(routeAt(mounted.server, ANSWER_PATH), requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
+    expect(reply.status).toBe(200)
+    expect(await parked.pending).toEqual({ answers })
+  })
+
   test("a malformed JSON body is 400", async () => {
     /** The mounted surface. */
     const mounted = mount()
@@ -621,6 +752,10 @@ describe("a handler never throws and never leaks a path", () => {
       await invoke(answerRoute, requestDouble("POST", "{ bad json")),
       await invoke(answerRoute, requestDouble("POST", JSON.stringify({ id: "missing", answers: [{ id: "scope", selected: ["Guard only"] }] }))),
       await invoke(answerRoute, requestDouble("POST", JSON.stringify({ id: parked.id, answers: [{ id: "scope", selected: ["Bad label"] }] }))),
+      // The two new coverage refusals (R2a) are reachable on a ONE-item request too: a duplicate id
+      // and an id the request never carried both fail before coverage is even considered.
+      await invoke(answerRoute, requestDouble("POST", JSON.stringify({ id: parked.id, answers: [{ id: "scope", selected: [] }, { id: "scope", selected: [] }] }))),
+      await invoke(answerRoute, requestDouble("POST", JSON.stringify({ id: parked.id, answers: [{ id: "scope", selected: [] }, { id: "ghost", selected: [] }] }))),
       await invoke(answerRoute, requestDouble("POST", JSON.stringify({ id: parked.id, answers: [{ id: "scope", selected: ["Guard only"] }] }))),
     ]
     // Every reply is JSON, no-store, and free of path-shaped keys/values.

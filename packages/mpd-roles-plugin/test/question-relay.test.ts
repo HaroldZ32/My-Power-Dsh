@@ -29,6 +29,24 @@ const QUESTIONS: DshQuestionItem[] = [
   { id: "notes", question: "Anything else?", options: [{ label: "verbose" }, { label: "terse" }], multiSelect: true },
 ]
 
+/** A DIFFERENT request's questions, so an answer id from it can be proven unknown to {@link QUESTIONS}. */
+const OTHER_QUESTIONS: DshQuestionItem[] = [
+  { id: "deploy", question: "Which environment?", options: [{ label: "staging" }, { label: "prod" }] },
+]
+
+/**
+ * One COMPLETE batch for {@link QUESTIONS}: exactly one entry per parked question item.
+ *
+ * Coverage is the amended contract (plan §4.3): a batch that answers only SOME of the parked
+ * request is refused, so every arm that expects a settlement must send all of the items.
+ */
+function completeAnswers(): DshQuestionAnswer[] {
+  return [
+    { id: "scope", selected: ["Guard only"] },
+    { id: "notes", selected: ["terse"] },
+  ]
+}
+
 /**
  * The harness's own `NO_PROVIDER` rejection: an `Error` carrying the taxonomy code.
  *
@@ -165,8 +183,11 @@ describe("handle: await next() first, park only on NO_PROVIDER", () => {
     expect(rows.length).toBe(1)
     expect(rows[0].sessionId).toBe("s1")
     expect(rows[0].questions.map((item) => item.id)).toEqual(["scope", "notes"])
-    /** The batch a client sends: labels only. */
-    const answers: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard and prompt"] }]
+    /** The batch a client sends: labels only, and one entry per parked question item. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard and prompt"] },
+      { id: "notes", selected: [] },
+    ]
     expect(relay.answer({ id: rows[0].id, answers })).toBe(true)
     // The PARKING LOT stays a bare array (plan §4.3); only the REPLY is wrapped, because the harness
     // consumes `result.answers`. An array here would replace the envelope and crash the ask tool.
@@ -275,7 +296,7 @@ describe("list: order and session filter", () => {
     const row = relay.list()[0]
     if (row.questions[0].options !== undefined && row.questions[0].options[0] !== undefined) row.questions[0].options[0].label = "Tampered"
     // The parked labels are untouched, so the original label is still accepted.
-    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["Guard only"] }] })).toBe(true)
+    expect(relay.answer({ id: row.id, answers: completeAnswers() })).toBe(true)
     await pending
   })
 })
@@ -288,7 +309,7 @@ describe("answer: labels only, a refusal never settles", () => {
     /** The parked question. */
     const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
     await tick()
-    expect(relay.answer({ id: "q-unknown", answers: [{ id: "scope", selected: ["Guard only"] }] })).toBe(false)
+    expect(relay.answer({ id: "q-unknown", answers: completeAnswers() })).toBe(false)
     expect(relay.list().length).toBe(1)
     relay.dispose()
     await rejectionWithin(pending)
@@ -303,14 +324,15 @@ describe("answer: labels only, a refusal never settles", () => {
     await tick()
     /** The parked row the retry answers. */
     const row = relay.list()[0]
-    // An index, a label of another question and an invented label are all refusals.
-    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["0"] }] })).toBe(false)
-    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["verbose"] }] })).toBe(false)
-    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["Anything"] }] })).toBe(false)
+    // An index, a label of another question and an invented label are all refusals; every batch
+    // below still COVERS the request, so the label is the only rule each attempt breaks.
+    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["0"] }, { id: "notes", selected: [] }] })).toBe(false)
+    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["verbose"] }, { id: "notes", selected: [] }] })).toBe(false)
+    expect(relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["Anything"] }, { id: "notes", selected: [] }] })).toBe(false)
     // The entry SURVIVED every refused attempt...
     expect(relay.list().map((entry) => entry.id)).toEqual([row.id])
-    /** The correct batch a client sends on the retry. */
-    const answers: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard only"] }]
+    /** The correct batch a client sends on the retry: complete coverage. */
+    const answers = completeAnswers()
     expect(relay.answer({ id: row.id, answers })).toBe(true)
     // The settled REPLY is the harness envelope (review F1), wrapping the validated labels.
     expect(await pending).toEqual({ answers })
@@ -325,7 +347,8 @@ describe("answer: labels only, a refusal never settles", () => {
     await tick()
     /** The parked row. */
     const row = relay.list()[0]
-    expect(relay.answer({ id: row.id, answers: [{ id: "ghost", selected: [] }] })).toBe(false)
+    // Coverage is COMPLETE, so the ghost id is the only rule this batch breaks.
+    expect(relay.answer({ id: row.id, answers: [...completeAnswers(), { id: "ghost", selected: [] }] })).toBe(false)
     // A free-text answer is only meaningful for a free-text question; both arms are still parked.
     expect(relay.list().length).toBe(1)
     relay.dispose()
@@ -345,6 +368,154 @@ describe("answer: labels only, a refusal never settles", () => {
     expect(relay.list().length).toBe(1)
     relay.dispose()
     await rejectionWithin(pending)
+  })
+})
+
+// ── R2a: a batch must COVER the parked request ──────────────────────────────────────────────────
+// The CodeRabbit review of PR #88 found that a batch answering only SOME of a parked request's
+// questions settled the model's tool call with the rest unanswered, and that a single-select
+// question accepted several labels. These arms pin the amended contract (plan §4.3): exactly one
+// answer per parked question item, no duplicates, no ids from another request, and at most one label
+// on a question that is not `multiSelect`. A refusal leaves the request PARKED so a client retries.
+describe("answer: the batch must cover the parked request", () => {
+  test("one answer for a two-item request is refused, the request stays parked, a complete batch settles it", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The two-item question set parked below. */
+    const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row a client answers. */
+    const row = relay.list()[0]
+    /** A PARTIAL batch: only the first of the two parked questions is answered. */
+    const partial: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard only"] }]
+    expect(relay.answer({ id: row.id, answers: partial })).toBe(false)
+    // THE REQUEST IS STILL PARKED: a partial batch never settles the model's tool call.
+    expect(relay.list().map((entry) => entry.id)).toEqual([row.id])
+    /** The complete batch the client retries with. */
+    const answers = completeAnswers()
+    expect(relay.answer({ id: row.id, answers })).toBe(true)
+    expect(await pending).toEqual({ answers })
+    expect(relay.list()).toEqual([])
+  })
+
+  test("a DUPLICATE answer id is refused and leaves the request parked", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The parked question. */
+    const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row. */
+    const row = relay.list()[0]
+    // Both items are answered; the FIRST one twice. Coverage alone would pass, so the duplicate is
+    // the only rule this batch breaks.
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only"] },
+      { id: "notes", selected: [] },
+      { id: "scope", selected: ["Guard and prompt"] },
+    ]
+    expect(relay.answer({ id: row.id, answers })).toBe(false)
+    expect(relay.list().map((entry) => entry.id)).toEqual([row.id])
+    relay.dispose()
+    await rejectionWithin(pending)
+  })
+
+  test("an UNKNOWN answer id is refused and leaves the request parked", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The parked question. */
+    const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row. */
+    const row = relay.list()[0]
+    // Complete coverage plus one id this request never carried: the unknown id is the only refusal.
+    const answers: DshQuestionAnswer[] = [...completeAnswers(), { id: "ghost", selected: [] }]
+    expect(relay.answer({ id: row.id, answers })).toBe(false)
+    expect(relay.list().map((entry) => entry.id)).toEqual([row.id])
+    relay.dispose()
+    await rejectionWithin(pending)
+  })
+
+  test("an answer id that belongs to ANOTHER parked request is refused here", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The first parked request. */
+    const first = relay.handle({ questions: QUESTIONS, sessionId: "a" }, () => Promise.reject(noProviderError()))
+    await tick()
+    relay.list()
+    /** The second parked request, whose question ids are DIFFERENT. */
+    const second = relay.handle({ questions: OTHER_QUESTIONS, sessionId: "b" }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked rows, oldest first. */
+    const rows = relay.list()
+    expect(rows.length).toBe(2)
+    // The first request's batch names the SECOND request's question id. Coverage of the first request
+    // is otherwise complete, so "deploy" is the only id this request does not carry.
+    const crossRequest: DshQuestionAnswer[] = [...completeAnswers(), { id: "deploy", selected: ["staging"] }]
+    expect(relay.answer({ id: rows[0].id, answers: crossRequest })).toBe(false)
+    // BOTH requests stay parked: a refused batch must not disturb another request's question either.
+    expect(relay.list().map((entry) => entry.id)).toEqual([rows[0].id, rows[1].id])
+    relay.dispose()
+    await rejectionWithin(first)
+    await rejectionWithin(second)
+  })
+
+  test("a question WITHOUT multiSelect accepts at most one label", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The parked question. */
+    const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row. */
+    const row = relay.list()[0]
+    // `scope` is single-select, so two labels are two answers to a question that takes one.
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only", "Guard and prompt"] },
+      { id: "notes", selected: [] },
+    ]
+    expect(relay.answer({ id: row.id, answers })).toBe(false)
+    expect(relay.list().map((entry) => entry.id)).toEqual([row.id])
+    relay.dispose()
+    await rejectionWithin(pending)
+  })
+
+  test("a multiSelect question accepts two labels (the single-label rule is not over-applied)", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** The parked question. */
+    const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row. */
+    const row = relay.list()[0]
+    /** The complete batch, with two labels on the multi-select item. */
+    const answers: DshQuestionAnswer[] = [
+      { id: "scope", selected: ["Guard only"] },
+      { id: "notes", selected: ["verbose", "terse"] },
+    ]
+    expect(relay.answer({ id: row.id, answers })).toBe(true)
+    expect(await pending).toEqual({ answers })
+  })
+
+  test("an empty selected plus custom is a legitimate skipped/free-text answer", async () => {
+    /** The relay under test. */
+    const relay = createQuestionRelay()
+    relay.list()
+    /** A free-text question: no options, so no label is ever offered. */
+    const freeText: DshQuestionItem[] = [{ id: "note", question: "Anything else?" }]
+    /** The parked question. */
+    const pending = relay.handle({ questions: freeText }, () => Promise.reject(noProviderError()))
+    await tick()
+    /** The parked row. */
+    const row = relay.list()[0]
+    /** A skipped answer: nothing selected, the human typed their own text. */
+    const answers: DshQuestionAnswer[] = [{ id: "note", selected: [], custom: "ship it" }]
+    expect(relay.answer({ id: row.id, answers })).toBe(true)
+    expect(await pending).toEqual({ answers })
   })
 })
 
@@ -408,7 +579,7 @@ describe("bounds: ttl, capacity, dispose and abort", () => {
     expect(await rejectionWithin(second)).toBe(secondOriginal)
     expect(relay.list()).toEqual([])
     // A disposed relay accepts nothing: an answer is false and a new NO_PROVIDER is rethrown.
-    expect(relay.answer({ id: "anything", answers: [{ id: "scope", selected: [] }] })).toBe(false)
+    expect(relay.answer({ id: "anything", answers: completeAnswers() })).toBe(false)
     /** A fresh harness rejection routed at the disposed relay. */
     const late = noProviderError("late")
     expect(await rejectionWithin(relay.handle({ questions: QUESTIONS }, () => Promise.reject(late)))).toBe(late)
@@ -464,10 +635,10 @@ describe("installQuestionRelay: the seam decisions the row reports", () => {
     await tick()
     /** The parked row. */
     const row = install.relay.list()[0]
-    expect(install.relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["Guard only"] }] })).toBe(true)
+    expect(install.relay.answer({ id: row.id, answers: completeAnswers() })).toBe(true)
     // The REGISTERED handler's reply carries the harness envelope, so the adapter forwards an object
     // to this row and this row answers with an object (review F1: never a bare array).
-    expect(await pending).toEqual({ answers: [{ id: "scope", selected: ["Guard only"] }] })
+    expect(await pending).toEqual({ answers: completeAnswers() })
     install.dispose()
     expect(double.released.count).toBe(1)
     // The relay half is released too: a NO_PROVIDER after dispose is rethrown.
@@ -559,10 +730,21 @@ function mountedStub(parts: { events?: boolean; seam?: "present" | "absent" | "t
   return stub
 }
 
-/** A cordis-shaped ctx stand-in recording every provision, so a service's presence is assertable. */
-function fakeCtx(mounted: unknown): { ctx: Parameters<typeof apply>[0]; provided: Record<string, unknown> } {
+/**
+ * A cordis-shaped ctx stand-in recording every provision and every warning line.
+ *
+ * @param mounted - the `mpdDsh` service the row resolves through `ctx.get`.
+ * @param effect - the ctx's effect seam; ABSENT reproduces a bare ctx with no lifetime owner (R2b).
+ * @returns the ctx handed to `apply`, the services it provided, and the lines its logger warned with.
+ */
+function fakeCtx(
+  mounted: unknown,
+  effect?: (register: () => unknown) => unknown,
+): { ctx: Parameters<typeof apply>[0]; provided: Record<string, unknown>; warns: string[] } {
   /** The service map `ctx.provide` filled, keyed by service name. */
   const provided: Record<string, unknown> = {}
+  /** The lines the row reported through `ctx.logger.warn`, in order. */
+  const warns: string[] = []
   /** The ctx handed to apply; permissive, because the row reads many optional seams. */
   const ctx: any = {
     tools: { register: (): (() => void) => () => {} },
@@ -571,9 +753,16 @@ function fakeCtx(mounted: unknown): { ctx: Parameters<typeof apply>[0]; provided
       provided[key] = value
     },
     get: (key: string): unknown => (key === "mpdDsh" ? mounted : undefined),
-    logger: { warn: (): void => {}, info: (): void => {}, error: (): void => {} },
+    logger: {
+      warn: (line: string): void => {
+        warns.push(line)
+      },
+      info: (): void => {},
+      error: (): void => {},
+    },
   }
-  return { ctx, provided }
+  if (effect !== undefined) ctx.effect = effect
+  return { ctx, provided, warns }
 }
 
 describe("the row without the adapter seam stays inert", () => {
@@ -599,7 +788,7 @@ describe("the row without the adapter seam stays inert", () => {
   test("a live seam provides mpdQuestions and reports questions=relay on the boot line", async () => {
     /** The stub carrying the waterfall seam. */
     const stub = mountedStub({ events: true, seam: "present" })
-    /** The fake ctx over it. */
+    /** The fake ctx over it; NO effect seam, so this ctx has no relay lifetime owner (R2b). */
     const fake = fakeCtx(stub)
     /** The row-log lines this apply appended. */
     const log = await inRowLog("mpd-roles", () => {
@@ -607,14 +796,44 @@ describe("the row without the adapter seam stays inert", () => {
     })
     /** The single team-plane boot signature every token lives on. */
     const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
-    // No web server in this composition, so the honest route count is zero.
-    expect(boot).toContain("questions=relay routes=0")
+    // No web server in this composition, so the honest route count is zero; with no `ctx.effect` the
+    // answerer and its routes are never disposed, which the token now says out loud (R2b).
+    expect(boot).toContain("questions=relay routes=0 lifetime=unowned")
+    // ONE warning line records the same fact, so a leaked answerer is diagnosable from the log.
+    /** The warning lines that report the missing lifetime owner. */
+    const lifetimeWarns = fake.warns.filter((line) => line.includes("lifetime"))
+    expect(lifetimeWarns.length).toBe(1)
+    expect(lifetimeWarns[0]).toContain("no lifetime owner")
     /** The protocol service the DSH Go panel reads. */
     const service = fake.provided.mpdQuestions as { list: (input: { sessionId?: string }) => unknown; answer: (input: { id: string; answers: unknown[] }) => unknown }
     expect(typeof service.list).toBe("function")
     expect(typeof service.answer).toBe("function")
     expect(service.list({})).toEqual([])
     expect(service.answer({ id: "nope", answers: [] })).toBe(false)
+  })
+
+  test("with ctx.effect present the token stays unchanged and no lifetime warning is emitted", async () => {
+    /** The stub carrying the waterfall seam. */
+    const stub = mountedStub({ events: true, seam: "present" })
+    /** The registrations the ctx's effect seam was handed, so the disposal is provably owned. */
+    const owned: Array<() => unknown> = []
+    /** The fake ctx WITH the effect seam a real cordis ctx exposes. */
+    const fake = fakeCtx(stub, (register: () => unknown): unknown => {
+      owned.push(register)
+      return register()
+    })
+    /** The row-log lines this apply appended. */
+    const log = await inRowLog("mpd-roles", () => {
+      apply(fake.ctx)
+    })
+    /** The single team-plane boot signature. */
+    const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
+    // The owned case keeps the ORIGINAL token: only an unowned relay gets the suffix.
+    expect(boot).toContain("questions=relay routes=0")
+    expect(boot).not.toContain("lifetime=")
+    expect(fake.warns.filter((line) => line.includes("lifetime"))).toEqual([])
+    // The effect seam really owns a release: the relay's disposal is registered, not skipped.
+    expect(owned.length).toBeGreaterThan(0)
   })
 
   test("a seam that THROWS is reported absent with reason threw, and provides no service", async () => {

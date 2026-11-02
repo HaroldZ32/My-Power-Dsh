@@ -81,7 +81,7 @@ export interface QuestionRelayOptions {
 export interface QuestionAnswerInput {
   /** The pending question the answers belong to. */
   id: string
-  /** Answers whose `selected` entries are OPTION LABELS of that parked question, never indices. */
+  /** Answers whose `selected` entries are OPTION LABELS of that parked question, never indices; one entry per parked question item (the batch must COVER the request). */
   answers: DshQuestionAnswer[]
 }
 
@@ -313,43 +313,93 @@ function copyAnswers(answers: readonly DshQuestionAnswer[]): DshQuestionAnswer[]
 }
 
 /**
+ * Why an answer batch was refused, as the ONE rule the caller reports.
+ *
+ * The members are listed in the precedence {@link answerRefusalOf} applies, so a caller never has to
+ * guess which of several broken rules a refusal names.
+ */
+export type AnswerRefusal =
+  | "shape"
+  | "duplicate"
+  | "unknown-id"
+  | "missing"
+  | "too-many-labels"
+  | "label"
+
+/**
  * Validate one answer batch against a parked question — LABELS ONLY, never indices.
  *
- * WHAT "VALID" MEANS: the batch is non-empty, every entry names a question the parked request
- * carries, no question is answered twice, and every `selected` entry is one of THAT question's
- * option labels. A free-text question (no `options`) accepts only an empty `selected` plus its
- * `custom` text, so a label the question never offered can never reach the harness.
+ * WHAT "VALID" MEANS (plan §4.3, amended after the CodeRabbit review of PR #88): the batch COVERS the
+ * parked request — exactly one entry per parked question item, no duplicate ids and no id the request
+ * never carried — every `selected` entry is one of THAT question's option labels, and a question that
+ * is not `multiSelect: true` carries at most one label. An empty `selected` plus `custom` is still a
+ * legitimate skipped / free-text answer, and a free-text question (no `options`) accepts only that.
  *
- * A REFUSAL IS NOT A SETTLEMENT: the caller (`answer`) leaves the question parked, so a client can
- * retry a correct batch instead of losing the request to its own typo.
+ * WHY COVERAGE IS PART OF VALIDITY: a batch that answered only SOME of the questions used to settle
+ * the model's tool call with the rest unanswered, so the harness reported success for a request no
+ * human finished. Partial input is now refused WHOLE and the request stays parked.
+ *
+ * The checks run in a FIXED order (shape, duplicate, unknown id, missing item, too many labels,
+ * unknown label), so a refusal names one rule rather than the first entry that looked odd.
  *
  * @param view - the parked question being answered.
  * @param answers - the untrusted batch from a service caller or the wire.
- * @returns whether the batch may settle the question, narrowing the value to the typed shape.
+ * @returns the rule that refused the batch, or undefined when it may settle the question.
  */
-function answersMatch(view: PendingQuestion, answers: unknown): answers is DshQuestionAnswer[] {
-  if (!Array.isArray(answers) || answers.length === 0) return false
-  /** The question ids this batch has already answered, so a duplicate entry is refused. */
-  const answered = new Set<string>()
+export function answerRefusalOf(view: PendingQuestion, answers: unknown): AnswerRefusal | undefined {
+  if (!Array.isArray(answers) || answers.length === 0) return "shape"
+  /** The question ids this request carries, so an id from another request is refused as unknown. */
+  const parkedIds = new Set(view.questions.map((question) => question.id))
+  /** The parked items keyed by id, so the label pass resolves one item without a scan. */
+  const byId = new Map(view.questions.map((question) => [question.id, question]))
+  /** The answer ids seen so far, so a question answered twice is refused. */
+  const seen = new Set<string>()
+  /** Every entry that passed the id checks, kept so the label pass does not re-narrow the raw value. */
+  const entries: Array<{ readonly id: string; readonly selected: unknown; readonly custom: unknown }> = []
   for (const entry of answers) {
-    if (entry === null || typeof entry !== "object") return false
+    if (entry === null || typeof entry !== "object") return "shape"
     /** The raw answer fields, narrowed one at a time. */
     const raw = entry as { id?: unknown; selected?: unknown; custom?: unknown }
-    if (typeof raw.id !== "string" || raw.id === "") return false
-    if (answered.has(raw.id)) return false
-    answered.add(raw.id)
-    /** The parked question this answer belongs to, or undefined when the id names none. */
-    const question = view.questions.find((candidate) => candidate.id === raw.id)
-    if (question === undefined) return false
-    if (!Array.isArray(raw.selected)) return false
+    if (typeof raw.id !== "string" || raw.id === "") return "shape"
+    if (seen.has(raw.id)) return "duplicate"
+    seen.add(raw.id)
+    if (!parkedIds.has(raw.id)) return "unknown-id"
+    entries.push({ id: raw.id, selected: raw.selected, custom: raw.custom })
+  }
+  // COVERAGE: every parked question item has an answer. Duplicates and unknown ids were refused
+  // above, so "every parked id was seen" is exactly "one entry per parked question item".
+  for (const question of view.questions) {
+    if (!seen.has(question.id)) return "missing"
+  }
+  for (const entry of entries) {
+    /** The parked item this answer belongs to; the coverage pass above proved it is present. */
+    const question = byId.get(entry.id)
+    if (question === undefined) return "unknown-id"
+    if (!Array.isArray(entry.selected)) return "shape"
     /** The labels this question really offers; empty for a free-text question. */
     const labels = new Set((question.options ?? []).map((option) => option.label))
-    for (const label of raw.selected) {
-      if (typeof label !== "string" || !labels.has(label)) return false
+    if (question.multiSelect !== true && entry.selected.length > 1) return "too-many-labels"
+    for (const label of entry.selected) {
+      if (typeof label !== "string") return "shape"
+      if (!labels.has(label)) return "label"
     }
-    if (raw.custom !== undefined && typeof raw.custom !== "string") return false
+    if (entry.custom !== undefined && typeof entry.custom !== "string") return "shape"
   }
-  return true
+  return undefined
+}
+
+/**
+ * Whether one answer batch may settle a parked question, narrowed to the typed batch.
+ *
+ * This is the SAME validator the route's reason line reads ({@link answerRefusalOf}), so the relay
+ * and the wire can never disagree about which batch is acceptable.
+ *
+ * @param view - the parked question being answered.
+ * @param answers - the untrusted batch from a service caller or the wire.
+ * @returns whether the batch covers the request and every label it names is offered.
+ */
+function answersMatch(view: PendingQuestion, answers: unknown): answers is DshQuestionAnswer[] {
+  return answerRefusalOf(view, answers) === undefined
 }
 
 /**
@@ -570,8 +620,10 @@ export function createQuestionRelay(options: QuestionRelayOptions = {}): Questio
   /**
    * Settle one parked question with a validated answer batch.
    *
-   * A refused batch (an unknown label, an unknown question id, a malformed entry) returns false and
-   * leaves the question parked, so the client can correct itself instead of losing the request.
+   * A REFUSAL IS NEVER PARTIAL: a batch that misses a parked question, repeats an id, names an id
+   * this request never carried, puts several labels on a single-select question or selects a label
+   * the question never offered returns false and leaves the question PARKED, so the client corrects
+   * itself instead of losing the request — and the model's tool call is never settled half-answered.
    *
    * @param input - the parked id plus the answer batch.
    * @returns true only when this call settled the question.
@@ -764,8 +816,9 @@ function sessionIdOf(request: unknown): string | undefined {
 /**
  * Validate one answer body at the boundary: `{ id, answers: [{ id, selected, custom? }] }`.
  *
- * Only the SHAPE is checked here. Whether a label is one of the parked question's options is the
- * relay's decision (it owns the parked question), and its refusal becomes this route's 400.
+ * Only the SHAPE is checked here. Whether the batch COVERS the parked request and whether each label
+ * is one the parked question offers is the relay's decision (it owns the parked question), and its
+ * refusal becomes this route's 400 with the rule that failed.
  *
  * @param body - the parsed JSON body.
  * @returns the validated input, or the one-line reason the boundary refused it.
@@ -844,10 +897,43 @@ function listHandlerOf(dsh: Pick<DshAdapter, "webRequestRejection">, deps: Quest
 }
 
 /**
+ * The ONE-LINE reason a refused batch is answered with, keyed by the rule that failed.
+ *
+ * The sentence is FIXED: it names the rule and never echoes a submitted id, label or count, so a
+ * refusal cannot hand client input back over the wire (and a caller cannot mine the shape of the
+ * parked request from an error line).
+ *
+ * @param refusal - the rule {@link answerRefusalOf} reported, or undefined when it reported none.
+ * @returns the reason line, without the route's `mpd-roles:` prefix.
+ */
+function refusalLineOf(refusal: AnswerRefusal | undefined): string {
+  switch (refusal) {
+    case "missing":
+      return "the answers must cover every question the request asked (one answer per question item)"
+    case "duplicate":
+      return "the answers name the same question id twice"
+    case "unknown-id":
+      return "an answer names a question this request does not carry"
+    case "too-many-labels":
+      return "a question that is not multi-select accepts at most one label"
+    case "shape":
+      return "an answer entry is malformed"
+    case "label":
+      return "an answer selected a label this question does not offer"
+    default:
+      // UNREACHABLE while `answer` and the membership probe read the same synchronous parking lot;
+      // the fallback exists so the route always answers a sentence instead of `undefined`.
+      return "the answer batch was refused"
+  }
+}
+
+/**
  * Build the POST handler: fence, method guard, capped body, boundary parse, relay answer.
  *
  * A refusal carries the most precise status the boundary can justify: 404 when no parked question
- * has the id, 400 when the batch is malformed or selects a label the question never offered.
+ * has the id, 400 when the batch breaks a relay rule — a question left unanswered, a duplicate or
+ * unknown id, several labels on a single-select question, a malformed entry or a label the question
+ * never offered — with ONE line that names the rule and echoes no input.
  *
  * @param dsh - the adapter the fence is delegated to.
  * @param deps - the live relay and the diagnostic sink.
@@ -882,19 +968,19 @@ function answerHandlerOf(dsh: Pick<DshAdapter, "webRequestRejection">, deps: Que
       }
       // A POST is itself proof a client is attached, so the membership probe's `list()` refresh is
       // not an accident: the person answering is exactly who the attach gate exists for. The probe
-      // runs BEFORE `answer` and distinguishes "no such id" (404) from "bad label" (400).
-      /** Whether the id still names a parked question at this instant. */
-      const known = deps.relay.list().some((row) => row.id === body.value.id)
+      // runs BEFORE `answer` and separates "no such id" (404) from "this batch breaks a rule" (400).
+      /** The parked row this body answers, or undefined when the id is unknown or already settled. */
+      const parkedRow = deps.relay.list().find((row) => row.id === body.value.id)
       if (deps.relay.answer(body.value)) {
         writeJson(res, 200, { ok: true, answered: true })
         return
       }
-      writeJson(res, known ? 400 : 404, {
-        ok: false,
-        error: known
-          ? "mpd-roles: an answer selected a label this question does not offer"
-          : "mpd-roles: no pending question has that id",
-      })
+      if (parkedRow === undefined) {
+        writeJson(res, 404, { ok: false, error: "mpd-roles: no pending question has that id" })
+        return
+      }
+      // A KNOWN id whose batch was refused: the reason line names the ONE rule that failed.
+      writeJson(res, 400, { ok: false, error: "mpd-roles: " + refusalLineOf(answerRefusalOf(parkedRow, body.value.answers)) })
     } catch (error) {
       warnLine(deps, `route ${ANSWER_PATH} failed: ${messageOf(error)}`)
       try {

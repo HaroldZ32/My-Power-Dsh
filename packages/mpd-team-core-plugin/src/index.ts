@@ -1351,12 +1351,52 @@ export function apply(ctx: any): void {
   }
 
   /**
+   * The live agent that serves ONE SESSION, not merely the agent whose own id is that string.
+   *
+   * WHY THE FALLBACK EXISTS (plan §4.2 amendment 3, CodeRabbit review of PR #88). `dsh.liveAgent(id)`
+   * matches the AGENT id, and a host may give an agent an id that differs from its session id — the
+   * bundle's own {@link workspaceRootForSessionOf} and the TUI adapter both already fall back to a
+   * `session.id` match. Without the same fallback here a session that IS live was refused by the
+   * service and answered 409 by both routes, while every other surface resolved it.
+   *
+   * BOTH READS ARE CONTAINED: a registry that throws (or cannot list) is the same as no match, and the
+   * caller decides what that means, so no probe takes a request handler down.
+   * @param sessionId - the session the request names.
+   * @returns the live agent serving it, or undefined when no live agent does.
+   */
+  const liveAgentForSession = (sessionId: string): unknown => {
+    try {
+      /** The id-keyed answer, which is the common case (agent id === session id). */
+      const direct = dsh.liveAgent(sessionId)
+      if (direct !== undefined && direct !== null) return direct
+    } catch {
+      // A registry whose `get` throws falls through to the scan, exactly like an absent id.
+    }
+    try {
+      for (const candidate of dsh.liveAgents()) {
+        // The adapter types `session` as opaque, so the one field this fallback reads is narrowed here
+        // (a cast, not `any`): a session header is the registry's own contract, not this row's.
+        /** The candidate's own session, when it exposes one. */
+        const session = (candidate as { session?: { id?: unknown } } | null | undefined)?.session
+        if (session !== null && typeof session === "object" && (session as { id?: unknown }).id === sessionId) return candidate
+      }
+    } catch {
+      // A registry that cannot list is the same as no match; the caller refuses with its own sentence.
+    }
+    return undefined
+  }
+
+  /**
    * Resolve ONE session into the caller its action runs as, or the sentence saying why it cannot.
    *
    * A ROUTE HAS NO AGENT OF ITS OWN, so the live registry is the only honest source: a session that
    * is not live refuses (the routes answer 409) instead of driving a spawn nobody authorized. The
    * workspace comes from `workspaceForRequest`, which refuses an id no workspace claims — a bogus id
    * must never act on another workspace's team.
+   *
+   * LIVENESS IS THE SHARED RULE (plan §4.2 amendment 3): {@link liveAgentForSession} tries the
+   * id-keyed lookup and falls back to a `session.id` match, so the service and the routes cannot
+   * disagree about whether a session is live.
    *
    * THE LINEAGE IS THE TOOL PATH'S OWN (F4). `where(exec)` decides it with
    * {@link sessionIsDelegatedChild} + {@link sessionLineageOf} over `exec.agent`; the resolved live
@@ -1369,9 +1409,8 @@ export function apply(ctx: any): void {
    */
   const callerForSession = (sessionId: string, signal?: AbortSignal): { ok: true; caller: TeamActionCaller } | { ok: false; error: string } => {
     /** The session's live agent, which a spawn or a send is authorized by. */
-    let agent: unknown
-    try { agent = dsh.liveAgent(sessionId) } catch { agent = undefined }
-    if (agent === undefined || agent === null) return { ok: false, error: `session ${sessionId} is not live` }
+    const agent = liveAgentForSession(sessionId)
+    if (agent === undefined) return { ok: false, error: `session ${sessionId} is not live` }
     /** The ancestors the resolved agent contributes, with the SAME delegation guard `where` applies. */
     const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent })
     try {
@@ -2827,11 +2866,10 @@ export function apply(ctx: any): void {
         // THE TWO MUTATING ROUTES DELEGATE TO THE PUBLISHED SERVICE, never to a second copy of the
         // sequence: a button, a panel action and this tool handler therefore run the SAME approval or
         // dispatch pass. `isLive` is what lets the route answer 409 before acting, and it is the
-        // service's own liveness rule (`dsh.liveAgent`), read through the one adapter seam.
+        // service's own liveness rule — the SAME `liveAgentForSession` helper `callerForSession` uses,
+        // including the `session.id` fallback — so the route and the service cannot disagree.
         actions: {
-          isLive: (sessionId: string): boolean => {
-            try { return dsh.liveAgent(sessionId) !== undefined } catch { return false }
-          },
+          isLive: (sessionId: string): boolean => liveAgentForSession(sessionId) !== undefined,
           approve: (sessionId: string) => teamActions.approve({ sessionId }),
           dispatch: (sessionId: string, input: { limit?: number; dryRun?: boolean }) => teamActions.dispatch({ sessionId, ...input }),
         } satisfies TeamWebActions,

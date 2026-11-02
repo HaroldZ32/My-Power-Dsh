@@ -4032,6 +4032,7 @@ var TEAM_APPROVE_PATH = "/plugins/mpd-team/approve";
 var TEAM_DISPATCH_PATH = "/plugins/mpd-team/dispatch";
 var TEAM_ACTION_ROUTES = [TEAM_APPROVE_PATH, TEAM_DISPATCH_PATH];
 var MAX_ACTION_BODY_BYTES = 64 * 1024;
+var GENERIC_FAILURE = "mpd-team-core: the request could not be completed";
 var actionEncoder = new TextEncoder;
 var actionDecoder = new TextDecoder;
 async function readActionBody(request) {
@@ -4381,6 +4382,11 @@ function registerTeamRoutes(webServer, deps) {
             }
             const result = await run(sessionId, body.value);
             if (!result.ok) {
+              if (result.unexpected === true) {
+                deps.warn(`route ${path} failed: ${result.error}`);
+                json(res, 500, { ok: false, error: GENERIC_FAILURE });
+                return;
+              }
               json(res, 400, { ok: false, error: `mpd-team-core: ${result.error}` });
               return;
             }
@@ -4388,7 +4394,7 @@ function registerTeamRoutes(webServer, deps) {
           } catch (error) {
             deps.warn(`route ${path} failed: ${String(error?.message ?? error)}`);
             try {
-              json(res, 500, { ok: false, error: "mpd-team-core: the request could not be completed" });
+              json(res, 500, { ok: false, error: GENERIC_FAILURE });
             } catch {}
           }
         }
@@ -4815,7 +4821,26 @@ var TEAM_ACTIONS_SERVICE = "mpdTeamActions";
 function refusalOf(error) {
   return error instanceof Error ? error.message : String(error);
 }
+function unexpectedRefusalOf(error) {
+  return { ok: false, error: refusalOf(error), unexpected: true };
+}
+var approvalsInFlight = new Set;
+var dispatchesInFlight = new Set;
+function actionSlotKey(caller) {
+  return `${caller.workspace}\x00${caller.sessionId}`;
+}
 async function approveTeam(deps, caller, input = {}) {
+  const slot = actionSlotKey(caller);
+  if (approvalsInFlight.has(slot))
+    return { ok: false, error: "an approval for this session is already running" };
+  approvalsInFlight.add(slot);
+  try {
+    return await approveTeamBody(deps, caller, input);
+  } finally {
+    approvalsInFlight.delete(slot);
+  }
+}
+async function approveTeamBody(deps, caller, input) {
   if (caller.agent === undefined)
     return { ok: false, error: "approve needs a live agent" };
   const { workspace, sessionId, lineage } = caller;
@@ -4829,8 +4854,12 @@ async function approveTeam(deps, caller, input = {}) {
     if (staged === 0) {
       return { ok: false, error: `plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true` };
     }
-    deps.assertPlanGraph(plan);
-    deps.assertScopesOrdered(plan);
+    try {
+      deps.assertPlanGraph(plan);
+      deps.assertScopesOrdered(plan);
+    } catch (error) {
+      return { ok: false, error: refusalOf(error) };
+    }
     const parent = deps.deriveParentTeam(workspace, sessionId, lineage);
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
@@ -4912,10 +4941,21 @@ async function approveTeam(deps, caller, input = {}) {
     await deps.bundleApprovalEffects(plan, caller);
     return { ok: true, plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
   } catch (error) {
-    return { ok: false, error: refusalOf(error) };
+    return unexpectedRefusalOf(error);
   }
 }
 async function runDispatch(deps, caller, input = {}) {
+  const slot = actionSlotKey(caller);
+  if (dispatchesInFlight.has(slot))
+    return { ok: false, error: "a dispatch pass for this session is already running" };
+  dispatchesInFlight.add(slot);
+  try {
+    return await runDispatchBody(deps, caller, input);
+  } finally {
+    dispatchesInFlight.delete(slot);
+  }
+}
+async function runDispatchBody(deps, caller, input) {
   if (caller.agent === undefined)
     return { ok: false, error: "dispatch needs a live agent" };
   const { workspace, sessionId, lineage } = caller;
@@ -5027,7 +5067,7 @@ async function runDispatch(deps, caller, input = {}) {
     writeLedger(workspace, merged);
     return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
   } catch (error) {
-    return { ok: false, error: refusalOf(error) };
+    return unexpectedRefusalOf(error);
   }
 }
 
@@ -6811,14 +6851,24 @@ function apply(ctx) {
     assertPlanGraph,
     assertScopesOrdered
   };
-  const callerForSession = (sessionId, signal) => {
-    let agent;
+  const liveAgentForSession = (sessionId) => {
     try {
-      agent = dsh.liveAgent(sessionId);
-    } catch {
-      agent = undefined;
-    }
-    if (agent === undefined || agent === null)
+      const direct = dsh.liveAgent(sessionId);
+      if (direct !== undefined && direct !== null)
+        return direct;
+    } catch {}
+    try {
+      for (const candidate of dsh.liveAgents()) {
+        const session = candidate?.session;
+        if (session !== null && typeof session === "object" && session.id === sessionId)
+          return candidate;
+      }
+    } catch {}
+    return;
+  };
+  const callerForSession = (sessionId, signal) => {
+    const agent = liveAgentForSession(sessionId);
+    if (agent === undefined)
       return { ok: false, error: `session ${sessionId} is not live` };
     const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent });
     try {
@@ -7748,13 +7798,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         revision: (workspace) => feed.revision(workspace),
         graph: (workspace, teamId) => graphOf(workspace, teamId),
         actions: {
-          isLive: (sessionId) => {
-            try {
-              return dsh.liveAgent(sessionId) !== undefined;
-            } catch {
-              return false;
-            }
-          },
+          isLive: (sessionId) => liveAgentForSession(sessionId) !== undefined,
           approve: (sessionId) => teamActions.approve({ sessionId }),
           dispatch: (sessionId, input) => teamActions.dispatch({ sessionId, ...input })
         }

@@ -27,9 +27,12 @@
 - **问题中继（QUESTION RELAY）** —— 让没有 DSH surface 的客户端也能回答 `ask_user_question`：
   `GET /plugins/mpd-roles/questions?sessionId=` 返回 `{ ok: true, pending }`；
   `POST /plugins/mpd-roles/questions/answer` 携带 `{ id, answers: [{ id, selected, custom? }] }` 时返回
-  `{ ok: true, answered: true }`（未知 id 为 404，未知 **label** 或请求体格式错误为 400，超过 64 KiB 上限为 413）。
+  `{ ok: true, answered: true }`（未知 id 为 404；批次违反下述中继规则或请求体格式错误为 400；超过 64 KiB 上限为 413）。
   `selected` 中的每一项都是选项 **label**，绝不是索引。两条路由都先经过宿主请求围栏，并返回 `no-store` JSON；中继先等待下游 answerer，只停放 `NO_PROVIDER` 拒绝，且仅在客户端于 `attachWindowMs` 内轮询过时才停放；无人回答的问题在 `ttlMs`（默认 120 秒，容量 16）后重新抛出该**原始**错误。
   **它交回 Harness 的回复是信封** `{ answers: [...] }`，绝不是裸数组：停放队列本身存的是 `DshQuestionAnswer[]`，只有 waterfall 回复会把它包起来 —— 下游给出的信封按同一对象返回，而每一条失败路径（ttl、容量驱逐、abort、dispose）仍然抛出**原始**错误，而不是伪造一个空信封。
+  **一批答案必须覆盖整个请求。** `answers` 对每个已停放的问题项恰好携带**一个**条目；漏答某一项、重复的问题 id、或本次请求从未携带的 id，都会让**整批**被拒绝（400，服务的 `answer` 返回 `false`），且该问题**继续停放**以便重试 —— 否则半答的请求会让模型的工具调用在另一个问题尚未作答时就落定。非 `multiSelect: true` 的问题最多接受一个 label；空的 `selected` 加 `custom` 仍然是合法的“跳过”/自由文本答案。拒绝的一行原因只说明违反的规则，绝不回显提交的 id 或 label。
+  **这是后果，不是变通：** DSH Go 面板只渲染**第一个**问题项，因此含多个问题项的请求**无法**从面板作答 —— 除非有能渲染（并提交）每一项的客户端来回答，否则请求会一直停放到过期。
+  **没有生命周期属主会被报告，而不是被隐藏：** 当 ctx 不提供 `effect` 接缝时，启动 token 读作 `questions=relay routes=N lifetime=unowned`，并有一行 warning 说明该 waterfall answerer 及其路由永远不会被 dispose；存在 `effect` 接缝时 token 不变，teardown 会释放两者。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 

@@ -7,7 +7,7 @@
 // guard, 64 KiB cap, boundary parse, then work — and they assert the success payload is the NARROW
 // projection: no store object and no filesystem path at any depth.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -672,5 +672,105 @@ describe("F4 — the service derives the SAME lineage as the tool path", () => {
     // The route's narrow projection carries the pairs the service resolved for the FORK's lineage; a
     // hardcoded `[]` would leave this empty.
     expect((captured.body as { pairs: Array<{ taskId: string }> }).pairs.map((pair) => pair.taskId)).toEqual(["T1"])
+  })
+})
+
+// ── R1b: an UNEXPECTED failure's message never reaches a 400 body ────────────
+//
+// The action wraps its body, so before this repair a caught filesystem error became `{ ok:false, error }`
+// and the route forwarded that text at 400 — a raw path could cross the wire, contradicting the
+// documented generic 500. The action now MARKS an unexpected throw; the ROUTE sanitizes; the TOOL keeps
+// rethrowing the real sentence, because the sanitizing is the route's, not the action's.
+
+describe("R1b — an unexpected failure is a generic 500 on the wire and a real sentence in the tool", () => {
+  /**
+   * Stage a one-member, one-task wave through the TOOL surface as {@link AGENT}.
+   * @param h - the harness to drive.
+   * @returns nothing; the plan is left staged.
+   */
+  async function stageSurfacePlan(h: Harness): Promise<void> {
+    await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "ship the drive surface" })
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [] } })
+  }
+
+  test("the route answers the generic 500 with NO path anywhere; the tool still throws the real message", async () => {
+    /** A composition with a live session. */
+    const h = harness(true)
+    await stageSurfacePlan(h)
+    // MAKE THE STORE WRITE FAIL FOR REAL, with a path in its own message: `teams` becomes a regular
+    // file, so the record write's `mkdirSync` refuses with EEXIST naming the path.
+    mkdirSync(join(h.workspace, ".mpd", "team"), { recursive: true })
+    writeFileSync(join(h.workspace, ".mpd", "team", "teams"), "not a directory")
+    /** The row's OWN mounted approve handler — the wiring under test. */
+    const handler = h.routes.get(TEAM_APPROVE_PATH)
+    if (handler === undefined) throw new Error(`the row mounted no ${TEAM_APPROVE_PATH} route`)
+    /** The response double. */
+    const { res, captured } = response()
+    await handler(request("POST", `${TEAM_APPROVE_PATH}?sessionId=${LEAD}`, "{}"), res)
+    // THE DOCUMENTED 500, VERBATIM: not a 400, and not the caught sentence.
+    expect(captured.status).toBe(500)
+    expect(captured.body).toEqual({ ok: false, error: "mpd-team-core: the request could not be completed" })
+    // NO PATH AT ANY DEPTH, and no fragment of the workspace either.
+    expect(pathKeys(captured.body)).toEqual([])
+    expect(JSON.stringify(captured.body)).not.toContain(h.workspace)
+    // THE TOOL PATH IS UNCHANGED: it rethrows the REAL sentence, path included.
+    /** The tool's rejection, caught so the arm can read it. */
+    const thrown = await h.call("agent_teams_plan", { action: "approve" }).then(
+      () => undefined,
+      (error: unknown) => error as Error,
+    )
+    expect(thrown).toBeInstanceOf(Error)
+    expect(String(thrown?.message)).toContain(join(".mpd", "team", "teams"))
+  })
+})
+
+// ── R1c: an agent whose `id` differs from its `session.id` is still live ─────
+//
+// `dsh.liveAgent(sessionId)` matches the AGENT id. A host may mint an agent id that differs from its
+// session id — the bundle's own `workspaceRootForSessionOf` and the TUI adapter already fall back to a
+// `session.id` match — so without the same fallback here a LIVE session was refused by the service
+// (and answered 409 by both routes).
+
+describe("R1c — the session-id match is what makes this agent live", () => {
+  /** The agent id the host minted, deliberately DIFFERENT from the session id. */
+  const AGENT_ID = "agent-xyz-b"
+  /** The live agent, reachable only through its `session.id` for {@link LEAD}. */
+  const SHADOW_AGENT = { id: AGENT_ID, session: { id: LEAD, header: {} } }
+
+  test("the service resolves it, and BOTH routes agree it is live", async () => {
+    /** The registry, keyed by the AGENT id — so the id-keyed lookup cannot answer for LEAD. */
+    const agents = new Map([[AGENT_ID, SHADOW_AGENT]])
+    /** The composition under test. */
+    const h = harness(true, agents)
+    // THE PRECONDITION: the id-keyed lookup is blind to this session.
+    expect(agents.has(LEAD)).toBe(false)
+    await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "ship the drive surface" }, SHADOW_AGENT)
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, SHADOW_AGENT)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [] } }, SHADOW_AGENT)
+    /** The published service. */
+    const service = h.services.get(ACTIONS_SERVICE) as MpdTeamActionsService
+    // THE SERVICE: the session is live through `session.id` alone.
+    const viaService = await service.approve({ sessionId: LEAD })
+    expect(viaService.ok).toBe(true)
+    // THE APPROVE ROUTE: a second wave, answered 200 rather than 409.
+    await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "ship the drive surface" }, SHADOW_AGENT)
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, SHADOW_AGENT)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [] } }, SHADOW_AGENT)
+    /** The row's OWN mounted approve handler. */
+    const approve = h.routes.get(TEAM_APPROVE_PATH)
+    if (approve === undefined) throw new Error(`the row mounted no ${TEAM_APPROVE_PATH} route`)
+    /** The approve response. */
+    const approved = response()
+    await approve(request("POST", `${TEAM_APPROVE_PATH}?sessionId=${LEAD}`, "{}"), approved.res)
+    expect(approved.captured.status).toBe(200)
+    // THE DISPATCH ROUTE: 200, not 409, for the same session.
+    const dispatch = h.routes.get(TEAM_DISPATCH_PATH)
+    if (dispatch === undefined) throw new Error(`the row mounted no ${TEAM_DISPATCH_PATH} route`)
+    /** The dispatch response. */
+    const dispatched = response()
+    await dispatch(request("POST", `${TEAM_DISPATCH_PATH}?sessionId=${LEAD}`, JSON.stringify({ dryRun: true })), dispatched.res)
+    expect(dispatched.captured.status).toBe(200)
+    expect((dispatched.captured.body as { ok: boolean }).ok).toBe(true)
   })
 })
