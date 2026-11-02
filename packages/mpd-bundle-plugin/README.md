@@ -165,6 +165,49 @@ Chat/Trajectory.
 - **`order` is NOT used.** The shell projects its tab list from registration order, so the entry registers
   on the slot's first declaration instead of competing for a position.
 
+## The DSH Go native panel
+
+`src/dshgo-panel.ts` is the **live host half** of the DSH Go surface the root `dshGo` manifest declares:
+the manifest contributes panel id **`mpd`** with `placement: ["session.tab", "features"]` and the static
+fallback view `dsh-go/views/mpd.json`, and this module publishes `panel('mpd', …)` through the adapter
+under the SAME id, so the app upgrades the fallback in place instead of listing two panels.
+
+- **Registered lazily and silently.** One attempt at `apply`; a host without the `dshGo` bridge gets one
+  log token (`dshGo=absent`) and one `onServiceBound(["dshGo"], …)` subscription, no poll and no throw,
+  and a host that binds the bridge later is upgraded once (`dshGo=panel`). A second bind never publishes a
+  second panel.
+- **What it shows.** A `keyValue` row for the team (name, status, phase, member count, task count — an em
+  dash when this conversation has no team) and one for the staged plan (members/tasks), a `list` of up to
+  10 ready tasks (title plus kind/owner), an `info` callout with the pending question, one option button
+  per answer (first four, with a note when there are more), the two action buttons, and a muted footer
+  naming the limits.
+- **What it pushes.** `data(scope, emit)` polls at 2000 ms (the 0.5 Hz ceiling), emits ONLY when the
+  serialized snapshot changed, and returns the cancel function that clears its interval. `view` builds
+  from a LIVE read of the same services instead of from that push cache: the app fetches the view BEFORE
+  it subscribes, so a cache-built first view would carry no callout and no option buttons. The snapshot
+  is narrowed to `{ team, plan, question, readyTasks }` — ids, names, statuses, counts, the question's
+  own text and task titles: never a filesystem path, a token or a credential, and never more than the
+  bridge's 32 KiB cap. `refresh('mpd')` fires only when the pending-question SET (the parked ids)
+  changes, because the option buttons are built from it; a content-only change (same id, new text)
+  travels on the data push.
+- **The three actions.** `approve` calls `mpdTeamActions.approve({sessionId})`, `dispatch` calls
+  `mpdTeamActions.dispatch({sessionId})`, and `answer:<n>` calls `mpdQuestions.answer({id, answers})`
+  with the question the VIEW was rendered from: building a view captures that question's parked id, its
+  item ids and its RAW option labels, and the tap sends that captured id and label. The live parking lot
+  is consulted only to check the captured id is still there — if it is gone the tap answers "That
+  question is gone" and asks for a refresh instead of settling whatever is parked now, and a tap with no
+  rendered question answers "No question on screen". The fixed ids `answer:0`…`answer:3` therefore index
+  the CAPTURED view, never the live lot. Every tap answers a `toast` (≤ 40 characters) and NEVER rejects:
+  a missing conversation answers "Open a conversation first", a missing service "Unavailable here", a
+  refusal its own sentence, a throw its message, and a call that outlives four seconds "Still working —
+  check the team panel".
+- **Declared bounds.** Slots are **local engine only** (the relay blocks `/dsh-go/*`, so a remote host
+  renders tool cards instead of this panel); without this host half the **static** `dsh-go/views/mpd.json`
+  is what renders, with no live values; the actions need a **live conversation** (a tap with no
+  `sessionId` is refused before any service is called); and the Flutter app is not in this workspace, so
+  unit tests pin the protocol shape (component catalog, budget walk, action-id pattern, binding
+  resolution) while a real device install stays the user's check.
+
 ## Config
 
 None. This is infrastructure: the self-row carries no config in the bundle patch.
@@ -179,6 +222,8 @@ node scripts/pack-mpd.ts           # restage the bundle
 ## Files
 
 - `src/index.ts` — the no-op main plugin.
+- `src/dshgo-panel.ts` — the live DSH Go native panel (`panel('mpd', …)`): the polled snapshot, the v1
+  view tree and the three tap actions described above.
 - `src/web-client.ts` — the mpd client factory body (plain JS, React.createElement).
 - `src/team-view.ts` — the shared TEAM view factory body both sidebar hosts render (the member cards,
   the dependency DAG and the poll-plus-push refresh described above). Spliced into the client as

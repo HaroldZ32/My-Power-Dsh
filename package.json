@@ -38,6 +38,7 @@
     "cordis.patch.yml",
     "docs/**",
     "dsh-distribution.json",
+    "dsh-go",
     "dsh-plugin.json",
     "extensions/**",
     "icon.svg",
@@ -70,6 +71,31 @@
     "client": {
       "inject": [],
       "platform": "web"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "en": "MPD",
+      "zh": "MPD"
+    },
+    "icon": "bolt",
+    "contributes": {
+      "panels": [
+        {
+          "id": "mpd",
+          "title": {
+            "en": "MPD Workbench",
+            "zh": "MPD 工作台"
+          },
+          "icon": "bolt",
+          "placement": [
+            "session.tab",
+            "features"
+          ],
+          "view": "./dsh-go/views/mpd.json"
+        }
+      ]
     }
   },
   "scripts": {

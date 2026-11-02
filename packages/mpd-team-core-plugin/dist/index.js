@@ -1,6 +1,6 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync5, mkdirSync as mkdirSync7, readFileSync as readFileSync7, readdirSync as readdirSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join9 } from "node:path";
+import { existsSync as existsSync5, readdirSync as readdirSync6 } from "node:fs";
+import { join as join10 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -693,6 +693,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -863,6 +961,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1194,6 +1297,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1244,7 +1349,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -1459,6 +1566,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextEnvelope = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return await next();
+        };
+        return handler(request, nextEnvelope);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -3857,6 +4028,62 @@ var TEAM_TASK_PATH = "/plugins/mpd-team/task";
 var TEAM_MAIL_PATH = "/plugins/mpd-team/mail";
 var TEAM_EVENTS_PATH = "/plugins/mpd-team/events";
 var TEAM_ROUTES = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH, TEAM_EVENTS_PATH];
+var TEAM_APPROVE_PATH = "/plugins/mpd-team/approve";
+var TEAM_DISPATCH_PATH = "/plugins/mpd-team/dispatch";
+var TEAM_ACTION_ROUTES = [TEAM_APPROVE_PATH, TEAM_DISPATCH_PATH];
+var MAX_ACTION_BODY_BYTES = 64 * 1024;
+var GENERIC_FAILURE = "mpd-team-core: the request could not be completed";
+var actionEncoder = new TextEncoder;
+var actionDecoder = new TextDecoder;
+async function readActionBody(request) {
+  const req = request;
+  if (req === undefined || typeof req[Symbol.asyncIterator] !== "function")
+    return { ok: false, status: 400 };
+  const parts = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const part = typeof chunk === "string" ? actionEncoder.encode(chunk) : chunk instanceof Uint8Array ? chunk : actionEncoder.encode(String(chunk));
+    size += part.byteLength;
+    if (size > MAX_ACTION_BODY_BYTES)
+      return { ok: false, status: 413 };
+    parts.push(part);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const part of parts) {
+    bytes.set(part, at);
+    at += part.byteLength;
+  }
+  const raw = actionDecoder.decode(bytes);
+  if (raw.trim() === "")
+    return { ok: true, value: undefined };
+  try {
+    return { ok: true, value: JSON.parse(raw) };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
+function parseDispatchInput(body) {
+  if (body === undefined)
+    return { ok: true, value: {} };
+  if (body === null || typeof body !== "object" || Array.isArray(body))
+    return { ok: false, error: "the request body must be a JSON object" };
+  const record = body;
+  const limit = record.limit;
+  if (limit !== undefined && !(typeof limit === "number" && Number.isFinite(limit) && limit >= 0)) {
+    return { ok: false, error: "limit must be a finite number >= 0 when present" };
+  }
+  const dryRun = record.dryRun;
+  if (dryRun !== undefined && typeof dryRun !== "boolean")
+    return { ok: false, error: "dryRun must be a boolean when present" };
+  return {
+    ok: true,
+    value: {
+      ...limit === undefined ? {} : { limit },
+      ...dryRun === undefined ? {} : { dryRun }
+    }
+  };
+}
 function approvalPhraseFor(planId) {
   return `approve ${planId}`;
 }
@@ -4055,9 +4282,9 @@ var SSE_PING_MS = 15000;
 function registerTeamRoutes(webServer, deps) {
   if (webServer === undefined || typeof webServer.register !== "function")
     return false;
-  const json = (res, status, body) => {
+  const json = (res, status, body, headers = {}) => {
     const out = res;
-    out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+    out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
     out.end(JSON.stringify(body));
   };
   const sessionOf = (req) => {
@@ -4103,6 +4330,72 @@ function registerTeamRoutes(webServer, deps) {
             handler(req, res);
           } catch (error) {
             deps.warn(`the ${path} stream failed: ${String(error?.message ?? error)}`);
+          }
+        }
+      }), `mpd-team-core: web route ${path}`);
+      return true;
+    } catch (error) {
+      deps.warn(`registering ${path} failed: ${String(error?.message ?? error)}`);
+      return false;
+    }
+  };
+  const mountAction = (path, parse, run, project) => {
+    const actions2 = deps.actions;
+    if (actions2 === undefined)
+      return false;
+    try {
+      deps.effect(() => webServer.register({
+        kind: "exact",
+        path,
+        handler: async (req, res) => {
+          try {
+            const rejection = deps.authorize?.(req);
+            if (rejection !== undefined) {
+              json(res, rejection, { ok: false, error: `mpd-team-core: the request is not authenticated for ${path}` });
+              return;
+            }
+            if (req?.method !== "POST") {
+              json(res, 405, { ok: false, error: `mpd-team-core: ${path} accepts POST only` }, { allow: "POST" });
+              return;
+            }
+            const read = await readActionBody(req);
+            if (!read.ok) {
+              json(res, read.status, {
+                ok: false,
+                error: read.status === 413 ? `mpd-team-core: the request body exceeds ${MAX_ACTION_BODY_BYTES} bytes` : "mpd-team-core: the request body is not valid JSON"
+              });
+              return;
+            }
+            const body = parse(read.value);
+            if (!body.ok) {
+              json(res, 400, { ok: false, error: `mpd-team-core: ${body.error}` });
+              return;
+            }
+            const sessionId = sessionOf(req);
+            if (sessionId === "") {
+              json(res, 400, { ok: false, error: "mpd-team-core: the request names no session" });
+              return;
+            }
+            if (!actions2.isLive(sessionId)) {
+              json(res, 409, { ok: false, error: `mpd-team-core: session ${sessionId} is not live` });
+              return;
+            }
+            const result = await run(sessionId, body.value);
+            if (!result.ok) {
+              if (result.unexpected === true) {
+                deps.warn(`route ${path} failed: ${result.error}`);
+                json(res, 500, { ok: false, error: GENERIC_FAILURE });
+                return;
+              }
+              json(res, 400, { ok: false, error: `mpd-team-core: ${result.error}` });
+              return;
+            }
+            json(res, 200, { ok: true, ...project(result) });
+          } catch (error) {
+            deps.warn(`route ${path} failed: ${String(error?.message ?? error)}`);
+            try {
+              json(res, 500, { ok: false, error: GENERIC_FAILURE });
+            } catch {}
           }
         }
       }), `mpd-team-core: web route ${path}`);
@@ -4216,6 +4509,22 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   all = mount(TEAM_TASK_PATH, (req) => buildTeamTasks(deps.workspace(sessionOf(req)))) && all;
   all = mount(TEAM_MAIL_PATH, (req) => buildTeamMail(deps.workspace(sessionOf(req)))) && all;
   all = mountStream(TEAM_EVENTS_PATH, events) && all;
+  const actions = deps.actions;
+  if (actions !== undefined) {
+    all = mountAction(TEAM_APPROVE_PATH, () => ({ ok: true, value: undefined }), (sessionId) => actions.approve(sessionId), (payload) => ({
+      team: {
+        id: payload.team?.teamId ?? "",
+        name: payload.team?.name ?? "",
+        memberCount: payload.team?.members.length ?? 0,
+        taskCount: payload.team?.tasks.length ?? 0
+      },
+      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)]
+    })) && all;
+    all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId, body) => actions.dispatch(sessionId, body), (payload) => ({
+      pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),
+      skipped: payload.skipped
+    })) && all;
+  }
   return all;
 }
 
@@ -4485,6 +4794,281 @@ function installIdleGuard(dsh) {
     beginDispatch,
     disposers
   };
+}
+
+// packages/mpd-team-core-plugin/src/dispatch-ledger.ts
+import { mkdirSync as mkdirSync6, readFileSync as readFileSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join7 } from "node:path";
+var dispatchPath = (workspace) => join7(workspace, ".mpd", "team", "dispatch.json");
+function readLedger(workspace) {
+  try {
+    const raw = JSON.parse(readFileSync6(dispatchPath(workspace), "utf8"));
+    return raw !== null && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+function writeLedger(workspace, ledger) {
+  mkdirSync6(join7(workspace, ".mpd", "team"), { recursive: true });
+  const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
+  writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
+`);
+  renameSync4(temp, dispatchPath(workspace));
+}
+
+// packages/mpd-team-core-plugin/src/team-actions.ts
+var TEAM_ACTIONS_SERVICE = "mpdTeamActions";
+function refusalOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function unexpectedRefusalOf(error) {
+  return { ok: false, error: refusalOf(error), unexpected: true };
+}
+var approvalsInFlight = new Set;
+var dispatchesInFlight = new Set;
+function actionSlotKey(caller) {
+  return `${caller.workspace}\x00${caller.sessionId}`;
+}
+async function approveTeam(deps, caller, input = {}) {
+  const slot = actionSlotKey(caller);
+  if (approvalsInFlight.has(slot))
+    return { ok: false, error: "an approval for this session is already running" };
+  approvalsInFlight.add(slot);
+  try {
+    return await approveTeamBody(deps, caller, input);
+  } finally {
+    approvalsInFlight.delete(slot);
+  }
+}
+async function approveTeamBody(deps, caller, input) {
+  if (caller.agent === undefined)
+    return { ok: false, error: "approve needs a live agent" };
+  const { workspace, sessionId, lineage } = caller;
+  try {
+    const plan = readPlan(workspace, sessionId);
+    if (plan === undefined)
+      return { ok: false, error: 'no team is staged in this session — use action:"create" first' };
+    if (plan.approvedAt !== undefined)
+      return { ok: false, error: `plan ${plan.planId} is already approved` };
+    const staged = plan.members.length + plan.tasks.length;
+    if (staged === 0) {
+      return { ok: false, error: `plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true` };
+    }
+    try {
+      deps.assertPlanGraph(plan);
+      deps.assertScopesOrdered(plan);
+    } catch (error) {
+      return { ok: false, error: refusalOf(error) };
+    }
+    const parent = deps.deriveParentTeam(workspace, sessionId, lineage);
+    if (input.dryRun === true) {
+      return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
+    }
+    let record = createTeam(workspace, {
+      name: plan.name,
+      description: plan.description,
+      leadSessionId: sessionId,
+      planId: plan.planId,
+      ...parent === undefined ? {} : { parentTeamId: parent.teamId }
+    }, deps.now());
+    for (const member of plan.members) {
+      record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, deps.now());
+    }
+    for (const task of plan.tasks) {
+      record = addTeamTask(record, {
+        subject: task.subject,
+        description: task.description,
+        kind: task.kind ?? "work",
+        ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
+        ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
+        ...task.owner === undefined ? {} : { owner: task.owner },
+        ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
+        ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
+      }, deps.now());
+    }
+    const planAlias = new Map;
+    plan.tasks.forEach((task, index) => {
+      const minted = record.tasks[index];
+      if (minted === undefined)
+        return;
+      planAlias.set(String(index + 1), minted.id);
+      if (!planAlias.has(task.subject))
+        planAlias.set(task.subject, minted.id);
+    });
+    for (const [index, task] of plan.tasks.entries()) {
+      const minted = record.tasks[index];
+      if (minted === undefined || (task.blockedBy ?? []).length === 0)
+        continue;
+      const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
+      if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
+        continue;
+      record = updateTeamTask(record, minted.id, { blockedBy: mapped }, deps.now());
+    }
+    const created = { members: [], tasks: [] };
+    const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
+    if (unresolvedBlockers.length > 0)
+      created.unresolved = unresolvedBlockers;
+    let stoppedAt;
+    for (const member of record.members) {
+      try {
+        const spawned = await deps.executor().spawn(caller.agent, {
+          teamId: record.teamId,
+          memberId: member.id,
+          name: member.name,
+          description: member.description === "" ? member.name : member.description,
+          prompt: withIdlePreamble(plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
+          ...member.role === undefined ? {} : { role: member.role },
+          ...caller.signal === undefined ? {} : { signal: caller.signal }
+        });
+        created.members.push({ name: member.name, id: spawned.handle });
+        record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
+      } catch (error) {
+        record = removeTeamMember(record, member.id);
+        stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
+        break;
+      }
+    }
+    if (stoppedAt === undefined)
+      for (const task of record.tasks) {
+        created.tasks.push({ subject: task.subject, id: task.id });
+      }
+    const approvedRecord = withDerivedPhase({ ...record, approvedAt: deps.now().toISOString() });
+    writeTeam(workspace, approvedRecord);
+    const approved = { ...plan, approvedAt: deps.now().toISOString(), created };
+    writePlan(workspace, approved);
+    if (stoppedAt === undefined)
+      archivePlan(workspace, { ...approved });
+    await deps.bundleApprovalEffects(plan, caller);
+    return { ok: true, plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
+async function runDispatch(deps, caller, input = {}) {
+  const slot = actionSlotKey(caller);
+  if (dispatchesInFlight.has(slot))
+    return { ok: false, error: "a dispatch pass for this session is already running" };
+  dispatchesInFlight.add(slot);
+  try {
+    return await runDispatchBody(deps, caller, input);
+  } finally {
+    dispatchesInFlight.delete(slot);
+  }
+}
+async function runDispatchBody(deps, caller, input) {
+  if (caller.agent === undefined)
+    return { ok: false, error: "dispatch needs a live agent" };
+  const { workspace, sessionId, lineage } = caller;
+  try {
+    const hold = readHold(workspace);
+    const reaped = reapReapedTeams(workspace, deps.now());
+    let ledgerAfterReap = readLedger(workspace);
+    const terminalForgotten = [];
+    for (const endedTeamId of reaped) {
+      const dropped = forgetTeam(ledgerAfterReap, endedTeamId);
+      ledgerAfterReap = dropped.ledger;
+      terminalForgotten.push(...dropped.forgotten);
+    }
+    if (terminalForgotten.length > 0)
+      writeLedger(workspace, ledgerAfterReap);
+    const teamId = deps.resolveTeam(workspace, sessionId, lineage).record?.teamId;
+    const watchdog = teamId === undefined ? { state: "free" } : deps.readWatchdogHold(workspace, sessionId, lineage);
+    const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined);
+    const holdNote = watchdog.state === "not-readable" ? `not-readable: ${String(watchdog.reason ?? "the watchdog's hold could not be read")}` : undefined;
+    const resolvedDispatch = deps.resolveTeam(workspace, sessionId, lineage);
+    if (resolvedDispatch.record === undefined)
+      return { ok: true, pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first", ...reaped.length === 0 ? {} : { reaped } };
+    let record = resolvedDispatch.record;
+    const opened = record;
+    const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id));
+    const tasks = opened.tasks.map((task) => ({
+      id: task.id,
+      subject: task.subject,
+      status: task.status,
+      ready: readyIds.has(task.id),
+      blockedBy: task.blockedBy,
+      teamId: opened.teamId,
+      writeScopes: task.writeScopes,
+      ...task.owner === undefined ? {} : { ownerName: task.owner }
+    }));
+    const idle = new Set(idleMembers(opened).map((member) => member.name));
+    const rosterRows = (() => {
+      try {
+        const roles = deps.service("mpdRoles");
+        return typeof roles?.list === "function" ? roles.list() : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (rosterRows.length === 0)
+      deps.log("[mpd-team-core] the mpdRoles service is absent or empty — the C7-2 read-only dispatch guard has no roster to classify against and fails OPEN");
+    const readonlyKeys = readonlyMemberKeys(rosterRows);
+    const members = opened.members.map((member) => ({
+      id: member.executorRef ?? member.id,
+      name: member.name,
+      status: idle.has(member.name) ? "inactive" : "running",
+      teamId: opened.teamId,
+      readonly: isReadonlyMemberName(member.name, readonlyKeys) || member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys)
+    }));
+    const pruned = reconcile(readLedger(workspace), opened.teamId, tasks);
+    const forgotten = [...new Set([...terminalForgotten, ...pruned.forgotten])];
+    const plan = planDispatch({
+      tasks,
+      members,
+      ledger: ledgerOfTeam(pruned.ledger, opened.teamId),
+      ...holdReason === undefined ? {} : { hold: holdReason },
+      ...typeof input.limit === "number" ? { limit: input.limit } : {}
+    });
+    if (plan.halted !== undefined || input.dryRun === true || plan.pairs.length === 0) {
+      if (pruned.forgotten.length > 0)
+        writeLedger(workspace, pruned.ledger);
+      return { ok: true, ...plan, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
+    }
+    let ledger = pruned.ledger;
+    const sent = [];
+    const skipped = [...plan.skipped];
+    for (const pair of plan.pairs) {
+      const endDispatchWindow = deps.beginDispatch(pair.memberId);
+      try {
+        const task = tasks.find((candidate) => candidate.id === pair.taskId);
+        try {
+          await deps.executor().send(caller.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), caller.signal);
+          const onDisk = readTeam(workspace, opened.teamId);
+          if (onDisk === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" });
+            continue;
+          }
+          const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision;
+          if (expected === undefined) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` });
+            continue;
+          }
+          const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, deps.now());
+          if (!claimed.applied) {
+            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
+            continue;
+          }
+          record = claimed.record;
+          record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }));
+          writeTeam(workspace, record);
+          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, deps.now());
+          sent.push(pair);
+        } catch (error) {
+          skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
+        }
+      } finally {
+        endDispatchWindow();
+      }
+    }
+    const fresh = reconcile(readLedger(workspace), opened.teamId, tasks);
+    const merged = { ...fresh.ledger };
+    for (const pair of sent)
+      merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)];
+    writeLedger(workspace, merged);
+    return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
 }
 
 // packages/mpd-graph-core/src/rank.ts
@@ -5141,10 +5725,10 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync6, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join7, resolve as resolve3 } from "node:path";
-var LEDGER_PATH = join7(".mpd", "boulder.json");
-var PLANS_DIR = join7(".mpd", "plans");
+import { readFileSync as readFileSync7, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute2, join as join8, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join8(".mpd", "boulder.json");
+var PLANS_DIR = join8(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
 function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -5156,7 +5740,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync6(join7(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync7(join8(root, LEDGER_PATH), "utf8"));
     return isRecord2(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -5188,7 +5772,7 @@ function newestPlan(root) {
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join7(directory, entry.name);
+      const path = join8(directory, entry.name);
       const stats = statSync2(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
@@ -5201,7 +5785,7 @@ function newestPlan(root) {
   return candidates[0]?.path;
 }
 function plansDirectory(workspaceRoot) {
-  return join7(workspaceRoot, PLANS_DIR);
+  return join8(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -5213,14 +5797,14 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync6(path, "utf8"));
+    return parsePlanMarkdown(readFileSync7(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }
 }
 // packages/mpd-graph-core/src/watch.ts
 import { readdirSync as readdirSync5, statSync as statSync3, watch } from "node:fs";
-import { basename, dirname, join as join8 } from "node:path";
+import { basename, dirname, join as join9 } from "node:path";
 var REARM_DELAYS_MS = [25, 100, 400];
 function defaultCreateWatch(path, listener) {
   return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
@@ -5264,7 +5848,7 @@ function directorySignature(directory, accept) {
   for (const name of names.sort()) {
     if (!accept(name))
       continue;
-    const stats = statOrUndefined(join8(directory, name));
+    const stats = statOrUndefined(join9(directory, name));
     if (stats === undefined)
       continue;
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
@@ -5649,7 +6233,7 @@ class GraphModels {
 }
 
 // packages/mpd-team-core-plugin/src/change-feed.ts
-import { mkdirSync as mkdirSync6, watch as watch2 } from "node:fs";
+import { mkdirSync as mkdirSync7, watch as watch2 } from "node:fs";
 var watchDirectory = (dir, onEvent) => watch2(dir, { persistent: false }, onEvent);
 function detachTimer(timer) {
   const unref = timer.unref;
@@ -5772,7 +6356,7 @@ class ChangeFeed {
         if (state.armed.has(dir))
           continue;
         try {
-          mkdirSync6(dir, { recursive: true });
+          mkdirSync7(dir, { recursive: true });
         } catch {}
       }
       for (const dir of dirs) {
@@ -5821,22 +6405,6 @@ var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
-var dispatchPath = (workspace) => join9(workspace, ".mpd", "team", "dispatch.json");
-function readLedger(workspace) {
-  try {
-    const raw = JSON.parse(readFileSync7(dispatchPath(workspace), "utf8"));
-    return raw !== null && typeof raw === "object" ? raw : {};
-  } catch {
-    return {};
-  }
-}
-function writeLedger(workspace, ledger) {
-  mkdirSync7(join9(workspace, ".mpd", "team"), { recursive: true });
-  const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
-  writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
-`);
-  renameSync4(temp, dispatchPath(workspace));
-}
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
@@ -6207,6 +6775,25 @@ function apply(ctx) {
     return healed === resolved.record ? resolved : { ...resolved, record: healed };
   };
   const recordFor = (workspace, sessionId, lineage = []) => resolveTeam(workspace, sessionId, lineage).record;
+  const workspaceForRequest = (sessionId) => {
+    if (sessionId === "")
+      return dsh.workspaceRoot();
+    try {
+      const own = dsh.workspaceRootForSession(sessionId);
+      if (own !== undefined && own !== "")
+        return own;
+    } catch {}
+    const roots = dsh.workspaceRootsAll();
+    for (const root2 of roots) {
+      try {
+        if (recordFor(root2, sessionId) !== undefined)
+          return root2;
+        if (readPlan(root2, sessionId) !== undefined)
+          return root2;
+      } catch {}
+    }
+    throw new Error(`mpd-team-core: no workspace is bound to session "${sessionId}" — refusing to answer from another workspace`);
+  };
   const releaseDispatchedTask = (workspace, record, taskId, expectedRevision, caller, lead) => {
     const fresh = readTeam(workspace, record.teamId) ?? record;
     const refusal = authorizeRelease(fresh, taskId, caller, lead);
@@ -6242,6 +6829,78 @@ function apply(ctx) {
   });
   for (const dispose of idleGuard.disposers)
     disposers.push(dispose);
+  const teamActionsDeps = {
+    now,
+    executor,
+    bundleApprovalEffects: (plan, caller) => bundleApprovalEffects(ctx, dsh, {
+      ...caller.agent === undefined ? {} : { agent: caller.agent },
+      ...caller.signal === undefined ? {} : { signal: caller.signal }
+    }, plan),
+    deriveParentTeam,
+    resolveTeam,
+    readWatchdogHold,
+    service: (id) => {
+      try {
+        return ctx.get?.(id, false);
+      } catch {
+        return;
+      }
+    },
+    log: (line) => rowLogLine("mpd-team-core", line),
+    beginDispatch: (memberId) => idleGuard.beginDispatch(memberId),
+    assertPlanGraph,
+    assertScopesOrdered
+  };
+  const liveAgentForSession = (sessionId) => {
+    try {
+      const direct = dsh.liveAgent(sessionId);
+      if (direct !== undefined && direct !== null)
+        return direct;
+    } catch {}
+    try {
+      for (const candidate of dsh.liveAgents()) {
+        const session = candidate?.session;
+        if (session !== null && typeof session === "object" && session.id === sessionId)
+          return candidate;
+      }
+    } catch {}
+    return;
+  };
+  const callerForSession = (sessionId, signal) => {
+    const agent = liveAgentForSession(sessionId);
+    if (agent === undefined)
+      return { ok: false, error: `session ${sessionId} is not live` };
+    const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent });
+    try {
+      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...signal === undefined ? {} : { signal } } };
+    } catch (error) {
+      return { ok: false, error: String(error?.message ?? error) };
+    }
+  };
+  const teamActions = {
+    approve: async ({ sessionId }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return approveTeam(teamActionsDeps, resolved.caller);
+    },
+    dispatch: async ({ sessionId, limit, dryRun }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return runDispatch(teamActionsDeps, resolved.caller, {
+        ...limit === undefined ? {} : { limit },
+        ...dryRun === undefined ? {} : { dryRun }
+      });
+    }
+  };
+  if (typeof ctx?.provide === "function") {
+    try {
+      ctx.provide(TEAM_ACTIONS_SERVICE, teamActions);
+    } catch (error) {
+      rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAM_ACTIONS_SERVICE} service failed: ${String(error?.message ?? error)}`);
+    }
+  }
   if (typeof ctx?.provide === "function") {
     try {
       ctx.provide(TEAMS_SERVICE, {
@@ -6536,98 +7195,17 @@ function apply(ctx) {
         return { archivedTo: archivePlan(workspace, plan) };
       }
       if (action === "approve") {
-        const plan = readPlan(workspace, sessionId);
-        if (plan === undefined)
-          throw new Error('no team is staged in this session — use action:"create" first');
-        if (plan.approvedAt !== undefined)
-          throw new Error(`plan ${plan.planId} is already approved`);
-        const staged = plan.members.length + plan.tasks.length;
-        if (staged === 0) {
-          throw new Error(`plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true`);
-        }
-        assertPlanGraph(plan);
-        assertScopesOrdered(plan);
-        const parent = deriveParentTeam(workspace, sessionId, lineage);
-        if (args?.dry_run === true) {
-          return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
-        }
-        let record = createTeam(workspace, {
-          name: plan.name,
-          description: plan.description,
-          leadSessionId: sessionId,
-          planId: plan.planId,
-          ...parent === undefined ? {} : { parentTeamId: parent.teamId }
-        }, now());
-        for (const member of plan.members) {
-          record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, now());
-        }
-        for (const task of plan.tasks) {
-          record = addTeamTask(record, {
-            subject: task.subject,
-            description: task.description,
-            kind: task.kind ?? "work",
-            ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
-            ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
-            ...task.owner === undefined ? {} : { owner: task.owner },
-            ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
-            ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
-          }, now());
-        }
-        const planAlias = new Map;
-        plan.tasks.forEach((task, index) => {
-          const minted = record.tasks[index];
-          if (minted === undefined)
-            return;
-          planAlias.set(String(index + 1), minted.id);
-          if (!planAlias.has(task.subject))
-            planAlias.set(task.subject, minted.id);
-        });
-        for (const [index, task] of plan.tasks.entries()) {
-          const minted = record.tasks[index];
-          if (minted === undefined || (task.blockedBy ?? []).length === 0)
-            continue;
-          const mapped = (task.blockedBy ?? []).map((reference) => planAlias.get(reference) ?? reference);
-          if (mapped.length === minted.blockedBy.length && mapped.every((id, at) => minted.blockedBy[at] === id))
-            continue;
-          record = updateTeamTask(record, minted.id, { blockedBy: mapped }, now());
-        }
-        const created = { members: [], tasks: [] };
-        const unresolvedBlockers = record.tasks.filter((task) => (task.unresolvedBlockers ?? []).length > 0).map((task) => ({ taskId: task.id, references: [...task.unresolvedBlockers ?? []] }));
-        if (unresolvedBlockers.length > 0)
-          created.unresolved = unresolvedBlockers;
-        const executorTaskId = new Map;
-        let stoppedAt;
-        for (const member of record.members) {
-          try {
-            const spawned = await executor().spawn(exec.agent, {
-              teamId: record.teamId,
-              memberId: member.id,
-              name: member.name,
-              description: member.description === "" ? member.name : member.description,
-              prompt: withIdlePreamble(plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
-              ...member.role === undefined ? {} : { role: member.role },
-              ...exec.signal === undefined ? {} : { signal: exec.signal }
-            });
-            created.members.push({ name: member.name, id: spawned.handle });
-            record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
-          } catch (error) {
-            record = removeTeamMember(record, member.id);
-            stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
-            break;
-          }
-        }
-        if (stoppedAt === undefined)
-          for (const task of record.tasks) {
-            created.tasks.push({ subject: task.subject, id: task.id });
-          }
-        const approvedRecord = withDerivedPhase({ ...record, approvedAt: now().toISOString() });
-        writeTeam(workspace, approvedRecord);
-        const approved = { ...plan, approvedAt: now().toISOString(), created };
-        writePlan(workspace, approved);
-        if (stoppedAt === undefined)
-          archivePlan(workspace, { ...approved });
-        await bundleApprovalEffects(ctx, dsh, exec, plan);
-        return { plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
+        const outcome = await approveTeam(teamActionsDeps, {
+          workspace,
+          sessionId,
+          lineage,
+          ...exec.agent === undefined ? {} : { agent: exec.agent },
+          ...exec.signal === undefined ? {} : { signal: exec.signal }
+        }, { dryRun: args?.dry_run === true });
+        if (!outcome.ok)
+          throw new Error(outcome.error);
+        const { ok: _envelope, ...reply } = outcome;
+        return reply;
       }
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`);
     }
@@ -6883,112 +7461,20 @@ function apply(ctx) {
         const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
         return releaseDispatchedTask(workspace, resolved.record, taskId, undefined, caller, membership?.role === "lead");
       }
-      const hold = readHold(workspace);
-      const reaped = reapReapedTeams(workspace, now());
-      let ledgerAfterReap = readLedger(workspace);
-      const terminalForgotten = [];
-      for (const endedTeamId of reaped) {
-        const dropped = forgetTeam(ledgerAfterReap, endedTeamId);
-        ledgerAfterReap = dropped.ledger;
-        terminalForgotten.push(...dropped.forgotten);
-      }
-      if (terminalForgotten.length > 0)
-        writeLedger(workspace, ledgerAfterReap);
-      const teamId = recordFor(workspace, sessionId, lineage)?.teamId;
-      const watchdog = teamId === undefined ? { state: "free" } : readWatchdogHold(workspace, sessionId, lineage);
-      const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined);
-      const holdNote = watchdog.state === "not-readable" ? `not-readable: ${String(watchdog.reason ?? "the watchdog's hold could not be read")}` : undefined;
-      const resolvedDispatch = resolveTeam(workspace, sessionId, lineage);
-      if (resolvedDispatch.record === undefined)
-        return { pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first", ...reaped.length === 0 ? {} : { reaped } };
-      let record = resolvedDispatch.record;
-      const opened = record;
-      const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id));
-      const tasks = opened.tasks.map((task) => ({
-        id: task.id,
-        subject: task.subject,
-        status: task.status,
-        ready: readyIds.has(task.id),
-        blockedBy: task.blockedBy,
-        teamId: opened.teamId,
-        writeScopes: task.writeScopes,
-        ...task.owner === undefined ? {} : { ownerName: task.owner }
-      }));
-      const idle = new Set(idleMembers(opened).map((member) => member.name));
-      const rosterRows = (() => {
-        try {
-          const roles = ctx.get?.("mpdRoles", false);
-          return typeof roles?.list === "function" ? roles.list() : [];
-        } catch {
-          return [];
-        }
-      })();
-      if (rosterRows.length === 0)
-        rowLogLine("mpd-team-core", "[mpd-team-core] the mpdRoles service is absent or empty — the C7-2 read-only dispatch guard has no roster to classify against and fails OPEN");
-      const readonlyKeys = readonlyMemberKeys(rosterRows);
-      const members = opened.members.map((member) => ({
-        id: member.executorRef ?? member.id,
-        name: member.name,
-        status: idle.has(member.name) ? "inactive" : "running",
-        teamId: opened.teamId,
-        readonly: isReadonlyMemberName(member.name, readonlyKeys) || member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys)
-      }));
-      const pruned = reconcile(readLedger(workspace), opened.teamId, tasks);
-      const forgotten = [...new Set([...terminalForgotten, ...pruned.forgotten])];
-      const plan = planDispatch({
-        tasks,
-        members,
-        ledger: ledgerOfTeam(pruned.ledger, opened.teamId),
-        ...holdReason === undefined ? {} : { hold: holdReason },
-        ...typeof args?.limit === "number" ? { limit: args.limit } : {}
+      const outcome = await runDispatch(teamActionsDeps, {
+        workspace,
+        sessionId,
+        lineage,
+        ...exec.agent === undefined ? {} : { agent: exec.agent },
+        ...exec.signal === undefined ? {} : { signal: exec.signal }
+      }, {
+        ...typeof args?.limit === "number" ? { limit: args.limit } : {},
+        dryRun: args?.dry_run === true
       });
-      if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
-        if (pruned.forgotten.length > 0)
-          writeLedger(workspace, pruned.ledger);
-        return { ...plan, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
-      }
-      let ledger = pruned.ledger;
-      const sent = [];
-      const skipped = [...plan.skipped];
-      for (const pair of plan.pairs) {
-        const endDispatchWindow = idleGuard.beginDispatch(pair.memberId);
-        try {
-          const task = tasks.find((candidate) => candidate.id === pair.taskId);
-          try {
-            await executor().send(exec.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), exec.signal);
-            const onDisk = readTeam(workspace, opened.teamId);
-            if (onDisk === undefined) {
-              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: "the team record disappeared while the pass was in flight" });
-              continue;
-            }
-            const expected = record.tasks.find((candidate) => candidate.id === pair.taskId)?.revision;
-            if (expected === undefined) {
-              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `task ${pair.taskId} is no longer on the pass's board` });
-              continue;
-            }
-            const claimed = casClaimTask(onDisk, pair.taskId, pair.memberName, expected, now());
-            if (!claimed.applied) {
-              skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the board refused the claim: ${claimed.reason}` });
-              continue;
-            }
-            record = claimed.record;
-            record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }));
-            writeTeam(workspace, record);
-            ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now());
-            sent.push(pair);
-          } catch (error) {
-            skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String(error?.message ?? error)}` });
-          }
-        } finally {
-          endDispatchWindow();
-        }
-      }
-      const fresh = reconcile(readLedger(workspace), opened.teamId, tasks);
-      const merged = { ...fresh.ledger };
-      for (const pair of sent)
-        merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)];
-      writeLedger(workspace, merged);
-      return { pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
+      if (!outcome.ok)
+        throw new Error(outcome.error);
+      const { ok: _envelope, ...reply } = outcome;
+      return reply;
     }
   }));
   toolRegistrations += 1;
@@ -7278,7 +7764,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join9(root, ".mpd", "team", "staging");
+      const staging = join10(root, ".mpd", "team", "staging");
       const pending = existsSync5(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {
@@ -7292,25 +7778,6 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       };
       rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`);
       reportExecutor();
-      const workspaceForRequest = (sessionId) => {
-        if (sessionId === "")
-          return dsh.workspaceRoot();
-        try {
-          const own = dsh.workspaceRootForSession(sessionId);
-          if (own !== undefined && own !== "")
-            return own;
-        } catch {}
-        const roots = dsh.workspaceRootsAll();
-        for (const root2 of roots) {
-          try {
-            if (recordFor(root2, sessionId) !== undefined)
-              return root2;
-            if (readPlan(root2, sessionId) !== undefined)
-              return root2;
-          } catch {}
-        }
-        throw new Error(`mpd-team-core: no workspace is bound to session "${sessionId}" — refusing to answer from another workspace`);
-      };
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
         recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
         workspace: (sessionId) => workspaceForRequest(sessionId ?? ""),
@@ -7329,10 +7796,15 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         warn: (line) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
         subscribe: (workspace, listener) => feed.subscribe(workspace, listener),
         revision: (workspace) => feed.revision(workspace),
-        graph: (workspace, teamId) => graphOf(workspace, teamId)
+        graph: (workspace, teamId) => graphOf(workspace, teamId),
+        actions: {
+          isLive: (sessionId) => liveAgentForSession(sessionId) !== undefined,
+          approve: (sessionId) => teamActions.approve({ sessionId }),
+          dispatch: (sessionId, input) => teamActions.dispatch({ sessionId, ...input })
+        }
       });
       if (mountTeamRoute())
-        rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);
+        rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")} ${TEAM_ACTION_ROUTES.join(" ")}`);
       try {
         dsh.onServiceBound(["webServer", "httpServer"], () => {
           mountTeamRoute();

@@ -51,6 +51,36 @@ read-only discipline.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
   the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).
+- `mpdQuestions` service (`ctx.get("mpdQuestions")`): `list({ sessionId? })` / `answer({ id, answers })` —
+  the question relay's parking lot, consumed by the DSH Go panel. It is provided ONLY when the row
+  really registered the harness `user-questions/request` waterfall answerer; a composition without that
+  seam stays inert and reports `questions=absent reason=…` on the boot line.
+- The QUESTION RELAY — `ask_user_question` answered from a client with no DSH surface attached:
+  `GET /plugins/mpd-roles/questions?sessionId=` returns `{ ok: true, pending }`, and
+  `POST /plugins/mpd-roles/questions/answer` with `{ id, answers: [{ id, selected, custom? }] }` returns
+  `{ ok: true, answered: true }` (404 for an unknown id, 400 when the batch breaks a relay rule below
+  or the body is malformed, 413 above the 64 KiB cap). `selected` entries are option LABELS, never
+  indices. Both routes take the host request fence first and answer `no-store` JSON; the relay awaits the downstream answerer first,
+  parks only a `NO_PROVIDER` rejection and only while a client has polled within `attachWindowMs`, and an
+  unanswered question rethrows that original error after `ttlMs` (120 s default, capacity 16).
+  **THE REPLY IT RETURNS TO THE HARNESS IS THE ENVELOPE** `{ answers: [...] }`, never a bare array: the
+  parking lot itself holds a `DshQuestionAnswer[]`, and only the waterfall reply wraps it — a downstream
+  envelope is returned by identity, and every failure path (ttl, eviction, abort, dispose) still rejects
+  with the original error rather than an invented empty envelope.
+  **A BATCH MUST COVER THE REQUEST.** `answers` carries exactly ONE entry per parked question item; a
+  missing item, a duplicate question id, or an id this request never carried refuses the WHOLE batch
+  (400, and the service's `answer` returns `false`) while the question STAYS PARKED for a retry — a
+  half-answered request would otherwise settle the model's tool call with the other question
+  unanswered. A question that is not `multiSelect: true` accepts at most one label; an empty `selected`
+  plus `custom` is still a legitimate "skipped"/free-text answer. The refusal's one-line reason names
+  the rule that failed and never echoes the submitted ids or labels.
+  **CONSEQUENCE, NOT A WORKAROUND:** the DSH Go panel renders only the FIRST question item, so a
+  question set with more than one item cannot be answered from the panel at all — unless a client that
+  renders (and submits) every item answers it, the request stays parked until it expires.
+  **NO LIFETIME OWNER IS REPORTED, NOT HIDDEN:** when the ctx exposes no `effect` seam the boot token
+  reads `questions=relay routes=N lifetime=unowned` and ONE warning line says the waterfall answerer
+  and its routes are never disposed; with an `effect` seam the token is unchanged and teardown disposes
+  both.
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a

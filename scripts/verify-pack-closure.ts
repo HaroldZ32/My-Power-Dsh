@@ -65,6 +65,7 @@ import type { Dirent } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isDeepStrictEqual } from "node:util"
 import { readJson } from "./lib/repo.ts"
 
 /** This script's own absolute path — the child process every arm of `--self-test` re-invokes. */
@@ -396,15 +397,28 @@ const ROOT_ASSET_KIND: Record<string, string> = { templates: "TEMPLATES", docs: 
 // is DELETED with the body it described (de-vendor wave), so a boot can no longer be debugged
 // against it and naming it here would be a permanent red.
 const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md"]
-// Root FILES that must ship by NAME (not by directory). Same shape as the reference list above
-// and for a sharper reason: the manifest arm below is DECLARATION-DRIVEN — a file present but
-// unlisted is loud, a pattern listed but absent is loud, and a file declared NOWHERE is invisible
-// by construction. A `files[]` entry alone would therefore make a future REMOVAL loud but never a
-// future ADDITION-omission, which is exactly the shape that shipped an artifact whose own README,
-// docs/index.md and extension authoring guide linked by relative path to a file it did not carry
-// (T-70: ten such links across six shipped files). This list is the source-side expectation, and
-// `scripts/pack-mpd.ts` carries the matching ROOT_FILES table the static half compares it to.
-const REQUIRED_ROOT_FILES: readonly string[] = ["EXTENSIONS-FOR-AGENTS.md"]
+// Root ENTRIES that must ship by NAME — a plain file, or a DIRECTORY whose whole tree must ship.
+// Same shape as the reference list above and for a sharper reason: the manifest arm below is
+// DECLARATION-DRIVEN — a file present but unlisted is loud, a pattern listed but absent is loud, and
+// a file declared NOWHERE is invisible by construction. A `files[]` entry alone would therefore make
+// a future REMOVAL loud but never a future ADDITION-omission, which is exactly the shape that shipped
+// an artifact whose own README, docs/index.md and extension authoring guide linked by relative path
+// to a file it did not carry (T-70: ten such links across six shipped files). This list is the
+// source-side expectation, and `scripts/pack-mpd.ts` carries the matching ROOT_FILES table the
+// static half compares it to.
+const REQUIRED_ROOT_FILES: readonly string[] = [
+  "EXTENSIONS-FOR-AGENTS.md",
+  // The DSH Go static panel is a ROOT DIRECTORY, not a file: `package.json`'s `dshGo.view` points at
+  // `./dsh-go/views/mpd.json`, and the packer's ROOT_FILES names the bare `dsh-go` so cpAssets() ships
+  // its whole tree. Naming it HERE is what makes the gate BYTE-CHECK the view instead of trusting the
+  // copy: the byte rules below stat-walk a directory entry file by file, so an EDITED `views/mpd.json`
+  // is a named drift. An OMISSION from BOTH trees was still invisible to that walk — the directory was
+  // non-empty and the sweep only compared the files that existed. The declared-view rules below close
+  // that: the path is READ from the manifest (`dshGo.contributes.panels[].view`) and required BY NAME
+  // in the source tree and in the artifact, so the shipped panel can never point at a file the package
+  // does not carry (CodeRabbit PR #88, found on the anchored-but-unchecked shape).
+  "dsh-go",
+]
 /** Finding kind of a named ROOT FILE the artifact must carry (T-70). */
 const ROOT_FILE_KIND: string = "ROOT-FILE"
 
@@ -558,6 +572,82 @@ function treeFiles(root: string): string[] {
   }
   if (existsSync(root)) walk(root, "")
   return out.sort()
+}
+
+/**
+ * Whether a named root ENTRY is really there. Two shapes arrive in `REQUIRED_ROOT_FILES`: a plain
+ * FILE (`EXTENSIONS-FOR-AGENTS.md`) and a DIRECTORY (`dsh-go`, whose `views/mpd.json` the packed
+ * `dshGo` panel serves). An absent path is not present, and neither is a directory holding no files:
+ * `existsSync` alone would count an empty tree as shipped content, and `readFileSync` on a directory
+ * throws EISDIR instead of answering the question.
+ *
+ * @param abs Absolute path of the entry, in the source tree the packer copies from or in the artifact.
+ * @returns true when the entry exists and, for a directory, holds at least one file.
+ */
+function rootEntryPresent(abs: string): boolean {
+  if (!existsSync(abs)) return false
+  return !statSync(abs).isDirectory() || treeFiles(abs).length > 0
+}
+
+/**
+ * The root `package.json` of one tree, parsed, or null when it is absent or not JSON.
+ *
+ * @param root Root of the tree the packer copies from, or of the artifact.
+ * @returns The parsed manifest, or null.
+ */
+function readRootManifest(root: string): unknown {
+  /** The manifest's absolute path inside `root`. */
+  const file = join(root, "package.json")
+  if (!existsSync(file)) return null
+  try {
+    return readJson(file)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The `dshGo` block of a parsed root manifest, or undefined when the manifest is unreadable or the
+ * field is absent. Kept separate from `declaredDshGoView` so the packed half can tell an ABSENT block
+ * (a packer rewrite dropped it) from one that is present but declares no panel view.
+ *
+ * @param manifest The parsed root `package.json`, or null when it could not be read.
+ * @returns The raw `dshGo` value, or undefined when the field is absent.
+ */
+function dshGoBlock(manifest: unknown): unknown {
+  if (manifest === null || typeof manifest !== "object") return undefined
+  return (manifest as { dshGo?: unknown }).dshGo
+}
+
+/**
+ * The view file the root manifest's DSH Go panel declares — the ONE path a packed install serves that
+ * panel from. It is READ from the manifest rather than restated as a constant here, so the gate checks
+ * the declaration that will actually be installed and cannot drift from a second copy of it.
+ *
+ * @param manifest The parsed root `package.json`, or null when it could not be read.
+ * @returns The declared view path with any leading `./` stripped (e.g. `dsh-go/views/mpd.json`), or
+ *   null when the manifest declares no panel view.
+ */
+function declaredDshGoView(manifest: unknown): string | null {
+  if (manifest === null || typeof manifest !== "object") return null
+  // Each step narrows ONE untyped JSON level: a cast is the only way to name the next field, and every
+  // field is re-checked with `typeof`/`Array.isArray` before it is read.
+  /** The manifest's `dshGo` block, or undefined when the field is absent. */
+  const go = (manifest as { dshGo?: unknown }).dshGo
+  if (go === null || typeof go !== "object") return null
+  /** The block's `contributes` object, or undefined when the field is absent. */
+  const contributes = (go as { contributes?: unknown }).contributes
+  if (contributes === null || typeof contributes !== "object") return null
+  /** The declared panels, or undefined when the field is not an array. */
+  const panels = (contributes as { panels?: unknown }).panels
+  if (!Array.isArray(panels)) return null
+  for (const panel of panels) {
+    if (panel === null || typeof panel !== "object") continue
+    /** One panel's `view` declaration. */
+    const view = (panel as { view?: unknown }).view
+    if (typeof view === "string" && view.length > 0) return view.replace(/^\.\//, "")
+  }
+  return null
 }
 
 /** `a/b.zh-CN.md` <-> `a/b.md`; undefined for a file that carries no language suffix rule. */
@@ -793,16 +883,36 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
     }
   }
 
-  // (d) the named ROOT FILES (t9-R1 repair): the byte claim is CLASSIFIED here, next to the trees and
+  // (d) the named ROOT ENTRIES (t9-R1 repair): the byte claim is CLASSIFIED here, next to the trees and
   //     `packages/**`, so a drift caused by a POST-PACK WRITER is the provenance-named EXPECTED reading
   //     instead of a bare red with no writer named. The EXISTENCE half stays in the packed half
-  //     (rule 5b) — a root file missing from the artifact is still a hard finding there.
+  //     (rule 5b) — a root entry missing from the artifact is still a hard finding there.
   for (const file of REQUIRED_ROOT_FILES) {
-    /** The required root file's absolute source path. */
+    /** The required root entry's absolute source path. */
     const srcAbs = join(opts.sourceRoot, file)
-    /** The required root file's absolute artifact path. */
+    /** The required root entry's absolute artifact path. */
     const artAbs = join(packed, file)
     if (!existsSync(srcAbs) || !existsSync(artAbs)) continue
+    // A required entry is USUALLY one file, but `dsh-go` is a DIRECTORY: `readFileSync` on it throws
+    // EISDIR (measured 2026-11-02 — the gate died at `node:fs:797` the moment the entry was named), so
+    // the SHAPE decides the walk. A directory is compared file by file exactly like a ROOT_ASSET_DIRS
+    // tree, which is what makes the packed `views/mpd.json` a byte-checked file rather than an anchor.
+    if (statSync(srcAbs).isDirectory()) {
+      /** The artifact's files under this required directory entry. */
+      const shipped = new Set(treeFiles(artAbs))
+      for (const rel of treeFiles(srcAbs)) {
+        /** The inner file's packed-relative path, anchored at the required entry. */
+        const relPath = file + "/" + rel
+        if (!shipped.has(rel)) {
+          requireCounterpart(relPath, join(srcAbs, rel), "REQUIRED_ROOT_FILES:" + file)
+          continue
+        }
+        completeness.compared += 1
+        completeness.present += 1
+        compareBytes(relPath, join(srcAbs, rel), join(artAbs, rel), ROOT_FILE_KIND)
+      }
+      continue
+    }
     compareBytes(file, srcAbs, artAbs, ROOT_FILE_KIND)
   }
 
@@ -954,21 +1064,48 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
   }
   stats.referenceFiles = REQUIRED_REFERENCE_FILES.filter((file: string): boolean => existsSync(join(packed, "agent-references", file))).length
 
-  // 5b. the named ROOT FILES: EXISTENCE here; BYTE equality is owned by the content sweep (rule 7d),
+  // 5b. the named ROOT ENTRIES: EXISTENCE here; BYTE equality is owned by the content sweep (rule 7d),
   // because only that engine holds the artifact's stamp and can tell a POST-PACK WRITER from a genuine
   // mismatch. Before the t9-R1 repair the byte half lived here and hard-reddened with no writer named —
   // measured: `ROOT-FILE … EXTENSIONS-FOR-AGENTS.md` went red for t25's 07:43:40Z rewrite against the
   // 05:19:48Z artifact, i.e. a legitimate in-flight state with no provenance. The list lives in the GATE
   // rather than being derived from the packer, precisely because a file nobody declared has to be
   // expected from the source side before the artifact can be asked for it (T-70).
+  // An entry may be a DIRECTORY (`dsh-go`): it is accepted on arrival, but only when it is NON-EMPTY —
+  // a packed empty tree serves nothing, and the per-file walk in rule 7d is what then checks its bytes.
   for (const file of REQUIRED_ROOT_FILES) {
-    /** The root file's path inside the artifact. */
+    /** The root entry's path inside the artifact. */
     const packedFile = join(packed, file)
     if (!existsSync(packedFile)) {
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry " + file + " - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)" })
+    } else if (!rootEntryPresent(packedFile)) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree carries " + file + " but it is an EMPTY directory - a shipped tree with no files serves nothing, and the entry is required by name (T-70)" })
     }
   }
-  stats.rootFiles = REQUIRED_ROOT_FILES.filter((file: string): boolean => existsSync(join(packed, file))).length
+  // 5b-ii. the PACKED manifest's own declaration (CodeRabbit PR #88). The source-side half proves the
+  // SOURCE declares the panel; this half proves the artifact still declares it, declares the SAME thing,
+  // and points at a view the artifact really carries. The gate used to read only the source declaration,
+  // so a packer rewrite that dropped or rewrote `dshGo` shipped an undeclared panel while every rule
+  // stayed green (measured in this wave: writeManifest() rebuilt the packed manifest from a literal).
+  /** The packed tree's root manifest, parsed by the same safe reader the source side uses. */
+  const packedManifest = readRootManifest(packed)
+  /** The source tree's root manifest, the declaration the artifact must match. */
+  const sourceManifest = readRootManifest(opts.sourceRoot)
+  /** The packed manifest's `dshGo` block, or undefined when the artifact carries none. */
+  const packedGo = dshGoBlock(packedManifest)
+  /** The source manifest's `dshGo` block, or undefined when the source carries none. */
+  const sourceGo = dshGoBlock(sourceManifest)
+  if (packedManifest !== null && packedGo === undefined) {
+    findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest carries no `dshGo` block - the source declares the DSH Go panel but the artifact would ship without declaring it, so the panel silently disappears from an installed package (CodeRabbit PR #88)" })
+  } else if (packedGo !== undefined && sourceGo !== undefined && !isDeepStrictEqual(packedGo, sourceGo)) {
+    findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest's `dshGo` block differs from the source declaration - the packer must pass the panel declaration through verbatim, so a difference ships a package that no longer declares what the source does (CodeRabbit PR #88)" })
+  }
+  /** The view file the PACKED manifest's `dshGo` panel declares, or null when it declares none. */
+  const declaredView = declaredDshGoView(packedManifest)
+  if (declaredView !== null && !existsSync(join(packed, declaredView))) {
+    findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry the file the PACKED manifest's dshGo panel declares: " + declaredView + " - a shipped panel would point at a view the package does not carry (the source-declared file is not proof of the packed declaration, CodeRabbit PR #88)" })
+  }
+  stats.rootFiles = REQUIRED_ROOT_FILES.filter((file: string): boolean => rootEntryPresent(join(packed, file))).length
 
   // 5c. EVERY DECLARED PACKAGE DIRECTORY must be present in the artifact with at least one file.
   // The static half asserts these entries against the SOURCE, and every other packed rule is
@@ -1139,9 +1276,23 @@ function runCheck(opts: Options): CheckReport {
     if (rootFiles !== null && !rootFiles.includes(file)) {
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packer's ROOT_FILES does not name `" + file + "` - the artifact would omit it while its own shipped README/docs link to it by relative path (T-70)" })
     }
-    if (!existsSync(join(opts.sourceRoot, file))) {
-      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the artifact must ship " + file + " but the tree it copies from has no such file" })
+    if (!rootEntryPresent(join(opts.sourceRoot, file))) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the artifact must ship " + file + " but the tree it copies from has no such file, or carries it as an EMPTY directory" })
     }
+  }
+  // The DECLARED PANEL VIEW, source side (CodeRabbit PR #88). The entry check above only asserts that
+  // `dsh-go` exists and is non-empty, so a tree carrying `dsh-go/views/other.json` and NOT
+  // `views/mpd.json` satisfies it while the shipped manifest points at a view the package never
+  // carries. The path is READ from the manifest that will be installed, so the gate checks the REAL
+  // declaration instead of a second hard-coded copy of it.
+  /** The tree's root manifest, parsed, or null when it is absent or unparsable. */
+  const sourceManifest = readRootManifest(opts.sourceRoot)
+  /** The view file the manifest's `dshGo` panel declares, or null when it declares none. */
+  const declaredViewPath = declaredDshGoView(sourceManifest)
+  if (declaredViewPath === null) {
+    findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the root manifest at " + join(opts.sourceRoot, "package.json") + " declares no `dshGo.contributes.panels[].view` - the packed panel's view file cannot be required by name against a guess" })
+  } else if (!existsSync(join(opts.sourceRoot, declaredViewPath))) {
+    findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the manifest declares the dshGo panel view " + declaredViewPath + " but the tree it copies from has no such file - a NON-EMPTY required directory is not proof that the DECLARED file is there (CodeRabbit PR #88)" })
   }
 
   // The packed CLI's validator surface: the packer's shim list IS the CLI's requirement list.
@@ -1462,6 +1613,21 @@ function selfTest(): number {
       mkdirSync(dirname(join(root, rel)), { recursive: true })
       writeFileSync(join(root, rel), body)
     }
+    /** The view the REAL root manifest's `dshGo` panel declares, or null when it declares none. */
+    const declaredView = declaredDshGoView(readRootManifest(repoRoot))
+    /** The required root ENTRY carrying that view — the directory a packed panel serves from. */
+    const viewEntry = declaredView === null ? null : declaredView.split("/")[0]
+    /**
+     * Write one declared root entry into a fixture tree. Most entries become a plain file; the entry
+     * that carries the manifest's panel view becomes a DIRECTORY holding that view — the shape the real
+     * tree has (`dsh-go/views/mpd.json`), so the declared-view rules are exercised, not the anchor file.
+     */
+    const putRootEntry = (root: string, entry: string): void => {
+      if (declaredView !== null && entry === viewEntry) put(root, declaredView, "{}\n")
+      else put(root, entry, "# fixture root file\n")
+    }
+    /** The fixture's `dshGo` declaration, re-stating the real one for BOTH fixture trees. */
+    const fixtureDshGo = { contributes: { panels: declaredView === null ? [] : [{ view: "./" + declaredView }] } }
     /** The fixture manifest, built from the packer's own asset and root-file tables. */
     const manifestBody = (): string =>
       JSON.stringify(
@@ -1469,6 +1635,7 @@ function selfTest(): number {
           name: "@mpd-dsh/mpd",
           version: "0.0.0",
           type: "module",
+          dshGo: fixtureDshGo,
           exports: { "./packages/*": "./packages/*", ...Object.fromEntries(assets.map((dir: string): [string, string] => ["./" + dir + "/*", "./" + dir + "/*"])) },
           files: [...assets.map((dir: string): string => dir + "/**"), "packages/**", ...rootFiles],
         },
@@ -1479,7 +1646,7 @@ function selfTest(): number {
     const buildPacked = (): void => {
       put(fxPacked, "package.json", manifestBody())
       for (const dir of assets) put(fxPacked, dir + "/.keep", "")
-      for (const f of rootFiles) put(fxPacked, f, "# fixture root file\n")
+      for (const f of rootFiles) putRootEntry(fxPacked, f)
       for (const pkg of fixturePkgs) put(fxPacked, "packages/" + pkg + "/" + (adoptedPkgs.includes(pkg) ? "lib/index.ts" : "dist/index.js"), "export {}\n")
       put(fxPacked, "templates/mpd-extension/mpd-ext.json", "{}\n")
       put(fxPacked, "templates/mpd-extension/README.md", "# fixture template\n")
@@ -1491,7 +1658,11 @@ function selfTest(): number {
     put(fxSource, "scripts/mpd-ext.ts", readFileSync(DEFAULT_CLI, "utf8"))
     put(fxSource, "packages/mpd-ext-plugin/src/sdk.ts", readFileSync(join(repoRoot, "packages", "mpd-ext-plugin", "src", "sdk.ts"), "utf8"))
     for (const dir of assets) put(fxSource, dir + "/.keep", "")
-    for (const f of rootFiles) put(fxSource, f, "# fixture root file\n")
+    for (const f of rootFiles) putRootEntry(fxSource, f)
+    // The declared panel view is read from the manifest of the tree the packer copies FROM, so the
+    // fixture source carries one that RE-STATES the real declaration (`./`-spelled, as the real one is)
+    // instead of a hard-coded second copy of the path.
+    put(fxSource, "package.json", JSON.stringify({ name: "@mpd-dsh/mpd", version: "0.0.0", dshGo: fixtureDshGo }, null, 2))
     put(fxSource, "templates/mpd-extension/mpd-ext.json", "{}\n")
     put(fxSource, "templates/mpd-extension/README.md", "# fixture template\n")
     put(fxSource, "docs/guide.md", "# guide\n")
@@ -1507,6 +1678,26 @@ function selfTest(): number {
     const fixtureArgs = ["--source-root", fxSource, "--packages-dir", join(fxSource, "packages"), "--packed", fxPacked]
 
     arm("positive-control (fixture packed tree, exit 0)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 0 && /packed tree: .*fixture-packed/.test(c.all))
+
+    // Arm — negative control: the packed manifest DROPS the `dshGo` block the source declares. The
+    // source declaration and the view file stay intact, so the packed manifest is the only reason this
+    // fixture may redden (CodeRabbit PR #88: a packer rewrite silently dropping the block).
+    /** The fixture manifest parsed back to an object, so this arm can delete one key. */
+    const manifestWithoutGo = JSON.parse(manifestBody()) as Record<string, unknown>
+    delete manifestWithoutGo.dshGo
+    put(fxPacked, "package.json", JSON.stringify(manifestWithoutGo, null, 2))
+    arm("negative-control (packed manifest omits dshGo, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes("dshGo"))
+    put(fxPacked, "package.json", manifestBody())
+
+    // Arm — negative control: the packed `dshGo` block DIFFERS from the source declaration while its
+    // view still names a file the artifact carries. Only a deep comparison can see this; a view-path
+    // existence check alone would stay green.
+    /** The fixture manifest with its packed panel view repointed at another file that really ships. */
+    const manifestWithOtherView = JSON.parse(manifestBody()) as { dshGo: { contributes: { panels: Array<{ view: string }> } } }
+    manifestWithOtherView.dshGo.contributes.panels[0].view = "./" + rootFiles[0]
+    put(fxPacked, "package.json", JSON.stringify(manifestWithOtherView, null, 2))
+    arm("negative-control (packed dshGo differs from the source, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes("dshGo") && c.all.includes("differs"))
+    put(fxPacked, "package.json", manifestBody())
 
     /** The zh-CN half of the fixture doc pair this arm removes. */
     const zhGuide = join(fxPacked, "docs", "guide.zh-CN.md")
@@ -1607,6 +1798,58 @@ function selfTest(): number {
       const fRoot = join(scratch, "packer-without-root-file.mjs")
       writeFileSync(fRoot, keptRoot.join("\n"))
       arm("negative-control (packer ROOT_FILES drops the file, exit 1)", runChecker(["--packer", fRoot]), (c: ChildResult): boolean => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && /does not name/.test(c.all))
+    }
+
+    // Arm 14b — the DIRECTORY class of a required root entry (`dsh-go`). The fixture builds every entry
+    // as a plain file, so this arm re-shapes ONE entry into a tree on both sides and drops a single inner
+    // file from the artifact: the presence rule 5b must stay GREEN (the directory is non-empty) while the
+    // byte walk names the file that never arrived. That is the direction the anchor alone could not prove —
+    // "a packed tree missing a file inside a required directory entry reddens the gate".
+    /** The required root entry whose REAL source shape is a directory — derived, never hard-coded here. */
+    const dirEntry = REQUIRED_ROOT_FILES.find((entry: string): boolean => existsSync(join(repoRoot, entry)) && statSync(join(repoRoot, entry)).isDirectory())
+    if (dirEntry === undefined) {
+      arms.push({ name: "negative-control fixture (required directory entry)", ok: false, exitCode: null, firstLine: "no REQUIRED_ROOT_FILES entry is a directory in " + repoRoot + " - the directory class would go unexercised" })
+    } else {
+      /** The inner file the fixture's artifact copy will lack. */
+      const dirInner = "views/mpd.json"
+      rmSync(join(fxSource, dirEntry), { recursive: true, force: true })
+      put(fxSource, dirEntry + "/" + dirInner, "{}\n")
+      // The source file must PREDATE the artifact stamp: a file written after the pack is the EXPECTED
+      // class, and the arm would then measure the clock instead of the directory walk.
+      /** The inner source file whose mtime is backdated below the fixture pack's stamp. */
+      const dirInnerAbs = join(fxSource, dirEntry, dirInner)
+      /** One hour in the past, i.e. strictly before the fixture's artifact. */
+      const dirBackdate = new Date(Date.now() - 3_600_000)
+      utimesSync(dirInnerAbs, dirBackdate, dirBackdate)
+      rmSync(join(fxPacked, dirEntry), { recursive: true, force: true })
+      put(fxPacked, dirEntry + "/views/other.json", "{}\n")
+      arm("negative-control (packed tree misses a file inside a required directory entry, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes(COMPLETENESS_KIND) && c.all.includes(dirEntry + "/" + dirInner))
+      // Restore the shape every arm below expects from buildPacked(): a plain file, or the declared
+      // view's tree for the entry that carries it.
+      rmSync(join(fxSource, dirEntry), { recursive: true, force: true })
+      rmSync(join(fxPacked, dirEntry), { recursive: true, force: true })
+      putRootEntry(fxSource, dirEntry)
+      putRootEntry(fxPacked, dirEntry)
+    }
+
+    // Arm 14c (CodeRabbit PR #88) — the hole arm 14b cannot see. BOTH trees carry the required directory
+    // NON-EMPTY, and NEITHER carries the file the manifest's panel declares: the presence rule passes
+    // (the directory is non-empty), the directory sweep compares the files that happen to exist, and the
+    // shipped manifest points at a view the package does not carry with nothing red. The rule must
+    // require the DECLARED path in BOTH trees, by name.
+    if (declaredView === null || viewEntry === null) {
+      arms.push({ name: "negative-control fixture (declared panel view)", ok: false, exitCode: null, firstLine: "the root manifest declares no `dshGo.contributes.panels[].view` - refusing to trust a fixture that silently did not apply" })
+    } else {
+      rmSync(join(fxSource, viewEntry), { recursive: true, force: true })
+      rmSync(join(fxPacked, viewEntry), { recursive: true, force: true })
+      put(fxSource, viewEntry + "/views/other.json", "{}\n")
+      put(fxPacked, viewEntry + "/views/other.json", "{}\n")
+      arm("negative-control (both trees carry the required directory but NOT the declared view file, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && c.all.includes(declaredView))
+      // Restore the declared shape for every arm below.
+      rmSync(join(fxSource, viewEntry), { recursive: true, force: true })
+      rmSync(join(fxPacked, viewEntry), { recursive: true, force: true })
+      putRootEntry(fxSource, viewEntry)
+      putRootEntry(fxPacked, viewEntry)
     }
 
     // Arm 15 — the DECLARED PACKAGE arm (T-70 finding 2), seeded exactly like the control that

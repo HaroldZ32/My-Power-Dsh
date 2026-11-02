@@ -230,9 +230,17 @@ function fakeHarness(overrides: Record<string, unknown> = {}): {
   // the tool registry — which is what makes BOTH goal flags read true on a full harness. The
   // adapter's goal BEHAVIOUR is owned by test/adapter-goal-surface.test.ts.
   const goals = { get: () => undefined }
+  // additive (drive surface, plan §4.1): the harness question service and the DSH Go bridge. A host
+  // that carries the drive surface mounts both, so the shared fixture does too and the two new
+  // capability flags read true on a "full harness"; their BEHAVIOUR is owned by
+  // test/adapter-drive-surface.test.ts, which uses its own recording doubles.
+  /** The question service: answers every asked question with no selection. */
+  const userQuestions = { ask: async (request: any) => ({ answers: (request?.questions ?? []).map((item: any) => ({ id: item.id, selected: [] })) }) }
+  /** The DSH Go bridge: accepts every panel publication and refresh. */
+  const dshGo = { panel: (_id: string, _spec: any) => { /* recorded by the drive-surface test */ }, refresh: (_id: string) => { /* ditto */ } }
   /** The ctx handed to the adapter: a service lookup, provide() and the event bus. */
   const ctx = {
-    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt, goals } as Record<string, unknown>)[serviceName],
+    get: (serviceName: string) => ({ tools, subagents, agentTeams, skills, agentPresets, agents, compaction, commands, llm, systemPrompt, goals, userQuestions, dshGo } as Record<string, unknown>)[serviceName],
     on: (event: string, listener: any) => {
       if (event === "tools/post-execute") listeners.push(listener)
       if (event === "tools/pre-execute") preListeners.push(listener)

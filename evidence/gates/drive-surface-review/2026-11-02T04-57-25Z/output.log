@@ -1,0 +1,43 @@
+# drive-surface wave — post-review verification (2026-11-02T04:59:09Z)
+## branch feature/mpd-drive-surface — base 1aa24dc4 — head 38150e37
+
+$ node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 737ms
+
+$ node_modules/.bin/tsgo --noEmit
+exit=0
+
+$ bun run verify:gates
+[verify-gates] member vendor: exit=0 PASS - 122ms
+[verify-gates] member dist-fresh: exit=0 PASS - 770ms
+[verify-gates] member rows-parity: exit=0 PASS - 56ms
+[verify-gates] member docs-parity: exit=0 PASS - 73ms
+[verify-gates] member preset-conformance: exit=0 PASS - 389ms
+[verify-gates] member plugin-manifest: exit=0 PASS - 2175ms
+[verify-gates] member comment-coverage: exit=0 PASS - 2591ms
+[verify-gates] member graph-model: exit=0 PASS - 240ms
+[verify-gates] member workflows: exit=0 PASS - 34ms
+[verify-gates] PASS - 9/9 member gate(s) green
+
+$ node scripts/verify-pack-closure.ts
+[verify-pack-closure] ok: 25 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 26 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (495 asset files); agent references 2/2; root files 2/2; declared packages 30/30 present in the artifact; content bytes: 635 file(s) compared, 635 identical, 0 drift, 0 expected-after-pack; completeness: 532 declared source file(s) compared, 531 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-02T04:57:25.878Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+$ node scripts/verify-pack-closure.ts --self-test
+[verify-pack-closure] self-test PASS: 35/35 arms
+
+$ node scripts/verify-plugin-manifest.ts --pack
+ok    packed-content: npm pack --dry-run lists 1148 file(s); 0 required path(s) absent
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+
+$ node scripts/verify-docs-parity.ts
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=507 dead=0 — PASS
+
+## package suites (pinned toolchain)
+packages/mpd-dsh-adapter-plugin ->  307 pass  0 fail 
+packages/mpd-team-core-plugin ->  494 pass  0 fail 
+packages/mpd-roles-plugin ->  240 pass  0 fail 
+packages/mpd-bundle-plugin ->  283 pass  0 fail 
+
+## review reconciliation (see result.json)
+F1 envelope / F2 captured-view answer / F3 live view read / F4 derived lineage / F5 docs key / F6 declared readyTasks
+## mount lane: evidence/dsh-qa/bundle-lifecycle/2026-11-02T04-57-49.263Z (PASS)

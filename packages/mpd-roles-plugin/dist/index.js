@@ -782,6 +782,492 @@ function installAskUserQuestionGuard(dsh, options) {
   }
 }
 
+// packages/mpd-roles-plugin/src/question-relay.ts
+var DEFAULT_QUESTION_TTL_MS = 120000;
+var DEFAULT_ATTACH_WINDOW_MS = 15000;
+var DEFAULT_QUESTION_CAPACITY = 16;
+var QUESTIONS_PATH = "/plugins/mpd-roles/questions";
+var ANSWER_PATH = "/plugins/mpd-roles/questions/answer";
+var QUESTION_ROUTES = [QUESTIONS_PATH, ANSWER_PATH];
+var MAX_BODY_BYTES = 64 * 1024;
+var encoder = new TextEncoder;
+var decoder = new TextDecoder;
+function messageOf(error) {
+  if (error instanceof Error)
+    return error.message;
+  if (typeof error === "string")
+    return error;
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string")
+      return message;
+  }
+  return String(error);
+}
+function noProviderOf(error) {
+  const code = error !== null && typeof error === "object" ? error.code : undefined;
+  if (typeof code === "string")
+    return code === "NO_PROVIDER";
+  return /no user-questions answerer/i.test(messageOf(error));
+}
+function abortErrorOf(signal) {
+  return signal.reason === undefined ? new Error("mpd-roles: the user-question request was aborted") : signal.reason;
+}
+function amountOf(value, fallback) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+function copyQuestions(questions) {
+  return questions.map((item) => {
+    const copy = { id: item.id, question: item.question };
+    if (item.header !== undefined)
+      copy.header = item.header;
+    if (item.multiSelect !== undefined)
+      copy.multiSelect = item.multiSelect;
+    if (item.options !== undefined) {
+      copy.options = item.options.map((option) => option.description === undefined ? { label: option.label } : { label: option.label, description: option.description });
+    }
+    return copy;
+  });
+}
+function copyAnswers(answers) {
+  return answers.map((answer) => {
+    const copy = { id: answer.id, selected: [...answer.selected] };
+    if (typeof answer.custom === "string")
+      copy.custom = answer.custom;
+    return copy;
+  });
+}
+function answerRefusalOf(view, answers) {
+  if (!Array.isArray(answers) || answers.length === 0)
+    return "shape";
+  const parkedIds = new Set(view.questions.map((question) => question.id));
+  const byId = new Map(view.questions.map((question) => [question.id, question]));
+  const seen = new Set;
+  const entries = [];
+  for (const entry of answers) {
+    if (entry === null || typeof entry !== "object")
+      return "shape";
+    const raw = entry;
+    if (typeof raw.id !== "string" || raw.id === "")
+      return "shape";
+    if (seen.has(raw.id))
+      return "duplicate";
+    seen.add(raw.id);
+    if (!parkedIds.has(raw.id))
+      return "unknown-id";
+    entries.push({ id: raw.id, selected: raw.selected, custom: raw.custom });
+  }
+  for (const question of view.questions) {
+    if (!seen.has(question.id))
+      return "missing";
+  }
+  for (const entry of entries) {
+    const question = byId.get(entry.id);
+    if (question === undefined)
+      return "unknown-id";
+    if (!Array.isArray(entry.selected))
+      return "shape";
+    const labels = new Set((question.options ?? []).map((option) => option.label));
+    if (question.multiSelect !== true && entry.selected.length > 1)
+      return "too-many-labels";
+    for (const label of entry.selected) {
+      if (typeof label !== "string")
+        return "shape";
+      if (!labels.has(label))
+        return "label";
+    }
+    if (entry.custom !== undefined && typeof entry.custom !== "string")
+      return "shape";
+  }
+  return;
+}
+function answersMatch(view, answers) {
+  return answerRefusalOf(view, answers) === undefined;
+}
+function nextIdOf(sequence, at) {
+  return "q" + sequence.toString(36) + "-" + at.toString(36);
+}
+function createQuestionRelay(options = {}) {
+  const ttlMs = amountOf(options.ttlMs, DEFAULT_QUESTION_TTL_MS);
+  const attachWindowMs = amountOf(options.attachWindowMs, DEFAULT_ATTACH_WINDOW_MS);
+  const capacity = Math.max(1, Math.floor(amountOf(options.capacity, DEFAULT_QUESTION_CAPACITY)));
+  const now = options.now ?? (() => Date.now());
+  const parked = [];
+  let lastListAt;
+  let disposed = false;
+  let sequence = 0;
+  function warnLine(line) {
+    try {
+      options.warn?.(line);
+    } catch {}
+  }
+  function releaseHandles(entry) {
+    if (entry.timer !== undefined)
+      clearTimeout(entry.timer);
+    if (entry.signal !== undefined && entry.onAbort !== undefined) {
+      try {
+        entry.signal.removeEventListener("abort", entry.onAbort);
+      } catch {}
+    }
+  }
+  function settle(entry, finish) {
+    const at = parked.indexOf(entry);
+    if (at < 0)
+      return;
+    parked.splice(at, 1);
+    releaseHandles(entry);
+    finish();
+  }
+  function attached() {
+    if (lastListAt === undefined)
+      return false;
+    const elapsed = now() - lastListAt;
+    return elapsed <= attachWindowMs;
+  }
+  function park(request, original) {
+    while (parked.length >= capacity) {
+      const oldest = parked[0];
+      if (oldest === undefined)
+        break;
+      warnLine("question relay: the parked question " + oldest.view.id + " was evicted (capacity " + capacity + ")");
+      settle(oldest, () => oldest.reject(oldest.original));
+    }
+    const hooks = {};
+    const promise = new Promise((resolve, reject) => {
+      hooks.resolve = resolve;
+      hooks.reject = reject;
+    });
+    sequence += 1;
+    const at = now();
+    const view = {
+      id: nextIdOf(sequence, at),
+      createdAt: at,
+      ...request.sessionId === undefined ? {} : { sessionId: request.sessionId },
+      questions: copyQuestions(request.questions)
+    };
+    const entry = {
+      view,
+      original,
+      resolve: (answers) => {
+        hooks.resolve?.(answers);
+      },
+      reject: (error) => {
+        hooks.reject?.(error);
+      }
+    };
+    parked.push(entry);
+    entry.timer = setTimeout(() => {
+      settle(entry, () => entry.reject(original));
+    }, ttlMs);
+    if (request.signal !== undefined) {
+      const signal = request.signal;
+      const onAbort = () => {
+        settle(entry, () => entry.reject(abortErrorOf(signal)));
+      };
+      entry.signal = signal;
+      entry.onAbort = onAbort;
+      try {
+        signal.addEventListener("abort", onAbort, { once: true });
+      } catch {}
+      if (signal.aborted)
+        onAbort();
+    }
+    return promise;
+  }
+  async function handle(request, next) {
+    try {
+      return await next();
+    } catch (error) {
+      if (!noProviderOf(error))
+        throw error;
+      if (request.questions.length === 0)
+        throw error;
+      if (disposed)
+        throw error;
+      if (request.signal?.aborted === true)
+        throw abortErrorOf(request.signal);
+      if (!attached())
+        throw error;
+      return { answers: await park(request, error) };
+    }
+  }
+  function list(sessionId) {
+    if (disposed)
+      return [];
+    lastListAt = now();
+    const rows = parked.filter((entry) => sessionId === undefined || entry.view.sessionId === sessionId);
+    return rows.map((entry) => ({
+      ...entry.view,
+      questions: copyQuestions(entry.view.questions)
+    }));
+  }
+  function answer(input) {
+    if (disposed)
+      return false;
+    const id = typeof input?.id === "string" ? input.id : "";
+    if (id === "")
+      return false;
+    const entry = parked.find((candidate) => candidate.view.id === id);
+    if (entry === undefined)
+      return false;
+    const answers = input?.answers;
+    if (!answersMatch(entry.view, answers))
+      return false;
+    const settledAnswers = copyAnswers(answers);
+    settle(entry, () => entry.resolve(settledAnswers));
+    return true;
+  }
+  function dispose() {
+    if (disposed)
+      return;
+    disposed = true;
+    lastListAt = undefined;
+    for (const entry of parked.splice(0)) {
+      releaseHandles(entry);
+      entry.reject(entry.original);
+    }
+  }
+  return { handle, list, answer, dispose };
+}
+function installQuestionRelay(dsh, options = {}) {
+  try {
+    if (typeof dsh.onUserQuestionRequest !== "function")
+      return { installed: false, reason: "no-seam" };
+    if (dsh.capabilities().events !== true)
+      return { installed: false, reason: "no-event-bus" };
+    const relay = createQuestionRelay(options);
+    const off = dsh.onUserQuestionRequest((request, next) => relay.handle(request, next), "mpd-roles");
+    return {
+      installed: true,
+      relay,
+      dispose: () => {
+        try {
+          if (typeof off === "function")
+            off();
+        } catch {}
+        relay.dispose();
+      }
+    };
+  } catch {
+    return { installed: false, reason: "threw" };
+  }
+}
+function writeJson(res, status, body, headers = {}) {
+  const out = res;
+  out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
+  out.end(JSON.stringify(body));
+}
+function warnLine(deps, line) {
+  try {
+    deps.warn?.(line);
+  } catch {}
+}
+async function readBody(request) {
+  const req = request;
+  if (req === undefined || typeof req[Symbol.asyncIterator] !== "function")
+    return { ok: false, status: 400 };
+  const parts = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const part = typeof chunk === "string" ? encoder.encode(chunk) : chunk instanceof Uint8Array ? chunk : encoder.encode(String(chunk));
+    size += part.byteLength;
+    if (size > MAX_BODY_BYTES)
+      return { ok: false, status: 413 };
+    parts.push(part);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const part of parts) {
+    bytes.set(part, at);
+    at += part.byteLength;
+  }
+  const raw = decoder.decode(bytes);
+  if (raw.trim() === "")
+    return { ok: false, status: 400 };
+  try {
+    return { ok: true, value: JSON.parse(raw) };
+  } catch {
+    return { ok: false, status: 400 };
+  }
+}
+function recordOf(body) {
+  return body !== null && typeof body === "object" && !Array.isArray(body) ? body : undefined;
+}
+function methodOf(request) {
+  const method = request?.method;
+  return typeof method === "string" ? method.toUpperCase() : "";
+}
+function sessionIdOf(request) {
+  const raw = request?.url;
+  if (typeof raw !== "string" || raw === "")
+    return;
+  try {
+    const url = new URL(raw, "http://localhost");
+    const value = url.searchParams.get("sessionId")?.trim() ?? "";
+    return value === "" ? undefined : value;
+  } catch {
+    return;
+  }
+}
+function parseAnswerBody(body) {
+  const record = recordOf(body);
+  if (record === undefined)
+    return { ok: false, error: "the request body must be a JSON object" };
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  if (id === "")
+    return { ok: false, error: "id must be a non-empty string" };
+  if (!Array.isArray(record.answers) || record.answers.length === 0)
+    return { ok: false, error: "answers must be a non-empty array" };
+  const answers = [];
+  for (const entry of record.answers) {
+    const raw = entry !== null && typeof entry === "object" ? entry : undefined;
+    if (raw === undefined)
+      return { ok: false, error: "every answer must be a JSON object" };
+    const questionId = typeof raw.id === "string" ? raw.id.trim() : "";
+    if (questionId === "")
+      return { ok: false, error: "every answer needs a non-empty id" };
+    if (!Array.isArray(raw.selected))
+      return { ok: false, error: "every answer needs selected as an array of strings" };
+    const selected = [];
+    for (const label of raw.selected) {
+      if (typeof label !== "string")
+        return { ok: false, error: "every answer needs selected as an array of strings" };
+      selected.push(label);
+    }
+    if (raw.custom !== undefined && typeof raw.custom !== "string")
+      return { ok: false, error: "custom must be a string when present" };
+    const answer = { id: questionId, selected };
+    if (typeof raw.custom === "string")
+      answer.custom = raw.custom;
+    answers.push(answer);
+  }
+  return { ok: true, value: { id, answers } };
+}
+function listHandlerOf(dsh, deps) {
+  return async (req, res) => {
+    try {
+      const rejection = dsh.webRequestRejection(req);
+      if (rejection !== undefined) {
+        writeJson(res, rejection, { ok: false, error: `mpd-roles: the request is not authenticated for ${QUESTIONS_PATH}` });
+        return;
+      }
+      if (methodOf(req) !== "GET") {
+        writeJson(res, 405, { ok: false, error: "mpd-roles: this route accepts GET only" }, { allow: "GET" });
+        return;
+      }
+      const pending = deps.relay.list(sessionIdOf(req));
+      writeJson(res, 200, { ok: true, pending });
+    } catch (error) {
+      warnLine(deps, `route ${QUESTIONS_PATH} failed: ${messageOf(error)}`);
+      try {
+        writeJson(res, 500, { ok: false, error: "mpd-roles: the request could not be completed" });
+      } catch {}
+    }
+  };
+}
+function refusalLineOf(refusal) {
+  switch (refusal) {
+    case "missing":
+      return "the answers must cover every question the request asked (one answer per question item)";
+    case "duplicate":
+      return "the answers name the same question id twice";
+    case "unknown-id":
+      return "an answer names a question this request does not carry";
+    case "too-many-labels":
+      return "a question that is not multi-select accepts at most one label";
+    case "shape":
+      return "an answer entry is malformed";
+    case "label":
+      return "an answer selected a label this question does not offer";
+    default:
+      return "the answer batch was refused";
+  }
+}
+function answerHandlerOf(dsh, deps) {
+  return async (req, res) => {
+    try {
+      const rejection = dsh.webRequestRejection(req);
+      if (rejection !== undefined) {
+        writeJson(res, rejection, { ok: false, error: `mpd-roles: the request is not authenticated for ${ANSWER_PATH}` });
+        return;
+      }
+      if (methodOf(req) !== "POST") {
+        writeJson(res, 405, { ok: false, error: "mpd-roles: this route accepts POST only" }, { allow: "POST" });
+        return;
+      }
+      const read = await readBody(req);
+      if (!read.ok) {
+        writeJson(res, read.status, read.status === 413 ? { ok: false, error: `mpd-roles: the request body exceeds ${MAX_BODY_BYTES} bytes` } : { ok: false, error: "mpd-roles: the request body is not valid JSON" });
+        return;
+      }
+      const body = parseAnswerBody(read.value);
+      if (!body.ok) {
+        writeJson(res, 400, { ok: false, error: `mpd-roles: ${body.error}` });
+        return;
+      }
+      const parkedRow = deps.relay.list().find((row) => row.id === body.value.id);
+      if (deps.relay.answer(body.value)) {
+        writeJson(res, 200, { ok: true, answered: true });
+        return;
+      }
+      if (parkedRow === undefined) {
+        writeJson(res, 404, { ok: false, error: "mpd-roles: no pending question has that id" });
+        return;
+      }
+      writeJson(res, 400, { ok: false, error: "mpd-roles: " + refusalLineOf(answerRefusalOf(parkedRow, body.value.answers)) });
+    } catch (error) {
+      warnLine(deps, `route ${ANSWER_PATH} failed: ${messageOf(error)}`);
+      try {
+        writeJson(res, 500, { ok: false, error: "mpd-roles: the request could not be completed" });
+      } catch {}
+    }
+  };
+}
+function registerQuestionWeb(dsh, effect, deps) {
+  const mountedByServer = new WeakMap;
+  const serverOf = () => {
+    try {
+      const server = dsh.webServerOf();
+      return server !== undefined && server !== null && typeof server.register === "function" ? server : undefined;
+    } catch {
+      return;
+    }
+  };
+  const routes = [
+    { path: QUESTIONS_PATH, handler: listHandlerOf(dsh, deps) },
+    { path: ANSWER_PATH, handler: answerHandlerOf(dsh, deps) }
+  ];
+  const attempt = () => {
+    const server = serverOf();
+    if (server === undefined)
+      return false;
+    if (typeof effect !== "function")
+      return false;
+    const mounted = mountedByServer.get(server) ?? new Set;
+    mountedByServer.set(server, mounted);
+    for (const route of routes) {
+      if (mounted.has(route.path))
+        continue;
+      try {
+        effect(() => server.register({ kind: "exact", path: route.path, handler: route.handler }));
+        mounted.add(route.path);
+      } catch (error) {
+        warnLine(deps, `registering ${route.path} failed: ${messageOf(error)}`);
+      }
+    }
+    return mounted.size === QUESTION_ROUTES.length;
+  };
+  const first = attempt();
+  try {
+    dsh.onServiceBound(["webServer", "httpServer"], () => {
+      attempt();
+    });
+  } catch (error) {
+    warnLine(deps, "the web-server binding subscription is unavailable: " + messageOf(error));
+  }
+  return first;
+}
+
 // packages/mpd-roles-plugin/src/delegation-gate.ts
 var DELEGATION_CONFIG_KEY = "delegation.gate";
 var DELEGATION_TOOLS = ["subagent", "subagent_fork", "workflow"];
@@ -1661,6 +2147,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -1831,6 +2415,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -2162,6 +2751,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -2212,7 +2803,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -2427,6 +3020,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextEnvelope = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return await next();
+        };
+        return handler(request, nextEnvelope);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -3008,7 +3665,7 @@ function gateTrace(line) {
       rowLogLine("mpd-roles", "[mpd-roles] gate trace: " + line);
   } catch {}
 }
-function sessionIdOf(agent) {
+function sessionIdOf2(agent) {
   const handle = agent;
   const id = handle?.session?.id ?? handle?.sessionId ?? handle?.id;
   return typeof id === "string" && id !== "" ? id : "workspace";
@@ -3122,7 +3779,7 @@ function installSessionGate(dsh, options) {
         return;
       }
       const workspace = dsh.workspaceRoot({ agent });
-      const leading = await readLeadingTeam(workspace, sessionIdOf(agent), {
+      const leading = await readLeadingTeam(workspace, sessionIdOf2(agent), {
         ...options.readFile === undefined ? {} : { readFile: options.readFile },
         ...options.readDir === undefined ? {} : { readDir: options.readDir }
       });
@@ -3158,7 +3815,7 @@ function installSessionGate(dsh, options) {
         outcome = await stagePlan({
           agent,
           workspace,
-          sessionId: sessionIdOf(agent),
+          sessionId: sessionIdOf2(agent),
           goal: consumed.text,
           signals: verdict.signals,
           ...boulder.planPath === undefined ? {} : { planPath: boulder.planPath }
@@ -3769,6 +4426,44 @@ Work with the tools your role requires (read-only roles must never modify anythi
   } catch (error) {
     guardOutcome.push("askUserQuestion=absent reason=threw");
     warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const questionRelay = installQuestionRelay(dsh, {
+      warn: (line) => warnOnce("question-relay:" + line, line)
+    });
+    if (questionRelay.installed) {
+      ctx.provide("mpdQuestions", {
+        list: (input) => questionRelay.relay.list(input?.sessionId),
+        answer: (input) => questionRelay.relay.answer(input)
+      });
+      const effect = typeof ctx.effect === "function" ? (register) => ctx.effect?.(register) : undefined;
+      const lifetimeOwned = effect !== undefined;
+      let routesMounted = false;
+      try {
+        routesMounted = registerQuestionWeb(dsh, effect, {
+          relay: questionRelay.relay,
+          warn: (line) => warnOnce("question-relay:" + line, line)
+        });
+      } catch (error) {
+        warnOnce("question-relay:web", "question web route registration degraded (" + errText(error) + ")");
+      }
+      try {
+        effect?.(() => () => {
+          questionRelay.dispose();
+        });
+      } catch (error) {
+        warnOnce("question-relay:dispose", "the question relay's release could not be registered (" + errText(error) + ")");
+      }
+      if (!lifetimeOwned) {
+        warnOnce("question-relay:lifetime", "the question relay has no lifetime owner: ctx.effect is unavailable, so its waterfall answerer and routes are never disposed");
+      }
+      guardOutcome.push("questions=relay routes=" + (routesMounted ? QUESTION_ROUTES.length : 0) + (lifetimeOwned ? "" : " lifetime=unowned"));
+    } else {
+      guardOutcome.push("questions=absent reason=" + questionRelay.reason);
+    }
+  } catch (error) {
+    guardOutcome.push("questions=absent reason=threw");
+    warnOnce("question-relay:threw", "the question relay could not be installed (" + errText(error) + ")");
   }
   try {
     installRosterSection(dsh, {
