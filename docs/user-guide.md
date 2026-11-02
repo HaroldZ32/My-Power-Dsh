@@ -1226,3 +1226,45 @@ describes the producer; `ignore` is reachable only for a caller that passes prod
 
 Each automated reviewer (CodeRabbit today, any future bot) gets at most THREE review rounds on one pull
 request. A fourth round needs the user's explicit decision and is recorded in the PR.
+
+## 16. The DSH Go app (the native surface)
+
+If you use the DSH Go app (1.0.9 or newer), the bundle now has a real surface there instead of tool text
+only. Nothing here needs configuration: it lights up when the app's local-engine bridge is bound, and it
+stays completely silent otherwise.
+
+### 16.1 What you get
+
+- **Two panels.** *MPD Workbench* opens four tabs — Overview (team counters, completion, the first alert,
+  ready rows), Questions (the first parked question, its options and a free-text answer), Workmates (the
+  library, read-only) and Memory (your latest entries plus the reflection counters). *Team Board* opens
+  four more — Board (tap a row to open it), Members, Detail (the selected task's owner, dependencies and
+  verdict) and Watchdog (what the watchdog is running, whether the team is held, and the last incidents).
+  Both sit in the session tabs, the features list and the chat panel.
+- **A composer strip.** One line above the composer — `3 ready · 1 active`, or `3 就绪 · 1 进行` when your
+  app speaks Chinese — with `❓` when a question waits for you and a warning colour when a plan waits for
+  approval. Tapping it opens the workbench panel.
+- **Composer and message actions.** *Dispatch* runs one dispatch pass. *Board* opens the team panel.
+  *Save memory* writes one memory entry from the reply you long-pressed. *Copy reply* puts that reply on
+  the clipboard.
+- **Tool cards.** Ask for the team board, the roster, the workmate library, memory, a verification record
+  or the watchdog status and the result arrives as a designed card — a title, the numbers as tiles, and
+  one table at most — instead of a wall of text. The plain-text form is still what a copy or a log shows.
+- **The app's theme, both modes.** The panels use the app's own material and accent, so light and dark
+  both follow the theme you picked. There is no colour, radius or gradient in the bundle's views: those
+  belong to the app, and the design lint refuses one.
+
+### 16.2 Things worth knowing
+
+- **Local engine only.** Panels, the strip and the menu actions need the app's local engine; a relay or
+  SSH host shows tool cards instead. Tool cards are the relay-safe half and always work.
+- **Older apps fall back.** Below DSH Go 1.0.9 the same tree is downgraded to the v1 components — tabs
+  become titled sections, tiles become a list, badges become words — so the meaning survives without the
+  styling.
+- **A tap needs a live conversation.** With no session attached the tap answers a short toast instead of
+  queueing anything. **The panel never changes a task's state or a team's pause**: a tap carries no agent
+  identity, so settling a row stays with the member that owns it (`agent_teams_task`) and pausing a team
+  stays with the captain's watchdog tools. The Detail and Watchdog tabs say so instead of showing an
+  action that cannot work.
+- **Three seconds, then it defers.** The app runs an effect only if it arrives within three seconds of
+  your tap; a slower service is acknowledged immediately and its result lands moments later.

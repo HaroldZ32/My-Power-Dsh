@@ -155,6 +155,44 @@ here (a clean one needs `dsh plugin add`, which the read-only pnpm store lock re
 the unit arms (`packages/mpd-tui-plugin/test/panel.test.ts` `takeoverArmed`, `plugin.test.ts` the
 legacy-host arm). That bound is stated, never glossed.
 
+## The dshGo plane — native panels, the strip and the view kit
+
+The DSH Go surface is the SAME rule on a third plane: **no file outside
+`packages/mpd-dsh-adapter-plugin` may name `ctx.dshGo`**. A row publishes a panel, a strip line or an
+action handler through the adapter, so a bridge rename is absorbed in one file.
+
+| seam | signature | degrade |
+|---|---|---|
+| `dshGoPresent()` | `() => boolean` | `false`, one warning line |
+| `dshGoPanel(id, spec)` | `(string, { view, data?, actions? }) => boolean` | `false`, one warning line; never throws |
+| `dshGoRefresh(id)` | `(string) => void` | silent no-op (it runs on a polling path) |
+| `dshGoOn(id, handler)` | `(string, (scope, event) => unknown) => boolean` | `false`, one warning line |
+| `dshGoStrip(id, dataFn)` | `(string, (scope, emit, caps) => () => void) => boolean` | `false`, one warning line |
+| `dshGoCaps()` | `() => { app?, locale?, components?, surfaces? } \| null` | `null`, one warning line |
+
+`spec.view` is the bridge's own contract and is forwarded VERBATIM: either a static tree or a function
+`(scope, caps) => view` — **including an async function**, which is why a panel that needs a tool-runtime
+read can still answer. A handler's return value is the bridge's effects vocabulary (`{ toast }`,
+`{ refresh: true }`, `{ copy }`, the v1.1 deferred `{ pending, result }`), also forwarded untouched.
+
+**THE VIEW KIT IS PURE.** `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` holds every component
+builder, `bind(path)`, `measureView` / `fitsBudget` / `BUDGETS`, `adaptView`, `lintDesign`,
+`toolCard`, and the two component constants (`V1_COMPONENTS`, `V2_ONLY_COMPONENTS`). It takes no `ctx`
+and does no I/O, so a view can be built, linted and measured in a unit test with no host. Three
+properties are enforced by the builders themselves rather than by review:
+
+- **The budgets.** `toolCard` 8 KiB / 40 nodes / depth 6, panel 32 KiB / 120 / 8, strip 2 KiB / 8 / 3;
+  every list-shaped builder refuses past the protocol's own maximum, and `toolCard()` NEVER throws and
+  NEVER returns an over-budget or v2-rooted card (it answers `{}`, and the app draws its generic row).
+- **The theme.** `panelView()` is the ONLY writer of `v: 2` and `accent: "app"`, and `style()` refuses a
+  named colour, a hex value, a numeric padding/gap and every decoration key — so the §7 visual rules are
+  unrepresentable to violate rather than merely documented.
+- **The fallback.** `adaptView(view, caps)` downgrades a v2 tree to v1 when the app is below 1.0.9, and it
+  is idempotent, so the same builder serves both shapes.
+
+A lane that adds a panel or a card imports the kit DIRECTLY (`…/mpd-dsh-adapter-plugin/src/dshgo-view`),
+not through the adapter's `index.ts`: the kit is a library, the seams are the service surface.
+
 ## R5 — no MPD diagnostic may reach the terminal
 
 An MPD plugin, MCP server or spawned child must never write to fd 1 or fd 2 while a TUI session is
@@ -204,6 +242,7 @@ updated when its rows move to a log file, because the assertion has to read
 | `packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts` | a NEW `console.*` / `process.stdout.write` / `process.stderr.write` in an MPD runtime path; prints its declared out-of-band set loudly (browser-side client factories, human-run CLI scripts, the MCP protocol's own stdout writer) |
 | `packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts` | a NEW cross-package / retired-body / `globalThis` coupling beyond the frozen, identity-keyed inventory (which can only shrink) |
 | `node scripts/verify-no-host-override.ts` | a shipped patch row that id-targets a row a host layer declares |
+| `node scripts/verify-dshgo-views.ts` (+ `--self-test`) | a `dshGo` manifest with a bad `v`, a duplicate/malformed id, a per-slot count over the protocol's limit, a declared view that is missing, unparsable, over 32 KiB or outside the panel budget, or a v2-only component name in a v1 static view. SCOPE: it lints the DECLARED static views only — the v2 trees a panel builds at runtime are covered by that package's unit tests (`lintDesign` in both version modes), never by this gate |
 
 ## The third contact surface (declared, not yet adapted)
 
