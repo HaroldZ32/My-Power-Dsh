@@ -1,0 +1,148 @@
+{
+  "type": "stack",
+  "v": 2,
+  "accent": "app",
+  "style": {
+    "gap": "M"
+  },
+  "children": [
+    {
+      "type": "tabs",
+      "items": [
+        {
+          "label": "Board",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Board",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold"
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "3 ready · 1 active",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Ready",
+                      "value": 3
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Active",
+                      "value": 1
+                    }
+                  ],
+                  "columns": 2
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Tasks",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold"
+                  }
+                },
+                {
+                  "type": "badge",
+                  "text": "in progress",
+                  "tone": "info"
+                },
+                {
+                  "type": "progress",
+                  "value": 60,
+                  "label": "Done",
+                  "caption": "3 of 5"
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "Refresh",
+                  "action": "refresh",
+                  "style": "primary"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Questions",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Questions",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold"
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "nothing parked",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Parked",
+                      "value": 0
+                    }
+                  ],
+                  "columns": 2
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "emptyState",
+              "title": "No question parked",
+              "message": "A question shows up here when the team asks one."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

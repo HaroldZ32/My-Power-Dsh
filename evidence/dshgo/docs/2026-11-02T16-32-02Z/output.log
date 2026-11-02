@@ -1,0 +1,31 @@
+### bun run verify:docs
+[verify-docs-parity] links=503 checked=471 resolved=471 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=129
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=503 dead=0 — PASS
+exit=0
+
+### changed files
+ M CHANGELOG.md
+ M agent-references/seam-adapters.md
+ M docs/drive-surface.md
+ M docs/drive-surface.zh-CN.md
+ M docs/index.md
+ M docs/index.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+
+### diffstat
+ CHANGELOG.md                      |  34 ++++++++++++
+ agent-references/seam-adapters.md |  39 ++++++++++++++
+ docs/drive-surface.md             | 111 +++++++++++++++++++++++++++++---------
+ docs/drive-surface.zh-CN.md       |  85 ++++++++++++++++++++++-------
+ docs/index.md                     |   2 +-
+ docs/index.zh-CN.md               |   2 +-
+ docs/user-guide.md                |  40 ++++++++++++++
+ docs/user-guide.zh-CN.md          |  30 +++++++++++
+ 8 files changed, 298 insertions(+), 45 deletions(-)
+
+### heading-tree parity
+docs/drive-surface.md == docs/drive-surface.zh-CN.md
+docs/user-guide.md == docs/user-guide.zh-CN.md
+docs/index.md == docs/index.zh-CN.md

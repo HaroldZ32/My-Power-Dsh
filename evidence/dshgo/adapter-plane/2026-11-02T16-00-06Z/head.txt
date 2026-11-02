@@ -1,0 +1,43 @@
+1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+ M packages/mpd-dsh-adapter-plugin/README.md
+ M packages/mpd-dsh-adapter-plugin/README.zh-CN.md
+ M packages/mpd-dsh-adapter-plugin/src/index.ts
+?? evidence/cellwork/p2-recon/
+?? evidence/cellwork/p2-seam-probe/
+?? evidence/cellwork/qa/2026-10-26T12-51-10.022Z-command/
+?? evidence/cellwork/qa/2026-10-26T13-07-09.919Z-command/
+?? evidence/cellwork/web-d4/
+?? evidence/dsh-qa/team-dispatch-guard/2026-11-02T11-32-02-318Z/
+?? evidence/dsh-qa/team-dispatch-guard/2026-11-02T11-34-28-677Z/
+?? evidence/dshgo/
+?? evidence/fix-task-dependency-guard/gates-skills-sweep2.log
+?? evidence/mail/integration/2026-11-01T02-55-53Z/
+?? evidence/mail/integration/2026-11-01T02-56-12Z/
+?? evidence/mail/integration/2026-11-01T02-59-43Z/
+?? evidence/merge-20261022/
+?? evidence/release/0.16.4/docker-oneclick.log
+?? evidence/restore/s1/2026-10-24T08-30-36-024Z/
+?? evidence/restore/s1/2026-10-24T08-57-29-179Z/
+?? evidence/restore/s1/2026-10-24T10-43-55-367Z/
+?? evidence/restore/s1/2026-10-24T10-57-09-916Z/
+?? evidence/restore/s1/2026-10-24T11-01-57-979Z/
+?? evidence/restore/s1/2026-10-24T11-18-45-317Z/
+?? evidence/restore/s1/2026-10-24T11-25-45-255Z/
+?? evidence/restore/s1/2026-10-24T11-30-09-706Z/
+?? evidence/restore/s1/2026-10-24T11-39-38-924Z/
+?? evidence/restore/s1/2026-10-24T12-24-49-147Z/
+?? evidence/restore/s1/2026-10-24T12-27-56-794Z/
+?? evidence/restore/s1/2026-10-24T13-18-09-018Z/
+?? evidence/restore/s1/2026-10-24T17-08-27-806Z/
+?? evidence/restore/s1/2026-10-24T17-21-44-367Z/
+?? evidence/restore/s1/2026-10-24T18-33-32-156Z/
+?? evidence/restore/s1/2026-10-24T18-37-35-968Z/
+?? evidence/restore/s1/2026-10-24T19-10-40-674Z/
+?? evidence/restore/s1/2026-10-24T19-22-30-500Z/
+?? evidence/restore/s1/2026-10-24T20-22-39-467Z/
+?? evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/
+?? evidence/tui/lanes/2026-11-01T06-42-03.545Z/
+?? packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+?? packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts
+?? packages/mpd-dsh-adapter-plugin/test/dshgo-view.test.ts
+?? scripts/verify-dshgo-views.ts

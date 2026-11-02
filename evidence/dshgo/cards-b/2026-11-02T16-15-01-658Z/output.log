@@ -1,0 +1,50 @@
+=== bun test packages/mpd-workmate-plugin (HOME sandboxed) ===
+ 83 pass
+ 0 fail
+ 800 expect() calls
+Ran 83 tests across 10 files. [701.00ms]
+exit=0
+=== bun test packages/mpd-memory-plugin ===
+ 2 skip
+ 0 fail
+ 231 expect() calls
+Ran 33 tests across 5 files. [406.00ms]
+exit=0
+=== bun test packages/mpd-verify-plugin ===
+ 91 pass
+ 0 fail
+ 637 expect() calls
+Ran 91 tests across 5 files. [246.00ms]
+exit=0
+=== bun test packages/mpd-autoproject-plugin ===
+ 55 pass
+ 0 fail
+ 461 expect() calls
+Ran 55 tests across 4 files. [348.00ms]
+exit=0
+=== bun test packages/mpd-team-watchdog-plugin ===
+ 159 pass
+ 0 fail
+ 794 expect() calls
+Ran 159 tests across 16 files. [2.22s]
+exit=0
+=== pinned build per touched entry ===
+mpd-workmate-plugin exit=0
+mpd-memory-plugin exit=0
+mpd-verify-plugin exit=0
+mpd-autoproject-plugin exit=0
+mpd-team-watchdog-plugin exit=0
+=== bun run verify:docs ===
+[verify-docs-parity] links=505 checked=473 resolved=473 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=129
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 — PASS
+docs-gate-exit=0
+=== bun run verify:comments ===
+VERDICT: FAIL — 2 violation(s) across 1 file(s).
+packages/mpd-bundle-plugin/src/dshgo-views.ts (2)
+  215: comment — view
+  347: comment — view
+comments-gate-exit=1
+=== npx tsgo --noEmit (diagnostics limited to the five touched packages) ===
+none in the five touched packages
+=== typecheck diagnostics elsewhere (context: other lanes mid-edit) ===
+     19 packages/mpd-bundle-plugin/

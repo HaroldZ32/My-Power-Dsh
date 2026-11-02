@@ -1,0 +1,120 @@
+{
+  "task": "T7 — verify: gates + real mount + a real tool-card result + adversarial contract review",
+  "role": "Reviewer",
+  "at": "2026-11-02T16:38:00Z",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "verdict": {
+    "measuredArms": "PASS",
+    "code": "PASS_WITH_FINDINGS",
+    "summary": "Every arm I could measure passes: the 14 gate/mount rows cited from T5's evidence, the 14 tool cards (census), both panel budgets on both paths, the seam rule, the §7.2 structure and the v1 fallbacks, and the live tool-card record. Four findings follow, one HIGH: the panel's complete/fail taps cannot succeed agentlessly (proven statically), and three contract gaps (rule 6's task badge/timeline, memory.dir/global store, hold/resume workspace resolution)."
+  },
+  "arms": {
+    "gates_and_mounts": {
+      "source": "evidence/dshgo/integration/2026-11-02T16-30-07Z/result.json (T5; cited, not re-derived)",
+      "gates": { "typecheck": 0, "dist": 0, "rows": 0, "docs": 0, "manifest": 0, "no_host_override": 0, "installer_dry": 0, "tests_packages": 0, "verify_gates": 0, "pack_closure": 0, "test_qa": 0, "dshgo_selftest": 0, "dshgo_live": 0, "manual_paths": 0 },
+      "tests": "3385 pass / 3391 tests / 221 files",
+      "mounts": "bundle-lifecycle PASS (install, boot seams, noHomeCopy, uninstall-without-residue) and preset-conformance PASS with its negative control refusing agent-preset/invalid",
+      "pack": "closure exit 0, 635/635 files identical, 0 drift, 29/29 packages; re-packed after T6's docs; stamp 2026-11-02T16:33:34.339Z (artifacts under dist/mpd-package are 00:33 local = 16:33Z)"
+    },
+    "tool_card_live": {
+      "evidence": "evidence/dshgo/verify/t7-toolcard-2026-11-02T16-35-43Z/{result.json,records.json,card.json,session.log}",
+      "command": "node evidence/dshgo/verify/t7-toolcard-2026-11-02T16-35-43Z/run-toolcard.ts",
+      "sandbox": "isolated DSH_HOME + sandbox HOME + sandbox workspace (install-profile mpd-headless, then one headless session)",
+      "observed": "headless exit 0; 28 session records; 2 tool records; the tool/result record carries the card at $.data.meta[\"dsh-go/view\"]",
+      "card": "390 B / 6 nodes / depth 3 (toolCard budget 8192/40/6); v1-legal (no v2-only component, no style/accent, every text non-empty, root title present); app checker --budget toolCard exit 0 (视图 -（工具卡）：能显示)",
+      "proves": "the harness projects a FUNCTION presentationMeta into the tool result's meta for a real top-level call; the model's prose was not read"
+    },
+    "card_census": {
+      "expected": 14,
+      "found": 14,
+      "missing": [],
+      "extra": 0,
+      "perPackage": { "mpd-team-core-plugin": 3, "mpd-roles-plugin": 2, "mpd-workmate-plugin": 2, "mpd-memory-plugin": 3, "mpd-verify-plugin": 2, "mpd-autoproject-plugin": 1, "mpd-team-watchdog-plugin": 1 },
+      "note": "constant-named registrations (name: STATUS_TOOL) are resolved through the file's own const table; no other package carries a card"
+    },
+    "panel_budgets": {
+      "budget": { "bytes": 32768, "nodes": 120, "depth": 8 },
+      "mpd-v2": { "bytes": 3983, "nodes": 50, "depth": 5, "withinBudget": true },
+      "mpd-v1-fallback": { "bytes": 2498, "nodes": 41, "depth": 5, "withinBudget": true },
+      "mpd-team-v2": { "bytes": 4668, "nodes": 57, "depth": 6, "withinBudget": true },
+      "mpd-team-v1-fallback": { "bytes": 2955, "nodes": 48, "depth": 6, "withinBudget": true },
+      "v1_cleanliness": "0 v2-only components and 0 style/accent keys in either fallback",
+      "method": "measureView from the kit over the lane's saved trees; my number differs from the lane's by 5 B on mpd-v2 (3983 vs 3978) — the lane's figure came from its own serialization in build-trees.ts, immaterial to the budget"
+    },
+    "seam": {
+      "directViolations": 0,
+      "adapterMediated": ["packages/mpd-bundle-plugin/src/dshgo-panel.ts", "packages/mpd-bundle-plugin/src/dshgo-surfaces.ts", "packages/mpd-bundle-plugin/src/dshgo-team-panel.ts"],
+      "note": "the three rows hand the id to the adapter's own onServiceBound watcher; the adapter itself reaches the bridge through its private service(\"dshGo\") helper"
+    },
+    "section7": {
+      "evidence": "evidence/dshgo/verify/prerun-2026-11-02T16-28-45Z/output.log + evidence/dshgo/verify/2026-11-02T15-44-36Z/probe-section7.mjs",
+      "checker": "two static views exit 0; four live trees piped to check.mjs - exit 0; fixture shell exit 0 with manifest.state ok and issues []; negative control with the real ARRAY patch exit 1",
+      "diagnostics": "18 notes on mpd-v2 and 24 on mpd-team-v2, all app-owned contrast corrections of accent/tone/palette plus one primary 'reserved, ignored' note per view; no authored colour, no downgrade of a real component",
+      "probe": "11 §7.2 rules + v1 mode, 6-arm self-test (including the corrected empty-tab heuristic); all four trees OK",
+      "colours": "both v2 roots v:2 accent:\"app\"; both fallbacks v:1 with no accent; zero #RRGGBB and zero named colours in all four trees",
+      "fallback": "metric labels AND values survive as {title, trailing:{$\"data.…\"}}"
+    }
+  },
+  "findings": [
+    {
+      "id": "H1",
+      "severity": "High",
+      "title": "The Detail tab's complete/fail taps CANNOT succeed from an agentless panel (now proven, previously unproven)",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-team-panel.ts createTeamPanelActions.settle → packages/mpd-dsh-adapter-plugin/src/index.ts executeTool → packages/mpd-team-core-plugin/src/index.ts casCloseTask callerIdentity/agent_teams_task",
+      "why": "the panel calls executeTool({name, arguments}) without `agent`; the adapter forwards `agent` only when supplied; the tool's sessionIdOf(exec) then answers the agentless sentinel \"workspace\", so caller = [\"workspace\"], isOwner is false for every owned row and recordNamesLead is false → casCloseTask refuses with the owner/lead sentence, which the tap shows verbatim. A completed tap is therefore impossible, not merely unproven.",
+      "direction": "decide the identity question for native taps: either hide/disable complete/fail when the panel carries no agent, or give the team tools a documented HUMAN channel (the app tap is the user, not a member), or have the panel resolve the owning member. Do NOT widen owner-only."
+    },
+    {
+      "id": "M1",
+      "severity": "Medium",
+      "title": "§7.2 rule 6's task clause is not implemented (badge for kind/status, timeline for a task's life)",
+      "where": "evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-team-v2.json tabs Board/Detail; contract §7.2 rule 6",
+      "why": "Board rows carry status as list `trailing` text and a subtitle; the Detail tab renders keyValue rows and no badge, and neither panel contains a timeline. Members DO match the rule (initials badge + name + mode). A `list` row cannot contain a badge node, so the rule as written is partly inexpressible — it needs a stated row form.",
+      "direction": "restate rule 6 for list rows (`trailing` + `tone`, or a Detail badge) and either add the Detail timeline or amend the rule; do not leave a BINDING rule unmet."
+    },
+    {
+      "id": "M2",
+      "severity": "Medium",
+      "title": "The Memory tab ignores `memory.dir` and never reads the global store",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-panel.ts readMemoryStore (MEMORY_DIR = \".mpd\"); packages/mpd-memory-plugin/README.md Paths",
+      "why": "the documented layout is `<workspace>/<memory.dir or \".mpd\">/memory/agents/<slug>/…`; the panel hard-codes `.mpd`, so a workspace that configures `memory.dir` shows the empty state while entries exist. The global store (`<HOME>/.mpd/memory`, `memory.globalDir`, written by mpd_memory_write scope:\"global\") is never read, so a workspace with only global entries also reads as empty. The frontmatter format (JSON), the entry directory and the reflection.json keys do match the documented store.",
+      "direction": "resolve the effective memory dir (the same config the row reads) and either declare the tab workspace-only in its copy or read the global store too; a service would remove the whole class."
+    },
+    {
+      "id": "M3",
+      "severity": "Medium",
+      "title": "hold/resume can succeed, but the tool resolves a DIFFERENT workspace root than the panel",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-team-panel.ts toggleHold → session-watchdog-hold/resume actions.ts execute → dsh.workspaceRoot(exec)",
+      "why": "the panel resolves the team id from its own scoped workspace, but the tool's exec has no agent, so workspaceRoot falls back to DSH_WORKSPACE_ROOT → process.cwd(). In a composition where those differ from the session's workspace the hold is written to (or looked up in) the wrong store while the toast says it landed. No identity gate exists, which is why this one CAN succeed — the risk is the root, not the caller.",
+      "direction": "do not route a mutation through a tool when the caller has no session; either add hold/resume to the mpdWatchdog service (already the read seam) or have the adapter pass a workspace-bound exec."
+    },
+    {
+      "id": "N1",
+      "severity": "Nit",
+      "title": "The Memory tab merges every agent slug, orders by mtime and shows 10, while mpd_memory_read is per-agent and filename-ordered",
+      "where": "dshgo-panel.ts readMemoryStore",
+      "why": "with per-agent `memory.agentSlug` overrides the tab shows another agent's entries; neither ordering matches the tool, so the tab and `mpd_memory_read` can disagree about 'the latest'",
+      "direction": "state the scope in the tab copy, or filter by the session's agent slug"
+    },
+    {
+      "id": "N2",
+      "severity": "Nit",
+      "title": "Legacy reflection.json keys are not tolerated",
+      "where": "dshgo-panel.ts readMemoryStore",
+      "why": "the memory row itself accepts `reflected_completed_steps` / `steps_since_last_successful_reflection`; the panel's reader does not, so an old state file shows 0/0",
+      "direction": "mirror the row's key fallback"
+    }
+  ],
+  "declined": [
+    "the rendered look: no Flutter app and preview.mjs needs Flutter — UNPROVEN, declared in contract §8",
+    "hold/resume runtime success: the static root divergence is shown, the runtime outcome needs a live engine with a multi-root composition — UNPROVEN",
+    "whether the app treats a tap as a human principal: that is a contract decision, not a measurement"
+  ],
+  "bounds": {
+    "cited_not_rerun": "T5's gate/mount rows and T6's docs are cited from their evidence files; I re-ran only the §6.1 checker three-run gate, the §6.2 view gate, the live tool-card arm, the census, the budgets and the seam check",
+    "sandbox": "the live arm ran in a throwaway DSH_HOME + sandbox HOME + sandbox workspace; no real ~/.dsh state was written",
+    "writeScope": "evidence/** only; no source, patch, manifest or dist edit",
+    "frozenHead": "1fb7f457 — the tree now carries uncommitted integration edits; every measurement above names its moment"
+  }
+}

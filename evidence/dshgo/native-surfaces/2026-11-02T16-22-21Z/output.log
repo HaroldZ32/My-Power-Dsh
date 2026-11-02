@@ -1,0 +1,29 @@
+### bun test packages/mpd-dsh-adapter-plugin packages/mpd-bundle-plugin
+
+ 662 pass
+ 0 fail
+ 19001 expect() calls
+Ran 662 tests across 37 files. [8.95s]
+### bun run typecheck
+$ tsgo --noEmit
+exit=0
+### bun run verify:comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+### bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 — PASS
+exit=0
+### bun run verify:rows
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 36 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-autoproject, mpd-better-sidebar, mpd-bootstrap, mpd-cellwork, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-project-init, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+exit=0
+### bun run verify:manifest
+ok    packed-content: npm pack --dry-run lists 1197 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+### node scripts/verify-dshgo-views.ts
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+exit=0
