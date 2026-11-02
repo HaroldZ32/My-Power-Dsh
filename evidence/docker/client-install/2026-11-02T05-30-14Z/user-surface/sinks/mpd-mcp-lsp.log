@@ -1,0 +1,18 @@
+[2026-11-02T05:35:23.435Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /opt/mpd/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-11-02T05:35:23.440Z] [mpd-mcp-lsp] cclsp config: /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws/.mpd/lsp/cclsp.json (generated, 1 language server(s))
+[2026-11-02T05:35:23.463Z] Loading config from CCLSP_CONFIG_PATH: /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws/.mpd/lsp/cclsp.json
+[2026-11-02T05:35:23.463Z] Loaded 1 server configurations from env
+[2026-11-02T05:35:23.464Z] CCLSP Server running on stdio
+[2026-11-02T05:35:23.464Z] Scanning configured server directories for supported file types
+[2026-11-02T05:35:23.464Z] Scanning /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-11-02T05:35:23.467Z] Starting 0 LSP servers...
+[2026-11-02T05:35:23.467Z] LSP server preloading completed
+[2026-11-02T05:35:23.739Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /opt/mpd/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-11-02T05:35:23.744Z] [mpd-mcp-lsp] cclsp config: /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws/.mpd/lsp/cclsp.json (generated, 1 language server(s), unchanged)
+[2026-11-02T05:35:23.754Z] Loading config from CCLSP_CONFIG_PATH: /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws/.mpd/lsp/cclsp.json
+[2026-11-02T05:35:23.754Z] Loaded 1 server configurations from env
+[2026-11-02T05:35:23.754Z] CCLSP Server running on stdio
+[2026-11-02T05:35:23.754Z] Scanning configured server directories for supported file types
+[2026-11-02T05:35:23.754Z] Scanning /opt/mpd/.qa-user-surface/user-surface-mount-ErFsWF/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-11-02T05:35:23.760Z] Starting 0 LSP servers...
+[2026-11-02T05:35:23.760Z] LSP server preloading completed
