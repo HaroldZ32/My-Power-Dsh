@@ -65,6 +65,7 @@ import type { Dirent } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isDeepStrictEqual } from "node:util"
 import { readJson } from "./lib/repo.ts"
 
 /** This script's own absolute path — the child process every arm of `--self-test` re-invokes. */
@@ -312,8 +313,6 @@ interface AskedAssets {
   readonly mcpPkgs?: string[]
   /** Package names the patch mounts as adopted main code (class B, no `dist/`). */
   readonly adoptedPkgs?: string[]
-  /** The view file the root manifest's `dshGo` panel declares, or null when it declares none. */
-  readonly declaredView?: string | null
 }
 
 /** The static half's counters, plus the packed half's stats attached once they are measured. */
@@ -605,6 +604,19 @@ function readRootManifest(root: string): unknown {
   } catch {
     return null
   }
+}
+
+/**
+ * The `dshGo` block of a parsed root manifest, or undefined when the manifest is unreadable or the
+ * field is absent. Kept separate from `declaredDshGoView` so the packed half can tell an ABSENT block
+ * (a packer rewrite dropped it) from one that is present but declares no panel view.
+ *
+ * @param manifest The parsed root `package.json`, or null when it could not be read.
+ * @returns The raw `dshGo` value, or undefined when the field is absent.
+ */
+function dshGoBlock(manifest: unknown): unknown {
+  if (manifest === null || typeof manifest !== "object") return undefined
+  return (manifest as { dshGo?: unknown }).dshGo
 }
 
 /**
@@ -1070,14 +1082,28 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree carries " + file + " but it is an EMPTY directory - a shipped tree with no files serves nothing, and the entry is required by name (T-70)" })
     }
   }
-  // 5b-ii. the DECLARED panel view by NAME (CodeRabbit PR #88). A non-empty `dsh-go` is not the claim:
-  // the file the shipped manifest points at is. The source-side twin of this rule lives in the static
-  // half, so an artifact missing the declared view — and a SOURCE tree missing it too — both redden,
-  // while the directory semantics above stay unchanged.
-  /** The view file the root manifest's `dshGo` panel declares, or null when it declares none. */
-  const declaredView = asked.declaredView ?? null
+  // 5b-ii. the PACKED manifest's own declaration (CodeRabbit PR #88). The source-side half proves the
+  // SOURCE declares the panel; this half proves the artifact still declares it, declares the SAME thing,
+  // and points at a view the artifact really carries. The gate used to read only the source declaration,
+  // so a packer rewrite that dropped or rewrote `dshGo` shipped an undeclared panel while every rule
+  // stayed green (measured in this wave: writeManifest() rebuilt the packed manifest from a literal).
+  /** The packed tree's root manifest, parsed by the same safe reader the source side uses. */
+  const packedManifest = readRootManifest(packed)
+  /** The source tree's root manifest, the declaration the artifact must match. */
+  const sourceManifest = readRootManifest(opts.sourceRoot)
+  /** The packed manifest's `dshGo` block, or undefined when the artifact carries none. */
+  const packedGo = dshGoBlock(packedManifest)
+  /** The source manifest's `dshGo` block, or undefined when the source carries none. */
+  const sourceGo = dshGoBlock(sourceManifest)
+  if (packedManifest !== null && packedGo === undefined) {
+    findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest carries no `dshGo` block - the source declares the DSH Go panel but the artifact would ship without declaring it, so the panel silently disappears from an installed package (CodeRabbit PR #88)" })
+  } else if (packedGo !== undefined && sourceGo !== undefined && !isDeepStrictEqual(packedGo, sourceGo)) {
+    findings.push({ kind: "MANIFEST", packages: [], detail: "the packed manifest's `dshGo` block differs from the source declaration - the packer must pass the panel declaration through verbatim, so a difference ships a package that no longer declares what the source does (CodeRabbit PR #88)" })
+  }
+  /** The view file the PACKED manifest's `dshGo` panel declares, or null when it declares none. */
+  const declaredView = declaredDshGoView(packedManifest)
   if (declaredView !== null && !existsSync(join(packed, declaredView))) {
-    findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry the file the manifest's dshGo panel declares: " + declaredView + " - a shipped panel would point at a view the package does not carry (the required root directory being non-empty is not proof of the DECLARED file, CodeRabbit PR #88)" })
+    findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry the file the PACKED manifest's dshGo panel declares: " + declaredView + " - a shipped panel would point at a view the package does not carry (the source-declared file is not proof of the packed declaration, CodeRabbit PR #88)" })
   }
   stats.rootFiles = REQUIRED_ROOT_FILES.filter((file: string): boolean => rootEntryPresent(join(packed, file))).length
 
@@ -1323,7 +1349,7 @@ function runCheck(opts: Options): CheckReport {
   // adopted package in one pass (T-70 finding 2).
   /** Package names the patch mounts as class B (adopted main code, no `dist/`). */
   const adopted = [...new Set(refs.filter((r: PatchRef): boolean => classifyRef(r.rel) === "B").map((r: PatchRef): string => r.pkg))]
-  stats.packedStats = checkPackedHalf(opts, findings, { rootAssets: assets, template, pluginPkgs: plugin, mcpPkgs: mcp, adoptedPkgs: adopted, declaredView: declaredViewPath })
+  stats.packedStats = checkPackedHalf(opts, findings, { rootAssets: assets, template, pluginPkgs: plugin, mcpPkgs: mcp, adoptedPkgs: adopted })
   return { findings, stats }
 }
 
@@ -1600,6 +1626,8 @@ function selfTest(): number {
       if (declaredView !== null && entry === viewEntry) put(root, declaredView, "{}\n")
       else put(root, entry, "# fixture root file\n")
     }
+    /** The fixture's `dshGo` declaration, re-stating the real one for BOTH fixture trees. */
+    const fixtureDshGo = { contributes: { panels: declaredView === null ? [] : [{ view: "./" + declaredView }] } }
     /** The fixture manifest, built from the packer's own asset and root-file tables. */
     const manifestBody = (): string =>
       JSON.stringify(
@@ -1607,6 +1635,7 @@ function selfTest(): number {
           name: "@mpd-dsh/mpd",
           version: "0.0.0",
           type: "module",
+          dshGo: fixtureDshGo,
           exports: { "./packages/*": "./packages/*", ...Object.fromEntries(assets.map((dir: string): [string, string] => ["./" + dir + "/*", "./" + dir + "/*"])) },
           files: [...assets.map((dir: string): string => dir + "/**"), "packages/**", ...rootFiles],
         },
@@ -1633,7 +1662,7 @@ function selfTest(): number {
     // The declared panel view is read from the manifest of the tree the packer copies FROM, so the
     // fixture source carries one that RE-STATES the real declaration (`./`-spelled, as the real one is)
     // instead of a hard-coded second copy of the path.
-    put(fxSource, "package.json", JSON.stringify({ name: "@mpd-dsh/mpd", version: "0.0.0", dshGo: { contributes: { panels: declaredView === null ? [] : [{ view: "./" + declaredView }] } } }, null, 2))
+    put(fxSource, "package.json", JSON.stringify({ name: "@mpd-dsh/mpd", version: "0.0.0", dshGo: fixtureDshGo }, null, 2))
     put(fxSource, "templates/mpd-extension/mpd-ext.json", "{}\n")
     put(fxSource, "templates/mpd-extension/README.md", "# fixture template\n")
     put(fxSource, "docs/guide.md", "# guide\n")
@@ -1649,6 +1678,26 @@ function selfTest(): number {
     const fixtureArgs = ["--source-root", fxSource, "--packages-dir", join(fxSource, "packages"), "--packed", fxPacked]
 
     arm("positive-control (fixture packed tree, exit 0)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 0 && /packed tree: .*fixture-packed/.test(c.all))
+
+    // Arm — negative control: the packed manifest DROPS the `dshGo` block the source declares. The
+    // source declaration and the view file stay intact, so the packed manifest is the only reason this
+    // fixture may redden (CodeRabbit PR #88: a packer rewrite silently dropping the block).
+    /** The fixture manifest parsed back to an object, so this arm can delete one key. */
+    const manifestWithoutGo = JSON.parse(manifestBody()) as Record<string, unknown>
+    delete manifestWithoutGo.dshGo
+    put(fxPacked, "package.json", JSON.stringify(manifestWithoutGo, null, 2))
+    arm("negative-control (packed manifest omits dshGo, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes("dshGo"))
+    put(fxPacked, "package.json", manifestBody())
+
+    // Arm — negative control: the packed `dshGo` block DIFFERS from the source declaration while its
+    // view still names a file the artifact carries. Only a deep comparison can see this; a view-path
+    // existence check alone would stay green.
+    /** The fixture manifest with its packed panel view repointed at another file that really ships. */
+    const manifestWithOtherView = JSON.parse(manifestBody()) as { dshGo: { contributes: { panels: Array<{ view: string }> } } }
+    manifestWithOtherView.dshGo.contributes.panels[0].view = "./" + rootFiles[0]
+    put(fxPacked, "package.json", JSON.stringify(manifestWithOtherView, null, 2))
+    arm("negative-control (packed dshGo differs from the source, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes("dshGo") && c.all.includes("differs"))
+    put(fxPacked, "package.json", manifestBody())
 
     /** The zh-CN half of the fixture doc pair this arm removes. */
     const zhGuide = join(fxPacked, "docs", "guide.zh-CN.md")
