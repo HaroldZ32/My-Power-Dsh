@@ -76,14 +76,18 @@ id** 发布 `panel('mpd', …)`，因此 App 是原地升级那份回退视图�
   `info` callout 展示待回答的问题，每个答案选项一个按钮（最多前四个，超出时另加一句说明），两个动作按钮，以及
   末尾一行 muted 文本说明本面板的边界。
 - **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的快照变化时发射，并返回
-  清除该定时器的 cancel 函数。快照收窄为 `{ team, plan, question, readyTasks }`——id、名称、状态、计数、问题
-  自身的文本与任务标题：绝不包含文件系统路径、token 或凭据，也绝不超过桥的 32 KiB 上限。`refresh('mpd')` 只在
-  **待答问题的集合**（停放 id）变化时触发，因为选项按钮是照它构建的；仅内容变化（同一 id、新文本）走数据推送。
+  清除该定时器的 cancel 函数。`view` 则是对同一批服务的**实时读取**，而不是读这份推送缓存：App 会**先**取视图
+  **再**订阅，若首次视图取自缓存，就会既没有 callout 也没有选项按钮。快照收窄为 `{ team, plan, question,
+  readyTasks }`——id、名称、状态、计数、问题自身的文本与任务标题：绝不包含文件系统路径、token 或凭据，也绝不超过
+  桥的 32 KiB 上限。`refresh('mpd')` 只在**待答问题的集合**（停放 id）变化时触发，因为选项按钮是照它构建的；
+  仅内容变化（同一 id、新文本）走数据推送。
 - **三个动作。** `approve` 调 `mpdTeamActions.approve({sessionId})`，`dispatch` 调
-  `mpdTeamActions.dispatch({sessionId})`，`answer:<n>` 调 `mpdQuestions.answer({id, answers})`——用的是停放问题的
-  **自身条目 id** 与选项的**标签**，且在点击时从**实时停放队列**读取，因此 App 跨问题变化持有的旧视图不可能答错
-  问题。每次点击都只回一个 `toast`（≤ 40 字符）而**绝不** reject：没有会话时回 "Open a conversation first"，
-  服务缺失回 "Unavailable here"，被拒绝回它自己那句，抛错回错误消息，超过四秒仍在跑回
+  `mpdTeamActions.dispatch({sessionId})`，`answer:<n>` 调 `mpdQuestions.answer({id, answers})` 时用的是
+  **视图渲染时**的那个问题：构建视图会捕获它的停放 id、条目 id 与**原始**选项标签，点击发送的就是这份捕获的 id 与
+  标签。实时停放队列只用来确认捕获的 id 是否还在——不在时回 "That question is gone" 并请求刷新，而**不会**去结算
+  当下停放的另一个问题；视图里没有问题时的点击回 "No question on screen"。因此固定的 `answer:0`…`answer:3`
+  指向的是**捕获的视图**，而不是实时队列。每次点击都只回一个 `toast`（≤ 40 字符）而**绝不** reject：没有会话时回
+  "Open a conversation first"，服务缺失回 "Unavailable here"，被拒绝回它自己那句，抛错回错误消息，超过四秒仍在跑回
   "Still working — check the team panel"。
 - **声明边界。** 这类插槽**仅限本地引擎**（中继会拦掉 `/dsh-go/*`，因此远端宿主渲染的是工具卡而不是本面板）；
   没有这个宿主半侧时渲染的是**静态**的 `dsh-go/views/mpd.json`，没有实时数值；动作需要**活着的会话**（没有

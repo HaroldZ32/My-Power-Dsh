@@ -179,6 +179,11 @@ render the refusal.
   `{ ok: false, error: "session <id> is not live" }` from BOTH members; a session whose workspace cannot
   be attributed answers `{ ok: false, error: <the resolver's message> }`. Neither member throws for a
   bad session id.
+- **The caller is the TOOL path's caller.** The workspace, session id and `lineage` are derived exactly
+  as `where(exec)` derives them, from the resolved live agent: a resumed or forked Lead contributes the
+  parent session the harness recorded, so the service (and both routes) resolves the SAME team its own
+  tool calls resolve; a recorded DELEGATION CHILD contributes an EMPTY lineage and never inherits its
+  captain's team.
 
 **The functions are exec-free.** `approveTeam(deps, caller)` and `runDispatch(deps, caller, input)`
 read no cordis context and no tool exec: the clock, the executor, the approval effects, the team

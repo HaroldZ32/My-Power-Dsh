@@ -1589,13 +1589,13 @@ function createDshAdapter(ctx, config = {}) {
       const off = onEvent("user-questions/request", (...args) => {
         const request = userQuestionRequestOf(args[0]);
         const next = args[args.length - 1];
-        const nextAnswers = async () => {
+        const nextEnvelope = async () => {
           if (typeof next !== "function") {
             throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
           }
-          return questionAnswersOf(await next());
+          return await next();
         };
-        return handler(request, nextAnswers);
+        return handler(request, nextEnvelope);
       });
       if (off === undefined) {
         try {
@@ -6820,8 +6820,9 @@ function apply(ctx) {
     }
     if (agent === undefined || agent === null)
       return { ok: false, error: `session ${sessionId} is not live` };
+    const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent });
     try {
-      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage: [], agent, ...signal === undefined ? {} : { signal } } };
+      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...signal === undefined ? {} : { signal } } };
     } catch (error) {
       return { ok: false, error: String(error?.message ?? error) };
     }

@@ -7,7 +7,7 @@
 // guard, 64 KiB cap, boundary parse, then work — and they assert the success payload is the NARROW
 // projection: no store object and no filesystem path at any depth.
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -21,7 +21,7 @@ import {
   registerTeamRoutes,
   type TeamWebActions,
 } from "../src/team-web"
-import { addTeamMember, addTeamTask, createTeam, type TeamRecord } from "../src/team-store"
+import { addTeamMember, addTeamTask, createTeam, readTeam, updateTeamMember, writeTeam, type TeamRecord } from "../src/team-store"
 import type { MpdTeamActionsService } from "../src/team-actions"
 
 /** The session every arm acts as. */
@@ -358,23 +358,41 @@ interface Harness {
   tools: Map<string, Tool>
   /** The services the row published, by id. */
   services: Map<string, unknown>
-  /** Drive one registered tool as {@link LEAD}. */
-  call: (name: string, args: unknown) => Promise<unknown>
+  /** The web routes the row mounted, by path — the two mutation routes when the composition acts. */
+  routes: Map<string, (req: unknown, res: unknown) => Promise<void>>
+  /**
+   * Drive one registered tool as one live agent.
+   * @param name - the registered tool name.
+   * @param args - the tool arguments.
+   * @param agent - the caller's live agent; defaults to {@link AGENT}.
+   * @returns the tool's own result, or its thrown refusal.
+   */
+  call: (name: string, args: unknown, agent?: unknown) => Promise<unknown>
 }
 
 /**
  * Apply the real row against a stub composition, so the SERVICE under test is the one this row
  * publishes — not a re-implementation of it.
- * @param live - whether {@link LEAD} is a live session in this composition.
+ * @param live - whether this composition has any live session at all.
+ * @param agents - the live agents the registry answers, by session id; {@link AGENT} alone by default.
  * @returns the harness an arm drives.
  */
-function harness(live: boolean): Harness {
+function harness(live: boolean, agents: ReadonlyMap<string, unknown> = new Map([[LEAD, AGENT]])): Harness {
   /** The sandbox workspace, which is also what `workspaceRoot` answers. */
   const workspace = sandbox()
   /** The tools the row registered. */
   const tools = new Map<string, Tool>()
   /** The services the row published, by id. */
   const services = new Map<string, unknown>()
+  /** The web routes the row mounted, by path. */
+  const routes = new Map<string, (req: unknown, res: unknown) => Promise<void>>()
+  /** The server double the row mounts its routes through. */
+  const server = {
+    register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }): (() => void) => {
+      routes.set(route.path, route.handler as (req: unknown, res: unknown) => Promise<void>)
+      return (): void => {}
+    },
+  }
   /** The executor double: it raises any member under a handle derived from the name. */
   const executor = {
     kind: "native",
@@ -392,10 +410,10 @@ function harness(live: boolean): Harness {
     registerCommand: (): (() => void) => () => {},
     workspaceRoot: (): string => workspace,
     workspaceRootsAll: (): string[] => [workspace],
-    workspaceRootForSession: (sessionId: string): string | undefined => (live && sessionId === LEAD ? workspace : undefined),
-    liveAgent: (sessionId: string): unknown => (live && sessionId === LEAD ? AGENT : undefined),
-    liveAgents: (): unknown[] => (live ? [AGENT] : []),
-    webServerOf: (): undefined => undefined,
+    workspaceRootForSession: (sessionId: string): string | undefined => (live && agents.has(sessionId) ? workspace : undefined),
+    liveAgent: (sessionId: string): unknown => (live ? agents.get(sessionId) : undefined),
+    liveAgents: (): unknown[] => (live ? [...agents.values()] : []),
+    webServerOf: (): typeof server => server,
     webRequestRejection: (): undefined => undefined,
     onServiceBound: (): void => {},
     onEvent: (): (() => void) => () => {},
@@ -424,11 +442,12 @@ function harness(live: boolean): Harness {
     workspace,
     tools,
     services,
-    call: async (name: string, args: unknown) => {
+    routes,
+    call: async (name: string, args: unknown, agent: unknown = AGENT) => {
       /** The registered tool, or a thrown error naming what WAS registered. */
       const tool = tools.get(name)
       if (tool === undefined) throw new Error(`no tool ${name} (have ${[...tools.keys()].join(", ")})`)
-      return tool.execute(args, { agent: AGENT })
+      return tool.execute(args, { agent })
     },
   }
 }
@@ -456,6 +475,9 @@ describe("mpdTeamActions — the service the routes and a panel both read", () =
     expect(await service.dispatch({ sessionId: LEAD })).toEqual({ ok: false, error: `session ${LEAD} is not live` })
     // An unknown id is the same refusal, not a crash: this is what a route maps to 409.
     expect((await service.approve({ sessionId: "nobody" })).ok).toBe(false)
+    // THE REFUSAL PRECEDES ANY STORE WRITE (F4's order): the liveness probe is the only thing the
+    // caller resolution reads, so the workspace it would have acted in was never even given a team dir.
+    expect(existsSync(join(h.workspace, ".mpd", "team"))).toBe(false)
   })
 
   test("the service and the TOOL path approve into the SAME record shape", async () => {
@@ -518,5 +540,137 @@ describe("mpdTeamActions — the service the routes and a panel both read", () =
     if (!pass.ok) throw new Error(pass.error)
     expect(pass.pairs.map((pair) => pair.taskId)).toEqual(["T1"])
     expect(pass.pairs[0]?.memberName).toBe("Senior Engineer")
+  })
+})
+
+// ── F4: the service derives the SAME lineage the tool path does ─────────────
+//
+// THE DEFECT. `callerForSession` built every service caller with `lineage: []`, while the tool path
+// derives `where(exec)`'s lineage from the SAME live agent. A RESUMED or FORKED Lead therefore reached
+// its team through a tool call but NOT through `mpdTeamActions` (nor the two routes that delegate to
+// it): the panel's button refused where the same agent's tool call worked.
+//
+// THESE ARE DIFFERENTIAL ARMS. One live agent is driven through BOTH paths, and the resolved team (or
+// the refusal) must agree. A hardcoded lineage reddens every one of them.
+
+/** The new id a forked/resumed Lead session carries in these arms; its recorded parent is {@link LEAD}. */
+const FORK = "lead-fork-b"
+
+/** The live agent of that fork: the harness stamped the OLD session as its parent. */
+const FORK_AGENT = { session: { id: FORK, header: { parentSession: LEAD } } }
+
+/** The instant every seeded record in these arms is stamped with. */
+const F4_NOW = new Date("2026-11-02T02:00:00.000Z")
+
+/**
+ * Seed a LIVE team led by {@link LEAD}, with one idle member and one ready task, so a dispatch pass
+ * has a team to resolve and a pairing to report.
+ * @param workspace - the sandbox the record is written into.
+ * @returns the record as written.
+ */
+function dispatchTeam(workspace: string): TeamRecord {
+  /** The record as it grows through the store. */
+  let record = createTeam(workspace, { name: "the wave", description: "ship it", leadSessionId: LEAD }, F4_NOW)
+  record = addTeamMember(record, { name: "Senior Engineer", description: "implements" }, F4_NOW)
+  // A member is DISPATCHABLE only once its raise settled (`inactive`) — the state an approved plan
+  // leaves behind, and the one `idleMembers` reads.
+  record = updateTeamMember(record, "Senior Engineer", { status: "inactive", executorRef: "child-se-b" })
+  record = addTeamTask(record, { subject: "core", description: "own it", blockedBy: [] }, F4_NOW)
+  writeTeam(workspace, record)
+  return record
+}
+
+/**
+ * Seed a LIVE parent team that names {@link LEAD} as a MEMBER (through its executor handle), which is
+ * what `deriveParentTeam` resolves a nested approval under. Its own Lead is a THIRD session, so the
+ * team is not excluded as one the caller merely leads.
+ * @param workspace - the sandbox the record is written into.
+ * @returns the parent record as written.
+ */
+function parentTeam(workspace: string): TeamRecord {
+  /** The record as it grows through the store. */
+  let record = createTeam(workspace, { name: "parent wave", description: "owns the child", leadSessionId: "parent-lead-b" }, F4_NOW)
+  record = addTeamMember(record, { name: "Scout", description: "the parent roster's seat" }, F4_NOW)
+  record = updateTeamMember(record, "Scout", { executorRef: LEAD })
+  writeTeam(workspace, record)
+  return record
+}
+
+/**
+ * Stage a one-member, one-task plan through the TOOL surface as {@link FORK}.
+ * @param h - the harness to drive.
+ * @returns nothing; the plan is left staged for the fork.
+ */
+async function stageForkPlan(h: Harness): Promise<void> {
+  await h.call("agent_teams_plan", { action: "create", name: "nested wave", description: "the child wave" }, FORK_AGENT)
+  await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, FORK_AGENT)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own it", blocked_by: [] } }, FORK_AGENT)
+}
+
+describe("F4 — the service derives the SAME lineage as the tool path", () => {
+  test("a forked Lead's service approve resolves the SAME team the tool path resolves", async () => {
+    /** The live registry: the Lead and the fork that records it as its parent. */
+    const h = harness(true, new Map([[LEAD, AGENT], [FORK, FORK_AGENT]]))
+    /** The parent team the lineage must resolve. */
+    const parent = parentTeam(h.workspace)
+    /** The published service. */
+    const service = h.services.get(ACTIONS_SERVICE) as MpdTeamActionsService
+    // THE TOOL PATH: the plan is staged and approved by the SAME live agent the service resolves.
+    await stageForkPlan(h)
+    /** The tool path's approval. */
+    const viaTool = await h.call("agent_teams_plan", { action: "approve" }, FORK_AGENT) as { team?: TeamRecord }
+    // THE SERVICE PATH: a second plan, approved through the session-addressed service.
+    await stageForkPlan(h)
+    /** The service path's approval. */
+    const outcome = await service.approve({ sessionId: FORK })
+    if (!outcome.ok) throw new Error(outcome.error)
+    // THE DIFFERENTIAL. A fresh approval always MINTS a new team id, so the id both paths must agree on
+    // is the one LINEAGE resolved — the parent both records nest under. With the service's lineage
+    // hardcoded to `[]`, the second record would be a root team and this is `undefined`.
+    expect(viaTool.team?.parentTeamId).toBe(parent.teamId)
+    expect(outcome.team?.parentTeamId).toBe(parent.teamId)
+    expect(outcome.team?.parentTeamId).toBe(viaTool.team?.parentTeamId)
+    // And it is DURABLE: the resolved link is what the record on disk carries.
+    expect(readTeam(h.workspace, String(outcome.team?.teamId))?.parentTeamId).toBe(parent.teamId)
+  })
+
+  test("a delegated child's service caller keeps the tool path's EMPTY lineage", async () => {
+    /** The child session: the Lead is its recorded parent, and the harness recorded a delegation. */
+    const child = { session: { id: "child-of-lead-b", header: { parentSession: LEAD, origin: "subagent", delegationDepth: 1 } } }
+    /** The live registry: the Lead and the recorded child. */
+    const h = harness(true, new Map([[LEAD, AGENT], ["child-of-lead-b", child]]))
+    /** The Lead's team, which the child must NOT reach through its parent chain. */
+    const team = dispatchTeam(h.workspace)
+    /** The published service. */
+    const service = h.services.get(ACTIONS_SERVICE) as MpdTeamActionsService
+    // THE SERVICE PATH refuses to resolve the ancestor's team: `where(exec)` reports `[]` for a
+    // recorded delegation child, and the service must be indistinguishable from it.
+    const viaService = await service.dispatch({ sessionId: "child-of-lead-b", dryRun: true })
+    if (!viaService.ok) throw new Error(viaService.error)
+    // THE TOOL PATH, for the same live agent, reaches the SAME negative answer.
+    const viaTool = await h.call("agent_teams_dispatch", { action: "run", dry_run: true }, child) as { pairs: unknown[]; refused?: string }
+    expect(viaService.pairs).toEqual([])
+    expect(viaService.refused).toBeDefined()
+    expect(viaTool.pairs).toEqual([])
+    expect(viaTool.refused).toBeDefined()
+    // AND NOTHING WAS CLAIMED: the ancestor's board is untouched by the child's pass.
+    expect(readTeam(h.workspace, team.teamId)?.tasks[0]?.status).toBe("pending")
+  })
+
+  test("the dispatch ROUTE inherits the derived lineage through the service", async () => {
+    /** The live registry: the Lead and the fork that records it as its parent. */
+    const h = harness(true, new Map([[LEAD, AGENT], [FORK, FORK_AGENT]]))
+    /** The Lead's team, which the fork must resolve through the route. */
+    dispatchTeam(h.workspace)
+    /** The row's OWN mounted dispatch handler — the route wiring under test, not a rebuilt action. */
+    const handler = h.routes.get(TEAM_DISPATCH_PATH)
+    if (handler === undefined) throw new Error(`the row mounted no ${TEAM_DISPATCH_PATH} route`)
+    /** The response double. */
+    const { res, captured } = response()
+    await handler(request("POST", `${TEAM_DISPATCH_PATH}?sessionId=${FORK}`, JSON.stringify({ dryRun: true })), res)
+    expect(captured.status).toBe(200)
+    // The route's narrow projection carries the pairs the service resolved for the FORK's lineage; a
+    // hardcoded `[]` would leave this empty.
+    expect((captured.body as { pairs: Array<{ taskId: string }> }).pairs.map((pair) => pair.taskId)).toEqual(["T1"])
   })
 })

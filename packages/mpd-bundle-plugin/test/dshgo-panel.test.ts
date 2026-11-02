@@ -392,6 +392,25 @@ function actionsOf(spec: PanelSpec): Record<string, (scope: unknown, event: unkn
   return spec.actions as Record<string, (scope: unknown, event: unknown) => Promise<{ toast: string }>>
 }
 
+/** One action button a view's `actions` node carries, in walk order. */
+interface ViewActionButton {
+  /** The button's label: a literal string, or a `$` binding node for an answer button. */
+  label: unknown
+  /** The action id the button reports on a tap. */
+  action: string
+}
+
+/** Every action button a view tree carries, in walk order. */
+function actionButtonsOf(view: unknown): ViewActionButton[] {
+  /** The buttons collected so far. */
+  const buttons: ViewActionButton[] = []
+  walkNodes(view, 1, (node) => {
+    if (node.type !== "actions") return
+    for (const item of node.items as Array<{ label?: unknown; action?: string }>) buttons.push({ label: item.label, action: item.action ?? "" })
+  })
+  return buttons
+}
+
 /** The one panel a case registers, or a failure naming what went wrong instead. */
 function onlyPanel(host: FakeHost): { id: string; spec: PanelSpec } {
   expect(host.panels).toHaveLength(1)
@@ -541,6 +560,24 @@ function livePanel(state: FakeState = fakeState(), sessionId: string = "s1"): Li
   /** The cancel function the first subscription returned. */
   const cancel = dataOf(panel.spec)({ sessionId }, sink.emit)
   return { host, spec: panel.spec, emitter: sink, cancel, registration }
+}
+
+/**
+ * Publish the panel on a bridge-present host WITHOUT subscribing its data function.
+ *
+ * This is the order the module itself documents: the app fetches the view first and subscribes
+ * afterwards, so a view built here proves the panel does not depend on a seeded push cache.
+ * @param state - the doubles' state; a fresh default when omitted.
+ * @returns the host and the panel definition, with no data subscription and no interval.
+ */
+function unseededPanel(state: FakeState = fakeState()): { host: FakeHost; spec: PanelSpec } {
+  /** The host double, with the bridge already present. */
+  const host = fakeHost(state)
+  host.setPresent(true)
+  registerDshGoPanel({ dsh: host.dsh, ctx: host.ctx, log: logCapture().log, workspace: () => "/ws", pollMs: 2000 })
+  /** The one published panel. */
+  const panel = onlyPanel(host)
+  return { host, spec: panel.spec }
 }
 
 describe("registration is lazy and silent", () => {
@@ -879,6 +916,8 @@ describe("taps answer a toast and never reject", () => {
     })())
     /** The actions map the bridge received. */
     const actions = actionsOf(live.spec)
+    // The app renders a view before it can tap: the answer id indexes THAT view's capture.
+    viewOf(live.spec)({ sessionId: "s1" })
     /** The panel tap event the app sends; `action` names the button. */
     const tap = (action: string): unknown => ({ surface: "panel", id: "mpd", action, locale: "en" })
     expect(await actions.approve?.({ sessionId: "s1" }, tap("approve"))).toEqual({ toast: "Approved" })
@@ -954,6 +993,8 @@ describe("taps answer a toast and never reject", () => {
     })())
     /** The actions map the bridge received. */
     const actions = actionsOf(live.spec)
+    // The app renders the view first, so the answer tap resolves against its captured question.
+    viewOf(live.spec)({ sessionId: "s1" })
     await expect(actions.approve?.({ sessionId: "s1" }, { action: "approve" })).resolves.toEqual({ toast: "the store is unreadable" })
     await expect(actions.dispatch?.({ sessionId: "s1" }, { action: "dispatch" })).resolves.toEqual({ toast: "the executor is busy" })
     await expect(actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).resolves.toEqual({ toast: "the relay is gone" })
@@ -971,6 +1012,8 @@ describe("taps answer a toast and never reject", () => {
     })())
     /** The actions map the bridge received. */
     const actions = actionsOf(live.spec)
+    // The app renders the view first, so every answer tap below resolves against its capture.
+    viewOf(live.spec)({ sessionId: "s1" })
     expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "Unavailable here" })
     // An index the question does not offer is refused BEFORE the service is called.
     live.host.state.answerCalls.length = 0
@@ -980,6 +1023,120 @@ describe("taps answer a toast and never reject", () => {
     live.host.state.answerOutcome = { ok: false, error: "that option is no longer offered" }
     expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "that option is no longer offered" })
     live.cancel()
+  })
+})
+
+describe("the first view is a live read, not the unseeded push cache", () => {
+  test("a question parked before the app's first fetch renders its callout and one button per option", () => {
+    /** A state whose question is already parked before any subscription exists. */
+    const state = fakeState()
+    state.plan = { planId: "plan-1", approved: false, discarded: false, members: [{ name: "Lead" }], tasks: [{ subject: "T" }] }
+    state.parked = [{ id: "q1", sessionId: "s1", createdAt: 1, questions: [{ id: "item-1", question: "Pick one", options: [{ label: "main" }, { label: "dev" }] }] }]
+    /** The published panel whose data function was never subscribed: the app's view-first order. */
+    const panel = unseededPanel(state)
+    /** The first view the app would render, built with no seeded cache behind it. */
+    const view = viewOf(panel.spec)({ sessionId: "s1" })
+    /** Every callout the view carries. */
+    const callouts: ViewNode[] = []
+    walkNodes(view, 1, (node) => { if (node.type === "callout") callouts.push(node) })
+    expect(callouts).toHaveLength(1)
+    expect(callouts[0]?.text).toEqual({ $: "data.question.question" })
+    /** The answer buttons alone, keyed by the ids the action map registers. */
+    const answers = actionButtonsOf(view).filter((button) => button.action.startsWith("answer:"))
+    expect(answers.map((button) => button.action)).toEqual(["answer:0", "answer:1"])
+    expect(answers.map((button) => button.label)).toEqual([
+      { $: "data.question.options.0.label" },
+      { $: "data.question.options.1.label" },
+    ])
+    /** The live read of the SAME reader the push path uses, which every binding must resolve in. */
+    const snapshot = readPanelSnapshot({ services: panel.host.ctx, workspace: "/ws", sessionId: "s1" })
+    expect(snapshot.question?.question).toBe("Pick one")
+    for (const path of bindingPathsOf(view)) expect(resolveBinding(path, snapshot)).not.toBeUndefined()
+  })
+})
+
+describe("a tap acts on the question its view rendered", () => {
+  /** The parked question the view below is rendered from. */
+  const firstQuestion = {
+    id: "q1",
+    sessionId: "s1",
+    createdAt: 1,
+    questions: [{ id: "item-1", question: "Pick one", options: [{ label: "main" }, { label: "dev" }] }],
+  }
+
+  test("still the same parked question: the tap carries the label the view rendered", async () => {
+    /** A state with one parked question. */
+    const state = fakeState()
+    state.parked = [firstQuestion]
+    /** The published panel, before any data subscription. */
+    const panel = unseededPanel(state)
+    // The app renders this view; the tap below must act on what the user SAW, not on the lot.
+    viewOf(panel.spec)({ sessionId: "s1" })
+    // A content-only change under the SAME parked id: no refresh fires, so the app keeps that view.
+    state.parked = [{ ...firstQuestion, questions: [{ id: "item-1", question: "Pick one, now", options: [{ label: "main" }, { label: "edge" }] }] }]
+    /** The actions map the bridge received. */
+    const actions = actionsOf(panel.spec)
+    expect(await actions["answer:1"]?.({ sessionId: "s1" }, { action: "answer:1" })).toEqual({ toast: "Answered" })
+    expect(state.answerCalls).toEqual([{ id: "q1", answers: [{ id: "item-1", selected: ["dev"] }] }])
+  })
+
+  test("a new parked question: the tap toasts and never settles the question it never showed", async () => {
+    /** A state whose question is `q1` at the moment the view is rendered. */
+    const state = fakeState()
+    state.parked = [firstQuestion]
+    /** The published panel, before any data subscription. */
+    const panel = unseededPanel(state)
+    // The app renders and holds this view.
+    viewOf(panel.spec)({ sessionId: "s1" })
+    // A SET change: the app has not re-fetched yet, so its buttons still name `q1`'s options.
+    state.parked = [{ id: "q2", sessionId: "s1", createdAt: 2, questions: [{ id: "item-2", question: "Next?", options: [{ label: "yes" }] }] }]
+    /** The actions map the bridge received. */
+    const actions = actionsOf(panel.spec)
+    expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "That question is gone" })
+    // The new question was never touched, and the panel asked the app for a fresh view.
+    expect(state.answerCalls).toHaveLength(0)
+    expect(panel.host.refreshes).toEqual([DSHGO_PANEL_ID])
+  })
+
+  test("a disappeared question: the tap toasts, refreshes and answers nothing", async () => {
+    /** A state with one parked question. */
+    const state = fakeState()
+    state.parked = [firstQuestion]
+    /** The published panel, before any data subscription. */
+    const panel = unseededPanel(state)
+    // The app renders and holds this view, then the question is settled from another client.
+    viewOf(panel.spec)({ sessionId: "s1" })
+    state.parked = []
+    /** The actions map the bridge received. */
+    const actions = actionsOf(panel.spec)
+    expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "That question is gone" })
+    expect(state.answerCalls).toHaveLength(0)
+    expect(panel.host.refreshes).toEqual([DSHGO_PANEL_ID])
+  })
+
+  test("a view rendered with no question: an answer tap is a defensive toast", async () => {
+    /** A published panel whose scope has nothing parked. */
+    const panel = unseededPanel(fakeState())
+    // The app renders the empty-state view: those buttons do not exist, and a stray tap still works.
+    viewOf(panel.spec)({ sessionId: "s1" })
+    /** The actions map the bridge received. */
+    const actions = actionsOf(panel.spec)
+    expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "No question on screen" })
+    expect(panel.host.state.answerCalls).toHaveLength(0)
+  })
+
+  test("no view at all yet: an answer tap is the same defensive toast", async () => {
+    /** A published panel whose view the app never fetched. */
+    const panel = unseededPanel((() => {
+      /** A state with a question parked, so only the missing view can refuse the tap. */
+      const state = fakeState()
+      state.parked = [firstQuestion]
+      return state
+    })())
+    /** The actions map the bridge received. */
+    const actions = actionsOf(panel.spec)
+    expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "No question on screen" })
+    expect(panel.host.state.answerCalls).toHaveLength(0)
   })
 })
 

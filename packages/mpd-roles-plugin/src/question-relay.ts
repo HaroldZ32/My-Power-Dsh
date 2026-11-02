@@ -22,7 +22,7 @@
 // WeakMap so a rebind never double-registers, the host fence FIRST, then this module's own method
 // guard, a byte-capped single-decode body read, a parse at the boundary, and `{ok:true,…}` /
 // `{ok:false,error}` JSON with `no-store`. A handler never throws and never echoes a filesystem path.
-import type { DshAdapter, DshQuestionAnswer, DshQuestionItem, DshUserQuestionRequest } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter, DshQuestionAnswer, DshQuestionAnswerEnvelope, DshQuestionItem, DshUserQuestionRequest } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** How long a parked question waits for a client answer before the ORIGINAL error is rethrown. */
 export const DEFAULT_QUESTION_TTL_MS = 120_000
@@ -95,11 +95,16 @@ export interface QuestionRelay {
   /**
    * The waterfall answerer: await `next()`, and park only when it rejects with `NO_PROVIDER`.
    *
+   * THE REPLY IS THE HARNESS ENVELOPE (review F1): `next()` resolves the downstream answerer's
+   * `{ answers: [...] }` and that object is returned by IDENTITY, never rebuilt; only a request this
+   * relay CLAIMS is wrapped as `{ answers: <parked array> }`, because the harness consumes
+   * `result.answers`. A bare array here would replace the envelope and crash the ask tool.
+   *
    * @param request - the harness request, narrowed by the adapter.
    * @param next - the waterfall continuation, whose rejection decides whether this relay may park.
-   * @returns the answer array this relay claims, or the next answerer's answer.
+   * @returns the downstream envelope, or the envelope wrapping this relay's parked answers.
    */
-  handle(request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>): Promise<DshQuestionAnswer[]>
+  handle(request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>): Promise<DshQuestionAnswerEnvelope>
   /**
    * Every parked question, OLDEST FIRST (newest last), narrowed to one session when asked.
    *
@@ -514,11 +519,16 @@ export function createQuestionRelay(options: QuestionRelayOptions = {}): Questio
    * object), so a broken downstream answerer is never disguised as an answered question. Only after
    * a `NO_PROVIDER` rejection and an OPEN attach gate does the request park.
    *
+   * THE PARKING LOT STAYS AN ARRAY (plan §4.3) and only the REPLY is wrapped: a client's answer
+   * settles the waiter with `DshQuestionAnswer[]`, and the harness receives
+   * `{ answers: <that array> }`. Every non-answer outcome still rejects with the ORIGINAL error, so
+   * expiry, eviction, abort and dispose never get wrapped into an envelope.
+   *
    * @param request - the harness request, narrowed by the adapter.
-   * @param next - the downstream answerer; its resolution is returned as-is.
-   * @returns the downstream answer, or the parked promise a client settles.
+   * @param next - the downstream answerer; its envelope is returned as-is.
+   * @returns the downstream envelope, or the envelope this relay's parked answers settle into.
    */
-  async function handle(request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>): Promise<DshQuestionAnswer[]> {
+  async function handle(request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>): Promise<DshQuestionAnswerEnvelope> {
     try {
       return await next()
     } catch (error) {
@@ -532,7 +542,8 @@ export function createQuestionRelay(options: QuestionRelayOptions = {}): Questio
       if (request.signal?.aborted === true) throw abortErrorOf(request.signal)
       // THE ATTACH GATE: with no recent poll nobody can answer, so fail the turn NOW rather than hang it.
       if (!attached()) throw error
-      return park(request, error)
+      // Only the CLAIMED reply is wrapped; a park rejection above/below is the original error.
+      return { answers: await park(request, error) }
     }
   }
 
@@ -623,7 +634,7 @@ export function installQuestionRelay(
     const relay = createQuestionRelay(options)
     /** The registration's disposer; a non-function answer is treated as "nothing to release". */
     const off = dsh.onUserQuestionRequest(
-      (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>): Promise<DshQuestionAnswer[]> => relay.handle(request, next),
+      (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>): Promise<DshQuestionAnswerEnvelope> => relay.handle(request, next),
       "mpd-roles",
     )
     return {

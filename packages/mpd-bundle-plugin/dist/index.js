@@ -1637,13 +1637,13 @@ function createDshAdapter(ctx, config = {}) {
       const off = onEvent("user-questions/request", (...args) => {
         const request = userQuestionRequestOf(args[0]);
         const next = args[args.length - 1];
-        const nextAnswers = async () => {
+        const nextEnvelope = async () => {
           if (typeof next !== "function") {
             throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
           }
-          return questionAnswersOf(await next());
+          return await next();
         };
-        return handler(request, nextAnswers);
+        return handler(request, nextEnvelope);
       });
       if (off === undefined) {
         try {
@@ -2478,6 +2478,8 @@ var TOAST_STILL_RUNNING = "Still working — check the team panel";
 var TOAST_APPROVED = "Approved";
 var TOAST_DISPATCHED = "Dispatched";
 var TOAST_ANSWERED = "Answered";
+var TOAST_QUESTION_GONE = "That question is gone";
+var TOAST_NO_QUESTION = "No question on screen";
 var LIMITS_TEXT = "Local engine only: these actions drive this host's MPD team and need a live conversation.";
 var TRUNCATED_TEXT = "Only the first four options are shown; answer the rest from another client.";
 var MAX_TITLE_CHARS = 120;
@@ -2580,30 +2582,46 @@ function planSnapshotOf(value) {
     tasks: arrayOf(plan.tasks).length
   };
 }
-function questionSnapshotOf(value) {
+function questionReadOf(value) {
   const parked = arrayOf(value).map((entry2) => recordOf(entry2)).filter((entry2) => entry2 !== undefined);
   const entry = parked[0];
   if (entry === undefined)
     return null;
-  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question) => question !== undefined);
+  const items = arrayOf(entry.questions).map((question) => recordOf(question)).filter((question) => question !== undefined);
+  const item = items[0];
   if (item === undefined)
     return null;
-  const options = arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => ({ label: clip(stringOf(option.label), MAX_LABEL_CHARS) })).filter((option) => option.label !== "");
-  return { id: stringOf(entry.id), question: clip(stringOf(item.question), MAX_QUESTION_CHARS), options };
+  const options = arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => ({ raw: stringOf(option.label), display: clip(stringOf(option.label), MAX_LABEL_CHARS) })).filter((option) => option.raw !== "" && option.display !== "");
+  return {
+    snapshot: {
+      id: stringOf(entry.id),
+      question: clip(stringOf(item.question), MAX_QUESTION_CHARS),
+      options: options.map((option) => ({ label: option.display }))
+    },
+    binding: {
+      parkedId: stringOf(entry.id),
+      itemIds: items.map((question) => stringOf(question.id)).filter((id) => id !== ""),
+      labels: options.map((option) => option.raw)
+    }
+  };
 }
-function readPanelSnapshot(read) {
+function readPanelState(read) {
   const sessionId = read.sessionId;
   const workspace = read.workspace;
   if (sessionId === "" || workspace === undefined || workspace === "")
-    return emptySnapshot();
+    return { snapshot: emptySnapshot(), binding: { question: null } };
   const teams = faceOf(read.services, "mpdTeams");
   const questions = faceOf(read.services, "mpdQuestions");
   const record = teams?.active === undefined ? undefined : probe(() => teams.active?.(workspace, sessionId), undefined);
+  const question = questions?.list === undefined ? null : questionReadOf(probe(() => questions.list?.({ sessionId }), undefined));
   return {
-    team: teamSnapshotOf(record),
-    plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
-    question: questions?.list === undefined ? null : questionSnapshotOf(probe(() => questions.list?.({ sessionId }), undefined)),
-    readyTasks: readyRowsOf(arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task) => task !== undefined))
+    snapshot: {
+      team: teamSnapshotOf(record),
+      plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
+      question: question?.snapshot ?? null,
+      readyTasks: readyRowsOf(arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task) => task !== undefined))
+    },
+    binding: { question: question?.binding ?? null }
   };
 }
 function buildPanelView(snapshot) {
@@ -2689,21 +2707,14 @@ function optionIndexOf(action) {
   const index = Number.parseInt(match[1] ?? "", 10);
   return Number.isFinite(index) && index >= 0 && index < DSHGO_MAX_OPTIONS ? index : undefined;
 }
-function parkedAnswerOf(parked) {
-  const entries = arrayOf(parked).map((entry2) => recordOf(entry2)).filter((entry2) => entry2 !== undefined);
-  const entry = entries[0];
-  if (entry === undefined)
-    return;
-  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question) => question !== undefined);
-  if (item === undefined)
-    return;
-  return {
-    questionId: stringOf(entry.id),
-    itemId: stringOf(item.id),
-    labels: arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => stringOf(option.label)).filter((label) => label !== "")
-  };
+function holdsParkedId(parked, parkedId) {
+  if (parkedId === "")
+    return false;
+  return arrayOf(parked).map((entry) => recordOf(entry)).some((entry) => entry !== undefined && stringOf(entry.id) === parkedId);
 }
-function createPanelActions(options) {
+function createPanelActions(options, bindingOf = () => {
+  return;
+}) {
   const teamActions = () => faceOf(options.ctx, "mpdTeamActions");
   const questions = () => faceOf(options.ctx, "mpdQuestions");
   const approve = async (scope) => {
@@ -2748,11 +2759,19 @@ function createPanelActions(options) {
     const face = questions();
     if (face?.list === undefined || face.answer === undefined)
       return { toast: TOAST_UNAVAILABLE };
-    const parked = parkedAnswerOf(probe(() => face.list?.({ sessionId }), undefined));
-    const label = parked?.labels[index];
-    if (parked === undefined || label === undefined)
+    const captured2 = bindingOf(scope)?.question;
+    if (captured2 === undefined || captured2 === null)
+      return { toast: TOAST_NO_QUESTION };
+    const label = captured2.labels[index];
+    const itemId = captured2.itemIds[0];
+    if (label === undefined || itemId === undefined)
       return { toast: TOAST_UNAVAILABLE };
-    const outcome = await settleWithin(() => face.answer?.({ id: parked.questionId, answers: [{ id: parked.itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS);
+    const stillParked = holdsParkedId(probe(() => face.list?.({ sessionId }), undefined), captured2.parkedId);
+    if (!stillParked) {
+      probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
+      return { toast: TOAST_QUESTION_GONE };
+    }
+    const outcome = await settleWithin(() => face.answer?.({ id: captured2.parkedId, answers: [{ id: itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS);
     if (outcome === TIMED_OUT)
       return { toast: TOAST_STILL_RUNNING };
     if (outcome.ok === false)
@@ -2776,7 +2795,7 @@ function registerDshGoPanel(options) {
   let registered = false;
   let announced = "";
   let offBound;
-  const latest = new Map;
+  const viewBindings = new Map;
   const emitted = new Map;
   const questionKeys = new Map;
   const timers = new Set;
@@ -2792,13 +2811,14 @@ function registerDshGoPanel(options) {
       return fromBridge;
     return probe(() => options.workspace?.(sessionId), undefined);
   };
-  const snapshotOf = (scope) => readPanelSnapshot({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) });
+  const stateOf = (scope) => readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) });
+  const snapshotOf = (scope) => stateOf(scope).snapshot;
   const published = new Set;
   let overBudget = false;
-  const readScope = (scope) => {
-    const snapshot = snapshotOf(scope);
-    latest.set(scopeKeyOf(scope), snapshot);
-    return snapshot;
+  const viewFor = (scope) => {
+    const state = stateOf(scope);
+    viewBindings.set(scopeKeyOf(scope), state.binding);
+    return buildPanelView(state.snapshot);
   };
   const announceQuestionSet = (key, snapshot, seed) => {
     const questionKey = snapshot.question === null ? "" : snapshot.question.id;
@@ -2825,24 +2845,23 @@ function registerDshGoPanel(options) {
   const data = (scope, emit) => {
     const send = typeof emit === "function" ? emit : undefined;
     const key = scopeKeyOf(scope);
-    publishInto(key, readScope(scope), send, true);
+    publishInto(key, snapshotOf(scope), send, true);
     const timer = setInterval(() => {
-      publishInto(key, readScope(scope), send, false);
+      publishInto(key, snapshotOf(scope), send, false);
     }, pollMs);
     timers.add(timer);
     return () => {
       clearInterval(timer);
       timers.delete(timer);
-      latest.delete(key);
       emitted.delete(key);
       questionKeys.delete(key);
       published.delete(key);
     };
   };
   const spec = {
-    view: (scope) => buildPanelView(latest.get(scopeKeyOf(scope)) ?? emptySnapshot()),
+    view: viewFor,
     data,
-    actions: createPanelActions(options)
+    actions: createPanelActions(options, (scope) => viewBindings.get(scopeKeyOf(scope)))
   };
   const attempt = () => {
     if (registered)
@@ -2876,7 +2895,7 @@ function registerDshGoPanel(options) {
         clearInterval(timer);
       timers.clear();
       published.clear();
-      latest.clear();
+      viewBindings.clear();
       emitted.clear();
       questionKeys.clear();
       probe(() => offBound?.(), undefined);

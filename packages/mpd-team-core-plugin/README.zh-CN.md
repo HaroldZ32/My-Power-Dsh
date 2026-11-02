@@ -138,6 +138,9 @@ data: {"rev":8}
 - **「不活跃」是一个答案，不是抛错。** 活跃注册表不认识的会话，两个成员都答
   `{ ok: false, error: "session <id> is not live" }`；会话无法归属到某个工作区时答
   `{ ok: false, error: <解析器给出的消息> }`。两个成员都不会因为一个坏 session id 抛错。
+- **caller 就是工具路径的 caller。** 工作区、会话 id 与 `lineage` 都完全按 `where(exec)` 的推导方式、
+  从解析出的活 agent 得出：恢复或被 fork 的 Lead 会带上 harness 记录的父会话，因此服务（以及两条路由）
+  解析到与它自己的工具调用**相同**的团队；被记录的**委派子会话**贡献**空** lineage，绝不继承其队长的团队。
 
 **这两个函数是免 exec 的。** `approveTeam(deps, caller)` 与 `runDispatch(deps, caller, input)`
 不读取任何 cordis 上下文、也不读取工具 exec：时钟、执行器、批准副作用、团队解析器、watchdog 读数、

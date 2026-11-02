@@ -10,18 +10,30 @@
 //
 // TWO MECHANISMS, AND WHY BOTH ARE NEEDED. `data(scope, emit)` pushes a COMPLETE data model; the
 // bridge diffs it, throttles to 4 Hz and caps it at 32 KiB, so a value that changes (task counts, the
-// question's text) updates WITHOUT re-fetching the view. `view` is a function of the current snapshot
-// instead, and `dshGoRefresh('mpd')` re-fetches it — which is the only way the OPTION BUTTONS can
-// follow the pending question, because a view tree's node LIST is fixed once it is built. The panel
-// therefore bounds the two differently on purpose: values are bound (`{"$": "data.…"}`) so they stay
-// live, structure is rebuilt on the one event that changes it (the pending-question SET).
+// question's text) updates WITHOUT re-fetching the view. `view` instead builds from a LIVE read and
+// `dshGoRefresh('mpd')` re-fetches it — which is the only way the OPTION BUTTONS can follow the
+// pending question, because a view tree's node LIST is fixed once it is built. The view reads the
+// services itself rather than the cache the data push fills, because the app fetches the view BEFORE
+// it subscribes: a cache-built first view would carry no callout and no option buttons until something
+// else changed. The panel therefore bounds the two differently on purpose: values are bound
+// (`{"$": "data.…"}`) so they stay live, structure is rebuilt on the one event that changes it (the
+// pending-question SET).
+//
+// A TAP ACTS ON THE VIEW, NOT ON THE LIVE LOT. The `actions` map is fixed at registration, so an
+// `answer:<n>` id cannot carry a question: a live-lot lookup would settle whatever question sits at
+// that index NOW — a question the user never saw. Each `view` build therefore CAPTURES the identity it
+// renders (the parked id, the item ids and the RAW option labels) in a {@link PanelViewBinding}, and a
+// tap resolves its batch from that capture. The live parking lot is read for ONE fact only — whether
+// the captured id is still parked. When it is not, the tap toasts that the question is gone and asks
+// for a refresh, so a view the app held across a question change can never settle the question that
+// replaced it.
 //
 // THE BUDGETS ARE THE APP'S, NOT OURS (protocol v1). The panel budget is 32768 serialized bytes, 120
 // nodes, depth 8, 32 children per node, 4 buttons per `actions` node, 2000 characters per `text` and
 // an 80-character root title; `text`, `keyValue`, `list`, `callout` and `actions` are the only
-// components this view uses, all from the v1 catalog. Every value the view binds exists in the
-// emitted snapshot because both are built from ONE `PanelSnapshot`, and the test suite resolves every
-// `$` path against the snapshot it just captured rather than trusting that claim.
+// components this view uses, all from the v1 catalog. Every value the view binds is a path of the same
+// `PanelSnapshot` shape the data push emits, and the test suite resolves every `$` path against a
+// snapshot read at the same moment rather than trusting that claim.
 //
 // WHAT THIS FILE NEVER DOES. It never emits a filesystem path, a token or a credential: the snapshot
 // carries ids, names, counts, the question's own text and task TITLES, and nothing else — the
@@ -70,6 +82,12 @@ const TOAST_DISPATCHED = "Dispatched"
 
 /** The toast a settled question answers. */
 const TOAST_ANSWERED = "Answered"
+
+/** The toast a tap answers when the question its view rendered is no longer parked. */
+const TOAST_QUESTION_GONE = "That question is gone"
+
+/** The toast a tap answers when the view it came from rendered no question at all. */
+const TOAST_NO_QUESTION = "No question on screen"
 
 /** The footer sentence naming what this panel can and cannot drive. */
 const LIMITS_TEXT = "Local engine only: these actions drive this host's MPD team and need a live conversation."
@@ -134,12 +152,35 @@ export interface PanelPlanSnapshot {
 
 /** The pending-question half of the snapshot, or null when nothing is waiting for an answer. */
 export interface PanelQuestionSnapshot {
-  /** The RELAY's parked id, which `mpdQuestions.answer` takes; the item id is resolved at tap time. */
+  /** The RELAY's parked id; the answer batch's item id comes from the view binding captured at render time. */
   id: string
   /** The question's own text, clipped to {@link MAX_QUESTION_CHARS}. */
   question: string
   /** The answer choices in the order the asker gave them; labels only, never indices. */
   options: Array<{ label: string }>
+}
+
+/**
+ * The question identity one rendered view acts on, captured when that view was built.
+ *
+ * The captured id — never the live lot's first entry — is what a tap answers, and the labels are the
+ * RAW asker's labels (the snapshot's copies are clipped for DISPLAY, and the relay validates the label
+ * it stored). This is the structure that makes `answer:<n>` safe even though the action map, and
+ * therefore the id, is fixed before any question exists.
+ */
+export interface PanelQuestionBinding {
+  /** The relay's parked id this view was rendered from. */
+  parkedId: string
+  /** Every question item id of that parking entry, in the asker's order; the answer batch carries the first. */
+  itemIds: string[]
+  /** The option labels the view's buttons show, in render order, exactly as the asker gave them. */
+  labels: string[]
+}
+
+/** What one built view captured for its taps: the question it rendered, or null when it rendered none. */
+export interface PanelViewBinding {
+  /** The question this view rendered; null means those buttons did not exist, so a tap stays defensive. */
+  question: PanelQuestionBinding | null
 }
 
 /** Everything the panel renders and pushes, in one narrowed shape: no paths, no secrets. */
@@ -152,6 +193,14 @@ export interface PanelSnapshot {
   question: PanelQuestionSnapshot | null
   /** The board's ready tasks, at most {@link DSHGO_MAX_READY_ROWS} rows. */
   readyTasks: PanelReadyRow[]
+}
+
+/** One live read: the snapshot the panel renders, plus the question identity that snapshot was built from. */
+export interface PanelReadState {
+  /** The narrowed snapshot, exactly as the data push emits it. */
+  snapshot: PanelSnapshot
+  /** What a view built from this read captures for its taps. */
+  binding: PanelViewBinding
 }
 
 /** The structural face of the `mpdTeams` service this module reads — never imported from its package. */
@@ -402,55 +451,94 @@ function planSnapshotOf(value: unknown): PanelPlanSnapshot | null {
   }
 }
 
-/** Project the relay's parking lot onto the snapshot's question half, oldest question first. */
-function questionSnapshotOf(value: unknown): PanelQuestionSnapshot | null {
+/**
+ * Project one parking lot read onto the snapshot's question half AND the identity a tap must use.
+ *
+ * ONE read answers both, so the labels the view renders and the labels its buttons send can never come
+ * from two different instants. The snapshot keeps the DISPLAY copy of each label (clipped to
+ * {@link MAX_LABEL_CHARS}); the binding keeps the RAW label, because the relay validates the label it
+ * stored rather than this module's clipped copy. Both lists are built from the same filtered pairs, so
+ * an index into one names the same option in the other.
+ * @param value - the relay's `list` answer.
+ * @returns the snapshot half plus its binding, or null when nothing is parked.
+ */
+function questionReadOf(value: unknown): { snapshot: PanelQuestionSnapshot; binding: PanelQuestionBinding } | null {
   /** The parked entries the relay answered with. */
   const parked = arrayOf(value).map((entry) => recordOf(entry)).filter((entry): entry is Record<string, unknown> => entry !== undefined)
   /** The OLDEST parked question: the relay orders newest last, and a queue is answered front first. */
   const entry = parked[0]
   if (entry === undefined) return null
-  /** The first question item of that parking entry, which is the one the panel shows and answers. */
-  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question): question is Record<string, unknown> => question !== undefined)
+  /** Every question item of that parking entry, in the asker's order. */
+  const items = arrayOf(entry.questions).map((question) => recordOf(question)).filter((question): question is Record<string, unknown> => question !== undefined)
+  /** The first item, which is the one the panel shows and answers. */
+  const item = items[0]
   if (item === undefined) return null
-  /** The option labels the asker offered, in its own order, without their descriptions. */
+  /** The option labels as PAIRS, so the display copy and the raw answer copy cannot drift apart. */
   const options = arrayOf(item.options)
     .map((option) => recordOf(option))
     .filter((option): option is Record<string, unknown> => option !== undefined)
-    .map((option) => ({ label: clip(stringOf(option.label), MAX_LABEL_CHARS) }))
-    .filter((option) => option.label !== "")
-  return { id: stringOf(entry.id), question: clip(stringOf(item.question), MAX_QUESTION_CHARS), options }
+    .map((option) => ({ raw: stringOf(option.label), display: clip(stringOf(option.label), MAX_LABEL_CHARS) }))
+    .filter((option) => option.raw !== "" && option.display !== "")
+  return {
+    snapshot: {
+      id: stringOf(entry.id),
+      question: clip(stringOf(item.question), MAX_QUESTION_CHARS),
+      options: options.map((option) => ({ label: option.display })),
+    },
+    binding: {
+      parkedId: stringOf(entry.id),
+      itemIds: items.map((question) => stringOf(question.id)).filter((id) => id !== ""),
+      labels: options.map((option) => option.raw),
+    },
+  }
 }
 
 /**
- * Read the whole snapshot for one scope, tolerantly, from the three services the row publishes.
+ * Read one panel's whole state: the snapshot the data push emits AND the binding a view captures.
  *
- * NOTHING HERE THROWS and nothing here reads the disk: `mpdTeams` owns the record root, the relay
- * owns the parking lot, and a service that is absent, slow-ish or broken answers the empty state.
- * A conversation-less panel (no `sessionId`) reads nothing at all, so it cannot display another
- * conversation's team or answer another conversation's question.
+ * ONE reader serves both paths. `view` calls this directly (a synchronous read) so the first view an
+ * app fetches BEFORE subscribing is complete, and `data()` calls {@link readPanelSnapshot}, which is
+ * this same read narrowed to the snapshot. NOTHING HERE THROWS and nothing here reads the disk:
+ * `mpdTeams` owns the record root, the relay owns the parking lot, and a service that is absent or
+ * broken answers the empty state. A conversation-less panel (no `sessionId`) reads nothing at all, so
+ * it cannot display another conversation's team or answer another conversation's question.
  * @param read - the service registry plus the workspace and session this panel is scoped to.
- * @returns the narrowed snapshot; every section is null/empty when it could not be read.
+ * @returns the narrowed snapshot plus the question identity it was built from.
  */
-export function readPanelSnapshot(read: PanelSnapshotRead): PanelSnapshot {
+export function readPanelState(read: PanelSnapshotRead): PanelReadState {
   /** The session this panel drives, or `""` when the app gave none. */
   const sessionId = read.sessionId
   /** The workspace root this read is scoped to; an absent one reads nothing at all. */
   const workspace = read.workspace
-  if (sessionId === "" || workspace === undefined || workspace === "") return emptySnapshot()
-  /** The team service, resolved per tick so a row that binds later is honoured. */
+  if (sessionId === "" || workspace === undefined || workspace === "") return { snapshot: emptySnapshot(), binding: { question: null } }
+  /** The team service, resolved per read so a row that binds later is honoured. */
   const teams = faceOf<PanelTeamsFace>(read.services, "mpdTeams")
-  /** The relay service, resolved per tick for the same reason. */
+  /** The relay service, resolved per read for the same reason. */
   const questions = faceOf<PanelQuestionsFace>(read.services, "mpdQuestions")
   /** The team record bound to this conversation, read through the service's total projection. */
   const record = teams?.active === undefined ? undefined : probe(() => teams.active?.(workspace, sessionId), undefined)
+  /** The parked question, read ONCE so the snapshot and the binding describe the same instant. */
+  const question = questions?.list === undefined ? null : questionReadOf(probe(() => questions.list?.({ sessionId }), undefined))
   return {
-    team: teamSnapshotOf(record),
-    plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
-    question: questions?.list === undefined ? null : questionSnapshotOf(probe(() => questions.list?.({ sessionId }), undefined)),
-    readyTasks: readyRowsOf(
-      arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task): task is Record<string, unknown> => task !== undefined),
-    ),
+    snapshot: {
+      team: teamSnapshotOf(record),
+      plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
+      question: question?.snapshot ?? null,
+      readyTasks: readyRowsOf(
+        arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task): task is Record<string, unknown> => task !== undefined),
+      ),
+    },
+    binding: { question: question?.binding ?? null },
   }
+}
+
+/**
+ * Read the snapshot half of {@link readPanelState}: the model the data push emits.
+ * @param read - the service registry plus the workspace and session this panel is scoped to.
+ * @returns the narrowed snapshot; every section is null/empty when it could not be read.
+ */
+export function readPanelSnapshot(read: PanelSnapshotRead): PanelSnapshot {
+  return readPanelState(read).snapshot
 }
 
 /**
@@ -577,25 +665,21 @@ function optionIndexOf(action: string): number | undefined {
   return Number.isFinite(index) && index >= 0 && index < DSHGO_MAX_OPTIONS ? index : undefined
 }
 
-/** The parked entry (and its first item) an answer tap resolves against, read fresh at tap time. */
-function parkedAnswerOf(parked: unknown): { questionId: string; itemId: string; labels: string[] } | undefined {
-  /** The parked entries the relay answered with. */
-  const entries = arrayOf(parked).map((entry) => recordOf(entry)).filter((entry): entry is Record<string, unknown> => entry !== undefined)
-  /** The oldest parked question, the same one the snapshot shows. */
-  const entry = entries[0]
-  if (entry === undefined) return undefined
-  /** That entry's first question item, whose id the answer batch must carry. */
-  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question): question is Record<string, unknown> => question !== undefined)
-  if (item === undefined) return undefined
-  return {
-    questionId: stringOf(entry.id),
-    itemId: stringOf(item.id),
-    labels: arrayOf(item.options)
-      .map((option) => recordOf(option))
-      .filter((option): option is Record<string, unknown> => option !== undefined)
-      .map((option) => stringOf(option.label))
-      .filter((label) => label !== ""),
-  }
+/**
+ * Whether the live parking lot still holds one parked id.
+ *
+ * This is the ONLY question a tap asks the live lot. The identity it answers — the item id and the
+ * label — comes from the view's capture; the lot is consulted just to prove that identity is still
+ * answerable, never to substitute the question currently parked in its place.
+ * @param parked - the relay's `list` answer.
+ * @param parkedId - the id the rendered view captured.
+ * @returns true when that exact id is still parked.
+ */
+function holdsParkedId(parked: unknown, parkedId: string): boolean {
+  if (parkedId === "") return false
+  return arrayOf(parked)
+    .map((entry) => recordOf(entry))
+    .some((entry) => entry !== undefined && stringOf(entry.id) === parkedId)
 }
 
 /**
@@ -603,13 +687,21 @@ function parkedAnswerOf(parked: unknown): { questionId: string; itemId: string; 
  *
  * EVERY handler answers an effect and never rejects: a missing conversation, a missing service, a
  * refusal and a throw all become a toast (the protocol's own failure shape), and a call that outlives
- * the deadline answers a toast while it keeps running. The answer handler resolves its id and label
- * from the LIVE parking lot rather than from the rendered snapshot, so a view the app held across a
- * question change can never answer the wrong question.
+ * the deadline answers a toast while it keeps running.
+ *
+ * THE ANSWER IDS ARE FIXED AT REGISTRATION and cannot carry a question: `answer:0`…`answer:3` are the
+ * same four keys forever. The id therefore indexes the CAPTURED VIEW BINDING — the identity the view
+ * was rendered from — and never a position in the live parking lot. A tap settles what the user saw or
+ * nothing at all: when the captured parked id is gone it toasts and asks for a refresh, rather than
+ * answering the question that replaced it.
  * @param options - the bridge, the service registry and the failure sink.
+ * @param bindingOf - the view binding captured for one scope, or undefined when no view was built.
  * @returns the action map, keyed by the ids the view's buttons name.
  */
-export function createPanelActions(options: PanelOptions): Record<string, (scope: unknown, event: unknown) => Promise<PanelEffect>> {
+export function createPanelActions(
+  options: PanelOptions,
+  bindingOf: (scope: unknown) => PanelViewBinding | undefined = () => undefined,
+): Record<string, (scope: unknown, event: unknown) => Promise<PanelEffect>> {
   /** The team-actions service, resolved per tap so a row that binds later is honoured. */
   const teamActions = (): PanelTeamActionsFace | undefined => faceOf<PanelTeamActionsFace>(options.ctx, "mpdTeamActions")
   /** The relay, resolved per tap for the same reason. */
@@ -644,7 +736,7 @@ export function createPanelActions(options: PanelOptions): Record<string, (scope
     if (isRefusal(outcome.value)) return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) }
     return { toast: TOAST_DISPATCHED }
   }
-  /** The handler one option button runs: answer the live parked question with that option's label. */
+  /** The handler one option button runs: answer the question the VIEW was rendered from. */
   const answerWith = async (scope: unknown, event: unknown): Promise<PanelEffect> => {
     /** The conversation this tap belongs to. */
     const sessionId = sessionIdOfScope(scope)
@@ -655,13 +747,24 @@ export function createPanelActions(options: PanelOptions): Record<string, (scope
     /** The relay this tap needs, or undefined when the composition has none. */
     const face = questions()
     if (face?.list === undefined || face.answer === undefined) return { toast: TOAST_UNAVAILABLE }
-    /** The live parking lot, read now so a stale rendered view cannot answer a stale question. */
-    const parked = parkedAnswerOf(probe(() => face.list?.({ sessionId }), undefined))
-    /** The label this index really offers right now, which is also the value the relay validates. */
-    const label = parked?.labels[index]
-    if (parked === undefined || label === undefined) return { toast: TOAST_UNAVAILABLE }
+    /** The identity the view captured when it was rendered; a tap never re-derives it from the lot. */
+    const captured = bindingOf(scope)?.question
+    if (captured === undefined || captured === null) return { toast: TOAST_NO_QUESTION }
+    /** The label the user actually saw on that button, which is also the value the relay validates. */
+    const label = captured.labels[index]
+    /** The item id the answer batch must carry: the first question item of the captured parked entry. */
+    const itemId = captured.itemIds[0]
+    if (label === undefined || itemId === undefined) return { toast: TOAST_UNAVAILABLE }
+    /** Whether the captured question is STILL parked; this is the only fact the live lot supplies. */
+    const stillParked = holdsParkedId(probe(() => face.list?.({ sessionId }), undefined), captured.parkedId)
+    if (!stillParked) {
+      // The user's question left the queue: say so and ask for a fresh view, instead of settling the
+      // question that replaced it under another id.
+      probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
+      return { toast: TOAST_QUESTION_GONE }
+    }
     /** The settle call's outcome, or the timeout marker. */
-    const outcome = await settleWithin(() => face.answer?.({ id: parked.questionId, answers: [{ id: parked.itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS)
+    const outcome = await settleWithin(() => face.answer?.({ id: captured.parkedId, answers: [{ id: itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS)
     if (outcome === TIMED_OUT) return { toast: TOAST_STILL_RUNNING }
     if (outcome.ok === false) return { toast: clipToast(messageOf(outcome.error)) }
     if (outcome.value === true) return { toast: TOAST_ANSWERED }
@@ -698,8 +801,8 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
   let announced: "" | "absent" | "panel" = ""
   /** The late-bind subscription's disposer, once one was installed. */
   let offBound: (() => void) | undefined
-  /** The latest snapshot per scope, which the view function renders when the app refreshes. */
-  const latest = new Map<string, PanelSnapshot>()
+  /** The question identity each scope's LAST built view captured, which is what that view's taps act on. */
+  const viewBindings = new Map<string, PanelViewBinding>()
   /** The serialized snapshot last emitted per scope, so an unchanged tick emits nothing. */
   const emitted = new Map<string, string>()
   /** The pending-question id set last seen per scope, so only a SET change refreshes the view. */
@@ -719,19 +822,28 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
     if (typeof fromBridge === "string" && fromBridge !== "") return fromBridge
     return probe(() => options.workspace?.(sessionId), undefined)
   }
-  /** Read the snapshot for one scope through the three services. */
-  const snapshotOf = (scope: unknown): PanelSnapshot =>
-    readPanelSnapshot({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) })
+  /** Read one scope's snapshot and view binding, through the three services, in ONE live read. */
+  const stateOf = (scope: unknown): PanelReadState =>
+    readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) })
+  /** Read the snapshot for one scope, which is the push path's model. */
+  const snapshotOf = (scope: unknown): PanelSnapshot => stateOf(scope).snapshot
   /** The scopes whose first emit already happened, so a steady tick emits nothing. */
   const published = new Set<string>()
   /** Whether the over-budget token was already written, so one condition logs one line. */
   let overBudget = false
-  /** Read one scope's snapshot and store it as the model the view function renders. */
-  const readScope = (scope: unknown): PanelSnapshot => {
-    /** The snapshot this read produced. */
-    const snapshot = snapshotOf(scope)
-    latest.set(scopeKeyOf(scope), snapshot)
-    return snapshot
+  /**
+   * Build one scope's view from a LIVE read, and capture the identity that view renders.
+   *
+   * THE LIVE READ IS F3'S FIX. `data()` has not run when the app fetches the first view (it fetches
+   * BEFORE subscribing), so a cache-built view would carry no callout and no option buttons until
+   * something else changed. The push cache stays the push path's own state; `view` never reads it.
+   * The capture happens BEFORE the tree is returned, so a tap and the tree describe the same read.
+   */
+  const viewFor = (scope: unknown): Record<string, unknown> => {
+    /** The live read this view renders, through the same reader the data push uses. */
+    const state = stateOf(scope)
+    viewBindings.set(scopeKeyOf(scope), state.binding)
+    return buildPanelView(state.snapshot)
   }
   /**
    * Ask the app to re-fetch the view when — and only when — the pending-question ID SET changed.
@@ -774,24 +886,23 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
     const key = scopeKeyOf(scope)
     // The seed runs BEFORE the interval exists, so the app has a complete model on its first frame
     // and the cancel below owns exactly one interval per subscription.
-    publishInto(key, readScope(scope), send, true)
+    publishInto(key, snapshotOf(scope), send, true)
     /** The interval this subscription owns; the cancel below must leave none behind. */
-    const timer = setInterval(() => { publishInto(key, readScope(scope), send, false) }, pollMs)
+    const timer = setInterval(() => { publishInto(key, snapshotOf(scope), send, false) }, pollMs)
     timers.add(timer)
     return (): void => {
       clearInterval(timer)
       timers.delete(timer)
-      latest.delete(key)
       emitted.delete(key)
       questionKeys.delete(key)
       published.delete(key)
     }
   }
-  /** The panel definition the bridge receives: a view of the current snapshot, data, and taps. */
+  /** The panel definition the bridge receives: a live view, the data push, and view-bound taps. */
   const spec: PanelSpec = {
-    view: (scope: unknown): Record<string, unknown> => buildPanelView(latest.get(scopeKeyOf(scope)) ?? emptySnapshot()),
+    view: viewFor,
     data,
-    actions: createPanelActions(options),
+    actions: createPanelActions(options, (scope: unknown): PanelViewBinding | undefined => viewBindings.get(scopeKeyOf(scope))),
   }
   /** Try to publish the panel; stay silent and wait for a bind when this host has no bridge. */
   const attempt = (): void => {
@@ -826,7 +937,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       for (const timer of timers) clearInterval(timer)
       timers.clear()
       published.clear()
-      latest.clear()
+      viewBindings.clear()
       emitted.clear()
       questionKeys.clear()
       probe(() => offBound?.(), undefined)

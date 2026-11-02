@@ -63,6 +63,10 @@ read-only discipline.
   host request fence first and answer `no-store` JSON; the relay awaits the downstream answerer first,
   parks only a `NO_PROVIDER` rejection and only while a client has polled within `attachWindowMs`, and an
   unanswered question rethrows that original error after `ttlMs` (120 s default, capacity 16).
+  **THE REPLY IT RETURNS TO THE HARNESS IS THE ENVELOPE** `{ answers: [...] }`, never a bare array: the
+  parking lot itself holds a `DshQuestionAnswer[]`, and only the waterfall reply wraps it — a downstream
+  envelope is returned by identity, and every failure path (ttl, eviction, abort, dispose) still rejects
+  with the original error rather than an invented empty envelope.
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a

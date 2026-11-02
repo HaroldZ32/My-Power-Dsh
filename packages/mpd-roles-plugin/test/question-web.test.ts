@@ -13,7 +13,7 @@
 //   * no handler throws, no reply carries a path-shaped key or an absolute path, and every reply is
 //     `cache-control: no-store`.
 import { afterEach, describe, expect, test } from "bun:test"
-import type { DshQuestionAnswer, DshQuestionItem } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshQuestionAnswer, DshQuestionAnswerEnvelope, DshQuestionItem } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
   ANSWER_PATH,
   MAX_BODY_BYTES,
@@ -66,7 +66,7 @@ async function tick(): Promise<void> {
  * @param sessionId - the session the question belongs to, when the arm filters by one.
  * @returns the parked id, the pending handle promise and the harness's original rejection.
  */
-async function park(relay: QuestionRelay, sessionId?: string): Promise<{ id: string; pending: Promise<DshQuestionAnswer[]>; original: Error }> {
+async function park(relay: QuestionRelay, sessionId?: string): Promise<{ id: string; pending: Promise<DshQuestionAnswerEnvelope>; original: Error }> {
   // The poll IS the attach gate: without it the relay refuses to park (plan §4.3).
   relay.list()
   /** The harness rejection that makes the request parkable. */
@@ -509,8 +509,9 @@ describe("POST /plugins/mpd-roles/questions/answer", () => {
     expect(reply.status).toBe(200)
     expect(reply.body).toEqual({ ok: true, answered: true })
     expect(reply.headers["cache-control"]).toBe("no-store")
-    // The parked promise really settled with the validated answers.
-    expect(await parked.pending).toEqual(answers)
+    // The parked promise really settled with the validated answers, wrapped in the harness ENVELOPE
+    // (review F1): the parking lot holds the array, the waterfall reply is `{ answers }`.
+    expect(await parked.pending).toEqual({ answers })
     expect(mounted.relay.list()).toEqual([])
     expectNoPath(reply.body)
   })
@@ -548,7 +549,7 @@ describe("POST /plugins/mpd-roles/questions/answer", () => {
     /** The answer the corrected retry wrote. */
     const accepted = await invoke(route, requestDouble("POST", JSON.stringify({ id: parked.id, answers })))
     expect(accepted.status).toBe(200)
-    expect(await parked.pending).toEqual(answers)
+    expect(await parked.pending).toEqual({ answers })
   })
 
   test("a malformed JSON body is 400", async () => {
@@ -648,7 +649,7 @@ describe("a handler never throws and never leaks a path", () => {
   test("a relay whose reads throw becomes a 500 payload on both routes", async () => {
     /** A relay double that throws from both reads, proving the handler contains it. */
     const broken: QuestionRelay = {
-      handle: async (): Promise<DshQuestionAnswer[]> => [],
+      handle: async (): Promise<DshQuestionAnswerEnvelope> => ({ answers: [] }),
       list: (): PendingQuestion[] => {
         throw new Error("the parking lot is broken")
       },

@@ -300,6 +300,21 @@ export interface DshQuestionAnswer {
   custom?: string
 }
 
+/**
+ * The harness's OWN `user-questions/request` reply shape: the answers wrapped in a single object.
+ *
+ * The waterfall's declared return value is `{ answers: [...] }`, NOT a bare array, and cordis
+ * `waterfall()` hands the caller the OUTERMOST listener's return value — so a listener that answers
+ * with an array replaces the harness envelope and the consuming tool crashes on `result.answers.map`.
+ * Every listener on this event therefore speaks this object, `next()` forwards the downstream object
+ * by identity, and only {@link DshAdapter.askUserQuestion} projects it down to a plain array for this
+ * bundle's own callers.
+ */
+export interface DshQuestionAnswerEnvelope {
+  /** One entry per answered question, in the harness's own order. */
+  answers: DshQuestionAnswer[]
+}
+
 /** A user-question request as this bundle exposes it: the questions, their session, cancellation. */
 export interface DshUserQuestionRequest {
   /** Questions to display, in ask order. */
@@ -2170,10 +2185,20 @@ export interface DshAdapter {
    * Register a WATERFALL answerer on the harness `user-questions/request` event.
    *
    * The listener receives the narrowed {@link DshUserQuestionRequest} plus a `next` continuation
-   * that resolves the DOWNSTREAM answerer's answer (mapped to plain answers). Returning an answer
-   * claims the request; awaiting `next()` delegates to the next answerer. A rejection from
-   * `handler` is propagated unchanged — the harness must see a broken answerer rather than an
-   * invented answer.
+   * that resolves the DOWNSTREAM answerer's own {@link DshQuestionAnswerEnvelope}. Returning an
+   * envelope claims the request; awaiting `next()` delegates to the next answerer.
+   *
+   * THE ENVELOPE IS THE HARNESS'S, NOT OURS (independent review F1, 2026-11-02): the event's
+   * declared reply is the OBJECT `{ answers: [...] }`, and cordis `waterfall()` returns the
+   * OUTERMOST listener's value — this row registers at boot, so it IS outer. A listener returning a
+   * bare array would therefore REPLACE the harness envelope and `dsh-tool-ask-user` would throw on
+   * `result.answers.map`. So `next()` forwards the downstream value UNCHANGED BY IDENTITY (never
+   * re-mapped into a fresh object, which is the same class of defect) and `handler`'s own value goes
+   * back to cordis unchanged. A downstream value that is not an envelope is forwarded as-is too: the
+   * harness owns that error surface, and synthesising a replacement would hide it.
+   *
+   * A rejection from `handler` is propagated unchanged — the harness must see a broken answerer
+   * rather than an invented answer.
    *
    * Degrade: when the harness event bus is unavailable (`ctx.on` missing or throwing) ONE warning
    * line is logged and a no-op disposer returned, so a composition without the waterfall still
@@ -2184,7 +2209,7 @@ export interface DshAdapter {
    * @returns the registration's disposer (a no-op in the degraded case).
    */
   onUserQuestionRequest(
-    handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>,
+    handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>) => Promise<DshQuestionAnswerEnvelope>,
     label?: string,
   ): () => void
   /**
@@ -5141,12 +5166,14 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      * Register a waterfall answerer for the harness's user-question request.
      *
      * The listener's LAST argument is the waterfall continuation: cordis dispatches
-     * `(request, next)` and takes the listener's own promise as the answer. `handler` owns the
-     * decision (answer now, or await `next()` first), and its rejection is returned as-is so the
-     * harness sees a broken answerer instead of an invented answer.
+     * `(request, next)` and takes the OUTERMOST listener's promise as the reply, which for this
+     * event is the harness envelope `{ answers: [...] }` — never a bare array (review F1). The
+     * continuation is therefore forwarded by IDENTITY: whatever the downstream answerer produced
+     * reaches `handler` untouched, and `handler`'s own value reaches cordis untouched, so neither
+     * the envelope the harness built nor an error it put there is re-shaped by this adapter.
      */
     onUserQuestionRequest(
-      handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>,
+      handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>) => Promise<DshQuestionAnswerEnvelope>,
       label?: string,
     ): () => void {
       /** The registered listener's disposer, or undefined when the event bus is unavailable. */
@@ -5155,16 +5182,18 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         const request = userQuestionRequestOf(args[0])
         /** The waterfall continuation: cordis passes it as the listener's LAST argument. */
         const next = args[args.length - 1]
-        /** The next answerer's answer, awaited and mapped onto plain answers. */
-        const nextAnswers = async (): Promise<DshQuestionAnswer[]> => {
+        /** The downstream envelope, awaited and handed on UNCHANGED (identity, never re-mapped). */
+        const nextEnvelope = async (): Promise<DshQuestionAnswerEnvelope> => {
           if (typeof next !== "function") {
             throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()")
           }
           // `typeof` narrows to `Function`, which carries no call signature, so the cast restores the
-          // harness's own zero-argument continuation shape — it does not change the value.
-          return questionAnswersOf(await (next as () => unknown)())
+          // harness's own zero-argument continuation shape — it does not change the value, and the
+          // envelope cast documents the shape cordis/harness put there. A value that is NOT an
+          // envelope is still forwarded as-is: the harness owns that error surface.
+          return (await (next as () => unknown)()) as DshQuestionAnswerEnvelope
         }
-        return handler(request, nextAnswers)
+        return handler(request, nextEnvelope)
       })
       if (off === undefined) {
         // ONE line per degraded registration (a row registers once), naming WHO could not attach.

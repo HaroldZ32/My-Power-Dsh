@@ -15,6 +15,12 @@
 // which failures are loud throws with an exact message, which are `false` plus ONE log line, and
 // which are silent no-ops. The doubles record what reached the harness, so a seam that forwards a
 // rewritten request fails here instead of inside a peer plugin at boot.
+//
+// AND THE WATERFALL REPLY IS AN OBJECT, NOT AN ARRAY (independent review F1, 2026-11-02): cordis
+// `waterfall()` returns the OUTERMOST listener's value, this row registers at boot, and the harness
+// consumes `result.answers.map`. The arms below therefore assert IDENTITY — the downstream envelope
+// reaches cordis as the SAME object — plus one arm that runs the harness's own projection over the
+// listener's value, so the original defect would fail here at the module boundary.
 import { describe, expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -22,7 +28,7 @@ import { join } from "node:path"
 
 import {
   createDshAdapter,
-  type DshQuestionAnswer,
+  type DshQuestionAnswerEnvelope,
   type DshQuestionItem,
   type DshUserQuestionRequest,
 } from "../src/index"
@@ -82,6 +88,26 @@ function recordingBus(): { on: EventBus; registrations: Registration[] } {
       }
     },
     registrations,
+  }
+}
+
+/**
+ * The harness's OWN consumption of a waterfall reply, copied from `dsh-tool-ask-user`'s
+ * `answerResult`: it reads `result.answers` and maps it. A listener that answered with a bare array
+ * makes this throw `Cannot read properties of undefined (reading 'map')` — the F1 defect — so an arm
+ * that runs this projection asserts the module boundary the real tool sits behind.
+ * @param result - whatever the outermost waterfall listener returned.
+ * @returns the model-facing answer payload the harness would build.
+ */
+function harnessAnswerProjection(result: unknown): { answers: Array<{ id: string; selected: string[]; custom?: string }> } {
+  /** The reply's `answers` field, read exactly the way the harness reads it (no guard). */
+  const answers = (result as { answers: Array<{ id: string; selected: string[]; custom?: string }> }).answers
+  return {
+    answers: answers.map((answer) => ({
+      id: answer.id,
+      selected: [...answer.selected],
+      ...(answer.custom === undefined ? {} : { custom: answer.custom }),
+    })),
   }
 }
 
@@ -195,21 +221,21 @@ describe("askUserQuestion", () => {
 })
 
 describe("onUserQuestionRequest", () => {
-  test("registers on the event, narrows the request and maps the next answers", async () => {
+  test("registers on the event, narrows the request and forwards the downstream envelope by IDENTITY", async () => {
     /** The event bus double that captures the registration. */
     const bus = recordingBus()
     /** The caller's cancellation lifetime, which the narrowed request must carry by identity. */
     const controller = new AbortController()
     /** What the handler observed; assigned by the answerer itself. */
-    const observed: { request?: DshUserQuestionRequest; answers?: DshQuestionAnswer[] } = {}
+    const observed: { request?: DshUserQuestionRequest; envelope?: DshQuestionAnswerEnvelope } = {}
     /** The adapter over a context that carries the harness event bus. */
     const adapter = createDshAdapter(fakeCtx({}, bus.on))
 
     /** The registration's disposer. */
     const dispose = adapter.onUserQuestionRequest(async (request, next) => {
       observed.request = request
-      observed.answers = await next()
-      return observed.answers
+      observed.envelope = await next()
+      return observed.envelope
     }, "relay")
     expect(typeof dispose).toBe("function")
     expect(bus.registrations).toHaveLength(1)
@@ -232,14 +258,19 @@ describe("onUserQuestionRequest", () => {
       signal: controller.signal,
       wait: { callId: "call-1", timed: true },
     }
-    /** The downstream answerer's answer batch, in the harness's own shape. */
-    const next = async (): Promise<unknown> => ({ answers: [{ id: "q1", selected: ["yes"], custom: "typed" }] })
+    /** The downstream answerer's reply, in the harness's OWN envelope shape. */
+    const downstream: DshQuestionAnswerEnvelope = { answers: [{ id: "q1", selected: ["yes"], custom: "typed" }] }
+    /** The continuation cordis hands the listener: the harness's own envelope-producing closure. */
+    const next = async (): Promise<unknown> => downstream
 
     /** What the waterfall listener answered. */
     const answered = await listener(harnessRequest, next)
 
-    expect(answered).toEqual([{ id: "q1", selected: ["yes"], custom: "typed" }])
-    expect(observed.answers).toEqual([{ id: "q1", selected: ["yes"], custom: "typed" }])
+    // IDENTITY, NOT EQUALITY (review F1): a re-mapped array or a rebuilt wrapper would replace the
+    // harness's own value at the outermost listener, which is the whole defect. `toBe` locks that.
+    expect(answered).toBe(downstream)
+    expect(observed.envelope).toBe(downstream)
+    expect(answered).toEqual({ answers: [{ id: "q1", selected: ["yes"], custom: "typed" }] })
     expect(observed.request).toEqual({
       questions: [{
         id: "q1",
@@ -256,6 +287,46 @@ describe("onUserQuestionRequest", () => {
     expect(bus.registrations).toHaveLength(0)
   })
 
+  test("a handler that CLAIMS the request hands its own envelope to cordis unchanged", async () => {
+    /** The event bus double that captures the registration. */
+    const bus = recordingBus()
+    /** The envelope the handler builds itself, never derived from a downstream answerer. */
+    const claimed: DshQuestionAnswerEnvelope = { answers: [{ id: "q1", selected: ["no"] }] }
+    /** The adapter over a context that carries the harness event bus. */
+    const adapter = createDshAdapter(fakeCtx({}, bus.on))
+    adapter.onUserQuestionRequest(async () => claimed)
+
+    /** A continuation that must not run: this handler claims the request instead of delegating. */
+    const next = async (): Promise<unknown> => {
+      throw new Error("the handler claimed the request, so next() must not be called")
+    }
+    /** What the listener returned to cordis. */
+    const answered = await bus.registrations[0].listener({ questions: [] }, next)
+
+    // The same OBJECT, so a consumer that mutates or reads the reply sees what the handler built.
+    expect(answered).toBe(claimed)
+  })
+
+  test("the reply survives the harness's own consumption shape (the F1 regression, module boundary)", async () => {
+    /** The event bus double that captures the registration. */
+    const bus = recordingBus()
+    /** The adapter over a context that carries the harness event bus. */
+    const adapter = createDshAdapter(fakeCtx({}, bus.on))
+    // A relay-shaped answerer: delegate, and return whatever the downstream answerer produced.
+    adapter.onUserQuestionRequest(async (_request, next) => next(), "mpd-roles")
+    /** The harness-shaped answer object the downstream answerer resolves. */
+    const downstream = { answers: [{ id: "q1", selected: ["yes"], custom: "typed" }, { id: "q2", selected: ["a", "b"] }] }
+
+    /** What the OUTERMOST listener — this row, registered at boot — returned to the waterfall. */
+    const replied = await bus.registrations[0].listener({ questions: [] }, async () => downstream)
+    /** The harness's own projection, captured so "does not throw" is asserted rather than implied. */
+    let projected: { answers: Array<{ id: string; selected: string[]; custom?: string }> } | undefined
+    expect(() => {
+      projected = harnessAnswerProjection(replied)
+    }).not.toThrow()
+    expect(projected).toEqual(downstream)
+  })
+
   test("leaves sessionId undefined when the request names no agent", async () => {
     /** The event bus double that captures the registration. */
     const bus = recordingBus()
@@ -265,7 +336,7 @@ describe("onUserQuestionRequest", () => {
     const adapter = createDshAdapter(fakeCtx({}, bus.on))
     adapter.onUserQuestionRequest(async (request) => {
       observed.request = request
-      return []
+      return { answers: [] }
     })
 
     await bus.registrations[0].listener({ questions: [] }, async () => ({ answers: [] }))
@@ -298,7 +369,7 @@ describe("onUserQuestionRequest", () => {
     /** The adapter over a composition with no event bus at all. */
     const adapter = createDshAdapter(fakeCtx({}))
     /** The registration's outcome: a disposer that must exist and must not throw. */
-    const outcome = await loggedLines(() => adapter.onUserQuestionRequest(async () => [], "relay"))
+    const outcome = await loggedLines(() => adapter.onUserQuestionRequest(async () => ({ answers: [] }), "relay"))
 
     expect(typeof outcome.result).toBe("function")
     expect(() => outcome.result()).not.toThrow()
@@ -312,7 +383,7 @@ describe("onUserQuestionRequest", () => {
     /** The adapter over that context. */
     const adapter = createDshAdapter(fakeCtx({}, throwingBus))
     /** The registration's outcome under a throwing bus. */
-    const outcome = await loggedLines(() => adapter.onUserQuestionRequest(async () => []))
+    const outcome = await loggedLines(() => adapter.onUserQuestionRequest(async () => ({ answers: [] })))
 
     expect(typeof outcome.result).toBe("function")
     expect(outcome.lines).toHaveLength(1)

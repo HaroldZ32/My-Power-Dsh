@@ -43,7 +43,7 @@
 | 活跃 agent 自有的 scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | 段落被**逐字节**转发到**该 agent 自己的** scope（绑定接收者、disposer 透传），因此该贡献只送达某一个 preset 的 session，而不是本进程服务的所有 session；agent scope 无此接缝时在调用点抛错 |
 | `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | 单个活跃会话的已占用上下文，归一化为 `{usedTokens, windowTokens, ratio, provenance}`：`usedTokens = projectedTokens ?? pressureTokens`，`windowTokens` 取自模型自报的 `contextWindow`（**绝不**设默认值），仅当两者都是大于 0 的数字时才给出 `ratio`，provenance 为 `observed \| no-window \| unavailable`；同步、绝不抛错；接受活跃 Agent、Session 对象或 session id |
 | `ctx.userQuestions.ask` | `askUserQuestion({ questions, signal? })` | 输入本 bundle 自己的 `DshQuestionItem[]`，输出 `DshQuestionAnswer[]`（按 label，绝不按索引）；服务缺失、或 `ask` 不可调用时**抛错** `ask_user_question failed: no user-questions service`；服务拒绝时重新抛为 `ask_user_question failed: <message>`，并把 Harness 的 `code`（存在时）复制到新错误上 |
-| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | WATERFALL 应答器：`handler(request, next)`，`next()` 解析**下游**应答器的答案，瀑布未提供后续时 reject；handler 自己的 reject **原样**传播；无事件总线 → 空操作 disposer + **一行**日志点名 label |
+| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | WATERFALL 应答器：`handler(request, next)`，`next()` 按**同一对象**解析**下游**应答器的 `{ answers: [...] }` **信封**（绝不重映射成裸数组），瀑布未提供后续时 reject；handler 自己的返回值原样交回 cordis，其 reject **原样**传播；无事件总线 → 空操作 disposer + **一行**日志点名 label |
 | `ctx.dshGo`（存在性） | `dshGoPresent()` | 此刻桥接服务是否已绑定 —— `capabilities().dshGo` 的按次调用形式，走同一个探针 |
 | `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` **逐字节**转发（它们是桥接层自己的契约）；仅当调用返回时为 `true`，桥接缺失或调用抛错时返回 `false` + **一行**警告 —— 绝不抛错 |
 | `ctx.dshGo.refresh` | `dshGoRefresh(id)` | 尽力而为的重渲染；桥接缺失时静默空操作，绝不抛错、绝不写日志（轮询调用方不得看到被 reject 的 tick） |
@@ -110,6 +110,7 @@
 export interface DshQuestionOption { label: string; description?: string }
 export interface DshQuestionItem { id: string; question: string; header?: string; options?: DshQuestionOption[]; multiSelect?: boolean }
 export interface DshQuestionAnswer { id: string; selected: string[]; custom?: string }
+export interface DshQuestionAnswerEnvelope { answers: DshQuestionAnswer[] }
 export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
 export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
 export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
@@ -124,8 +125,13 @@ export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Recor
   （`NO_PROVIDER`、`ASK_ABORTED` 等）是非空字符串时复制到新错误上，于是调用方能区分「没有应答器」
   与「调用形态不对」，且无需 import Harness 的类。
 - **`onUserQuestionRequest(handler, label?): () => void`** 在 `user-questions/request` 上注册一个
-  WATERFALL 应答器。`handler` 收到 `(request, next)`：返回答案即认领该请求，而 `await next()` 会解析
-  **下游**应答器的答案（映射为纯答案）。事件没有携带后续函数时，`next()` 以
+  WATERFALL 应答器。`handler` 收到 `(request, next)`：它自己的返回值**原样**交回 cordis，而
+  `await next()` 按**同一对象**解析**下游**应答器的回复 —— Harness 的
+  `DshQuestionAnswerEnvelope` `{ answers: [...] }`：绝不投影成裸数组，也绝不重新构造一个对象。
+  这不是装饰：cordis 的 `waterfall()` 返回**最外层** listener 的返回值，而本行在启动时就注册，
+  `dsh-tool-ask-user` 又按 `result.answers.map` 消费，所以裸数组（或重建的信封）会替换掉 Harness
+  自己的值，让每一次被回答的提问都崩掉。下游给出的值若**不是**信封也同样原样转发 —— 那是 Harness
+  自己的错误面，伪造一个替代值只会把它藏起来。事件没有携带后续函数时，`next()` 以
   `ask_user_question failed: the user-questions waterfall supplied no next()` reject。`handler` 的
   reject 会**原样**传播 —— Harness 必须看到一个坏掉的应答器，而不是一个编造的答案。降级：`ctx.on`
   缺失或抛错时，只写**一行**警告并点名 label（`onUserQuestionRequest(<label|anonymous>) degraded — …`），

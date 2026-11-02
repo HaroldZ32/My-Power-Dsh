@@ -4,6 +4,10 @@
 // WHAT THESE LOCK OUT, each one a contract point of plan §4.3:
 //   * `next()` is awaited FIRST, so a real answerer keeps priority and only a `NO_PROVIDER` rejection
 //     is ever parked — any other rejection propagates BY IDENTITY;
+//   * the REPLY is the harness envelope `{ answers: [...] }`, never a bare array (independent review
+//     F1): a downstream envelope comes back as the SAME object, a settled question wraps its parked
+//     array, and every failure path (ttl, eviction, abort, dispose) still rejects with the ORIGINAL
+//     error rather than an envelope;
 //   * with no recent `list()` the ORIGINAL error is rethrown IMMEDIATELY (an unattended engine must
 //     not hang a turn), which is asserted with a real timeout, not by inspection;
 //   * `answer` is LABEL-only: an unknown label returns false, leaves the question parked, and a later
@@ -15,7 +19,7 @@ import { describe, expect, test } from "bun:test"
 import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { DshQuestionAnswer, DshQuestionItem, DshUserQuestionRequest } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshQuestionAnswer, DshQuestionAnswerEnvelope, DshQuestionItem, DshUserQuestionRequest } from "../../mpd-dsh-adapter-plugin/src/index"
 import { apply } from "../src/index.ts"
 import { DEFAULT_ATTACH_WINDOW_MS, DEFAULT_QUESTION_CAPACITY, DEFAULT_QUESTION_TTL_MS, createQuestionRelay, installQuestionRelay } from "../src/question-relay.ts"
 
@@ -73,11 +77,11 @@ interface SeamDouble {
   /** The capability snapshot; `events` is what the installer gates on. */
   capabilities: () => { events: boolean }
   /** The registered waterfall answerer, captured so an arm can call the REAL registration. */
-  handler?: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>
+  handler?: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>) => Promise<DshQuestionAnswerEnvelope>
   /** How many times the returned disposer ran. */
   released: { count: number }
   /** The seam itself; an arm replaces it with a thrower for the degrade arm. */
-  onUserQuestionRequest?: (handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>, label?: string) => () => void
+  onUserQuestionRequest?: (handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswerEnvelope>) => Promise<DshQuestionAnswerEnvelope>, label?: string) => () => void
 }
 
 /**
@@ -123,12 +127,14 @@ function asInstallAdapter(double: SeamDouble): Parameters<typeof installQuestion
 }
 
 describe("handle: await next() first, park only on NO_PROVIDER", () => {
-  test("a resolving next() is returned as-is and nothing is parked", async () => {
-    /** The answer the downstream answerer produced. */
-    const downstream: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard only"] }]
+  test("a resolving next() is returned BY IDENTITY and nothing is parked", async () => {
+    /** The envelope the downstream answerer produced, in the harness's own shape. */
+    const downstream: DshQuestionAnswerEnvelope = { answers: [{ id: "scope", selected: ["Guard only"] }] }
     /** The relay under test; its attach gate is irrelevant on this path. */
     const relay = createQuestionRelay()
-    expect(await relay.handle({ questions: QUESTIONS }, () => Promise.resolve(downstream))).toEqual(downstream)
+    // SAME OBJECT (review F1): rebuilding the envelope would be the same class of defect as answering
+    // with a bare array, because the harness's own value would no longer be what cordis returns.
+    expect(await relay.handle({ questions: QUESTIONS }, () => Promise.resolve(downstream))).toBe(downstream)
     expect(relay.list()).toEqual([])
   })
 
@@ -145,7 +151,7 @@ describe("handle: await next() first, park only on NO_PROVIDER", () => {
     expect(relay.list()).toEqual([])
   })
 
-  test("NO_PROVIDER parks and a valid answer settles the promise with the answers", async () => {
+  test("NO_PROVIDER parks and a settled question resolves to the harness ENVELOPE", async () => {
     /** The harness rejection the relay may park on. */
     const original = noProviderError()
     /** The relay under test. */
@@ -162,7 +168,9 @@ describe("handle: await next() first, park only on NO_PROVIDER", () => {
     /** The batch a client sends: labels only. */
     const answers: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard and prompt"] }]
     expect(relay.answer({ id: rows[0].id, answers })).toBe(true)
-    expect(await pending).toEqual(answers)
+    // The PARKING LOT stays a bare array (plan §4.3); only the REPLY is wrapped, because the harness
+    // consumes `result.answers`. An array here would replace the envelope and crash the ask tool.
+    expect(await pending).toEqual({ answers })
     expect(relay.list()).toEqual([])
   })
 
@@ -304,7 +312,8 @@ describe("answer: labels only, a refusal never settles", () => {
     /** The correct batch a client sends on the retry. */
     const answers: DshQuestionAnswer[] = [{ id: "scope", selected: ["Guard only"] }]
     expect(relay.answer({ id: row.id, answers })).toBe(true)
-    expect(await pending).toEqual(answers)
+    // The settled REPLY is the harness envelope (review F1), wrapping the validated labels.
+    expect(await pending).toEqual({ answers })
   })
 
   test("an answer for a question the parked request never carried is refused", async () => {
@@ -340,7 +349,7 @@ describe("answer: labels only, a refusal never settles", () => {
 })
 
 describe("bounds: ttl, capacity, dispose and abort", () => {
-  test("ttl expiry rethrows the ORIGINAL error", async () => {
+  test("ttl expiry rethrows the ORIGINAL error by IDENTITY, never wrapped in an envelope", async () => {
     /** The harness rejection the expiry must reproduce. */
     const original = noProviderError()
     /** The relay with a 5 ms park lifetime. */
@@ -348,6 +357,8 @@ describe("bounds: ttl, capacity, dispose and abort", () => {
     relay.list()
     /** The parked question, which expires below. */
     const pending = relay.handle({ questions: QUESTIONS }, () => Promise.reject(original))
+    // A FAILURE IS NOT A REPLY: the rejection is the same object the harness produced, so the model
+    // can still branch on `NO_PROVIDER` and no `{ answers: [] }` is invented for it.
     expect(await rejectionWithin(pending, 1_000)).toBe(original)
     expect(relay.list()).toEqual([])
   })
@@ -454,7 +465,9 @@ describe("installQuestionRelay: the seam decisions the row reports", () => {
     /** The parked row. */
     const row = install.relay.list()[0]
     expect(install.relay.answer({ id: row.id, answers: [{ id: "scope", selected: ["Guard only"] }] })).toBe(true)
-    expect(await pending).toEqual([{ id: "scope", selected: ["Guard only"] }])
+    // The REGISTERED handler's reply carries the harness envelope, so the adapter forwards an object
+    // to this row and this row answers with an object (review F1: never a bare array).
+    expect(await pending).toEqual({ answers: [{ id: "scope", selected: ["Guard only"] }] })
     install.dispose()
     expect(double.released.count).toBe(1)
     // The relay half is released too: a NO_PROVIDER after dispose is rethrown.

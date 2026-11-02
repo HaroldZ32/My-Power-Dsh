@@ -1357,6 +1357,12 @@ export function apply(ctx: any): void {
    * is not live refuses (the routes answer 409) instead of driving a spawn nobody authorized. The
    * workspace comes from `workspaceForRequest`, which refuses an id no workspace claims — a bogus id
    * must never act on another workspace's team.
+   *
+   * THE LINEAGE IS THE TOOL PATH'S OWN (F4). `where(exec)` decides it with
+   * {@link sessionIsDelegatedChild} + {@link sessionLineageOf} over `exec.agent`; the resolved live
+   * agent is the SAME object a tool call for that session carries, so the two helpers are applied to
+   * it verbatim instead of a second reader. A verbatim `[]` here would make a forked/resumed Lead
+   * unreachable from the service (and the routes) while its own tool calls still resolved the team.
    * @param sessionId - the session the request names.
    * @param signal - the request's cancellation, when it carries one.
    * @returns the caller, or the refusal sentence the service answers instead of throwing.
@@ -1366,8 +1372,10 @@ export function apply(ctx: any): void {
     let agent: unknown
     try { agent = dsh.liveAgent(sessionId) } catch { agent = undefined }
     if (agent === undefined || agent === null) return { ok: false, error: `session ${sessionId} is not live` }
+    /** The ancestors the resolved agent contributes, with the SAME delegation guard `where` applies. */
+    const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent })
     try {
-      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage: [], agent, ...(signal === undefined ? {} : { signal }) } }
+      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...(signal === undefined ? {} : { signal }) } }
     } catch (error) {
       return { ok: false, error: String((error as Error)?.message ?? error) }
     }

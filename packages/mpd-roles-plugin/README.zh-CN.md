@@ -29,6 +29,7 @@
   `POST /plugins/mpd-roles/questions/answer` 携带 `{ id, answers: [{ id, selected, custom? }] }` 时返回
   `{ ok: true, answered: true }`（未知 id 为 404，未知 **label** 或请求体格式错误为 400，超过 64 KiB 上限为 413）。
   `selected` 中的每一项都是选项 **label**，绝不是索引。两条路由都先经过宿主请求围栏，并返回 `no-store` JSON；中继先等待下游 answerer，只停放 `NO_PROVIDER` 拒绝，且仅在客户端于 `attachWindowMs` 内轮询过时才停放；无人回答的问题在 `ttlMs`（默认 120 秒，容量 16）后重新抛出该**原始**错误。
+  **它交回 Harness 的回复是信封** `{ answers: [...] }`，绝不是裸数组：停放队列本身存的是 `DshQuestionAnswer[]`，只有 waterfall 回复会把它包起来 —— 下游给出的信封按同一对象返回，而每一条失败路径（ttl、容量驱逐、abort、dispose）仍然抛出**原始**错误，而不是伪造一个空信封。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 

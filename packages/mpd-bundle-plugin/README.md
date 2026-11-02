@@ -182,18 +182,25 @@ under the SAME id, so the app upgrades the fallback in place instead of listing 
   per answer (first four, with a note when there are more), the two action buttons, and a muted footer
   naming the limits.
 - **What it pushes.** `data(scope, emit)` polls at 2000 ms (the 0.5 Hz ceiling), emits ONLY when the
-  serialized snapshot changed, and returns the cancel function that clears its interval. The snapshot is
-  narrowed to `{ team, plan, question, readyTasks }` — ids, names, statuses, counts, the question's own
-  text and task titles: never a filesystem path, a token or a credential, and never more than the bridge's
-  32 KiB cap. `refresh('mpd')` fires only when the pending-question SET (the parked ids) changes, because
-  the option buttons are built from it; a content-only change (same id, new text) travels on the data push.
+  serialized snapshot changed, and returns the cancel function that clears its interval. `view` builds
+  from a LIVE read of the same services instead of from that push cache: the app fetches the view BEFORE
+  it subscribes, so a cache-built first view would carry no callout and no option buttons. The snapshot
+  is narrowed to `{ team, plan, question, readyTasks }` — ids, names, statuses, counts, the question's
+  own text and task titles: never a filesystem path, a token or a credential, and never more than the
+  bridge's 32 KiB cap. `refresh('mpd')` fires only when the pending-question SET (the parked ids)
+  changes, because the option buttons are built from it; a content-only change (same id, new text)
+  travels on the data push.
 - **The three actions.** `approve` calls `mpdTeamActions.approve({sessionId})`, `dispatch` calls
-  `mpdTeamActions.dispatch({sessionId})`, and `answer:<n>` calls `mpdQuestions.answer({id, answers})` with
-  the parked question's own item id and the option's LABEL — read from the live parking lot at tap time, so
-  a view the app held across a question change cannot answer the wrong one. Every tap answers a `toast`
-  (≤ 40 characters) and NEVER rejects: a missing conversation answers "Open a conversation first", a
-  missing service "Unavailable here", a refusal its own sentence, a throw its message, and a call that
-  outlives four seconds "Still working — check the team panel".
+  `mpdTeamActions.dispatch({sessionId})`, and `answer:<n>` calls `mpdQuestions.answer({id, answers})`
+  with the question the VIEW was rendered from: building a view captures that question's parked id, its
+  item ids and its RAW option labels, and the tap sends that captured id and label. The live parking lot
+  is consulted only to check the captured id is still there — if it is gone the tap answers "That
+  question is gone" and asks for a refresh instead of settling whatever is parked now, and a tap with no
+  rendered question answers "No question on screen". The fixed ids `answer:0`…`answer:3` therefore index
+  the CAPTURED view, never the live lot. Every tap answers a `toast` (≤ 40 characters) and NEVER rejects:
+  a missing conversation answers "Open a conversation first", a missing service "Unavailable here", a
+  refusal its own sentence, a throw its message, and a call that outlives four seconds "Still working —
+  check the team panel".
 - **Declared bounds.** Slots are **local engine only** (the relay blocks `/dsh-go/*`, so a remote host
   renders tool cards instead of this panel); without this host half the **static** `dsh-go/views/mpd.json`
   is what renders, with no live values; the actions need a **live conversation** (a tap with no

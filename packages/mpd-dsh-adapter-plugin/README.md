@@ -46,7 +46,7 @@ instead of across every plugin.
 | a live agent's own scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | the section is forwarded VERBATIM to THAT agent's scope (receiver-bound, disposer passed back), so a contribution reaches one preset's sessions instead of every session this process serves; THROW at the call when the agent scope exposes no section |
 | `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | ONE live session's occupied context, normalized to `{usedTokens, windowTokens, ratio, provenance}`: `usedTokens = projectedTokens ?? pressureTokens`, `windowTokens` is the model-reported `contextWindow` (NEVER defaulted), `ratio` only when both numbers are greater than 0, provenance `observed \| no-window \| unavailable`; synchronous and never throwing; accepts a live Agent, a Session object or a session id |
 | `ctx.userQuestions.ask` | `askUserQuestion({ questions, signal? })` | plain `DshQuestionItem[]` in, `DshQuestionAnswer[]` out (labels, never indices); a missing service, or one whose `ask` is not callable, THROWS `ask_user_question failed: no user-questions service`; a service rejection is rethrown as `ask_user_question failed: <message>` with the harness `code` copied onto the error when present |
-| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | a WATERFALL answerer: `handler(request, next)` where `next()` resolves the DOWNSTREAM answerer's answers, or rejects when the waterfall supplied no continuation; the handler's own rejection propagates unchanged; no event bus → no-op disposer + ONE log line naming the label |
+| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | a WATERFALL answerer: `handler(request, next)` where `next()` resolves the DOWNSTREAM answerer's `{ answers: [...] }` ENVELOPE by identity (never re-mapped into a bare array), or rejects when the waterfall supplied no continuation; the handler's own value goes back to cordis unchanged and its rejection propagates unchanged; no event bus → no-op disposer + ONE log line naming the label |
 | `ctx.dshGo` (presence) | `dshGoPresent()` | whether the bridge service is bound right now — the per-call form of `capabilities().dshGo`, through the same probe |
 | `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` forwarded VERBATIM (they are the bridge's own contract); `true` only when the call returned, `false` + ONE warning line when the bridge is absent or the call throws — never a throw |
 | `ctx.dshGo.refresh` | `dshGoRefresh(id)` | best-effort re-render; a silent no-op without the bridge, and never a throw, never a log (a polling caller must not see a rejected tick) |
@@ -118,6 +118,7 @@ imports one:
 export interface DshQuestionOption { label: string; description?: string }
 export interface DshQuestionItem { id: string; question: string; header?: string; options?: DshQuestionOption[]; multiSelect?: boolean }
 export interface DshQuestionAnswer { id: string; selected: string[]; custom?: string }
+export interface DshQuestionAnswerEnvelope { answers: DshQuestionAnswer[] }
 export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
 export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
 export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
@@ -133,8 +134,14 @@ export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Recor
   copied onto the new error when it was a non-empty string, so a caller can tell a missing answerer
   from a malformed call without importing the harness class.
 - **`onUserQuestionRequest(handler, label?): () => void`** registers a WATERFALL answerer on
-  `user-questions/request`. `handler` receives `(request, next)`: returning an answer claims the
-  request, while `await next()` resolves the DOWNSTREAM answerer's answers, mapped to plain answers.
+  `user-questions/request`. `handler` receives `(request, next)`: its own return value goes back to
+  cordis UNCHANGED, while `await next()` resolves the DOWNSTREAM answerer's reply as the harness's
+  `DshQuestionAnswerEnvelope` `{ answers: [...] }`, forwarded BY IDENTITY — never projected down to a
+  bare array and never rebuilt into a fresh object. That is not cosmetic: cordis `waterfall()` returns
+  the OUTERMOST listener's value, this row registers at boot, and `dsh-tool-ask-user` consumes
+  `result.answers.map`, so a bare array (or a rebuilt envelope) would replace the harness's own value
+  and break every answered question. A downstream value that is not an envelope is forwarded as-is
+  too — the harness owns that error surface, and synthesising a replacement would hide it.
   `next()` rejects with `ask_user_question failed: the user-questions waterfall supplied no next()`
   when the event carried no continuation. A rejection from `handler` propagates UNCHANGED — the
   harness must see a broken answerer, never an invented answer. Degradation: when `ctx.on` is
