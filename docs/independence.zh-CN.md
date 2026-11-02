@@ -76,7 +76,7 @@ bundle 的 `exports` 通配（`./packages/*`）挂载，MCP 启动器目录 `mpd
 1. **不存在共享的模块身份。** `bun build` 在构建期解析该规格符，并把兄弟包的**模块体内联**进消费者自己
    的 `dist/index.js`（任何打包器对源码级 import 都是如此）。实测：适配器的模块体出现在 **18 个不同的
    `dist/index.js` 产物**中；`function dshSeamInject` 以及适配器的若干辅助函数原样出现在例如
-   `packages/mpd-boulder-plugin/dist/index.js` 里。两个都「import 了适配器」的行并不共享对象图 —— 它们
+   `packages/mpd-autoproject-plugin/dist/index.js` 里。两个都「import 了适配器」的行并不共享对象图 —— 它们
    各自拥有一份副本。
 2. **适配器的改动会改变消费它的那些行的产物**，而且只改变这些：消费者从未引用的导出会被 `bun build`
    摇树移除。在把接缝名收敛到单一来源的实测中：适配器导出新常量之后，重建一个**不消费**它们的消费者

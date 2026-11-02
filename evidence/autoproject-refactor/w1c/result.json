@@ -1,0 +1,68 @@
+{
+  "task": "T9 / W1-C",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a74.4 + W1-A's shipped owner-only default",
+  "lane": "Senior Engineer (single skills writer)",
+  "generatedAt": "2026-11-02T11:38:03Z",
+  "change": {
+    "file": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+    "diffstat": "1 file changed, 5 insertions(+), 5 deletions(-)",
+    "sites": [
+      {
+        "line": 103,
+        "arm": "(a) cross-team seat guard",
+        "added": "mode: \"roster\""
+      },
+      {
+        "line": 108,
+        "arm": "(b) write-task-on-read-only seat guard",
+        "added": "mode: \"roster\""
+      },
+      {
+        "line": 140,
+        "arm": "(d) valid-pairing negative control",
+        "added": "mode: \"roster\""
+      },
+      {
+        "line": 190,
+        "arm": "(b-real) real-store refusal",
+        "added": "mode: \"roster\""
+      },
+      {
+        "line": 192,
+        "arm": "(d-real) real-store negative control",
+        "added": "mode: \"roster\""
+      }
+    ],
+    "assertionsChanged": false,
+    "shippedDefaultChanged": false
+  },
+  "sweep": {
+    "skills_dsh_qa_direct_callers": [
+      "skills/dsh-qa/scripts/team-dispatch-guard.ts (5 sites, all fixed)"
+    ],
+    "other_lanes_reported_only": [
+      "packages/mpd-team-core-plugin/src/team-actions.ts \u2014 forwards the caller's mode; owner-only default is correct (W1-A)",
+      "packages/mpd-cellwork-plugin/src/{activate,protocol,protocol-core,dispatch}.ts \u2014 cellwork's OWN private dispatchOwnerOnly, not the team-store seam (W2)",
+      "packages/*/test/*.ts fixtures \u2014 W1-A / W2 lanes",
+      "dist/mpd-package/** and evidence/**/probe*.ts \u2014 packed copy and historical probes, not live sources"
+    ]
+  },
+  "gates": [
+    {
+      "command": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --self-test",
+      "exit": 0,
+      "observed": "SELF-TEST: PASS (17 arms: 4 C7-1..C7-3 seam assertions + 13 C7-4 arms incl. their negative controls); 17 ok lines, 0 FAIL",
+      "log": "self-test.log"
+    },
+    {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed; 0 [test:qa] FAILED lines (the pre-repair tree reported FAIL - 1 of 55 with team-dispatch-guard the only red case)",
+      "log": "test-qa.log"
+    }
+  ],
+  "notProven": [
+    "the case's LIVE lane (run-qa-lanes --only=team-dispatch-guard, needs a real dsh) was not run",
+    "no VENDOR_LOCK re-pin here: this edit rides the wave's single skills re-pin at integration"
+  ]
+}

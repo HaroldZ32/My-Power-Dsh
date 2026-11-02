@@ -7,14 +7,16 @@
 //
 // Tools: mpd_workmate_list / mpd_workmate_init / mpd_workmate_spawn /
 //        mpd_workmate_reflect / mpd_workmate_match / mpd_workmate_rename /
-//        mpd_workmate_delete  (+ mpdWorkmate service).
+//        mpd_workmate_delete / mpd_workmate_optimize  (+ mpdWorkmate service,
+//        the /workmate-optimize command, and the team plane's W3-C binding seam).
 // The library root is deliberately the user's HOME (cross-project), a user-approved
 // exception to the workspace-scoped state rule (AGENTS.md §6); QA boots with
 // HOME=<sandbox> so tests never touch the real home.
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
-import { homedir, userInfo } from "node:os"
-import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { homedir } from "node:os"
+import { join } from "node:path"
+import { createHash } from "node:crypto"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, HomeGuardRefusal, assertHomeMutationSandboxed, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -66,20 +68,16 @@ export const READONLY_DENY = [
 export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
 
 /** A refused mutation, carrying the wire reason of the shared protocol (contract §D) so the HTTP
- * layer maps it verbatim and the GUI can branch on it. */
-export class WorkmateError extends Error {
-  /** The §D wire reason (`invalid-name`, `collision`, `in-use`, `real-home-refused`, …) the HTTP layer maps verbatim. */
-  code: string
-  /** The HTTP status the web routes answer with for this refusal. */
-  status: number
+ * layer maps it verbatim and the GUI can branch on it. It EXTENDS the adapter's shared home-guard
+ * refusal (wave W0), so the T-43 guard — whose predicate lives in the adapter — keeps this row's wire
+ * shape instead of a private copy. */
+export class WorkmateError extends HomeGuardRefusal {
   /** The team members that block an `in-use` refusal, so the GUI can name them. */
   blocking: { teamId: string; member: string }[]
   /** Build a refusal carrying its wire reason, its HTTP status and the teams that block it. */
   constructor(code: string, message: string, status: number, blocking: { teamId: string; member: string }[] = []) {
-    super(message)
+    super(code, message, status)
     this.name = "WorkmateError"
-    this.code = code
-    this.status = status
     this.blocking = blocking
   }
 }
@@ -125,79 +123,61 @@ function homeDir(): string { return process.env.HOME || homedir() }
 function workmateRoot(): string { return join(homeDir(), ".mpd", "workmate") }
 
 /**
- * T-43 — the REAL-HOME guard. The workmate library is the ONE state root that deliberately lives
- * under the user's HOME (cross-project, user-owned), so a QA/verification boot that forgets
- * `HOME=<sandbox>` writes the REAL `~/.mpd/workmate` library — the exact failure the register's T-43
- * names and the `workmate-library` QA lane asserts. This guard refuses a MUTATION in that case and
- * does nothing else:
- *   · it fires ONLY when the process looks isolated (`DSH_HOME` is set) AND the resolved library
- *     would land in the real user home — i.e. `HOME` is absent/empty, or equals the real home, or
- *     does not cover the library root;
- *   · a NORMAL session (`DSH_HOME` unset) is never refused, and reads are never guarded;
- *   · the deliberate escape hatch is `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1`.
- * Proven by one positive and one negative case in `evidence/platform/harness-close/` (the plugin's
- * own test files are outside this change's scope; they set HOME to a temp dir, so they stay green).
+ * The deliberate escape hatch of the shared T-43 guard for THIS row: `=1` lets an isolated boot mutate
+ * the real library on purpose, and the refusal message names it so the fix is discoverable.
  */
 export const WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME"
 
-/** A HOME-INDEPENDENT home for the real user. `homedir()` must NOT be used for that comparison:
- * on POSIX it reads $HOME, so comparing $HOME against it is a tautology — which is how the T-43 guard
- * came to refuse the SANCTIONED sandboxed boot while being unable to tell it from the real home. node's
- * `userInfo()` is passwd-derived, but bun's follows $HOME, so the passwd entry for the effective uid is
- * consulted first and `userInfo()` stays as the fallback. `undefined` means undeterminable. */
-function realUserHome(): string | undefined {
-  // Windows first: %USERPROFILE% is the OS profile variable and is HOME-INDEPENDENT by
-  // construction, which is exactly what this function needs. It is also the only source that
-  // survives a failing libuv passwd emulation — measured on a Windows host: node's
-  // `userInfo()` throws `uv_os_get_passwd returned ENOMEM`, which collapsed the real home to
-  // `undefined` and made the guard REFUSE the sanctioned sandboxed boot (T-43).
-  if (process.platform === "win32") {
-    /** %USERPROFILE% on Windows: the HOME-independent profile variable this comparison needs. */
-    const profile = process.env.USERPROFILE
-    if (typeof profile === "string" && profile !== "") return profile
-  }
-  try {
-    /** The effective uid, or undefined on a host that cannot report one. */
-    const uid = typeof process.getuid === "function" ? process.getuid() : undefined
-    if (uid !== undefined) {
-      /** The /etc/passwd entry for that uid — passwd-derived, so it cannot follow $HOME. */
-      const line = readFileSync("/etc/passwd", "utf8").split("\n").find((l) => l.split(":")[2] === String(uid))
-      /** The passwd home field, when the entry carries one. */
-      const home = line === undefined ? undefined : line.split(":")[5]
-      if (home !== undefined && home !== "") return home
-    }
-  } catch { /* fall through to the API below */ }
-  try {
-    /** The OS API's home, consulted only when passwd could not answer (and only when it differs from $HOME). */
-    const api = userInfo().homedir
-    if (api !== "" && resolve(api) !== resolve(process.env.HOME ?? api)) return api
-  } catch { /* undeterminable on this host */ }
-  return undefined
+/**
+ * T-43 — this row's refusal of a MUTATION that would land in the real `~/.mpd/workmate` while
+ * `DSH_HOME` marks an isolated (QA/verification) boot; reads are never guarded.
+ *
+ * The workmate library is the ONE state root that deliberately lives under the user's HOME
+ * (cross-project, user-owned), so a QA boot that forgets `HOME=<sandbox>` would write the REAL
+ * library. The PREDICATE lives in the adapter's shared {@link assertHomeMutationSandboxed} (wave W0),
+ * because the global-memory row guards `~/.mpd/memory` the same way; this row supplies only its own
+ * root, message prefix and override variable, so its refusal text stays BYTE-IDENTICAL to the private
+ * copy this replaced. The refusal is the adapter's `HomeGuardRefusal`, whose `code`/`status` the web
+ * layer maps exactly as it mapped this row's own error. Proven by one positive and one negative case
+ * in `evidence/platform/harness-close/`.
+ *
+ * @param operation the operation named in the refusal (e.g. "rename a workmate").
+ * @returns nothing; it THROWS the adapter's `HomeGuardRefusal` (403 `real-home-refused`) when it fires.
+ */
+export function assertMutationSandboxed(operation: string): void {
+  assertHomeMutationSandboxed({
+    root: workmateRoot(),
+    operation,
+    label: "mpd_workmate",
+    allowEnv: WORKMATE_ALLOW_REAL_HOME_ENV,
+  })
 }
 
-/** Refuse a MUTATION that would land in the real `~/.mpd/workmate` while `DSH_HOME` marks an isolated boot (T-43); reads are never guarded. */
-export function assertMutationSandboxed(operation: string): void {
-  /** The isolation marker: unset means a normal session, which is never refused. */
-  const dshHome = process.env.DSH_HOME
-  if (dshHome === undefined || dshHome === "") return                 // normal session: unaffected
-  if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1") return       // explicit, documented override
-  /** The library root this mutation would write, used by the containment test below. */
-  const root = workmateRoot()
-  /** The sandbox HOME this process was booted with, if any. */
-  const home = process.env.HOME
-    /** The real user's home, determined WITHOUT reading $HOME, so the comparison is not a tautology. */
-    const realHome = realUserHome()
-  /** Whether the library root would land inside a given home directory. */
-  const inside = (h: string): boolean => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep)
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
-  throw new WorkmateError(
-    "real-home-refused",
-    "mpd_workmate: refusing to " + operation + " inside the REAL library " + root
-      + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set "
-      + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately"
-      + (realHome === undefined ? " (the real home could not be determined on this host)" : ""),
-    403,
-  )
+/**
+ * How many workspaces ONE instance may remember, most recent first.
+ *
+ * Bounded on purpose (R-W3C B2): the attribution exists to answer "does this workspace own this instance",
+ * and a workmate reused across a dozen projects only has to remember the recent ones. Eight keeps the
+ * field small enough that `meta.json` stays a record, not a log, while covering a realistic rotation.
+ */
+export const WORKSPACE_ATTRIBUTION_CAP = 8
+
+/**
+ * The bounded attribution list after ONE use from `workspace`: most recent first, de-duplicated, capped.
+ *
+ * A blank workspace (an agentless surface, a boot without a session) attributes NOTHING — inventing an
+ * owner there would corrupt the budget the list exists to feed.
+ *
+ * @param existing - the instance's current attribution list.
+ * @param workspace - the workspace the instance is being used from, or "" when unknown.
+ * @returns the new list; the SAME array when nothing would change (so a caller can skip the write).
+ */
+export function attuneWorkspaces(existing: readonly string[], workspace: string): string[] {
+  /** The workspace being attributed, trimmed; blank attributes nothing. */
+  const key = String(workspace ?? "").trim()
+  if (key === "") return [...existing]
+  if (existing[0] === key && existing.length <= WORKSPACE_ATTRIBUTION_CAP) return [...existing]
+  return [key, ...existing.filter((entry) => entry !== key)].slice(0, WORKSPACE_ATTRIBUTION_CAP)
 }
 
 /** Instance path. Guarded (§B): `wmDir("")` would resolve to the LIBRARY ROOT itself, so an empty
@@ -259,6 +239,30 @@ type Meta = {
   provider: string; model: string; readonly: boolean
   createdAt: string; updatedAt: string; uses: number; lastTask: string | null
   renamedFrom: string[]
+  // ── the persona bookkeeping (wave W4-A3). The two `*Revision` names are a TRAP worth reading twice:
+  //   personaRevision  is the INTEGER CAS token of THIS instance's persona history (1 at birth);
+  //   baseRevision     is the SHA-256 of the BASE ROSTER PERSONA the instance was born from (drift
+  //                    baseline, never moved by an instance-local write);
+  //   personaHash      is the SHA-256 of the CURRENT persona text, or "unknown" when unreadable.
+  // An instance created before this wave carries none of them: they are BACKFILLED on the next write
+  // (`personaRecordOf` + `applyPersonaWrite`), never guessed at read time.
+  /** Monotone integer, 1 at birth, +1 per persona write; `0` means "not versioned yet". */
+  personaRevision: number
+  /** sha256 of the current persona text (trimmed), or `UNKNOWN_HASH`. */
+  personaHash: string
+  /** sha256 of the base persona text the instance was born from, or `UNKNOWN_HASH`. */
+  baseRevision: string
+  /**
+   * The WORKSPACES this instance has served, most recent first, capped at
+   * {@link WORKSPACE_ATTRIBUTION_CAP}.
+   *
+   * The library is HOME-scoped and cross-project, so `workmates.max` can only be a PER-WORKSPACE budget
+   * if an instance says which projects it belongs to (R-W3C B2). Written at init and at every reuse/bind —
+   * `mpd_workmate_spawn`, `mpd_workmate_reflect`, `mpd_workmate_persona_set` — and never guessed: a legacy
+   * instance carries an empty list, so it counts toward a workspace only after it is used there, which is
+   * what keeps an old cross-project library from blocking a fresh project forever.
+   */
+  workspaces: string[]
 }
 
 /** Read and normalize `meta.json`; a missing or unparsable file reads as null, never a throw. */
@@ -267,7 +271,7 @@ function readMeta(dir: string): Meta | null {
     if (!existsSync(join(dir, "meta.json"))) return null
     /** The parsed metadata, normalized field by field so a hand-edited file cannot break a caller. */
     const m = JSON.parse(readFileSync(join(dir, "meta.json"), "utf8"))
-    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [] }
+    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [], personaRevision: Number.isInteger(m.personaRevision) && Number(m.personaRevision) > 0 ? Number(m.personaRevision) : 0, personaHash: typeof m.personaHash === "string" ? m.personaHash : "", baseRevision: typeof m.baseRevision === "string" ? m.baseRevision : "", workspaces: Array.isArray(m.workspaces) ? m.workspaces.map(String).filter((workspace: string) => workspace !== "").slice(0, WORKSPACE_ATTRIBUTION_CAP) : [] }
   } catch { return null }
 }
 
@@ -415,16 +419,298 @@ function appendMemory(key: string, entry: string): string {
   return out
 }
 
-/** Merge a persona revision; keep the base + latest revisions within the cap. */
-function mergePersona(key: string, revision: string): string {
-  /** The persona file of this instance. */
-  const path = join(wmDir(key), "persona.md")
-  /** The persona as it stands, or the empty string for a fresh workmate. */
-  const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim()
+// ── PERSONA VERSIONS AND BASE DRIFT (wave W4-A3) ────────────────────────────────────────────────
+//
+// A workmate persona EVOLVES, and the roster BASE template it was copied from evolves too. Without a
+// recorded baseline the second kind of change is invisible, and the instance silently diverges from the
+// family it claims to belong to. The record therefore separates three things:
+//
+//   meta.personaRevision  the INTEGER CAS token of this instance's own history (1 at birth, +1 per write);
+//   meta.baseRevision     sha256 of the BASE ROSTER PERSONA the instance was born from (the drift
+//                         baseline — instance-local writes never move it);
+//   meta.personaHash      sha256 of the CURRENT persona text.
+//
+// Every persona write also stores the whole text under `persona.versions/<revision>.md` (monotone, never
+// overwritten), and the birth text of the base under `persona.base.md`, so a later reader can DIFF two
+// real documents instead of trusting a number.
+
+/** The marker recorded when a hash cannot be computed: never a fabricated digest. */
+export const UNKNOWN_HASH = "unknown"
+
+/** The sub-directory holding one file per persona revision. */
+function versionsDir(dir: string): string { return join(dir, "persona.versions") }
+
+/** The path of the snapshot of the BASE persona this instance was born from. */
+function baseSnapshotPath(dir: string): string { return join(dir, "persona.base.md") }
+
+/** Read the persona text of one INSTANCE DIRECTORY, trimmed — the exact shape every hash is computed over. */
+function readPersonaIn(dir: string): string {
+  try { return readFileSync(join(dir, "persona.md"), "utf8").trim() } catch { return "" }
+}
+
+/** Read the stored base snapshot, or null for an instance that predates the baseline. */
+function readBaseSnapshot(dir: string): string | null {
+  try {
+    /** The snapshot path; an absent file is "no baseline", not an empty text. */
+    const path = baseSnapshotPath(dir)
+    return existsSync(path) ? readFileSync(path, "utf8").trim() : null
+  } catch { return null }
+}
+
+/** Write the base snapshot ONCE: the baseline is the BIRTH text, so an existing snapshot is kept. */
+function writeBaseSnapshot(dir: string, baseText: string): void {
+  /** The snapshot path, created on the first write only. */
+  const path = baseSnapshotPath(dir)
+  if (existsSync(path)) return
+  writeFileSync(path, baseText.trim() + "\n")
+}
+
+/** Above this many lines on either side, the diff falls back to a multiset count instead of the LCS. */
+const MAX_DIFF_LINES = 800
+
+/**
+ * The length of the longest common subsequence of two line arrays, in O(min) memory.
+ *
+ * @param a - the left line array.
+ * @param b - the right line array.
+ * @returns how many lines the two share, in order.
+ */
+function lcsLines(a: readonly string[], b: readonly string[]): number {
+  /** The shorter side is the DP row, which is what keeps the memory bounded. */
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  /** The previous DP row, one cell per position of the longer side plus one. */
+  let prev = new Array<number>(long.length + 1).fill(0)
+  for (let i = 1; i <= short.length; i++) {
+    /** The row being built for this line of the shorter side. */
+    const cur = new Array<number>(long.length + 1).fill(0)
+    for (let j = 1; j <= long.length; j++) cur[j] = short[i - 1] === long[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1])
+    prev = cur
+  }
+  return prev[long.length]
+}
+
+/**
+ * How many LINES differ between two texts — the number `baseDriftLines` reports.
+ *
+ * It is `|a| + |b| - 2 * LCS(a, b)`, i.e. the deletions plus the insertions a diff would show. Above
+ * {@link MAX_DIFF_LINES} on either side the LCS is skipped (a quadratic walk over a pathological input
+ * would hang a list call) and a multiset difference is counted instead: the same number for an append or
+ * a rewrite, an upper bound for a reordering.
+ *
+ * @param a - the left text, usually the stored base snapshot.
+ * @param b - the right text, usually the current base persona.
+ * @returns the line count that changed; 0 for identical texts (including two empty ones).
+ */
+export function lineDiffCount(a: string, b: string): number {
+  /** The left text's lines. */
+  const left = String(a ?? "").split("\n")
+  /** The right text's lines. */
+  const right = String(b ?? "").split("\n")
+  // Two empty documents are identical, even though splitting "" yields one empty line on each side.
+  if (String(a ?? "").trim() === "" && String(b ?? "").trim() === "") return 0
+  if (left.length > MAX_DIFF_LINES || right.length > MAX_DIFF_LINES) {
+    /** The right side's line multiset, so the fallback can count what the left side still owes. */
+    const pool = new Map<string, number>()
+    for (const line of right) pool.set(line, (pool.get(line) ?? 0) + 1)
+    /** Lines of the left side with no partner left in the right side. */
+    let changed = 0
+    for (const line of left) {
+      /** Remaining copies of this exact line on the right. */
+      const count = pool.get(line) ?? 0
+      if (count > 0) pool.set(line, count - 1)
+      else changed += 1
+    }
+    for (const count of pool.values()) changed += count
+    return changed
+  }
+  return left.length + right.length - 2 * lcsLines(left, right)
+}
+
+/**
+ * The next revision number at or above `from` whose version file does not exist.
+ *
+ * A version file is NEVER overwritten, so the walk exists for the one case a monotone counter cannot
+ * cover: a hand-restored directory whose counter fell behind its files.
+ *
+ * @param dir - the instance directory.
+ * @param from - the smallest revision to consider.
+ * @returns a free revision number.
+ */
+function nextFreeRevision(dir: string, from: number): number {
+  /** The directory the version files live in. */
+  const versions = versionsDir(dir)
+  /** The candidate revision, never below 1. */
+  let revision = Math.max(1, Math.trunc(from))
+  // Bounded on purpose: an unbounded walk over a corrupt directory would hang a tool call.
+  for (let step = 0; step < 100000; step++) {
+    if (!existsSync(join(versions, revision + ".md"))) return revision
+    revision += 1
+  }
+  throw new Error("mpd_workmate: this workmate's persona version history is corrupt (no free revision number below 100000)")
+}
+
+/**
+ * Write ONE persona version file.
+ *
+ * @param dir - the instance directory.
+ * @param revision - the revision number the file is named after.
+ * @param text - the persona text at that revision.
+ */
+function writePersonaVersion(dir: string, revision: number, text: string): void {
+  mkdirSync(versionsDir(dir), { recursive: true })
+  /** The version file's path. */
+  const path = join(versionsDir(dir), revision + ".md")
+  // NEVER overwrite: an existing revision is history, and clobbering it would make a diff a lie.
+  if (existsSync(path)) throw new Error("mpd_workmate: persona revision " + revision + " already exists and is never overwritten")
+  writeFileSync(path, text + "\n")
+}
+
+/** The persona bookkeeping of ONE instance, computed from disk (this function NEVER writes). */
+export interface PersonaRecord {
+  /** The revision the next write would record; a legacy instance's current text is revision 1. */
+  revision: number
+  /** sha256 of the current persona text, or `UNKNOWN_HASH` when the file could not be read. */
+  hash: string
+  /** sha256 of the base persona the instance was born from, or `UNKNOWN_HASH`. */
+  baseRevision: string
+  /** Whether any of the three fields had to be filled in for a legacy instance. */
+  backfilled: boolean
+}
+
+/**
+ * Read one instance's persona bookkeeping without touching the disk.
+ *
+ * THE READ-COMPAT RULE: a legacy instance (no fields) is not an error and not a guess — its current
+ * persona text IS revision 1, its `baseRevision` is the CURRENT base hash (recorded on the next write,
+ * because that is the first moment this instance can be said to have a baseline), and a base the roster
+ * cannot resolve records `UNKNOWN_HASH` rather than a fabricated digest.
+ *
+ * @param dir - the instance directory.
+ * @param meta - the instance's metadata.
+ * @param currentBase - the current base persona text, or null when the roster cannot answer.
+ * @returns the computed record, plus whether it needed backfilling.
+ */
+function personaRecordOf(dir: string, meta: Meta, currentBase: string | null): PersonaRecord {
+  /** The persona as it stands on disk. */
+  const persona = readPersonaIn(dir)
+  /** Whether the persona file exists at all; an absent file cannot be hashed. */
+  const hasFile = existsSync(join(dir, "persona.md"))
+  /** The recorded revision, else the highest version file, else the legacy "revision 1". */
+  const revision = meta.personaRevision > 0 ? meta.personaRevision : Math.max(1, highestVersionOf(dir))
+  /** The baseline: the stored one, else the current base's hash, else the honest unknown. */
+  const baseRevision = meta.baseRevision !== "" ? meta.baseRevision : currentBase !== null ? sha256Of(String(currentBase).trim()) : UNKNOWN_HASH
+  return { revision, hash: hasFile ? sha256Of(persona) : UNKNOWN_HASH, baseRevision, backfilled: meta.personaRevision <= 0 || meta.personaHash === "" || meta.baseRevision === "" }
+}
+
+/**
+ * The highest revision number present in `persona.versions/`, or 0 when the directory is absent.
+ *
+ * @param dir - the instance directory.
+ * @returns the highest file number, or 0.
+ */
+function highestVersionOf(dir: string): number {
+  /** The version directory, read per call so a hand-edited history is seen. */
+  const versions = versionsDir(dir)
+  try {
+    if (!existsSync(versions)) return 0
+    /** The highest numeric file stem found. */
+    let highest = 0
+    for (const file of readdirSync(versions)) {
+      /** The numeric stem of this file, when it is a version file. */
+      const n = /^([1-9]\d*)\.md$/.exec(file)?.[1]
+      if (n === undefined) continue
+      if (Number(n) > highest) highest = Number(n)
+    }
+    return highest
+  } catch { return 0 }
+}
+
+/**
+ * Persist one persona write: the version file, the base snapshot and the metadata triple.
+ *
+ * This is the ONLY path that moves `personaRevision`, so the counter cannot drift from the files: a
+ * `bump` write commits `text` as the next free revision, and a non-bumping write (a reflect with no
+ * persona delta) merely backfills whatever the legacy record was missing.
+ *
+ * @param input.dir - the instance directory.
+ * @param input.meta - the instance's metadata, mutated in place and written by the caller.
+ * @param input.text - the persona text to commit, ignored when `bump` is false.
+ * @param input.currentBase - the current base persona text, or null when the roster cannot answer.
+ * @param input.bump - whether this write creates a NEW revision.
+ * @returns the resulting persona text, revision and hash.
+ */
+function applyPersonaWrite(input: { dir: string; meta: Meta; text: string; currentBase: string | null; bump: boolean }): { persona: string; revision: number; hash: string } {
+  /** What the record says before this write, which is also what gets backfilled. */
+  const record = personaRecordOf(input.dir, input.meta, input.currentBase)
+  // BACKFILL FIRST (read-compat): the current text becomes its own version file and the base snapshot is
+  // taken now, so the history is complete from this point on rather than starting mid-story.
+  if (!existsSync(join(versionsDir(input.dir), record.revision + ".md"))) writePersonaVersion(input.dir, record.revision, readPersonaIn(input.dir))
+  if (input.currentBase !== null) writeBaseSnapshot(input.dir, input.currentBase)
+  /** The persona text this write leaves on disk. */
+  const persona = input.bump ? capText(String(input.text ?? ""), PERSONA_CAP).trim() : readPersonaIn(input.dir)
+  /** The revision this write records. */
+  const revision = input.bump ? nextFreeRevision(input.dir, record.revision + 1) : record.revision
+  if (input.bump) {
+    writeFileSync(join(input.dir, "persona.md"), persona + "\n")
+    writePersonaVersion(input.dir, revision, persona)
+  }
+  /** The hash of the text that is now current. */
+  const hash = sha256Of(persona)
+  input.meta.personaRevision = revision
+  input.meta.personaHash = hash
+  input.meta.baseRevision = record.baseRevision
+  return { persona, revision, hash }
+}
+
+/** One instance's divergence from the base template it was copied from. */
+export interface PersonaDrift {
+  /** Whether the base persona has moved away from the recorded baseline. */
+  defaultUpdated: boolean
+  /** How many lines the stored base snapshot and the current base text disagree by. */
+  baseDriftLines: number
+  /** Whether the comparison could NOT be made (no baseline recorded, or the roster cannot resolve it). */
+  baseDriftUnknown: boolean
+}
+
+/**
+ * Compare an instance's recorded base baseline with the CURRENT base persona.
+ *
+ * @param meta - the instance's metadata.
+ * @param dir - the instance directory, whose `persona.base.md` is the diff's left-hand side.
+ * @param currentBase - the current base persona text, or null when the roster cannot answer.
+ * @returns the drift verdict; `baseDriftUnknown` is the honest answer when no comparison is possible.
+ */
+export function personaDrift(meta: Meta, dir: string, currentBase: string | null): PersonaDrift {
+  if (currentBase === null || meta.baseRevision === "" || meta.baseRevision === UNKNOWN_HASH) return { defaultUpdated: false, baseDriftLines: 0, baseDriftUnknown: true }
+  /** The current base text under the ONE normalization the baseline was recorded with. */
+  const current = String(currentBase).trim()
+  if (sha256Of(current) === meta.baseRevision) return { defaultUpdated: false, baseDriftLines: 0, baseDriftUnknown: false }
+  // An instance with no stored snapshot predates the baseline: every line of the current base is new to it.
+  return { defaultUpdated: true, baseDriftLines: lineDiffCount(readBaseSnapshot(dir) ?? "", current), baseDriftUnknown: false }
+}
+
+/**
+ * The note card as a reader should see it: the stored text plus, when the base moved, ONE marker line
+ * carrying both fields the contract names.
+ *
+ * @param note - the note card text.
+ * @param drift - the instance's drift verdict.
+ * @returns the marked note, capped to {@link NOTE_CAP}.
+ */
+export function noteWithDrift(note: string, drift: PersonaDrift): string {
+  // IDEMPOTENT: a reflect PERSISTS the marked note, so a later read must replace the marker rather than
+  // stack a second one (and must REMOVE it when the base caught up, which is why the strip runs first).
+  /** The note with any previously written marker line removed. */
+  const bare = note.replace(/\n?\[defaultUpdated=[^\]]*\]/g, "").trim()
+  if (!drift.defaultUpdated) return bare
+  return capText(bare + "\n[defaultUpdated=true baseDriftLines=" + drift.baseDriftLines + " — the base persona moved ahead of this workmate]", NOTE_CAP)
+}
+
+/** Merge a persona revision into the current text, capped; the caller commits the result. */
+function mergedPersonaText(existing: string, revision: string): string {
   /** The persona with the revision appended and the whole text capped. */
   const merged = capText(existing + (revision ? `\n\n## Persona revision (${now()})\n${revision.trim()}` : ""), PERSONA_CAP)
-  writeFileSync(path, merged + "\n")
-  return merged
+  return merged.trim()
 }
 
 /** Resolve a READ target by key; a name with no instance throws rather than returning a half-object. */
@@ -755,6 +1041,337 @@ export function deleteWorkmate(nameArg: unknown, purgeArg: unknown, confirmArg: 
     const fate = removed ? "the workmate left the library but leftover bytes may remain under the archive directory" : "the workmate is unchanged"
     throw new WorkmateError("internal", `mpd_workmate: delete of "${key}" failed (${String((e as any)?.code ?? "error")}) — ${fate}`, 500)
   }
+}
+
+// ── LIBRARY OPTIMIZATION (W3-C, requirement 4) ────────────────────────────────────────────────────
+// `mpd_workmate_optimize` merges workmates that are THE SAME SPECIALTY grown apart by two sessions:
+// the same roster base, the same readonly posture, neither archived, neither busy in a live team, and
+// either a strong note match or substantial tag overlap. A merge PRESERVES the evolved record (memory,
+// persona, use count, name history) and ARCHIVES the source — it never deletes: the archive path has
+// no purge branch at all, which is why a merge can never destroy work.
+
+/** The note score at or above which two instances are merge candidates (contract §4.6). */
+export const MERGE_THRESHOLD = 0.6
+
+/** The tag-overlap (Jaccard) at or above which two instances are merge candidates. */
+export const MERGE_TAG_THRESHOLD = 0.5
+
+/** The `merge.json` version a merge archive records. */
+export const MERGE_RECORD_VERSION = 1
+
+/** SHA-256 of a text, hex-encoded: the identity a dedup and the archive record both use. */
+function sha256Of(text: string): string { return createHash("sha256").update(text, "utf8").digest("hex") }
+
+/**
+ * Split a memory body into whole `## ` blocks.
+ *
+ * The unit is a BLOCK, never a line: an entry is what a reflect wrote, and a merge that cut one in half
+ * would corrupt the record it is supposed to preserve.
+ * @param text - the memory body, as stored.
+ * @returns the blocks, oldest first, with empty ones dropped.
+ */
+function memoryBlocksOf(text: string): string[] {
+  /** The body split on the `## ` heading that opens every entry. */
+  return String(text ?? "").split(/\n## /).map((block, index) => (index === 0 ? block : "## " + block)).map((block) => block.trim()).filter((block) => block !== "")
+}
+
+/**
+ * The tag set a note card contributes to the Jaccard test.
+ *
+ * The library has no free-form tag field, so the "tags" are the distinct three-or-more-character words
+ * of the note plus the base specialist's name — the SAME tokenizer the matcher scores with, so two
+ * surfaces cannot disagree about what a workmate is about.
+ * @param note - the note card.
+ * @param baseName - the roster base the instance was copied from.
+ * @returns the distinct tags.
+ */
+function tagsOf(note: string, baseName: string): Set<string> { return new Set(unique(tokenize(note + " " + baseName))) }
+
+/**
+ * The Jaccard overlap of two tag sets (|A ∩ B| / |A ∪ B|).
+ * @param a - the first tag set.
+ * @param b - the second tag set.
+ * @returns the overlap as a 0..1 fraction; two empty sets answer 0.
+ */
+function jaccardOf(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  /** How many tags both sets carry. */
+  let shared = 0
+  for (const tag of a) if (b.has(tag)) shared += 1
+  return shared / (a.size + b.size - shared)
+}
+
+/** The archive directories already under `.archive/` that came from one library key. */
+function archivedCopiesOf(key: string): string[] {
+  try {
+    /** The archive root; absent means this library has never archived anything. */
+    const root = join(workmateRoot(), ".archive")
+    if (!existsSync(root)) return []
+    // ONLY a directory this library itself created for that key: a plain delete's `<key>-<stamp>` or a
+    // merge's `<key>-merged-<into>-<stamp>`. A bare prefix test would read `oracle-1`'s archive as
+    // `oracle`'s, which would freeze a key nobody archived.
+    /** The two archive-name shapes this library writes for one key. */
+    const shapes = new RegExp("^" + key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:-\\d{8}T\\d{6}Z(?:-\\d+)?|-merged-.+)$")
+    return readdirSync(root).filter((entry) => entry === key || shapes.test(entry))
+  } catch { return [] }
+}
+
+/** One proposed merge, with the reason it can or cannot run. */
+export interface MergePlanRow {
+  /** The instance that would leave the library. */
+  from: string
+  /** The instance that keeps the evolved record. */
+  into: string
+  /** The note score between the two (0..1). */
+  score: number
+  /** The tag overlap between the two (0..1). */
+  jaccard: number
+  /** Whether every gate passed. */
+  mergeable: boolean
+  /** Why the pair cannot merge, when it cannot. */
+  reason?: string
+}
+
+/** What one optimize call did. */
+export interface OptimizeResult {
+  /** The decision table, in proposal order. */
+  plan: MergePlanRow[]
+  /** The merges this call actually applied, with the archive each source landed in. */
+  applied: Array<{ from: string; into: string; archive: string }>
+  /** The proposals a gate refused, with the gate's reason. */
+  skipped: Array<{ from: string; into: string; reason: string }>
+}
+
+/**
+ * Decide which workmates may merge, deterministically and without touching the disk.
+ *
+ * THE AUTO RULE: inside one `baseName` group, ordered by (uses desc, name asc), the first instance is
+ * the group's survivor and every other member is proposed INTO it — so an optimize call collapses a
+ * fork back into its most-used instance. An explicit `pairs` list replaces that proposal entirely.
+ * @param options - the threshold override, an explicit pair list, and the team roots the busy scan reads.
+ * @returns one row per proposal, in proposal order.
+ */
+export function planWorkmateMerges(options: { mergeThreshold?: number; pairs?: Array<{ from: string; into: string }>; teamRoots?: string[] } = {}): MergePlanRow[] {
+  /** Every instance in the library, with its note, read once. */
+  const instances = listInstances()
+  /** A fast key → instance view for the explicit-pair path. */
+  const byName = new Map(instances.map((instance) => [instance.name, instance]))
+  /** The threshold this call uses; a non-numeric or out-of-range override keeps the contract's value. */
+  const threshold = typeof options.mergeThreshold === "number" && options.mergeThreshold >= 0 && options.mergeThreshold <= 1 ? options.mergeThreshold : MERGE_THRESHOLD
+  /** The proposals, before any gate runs. */
+  const proposals: Array<{ from: string; into: string }> = []
+  if (options.pairs !== undefined && options.pairs.length > 0) {
+    for (const pair of options.pairs) proposals.push({ from: sanitizeName(pair?.from ?? ""), into: sanitizeName(pair?.into ?? "") })
+  } else {
+    /** The instances grouped by their roster base. */
+    const groups = new Map<string, typeof instances>()
+    for (const instance of instances) {
+      /** The group this instance belongs to; an unnamed base groups with the empty string. */
+      const group = groups.get(instance.meta.baseName) ?? []
+      group.push(instance)
+      groups.set(instance.meta.baseName, group)
+    }
+    for (const group of groups.values()) {
+      if (group.length < 2) continue
+      /** The group in survivor order: the most-used instance first, ties broken by name. */
+      const ordered = [...group].sort((a, b) => (b.meta.uses - a.meta.uses) || a.name.localeCompare(b.name))
+      for (const source of ordered.slice(1)) proposals.push({ from: source.name, into: ordered[0].name })
+    }
+  }
+  /** One evaluated row per proposal. */
+  const rows: MergePlanRow[] = []
+  // A SOURCE MAY BE CONSUMED ONCE (R-W3C Medium 2): two rows naming the same `from` can both pass every
+  // other gate, but the first merge ARCHIVES that instance and the second can only fail. Rejecting the
+  // repeat at PLAN time is what keeps the dry-run table honest about what an apply would do.
+  /** The sources an earlier row already claimed. */
+  const claimedSources = new Set<string>()
+  for (const proposal of proposals) {
+    /** Whether an earlier row in this same plan already named this source. */
+    const repeatedSource = claimedSources.has(proposal.from)
+    claimedSources.add(proposal.from)
+    /** The source instance, when the library still carries it. */
+    const source = byName.get(proposal.from)
+    /** The target instance, when the library still carries it. */
+    const target = byName.get(proposal.into)
+    /** The note score: the source's own note read against the target's corpus. */
+    const score = source === undefined || target === undefined ? 0 : scoreMatch(source.note, { note: target.note, baseName: target.meta.baseName, description: target.meta.description, memoryTail: readMemory(target.name, 600) })
+    /** The tag overlap between the two notes. */
+    const jaccard = source === undefined || target === undefined ? 0 : jaccardOf(tagsOf(source.note, source.meta.baseName), tagsOf(target.note, target.meta.baseName))
+    /** The rounded score, so the table and the record agree. */
+    const roundedScore = Math.round(score * 100) / 100
+    /** The rounded overlap. */
+    const roundedJaccard = Math.round(jaccard * 100) / 100
+    /** The gate that refused this pair, if any. */
+    const reason = repeatedSource ? "duplicate-source"
+      : source === undefined || target === undefined ? "missing"
+      : proposal.from === proposal.into ? "same"
+      : source.meta.baseName !== target.meta.baseName ? "base-mismatch"
+      : source.meta.readonly !== target.meta.readonly ? "readonly-mismatch"
+      : archivedCopiesOf(proposal.from).length > 0 || archivedCopiesOf(proposal.into).length > 0 ? "archived"
+      : busyTeams(proposal.from, options.teamRoots).length > 0 || busyTeams(proposal.into, options.teamRoots).length > 0 || inUseCount(proposal.from) > 0 || inUseCount(proposal.into) > 0 ? "in-use"
+      : !(roundedScore >= threshold || roundedJaccard >= MERGE_TAG_THRESHOLD) ? "not-similar"
+      : undefined
+    rows.push({ from: proposal.from, into: proposal.into, score: roundedScore, jaccard: roundedJaccard, mergeable: reason === undefined, ...(reason === undefined ? {} : { reason }) })
+  }
+  return rows
+}
+
+/** The archive destination for one merged source: `.archive/<from>-merged-<into>-<stamp>`. */
+function mergeArchivePathFor(fromKey: string, intoKey: string): string {
+  /** The archive root, created so the destination can be probed. */
+  const root = join(workmateRoot(), ".archive")
+  mkdirSync(root, { recursive: true })
+  /** This merge's UTC stamp, the readable half of the name. */
+  const stamp = compactUtcStamp()
+  /** The first candidate; a numeric suffix keeps two merges inside one second apart. */
+  let candidate = join(root, `${fromKey}-merged-${intoKey}-${stamp}`)
+  for (let i = 2; lstatOrNull(candidate) != null && i < 1000; i++) candidate = join(root, `${fromKey}-merged-${intoKey}-${stamp}-${i}`)
+  return candidate
+}
+
+/**
+ * Merge ONE source instance into a target, preserving the evolved record and archiving the source.
+ *
+ * ORDER MATTERS: the target's files are written FIRST (a failure there leaves the library exactly as it
+ * was, because nothing has moved), then the source directory is moved into `.archive/`, then its index
+ * key is dropped and `merge.json` is written beside the archived bytes. A failure after the move is
+ * reported as `internal` with the archive path named, so the bytes are never lost silently.
+ * @param fromKey - the instance that leaves the library.
+ * @param intoKey - the instance that keeps the record.
+ * @returns the archive directory the source landed in.
+ */
+function mergeOneWorkmate(fromKey: string, intoKey: string): string {
+  /** The source instance on disk. */
+  const source = resolveTarget(fromKey)
+  /** The target instance on disk. */
+  const target = resolveTarget(intoKey)
+  /** The source's persona. */
+  const sourcePersona = readPersona(fromKey)
+  /** The target's persona. */
+  const targetPersona = readPersona(intoKey)
+  /** The LONGER persona wins, so a merge never loses accumulated detail. */
+  const longerPersona = sourcePersona.length > targetPersona.length ? sourcePersona : targetPersona
+  /** The merged persona: the longer body plus ONE provenance line, capped. */
+  const persona = capText(longerPersona === "" ? "" : longerPersona + "\n\nmerged-from: " + fromKey, PERSONA_CAP)
+  /** The merged memory blocks, deduplicated by sha256, target blocks first. */
+  const seen = new Set<string>()
+  /** The blocks that survive the dedup, oldest first. */
+  const blocks: string[] = []
+  for (const block of [...memoryBlocksOf(readMemory(intoKey, Number.MAX_SAFE_INTEGER)), ...memoryBlocksOf(readMemory(fromKey, Number.MAX_SAFE_INTEGER))]) {
+    /** This block's content identity. */
+    const sha = sha256Of(block)
+    if (seen.has(sha)) continue
+    seen.add(sha)
+    blocks.push(block)
+  }
+  /** The memory kept under the cap, newest last: the OLDEST entries are evicted first. */
+  let memory = ""
+  for (let index = blocks.length - 1; index >= 0; index--) {
+    /** The candidate body if this block were kept. */
+    const candidate = blocks[index] + (memory === "" ? "" : "\n\n" + memory)
+    if (candidate.length > MEMORY_CAP) break
+    memory = candidate
+  }
+  /** The source's memory block identities, recorded in the archive so the fold is auditable. */
+  const sourceMemoryShas = memoryBlocksOf(readMemory(fromKey, Number.MAX_SAFE_INTEGER)).map(sha256Of)
+  /** The merged metadata: use counts summed, history accumulated, freshness stamped. */
+  const meta: Meta = {
+    ...target.meta,
+    uses: target.meta.uses + source.meta.uses,
+    renamedFrom: unique([...target.meta.renamedFrom, fromKey, ...source.meta.renamedFrom]).slice(-10),
+    updatedAt: now()
+  }
+  /** The regenerated note card, so the survivor's matchable identity describes the merged record. */
+  const note = autoNote(meta, persona, memory, readNote(intoKey))
+  // ── 1. the TARGET's files, before anything moves ───────────────────────────────────────────────
+  // THE MERGED PERSONA IS A PERSONA WRITE (wave W4-A3): it goes through the SAME commit path as a
+  // reflect or a `persona_set`, so the survivor's revision, hash and version history stay truthful
+  // instead of the file moving while the metadata keeps describing the pre-merge text. The base
+  // baseline is left alone (`currentBase: null`): a merge folds two instances of the SAME base.
+  applyPersonaWrite({ dir: target.dir, meta, text: persona, currentBase: null, bump: true })
+  writeFileSync(join(target.dir, "memory.md"), memory === "" ? "" : memory + "\n")
+  writeFileSync(join(target.dir, "note.md"), note + "\n")
+  writeFileSync(join(target.dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
+  writeIndexEntry(intoKey, meta)
+  // ── 2. the SOURCE leaves the library, into the archive (never a purge) ────────────────────────
+  /** The archive directory this merge writes the source into. */
+  const archive = mergeArchivePathFor(fromKey, intoKey)
+  renameSync(source.dir, archive)
+  dropIndexKey(fromKey)
+  // ── 3. the archive's own record, so the fold is auditable byte by byte ────────────────────────
+  writeJson(join(archive, "merge.json"), {
+    version: MERGE_RECORD_VERSION,
+    from: fromKey,
+    into: intoKey,
+    at: now(),
+    memoryShas: sourceMemoryShas,
+    personaSha: sha256Of(persona)
+  })
+  return archive
+}
+
+/**
+ * Merge similar workmates, DRY-RUN BY DEFAULT.
+ *
+ * The confirmation discipline mirrors `mpd_workmate_delete`'s: nothing is mutated unless `confirm` is
+ * literally `true`, so a caller that omits it (or an agent that guesses) gets the plan table and no
+ * disk change. A pair refused for live-team use skips ONLY that pair; the rest of the plan still runs.
+ * @param options - the thresholds, an explicit pair list, the dry-run/confirm flags and the team roots.
+ * @returns the plan, what was applied, and what each refused pair's gate was.
+ */
+export function optimizeWorkmates(options: {
+  dryRun?: boolean
+  confirm?: boolean
+  pairs?: Array<{ from: string; into: string }>
+  mergeThreshold?: number
+  teamRoots?: string[]
+} = {}): OptimizeResult {
+  /** The decision table; every gate except the confirmation has already run. */
+  const plan = planWorkmateMerges({ ...(options.mergeThreshold === undefined ? {} : { mergeThreshold: options.mergeThreshold }), ...(options.pairs === undefined ? {} : { pairs: options.pairs }), ...(options.teamRoots === undefined ? {} : { teamRoots: options.teamRoots }) })
+  /** Every proposal a gate refused. */
+  const skipped = plan.filter((row) => !row.mergeable).map((row) => ({ from: row.from, into: row.into, reason: row.reason ?? "refused" }))
+  /** Whether this call may write: an explicit `confirm:true` and no explicit dry run. */
+  const apply = options.confirm === true && options.dryRun !== true
+  if (!apply) return { plan, applied: [], skipped }
+  assertMutationSandboxed("merge workmates")
+  /** What actually merged, in plan order. */
+  const applied: Array<{ from: string; into: string; archive: string }> = []
+  for (const row of plan) {
+    if (!row.mergeable) continue
+    // ONE PAIR'S FAILURE IS ONE PAIR'S SKIP (R-W3C Medium 2): a confirmed call must never throw once it
+    // has mutated anything, and a defect in row N must not drop rows N+1.. silently. The catch records
+    // the pair with the refusal text, so the caller sees exactly which pair was not applied and why.
+    try {
+      // THE IN-USE GATE IS RE-READ here, inside the same synchronous block as the mutation: a team that
+      // adopted the workmate between the plan and this line must stop the merge, not be overrun by it.
+      assertNotBusy([row.from, row.into], options.teamRoots)
+      applied.push({ from: row.from, into: row.into, archive: mergeOneWorkmate(row.from, row.into) })
+    } catch (error) {
+      /** The refusal text this pair produced: a WorkmateError's message, or the thrown value itself. */
+      const message = error instanceof Error ? error.message : String(error)
+      skipped.push({ from: row.from, into: row.into, reason: "failed: " + message })
+    }
+  }
+  return { plan, applied, skipped }
+}
+
+/**
+ * Render an optimize result as the table the tool and `/workmate-optimize` print.
+ * @param result - what `optimizeWorkmates` answered.
+ * @returns the text table, one line per proposal plus the outcome line.
+ */
+export function renderOptimizeTable(result: OptimizeResult): string {
+  /** The heading, which states whether anything was written. */
+  const head = result.applied.length > 0 ? "workmate merge — APPLIED " + result.applied.length + " pair(s)" : "workmate merge — DRY RUN (nothing written)"
+  /** One line per proposal: the pair, its two scores and the verdict. */
+  const rows = result.plan.length === 0
+    ? ["  (nothing to merge: no base group carries two instances and no pair was named)"]
+    : result.plan.map((row) => "  " + row.from + " -> " + row.into + "  score=" + row.score.toFixed(2) + " jaccard=" + row.jaccard.toFixed(2) + "  " + (row.mergeable ? (result.applied.some((entry) => entry.from === row.from) ? "MERGED" : "MERGE") : "skip:" + String(row.reason)))
+  /** The closing hint, so a reader knows the exact next call. */
+  const tail = result.applied.length > 0
+    ? ["archived: " + result.applied.map((entry) => entry.archive).join(", ")]
+    : ["re-run with confirm:true to apply (mpd_workmate_optimize {confirm:true} or /workmate-optimize confirm)"]
+  return [head, ...rows, ...tail].join("\n")
 }
 
 /**
@@ -1107,8 +1724,36 @@ export function apply(ctx: Ctx): void {
     return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: String(base.chain?.[0]?.provider ?? ""), model: String(base.chain?.[0]?.model ?? ""), persona: String(base.persona ?? "") }
   }
 
+  /**
+   * The workspace a tool call comes from, trimmed; "" when it cannot be resolved.
+   *
+   * Every attribution write goes through this ONE read, so an agentless surface (a web route, a boot with
+   * no session) attributes nothing rather than a process cwd that names no project.
+   *
+   * @param adapter - the adapter slice.
+   * @param exec - the tool exec the call carries.
+   * @returns the workspace root, or "".
+   */
+  function workspaceOf(adapter: DshAdapter, exec: unknown): string {
+    try { return String(adapter.workspaceRoot(exec as any) ?? "").trim() } catch { return "" }
+  }
+
+  /**
+   * The CURRENT base persona text for one instance's base, trimmed.
+   *
+   * The trim is the ONE normalization the baseline, the snapshot and the diff all use, so a trailing
+   * newline in the roster's text can never fake a drift. A roster that cannot answer (unmounted row, a
+   * base removed from the roster) answers null — the honest "cannot compare", never an empty base.
+   *
+   * @param meta - the instance's metadata, whose `baseName` is the functional base name.
+   * @returns the current base persona text, or null when the roster cannot answer.
+   */
+  function currentBaseTextOf(meta: Meta): string | null {
+    try { return String(resolveBase(meta.baseName).persona ?? "").trim() } catch { return null }
+  }
+
   /** Create one instance directory from a base template, under an independent name. */
-  function initWorkmate(baseKey: string, nameArg: string, noteArg: string): { name: string; baseName: string; readonly: boolean; provider: string; model: string; path: string; note: string } {
+  function initWorkmate(baseKey: string, nameArg: string, noteArg: string, workspace: string): { name: string; baseName: string; readonly: boolean; provider: string; model: string; path: string; note: string } {
     assertMutationSandboxed("initialize a workmate")
     /** The resolved base template this instance copies. */
     const base = resolveBase(baseKey)
@@ -1144,10 +1789,20 @@ export function apply(ctx: Ctx): void {
       }
       return { provider: base.provider, model: base.model }
     })()
+    // THE BIRTH RECORD (wave W4-A3): the persona this instance starts from, its revision 1, and the base
+    // text it was copied from. The base hash is the DRIFT BASELINE — trimming is the ONE normalization
+    // every producer and consumer applies, so a trailing newline in the roster's text cannot fake a change.
+    /** The birth persona text: the base's own persona, capped once. */
+    const bornPersona = capText(base.persona, PERSONA_CAP).trim()
+    /** The base text as the baseline is computed over. */
+    const bornBase = String(base.persona ?? "").trim()
     /** The fresh metadata; `baseId` is recorded here as INTERNAL provenance and never leaves disk. */
-    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] }
+    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace) }
     writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
-    writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + "\n")
+    writeFileSync(join(dir, "persona.md"), bornPersona + "\n")
+    // The versioned history starts AT BIRTH, and the base snapshot is what a later drift diff reads.
+    writePersonaVersion(dir, 1, bornPersona)
+    if (bornBase !== "") writeBaseSnapshot(dir, bornBase)
     writeFileSync(join(dir, "memory.md"), "")
     /** The note card: the caller's, or one auto-generated from the base and this instance. */
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP)
@@ -1187,10 +1842,36 @@ export function apply(ctx: Ctx): void {
     name: "mpd_workmate_list",
     description: "List the workmate library (~/.mpd/workmate): each durable evolving agent instance with its base specialist, use count, last-updated time and note summary. Use before delegating a task: if a workmate's note matches well you can reuse it; otherwise initialize a new one.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmates (" + v.count + "):\n" + (v.workmates as any[]).map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join("\n") || "(empty)") },
+    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmates (" + v.count + "):\n" + (v.workmates as any[]).map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " rev=" + w.personaRevision + (w.defaultUpdated ? " default-updated:" + w.baseDriftLines + "L" : w.baseDriftUnknown ? " default-unverified" : "") + " :: " + String(w.note).slice(0, 140)).join("\n") || "(empty)") },
     execute: async () => {
-      /** The tool's row set: public fields plus the note that makes matching possible. */
-      const list = listInstances().map(({ name, meta, note }) => ({ name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }))
+      /** The tool's row set: the public fields, the note that makes matching possible, and the persona record. */
+      const list = listInstances().map(({ name, meta, note }) => {
+        /** The current base text for this instance's base, or null when the roster cannot answer. */
+        const base = currentBaseTextOf(meta)
+        /** The persona bookkeeping a READ computes; nothing is written by this call. */
+        const record = personaRecordOf(wmDir(name), meta, base)
+        /** The divergence from the base template this instance was copied from. */
+        const drift = personaDrift(meta, wmDir(name), base)
+        return {
+          name, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model,
+          uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom,
+          // THE PER-WORKSPACE ATTRIBUTION (R-W3C B2): the workspaces this instance has served, most
+          // recent first. A consumer that budgets PER WORKSPACE counts the rows carrying its own root;
+          // an instance with none counts nowhere until it is used, which is what keeps a legacy
+          // cross-project library from blocking a fresh project forever.
+          workspaces: meta.workspaces,
+          // The note AS RENDERED: the stored card plus the drift marker when the base moved.
+          note: noteWithDrift(note, drift),
+          // THE PERSONA RECORD: the revision a CAS writer must name, the hash a reader can verify, the
+          // baseline, and the drift verdict.
+          personaRevision: record.revision,
+          personaHash: record.hash,
+          baseRevision: meta.baseRevision === "" ? UNKNOWN_HASH : meta.baseRevision,
+          defaultUpdated: drift.defaultUpdated,
+          baseDriftLines: drift.baseDriftLines,
+          baseDriftUnknown: drift.baseDriftUnknown,
+        }
+      })
       return { workmates: list, count: list.length }
     }
   })
@@ -1200,7 +1881,7 @@ export function apply(ctx: Ctx): void {
     description: "Instantiate a roster BASE specialist into a durable, evolving workmate copy under ~/.mpd/workmate/<name>/ (independent name). base = the specialist's functional NAME (mpd_roles_list), e.g. \"Deep Worker\". The base template stays pristine; the workmate gets its own persona.md, memory.md and a short note.md. Use when creating a team or pulling up a specialist you will reuse across sessions.",
     parameters: { type: "object", properties: { base: { type: "string", description: "the specialist's functional name (e.g. \"Deep Worker\")" }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + ")\nnote: " + v.note) },
-    execute: async (args: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
+    execute: async (args: any, exec: any) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), workspaceOf(dsh, exec))
   })
 
   dsh.registerTool({
@@ -1218,6 +1899,16 @@ export function apply(ctx: Ctx): void {
       if (tooDeep !== undefined) throw new Error(tooDeep)
       /** The instance being spawned, resolved by key. */
       const { meta, key } = ensureInstance(String(args?.name ?? ""))
+      // A REUSE ATTRIBUTES THE INSTANCE to the workspace using it (R-W3C B2), which is what makes
+      // `workmates.max` a per-workspace budget. Written only when the list actually changed, so a repeat
+      // spawn from the same project touches no byte.
+      /** The attribution list after this reuse. */
+      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec))
+      if (attributed.join("\u0000") !== meta.workspaces.join("\u0000")) {
+        meta.workspaces = attributed
+        writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + "\n")
+        writeIndexEntry(key, meta)
+      }
       /** The task text; empty is a caller error and must never spawn an empty prompt. */
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_workmate_spawn: task required")
@@ -1288,7 +1979,7 @@ export function apply(ctx: Ctx): void {
     description: "Self-evolve a workmate after a completed work session: append a bounded memory entry (oldest evicted past the cap), merge an optional persona revision, regenerate its short note, and bump the use count. Call this at the end of every task a workmate did — the workmate itself is instructed to do so; the caller may also call it on its behalf.",
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
-    execute: async (args: any) => {
+    execute: async (args: any, exec: any) => {
       assertMutationSandboxed("reflect a workmate")
       // M4: a reflect arriving with a LEGACY (pre-rename) key does NOT resolve through renamedFrom —
       // ensureInstance fails with "no workmate named X" and zero side effects, so a legacy key can
@@ -1300,21 +1991,87 @@ export function apply(ctx: Ctx): void {
       const outcome = String(args?.outcome ?? "").trim()
       if (!task || !outcome) throw new Error("mpd_workmate_reflect: task and outcome required")
       appendMemory(key, `## ${now()} — ${capText(task, 200)}\n${capText(outcome, 1200)}`)
-      /** The persona after the optional revision was merged and capped. */
-      const persona = mergePersona(key, String(args?.persona_delta ?? "").trim())
+      /** The persona delta this reflect carries; empty means "no persona change". */
+      const delta = String(args?.persona_delta ?? "").trim()
+      // THE PERSONA RECORD (wave W4-A3): a delta is a NEW revision (and therefore a new version file);
+      // a reflect without one still BACKFILLS a legacy instance's missing fields, without inventing a
+      // revision the caller did not make.
+      const written = applyPersonaWrite({ dir: wmDir(key), meta, text: mergedPersonaText(readPersonaIn(wmDir(key)), delta), currentBase: currentBaseTextOf(meta), bump: delta !== "" })
+      /** The persona after this reflect, capped. */
+      const persona = written.persona
       /** The memory after the new entry landed and eviction ran. */
       const memory = readMemory(key)
       meta.uses += 1
       meta.lastTask = task
       meta.updatedAt = now()
+      // A reflect BINDS the instance to the workspace that worked it (R-W3C B2), so the per-workspace
+      // budget follows real use rather than a creation-time guess.
+      meta.workspaces = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec))
       // Repair the display mirror on write (§B): the directory key is the identity.
       meta.name = key
       writeFileSync(join(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + "\n")
-      /** The replacement note: the caller's, or one regenerated from the new state. */
+      // The note card carries the drift marker when the roster base moved, so the FILE says it too.
+      /** The replacement note: the caller's, or one regenerated from the new state, marked for drift. */
       const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(key)), NOTE_CAP)
-      writeFileSync(join(wmDir(key), "note.md"), note + "\n")
+      writeFileSync(join(wmDir(key), "note.md"), noteWithDrift(note, personaDrift(meta, wmDir(key), currentBaseTextOf(meta))) + "\n")
       writeIndexEntry(key, meta)
       return { name: key, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length }
+    }
+  })
+
+  dsh.registerTool({
+    name: "mpd_workmate_persona_set",
+    description: "REPLACE a workmate's persona text under a COMPARE-AND-SET guard. The caller names the revision its draft was based on (`baseRevision` = the INTEGER `personaRevision` reported by mpd_workmate_list, which is a DIFFERENT thing from the meta.json baseline of the same name); a stale token is REFUSED and NOTHING is written — the result carries the current revision and the current persona length so the caller can rebase and retry. A matching write replaces persona.md, bumps personaRevision, rewrites personaHash and stores the whole text as persona.versions/<revision>.md, where a version file is NEVER overwritten, so any two revisions can be diffed. Use it to prune or rewrite a persona that has evolved; mpd_workmate_reflect remains the append-a-delta path.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "workmate instance name" },
+        persona: { type: "string", description: "the COMPLETE new persona text — this REPLACES the current one" },
+        baseRevision: { type: "integer", description: "the personaRevision this draft is based on (from mpd_workmate_list); a stale value is refused" }
+      },
+      required: ["name", "persona", "baseRevision"],
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, revision: { type: "integer" }, personaChars: { type: "integer" }, personaHash: { type: "string" }, refused: { type: "string" }, currentRevision: { type: "integer" }, currentPersonaChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false },
+      render: (_a: unknown, v: any) => textBlock(v.updated === true
+        ? "workmate " + v.name + " persona set at revision " + v.revision + " (" + v.personaChars + "B, sha256 " + String(v.personaHash).slice(0, 12) + ")"
+        : "workmate " + v.name + " persona REFUSED — " + String(v.refused) + " (current revision " + v.currentRevision + ", " + v.currentPersonaChars + "B)")
+    },
+    execute: async (args: any, exec: any) => {
+      assertMutationSandboxed("set a workmate persona")
+      /** The instance this write targets; resolveTarget refuses an orphan or a symlinked directory. */
+      const { meta, dir } = resolveTarget(sanitizeName(String(args?.name ?? "")))
+      /** The caller's replacement persona text. */
+      const next = String(args?.persona ?? "")
+      // An empty persona would erase the instance's identity, which is not an update but a delete of what
+      // makes it a workmate — refused before anything is read or written.
+      if (next.trim() === "") throw new Error("mpd_workmate_persona_set: persona required (an empty persona would erase this workmate's identity)")
+      /** The current base persona text, or null when the roster cannot answer; computed ONCE per call. */
+      const base = currentBaseTextOf(meta)
+      /** The bookkeeping the CAS compares against (a legacy instance resolves its effective revision here). */
+      const record = personaRecordOf(dir, meta, base)
+      /** The revision the caller says its draft is based on. */
+      const expected = Number(args?.baseRevision)
+      if (!Number.isInteger(expected) || expected !== record.revision) {
+        // THE CAS REFUSAL: nothing on disk changes — not the persona, not the metadata, not a version file.
+        // The two numbers a caller needs to rebase (the current revision and the current persona length)
+        // ride the result, so the draft is never silently dropped on the floor.
+        rowLogLine("mpd-workmate", "persona_set refused (stale baseRevision) for " + meta.name)
+        return { name: meta.name, updated: false, refused: "stale baseRevision: the draft was based on revision " + String(args?.baseRevision) + " but this workmate is at revision " + record.revision + "; re-read the persona and rebase", currentRevision: record.revision, currentPersonaChars: readPersonaIn(dir).length }
+      }
+      /** The committed write: a NEW revision, its version file and the metadata triple. */
+      const written = applyPersonaWrite({ dir, meta, text: next, currentBase: base, bump: true })
+      meta.updatedAt = now()
+      // A persona write is a BIND (R-W3C B2): the workspace that rewrote the instance now owns it too.
+      meta.workspaces = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec))
+      // Repair the display mirror on write (§B): the directory key is the identity.
+      meta.name = sanitizeName(String(args?.name ?? ""))
+      writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
+      writeIndexEntry(meta.name, meta)
+      // ONE journal line per accepted write, which is what makes a persona rewrite auditable.
+      rowLogLine("mpd-workmate", "persona_set " + meta.name + " revision " + record.revision + " -> " + written.revision + " (sha256 " + written.hash.slice(0, 12) + ")")
+      return { name: meta.name, updated: true, revision: written.revision, personaChars: written.persona.length, personaHash: written.hash }
     }
   })
 
@@ -1372,6 +2129,55 @@ export function apply(ctx: Ctx): void {
     execute: async (args: any, exec: any) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])
   })
 
+  dsh.registerTool({
+    name: "mpd_workmate_optimize",
+    description: "Merge similar workmates and shrink the library. Two instances are MERGEABLE when they share the same roster base and readonly posture, neither is archived, neither is busy in a live team, AND (their note score clears the merge threshold OR their tag overlap is at least 0.5). A merge PRESERVES the evolved record — memory blocks concatenated and deduplicated by sha256 under the cap, the LONGER persona plus one merged-from line, use counts summed, name history accumulated, the note regenerated — and ARCHIVES the source to ~/.mpd/workmate/.archive/<name>-merged-<target>-<ts>/ with a merge.json record. It never deletes and cannot purge. DRY RUN BY DEFAULT: it returns the plan table and writes nothing unless confirm is literally true. A pair refused for live-team use skips ONLY that pair, and a pair that cannot run at all is REPORTED in `skipped` instead of aborting the rest. The in-use gate scans EVERY live workspace of this process (the library is cross-project); DECLARED BOUND: a live team in ANOTHER dsh process is not visible to this gate.",
+    parameters: {
+      type: "object",
+      properties: {
+        dryRun: { type: "boolean", description: "true = print the plan only (the default when confirm is absent)" },
+        confirm: { type: "boolean", description: "true = APPLY the plan; without it nothing is written" },
+        pairs: { type: "array", description: "explicit merge pairs; omitted = every fork in one base group", items: { type: "object", properties: { from: { type: "string" }, into: { type: "string" } }, required: ["from", "into"], additionalProperties: false } },
+        mergeThreshold: { type: "number", description: "note-score floor, 0..1; defaults to 0.6" }
+      },
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { plan: { type: "array", items: { type: "object" } }, applied: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } } }, required: ["plan", "applied", "skipped"], additionalProperties: false },
+      render: (_a: unknown, v: any) => textBlock(renderOptimizeTable(v as OptimizeResult))
+    },
+    execute: async (args: any, exec: any) => optimizeWorkmates({
+      dryRun: args?.dryRun === true,
+      confirm: args?.confirm === true,
+      ...(Array.isArray(args?.pairs) ? { pairs: (args.pairs as Array<Record<string, unknown>>).map((pair) => ({ from: String(pair?.from ?? ""), into: String(pair?.into ?? "") })) } : {}),
+      ...(typeof args?.mergeThreshold === "number" ? { mergeThreshold: args.mergeThreshold } : {}),
+      // THE IN-USE GATE IS HOME-WIDE (R-W3C High 1): the library is HOME-scoped and cross-project, so the
+      // merge gate must see a live team in ANY workspace — handing it the caller's own root let a pair be
+      // merged while another project's teammate was using it. `agentlessRoots` is the union of every live
+      // session workspace. DECLARED BOUND: a session in ANOTHER dsh PROCESS is invisible to
+      // `workspaceRootsAll`, so a cross-process live team remains unprotected by this gate.
+      teamRoots: agentlessRoots(dsh)
+    })
+  })
+
+  // `/workmate-optimize` is the human-facing half: no args prints the plan table, and the single
+  // argument `confirm` applies it. It answers with the same table the tool renders, so the two
+  // surfaces cannot drift.
+  dsh.registerCommand({
+    name: "workmate-optimize",
+    description: "Merge/optimise the workmate library: prints the merge plan (dry run) — add the word `confirm` to apply it",
+    input: { hint: "confirm" },
+    handler: (invocation: { rawInput?: unknown; agent?: unknown }) => {
+      /** Whether the caller asked to APPLY: the only accepted argument is the word `confirm`. */
+      const confirm = String(invocation?.rawInput ?? "").trim().toLowerCase() === "confirm"
+      /** The optimize call the table is rendered from. */
+      // Same HOME-wide root set as the tool (R-W3C High 1): a command run from project B must see the
+      // live team in project A. DECLARED BOUND: another dsh PROCESS is invisible to the union.
+      const result = optimizeWorkmates({ confirm, teamRoots: agentlessRoots(dsh) })
+      return { kind: "success" as const, text: renderOptimizeTable(result) }
+    }
+  })
+
   // Web GUI data routes (mirrors the agent-teams web surface pattern): the browser
   // workmate library floater polls /plugins/mpd-workmate/list and POSTs init from the
   // form. Register lazily — try at apply, retry on service binding — so a webless
@@ -1394,10 +2200,12 @@ export function apply(ctx: Ctx): void {
     /** A refusal keeps its §D reason (and the blocking teams for `in-use`) so the GUI can branch on
      * it. An unexpected internal failure is reported by error CODE only: an error body never leaks an
      * absolute filesystem path, which is exactly what an fs message would contain (§D). */
-    /** Map a thrown value onto the §D body: a `WorkmateError` keeps its reason and blocking teams, anything else reports a CODE only (never a filesystem path). */
+    /** Map a thrown value onto the §D body: a `HomeGuardRefusal` (every `WorkmateError` AND the shared
+     * T-43 guard, which throws the adapter's base class) keeps its reason, and a workmate refusal also
+     * keeps its blocking teams; anything else reports a CODE only (never a filesystem path). */
     const failure = (res: any, e: unknown): void => {
-      if (e instanceof WorkmateError) {
-        json(res, e.status, { error: e.message, reason: e.code, ...(e.blocking.length > 0 ? { blocking: e.blocking } : {}) })
+      if (e instanceof HomeGuardRefusal) {
+        json(res, e.status, { error: e.message, reason: e.code, ...(e instanceof WorkmateError && e.blocking.length > 0 ? { blocking: e.blocking } : {}) })
         return
       }
       json(res, 500, { error: `mpd_workmate: internal error (${String((e as any)?.code ?? "error")})`, reason: "internal" })
@@ -1472,7 +2280,9 @@ export function apply(ctx: Ctx): void {
         try { body = raw ? JSON.parse(raw) : {} } catch { res.writeHead(400, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify({ error: "invalid JSON" })); return }
         try {
           /** The created instance, reported exactly as the init tool would report it. */
-          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""))
+          // AN AGENTLESS ROUTE ATTRIBUTES NOTHING: there is no session to resolve a workspace from, and a
+          // process cwd would name whichever directory the server was started in, not a project.
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""), "")
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
           res.end(JSON.stringify(created))
         } catch (e: any) {

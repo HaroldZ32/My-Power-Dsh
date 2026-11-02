@@ -11,7 +11,7 @@
 // harness's own authorisation keeps applying:
 //   · three tools (`mpd_goal_status` / `mpd_goal_anchor` / `mpd_goal_finish`) plus the `mpdGoal`
 //     service, which other mpd rows consume;
-//   · the AUTO-ANCHOR contract: `mpd-ulw` and `mpd-boulder` call `mpdGoal.anchor(...)` when a
+//   · the AUTO-ANCHOR contract: `mpd-autoproject` (which now owns the boulder machine) calls `mpdGoal.anchor(...)` when a
 //     long run starts and `mpdGoal.finish(...)` when it ends, so the goal — not the turn — is the
 //     basis of record (see `goal.autoAnchor` below).
 //
@@ -60,7 +60,7 @@ export interface GoalAnchor {
   revision: number
   /** The objective the anchor was created with. */
   objective: string
-  /** Which row asked for the anchor (`ulw`, `boulder`, or `tool`). */
+  /** Which row asked for the anchor (`autoproject`, `boulder`, or `tool`). */
   source: string
   /** ISO timestamp of the creation, for the sidecar's own readability. */
   at: string

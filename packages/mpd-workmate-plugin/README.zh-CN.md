@@ -184,3 +184,22 @@ bun test packages/mpd-workmate-plugin   # 离线生命周期测试（沙箱 HOME
 
 任何内嵌只读 deny 列表的 `dist/index.js` 都必须在同一次改动中重新构建：仓库运行的是 `dist`，
 不是 `src`。
+
+
+## 团队自动绑定、优化与 persona 覆盖（波次 W3-C / W4）
+
+**团队批准时的自动绑定。** 已暂存计划被批准时，每个成员按**确定性**规则绑定：显式给出名字 → 绑定或
+**拒绝**；否则 `mpd_workmate_match`（得分 ≥ 0.35 且该名字在团队内空闲）→ **复用**；否则在
+`workmates.autoInit`（默认 `true`）且库小于 `workmates.max`（默认每工作区 12）时 → **初始化**；否则该成员
+保持普通成员，原因 `cap`。成员行会记录走的是哪条分支（`workmateMode`）以及原因（`workmateReason`）。
+
+**`mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` 与 `/workmate-optimize`** 合并
+「同一专长、各自跑偏」的 workmate：默认 **dry-run**；仅当同一 base、`readonly` 相等、都不在归档、都空闲，
+且 note 得分 ≥ 0.6 或 tag Jaccard ≥ 0.5 时才可合并。被合并掉的源会**归档**到
+`.archive/<name>-merged-<target>-<ts>/`，绝不 purge。
+
+**`mpd_workmate_persona_set`** 写入带版本的 persona 覆盖：`personaRevision` 递增、`personaHash` 记录字节、
+`baseRevision` 是对 base 模板的 CAS 围栏。当 base persona 已经前进时，该 workmate 会报 `defaultUpdated`
+与 `baseDriftLines`，而不是静默过期。
+
+**归属：** `meta.workspaces` 记录一个实例的按工作区归属（有上限），因此共享库能看出是哪些工作区在用它。

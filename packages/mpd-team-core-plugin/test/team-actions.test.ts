@@ -137,7 +137,9 @@ function stageWave(workspace: string): StagedPlan {
   /** The plan as it grows; each helper returns a new value. */
   let plan = stagePlan(workspace, LEAD, { name: "the wave", description: "ship the drive surface", approval: "required" }, NOW)
   plan = addMember(plan, { name: "Senior Engineer", description: "implements", prompt: "You implement.", role: "Senior Engineer" })
-  plan = addTask(plan, { subject: "core", description: "own the record", blockedBy: [] })
+  // THE OWNER IS DECLARED because owner-only is the DEFAULT rule: a board row with no owner is
+  // reported and stays pending, and every arm below expects this one to pair.
+  plan = addTask(plan, { subject: "core", description: "own the record", blockedBy: [], owner: "Senior Engineer" })
   plan = addTask(plan, { subject: "review the core", description: "judge it", kind: "review", blockedBy: ["core"], owner: "Senior Engineer" })
   writePlan(workspace, plan)
   return plan
@@ -201,7 +203,7 @@ describe("approveTeam — the `approve` body, exec-free", () => {
       .toEqual([{ id: "M1", name: "Senior Engineer", role: "Senior Engineer", status: "running", executorRef: "child-Senior-Engineer" }])
     // THE SECOND PASS RESOLVED THE SUBJECT REFERENCE to the board id the first pass minted.
     expect(record.tasks.map(taskShape)).toEqual([
-      { id: "T1", subject: "core", kind: "work", status: "pending", blockedBy: [] },
+      { id: "T1", subject: "core", kind: "work", status: "pending", blockedBy: [], owner: "Senior Engineer" },
       { id: "T2", subject: "review the core", kind: "review", status: "pending", blockedBy: ["T1"], owner: "Senior Engineer" },
     ])
     // THE PLAN IS ARCHIVED, so the staging slot is free and the approved plan stays readable.
@@ -333,6 +335,9 @@ describe("in-flight exclusion — a second concurrent caller is refused", () => 
     /** The first approval; it is suspended inside `spawn` from the moment it is called. */
     const first = approveTeam(deps, { ...LIVE, workspace: observed.workspace })
     // THE PRECONDITION: the first call really is in flight, past the plan read and inside its spawn.
+    // ONE macrotask is awaited first because approval now has an AWAIT before the spawn (the W3-C
+    // workmate binding pass), so the synchronous prefix ends at that await rather than at the spawn.
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
     expect(observed.spawns).toEqual(["Senior Engineer"])
     /** The second caller's answer, bounded so a NON-refusal fails fast rather than hanging. */
     let second: Awaited<ReturnType<typeof approveTeam>>

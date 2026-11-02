@@ -144,6 +144,32 @@ const inst = (key: string): string => join(root(), key)
 const readText = (p: string): string => readFileSync(p, "utf8")
 /** Read and parse a JSON file, used for the metadata assertions. */
 const readJson = (p: string): any => JSON.parse(readText(p))
+
+/**
+ * Every FILE under an instance directory as `relativePath:text`, sorted — the byte fingerprint an arm
+ * compares before and after a mutation of ANOTHER instance.
+ *
+ * Recursive because an instance owns a `persona.versions/` SUBDIRECTORY since wave W4-A3: a flat
+ * `readdirSync(...).map(readText)` would now try to read a directory and fail, and would also hide the
+ * version files the arm exists to prove untouched.
+ *
+ * @param root - the instance directory to walk.
+ * @param prefix - the relative path accumulated so far (empty at the top call).
+ * @returns one `relativePath:text` entry per file, sorted.
+ */
+const allFilesText = (root: string, prefix: string = ""): string[] => {
+  /** Every entry of this level, directories first-class rather than dereferenced. */
+  const entries = readdirSync(join(root, prefix), { withFileTypes: true })
+  /** The accumulated `relativePath:text` rows. */
+  const rows: string[] = []
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    /** The entry's path relative to the instance root. */
+    const rel = prefix === "" ? entry.name : prefix + "/" + entry.name
+    if (entry.isDirectory()) rows.push(...allFilesText(root, rel))
+    else rows.push(rel + ":" + readText(join(root, rel)))
+  }
+  return rows
+}
 /** The index's keys, sorted, which is how a stale key would show up. */
 const indexKeys = (): string[] => Object.keys(readJson(join(root(), "index.json"))).sort()
 /** The library's directory names, sorted: what a reader would see on disk. */
@@ -515,10 +541,10 @@ test("delete never touches another workmate's bytes and leaves no partial instan
   await h.byName("mpd_workmate_reflect").execute({ name: "alpha-1", task: "ta", outcome: "oa" }, h.exec)
   await h.byName("mpd_workmate_reflect").execute({ name: "beta-1", task: "tb", outcome: "ob" }, h.exec)
   /** beta's files and their bytes BEFORE alpha is deleted. */
-  const betaFiles = readdirSync(inst("beta-1")).sort().map((f) => f + ":" + readText(join(inst("beta-1"), f)))
+  const betaFiles = allFilesText(inst("beta-1"))
   await h.byName("mpd_workmate_delete").execute({ name: "alpha-1" }, h.exec)
   /** The same listing after the delete, which must be byte-identical. */
-  const betaAfter = readdirSync(inst("beta-1")).sort().map((f) => f + ":" + readText(join(inst("beta-1"), f)))
+  const betaAfter = allFilesText(inst("beta-1"))
   expect(betaAfter).toEqual(betaFiles)
   expect(indexKeys()).toEqual(["beta-1"])
 })
@@ -936,6 +962,19 @@ test("the mutation tools' declared output schemas accept the values they return 
   const archive = await violationsOf("mpd_workmate_delete", { name: "oracle-2" })
   expect({ violations: archive.violations }).toEqual({ violations: [] })
   expect(archive.value).toMatchObject({ ok: true, name: "oracle-2", purged: false })
+  // THE PERSONA CAS TOOL, both of its declared shapes: the accepted write and the REFUSAL, because a
+  // refusal is a RESULT the harness validates too — a schema that only covered the happy path would fail
+  // the call at runtime with "returned invalid output".
+  // A FRESH instance, because the ones above were renamed and deleted by this arm's own earlier steps.
+  await initOne(h, "oracle-persona")
+  /** The accepted write's value plus its validator findings. */
+  const personaSet = await violationsOf("mpd_workmate_persona_set", { name: "oracle-persona", persona: "a rewritten persona", baseRevision: 1 })
+  expect({ violations: personaSet.violations }).toEqual({ violations: [] })
+  expect(personaSet.value).toMatchObject({ name: "oracle-persona", updated: true, revision: 2 })
+  /** The CAS refusal's value plus its validator findings. */
+  const personaStale = await violationsOf("mpd_workmate_persona_set", { name: "oracle-persona", persona: "a stale draft", baseRevision: 1 })
+  expect({ violations: personaStale.violations }).toEqual({ violations: [] })
+  expect(personaStale.value).toMatchObject({ name: "oracle-persona", updated: false, currentRevision: 2 })
 
   await initOne(h, "oracle-3")
   /** The purge result plus its validator findings. */

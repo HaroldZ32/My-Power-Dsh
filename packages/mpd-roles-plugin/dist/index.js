@@ -215,6 +215,23 @@ function readTargetPath(toolName, args) {
 // packages/mpd-roles-plugin/src/complexity-gate.ts
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
 import { join } from "node:path";
+
+// packages/mpd-roles-plugin/src/admission.ts
+var AUTOMATION_GESTURE_PATTERN = /\b(?:autoproject|auto-project|orchestrate|orchestration)\b|自动化|编排/iu;
+function admissionOf(source, text, evidence = {}) {
+  const body = typeof text === "string" ? text : "";
+  const explicit = evidence.explicitFlag ?? consumeExplicitFlag(body).flagged;
+  if (explicit)
+    return "explicit";
+  if (source !== "human")
+    return "ignore";
+  if (AUTOMATION_GESTURE_PATTERN.test(body))
+    return "explicit";
+  const signals = evidence.matchedSignals ?? evaluateComplexityGate(body).signals.length;
+  return signals >= 1 ? "inferred" : "ignore";
+}
+
+// packages/mpd-roles-plugin/src/complexity-gate.ts
 var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
 var HUMAN_SOURCE_KIND = "user";
 var GATE_MODE_MECHANICAL = "mechanical";
@@ -379,7 +396,12 @@ function evaluateComplexityGate(text, input = {}) {
     signals.push("E");
   if (thresholds.workspaceScale && input.workspaceScale === true)
     signals.push("F");
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+  const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length });
+  return {
+    trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
+    signals,
+    strength
+  };
 }
 async function readBoulderGate(workspace, opts = {}) {
   try {
@@ -499,9 +521,12 @@ Active plan artifact (signal D): ` + input.planPath),
     approval: "required"
   };
 }
-function advisoryNoticeText(signals, explicit) {
+function ADMISSION_CLAUSE_OF(strength) {
+  return strength === undefined ? "" : " (admission " + strength + ")";
+}
+function advisoryNoticeText(signals, explicit, strength) {
   const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(strength) + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
 }
@@ -512,7 +537,7 @@ function mechanicalNoticeText(input) {
   const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`), then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
 - Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
 - Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(input.strength) + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
 - The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + nextStep + `
 - ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert." + `
@@ -1392,7 +1417,7 @@ function installRosterSection(dsh, options) {
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -3831,7 +3856,7 @@ function installSessionGate(dsh, options) {
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity);
       const notice = dsh.userMessage({
-        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
+        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength }) : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
       const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);

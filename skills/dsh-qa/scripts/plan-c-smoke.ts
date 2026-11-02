@@ -119,13 +119,13 @@ function selfTest(): void {
   const bundle = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
   /** The installer source this case spawns, read here only for the row-set assertion. */
   const installer = readFileSync(join(repoRoot, "scripts", "install-profile.ts"), "utf8")
-  for (const id of ["mpd-hashline", "mpd-boulder", "mpd-config"]) {
+  for (const id of ["mpd-hashline", "mpd-autoproject", "mpd-config"]) {
     if (!bundle.includes("id: " + id) || !installer.includes(id)) { console.error("[plan-c-smoke self-test] FAIL: missing row " + id); process.exit(1) }
   }
   /** The package/label pairs whose unit suites gate this case. */
   const suites: ReadonlyArray<readonly [string, string]> = [
     ["packages/mpd-hashline-plugin", "hashline"],
-    ["packages/mpd-boulder-plugin", "boulder"],
+    ["packages/mpd-autoproject-plugin", "boulder"],
     ["packages/mpd-config-plugin", "config"]
   ]
   for (const [pkg, label] of suites) {
@@ -171,12 +171,12 @@ async function runReal(): Promise<void> {
   steps.installer = { ok: inst.status === 0, exit: inst.status }
   /** The installed home patch, read for the row-set assertion. */
   const patch = readFileSync(join(sandbox, "cordis.patch.yml"), "utf8")
-  steps.rows = { ok: ["mpd-hashline", "mpd-boulder", "mpd-config"].every((id) => patch.includes(id)), patch: patch.includes("mpd-config") }
+  steps.rows = { ok: ["mpd-hashline", "mpd-autoproject", "mpd-config"].every((id) => patch.includes(id)), patch: patch.includes("mpd-config") }
 
   /** The one-session task that exercises all three surfaces. */
   const task = [
     "Plan C Wave A self-test:",
-    "1) write .mpd/mpd.jsonc with { ulw: { maxRounds: 4 }, memory: { vcs: 'git' } } then call mpd_config_get with key 'memory.vcs' and report the value;",
+    "1) write .mpd/mpd.jsonc with { autoproject: { maxRounds: 4 }, memory: { vcs: 'git' } } then call mpd_config_get with key 'memory.vcs' and report the value;",
     "2) create .mpd/plans/qa.md containing '# QA' and '## TODOs' with '- [ ] 1. First' and '- [x] 2. Second', call mpd_boulder_start on it, mpd_boulder_task_timer start/end for task '1', then mpd_boulder_complete;",
     "3) create note.txt with three lines 'first' 'second' 'third', call mpd_hashline_read, then mpd_hashline_edit to replace line 2 with 'second2', then read note.txt",
     "Report: the config value, the workId and status, and the final note.txt content."

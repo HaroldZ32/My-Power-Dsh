@@ -1,0 +1,105 @@
+{
+  "task": "T3 / W1-B1",
+  "contract": ".mpd/plans/autoproject-refactor.md",
+  "lane": "Senior Engineer",
+  "generatedAt": "2026-11-02T11:26:51Z",
+  "scope": [
+    "packages/mpd-autoproject-plugin/**",
+    "packages/mpd-boulder-plugin (deleted)",
+    "cordis.patch.yml",
+    "scripts/install-profile.ts",
+    "scripts/pack-mpd.ts",
+    "scripts/docker-e2e.ts",
+    "docker/probe.ts",
+    "docker/lib/report.ts",
+    "skills/dsh-qa/**",
+    "packages/mpd-config-plugin/src/settings-schema.ts",
+    "packages/mpd-bundle-plugin/src/settings-card.ts (+ client.js rebuilt)",
+    "packages/mpd-goal-plugin/test/goal.test.ts",
+    "VENDOR_LOCK.json (path key only)",
+    "packages/mpd-dsh-adapter-plugin/test/{adapter,cross-package-coupling-inventory}.test.ts"
+  ],
+  "gates": [
+    {
+      "name": "package tests",
+      "command": "bun test packages/mpd-autoproject-plugin packages/mpd-config-plugin packages/mpd-bundle-plugin packages/mpd-goal-plugin",
+      "exit": 0,
+      "observed": "481 pass, 0 fail, 27 files",
+      "log": "package-tests.log"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit clean",
+      "log": "typecheck.log"
+    },
+    {
+      "name": "verify:rows",
+      "command": "node scripts/verify-rows-parity.ts",
+      "exit": 0,
+      "observed": "36 row ids; mpd-autoproject present; mpd-boulder gone",
+      "log": "verify-rows.log"
+    },
+    {
+      "name": "verify:manifest",
+      "command": "node scripts/verify-plugin-manifest.ts",
+      "exit": 0,
+      "observed": "PASS; 28 row module paths resolve, 0 missing",
+      "log": "verify-manifest.log"
+    },
+    {
+      "name": "verify:comments",
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 1,
+      "observed": "1 violation, in packages/mpd-team-core-plugin/src/dispatch.ts (another lane); 0 in this lane's files",
+      "log": "verify-comments.log"
+    },
+    {
+      "name": "verify:docs",
+      "command": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "observed": "PASS; 54 pairs, 505 links, 0 dead",
+      "log": "verify-docs.log"
+    },
+    {
+      "name": "verify:vendor",
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "skills treeSha (3 QA scripts renamed) + client.js sha256 (rebuilt): one captain re-pin cures both; the moved boulder vendor tree is OK at 13 files / same treeSha",
+      "log": "verify-vendor.log"
+    },
+    {
+      "name": "QA self-tests",
+      "command": "node scripts/run-qa-selftests.ts",
+      "exit": 1,
+      "observed": "54/55 pass; the failure is team-dispatch-guard.ts (another lane)",
+      "log": "qa-selftests.log"
+    },
+    {
+      "name": "docker self-test",
+      "command": "node scripts/docker-e2e.ts --self-test",
+      "exit": 0,
+      "observed": "all arms passed"
+    },
+    {
+      "name": "preset-conformance self-test",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit": 0,
+      "observed": "32 harness rows conform; mpd preset 29 child rows; row parity 27/27"
+    },
+    {
+      "name": "residue grep",
+      "command": "grep -rn 'mpd-ulw|mpd_ulw|mpd_ultrawork|/ultrawork|/ulw|.mpd/ulw' packages scripts docker tests skills/dsh-qa cordis.patch.yml presets dsh-*.json",
+      "exit": 0,
+      "observed": "1 in-lane hit (an explanatory comment); all code/rows/manifests/QA/docker clean",
+      "log": "residue-grep.log"
+    }
+  ],
+  "notProven": [
+    "verify:vendor needs the captain's single re-pin (skills treeSha + client.js sha256)",
+    "no dist rebuilt (T-88); the merged row mounts only after the captain's pinned-toolchain rebuild",
+    "no real MOUNT boot of the merged row (would load the stale dist)",
+    "docs band untouched (W5); the package README pair travels unchanged"
+  ]
+}

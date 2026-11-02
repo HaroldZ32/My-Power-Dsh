@@ -86,7 +86,7 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 
 - **宿主插件** —— `mpd-dsh-adapter-plugin`（所有插件行共同调用的唯一 harness 接缝适配器）、
   `mpd-config-plugin`、`mpd-tools-plugin`、`mpd-modelchain-plugin`、`mpd-roles-plugin`、
-  `mpd-ext-plugin`（扩展接口）、`mpd-ulw-plugin`、`mpd-hashline-plugin`、`mpd-boulder-plugin`、
+  `mpd-ext-plugin`（扩展接口）、`mpd-autoproject-plugin`、`mpd-hashline-plugin`、`mpd-autoproject-plugin`、
   `mpd-goal-plugin`、`mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
   `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-verify-plugin`、
   `mpd-team-core-plugin`（团队记录）、`mpd-team-compact-plugin`、`mpd-team-watchdog-plugin`、
@@ -107,7 +107,7 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | 资源 | 被谁引用 | 内容 |
 |---|---|---|
 | [`architecture.svg`](./assets/images/architecture.svg) | 本文档中心、[design.zh-CN.md](design.zh-CN.md) | bundle 的各层：DSH 宿主 → patch 层 1 → patch 层 2 → 适配器接缝 → 界面 → 状态根目录。 |
-| [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-ulw-循环与它的关卡) | 一次 ultrawork 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
+| [`autoproject-loop.svg`](./assets/images/autoproject-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-autoproject-循环与它的关卡) | 一次 autoproject 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝 —— 仅在 OFFICIAL 平面上才是提示）。 |
 | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
 | [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |

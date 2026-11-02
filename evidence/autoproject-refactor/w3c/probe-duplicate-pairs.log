@@ -1,0 +1,4 @@
+library before: oracle-1,oracle-2,oracle-3
+THREW: mpd_workmate: no workmate named "oracle-2"
+library after : index.json,oracle-1,oracle-3
+archive after : oracle-2-merged-oracle-1-2026-11-02T120951Z

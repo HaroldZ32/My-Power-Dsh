@@ -5,11 +5,11 @@
 // checkpoint detector and the `agent/turn-stopping` compaction barrier. The decision logic they share
 // lives in `protocol-core.ts` (pure, unit-testable); this file binds it to the adapter and to disk.
 import { appendJournal, freeCellId, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
-import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
+import { callerContext, type CallerContext, type TeamActionsServiceView, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
-import { applyReassignments, dispatchOwnerOnly, fenceReasonOf, nameKey, reassignPairs, sendThroughExecutor, type DispatchRecordView, type DispatchReport, type ReassignOutcome } from "./dispatch"
+import { fenceReasonOf, nameKey, sendThroughExecutor } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
-import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
+import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, pageCellMail, readCellMail, truncateCellMailBody, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import { sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
 import type { SendInput, SendManyResult } from "../../mpd-team-core-plugin/src/mailbox-store"
 import { fanOutTargets } from "../../mpd-mail-protocol/src/index"
@@ -28,7 +28,7 @@ import {
   type CheckpointPlan,
 } from "./protocol-core"
 import { readFileSync } from "node:fs"
-import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { ProtocolDeps } from "./protocol-core"
 
 /** One protocol tool's answer: a structured success (any documented fields) or the refusal sentence. */
@@ -133,6 +133,61 @@ function parseMailSelected(value: unknown): string[] | ProtocolFailure {
     selected.push(entry)
   }
   return selected
+}
+
+/**
+ * The TEAM PLANE's occupancy reading for one seat, or `undefined` when that plane cannot answer.
+ *
+ * The answer is PARSED here because the service belongs to another row: every field is checked, and an
+ * unrecognised provenance reads as "the plane cannot answer" rather than being forwarded as if it were
+ * an observation. A null window stays null — this boundary never invents one.
+ * @param teams - the `mpdTeams` view, or undefined in a composition without that row.
+ * @param workspace - the caller's workspace root.
+ * @param teamId - the cell's live team id (`""` means no team was approved yet).
+ * @param memberName - the seat, by board name.
+ * @returns the pressure reading, or undefined.
+ */
+function planePressureOf(teams: TeamsServiceView | undefined, workspace: string, teamId: string, memberName: string): DshContextPressure | undefined {
+  if (teamId === "" || memberName === "") return undefined
+  /** The plane's own reading, read structurally. */
+  const reading = teams?.memberContext?.(workspace, teamId, memberName)
+  if (typeof reading !== "object" || reading === null) return undefined
+  /** That reading as a record. */
+  const row = reading as Record<string, unknown>
+  // ONLY AN OBSERVED WINDOW IS AN ANSWER (T49). `mpdTeams.memberContext` is TOTAL, so it answers for a
+  // name that is not on the roster too — with `unavailable` (or `no-window`) and null numbers. Accepting
+  // that as a reading LET THE PLANE SILENCE THE CAPTAIN: the captain is never a team member, so after
+  // activation `cellwork_context` reported null tokens and `willCheckpoint:false` while the adapter held
+  // the real meter. A reading without an observed window is therefore treated as NO ANSWER and the caller
+  // falls back to the adapter (the same degradation this row uses for every other plane read).
+  if (row.provenance !== "observed") return undefined
+  if (typeof row.usedTokens !== "number" || typeof row.windowTokens !== "number") return undefined
+  /** The observed ratio, when the plane stated one. */
+  const ratio = typeof row.ratio === "number" ? row.ratio : row.windowTokens === 0 ? null : row.usedTokens / row.windowTokens
+  return { usedTokens: row.usedTokens, windowTokens: row.windowTokens, ratio, provenance: "observed" }
+}
+
+/**
+ * The TEAM PLANE's depth reading for one cell's team, or `undefined` when that plane cannot answer.
+ *
+ * A reading that CARRIES A REASON is not an answer: `mpdTeams.depthBudget` is total, so an unknown team
+ * still answers depth 0 — using that to decide a refusal would bound the child on a team nobody could
+ * read. The reason therefore disqualifies the reading, and the caller falls back to the cell record.
+ * @param teams - the `mpdTeams` view, or undefined in a composition without that row.
+ * @param workspace - the caller's workspace root.
+ * @param teamId - the parent cell's live team id.
+ * @returns the depth and its bound, or undefined.
+ */
+function planeDepthOf(teams: TeamsServiceView | undefined, workspace: string, teamId: string): { depth: number; depthMax: number } | undefined {
+  if (teamId === "") return undefined
+  /** The plane's own reading, read structurally. */
+  const budget = teams?.depthBudget?.(workspace, teamId)
+  if (typeof budget !== "object" || budget === null) return undefined
+  /** That reading as a record. */
+  const row = budget as Record<string, unknown>
+  if (typeof row.reason === "string" && row.reason !== "") return undefined
+  if (typeof row.depth !== "number" || typeof row.depthMax !== "number") return undefined
+  return { depth: row.depth, depthMax: row.depthMax }
 }
 
 /**
@@ -249,6 +304,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     const service = deps.ctx.get?.("mpdTeams", false)
     return typeof service === "object" && service !== null ? service as TeamsServiceView : undefined
   }
+  /** The team-plane WRITE surface, probed per call (wave W2-D: the plane is the authority). */
+  const actions = (): TeamActionsServiceView | undefined => {
+    /** The service object, or undefined. */
+    const service = deps.ctx.get?.("mpdTeamActions", false)
+    return typeof service === "object" && service !== null ? service as TeamActionsServiceView : undefined
+  }
   /** The caller's context for one dispatch. */
   const callerFor = (exec: DshToolExec): CallerContext => callerContext(dsh, exec, { teams })
   /**
@@ -264,6 +325,39 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     const record = teams()?.get?.(workspace, teamId)
     return typeof record === "object" && record !== null ? record as Record<string, unknown> : undefined
   }
+  /**
+   * The PLANE's reading of one seat, or an empty reading when the record does not name it.
+   *
+   * The team record is the authority for a closed seat (wave W2-E): `mode:"checkpoint"` and the fence
+   * flag are ITS facts, and the cell row's own `mode` is a mirror. A reader that asked the cell row alone
+   * could report a seat open one turn after the plane closed it, which is the divergence this ends.
+   * @param cell - the cell whose team is asked.
+   * @param workspace - the caller's workspace root.
+   * @param name - the member's display name (its record id is accepted too).
+   * @returns `{mode}` for a live seat, `{mode:"checkpoint", checkpoint:true, fenceReason}` for a closed
+   * one, and `{}` when the record does not name it.
+   */
+  const recordSeat = (cell: CellState, workspace: string, name: string): { mode?: string; checkpoint?: boolean; fenceReason?: string } => {
+    /** The live team record for this cell. */
+    const record = recordOf(workspace, cell.teamId)
+    if (record === undefined) return {}
+    /** The roster rows this build can read. */
+    const rows = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : []
+    /** The row this name names. */
+    const row = rows.find((candidate) => candidate.name === name || candidate.id === name)
+    if (row === undefined) return {}
+    /** The plane's mode for the seat, when it states one. */
+    const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined
+    /** Whether the plane reports the seat CLOSED, by either of its two spellings. */
+    const closed = row.mode === "checkpoint" || row.fenced === true
+    if (!closed) return mode === undefined ? {} : { mode }
+    /** Why the plane closed it, in the plane's own vocabulary. */
+    const reason = row.fenced === true
+      ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "")
+      : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it"
+    return { mode: "checkpoint", checkpoint: true, fenceReason: reason }
+  }
+
   /**
    * Persist one transition: journal first, then the record.
    *
@@ -354,61 +448,63 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The active cell. */
       const cell = caller.cell as CellState
       if (cell.phase === "stopped") return { ok: false, error: "cellwork_dispatch: cell " + cell.cellId + " is stopped and archived" }
-      /** The delivery binding, when this composition exposes the team executor. */
-      const send = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
-      if (send === undefined) return { ok: false, error: "cellwork_dispatch: this composition exposes no team executor, so no member can be woken" }
-      /** The instant this pass is stamped with, shared so no row of the pass reads earlier than its neighbour. */
+      // THE TEAM PLANE OWNS THE PAIRING (wave W2-D). This tool asks for ONE owner-only pass and MAPS the
+      // report back into the shape it has always answered; the private engine that used to live in
+      // `dispatch.ts` is DELETED, so the bundle has exactly one pairing rule. `reassign` goes down RAW:
+      // the plane's validator is the one rule, and its refusal sentence comes back on the envelope.
+      /** The team-plane write surface, probed per call. */
+      const plane = actions()
+      if (plane?.dispatch === undefined) return { ok: false, error: "cellwork_dispatch: this composition exposes no mpdTeamActions service, so the team plane cannot be asked to pair rows" }
+      /** The instant this pass is stamped with. */
       const now = new Date()
-      /** The `reassign` pairs this call could read, and the entries it refused. */
-      const handover = reassignPairs(readArgs(args)["reassign"])
-      /** What the hand-over did, one entry per readable pair. */
-      let reassigned: ReassignOutcome[] = []
-      // THE HAND-OVER RUNS BEFORE THE PASS (C6): claim on the board, journal, then deliver — the order a
-      // member depends on, because a message for a row it cannot see on the board is the D4/D5 livelock.
-      if (handover.pairs.length > 0) {
-        /** The live record the claims target, read per call. */
-        const before = recordOf(caller.workspace, cell.teamId)
-        reassigned = await applyReassignments({
-          workspace: caller.workspace,
-          cell,
-          record: before as DispatchRecordView | undefined,
-          pairs: handover.pairs,
-          claim: async (taskId: string, owner: string): Promise<{ ok: boolean; error?: string }> => {
-            try {
-              /** The board's own answer to `agent_teams_task {action:"claim"}`. */
-              const claimed = await dsh.executeTool({ name: "agent_teams_task", arguments: { action: "claim", task_id: taskId, claimant: owner }, agent: exec.agent })
-              return claimed.ok ? { ok: true } : { ok: false, error: String(claimed.error ?? "the board refused the claim") }
-            } catch (error) {
-              return { ok: false, error: errorText(error) }
-            }
-          },
-          send,
-          now,
-          handleFor: (name) => cell.members[name]?.executorRef,
-        })
-        appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed).length, delivered: reassigned.filter((row) => row.delivered).length, rejected: reassigned.filter((row) => !row.claimed).length, invalid: handover.invalid.length }, now)
+      /** The raw `reassign` argument, forwarded untouched. */
+      const rawReassign = readArgs(args)["reassign"]
+      /** The plane's answer. */
+      const reply = (await plane.dispatch({
+        sessionId: caller.sessionId,
+        mode: "owner-only",
+        ...(rawReassign === undefined ? {} : { reassign: rawReassign }),
+      })) as Record<string, unknown>
+      // A REFUSAL IS THE PLANE'S OWN SENTENCE (a malformed `reassign`, an unknown mode, no team), which is
+      // what the tool's failure envelope reports — the same shape every other cellwork refusal uses.
+      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass") }
+      /** The delivered pairings, as this tool reports them. */
+      const pairs = Array.isArray(reply.pairs) ? reply.pairs as Array<Record<string, unknown>> : []
+      /** The hand-overs the plane performed, reported beside the pass. */
+      const reassigned = Array.isArray(reply.reassigned) ? reply.reassigned as Array<Record<string, unknown>> : []
+      // THE PLANE'S `cancelled` WORD, SPELLED THE WAY THIS TOOL ALWAYS SPELLED IT: the plane reports the
+      // row terminal (one lowercase word, its own vocabulary); cellwork's report has always carried the
+      // CANCELLED sentence a captain reads, so the reason is rewritten here — the FACT is the plane's, the
+      // WORDS are this tool's contract.
+      // THE PLANE REPORTS EVERY ROW IT CONSIDERED; THIS TOOL HAS ALWAYS REPORTED THE ROWS IT DECIDED ABOUT.
+      // A finished row is not a decision a captain has to act on, so the informational entries stay out of
+      // the report (they were never in it) while every actionable one — blocked, fenced, busy, failed,
+      // provisioning, ownerless, cancelled — is kept. This is the tool's documented shape, not a filter of
+      // the plane's facts: the board still holds them.
+      /** The plane's skips, in this tool's vocabulary. */
+      const skipped = Array.isArray(reply.skipped)
+        ? (reply.skipped as Array<Record<string, unknown>>)
+          .map((row) => row.reason === "cancelled" ? { ...row, reason: "CANCELLED — the row is terminal on the board, so no pass may pair it" } : row)
+          .filter((row) => row.reason !== "already completed" && !String(row.reason).startsWith("not ready (status "))
+        : []
+      // CANCELLED ROWS ARE NAMED HERE TOO. The plane now CLOSES a cancelled row (and reports `cancelled`);
+      // this cell also keeps its own `cancelledTasks` map for rows a PREVIOUS build abandoned before the
+      // plane knew them, and those must be reported rather than silently absent from the skip list.
+      /** The board ids this cell's own record abandoned. */
+      const abandoned = new Set(Object.values(cell.cancelledTasks ?? {}).filter((id) => id !== ""))
+      for (const taskId of abandoned) {
+        // ONE guard, and it is LIVE: the plane reports every row it considered, so an abandoned row the
+        // PLANE closed is already in `skipped` (as CANCELLED) and must not be listed twice. The old
+        // `pairs` guard was DEAD and is gone — the plane never pairs a cancelled row — and a row the plane
+        // does not carry at all is added here, because the cell's own map is the only place it is remembered.
+        if (skipped.some((row) => String(row.taskId) === taskId)) continue
+        skipped.push({ taskId, subject: "", reason: "CANCELLED — this cell's record abandoned the row, so no pass may pair it" })
       }
-      /** The live record, RE-READ after the hand-over: the claims just moved those rows to `in_progress`. */
-      const record = recordOf(caller.workspace, cell.teamId)
-      /** The report. */
-      const report: DispatchReport = await dispatchOwnerOnly({
-        workspace: caller.workspace,
-        cell,
-        record: record as DispatchRecordView | undefined,
-        send,
-        now,
-        handleFor: (name) => cell.members[name]?.executorRef,
-        excludedTaskIds: Object.values(cell.cancelledTasks),
-      })
-      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, now)
-      return {
-        ok: true,
-        pairs: report.pairs,
-        skipped: report.skipped,
-        ...(reassigned.length === 0 ? {} : { reassigned }),
-        ...(handover.invalid.length === 0 ? {} : { reassignInvalid: handover.invalid }),
-        ...(report.refused === undefined ? {} : { refused: report.refused }),
+      if (reassigned.length > 0) {
+        appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed === true).length, delivered: reassigned.filter((row) => row.delivered === true).length, rejected: reassigned.filter((row) => row.claimed !== true).length }, now)
       }
+      appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: pairs.length, skipped: skipped.length }, now)
+      return { ok: true, pairs, skipped, ...(reassigned.length === 0 ? {} : { reassigned }) }
     },
   }))
 
@@ -416,7 +512,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
     description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the FENCED members together with the open rows they own (reassign those), and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    parameters: { type: "object", properties: {
+      limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
+      offset: { type: "integer", description: "First row of the page (default 0)." },
+    }, additionalProperties: false },
     output: {
       schema: {
         type: "object",
@@ -473,9 +572,19 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const tasks = record !== undefined && Array.isArray(record.tasks) ? (record.tasks as Array<Record<string, unknown>>) : []
       /** Every member's live reading. */
       const members = Object.values(cell.members).map((member) => {
+        // THE PLANE FIRST, the adapter only as the documented degradation (see `planePressureOf`): the
+        // sweep reports the provenance the seat's own row would report, so two surfaces cannot disagree.
+        /** The plane's reading for this seat, when it answered. */
+        const plane = planePressureOf(teams(), caller.workspace, cell.teamId, member.name)
         /** The live pressure reading, which is total on the adapter. */
-        const pressure = dsh.contextPressure(member.sessionId === "" ? member.name : member.sessionId)
-        return { name: member.name, mode: member.mode, role: member.role, handoffReady: member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance }
+        /** The seat as the PLANE reads it, when the record names this member. */
+        const seat = recordSeat(cell, caller.workspace, member.name)
+        // THE RECORD IS THE AUTHORITY FOR `mode` AND `fenced` (wave W2-E): the cell row is the mirror, so a
+        // plane-side fence is reported even before the mirror catches up. The planner's own reading wins
+        // when it answered, and the adapter's meter is the fallback (a total read, never a guess).
+        /** The live pressure reading: the planner's, or the adapter's meter. */
+        const pressure = plane ?? dsh.contextPressure(member.sessionId === "" ? member.name : member.sessionId)
+        return { name: member.name, mode: seat.mode ?? member.mode, role: member.role, handoffReady: seat.checkpoint ?? member.handoffReady, handoffs: member.handoffs, ratio: pressure.ratio, usedTokens: pressure.usedTokens, windowTokens: pressure.windowTokens, provenance: pressure.provenance }
       })
       /** The folded mail. */
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId))
@@ -483,8 +592,12 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // rows to reassign HERE, from the read-only sweep, instead of reconstructing them from the journal.
       /** Every fenced member, with the reason and the open board rows it still owns. */
       const fenced = Object.values(cell.members).flatMap((member) => {
+        /** The seat as the PLANE reads it, when the record names this member. */
+        const seat = recordSeat(cell, caller.workspace, member.name)
+        // WHY THE PLANE WINS: a fence written by `mpdTeamActions.fence` is the fact; the cell row's own
+        // `mode` can lag it by a turn. When the record says the seat is closed, that reason is reported.
         /** Why this member is fenced, or undefined when it can work. */
-        const reason = fenceReasonOf(member)
+        const reason = seat.fenceReason ?? fenceReasonOf(member)
         if (reason === undefined) return []
         /** The open rows credited to this member — the ones a `reassign` pass could move. */
         const owned = tasks.filter((task) => {
@@ -492,7 +605,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           const status = String(task.status ?? "")
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name)
         }).map((task) => String(task.id ?? ""))
-        return [{ name: member.name, mode: member.mode, reason, tasks: owned }]
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned }]
       })
       return {
         ok: true,
@@ -515,7 +628,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   disposers.push(dsh.registerTool({
     name: "cellwork_context",
     description: "Any cell seat: the caller's OWN live context occupancy — used tokens, the observed window and its provenance, the ratio, the checkpoint threshold in force, and whether a checkpoint would fire at this step. Read-only; never guesses a window (provenance `no-window`/`unavailable` answers null).",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    parameters: { type: "object", properties: {
+      limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
+      offset: { type: "integer", description: "First row of the page (default 0)." },
+    }, additionalProperties: false },
     output: {
       schema: {
         type: "object",
@@ -546,8 +662,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
       if (caller.cell === null || caller.member === "") return { ok: false, error: "cellwork_context: this session belongs to no active cell" }
+      // THE TEAM PLANE IS THE AUTHORITY when it can answer: `mpdTeams.memberContext` is the SAME meter
+      // read through the row that owns the seat, so its provenance is what the caller is told. Only a
+      // composition where that service (or its member) is absent reads the adapter directly — the same
+      // degradation every seam in this bundle documents.
+      /** The plane's reading, when it answered. */
+      const plane = planePressureOf(teams(), caller.workspace, caller.cell.teamId, caller.member)
       /** The live reading for the caller's own session. */
-      const pressure = dsh.contextPressure(exec.agent)
+      const pressure = plane ?? dsh.contextPressure(exec.agent)
       /** The checkpoint decision this reading would produce. */
       const plan: CheckpointPlan = planCheckpoint(caller.cell, caller.member, pressure, config, null)
       return {
@@ -622,11 +744,22 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!validation.ok) return { ok: false, error: "cellwork_handoff: the document is INCOMPLETE — these sections are missing or empty: " + validation.missing.join(", "), ...{ missing: validation.missing, sections: validation.sections } }
       /** The ordinal of this handoff (one past the last one written). */
       const ordinal = member.handoffs + 1
-      /** The absolute path written. */
+      // THE PLANE IS THE AUTHORITY FOR THE SEAT (wave W2-D step 4): the checkpoint is recorded THROUGH
+      // `mpdTeamActions.handoff`, which writes the team record's `mode:"checkpoint"` — the ONE spelling a
+      // dispatch pass reads (`team-store.ts#memberIsCheckpoint`). Cellwork still writes its own
+      // seven-section document (the cell's continuity file), but its `handoffReady` flag is a MIRROR
+      // written ONLY after the plane accepted the record.
+      /** The team-plane write surface, probed per call. */
+      const plane = actions()
+      if (plane?.handoff === undefined) return { ok: false, error: "cellwork_handoff: this composition exposes no mpdTeamActions service, so the checkpoint cannot be recorded and the seat would stay open" }
+      /** The plane's answer — the authority for the seat state. */
+      const recorded = (await plane.handoff({ sessionId: caller.sessionId, content })) as Record<string, unknown>
+      if (recorded?.ok === false) return { ok: false, error: String(recorded.error ?? "the team plane refused the handoff, so nothing was written") }
+      /** The absolute path written by THIS row (the cell's own copy of the document). */
       const path = writeHandoff(caller.workspace, caller.cell.cellId, caller.member, ordinal, content)
       /** The instant of the write. */
       const now = new Date()
-      /** The record after the handoff. */
+      /** The MIRROR: the cell record follows the plane, never the other way round. */
       const next: CellState = { ...caller.cell, members: { ...caller.cell.members, [caller.member]: { ...member, handoffReady: true, handoffs: ordinal } } }
       transition(caller.workspace, next, { event: "handoff", member: caller.member, ordinal, path, nextStep: nextStepOf(content) }, now)
       return { ok: true, path, member: caller.member, ordinal, sections: validation.sections, directive: handoffWrittenDirective(path) }
@@ -682,10 +815,20 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The parent cell. */
       const parent = caller.cell
       if (parent.phase === "stopped") return { ok: false, error: "cellwork_subteam: cell " + parent.cellId + " is stopped and archived" }
+      // THE DEPTH DECISION IS THE TEAM PLANE'S when it can answer (contract 4.4/D4): the bound is the
+      // SAME `cellwork.depthMax` the plane reads, so a cell and its team cannot disagree about how deep
+      // the project may nest. The cell record is the documented fallback when that service is absent —
+      // it is the mirror of the same fact, not a second policy.
+      /** The plane's depth reading for this cell's team, when it answered. */
+      const planeDepth = planeDepthOf(teams(), caller.workspace, parent.teamId)
+      /** The depth this cell sits at, by the authority that answered. */
+      const parentDepth = planeDepth?.depth ?? parent.depth
       /** The depth the child would take. */
-      const childDepth = parent.depth + 1
-      if (childDepth > config.depthMax) {
-        return { ok: false, error: "cellwork_subteam: REFUSED — a sub-cell at depth " + String(childDepth) + " exceeds cellwork.depth.max = " + String(config.depthMax) + " (this cell is depth " + String(parent.depth) + "). Do the work inside this cell instead." }
+      const childDepth = parentDepth + 1
+      /** The bound this refusal enforces: the plane's when it answered, the row config otherwise. */
+      const depthMax = planeDepth?.depthMax ?? config.depthMax
+      if (childDepth > depthMax) {
+        return { ok: false, error: "cellwork_subteam: REFUSED — a sub-cell at depth " + String(childDepth) + " exceeds cellwork.depth.max = " + String(depthMax) + " (this cell is depth " + String(parentDepth) + "). Do the work inside this cell instead." }
       }
       /** The objective in the user's terms. */
       const objective = argString(readArgs(args), "objective").trim()
@@ -788,6 +931,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The body (also a question's text). */
       const body = argString(argv, "body")
       if (subject === "" || body.trim() === "") return { ok: false, error: "cellwork_send: `subject` and `body` are both required" }
+      // W4-A6b: the SAME store-time bound the team mailbox applies, spelled locally (wave T43) so this
+      // row's one frozen import stays `sendMany` — the wake text is cut identically rather than shipping a
+      // 200 KB body to a model.
+      /** The body as stored and delivered: bounded at 4000 chars, with its pre-cut length when cut. */
+      const storedBody = truncateCellMailBody(body)
       /** Whether this call fans out one row per seat of the target cell. */
       const broadcast = argv.broadcast === true
       /** The explicit kind, `""` when the payload must be inferred. */
@@ -930,7 +1078,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         toId: outbound[0].id,
         toName: outbound[0].name,
         subject,
-        body,
+        body: storedBody.body,
         memberIds,
         leadIds,
         teamId: target.teamId,
@@ -971,7 +1119,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           /** The delivery binding, when the executor exists. */
           const wake = sendThroughExecutor(dsh.teamExecutor(), exec.agent)
           if (wake === undefined) return { sent: false, reason: "this composition exposes no team executor" }
-          await wake(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + body + "\n\n(full row: cell " + cell.cellId + ")")
+          await wake(String(recipientMember?.executorRef ?? ""), "[mpd-cellwork] mail from " + caller.member + ": " + subject + "\n\n" + storedBody.body + "\n\n(full row: cell " + cell.cellId + ")")
           return { sent: true }
         }
         /** The durable-first delivery of THIS row; `appendSend` is true because the store already wrote it. */
@@ -986,7 +1134,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!broadcast) {
         /** The one row this send minted. */
         const only = delivered[0]
-        return { ok: true, id: only.id, to: only.to, wakeSent: only.wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}), ...(only.wakeReason === undefined ? {} : { wakeReason: only.wakeReason }) }
+        return { ok: true, id: only.id, to: only.to, wakeSent: only.wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: cell.cellId } : {}), ...(only.wakeReason === undefined ? {} : { wakeReason: only.wakeReason }), ...(storedBody.truncated ? { truncated: true, originalLength: storedBody.originalLength } : {}) }
       }
       /** The fan-out answer: one id per row, the same shape a single send keeps for its first row. */
       return {
@@ -1004,8 +1152,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_inbox ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_inbox",
-    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`). A `question` row renders its offered labels explicitly and an `answer` row renders its selected labels, so nothing has to be counted; reply with `cellwork_send {kind:\"answer\", replyTo:<question id>, selected:[...]}`. The rows are durable; reading them acknowledges each row ONCE (the shared store's `read` record, or the legacy log's for a pre-unification row).",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    description: "Any cell seat: read and ACKNOWLEDGE the unread cell mail addressed to this seat (its member name, or `captain`), PAGED (`limit` default 20, `offset` default 0) with `more`/`nextOffset`; only the rows ON THE PAGE are acknowledged, so rows past the cap stay unread until fetched. A `question` row renders its offered labels explicitly and an `answer` row renders its selected labels, so nothing has to be counted; reply with `cellwork_send {kind:\"answer\", replyTo:<question id>, selected:[...]}`. The rows are durable; reading them acknowledges each row ONCE (the shared store's `read` record, or the legacy log's for a pre-unification row).",
+    parameters: { type: "object", properties: {
+      limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
+      offset: { type: "integer", description: "First row of the page (default 0)." },
+    }, additionalProperties: false },
     output: {
       schema: {
         type: "object",
@@ -1016,6 +1167,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           messages: { type: "array", items: { type: "object" } },
           acknowledged: { type: "number" },
           refused: { type: "array", items: { type: "object" } },
+          offset: { type: "integer" },
+          more: { type: "integer" },
+          unreadTotal: { type: "integer" },
+          nextOffset: { oneOf: [{ type: "integer" }, { type: "null" }] },
         },
         required: ["ok"],
       },
@@ -1035,10 +1190,10 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
          */
         const refusalNote = refused.length === 0 ? "" : "\n\nacknowledgement refused for " + String(refused.length) + " row(s), which stay unread: " + refused.map((entry) => String(entry.id ?? "?") + " (" + String(entry.reason ?? "no reason given") + ")").join("; ")
         if (messages.length === 0) return render("no unread cell mail for " + String(result.seat ?? "?") + " — if a question is blocked here, ask the captain to check `cellwork_supervise`" + refusalNote)
-        return render(messages.map((message: Record<string, unknown>) => mailBlock(message)).join("\n\n---\n\n") + refusalNote)
+        return render(messages.map((message: Record<string, unknown>) => mailBlock(message)).join("\n\n---\n\n") + (typeof result.more === "number" && result.more > 0 ? "\n\n(showing " + String(messages.length) + " of " + String(result.unreadTotal ?? "?") + "; more: " + String(result.more) + " — next page offset=" + String(result.nextOffset) + ", which also leaves them UNREAD until fetched)" : "") + refusalNote)
       },
     },
-    execute: async (_args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
+    execute: async (args: unknown, exec: DshToolExec): Promise<ProtocolResult> => {
       /** The caller's context. */
       const caller = callerFor(exec)
       if (caller.refusal !== null) return { ok: false, error: refusalText(caller.refusal), path: caller.refusal.path }
@@ -1047,20 +1202,27 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const seat = caller.member === "captain" ? "captain" : caller.member
       /** The folded mail of this cell's view. */
       const messages: CellMailMessage[] = foldCellMail(readCellMail(caller.workspace, caller.cell.cellId))
-      /** The unread rows addressed here. */
+      /** Every row this seat has not acknowledged, BEFORE paging (the ack below covers only the page). */
       const unread = unreadFor(messages, [seat])
+      // W4-A6b: cap what is RENDERED, never what is STORED. The page is drawn from the durable rows and
+      // the rows behind it stay unread, so a 200-row inbox can never be acknowledged (or rendered) by one
+      // call — the caller walks `nextOffset` to reach them.
+      /** The page this call renders AND acknowledges; the store's helper clamps the bounds. */
+      const paged = pageCellMail(unread, Number(argString(readArgs(args), "limit") || "20"), Number(argString(readArgs(args), "offset") || "0"))
+      /** The rows this call renders AND acknowledges. */
+      const page = paged.page
       /** The instant of the acknowledgement. */
       const now = new Date()
       /** The ack-once outcome: the store moves its rows, the legacy append moves the migrated ones. */
       // THE ACK IDENTITY IS THE STABLE SEAT KEY, never the session id (T9/F2): a reseeded seat must
       // acknowledge the rows addressed to its seat before the reseed, or the store silently refuses and
       // the inbox re-delivers them forever.
-      const ack = acknowledgeCellMail(caller.workspace, caller.cell.cellId, unread.map((message) => message.id), { byId: seatKey(caller.cell, seat), byName: seat }, now)
+      const ack = acknowledgeCellMail(caller.workspace, caller.cell.cellId, page.map((message) => message.id), { byId: seatKey(caller.cell, seat), byName: seat }, now)
       if (ack.moved.length > 0) appendJournal(caller.workspace, caller.cell.cellId, { event: "mail-read", cell: "cell:" + caller.cell.cellId, seat, ids: ack.moved }, now)
       return {
         ok: true,
         seat,
-        messages: unread.map((message) => ({
+        messages: page.map((message) => ({
           id: message.id,
           from: message.from,
           subject: message.subject,
@@ -1071,11 +1233,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
           ...(message.question === undefined ? {} : { question: message.question }),
           ...(message.answer === undefined ? {} : { answer: message.answer }),
+          ...(message.truncated === true ? { truncated: true, originalLength: message.originalLength } : {}),
         })),
         acknowledged: ack.moved.length,
         // A REFUSED ACK IS REPORTED, not counted as zero silently (T9/N1): each entry names the row and
         // the store's own sentence for why it stayed unread.
         refused: ack.refused,
+        // The paging receipt: the rows behind this page are NOT acknowledged and stay unread.
+        offset: paged.offset,
+        more: paged.more,
+        unreadTotal: unread.length,
+        nextOffset: paged.nextOffset,
       }
     },
   }))
@@ -1097,8 +1265,16 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (!plan.inject) return undefined
       /** The instant of the injection. */
       const now = new Date()
-      /** The record after the flip. */
-      const next = applyCheckpoint(caller.cell, plan, String(caller.cell.members[caller.member]?.sessionId ?? caller.sessionId), now)
+      /** The record with the checkpoint LOGGED (the pure function writes no seat state). */
+      const logged = applyCheckpoint(caller.cell, plan, String(caller.cell.members[caller.member]?.sessionId ?? caller.sessionId), now)
+      // THE SEAT IS MIRRORED HERE, by the caller that owns the transition — never by the pure function
+      // (wave W2-E). This is the cell's own injection-window marker: the PLANE's `mode:"checkpoint"` is
+      // written by `mpdTeamActions.handoff` when the member delivers the document, and the guard prefers
+      // the record's answer whenever the plane states one (`caller.ts::seatIn`).
+      /** The member row this injection closes. */
+      const injected = logged.members[caller.member]
+      /** The record after the mirror. */
+      const next: CellState = injected === undefined ? logged : { ...logged, members: { ...logged.members, [caller.member]: { ...injected, mode: "checkpoint" } } }
       transition(caller.workspace, next, { event: "checkpoint", member: caller.member, usedTokens: plan.usedTokens, windowTokens: plan.windowTokens, turn: plan.turn, reason: plan.reason }, now)
       /** The ONE message this step receives. */
       const message = dsh.userMessage({ text: checkpointDirective(caller.member, plan), source: { kind: "mpd-cellwork", reason: "checkpoint" } })

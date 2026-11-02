@@ -131,7 +131,7 @@ Structure per plugin package: `src/index.ts` (cordis `name`/`inject`/`apply`), `
   `DSH_WORKSPACE_ROOT` → `process.cwd()`** — plus `dsh.workspaceRootsAll()` (the union of live session
   cwds, `[]` when the agent registry is absent) for agentless surfaces such as web routes. The session
   fact outranks the process-wide env because one host serves many sessions with different workspaces; an
-  explicit row/config override (`boulder.dir`, `hashline.registryFile`, `memory.dir`, `ulw.planDir`,
+  explicit row/config override (`boulder.dir`, `hashline.registryFile`, `memory.dir`, `autoproject.planDir`,
   `config.projectFile`, `MPD_DSH_VERIF_VENV|WORK`) still wins over all of them. Resolve it PER CALL:
   never cache the root in a module-level const, never `chdir`, and never set `DSH_WORKSPACE_ROOT` from a
   row — each of those would "fix" one session by breaking the multi-session host. Evidence:

@@ -88,8 +88,8 @@ longer exists to exempt; what survives of that body is described in *Host plugin
 
 - **Host plugins** — `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls
   through), `mpd-config-plugin`, `mpd-tools-plugin`, `mpd-modelchain-plugin`, `mpd-roles-plugin`,
-  `mpd-ext-plugin` (the extension interface), `mpd-ulw-plugin`, `mpd-hashline-plugin`,
-  `mpd-boulder-plugin`, `mpd-goal-plugin`, `mpd-comment-checker-plugin`, `mpd-memory-plugin`,
+  `mpd-ext-plugin` (the extension interface), `mpd-autoproject-plugin`, `mpd-hashline-plugin`,
+  `mpd-autoproject-plugin`, `mpd-goal-plugin`, `mpd-comment-checker-plugin`, `mpd-memory-plugin`,
   `mpd-codegraph-plugin`, `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-verify-plugin`,
   `mpd-team-core-plugin` (the team record), `mpd-team-compact-plugin`, `mpd-team-watchdog-plugin`,
   `mpd-roster-provider-plugin`, `mpd-tui-adapter-plugin`, `mpd-tui-plugin`,
@@ -110,7 +110,7 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
 | Asset | Referenced from | Shows |
 |---|---|---|
 | [`architecture.svg`](./assets/images/architecture.svg) | this hub, [design.md](design.md) | The bundle's layers: DSH host → patch layer 1 → patch layer 2 → adapter seam → surfaces → state roots. |
-| [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [user guide §13.2](user-guide.md#132-the-ulw-loop-and-its-gates) | One ultrawork run: triage, optional plan, round-by-round execution through `pin → red → green → surface → clean`, the verification gate and the quality gate. |
+| [`autoproject-loop.svg`](./assets/images/autoproject-loop.svg) | [user guide §13.2](user-guide.md#132-the-autoproject-loop-and-its-gates) | One autoproject run: triage, optional plan, round-by-round execution through `pin → red → green → surface → clean`, the verification gate and the quality gate. |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [user guide §6](user-guide.md#6-team-mode) | One team wave end to end, plus the guardrails (read-only tool denial, durable mailbox, compare-and-set board, unordered overlapping write scopes REFUSED at `approve` on the mpd record plane — advisory only on the OFFICIAL plane). |
 | [`hero-web-tui-v2.png`](./assets/images/hero-web-tui-v2.png) | [README](../README.md) | The same bundle on both surfaces, side by side: the Web GUI's own Team view with a frosted-glass task graph and a hover card, and the DSH-TUI team scene, each cropped to the plugin's content. |
 | [`web-team-dag-groups.png`](./assets/images/web-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | A subcell drawn as a GROUP BOX in the Web Team view: the `subcell-auth` frame (`.mpd-dag-group`) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it. |

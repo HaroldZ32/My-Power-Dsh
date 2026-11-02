@@ -1,0 +1,6 @@
+library (HOME-wide): planner-1,planner-2
+this workspace's own workmates: 0
+approve ok: true
+bindings  : [{"member":"planner-seat","mode":"none","reason":"cap"}]
+team member name on the record: planner-seat
+init calls: 0

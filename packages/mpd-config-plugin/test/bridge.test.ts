@@ -30,7 +30,7 @@ const WITH_COMMENTS = `{
   "hashline": {
     "maxDiffChars": 20000, /* inline */
   },
-  "ulw": {
+  "autoproject": {
     "maxRounds": 6,
   },
 }
@@ -73,7 +73,7 @@ describe("target set (design §A.1 — never a guessed root)", () => {
 
   test("zero live roots writes NOTHING anywhere and reports no-live-session", () => {
     // No live root at all: the writer must skip rather than fall back to a guessed path.
-    const report = writeBackLeaves([], [{ path: ["ulw", "maxRounds"], value: 9 }])
+    const report = writeBackLeaves([], [{ path: ["autoproject", "maxRounds"], value: 9 }])
     expect(report.skipped).toBe("no-live-session")
     expect(report.writtenTo).toEqual([])
     expect(report.results).toEqual([])
@@ -87,7 +87,7 @@ describe("target set (design §A.1 — never a guessed root)", () => {
     // The bytes before the call; a disabled write must leave them byte-identical.
     const before = readFileSync(file, "utf8")
     // Negative control: `writeBack: false` must refuse even though exactly one live root exists.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }], { writeBack: false, retries: 3 })
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }], { writeBack: false, retries: 3 })
     expect(report.skipped).toBe("disabled")
     expect(readFileSync(file, "utf8")).toBe(before)
   })
@@ -98,8 +98,8 @@ describe("happy paths", () => {
     // A live root whose target already exists with the comment-bearing bytes.
     const { root, file } = sandbox()
     writeFileSync(file, WITH_COMMENTS)
-    // The report for one leaf change: `ulw.maxRounds` 6 → 9 in the only live root.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }])
+    // The report for one leaf change: `autoproject.maxRounds` 6 → 9 in the only live root.
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }])
     expect(report.writtenTo).toEqual([file])
     expect(report.results[0].outcome).toBe("written")
     expect(readFileSync(file, "utf8")).toBe(WITH_COMMENTS.replace("6", "9"))
@@ -111,7 +111,7 @@ describe("happy paths", () => {
     // A live root whose target does NOT exist yet — the creation path.
     const { root, file } = sandbox()
     // First call: the absent target must be CREATED, not silently skipped.
-    const first = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 6 }])
+    const first = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 6 }])
     expect(first.results[0].outcome).toBe("created")
     // The created bytes; the repeat run below must reproduce them exactly.
     const text = readFileSync(file, "utf8")
@@ -119,9 +119,9 @@ describe("happy paths", () => {
     expect(text.split("\n")[0].startsWith("// mpd.jsonc — written by the mpd settings bridge (")).toBe(true)
     expect(text.split("\n")[0].endsWith(")")).toBe(true)
     expect(text.split("\n")[1]).toBe(createdFileHeader().split("\n")[1])
-    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 6 } })
+    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ autoproject: { maxRounds: 6 } })
     // Repeat of the same value: the writer must report `unchanged` and rewrite no byte.
-    const second = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 6 }])
+    const second = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 6 }])
     expect(second.results[0].outcome).toBe("unchanged")
     expect(second.writtenTo).toEqual([])
     expect(readFileSync(file, "utf8")).toBe(text)
@@ -135,16 +135,16 @@ describe("happy paths", () => {
     writeFileSync(a.file, WITH_COMMENTS)
     writeFileSync(b.file, WITH_COMMENTS)
     // Both roots carry the changeable leaf, so each must report `written` independently.
-    const report = writeBackLeaves(targetFiles([a.root, b.root]), [{ path: ["ulw", "maxRounds"], value: 11 }])
+    const report = writeBackLeaves(targetFiles([a.root, b.root]), [{ path: ["autoproject", "maxRounds"], value: 11 }])
     // The report hands back a READONLY list, which cannot be sorted in place; the assertion orders a
     // COPY of it, so what it compares is the writer's own reported set, left unmutated.
     expect([...report.writtenTo].sort()).toEqual([a.file, b.file].sort())
     expect(report.results.map((r) => r.outcome)).toEqual(["written", "written"])
     // a failure on one root never hides another root's success (design §B.3)
     const c = sandbox()
-    writeFileSync(c.file, '{ "ulw": }')
+    writeFileSync(c.file, '{ "autoproject": }')
     // Per-root isolation: the unparsable sibling must not hide the other root's success.
-    const mixed = writeBackLeaves(targetFiles([c.root, a.root]), [{ path: ["ulw", "maxRounds"], value: 12 }])
+    const mixed = writeBackLeaves(targetFiles([c.root, a.root]), [{ path: ["autoproject", "maxRounds"], value: 12 }])
     expect(mixed.results.map((r) => r.outcome)).toEqual(["unparsable", "written"])
     expect(mixed.writtenTo).toEqual([a.file])
   })
@@ -159,7 +159,7 @@ describe("loud failure paths (design §B.2/§7)", () => {
     // The bytes before the call; a `denied` outcome must not touch them.
     const before = readFileSync(file, "utf8")
     // The report for the read-only target, which must name the file it refused.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }])
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }])
     // That root's own result record: the one carrying the outcome, the path and the reason.
     const result = report.results[0]
     expect(result.outcome).toBe("denied")
@@ -173,11 +173,11 @@ describe("loud failure paths (design §B.2/§7)", () => {
   test("U9: an unparsable target is skipped without writing a byte", () => {
     // A live root whose target is not valid JSONC.
     const { root, file } = sandbox()
-    writeFileSync(file, '{ "ulw": }')
+    writeFileSync(file, '{ "autoproject": }')
     // The malformed bytes; an `unparsable` outcome must never repair them.
     const before = readFileSync(file, "utf8")
     // The report for the malformed target: skipped without a byte written.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }])
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }])
     expect(report.results[0].outcome).toBe("unparsable")
     expect(readFileSync(file, "utf8")).toBe(before)
   })
@@ -185,11 +185,11 @@ describe("loud failure paths (design §B.2/§7)", () => {
   test("a duplicate key in the target refuses with both line numbers and no write", () => {
     // A live root whose target repeats the leaf key on two separate lines.
     const { root, file } = sandbox()
-    writeFileSync(file, '{\n  "ulw": { "maxRounds": 6 },\n  "ulw": { "maxRounds": 7 },\n}\n')
+    writeFileSync(file, '{\n  "autoproject": { "maxRounds": 6 },\n  "autoproject": { "maxRounds": 7 },\n}\n')
     // The duplicated-key bytes; a refusal must leave both lines untouched.
     const before = readFileSync(file, "utf8")
     // The report for that target: refused, naming both offending line numbers.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }])
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }])
     expect(report.results[0].outcome).toBe("refused")
     expect(String(report.results[0].detail)).toContain("lines 2, 3")
     expect(readFileSync(file, "utf8")).toBe(before)
@@ -204,7 +204,7 @@ describe("loud failure paths (design §B.2/§7)", () => {
     // The human's most recent bytes, which must be the ones left on disk when the retries run out.
     let last = WITH_COMMENTS
     // The report for a write whose compare-and-swap can never succeed.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 9 }], {
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 9 }], {
       writeBack: true,
       retries: 2,
       hooks: {
@@ -228,16 +228,16 @@ describe("loud failure paths (design §B.2/§7)", () => {
 describe("section leaves and the change diff", () => {
   test("a front-door edit yields only the added/changed leaves; a reset yields none", () => {
     // The leaves as the user left them before the front-door edit.
-    const prev = { hashline: { maxDiffChars: 20000 }, ulw: { maxRounds: 6 } }
+    const prev = { hashline: { maxDiffChars: 20000 }, autoproject: { maxRounds: 6 } }
     // The leaves after the edit: one value changed, its sibling untouched.
-    const next = { hashline: { maxDiffChars: 4096 }, ulw: { maxRounds: 6 } }
+    const next = { hashline: { maxDiffChars: 4096 }, autoproject: { maxRounds: 6 } }
     // The delta for that edit: only the changed leaf is a write target, and nothing was removed.
     const delta = changedLeaves(prev, next)
     expect(delta.written).toEqual([{ path: ["hashline", "maxDiffChars"], value: 4096 }])
     expect(delta.removed).toEqual([])
     // a RESET (user section leaf removed) is not a write target: the file stays the authority
-    expect(changedLeaves(next, { ulw: { maxRounds: 6 } }).written).toEqual([])
-    expect(changedLeaves(next, { ulw: { maxRounds: 6 } }).removed).toEqual([{ path: ["hashline", "maxDiffChars"], value: 4096 }])
+    expect(changedLeaves(next, { autoproject: { maxRounds: 6 } }).written).toEqual([])
+    expect(changedLeaves(next, { autoproject: { maxRounds: 6 } }).removed).toEqual([{ path: ["hashline", "maxDiffChars"], value: 4096 }])
     // an array is a leaf VALUE, never a path
     expect(sectionLeaves({ extensions: { disable: ["a", "b"] } })).toEqual([{ path: ["extensions", "disable"], value: ["a", "b"] }])
   })
@@ -254,7 +254,7 @@ describe("leavesFromSection", () => {
     // Two declared paths, only the first of which is present in the section.
     const leaves = leavesFromSection({ hashline: { maxDiffChars: 4096 }, nothing: true }, [
       ["hashline", "maxDiffChars"],
-      ["ulw", "maxRounds"],
+      ["autoproject", "maxRounds"],
     ])
     expect(leaves).toEqual([{ path: ["hashline", "maxDiffChars"], value: 4096 }])
   })
@@ -266,18 +266,18 @@ describe("the settled duplicate-key ruling reaches the writer's report (nothing 
     // A live root whose target repeats a LEAF key; the runtime reads the last one.
     const { root, file } = sandbox()
     // the runtime reads the LAST occurrence, so that is the one the bridge must update
-    writeFileSync(file, `{\n  "ulw": {\n    "maxRounds": 3,\n    "maxRounds": 6,\n  },\n}\n`)
+    writeFileSync(file, `{\n  "autoproject": {\n    "maxRounds": 3,\n    "maxRounds": 6,\n  },\n}\n`)
     // The report for that target: the last occurrence updated, with a loud per-root note.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 11 }])
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 11 }])
     expect(report.results[0].outcome).toBe("written")
     expect(report.writtenTo).toEqual([file])
     // The rewritten bytes: the new value sits on the SECOND occurrence, the first is left alone.
     const text = readFileSync(file, "utf8")
-    expect(text).toBe(`{\n  "ulw": {\n    "maxRounds": 3,\n    "maxRounds": 11,\n  },\n}\n`)
+    expect(text).toBe(`{\n  "autoproject": {\n    "maxRounds": 3,\n    "maxRounds": 11,\n  },\n}\n`)
     // The rewritten text re-read as JSONC, trailing comma included.
     const parsed = readJsonc(text) // JSONC: the file intentionally carries a trailing comma
     expect(parsed.ok).toBe(true)
-    if (parsed.ok === true) expect(parsed.value).toEqual({ ulw: { maxRounds: 11 } })
+    if (parsed.ok === true) expect(parsed.value).toEqual({ autoproject: { maxRounds: 11 } })
     expect(report.results[0].notes).toHaveLength(1)
     expect(report.results[0].notes?.[0].lines).toEqual([3, 4])
     expect(report.results[0].notes?.[0].detail).toContain("appears 2 times at lines 3, 4")
@@ -287,11 +287,11 @@ describe("the settled duplicate-key ruling reaches the writer's report (nothing 
   test("a duplicated INTERMEDIATE is still refused byte-untouched", () => {
     // A live root whose target repeats an INTERMEDIATE object rather than a leaf.
     const { root, file } = sandbox()
-    writeFileSync(file, `{\n  "ulw": { "maxRounds": 3 },\n  "other": 1,\n  "ulw": { "maxRounds": 6 },\n}\n`)
+    writeFileSync(file, `{\n  "autoproject": { "maxRounds": 3 },\n  "other": 1,\n  "autoproject": { "maxRounds": 6 },\n}\n`)
     // The bytes before the call; an ambiguous intermediate must stay untouched.
     const before = readFileSync(file, "utf8")
     // The report for that target: refused as `ambiguous-intermediate`, no byte written.
-    const report = writeBackLeaves(targetFiles([root]), [{ path: ["ulw", "maxRounds"], value: 11 }])
+    const report = writeBackLeaves(targetFiles([root]), [{ path: ["autoproject", "maxRounds"], value: 11 }])
     expect(report.results[0].outcome).toBe("refused")
     expect(report.results[0].reason).toBe("ambiguous-intermediate")
     expect(readFileSync(file, "utf8")).toBe(before)

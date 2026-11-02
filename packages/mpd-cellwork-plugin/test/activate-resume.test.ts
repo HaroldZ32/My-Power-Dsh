@@ -1,3 +1,4 @@
+import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 // Offline tests for RESUMABLE activation (P1 contract §3.1 A1–A4): a failed activation records a
 // partial in-flight state, and a retry of the SAME accepted revision resumes from it instead of
 // wedging the cell on a duplicate member/task or a lost verify loop.
@@ -273,6 +274,13 @@ function makeHarness(): Harness {
     tools: toolsService,
     commands: commandsService,
     agents: { list: (): FakeAgent[] => [captain] },
+    // THE TEAM-PLANE DOUBLE (wave W2-D): the dispatch stage and the cancelled-row closure go through
+    // `mpdTeamActions` now, so this harness answers it with the shared in-memory plane over the SAME
+    // record map `mpdTeams` answers, delivering into `sends`.
+    mpdTeamActions: createTeamActionsDouble({
+      record: () => teamRecords.get("team-1") as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+      send: (handle: string, text: string) => { sends.push({ handle, text }) },
+    }).service,
     mpdTeams: {
       /**
        * Answer one team read; the dispatch-stage injection throws here.
@@ -766,12 +774,16 @@ test("A3: a duplicate-roster answer is resolved from the live roster, never fata
     captainAgent: harness.captain,
     split: stored.verdict,
     personaFor: (): null => null,
-    recordFor: (): DispatchRecordView => {
+    recordFor: (): Record<string, unknown> => {
       reads += 1
       // THE STALE FIRST READ: the activation's seed misses the row, `add_member` then answers
       // "already on the roster", and the RE-READ below is what resolves it.
       return reads === 1 ? { teamId: "team-1", members: [], tasks: [] } : { teamId: "team-1", members: [liveMember], tasks: [] }
     },
+    // THE PLANE IS ABSENT IN THIS ARM, deliberately: its subject is the LIVE-ROSTER reconciliation, and an
+    // absent service makes the dispatch stage REPORT instead of delivering (the same observable the arm
+    // had when the executor seam was the missing half).
+    teamActions: (): undefined => undefined,
     // R6: the dep was renamed when activation moved from a per-artifact checkpoint to a compact
     // progress row (contract C8); the no-op keeps this arm's subject — the live-roster reconciliation.
     progress: (): void => {},

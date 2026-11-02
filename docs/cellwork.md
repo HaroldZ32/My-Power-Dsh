@@ -569,3 +569,31 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 For the exact tool parameters, the refusal texts and the per-arm test list, use the package README
 pair; for how the mode was designed and what each wave delivered, see the plan and contracts under
 `.mpd/plans/` in the repository.
+
+## Programmatic entry: `cellwork_open`
+
+`cellwork_open {objective, mandate?}` opens a cell without the command. It refuses THREE things: a caller
+that is not the captain, an already-active cell, and a `mandate` whose
+`<workspace>/.mpd/autoproject/<runId>/escalation.json` is not on disk. `/cellwork` is a thin handler over
+the SAME open path, so the command and the tool cannot diverge in behaviour.
+
+The tool path cannot submit a user turn — a tool has no `invocation.submit` — so it returns the activation
+directive for the caller to submit, where the command submits its own. That bound is deliberate and
+stated, not hidden.
+
+## What it delegates to the team plane
+
+The cell-MODE engines (requirements, split, activate, recon, budget) stay in this package: they are the
+workflow layer that WRITES the board. The TEAM-level logic is the team plane's, reached as services — no
+cross-package import:
+
+| Cellwork surface | Now reads or writes |
+|---|---|
+| `cellwork_dispatch` | the team record's dispatch pass; `reassign` goes through the team plane's own claim/journal/deliver path |
+| `cellwork_context` | `mpdTeams.memberContext` — the same meter and provenance the team tool reports, with the adapter read only as the documented degradation |
+| `cellwork_subteam` | `mpdTeams.depthBudget` — the parent-chain depth and the SAME `cellwork.depthMax` bound; the cell record is the fallback when the service is absent |
+| handoff / checkpoint | the team plane's handoff bookkeeping and journal |
+
+The consequence worth knowing: the board, the fence state, the occupancy reading and the depth budget have
+ONE owner (the team plane). A cellwork copy that disagreed with it would be a second policy, and there is
+none.

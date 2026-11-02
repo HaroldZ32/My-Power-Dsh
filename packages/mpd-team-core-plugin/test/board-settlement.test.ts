@@ -272,8 +272,12 @@ describe("R3 — release resets the task row, not just the ledger", () => {
     expect(row?.startedAt).toBeUndefined()
     expect(Object.keys(ledgerOnDisk(f.workspace))).toEqual([])
     // RE-DISPATCHABLE: the very next pass pairs the same task again — the r3 acceptance in one line.
+    // THE PASS ASKS FOR THE ROSTER RULE EXPLICITLY. A release DELETES the row's owner (the store's own
+    // rule), so the owner-only default has nobody to pair it with — the repair for that case is
+    // `reassign`, which is covered in team-toolchain.test.ts. This arm's subject is the RELEASE half
+    // (status/owner/clock reset), so it exercises the pairing rule that can pair an ownerless row.
     /** The pass after the release. */
-    const again = await f.call("sess-alpha", "agent_teams_dispatch", { action: "run" })
+    const again = await f.call("sess-alpha", "agent_teams_dispatch", { action: "run", mode: "roster" })
     expect(again.pairs.map((pair: { taskId: string }) => pair.taskId)).toEqual(["T1"])
     expect(f.record("team-alpha")?.tasks[0].status).toBe("in_progress")
   })

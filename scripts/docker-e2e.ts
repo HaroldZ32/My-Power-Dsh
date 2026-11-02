@@ -649,11 +649,11 @@ function selfTest(): void {
   // is "no assertion failed") then read the ABSENCE as a pass.
   /** A body that ran every arm except the user-surface one. */
   const noUserSurface: ResultBody = { ok: true, assertions: [{ name: "boot.rows", ok: true, reason: "ok" }] }
-  check("a body with no userSurface rows is missing them", missingOrNull(noUserSurface, ["userSurface.rowsWitness", "userSurface.command.ulw"]).join(",") === "userSurface.rowsWitness,userSurface.command.ulw")
+  check("a body with no userSurface rows is missing them", missingOrNull(noUserSurface, ["userSurface.rowsWitness", "userSurface.command.autoproject"]).join(",") === "userSurface.rowsWitness,userSurface.command.autoproject")
   /** A body whose user-surface step ran but could not evaluate its aggregate. */
-  const nullUserSurface: ResultBody = { ok: true, assertions: [{ name: "userSurface.rowsWitness", ok: null, reason: "not reached" }, { name: "userSurface.command.ulw", ok: true, reason: "ok" }] }
+  const nullUserSurface: ResultBody = { ok: true, assertions: [{ name: "userSurface.rowsWitness", ok: null, reason: "not reached" }, { name: "userSurface.command.autoproject", ok: true, reason: "ok" }] }
   check("a null userSurface row is an unmeasured required arm", unmeasuredRequired(nullUserSurface, ["userSurface."]).join(",") === "userSurface.rowsWitness")
-  check("a null userSurface row is also caught by the presence reader", missingOrNull(nullUserSurface, ["userSurface.command.ulw", "userSurface.negativeControl"]).join(",") === "userSurface.negativeControl")
+  check("a null userSurface row is also caught by the presence reader", missingOrNull(nullUserSurface, ["userSurface.command.autoproject", "userSurface.negativeControl"]).join(",") === "userSurface.negativeControl")
   check("the userSurface prefix is required with NO flag at all", requiredPrefixesFor({ live: false, browser: false, team: false }).prefixes.includes("userSurface."))
   check("the userSurface prefix is required in every mode", ["userSurface."].every((prefix) => [0, 1].every((live) => [0, 1].every((browser) => [0, 1].every((team) => requiredPrefixesFor({ live: live === 1, browser: browser === 1, team: team === 1 }).prefixes.includes(prefix))))))
   check("the userSurface prefix is never in the exclusion list", !requiredPrefixesFor({ live: true, browser: true, team: true }).excluded.some((name) => name.startsWith("userSurface.")))
@@ -724,6 +724,16 @@ function selfTest(): void {
   check("its own rowsDeclaredBound row lists exactly those 33 ids",
     fixtureAudit?.ok === true && fixtureAuditIds.length === fixtureBoundIds.length && fixtureAuditIds.every((id) => fixtureBoundIds.includes(id)),
     `audit=${String(fixtureAuditIds.length)} nulls=${String(fixtureBoundIds.length)}`)
+  /**
+   * The frozen capture predates the W1-B1 rename (`/ulw` + `/ultrawork` collapsed into ONE
+   * `/autoproject`), so the replay carries TODAY's name for that row: these arms are about the
+   * reporter's wiring, and a capture that still spelled the retired command would read as an
+   * unmeasured required arm for a reason that has nothing to do with what is being proved here.
+   * The capture's OWN bytes stay untouched (`evidence/**` is historical); only the replayed name moves.
+   */
+  const fixtureReplayRows: readonly ResultAssertion[] = fixtureRows.map((row) => (
+    row.name === "userSurface.command.ulw" ? { ...row, name: "userSurface.command.autoproject" } : row
+  ))
   /** The companion markers the FIXED case emits for that audited list: ONE TRUE row per id. */
   const fixtureMarkers: readonly ResultAssertion[] = fixtureAuditIds.map((id) => ({
     name: DECLARED_BOUND_PREFIX + id,
@@ -773,11 +783,11 @@ function selfTest(): void {
     return exitCode
   }
   /** The frozen rows with the artifact-freshness row flipped green: isolates the bound wiring from that real drift. */
-  const greenRows: readonly ResultAssertion[] = fixtureRows.map((row) => (row.name === "pack.staticCoherence" ? { ...row, ok: true, reason: "replay: the artifact-freshness drift set aside" } : row))
+  const greenRows: readonly ResultAssertion[] = fixtureReplayRows.map((row) => (row.name === "pack.staticCoherence" ? { ...row, ok: true, reason: "replay: the artifact-freshness drift set aside" } : row))
   /** BEFORE: the report exactly as the container recorded it — no marker anywhere. */
-  const beforeReplay = replayThroughReporter("before", fixtureRows)
+  const beforeReplay = replayThroughReporter("before", fixtureReplayRows)
   /** AFTER: the same report plus the markers the fixed case emits for its own audited bound ids. */
-  const afterReplay = replayThroughReporter("after", [...fixtureRows, ...fixtureMarkers])
+  const afterReplay = replayThroughReporter("after", [...fixtureReplayRows, ...fixtureMarkers])
   check("BEFORE the fix the frozen report is exit 3 with 33 unmeasured rows",
     readReplay("before (as recorded)", beforeReplay) === 3 && replayGaps(beforeReplay).length === 33)
   check("AFTER the fix the SAME report is no longer exit 3 — it is exit 1 for the one real false",
@@ -803,9 +813,9 @@ function selfTest(): void {
   check("dropping ONE marker puts exactly that row back into exit 3",
     readReplay("falsifier: marker dropped", markerDropped) === 3 && replayGaps(markerDropped).join(",") === USER_SURFACE_ROW_PREFIX + falsifiedId)
   /** GREEN + markers minus one canonical, NON-bound row: a verdict that never wrote its row at all. */
-  const rowDeleted = replayThroughReporter("row-deleted", [...greenRows.filter((row) => row.name !== "userSurface.command.ulw"), ...fixtureMarkers])
+  const rowDeleted = replayThroughReporter("row-deleted", [...greenRows.filter((row) => row.name !== "userSurface.command.autoproject"), ...fixtureMarkers])
   check("deleting a non-bound row reddens the run with exit 3",
-    readReplay("falsifier: non-bound row deleted", rowDeleted) === 3 && replayGaps(rowDeleted).join(",") === "userSurface.command.ulw")
+    readReplay("falsifier: non-bound row deleted", rowDeleted) === 3 && replayGaps(rowDeleted).join(",") === "userSurface.command.autoproject")
 
   // 3c. the arm-selecting flags: `--require-live` is the long spelling of `--live`, and
   // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).

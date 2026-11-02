@@ -1,0 +1,6 @@
+workspace A's live team uses: oracle-1
+plan with the TOOL's roots [B]      : [{"from":"oracle-2","into":"oracle-1","score":1,"jaccard":1,"mergeable":true}]
+plan with the UNION roots [B, A]    : [{"from":"oracle-2","into":"oracle-1","score":1,"jaccard":1,"mergeable":false,"reason":"in-use"}]
+APPLY from B (single root)          : {"applied":["oracle-2->oracle-1"],"skipped":[]}
+library after                        : oracle-1
+archive after                        : oracle-2-merged-oracle-1-2026-11-02T120935Z

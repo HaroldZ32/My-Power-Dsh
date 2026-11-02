@@ -78,7 +78,7 @@ describe("D-09 — memory.vcs accepts the mode the memory row honours", () => {
 })
 
 /** The knobs a plugin CAPTURES at its own `apply()`, i.e. the groups that still need a boot. */
-const MOUNT_CAPTURED = ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]
+const MOUNT_CAPTURED = ["hashline.*", "commentChecker.*", "autoproject.*", "memory.*", "boulder.dir", "goal.*"]
 
 /** The knobs READ per use, i.e. the groups that reach the running process. */
 const LIVE_GROUPS = ["agentRoutes.*", "modelchain.*", "team.stateDir", "team.gate", "team.sensitivity", "captain.investigation", "delegation.gate"]

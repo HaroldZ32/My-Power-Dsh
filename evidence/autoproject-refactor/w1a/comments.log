@@ -1,0 +1,11 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 538 TypeScript file(s) of 538 in the source set; inspected 48762 declaration(s); skipped 23499 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-autoproject-plugin/src/engine.ts (1)
+  641: comment — max
+
+error: script "verify:comments" exited with code 1

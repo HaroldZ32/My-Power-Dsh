@@ -26,12 +26,12 @@ import { projectGateIdentity } from "./gates.ts"
  * THE DELEGATION TOOLS. A call to one of these from the top-level agent is what arms a delegated loop.
  *
  * `spawn_teammate` and `team_task_*` are the official team verbs; `mpd_role_spawn`, `mpd_workmate_spawn`
- * and `mpd_ultrawork` are ours; `subagent`, `subagent_fork`, `workflow` and `ralph` are the harness's own
+ * and `mpd_autoproject` are ours; `subagent`, `subagent_fork`, `workflow` and `ralph` are the harness's own
  * delegation surfaces. Every one of them hands work to another agent, which is the whole point.
  */
 export const DELEGATION_TOOLS: readonly string[] = [
   "spawn_teammate", "team_task_create", "team_task_update",
-  "mpd_role_spawn", "mpd_workmate_spawn", "mpd_ultrawork", "mpd_ulw",
+  "mpd_role_spawn", "mpd_workmate_spawn", "mpd_autoproject",
   "subagent", "subagent_fork", "workflow", "ralph",
   "agent_teams_plan", "agent_teams_dispatch",
 ]

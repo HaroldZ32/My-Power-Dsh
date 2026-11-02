@@ -29,6 +29,14 @@ evidence/<domain>/<slug>/<timestamp>/{result.json,output.log}
 | Documentation pairs | `bun run verify:docs` | |
 | Other (name it) | | |
 
+### Automated reviewer rounds
+
+<!-- The round cap in AGENTS.md §5: at most THREE rounds per automated reviewer on one PR; a FOURTH
+needs the user's explicit decision and is stated here. A finding already fixed and verified is
+resolved silently; a declined one gets one sentence. -->
+
+- CodeRabbit rounds: `<n>` of 3 — <one line on where the reconciliation lives; say so here if the cap was raised and why>.
+
 ### Bounds — what this evidence does NOT prove
 
 <!-- The honest limits: a skipped lane, a null row, a composition-only check. -->
@@ -72,6 +80,13 @@ evidence/<domain>/<slug>/<timestamp>/{result.json,output.log}
 | 单元测试 | `bun test packages` | |
 | 文档配对 | `bun run verify:docs` | |
 | 其他（写明） | | |
+
+### 自动评审轮次
+
+<!-- AGENTS.md §5 的轮次上限：每个自动评审在一个 PR 上最多三轮；第四轮需用户明确决定，并写在这里。
+已修复并验证的评论静默解决；被否决的评论用一句话说明理由。 -->
+
+- CodeRabbit 轮次：`<n>` / 3 —— <一行写明对账记录在哪里；若上限被提高，在此说明并给出原因>。
 
 ### 边界 —— 这些证据没有证明什么
 

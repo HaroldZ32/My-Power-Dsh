@@ -1,0 +1,66 @@
+{
+  "task": "T35 / W4-A2",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a710 item A2",
+  "lane": "Senior Engineer",
+  "generatedAt": "2026-11-02T13:04:50Z",
+  "knobs": {
+    "autoproject.slots": {
+      "default": 3,
+      "read": "live mpdConfig per run, row config fallback",
+      "inSettingsKnobs": false
+    },
+    "autoproject.slotBoundMs": {
+      "default": 1800000,
+      "read": "live mpdConfig per run, row config fallback",
+      "inSettingsKnobs": false
+    }
+  },
+  "ledgerRow": {
+    "role": "string",
+    "at": "ISO instant",
+    "elapsedMs": "number",
+    "boundMs": "number",
+    "round": "number"
+  },
+  "changed": [
+    "packages/mpd-autoproject-plugin/src/engine.ts \u2014 SLOTS_CONFIG_KEY/SLOT_BOUND_CONFIG_KEY/SLOTS_DEFAULT/SLOT_BOUND_DEFAULT_MS, AutoprojectConfig.slots/slotBoundMs, SlotKill, RunState.slots/slotBoundMs/slotsPeak/kills, the slot ledger (acquire/release FIFO), consult() = slot + bounded race + kill recording, consultOnce() = the unbounded half, the blocked override + report line",
+    "packages/mpd-autoproject-plugin/test/engine.test.ts \u2014 harness options (slots/slotBoundMs/hangRole/liveConfig), in-flight accounting, 4 new arms (a)-(d)"
+  ],
+  "gates": [
+    {
+      "command": "bun test packages/mpd-autoproject-plugin",
+      "exit": 0,
+      "observed": "49 pass, 0 fail (45 before this task)",
+      "log": "package-tests.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 1,
+      "observed": "2 errors, both in packages/mpd-cellwork-plugin/test/ (another lane); zero in this package",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 1,
+      "observed": "1 violation in packages/mpd-cellwork-plugin/test/lib/team-actions-double.ts (that lane); zero in this package",
+      "log": "verify-comments.log"
+    },
+    {
+      "command": "falsifiability mutations A and B",
+      "exit": 0,
+      "observed": "arm (a) reddens both ways (timeout with the bound removed; status mismatch with the blocked override removed); restored",
+      "log": "falsifiability.log"
+    }
+  ],
+  "newArms": [
+    "(a) a never-settling child is killed at a 30ms bound with one slot: run blocked, 2 kill rows, journal late/killed:<role>, round 2 proves the slot returned",
+    "(b) autoproject.slots=2 caps the hyperplan wave at a measured peak of exactly 2 over 5 consults",
+    "(c) a throwing child releases its slot (round 2 is raised with one slot)",
+    "(d) a run under the bound reports complete with kills: []"
+  ],
+  "notProven": [
+    "typecheck/verify:comments are red for another lane's in-flight cellwork edits, none in this package",
+    "the real adapter AbortSignal plumbing is not exercised; a child that ignores its signal still cannot hold the run (the race returns) but real termination is the adapter's contract",
+    "no dist rebuild, no git, no skills/**; tool name, escalation predicate and directive untouched"
+  ]
+}

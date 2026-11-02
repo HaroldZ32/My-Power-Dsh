@@ -1,0 +1,75 @@
+{
+  "task": "T33 / W6",
+  "contract": "user decision 2026-11-02 \u2014 the repository is MIT; retire the SUL-1.0 wording; history untouched",
+  "lane": "Senior Engineer (single skills writer)",
+  "generatedAt": "2026-11-02T12:46:03Z",
+  "factCheck": {
+    "LICENSE.md": "already MIT \u2014 NOT modified",
+    "package.json license": "already MIT \u2014 NOT modified",
+    "AGENTS.md \u00a710": "already MIT \u2014 NOT modified",
+    "README licence sections": "already MIT with no SUL / 'source-visible' framing \u2014 NO EDIT NEEDED (the task expected some)"
+  },
+  "filesTouched": 39,
+  "bands": {
+    "skills/*/ATTRIBUTION.md": 16,
+    "LICENSE-NOTICES.md": 1,
+    "PLAN.md": 1,
+    "cordis.patch.yml (comments only)": 1,
+    "VENDOR_LOCK.json (_note)": 1,
+    "agent-references/overview-and-provenance.md": 1,
+    "packages/*/README.md + twin": 10,
+    "docs/*.md + twin": 4,
+    "packages/mpd-roles-plugin/personas/ATTRIBUTION.md": 1,
+    "source comments": 3
+  },
+  "replacementRule": {
+    "ourCodeAndRessourcedCorpus": "MIT; the 'not open source' / 'source-visible' framing deleted",
+    "thirdParty": "their own licences untouched (Apache-2.0, MIT, BSD-3-Clause, EPL-2.0, MPL-2.0, LGPL-3.0, GPL-3.0, proprietary) \u2014 not one fact changed",
+    "upstreamLicence": "no longer NAMED in live prose ('the upstream project's former licence' / 'its own non-MIT terms'); its CURRENT licence was NOT asserted",
+    "removedUnverified": "none \u2014 no sentence was deleted for want of a licence fact"
+  },
+  "gates": [
+    {
+      "command": "grep -rIn 'SUL-1\\.0|SUL 1\\.0|Sustainable Use' over shipped non-historical paths",
+      "exit": 0,
+      "observed": "ZERO",
+      "log": "residue-grep.log"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 \u2014 PASS",
+      "log": "verify-docs.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 1,
+      "observed": "ONE violation in packages/mpd-roles-plugin/test/admission.test.ts:125 (another lane, in flight); ZERO in this task's files",
+      "log": "verify-comments.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "no error in mpd-mcp-gitbash / mpd-mcp-lsp / mpd-memory-plugin (comment-only edits)"
+    },
+    {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS (informational only \u2014 AGENTS.md was NOT modified)",
+      "log": "verify-manual-paths.log"
+    }
+  ],
+  "declined": [
+    "agent-references/overview-and-provenance.md:48 \u2014 byte-pinned verbatim \u00a71 reproduction (sha256 under evidence/gates/agents-budget/)",
+    "docs/plan-c.md, docs/plan-tui-edition.md \u2014 the declared docs/plan-*.md class",
+    "docs/track-a-report.md \u2014 prior-phase report",
+    "docs/decisions.md, docs/bline-report.md, docs/omo-parity-gap.md, docs/review-p0-p3.md, docs/ulw-deepseek-optimization.md, docs/tui-edition-report.md \u2014 \u00a73 exempt prior-phase records",
+    "evidence/**, dist/** \u2014 immutable QA records and the packed artifact",
+    "CHANGELOG.md \u2014 historical release log"
+  ],
+  "notProven": [
+    "the upstream project's current licence is unverified and deliberately not asserted",
+    "no gate checks licence PROSE; the grep is the mechanical proof and the third-party-notice claim is reading-verified",
+    "the 16 ATTRIBUTION edits ride the wave's SINGLE skills corpus re-pin at integration"
+  ]
+}

@@ -28,7 +28,7 @@ here for the full body; where the two differ, the manual wins.
   case asserts no `<DSH_HOME>/sessions/<projectKey(realCwd)>` key exists (`assertSessionsSandboxed`).
   Without it an "isolated" boot writes real `<repo>/.mpd/team/mpd-default-*` records (exactly what the
   `mpd_workmate_rename/delete` in-use gate scans) plus `.mpd/{memory,boulder.json,hashline-files.json,
-  verif,plans,ulw}` and `.codegraph`.
+  verif,plans,autoproject}` and `.codegraph`.
 - Live-LLM cases must ALSO copy `settings.yaml` when present: homes whose keys come from gateway
   providers (`llm-pi-ai` providers — opencode-go/scnet) configure the chain there, and without it
   headless falls back to the base `deepseek-official` route → `MISSING_CREDENTIAL`.

@@ -1,0 +1,2 @@
+[autoproject-smoke self-test] NOTE: dist predates this wave (the integration rebuild owns it); markers read from src
+[autoproject-smoke self-test] ok: engine symbols + bundle row verified

@@ -345,16 +345,12 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
-      id: "mpd-ulw", name: p("packages/mpd-ulw-plugin/dist/index.js"),
+      id: "mpd-autoproject", name: p("packages/mpd-autoproject-plugin/dist/index.js"),
       config: { maxRounds: 3 }
     },
     {
       id: "mpd-hashline", name: p("packages/mpd-hashline-plugin/dist/index.js"),
       config: { guardEditTools: true }
-    },
-    {
-      id: "mpd-boulder", name: p("packages/mpd-boulder-plugin/dist/index.js"),
-      config: {}
     },
     {
       // The bundle's single contact surface with the harness seams: every row
@@ -367,8 +363,8 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
-      // The persisted-GOAL bridge (C8): `mpd_goal_*`, the `mpdGoal` service that mpd-ulw and
-      // mpd-boulder consume, and the `goal.*` auto-anchor knobs. It mirrors the bundle patch row
+      // The persisted-GOAL bridge (C8): `mpd_goal_*`, the `mpdGoal` service that mpd-autoproject
+      // (with the merged boulder machine) consumes, and the `goal.*` auto-anchor knobs. It mirrors the bundle patch row
       // value-for-value and sits beside its mpd.jsonc source (mpd-config), above its consumers.
       id: "mpd-goal", name: p("packages/mpd-goal-plugin/dist/index.js"),
       config: { enabled: true, autoAnchor: true, autoRounds: 32 },
@@ -698,10 +694,10 @@ function selfTest(): void {
     const p2: Plan = buildPlan({ profile: "mpd", yes: false, dshHome: tmp })
     /** The ids the scratch home patch declares, which must drive the id-target render. */
     const existing: Set<string> = readExistingIds(p2.homePatch)
-    if (!existing.has("mcp-astgrep") || !existing.has("mpd-tools") || existing.has("mpd-ulw")) { console.error("[install-profile self-test] FAIL: existing-id scan"); process.exit(1) }
+    if (!existing.has("mcp-astgrep") || !existing.has("mpd-tools") || existing.has("mpd-autoproject")) { console.error("[install-profile self-test] FAIL: existing-id scan"); process.exit(1) }
     /** The patch rendered against a home that already declares two of the rows. */
     const patch: string = renderPatch(p2.rows, existing)
-    if (!/^- id: mcp-astgrep\b/m.test(patch) || !/^- insert:[\s\S]*^ {2}- id: mpd-ulw\b/m.test(patch)) { console.error("[install-profile self-test] FAIL: id-target render (existing rows must not be inserts)"); process.exit(1) }
+    if (!/^- id: mcp-astgrep\b/m.test(patch) || !/^- insert:[\s\S]*^ {2}- id: mpd-autoproject\b/m.test(patch)) { console.error("[install-profile self-test] FAIL: id-target render (existing rows must not be inserts)"); process.exit(1) }
     if (/- insert:[\s\S]*^ {0,2}- id: mcp-astgrep\b/m.test(patch)) { console.error("[install-profile self-test] FAIL: existing row rendered as insert"); process.exit(1) }
     // The registry row is an id-target EVEN on a fresh home patch (no existing ids):
     // its subject lives in the web-app layer, not in the target patch.

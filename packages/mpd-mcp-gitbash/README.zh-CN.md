@@ -13,7 +13,7 @@
   依赖，并在进程内导入其 `bin` 入口。
 - `argv[2]` 选择 server：`git`（默认）启动 `@cyanheads/git-mcp-server`（Apache-2.0，28 个
   `git_*` 工具，需要 `PATH` 上有 `git`）；`shell` 启动 `mcp-server-commands`（`run_process`）。
-- 不再有任何 vendored 内容：SUL-1.0 的 `git-bash-mcp` 构建、已退役的 `scripts/build-mcp.ts`
+- 不再有任何 vendored 内容：`git-bash-mcp` 构建、已退役的 `scripts/build-mcp.ts`
   以及它读取的 `vendor/mcp-src/**` 快照都已删除（de-omo B2 波）。
 
 ## 许可证据

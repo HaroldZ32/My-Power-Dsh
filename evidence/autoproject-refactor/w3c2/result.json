@@ -1,0 +1,51 @@
+{
+  "task": "T21 / W3-C2",
+  "contract": "close the two W3-C gaps: persist the workmate binding mode; declare/render the approval bindings",
+  "lane": "Senior Engineer",
+  "generatedAt": "2026-11-02T12:53:58Z",
+  "changed": [
+    "packages/mpd-team-core-plugin/src/team-store.ts \u2014 WorkmateBindMode type, TeamMemberRecord.workmateMode/workmateReason, MemberPatch same, updateTeamMember writes them (a reuse/init patch clears a stale reason)",
+    "packages/mpd-team-core-plugin/src/team-actions.ts \u2014 the binding loop persists mode (all seats, including none) + reason",
+    "packages/mpd-team-core-plugin/src/index.ts \u2014 approve output schema declares `bindings`; approve render prints one line per seat",
+    "packages/mpd-team-core-plugin/test/workmate-binding.test.ts \u2014 round-trip + persistence arms",
+    "packages/mpd-team-core-plugin/test/workmate-binding-status.test.ts \u2014 NEW (status reports the mode; schema declares bindings; render prints them)",
+    "packages/mpd-team-core-plugin/test/tool-surface.test.ts \u2014 measurement note (W3-C2 re-measured, unchanged)"
+  ],
+  "gates": [
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "536 pass, 0 fail, 35 files",
+      "log": "team-core-tests.log"
+    },
+    {
+      "command": "surface budget",
+      "exit": 0,
+      "observed": "6379 / 6400, headroom 21 \u2014 UNCHANGED (costOf charges name+description+parameters)",
+      "log": "surface.log"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "PASS \u2014 552 files",
+      "log": "verify-comments.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 1,
+      "observed": "4 errors, ALL in packages/mpd-workmate-plugin (another lane's versioned-persona work); ZERO in this task's files",
+      "log": "typecheck.log"
+    }
+  ],
+  "newArms": [
+    "updateTeamMember round-trips workmateMode/workmateReason and a reuse patch clears a stale reason",
+    "the approval persists workmateMode for reuse/init AND none+reason cap",
+    "agent_teams_plan {action:status} reports workmateMode/workmateReason/workmate",
+    "the approve output schema declares bindings as an array of objects",
+    "an approval answer carries bindings and the render prints one line per seat"
+  ],
+  "notProven": [
+    "the WEB payload (team-web.ts TeamWebMember) does not carry the binding fields yet \u2014 outside this task's write scope; `status` does, and satisfies the requested arm",
+    "bun run typecheck is red for another lane's in-flight workmate edit, not for this change"
+  ]
+}

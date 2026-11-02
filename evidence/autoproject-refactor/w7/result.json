@@ -1,0 +1,90 @@
+{
+  "task": "T42 / W7",
+  "lane": "Senior Engineer (single skills/** writer)",
+  "generatedAt": "2026-11-02T13:35:10Z",
+  "changed": [
+    "skills/dsh-qa/scripts/surface-pin.ts \u2014 NEW case (offline declaration pin + --self-test with 8 negative controls)",
+    "skills/dsh-qa/SKILL.md \u2014 one case-table row",
+    "skills/dsh-qa/cases.json \u2014 one 'surface-pin' entry"
+  ],
+  "pins": {
+    "autoproject": [
+      "mpd_autoproject WITH scope",
+      "mpd_ulw/mpd_ultrawork absent tree-wide",
+      "/autoproject registered, /ulw + /ultrawork not"
+    ],
+    "teamCore": [
+      "the five agent_teams_* names",
+      "task{context,handoff}",
+      "control{fence,unfence}",
+      "dispatch{mode,reassign}"
+    ],
+    "cellwork": [
+      "all 15 cellwork_* names including the NEW cellwork_open"
+    ],
+    "workmate": [
+      "mpd_workmate_optimize",
+      "mpd_workmate_persona_set",
+      "/workmate-optimize"
+    ],
+    "memory": [
+      "scope on write/read/status",
+      "offset + next_offset on read"
+    ],
+    "crossPackageM1": {
+      "boulder_complete": "workId",
+      "cellwork_stop": "ok, cellId",
+      "agent_teams_plan delete": "archivedTo",
+      "archivedPlans listing": "planId, path (+optional approvedAt, teamId)",
+      "consumerReads": [
+        "value?.workId",
+        "value?.ok === false",
+        "value?.cellId",
+        "value?.archivedTo",
+        "plan.approvedAt",
+        "plan.teamId",
+        "plan.planId"
+      ],
+      "consumerType": "ArchivedPlanView { planId: string; path: string }"
+    }
+  },
+  "negativeControls": 8,
+  "gates": [
+    {
+      "command": "node skills/dsh-qa/scripts/surface-pin.ts --self-test",
+      "exit": 0,
+      "observed": "ok: extractors + SHIPPED-tree pin + 8 negative controls + SKILL.md row",
+      "log": "self-test.log"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/surface-pin.ts",
+      "exit": 0,
+      "observed": "PASS \u2014 12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads",
+      "log": "case-run.log"
+    },
+    {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "all self-tests passed (surface-pin.ts ran and printed its ok line)",
+      "log": "test-qa.log"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "PASS \u2014 556 files, 50161 declarations",
+      "log": "verify-comments.log"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 \u2014 PASS",
+      "log": "verify-docs.log"
+    }
+  ],
+  "notProven": [
+    "declaration pin only: it never proves behaviour",
+    "the scanner skips a registration shape it does not recognise; the shipped-tree arm turns a skipped surface into a red missing tool",
+    "skills/** corpus treeSha invalidated \u2014 rides the wave's single re-pin at integration",
+    "no package source, no dist, no git"
+  ]
+}

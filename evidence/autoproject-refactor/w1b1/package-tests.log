@@ -1,0 +1,724 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-goal-plugin/test/goal.test.ts:
+(pass) anchor creates a goal through the harness tools and records the anchor sidecar [2.34ms]
+(pass) a second anchor keeps the unfinished goal instead of replacing it [0.37ms]
+(pass) auto-finish only completes a goal this row anchored; an explicit finish does not need one [0.85ms]
+(pass) a blocked refusal from the harness is reported, not thrown [0.30ms]
+(pass) mpd_goal_status reports the goal and the anchor, and reads without a driver [0.33ms]
+(pass) mpd.jsonc wins over the row config, and disabling the row makes it inert [0.39ms]
+(pass) auto-finish refuses a goal another row anchored (ownership is per run, not per session) [0.29ms]
+(pass) an unrecordable ownership sidecar is reported, never swallowed [0.19ms]
+(pass) anchor refuses when the composition mounts no goal tools [0.14ms]
+(pass) the anchor sidecar survives a malformed file and drops only its own record [0.21ms]
+
+packages/mpd-autoproject-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [2.27ms]
+(pass) quality gate: a FAIL lane blocks completion and stamps the ledger row [0.41ms]
+(pass) engine alias and 2-fruitless-waves stop [0.25ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.39ms]
+(pass) the DECLARED mpd_autoproject output schema accepts the engine's own plan=false AND plan=true results [1.57ms]
+(pass) the mpd_autoproject alias path (hardcoded plan=false) is exercised and its result matches its DECLARED schema [0.45ms]
+
+packages/mpd-autoproject-plugin/test/commands.test.ts:
+(pass) the ONE /autoproject command is registered through the adapter seam, with no alias [0.87ms]
+(pass) empty input returns usage naming the objective form and starts nothing [0.15ms]
+(pass) a non-empty invocation submits the activation directive as the invoking agent's next user turn [0.20ms]
+(pass) the activation directive carries the six autonomy behaviours in order [0.11ms]
+(pass) the QA case's c3.2 probe still matches and the c3.3 probe it needs is the one this text matches [0.06ms]
+(pass) the frozen head is byte-stable across objectives AND verdicts (prefix-cache discipline) [0.15ms]
+(pass) the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id [1.53ms]
+(pass) the gesture path runs the SAME mechanical gate with the agent the payload carries [0.68ms]
+(pass) mode advisory and mode off stage nothing and say so [0.43ms]
+(pass) an already-staged plan is never re-staged, and the directive names the existing one [0.35ms]
+(pass) a composition without the staging tool degrades honestly — no throw, no claimed team [0.51ms]
+(pass) a REFUSING staging call degrades without throwing: the run starts and the block says so [0.76ms]
+(pass) a tripping objective that carries the explicit `team:` marker has the marker CONSUMED [0.55ms]
+(pass) team.sensitivity reaches the autoproject gate: the easy row stages, the normal row stays silent [1.55ms]
+(pass) signal F reaches the autoproject gate: a large workspace stages, a tiny one stays silent [1.11ms]
+(pass) the pre-step gesture boundary injects the same directive and delegates to next() [0.23ms]
+(pass) the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression) [0.30ms]
+(pass) the gesture boundary leaves every non-gesture step untouched [0.22ms]
+(pass) the plugin reaches the seams only through the adapter (no direct command service, event bus or host import) [0.27ms]
+(pass) apply degrades safely when the composition has no command registry and no event bus [0.13ms]
+
+packages/mpd-autoproject-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.06ms]
+(pass) start, timer, complete lifecycle [0.94ms]
+(pass) plan progress parses TODOs and verification wave [0.33ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [0.36ms]
+(pass) mpd_boulder_plan_progress resolves a relative plan path and REPORTS an unresolvable one [0.32ms]
+(pass) mpd_boulder_start writes the ledger at the CONTRACT path <ws>/.mpd/boulder.json [0.61ms]
+(pass) the LEGACY `.mpd` knob value still lands on the contract path, and a real path still overrides [0.39ms]
+
+packages/mpd-config-plugin/test/seed.test.ts:
+(pass) chooseSeedRoute — the flash-family model from the LIVE catalog (contract §5) > an exact `deepseek-flash` listing wins over every looser flash match, and names its provider [0.08ms]
+(pass) chooseSeedRoute — the flash-family model from the LIVE catalog (contract §5) > without an exact id, the first `*flash*` listing is the close match [0.02ms]
+(pass) chooseSeedRoute — the flash-family model from the LIVE catalog (contract §5) > no flash-family model, an empty catalog or no catalog at all yields NOTHING (never a guess) [0.02ms]
+(pass) buildAgentRoutesSeedBlock — ONE route for all eleven agents, slot-1 group at max and the rest at high > every roster agent gets an entry; the effort split follows the display groups [0.07ms]
+(pass) agentRouteEntriesFromTeamModels — the legacy block materialized (contract §5) > each agent inherits its group's route: provider/model/effort and the group's own fallbacks [0.09ms]
+(pass) agentRouteEntriesFromTeamModels — the legacy block materialized (contract §5) > a malformed legacy leaf is skipped, never copied as junk [0.03ms]
+(pass) agentRouteEntriesFromTeamModels — the legacy block materialized (contract §5) > `hasLegacyTeamModels` triggers on at least ONE declared slot, never on an absent/empty block [0.05ms]
+(pass) seedAgentRoutesFile — writes once, never rewrites, never loses a byte > a workspace with NO file gets one, holding the eleven seeded entries [0.98ms]
+(pass) seedAgentRoutesFile — writes once, never rewrites, never loses a byte > an existing file WITHOUT agentRoutes is seeded in place, every other byte preserved [0.30ms]
+(pass) seedAgentRoutesFile — writes once, never rewrites, never loses a byte > a file that ALREADY declares agentRoutes — even partially — is left byte-identical [0.19ms]
+(pass) seedAgentRoutesFile — writes once, never rewrites, never loses a byte > an unparsable file is refused untouched (never repaired by a seed) [0.12ms]
+
+packages/mpd-config-plugin/test/settings-row-config.test.ts:
+(pass) the row Config > it marks EVERY node volatile, including the ones a function-blind walk would skip [0.09ms]
+(pass) the row Config > it is a schema the loader accepts: toJSON, and the standard-schema validator [0.05ms]
+(pass) the row Config > the marking is IDEMPOTENT — apply() re-marks the same tree on every boot [0.03ms]
+(pass) the row config is an EFFECTIVE layer > a knob edited in Settings reaches the plugins, and outranks the files [0.45ms]
+(pass) the row config is an EFFECTIVE layer > the ROUTING keys never leak into the effective config [0.19ms]
+(pass) boulder.dir — the L4 escape that defeated it > UNSET resolves to undefined — not the retired `.mpd` default (the escape is closed) [0.91ms]
+(pass) boulder.dir — the L4 escape that defeated it > a PROJECT file value WINS for the first time — the L4 escape is gone [0.48ms]
+(pass) boulder.dir — the L4 escape that defeated it > the schema still DECLARES the knob, so both settings front doors keep rendering it [0.13ms]
+
+packages/mpd-config-plugin/test/team-models.test.ts:
+(pass) §1 — the `agentRoutes` schema: one entry per agent, ZERO defaults > the schema carries no route default: a workspace that configured nothing resolves eleven EMPTY entries [0.24ms]
+(pass) §1 — the `agentRoutes` schema: one entry per agent, ZERO defaults > ZERO `.default()` on any route leaf — the contract's real prohibition [0.10ms]
+(pass) §1 — the `agentRoutes` schema: one entry per agent, ZERO defaults > the legacy `teamModels` node is TOLERATED: it validates and passes through unchanged [0.15ms]
+(pass) §1 — the `agentRoutes` schema: one entry per agent, ZERO defaults > the eleven names come from the groups' own membership, in group order [0.02ms]
+(pass) the 2026-10-23 DELETION LOCK, deliberately REVERSED (§9, amendment 2 §4) > the agentRoutes layer EXISTS with the names, the schema and the knobs the retired test deleted [0.03ms]
+(pass) §7 — thirty-three per-agent rows in the ONE declaration, in group order > exactly thirty-three new rows, after the original thirteen and before the TUI knob [0.10ms]
+(pass) §7 — thirty-three per-agent rows in the ONE declaration, in group order > every row is a select with the declared fallback list and a label/zh pair [0.07ms]
+(pass) §7 — thirty-three per-agent rows in the ONE declaration, in group order > every hint names its dotted mpd.jsonc key and carries the agent's own sentence [0.28ms]
+(pass) §7 — thirty-three per-agent rows in the ONE declaration, in group order > the group copy survives for the bulk-edit panel, and names the group's own members [0.07ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > two agents with different routes resolve independently — no cross-talk [0.21ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > lookup is case- and separator-insensitive on the member's functional NAME [0.06ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > an absent entry => typed `unconfigured` naming BOTH missing leaf paths [0.04ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > a malformed leaf => typed `invalid` with the offending path [0.05ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > the fallback chain is sanitized once: malformed entries are DROPPED, a non-array chain dropped whole [0.08ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > `agentRouteOfMember` is TOTAL: it answers a route only for a usable entry [0.06ms]
+(pass) §2 — `resolveAgentRoute`: pure, total, and independent per agent > the AGENT_UNCONFIGURED sentence names the agent, both recovery paths and the no-write fact [0.03ms]
+(pass) the mounted service: the typed read and the raw pass-through > the service answers per agent from the LIVE file layers, and never throws [2.48ms]
+(pass) the mounted service: the typed read and the raw pass-through > a malformed fallback entry is dropped with exactly ONE log line [0.77ms]
+(pass) the mounted service: the typed read and the raw pass-through > the legacy block passes through `mpd_config_get` verbatim but is never read for routing [0.74ms]
+(pass) the mounted service: the typed read and the raw pass-through > `mpd_config_get`'s description names agentRoutes and no longer advertises the slot table [2.49ms]
+(pass) the FILE no-data-loss lock: a live `agentRoutes` block survives an unrelated save > saving an unrelated leaf leaves the old block byte-identical [0.78ms]
+
+packages/mpd-config-plugin/test/settings-wiring.test.ts:
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > one registration, applies:'restart', and the base is the FILE layer — never the resolved value [1.51ms]
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > a refused registration names the host's reason and leaves the TUI fallback to own it [0.29ms]
+(pass) namespace ownership (design §10.1): THIS package registers, with the file-derived base > A3 'not a lost edit': with N roots refused, the READ-IN still resolves the new value for every workspace [0.61ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > L3 outranks the file layers, and a missing L3 key falls back to the file [0.57ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > the in-namespace marker never becomes config and never reaches the file [0.46ms]
+(pass) read-in precedence (design §1.1/§10.4, U12) > with the namespace unserved the file layers still resolve (degraded, not fatal) [0.25ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U1/A2: one live root — a front-door edit rewrites exactly that file, comments intact [0.60ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U13: zero live roots writes NOTHING anywhere and says so [0.18ms]
+(pass) the write-back target rules (design §A.1/§10.5) > U14 must-fail-on-fanout: two live roots REFUSE, name both, and touch no file [0.47ms]
+(pass) the write-back target rules (design §A.1/§10.5) > S1: with a `projectFile` override the WRITE target equals the READ target [0.52ms]
+(pass) the write-back target rules (design §A.1/§10.5) > A6 negative control: the switch disables the FILE write only, never the value [0.34ms]
+(pass) the write-back target rules (design §A.1/§10.5) > the design's flat key (`writeBack:false`) disables it too, and both spellings are reported [0.31ms]
+(pass) the write-back target rules (design §A.1/§10.5) > the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off) [0.33ms]
+(pass) the write-back target rules (design §A.1/§10.5) > a provider reload is a READ-IN only: it never echoes into a file write [0.39ms]
+(pass) the write-back target rules (design §A.1/§10.5) > a raw-section change with NO new leaf writes nothing (the loop gate) [0.39ms]
+(pass) the project-file watcher's lifetime (S5) > an unload closes the watcher: a later file edit no longer reloads the config [804.77ms]
+(pass) migration (design §6, U15) > a pre-seeded user section migrates into the file once and records the marker [2.48ms]
+(pass) migration (design §6, U15) > idempotence: a second boot at the recorded revision writes nothing [1.63ms]
+(pass) migration (design §6, U15) > with no live root the migration is DEFERRED and nothing is written to the mount-time fallback root [1.34ms]
+(pass) migration (design §6, U15) > two live roots defer the migration with the ambiguous reason, not a guess [1.43ms]
+(pass) migration (design §6, U15) > a refusing target aborts the migration loudly and leaves the document alone [1.68ms]
+(pass) the §1.2 clearing rule (a fresh FILE edit wins over a stale override) > a file value the bridge recorded is unset from the user section under the revision fence [2.42ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ONE live root: the base is that workspace's file (a file value that differs from the schema default) [0.36ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > ZERO live roots: the mount-time root is used, and no file there means an empty base (schema defaults) [0.14ms]
+(pass) the file-derived base under the captain's cardinality rule (§10.1 + ruling) > N live roots: NO base is invented, the ambiguity is surfaced, and the schema defaults stand [0.44ms]
+(pass) the per-agent routes have NO read-path default layer (contract §1/§2) > a fully absent .mpd/mpd.jsonc resolves NO route: an absent block is ABSENT [1.38ms]
+(pass) the per-agent routes have NO read-path default layer (contract §1/§2) > NEGATIVE CONTROL: an unrelated settings-document save never injects an agentRoutes block into the file [1.80ms]
+(pass) the per-agent routes have NO read-path default layer (contract §1/§2) > a route leaf SAVED through the settings document is what lands in the file (the routes stay editable) [1.86ms]
+
+packages/mpd-config-plugin/test/jsonc-edit.test.ts:
+(pass) U1 byte fidelity > only the edited value span changes; comments, order, trailing comma and final newline survive [0.12ms]
+(pass) U1 byte fidelity > an identical edit is a byte-level no-op (idempotence, U11) [0.04ms]
+(pass) U2 escapes and decoded keys (E1) > a neighbouring escaped string is untouched and a dotted key matches decoded text [0.06ms]
+(pass) U3/E6 nested insert > a missing intermediate object is materialised and appended as the LAST member [0.05ms]
+(pass) U3/E6 nested insert > a missing leaf inside an existing object is appended as the last member [0.04ms]
+(pass) U3/E6 nested insert > without the insert option a missing path refuses and returns no text [0.02ms]
+(pass) U4/E3 deletion span arithmetic > deleting the only member leaves valid JSONC with no dangling comma [0.23ms]
+(pass) U4/E3 deletion span arithmetic > deleting a middle member keeps the remaining members valid and ordered [0.05ms]
+(pass) U5 arrays (E4) > replace, append and delete an element, including deleting to an empty array [0.16ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: the LAST occurrence is updated, the first is byte-identical, and the note names every line [0.10ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a top-level duplicated leaf behaves the same way (the design's U6 fixture) [0.04ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > set: a single occurrence carries NO note (nothing to warn about) [0.04ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset: EVERY occurrence is removed, so the key is genuinely gone from the parsed document [0.06ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > unset via the DELETE sentinel removes every occurrence too [0.04ms]
+(pass) U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL > a duplicated INTERMEDIATE still refuses as `ambiguous-intermediate`, byte-untouched, for BOTH set and unset [0.07ms]
+(pass) U7 CRLF (E7) > existing endings are preserved and an inserted line uses CRLF [0.09ms]
+(pass) E3 trailing-comma style on insert > a document that uses a trailing comma does not gain a dangling or doubled comma [0.05ms]
+(pass) U9 unparsable (E9) > a malformed document refuses with 'unparsable' and returns no text [0.12ms]
+(pass) reader parity > stripJsoncText tolerates comments and trailing commas exactly like the shipped reader [0.02ms]
+(pass) regression: the shipped reader's trailing-comma probe (found by these tests) > a trailing comma followed by a comment no longer breaks JSON.parse [0.02ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan proves the exact value span and reports the comma/eol facts [0.08ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > locateValueSpan refuses with the named reasons instead of guessing [0.04ms]
+(pass) the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult > the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete [0.05ms]
+
+packages/mpd-config-plugin/test/settings-defaults.test.ts:
+(pass) D-08 — the autoCheck default matches the shipped row > the schema defaults commentChecker.autoCheck to FALSE [0.04ms]
+(pass) D-09 — memory.vcs accepts the mode the memory row honours > the union declares git, svn AND both [0.07ms]
+(pass) D-09 — memory.vcs accepts the mode the memory row honours > the Settings knob offers the same three options [0.03ms]
+(pass) D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the live half names every group that reads the config service per use [0.03ms]
+(pass) D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the watchdog is a SCOPE-QUALIFIED EXCEPTION, never a member of the live list [0.02ms]
+(pass) D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the exception half names every mount-captured group, so it cannot silently vanish [0.02ms]
+(pass) D-18 — the disclosure tells the SCOPED truth, and states BOTH halves > the section notice renders BOTH halves plus the not-lost clause, and never the blanket sentence [0.02ms]
+(pass) the declaration cannot lose text to ASI > no line is a BARE string literal directly after another (the CodeRabbit #5 shape) [0.19ms]
+(pass) the declaration cannot lose text to ASI > the guard itself can redden (negative control) [0.01ms]
+
+packages/mpd-config-plugin/test/config.test.ts:
+(pass) stripJsonc removes comments and trailing commas [0.07ms]
+(pass) stripJsonc keeps comments inside strings [0.01ms]
+(pass) deepMerge project wins, nested merged, pollution safe [0.06ms]
+(pass) mpd_config_get result is lossless JSON for a missing key (value null, never undefined) [0.56ms]
+(pass) mpdConfig service get resolves dot-paths (consistent with mpd_config_get) [0.33ms]
+
+packages/mpd-config-plugin/test/live-refresh.test.ts:
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > a save to the mpd-config entry document is what the NEXT service read answers [0.50ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > an agentRoutes save through the entry document routes the agent on the NEXT read [0.30ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > the entry refresh SURVIVES a later tool reload (the override is not reverted to the apply-time config) [0.27ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > the legacy mpd-namespace listener still fires beside the entry one (extend, not replace) [0.55ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > R1's file half: a HAND edit of .mpd/mpd.jsonc reaches state through the MOUNT-ARMED watcher [400.88ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > a MATERIALISED default in the entry document never becomes L4: a file edit still wins (measured host) [401.40ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > a configured agent resolves to exactly its own route, and its group sibling stays unconfigured [0.25ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > an absent entry is TYPED unconfigured — the resolver and the service never throw (contract §2) [0.09ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > model-without-provider is unconfigured, naming ONLY the missing leaf [0.05ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > a malformed leaf is invalid with the offending path; a non-object entry is invalid at the entry [0.08ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > the fallback chain is sanitized: malformed entries dropped, a non-array chain dropped whole [0.07ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > THE DELETION LOCK IS REVERSED: a full agentRoutes block now DECIDES the route [0.16ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > an EXTENSION role is `unrouted` — NOT a refusal — and answers no roster route (amendment 2 §3) [0.08ms]
+(pass) AC3 — ONE route per AGENT; the retired slot tree decides nothing (contract §1-§2, amendment 2 §3) > the mpd_config_get disclosure names the per-agent routes, and no longer the retired slot table [0.48ms]
+
+packages/mpd-config-plugin/test/bridge.test.ts:
+(pass) target set (design §A.1 — never a guessed root) > U14: exactly one live root is written; two live roots REFUSE and name both candidates [0.19ms]
+(pass) target set (design §A.1 — never a guessed root) > U14 (must-fail-if-fanout): two live roots touch NO file, the settings write is untouched [0.38ms]
+(pass) target set (design §A.1 — never a guessed root) > zero live roots writes NOTHING anywhere and reports no-live-session [0.05ms]
+(pass) target set (design §A.1 — never a guessed root) > the negative-control switch refuses to write even with a live root [0.19ms]
+(pass) happy paths > U1: a live root gets the value written with comments, order and trailing commas intact [0.56ms]
+(pass) happy paths > U11: a missing target is created with the header comment, and a repeat run is unchanged [0.51ms]
+(pass) happy paths > the writer reports per root when handed several targets (the DECIDER never hands it more than one) [1.06ms]
+(pass) loud failure paths (design §B.2/§7) > U10: a read-only target is reported denied, byte-untouched, and names the file [0.24ms]
+(pass) loud failure paths (design §B.2/§7) > U9: an unparsable target is skipped without writing a byte [0.25ms]
+(pass) loud failure paths (design §B.2/§7) > a duplicate key in the target refuses with both line numbers and no write [0.31ms]
+(pass) loud failure paths (design §B.2/§7) > U8: a human edit landing mid-write ends as conflict, leaving the human's bytes [0.58ms]
+(pass) section leaves and the change diff > a front-door edit yields only the added/changed leaves; a reset yields none [0.17ms]
+(pass) section leaves and the change diff > U12 helper: an unchanged section produces no write (the deep-equal gate cannot drop a raw change) [0.03ms]
+(pass) leavesFromSection > only declared paths become leaves, and absent paths are skipped [0.11ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated leaf key is WRITTEN (last occurrence) and the per-root result carries the loud note [0.41ms]
+(pass) the settled duplicate-key ruling reaches the writer's report (nothing silent) > a duplicated INTERMEDIATE is still refused byte-untouched [0.28ms]
+
+packages/mpd-config-plugin/test/seed-marker.test.ts:
+(pass) seedMarkerFor / SEED_MARKER_VERSION — the durable marker's path and schema version > it lives beside the project file's directory, named model-config-seed.json, at version 2 [0.11ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > a version-2 MARKER wins first: nothing is re-seeded, nothing rewritten [0.39ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > PRIORITY 1: agentRoutes declared in any layer => upgrade the MARKER only, never the file [0.41ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > PRIORITY 2: a legacy teamModels block is MATERIALIZED into eleven entries, then marked v2 [0.61ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > THE v0.15.x STRANDING CASE: an UNVERSIONED marker does NOT block the migration [0.47ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > an UNPARSABLE marker is treated as ABSENT: the migration still runs once and writes v2 [0.49ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > PRIORITY 3: a fresh workspace seeds eleven entries from the catalog and marks v2 [0.49ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > an UNAVAILABLE catalog writes NEITHER entries NOR a marker, so a later attempt can still seed [0.21ms]
+(pass) seedAgentRoutesOnce — the versioned one-time protocol (amendment 2 §1) > an unparsable project file is refused untouched and unmarked [0.28ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a fresh workspace initializes ONCE: one line, eleven entries, a v2 marker, no second run [19.06ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a DELIBERATE deletion after a seed is never undone by the next mount (a v2 marker) [12.80ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a workspace that already declares agentRoutes spends NO catalog read; its marker is upgraded [6.97ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a PROJECT-FILE teamModels block MIGRATES at mount: eleven entries, one line naming the legacy source, no catalog [7.60ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a USER-LAYER teamModels block also MIGRATES into the project file (the reversal of the retired arm) [7.31ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > a ROW-KNOB-LAYER (L4) teamModels declaration migrates too [7.28ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > an unavailable catalog writes NOTHING, leaves NO marker, and says so ONCE per root [15.44ms]
+(pass) the mounted row: ONE log line per root, and the version-2 marker beats the file state > an unparsable project file writes nothing and says so once [7.03ms]
+(pass) the initialization is PER ROOT and reloads its own write > TWO live roots get their own file, marker and line — one shared catalog read [7.18ms]
+(pass) the initialization is PER ROOT and reloads its own write > the exec-less FALLBACK root is never seeded; with NO live root the first reload seeds [12.44ms]
+(pass) the initialization is PER ROOT and reloads its own write > the seeded entries RESOLVE without an explicit reload (the write reloads its root) [6.78ms]
+
+packages/mpd-bundle-plugin/test/dshgo-panel.test.ts:
+(pass) registration is lazy and silent > no bridge: nothing is published, one log token, no throw, one subscription [0.53ms]
+(pass) registration is lazy and silent > a second attempt while absent does not repeat the log line [0.17ms]
+(pass) registration is lazy and silent > a late dshGo bind publishes the panel exactly once and uses the manifest id [0.14ms]
+(pass) registration is lazy and silent > a bridge that is present at apply publishes immediately [0.07ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > it carries exactly the four narrowed sections and no path-shaped key [1.51ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > T2 is not ready (T1 runs) and T3 is ready (its blocker names nothing) [0.23ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > an unchanged tick emits nothing; a real change emits once [0.43ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > a huge board still emits under the bridge's 32 KiB cap and lists at most ten rows [0.77ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > a service that throws reads as an empty section instead of breaking the tick [0.09ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > a panel with no conversation reads nothing at all [0.07ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > the adapter's session-to-workspace lookup outranks the injected fallback [0.12ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > with neither resolution the panel reads nothing and shows the empty state [0.09ms]
+(pass) the emitted snapshot is narrow, bounded and change-driven > a staged plan and a parked question reach the snapshot [0.11ms]
+(pass) the view tree is v1-only and inside the panel budget > every component is from the v1 catalog, the budget holds, and the action ids exist [0.59ms]
+(pass) the view tree is v1-only and inside the panel budget > every $ binding resolves in the snapshot the data function emitted [0.37ms]
+(pass) the view tree is v1-only and inside the panel budget > more than four options shows four buttons and says it truncated [0.36ms]
+(pass) the view tree is v1-only and inside the panel budget > no question means no question nodes at all [0.13ms]
+(pass) refresh follows the question SET, not its contents > one refresh per set change and none for a content-only change [0.38ms]
+(pass) taps answer a toast and never reject > approve, dispatch and an option answer each succeed against their service [1.41ms]
+(pass) taps answer a toast and never reject > no conversation answers the one documented toast [0.23ms]
+(pass) taps answer a toast and never reject > an absent service answers 'Unavailable here' and mutates nothing [0.20ms]
+(pass) taps answer a toast and never reject > an ok:false outcome answers the refusal sentence as a bounded toast [0.25ms]
+(pass) taps answer a toast and never reject > a throwing service still answers a toast, and the promise resolves [0.41ms]
+(pass) taps answer a toast and never reject > a relay that answers false is 'Unavailable here', and an unknown option index is refused [0.28ms]
+(pass) the first view is a live read, not the unseeded push cache > a question parked before the app's first fetch renders its callout and one button per option [0.55ms]
+(pass) a tap acts on the question its view rendered > still the same parked question: the tap carries the label the view rendered [0.26ms]
+(pass) a tap acts on the question its view rendered > a new parked question: the tap toasts and never settles the question it never showed [0.21ms]
+(pass) a tap acts on the question its view rendered > a disappeared question: the tap toasts, refreshes and answers nothing [0.18ms]
+(pass) a tap acts on the question its view rendered > a view rendered with no question: an answer tap is a defensive toast [0.15ms]
+(pass) a tap acts on the question its view rendered > no view at all yet: an answer tap is the same defensive toast [0.15ms]
+(pass) nothing leaks after the release > cancel clears the subscription's interval and dispose clears the rest [0.18ms]
+(pass) nothing leaks after the release > a released registration also drops its late-bind subscription [0.06ms]
+(pass) the bundle row wires the panel from apply > apply publishes panel 'mpd' through the mounted adapter and nothing else [0.53ms]
+
+packages/mpd-bundle-plugin/test/team-view-push.test.ts:
+[W-a] {"readsBefore":1,"readsAfter":2,"elapsedMs":2,"pushBudgetMs":200,"intervalMs":2000,"intervalFired":0,"streamUrl":"/plugins/mpd-team/events?sessionId=s1","refreshedOnScreen":true,"staleTagGone":true}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > one frame re-reads the routes while the fallback interval never fires [47.24ms]
+[mpd] team sidebar session: s1
+[W-a:mounts] {"betterSidebar":["/plugins/mpd-team/events?sessionId=s1"],"harnessRightSidebar":["/plugins/mpd-team/events?sessionId=s1"],"openTotal":2}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > each MOUNT owns its own stream: both sidebar hosts, mounted together, hold one each [15.85ms]
+[W-b:absent] {"streamsOpened":0,"intervalMs":2000,"intervalFired":1,"readsBeforeTick":1,"readsAfterTick":2,"frameBefore":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfter":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil"}
+(pass) W-b — the fallback: no stream, and a stream that errors > with no EventSource global the panel renders and the interval still refreshes it [12.83ms]
+[W-b:error] {"errorHookInstalled":false,"closedByError":false,"frameAfterError":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfterTick":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil","frameAfterFrame":".mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-famil"}
+(pass) W-b — the fallback: no stream, and a stream that errors > a stream error costs the push and nothing else [25.88ms]
+[W-c:unmount] {"opened":1,"openAfterUnmount":0,"closeCalls":1,"registeredTimers":[15000,2000,1000],"clearedTimers":[2000,1000]}
+(pass) W-c — lifecycle: unmount and session change > unmounting the panel closes the stream and clears the interval [9.18ms]
+[W-c:session-change] {"opened":["/plugins/mpd-team/events?sessionId=s1","/plugins/mpd-team/events?sessionId=s2"],"closedFlags":[true,false],"openAfterChange":1}
+(pass) W-c — lifecycle: unmount and session change > a session change closes the old stream before the next one opens [269.53ms]
+[W-c:no-route] {"opened":0}
+(pass) W-c — lifecycle: unmount and session change > no events route means no stream: the composition is left exactly as it was [128.03ms]
+
+packages/mpd-bundle-plugin/test/settings-card.test.ts:
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the shipped client registers a settings.section with id 'mpd', an explicit order and a label [1.26ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the Plugins tab's keyed item registration is GONE from the built client (the user's request) [0.60ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > NEGATIVE CONTROL: the absence predicate reddens the moment the retired registration returns [0.32ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the mount reaches configForms and the client still declares only the stable seams [0.54ms]
+(pass) W2 (static): the BUILT and served client carries the SECTION registration > the disclosure copy is the same sentence the TUI states, and no stale claim survives [0.32ms]
+(pass) the registration only happens when the namespace form is available > no configForms -> no entry, one warning-free degrade, no throw out of apply [3.75ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > configForms at apply -> one SECTION entry, and its descriptor passes the whole predicate [6.38ms]
+(pass) the registration only happens when the namespace form is available > NEGATIVE CONTROL: the descriptor predicate reddens on every mutant that matters [0.13ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the registration only happens when the namespace form is available > a late-served configForms still mounts the section (provideService wakes the fiber) [3.07ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > it renders what the namespace reports (values, overridden marker, disclosure) and nothing invented [13.46ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence [4.96ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the card's form behaviour > resetField asks for the file value (unset), and an invalid draft refuses to save [3.67ms]
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+(pass) the card's form behaviour > a read-only scope renders read-only with a reason and writes nothing [7.14ms]
+(pass) isolation and front-door parity > web-client.js is the ONLY source that requires the card module, and the card does no I/O [1.51ms]
+(pass) isolation and front-door parity > the card's forty-seven fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift) [1.73ms]
+(pass) isolation and front-door parity > NEGATIVE CONTROL: the parity pin reddens on a drifted label, a shortened path and a changed declared list [1.24ms]
+(pass) isolation and front-door parity > every per-agent route row LEADS with its agent's own human sentence, in BOTH locales, before its key [1.49ms]
+(pass) isolation and front-door parity > the four DISPLAY group headings are declared, and grouping is stated as display-only [0.24ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the model control lists the catalog's provider/model pairs, GROUPED by provider [8.38ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the provider control lists the catalog's provider ids with their display names [6.30ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the effort control offers the SELECTED model's own efforts, and changing the model re-derives them [13.59ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > a model with no advertised efforts keeps the declared fallback list [6.47ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NO route leaf is ever a text input (a route value is never typed) [7.45ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: no catalog services -> the declared lists, and the section still renders [5.58ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: ui-model-selection: session "s1" resolved no scope)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > DEGRADE: an unbound session and a THROWING directoryFor keep the declared lists, no throw out of render [11.56ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > edits through the catalog-driven controls still write ONE mutate batch with the revision fence [2.84ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > §9: two agents with DIFFERENT routes render independently, and each row states its OWN route [10.54ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > R2 REVERSAL (§7): every roster agent has its own row, and a leftover teamModels block is IGNORED and never written [11.85ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > R3: the see-before-you-edit block renders ONE state per agent, and <unconfigured> where nothing is set [7.66ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > R3: the SERVICE branch projects one typed resolution per agent and carries the chains [1.10ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > R3: a live-service read re-projects the card through its own store [0.86ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > the disclosure sentences are unchanged and still rendered with the new rows [7.20ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-1: each display group renders its heading, and each AGENT renders as ONE row holding its three cells [7.03ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-2: the human sentence renders FIRST at readable size/opacity, the disclosure dimmer beneath [6.21ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NEGATIVE CONTROL: the group/agent lookup is falsifiable (a wrong attribute finds nothing) [4.86ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-A: a PROBE-INVISIBLE catalog still feeds the pickers through ctx.inject (the defect) [6.03ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 3 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-B: a directory-store mutation reaches the card with NO re-mount (live read, live re-projection) [12.14ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-C: when inject never resolves the declared lists render AND the fallback state is VISIBLE [6.20ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-D: the SERVED client.js carries the inject acquisition and the fallback marker [1.03ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-E: the LIVE catalog is reached when — and only when — the caller-scoped chain is satisfied [5.88ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (the host resolved no model directory for this session: cannot get property "testing.absent.seam" without inject)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-F: an UNSATISFIABLE caller chain degrades VISIBLY, naming the rejected seam [5.32ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G: the MEASURED list shape (`current` is a session ID STRING) reaches the LIVE catalog [5.36ms]
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-G NEGATIVE CONTROL: the PRE-FIX object-only read answers undefined for the MEASURED shape [0.18ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: live catalog — 2 providers · 31 models
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H: with NO current session, a LISTED session that has BOTH scope and binding is bound [8.89ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-H2: NO current session and NO resolvable listed session still NAMES the reason [7.19ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > T-I: an ENUMERATING sessions list does not warn at boot; a READY list with no bindable session does [5.27ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-1: a REJECTED read warns the console ONCE and the same sentence renders at the slot rows [6.45ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-2: a RESOLVED catalog emits the LIVE sentence once and leaves the slot hints untouched [5.75ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > D-3: warn-once survives repeated publishes and RE-ARMS only after a return to live [5.82ms]
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-S1 (static): the radius is the harness's token and NO token is read without a fallback [0.49ms]
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-S1 NEGATIVE CONTROL: the token scan reddens on a bare read and clears on a pair [0.06ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-F1: every field is the host's `.field` — flex column, gap 6px, 12px 0, separator after the first [9.80ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint [5.74ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form status=unavailable value=absent writable=false mode=memory
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-C1: the control is the host's `.input` and its focus state is the host's own rule [11.86ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-C2: the footer is the host's `.footer` and its three actions carry the radius [6.11ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2-D1: the disclosure is ONE `.help` block — the SAME four paragraphs, hint-sized, 8px apart [8.00ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+(pass) R2: the styled contract (the harness's own settings-form tokens) > R2 NEGATIVE CONTROL: the styled predicates redden on the PRE-restyle presentation [10.73ms]
+(pass) the live-service read is sequenced and re-run on a settings-scope update > F1c: the effective-source copy states the reads the card actually performs [0.11ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form updated status=ready value=present
+(pass) the live-service read is sequenced and re-run on a settings-scope update > F1a: a settings-scope update from another front door re-runs the live-service read [1.50ms]
+[mpd] settings section: form status=ready value=present writable=true mode=host
+[mpd] settings section: form updated status=ready value=present
+(pass) the live-service read is sequenced and re-run on a settings-scope update > F1b: a LATE stale answer cannot clobber a newer one (monotonic sequence guard) [2.83ms]
+(pass) the effective block distinguishes a MALFORMED agent route from an unconfigured one (#4/#5) > #4: a non-string leaf projects as `invalid` with the offending path named [0.17ms]
+(pass) the effective block distinguishes a MALFORMED agent route from an unconfigured one (#4/#5) > #4: an AGENT entry that is not an OBJECT projects as `invalid` too [0.10ms]
+(pass) the effective block distinguishes a MALFORMED agent route from an unconfigured one (#4/#5) > #4: the INVALID line renders its own sentence in BOTH locales — never `<unconfigured>` [0.37ms]
+(pass) the effective block distinguishes a MALFORMED agent route from an unconfigured one (#4/#5) > #5: WHITESPACE-ONLY leaves count as missing, exactly as the resolver trims them [0.21ms]
+
+packages/mpd-bundle-plugin/test/watchdog-routes-boot.test.ts:
+(pass) the watchdog routes survive a late-bound web server > a web server that binds AFTER apply() still gets BOTH routes (the live 404) [3.08ms]
+(pass) the watchdog routes survive a late-bound web server > a web server bound AT apply() registers immediately (the path that already worked) [0.17ms]
+(pass) the watchdog routes survive a late-bound web server > an unrelated late binding registers nothing and never throws [0.14ms]
+(pass) the watchdog routes survive a late-bound web server > httpServer is accepted as the legacy name for the same surface [0.10ms]
+(pass) the watchdog routes survive a late-bound web server > no effect seam keeps the plugin a headless marker and never throws [0.13ms]
+(pass) the watchdog routes survive a late-bound web server > a rebind of the SAME server never registers the routes twice [1.22ms]
+(pass) the late-registered state route really answers > GET answers 200 with ok:true and the web reader key [1.73ms]
+
+packages/mpd-bundle-plugin/test/sidebar-tab.test.ts:
+(pass) client seam policy > declares only services this profile is guaranteed to mount [0.51ms]
+(pass) client seam policy > never declares the sidebar statically (that would park the whole entry) [0.18ms]
+(pass) client seam policy > waits for the sidebar through ctx.inject instead of a one-shot probe [0.10ms]
+(pass) with DSH-better-sidebar installed > registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater [0.18ms]
+(pass) with DSH-better-sidebar installed > the adopted client half is never applied (it would re-register the removed surfaces) [0.02ms]
+(pass) with DSH-better-sidebar installed > both tab descriptors are valid sidebar pages [0.32ms]
+(pass) with DSH-better-sidebar installed > keeps the locale namespaces registered [0.02ms]
+(pass) a sidebar provider REMOUNT keeps both tabs > a re-fire against the SAME service never double-registers [2.44ms]
+(pass) a sidebar provider REMOUNT keeps both tabs > a FRESH service (the remount) receives both tabs again [2.26ms]
+(pass) workmate page > renders the library from the host routes [7.79ms]
+[mpd] AgentTeams sidebar file failed to load: Error: harness: unexpected require(@mpd-dsh/team-page)
+[mpd] settings card module failed to load: Error: harness: unexpected require(@mpd-dsh/settings-card)
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the base <option> value and label are the functional NAME, with no id suffix [139.34ms]
+(pass) workmate page base picker (C3: the functional NAME is the only base key) > the "type the base id" fallback copy is gone from BOTH dictionaries [70.30ms]
+(pass) workmate page dictionaries > registers the workmate namespace with both dictionaries [10.41ms]
+(pass) workmate page dictionaries > zh is the key-set source of truth and en matches it key for key (§L A7) [3.28ms]
+(pass) workmate page dictionaries > the mutation surface is localized in BOTH languages, not hardcoded English [1.72ms]
+(pass) workmate page dictionaries > the tab-strip label stays hardcoded English (contract §K, deliberate deferral) [2.70ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > every reason code maps to a distinct, readable message [0.63ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an in-use refusal names the blocking team and member (§E, user decision D2) [0.18ms]
+(pass) workmate failure reasons (§D) reach the page as readable messages > an unknown failure falls back to the server text, never to a raw reason key [0.07ms]
+(pass) workmate page mutation controls > delete is an explicit two-step confirmation, never one destructive click (D1) [20.87ms]
+(pass) workmate page mutation controls > purge cannot be submitted without typing the exact name (§D confirm-required) [34.81ms]
+(pass) workmate page mutation controls > the archive confirmation posts that workmate and reports the archived outcome [17.90ms]
+(pass) workmate page mutation controls > a rename posts { name, new_name } and follows the new key (§H no stale selection) [17.42ms]
+(pass) workmate page mutation controls > an in-use refusal is shown with the blocking team/member, not a generic failure (§E) [16.57ms]
+(pass) workmate page mutation controls > a 409 collision is reported as taken, and an unknown key drops the stale selection [19.01ms]
+(pass) workmate page mutation controls > a same-key rename is refused locally and explains itself (t8 L1) [14.68ms]
+(pass) workmate page mutation controls > a purge never reports itself as a plain delete (t8 L2) [1.75ms]
+(pass) workmate page mutation controls > the zh reason strings are complete sentences without a stray gap (t8 L3) [0.97ms]
+(pass) workmate page mutation controls > a detail load that fails stops claiming to load (t8 L4) [10.60ms]
+(pass) without DSH-better-sidebar > registers no sidebar surface at all — there is no floating fallback [1.56ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > with no better-sidebar the fallback registrations are ATTEMPTED, and a missing seat is ONE loud line [2.44ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION: no seat anywhere reports ONCE after the bound, while the page is still open (F5) [490.27ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION, OTHER DIRECTION: a host that takes the panels SILENCES the bound entirely [202.50ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > MID-SESSION, BOTH HOSTS: the `preferred` latch keeps the bound silent (no regression) [204.11ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > S9: a better-sidebar seat that arrives AFTER apply is PUBLISHED on the preference branch [3.92ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > when the harness seat DOES arrive, both panels register and NOTHING is reported [2.39ms]
+(pass) the harness right sidebar is the assuredly-working fallback (D1) > a missing locale seam is reported once, naming the seam that is missing [2.29ms]
+(pass) the sidebar host preference (W4) > with better-sidebar MOUNTED the official right sidebar stays untouched [2.27ms]
+(pass) the sidebar host preference (W4) > with better-sidebar ABSENT both panels register on the official fallback [2.47ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > the three primary tabs still register under their stable ids [0.13ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > every primary has a bottomOnly twin built from it, with its own id and the same body [0.21ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > the twins register ONLY through the betterSidebar path, never on the official fallback [0.18ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > the official fallback keeps title/guide/description parity with the primaries [0.22ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > the fallback still registers both panels when better-sidebar is absent [0.15ms]
+(pass) 0.28 bottom-workbench twins and fallback parity (source contract) > once the shipped client carries the twins, every primary has a registered <id>:bottom [2.25ms]
+
+packages/mpd-bundle-plugin/test/sidebar-migration-artifact.test.ts:
+(pass) shipped bundle client after the AgentTeams sidebar migration > registers exactly the four loader modules: the sidebar page plus the isolated settings card [0.35ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > carries the mpd export bridge with every pinned export [0.37ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > no mpd client source registers a removed surface [0.88ms]
+(pass) shipped bundle client after the AgentTeams sidebar migration > the page module keeps the pinned tab id and order [0.66ms]
+
+packages/mpd-bundle-plugin/test/model-config-route.test.ts:
+(pass) the effective model-config route > registers on the host's web server and answers no-store JSON beside the watchdog routes [0.85ms]
+(pass) the effective model-config route > serves ONE typed resolution per roster agent, and NEVER the retired teamModels table [0.25ms]
+(pass) the effective model-config route > the roster mirror IS the shared declaration's eleven agents, in group order [0.12ms]
+(pass) the effective model-config route > is read PER REQUEST: a changed service resolution changes the next body (live refresh) [0.09ms]
+(pass) the effective model-config route > a composition without the config row answers 503 with a reason, never a wrong payload [0.21ms]
+(pass) the effective model-config route > a config row with NO per-agent resolver refuses instead of serving an empty table [0.05ms]
+(pass) the effective model-config route > a THROWING config read answers 503 naming the error, never a partial 200 [0.10ms]
+
+packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts:
+(pass) sidebar mount guard: profile-dir derivation > derives the profile dir through a file-URL conversion, never URL.pathname [0.04ms]
+(pass) sidebar mount guard: profile-dir derivation > ENABLED when the profile resolves the sidebar and no other layer mounts it [1.72ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED only when NEITHER the profile nor the bundle can resolve the sidebar [0.24ms]
+(pass) sidebar mount guard: profile-dir derivation > clause 1 PASSES when ONLY the BUNDLE has the host — the checkout install it exists for [0.36ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED in favour of a foreign bundle layer that already mounts it [0.68ms]
+(pass) sidebar mount guard: profile-dir derivation > DISABLED when the composition has no enabled webserver entry [0.31ms]
+
+packages/mpd-bundle-plugin/test/preset-prompt-variables.test.ts:
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > the subject really is the persona prefix (a lost block cannot pass vacuously) [0.05ms]
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > no reference names `{{cwd}}` — the loop does not register it [0.03ms]
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > every reference is one the harness loop registers [0.05ms]
+
+packages/mpd-bundle-plugin/test/client-built-frames.test.ts:
+(pass) the BUILT client parses, registers its factories, and ships the frame layer [4.32ms]
+
+packages/mpd-bundle-plugin/test/workbench-view.test.ts:
+(pass) the MPD workbench is ONE conversation.view entry > apply() registers exactly one entry with the pinned id, label and locale [7.32ms]
+(pass) the MPD workbench is ONE conversation.view entry > the page's copy is registered for BOTH languages and stays key-complete [2.41ms]
+(pass) the workbench page renders the team, its board and its hold > the header names the team id, its phase, the member count and the live hold [10.28ms]
+(pass) the workbench page renders the team, its board and its hold > the board renders one row per task with its id, owner and RENDERED state [8.04ms]
+(pass) the workbench page renders the team, its board and its hold > the 简体中文 table is what the page renders when the host binds it [7.09ms]
+(pass) the workbench empty state is explicit, never a blank page > a session with no team says so and names the next step [7.07ms]
+(pass) the workbench empty state is explicit, never a blank page > a staged plan is named instead of the generic hint [6.92ms]
+(pass) the workbench empty state is explicit, never a blank page > the workspace's other teams are named, not hidden behind an empty page [7.03ms]
+(pass) the workbench empty state is explicit, never a blank page > a payload WITHOUT ok:true is reported as unreadable, never as an empty team [6.16ms]
+(pass) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > a refused watchdog read renders the unknown sentence and never claims 'not held' [7.05ms]
+(pass) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unreadable watchdog payload (no ok:true) is unknown too, and its holds are not trusted [6.16ms]
+(pass) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unknown hold freezes Pause (button AND action) while Resume stays live [36.47ms]
+(pass) a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > a successful read with no hold still says 'not held' and offers Pause [6.99ms]
+(pass) the two fenced writes degrade to a message, never a crash > Pause POSTs {teamId} to the hold route, disables both buttons in flight, then re-reads [20.39ms]
+(pass) the two fenced writes degrade to a message, never a crash > Resume POSTs to the resume route when the team is held [18.67ms]
+(pass) the two fenced writes degrade to a message, never a crash > a 403 from the host fence becomes the fence sentence, and the page keeps rendering [18.49ms]
+(pass) the two fenced writes degrade to a message, never a crash > a 405 names the method, because that is a server build without the route [19.06ms]
+(pass) the session id comes from the slot's session kit > a sessionId prop addresses every read with ?sessionId= [7.26ms]
+(pass) the session id comes from the slot's session kit > no session id reads the WORKSPACE principal, with no query invented [7.12ms]
+[mpd] AgentTeams command view failed to mount: TypeError: ctx.slots.inject is not a function. (In 'ctx.slots.inject("conversation.chat.commandview", () => ctx.slots.register({
+        name: "conversation.chat.commandview",
+        key: "agent-teams",
+      }, () => null))', 'ctx.slots.inject' is undefined)
+(pass) the slot gate degrades quietly, and never throws out of apply > a ctx with no slots.inject loses the tab with ONE line and no throw [2.58ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 10ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) the slot gate degrades quietly, and never throws out of apply > a host that never declares the slot reports the absence once, at the settle bound [46.99ms]
+
+packages/mpd-bundle-plugin/test/team-page.test.ts:
+(pass) the team-watchdog sidebar tab descriptor > registers one single-instance tab with the pinned id and order [2.29ms]
+(pass) the team-watchdog sidebar tab descriptor > the tab has NO auto-open switch: the watchdog view never opens itself [1.48ms]
+(pass) the team-watchdog sidebar tab descriptor > createTab mints the watchdog tab (id pinned, title is the watchdog's) [1.44ms]
+(pass) the watchdog page renders the bundle's OWN state route > shows the banner, the hold and the unread incident with an acknowledge control [11.79ms]
+(pass) the watchdog page renders the bundle's OWN state route > an empty store renders the honest 'no stuck team' line instead of a fake banner [8.88ms]
+(pass) the watchdog page renders the bundle's OWN state route > a FAILING route degrades to a readable error notice and never throws [9.04ms]
+(pass) the watchdog page renders the bundle's OWN state route > acknowledging posts to the bundle's ack route with the stable reader key [7.14ms]
+(pass) the watchdog page renders the bundle's OWN state route > the badge is the last poll's UNREAD count, and never a fetch [6.73ms]
+(pass) the watchdog page renders the bundle's OWN state route > mounting the tab twice keeps ONE polling controller [12.90ms]
+(pass) the removed AgentTeams surfaces can never come back > no mpd client source requires the retired adopted client [0.75ms]
+
+packages/mpd-bundle-plugin/test/team-view.test.ts:
+(pass) team-view factory shape > stays a single factory body: one arrow expression, no import/export, no JSX, no MEASUREMENT [1.86ms]
+(pass) team-view factory shape > the layout and the painted edge carry no DOM access at all [0.25ms]
+(pass) team-view factory shape > takes an OPTIONAL translator and a task route, and exposes the pure layout and its builders [0.18ms]
+(pass) team-view DAG geometry > one column per SERVED rank, one node box per task, in rank order [130.78ms]
+(pass) team-view DAG geometry > the DEGRADE (no served model): a negative or missing depth falls back to the first column [122.79ms]
+(pass) team-view DAG geometry > R19: within a column the task order is NUMERIC, so t2 precedes t10 and t20 follows t2 [127.02ms]
+(pass) team-view panels > header, progress bar and one PLAIN card per member with route, current task and fraction [125.39ms]
+(pass) team-view panels > truncates a long current task in the card, and keeps the whole string on its title [109.05ms]
+(pass) team-view panels > renders the empty-state sentence that names the call filling it [114.88ms]
+(pass) team-view panels > a session with no team renders the WORKSPACE's teams, not the dead empty state (D2) [117.47ms]
+(pass) team-view panels > the listing renders in Chinese through the SAME keys, so the two tables cannot drift [121.81ms]
+(pass) team-view panels > a workspace with genuinely NO teams keeps the honest empty state [119.22ms]
+(pass) team-view panels > says so when a team raised no member at all [103.42ms]
+(pass) team-view panels > reports a cycle instead of hiding it [103.43ms]
+(pass) team-view panels > renders the reason instead of an empty box when the route is unreadable [104.00ms]
+(pass) team-view drawn edges > draws one SVG path per blockedBy entry, and the painted `d` IS the layout's own [118.03ms]
+(pass) team-view drawn edges > draws a riser that spans the two rows when a blocker sits below its dependant [109.88ms]
+(pass) team-view drawn edges > a cycle's back-edge keeps a non-negative width and a finite curve instead of drawing NaN [221.60ms]
+(pass) team-view drawn edges > the curve builder degrades to the straight orthogonal route at radius = 0 (clause W6) [106.11ms]
+(pass) team-view drawn edges > the arrowhead's tip lands ON the border it arrives at, by arithmetic (clause W5) [211.46ms]
+(pass) team-view drawn edges > the graph-safe label rule is clause C4 exactly [106.70ms]
+(pass) team-view drawn edges > a Chinese subject is drawn graph-safe, while the detail and the tooltip keep the original [106.10ms]
+(pass) team-view drawn edges > under a zh locale the node legend draws the ASCII kind, while the detail body keeps the localized kind and the Chinese subject [103.08ms]
+(pass) team-view interaction > hover tints the transitive chain and dims every other node, and leaving restores it [104.17ms]
+(pass) team-view interaction > marks the root with the team id, and with an empty marker when there is no team [202.04ms]
+(pass) team-view interaction > clicking a node pins its detail body with the frozen contract, and closes again [117.34ms]
+(pass) team-view interaction > says so when the task route served no contract, instead of rendering a blank body [97.36ms]
+(pass) team-view interaction > reads all three routes in one pass, each naming the session it was asked about [96.69ms]
+(pass) the halo and the pinned detail follow the DRAWN edges (CodeRabbit PR #47) > with a model: the hover halo and the pinned body name the SERVED blocker [92.07ms]
+(pass) the halo and the pinned detail follow the DRAWN edges (CodeRabbit PR #47) > without a model: the same interaction uses the board's `blockedBy` (the degrade control) [104.11ms]
+(pass) the halo and the pinned detail follow the DRAWN edges (CodeRabbit PR #47) > clicking a plan-only GHOST pins its detail, with its graph-derived relationships [117.43ms]
+(pass) team-view localization > routes every visible string through the translator, and falls back to English without one [214.62ms]
+(pass) team-view localization > survives a translator that throws, rather than taking the panel down with it [106.64ms]
+(pass) team-view edge legibility (the reported tangle) > NO drawn CURVE enters any node box, on the five-rank board from the screenshot [113.26ms]
+(pass) team-view edge legibility (the reported tangle) > a rank-skipping edge rises beside its blocker, crosses on a band row, and descends beside its dependant [89.10ms]
+(pass) team-view edge legibility (the reported tangle) > every gutter lane gets its OWN column: one x per hop, none on a border [89.87ms]
+(pass) team-view edge legibility (the reported tangle) > every drawn run reaches both of the boxes it names [131.94ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > every column's stack is CENTRED on the graph's midline, and a one-row column keeps top = 4 [83.07ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > overlaps is EMPTY on all three fixtures, no run enters a box, and the audit catches a planted pair [85.56ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > a node with several edges gets DISTINCT ports ordered by counterpart y, and distinct lanes [80.89ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > a 2-incoming fan-in arrives >=10px apart, so the two 8px arrowheads cannot overlap (D2 repair) [80.51ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > rank-skipping edges cross on DISTINCT, MIRRORED band rows and never through a box [94.94ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > PROPERTY: a battery of generated boards has zero overlaps, no box entry and correct borders [101.29ms]
+(pass) team-view D1 layout: symmetric stacks, zero overlaps, separated ports > R20's served ranks and the radius-0 curve control are unchanged by the new routing [83.90ms]
+(pass) team-view R20 (Amendment 3): the web plane RENDERS the host's ranks and derives nothing > a board whose references RESOLVE and whose every served depth is 0 draws FIVE columns, not one [83.65ms]
+(pass) team-view R20 (Amendment 3): the web plane RENDERS the host's ranks and derives nothing > the served report's two arms are SURFACED, not re-decided here [102.20ms]
+(pass) team-view R20 (Amendment 3): the web plane RENDERS the host's ranks and derives nothing > R21: the host's unresolved references are SURFACED with their ids, never silently dropped [80.93ms]
+(pass) team-view R20 (Amendment 3): the web plane RENDERS the host's ranks and derives nothing > the hover halo measures the DRAWN ranks, so a lying depth cannot kill the highlight [88.45ms]
+(pass) Amendment 3's discriminating fixture: the SERVED rank decides the column, the depth does not > the columns MOVE to the derived ranks, and each drawn box publishes the rank it got [203.52ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) Amendment 3's plan contribution: plan-only GHOSTS and plan-declared edges are DRAWN > a ghost is a box in the EXISTING open tone, and a plan-declared edge is routed [211.51ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the SERVED one > the served `unresolvedBlockers` reaches the geometry, and is reported AS the record's [120.00ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the SERVED one > a REPAIRED board still reports what the record said: the reader sees more than the served scan [89.40ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the SERVED one > an ABSENT key means this task HAS no blockers, not that its blockers were lost [95.39ms]
+(pass) R18's reader side: the RECORD's own unresolved report, beside the SERVED one > the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents [112.26ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the scoped stylesheet and the frosted node > renders ONE stylesheet at the panel root, outside the graph, with the contracted material [88.96ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the scoped stylesheet and the frosted node > every node carries the glass class, its rendered state, and a translate3d position [92.43ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the completed -> running flow overlay > one overlay for a completed -> running edge, none for completed -> blocked, counts unchanged [111.84ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the hover card > shows status, owner, elapsed, a truncated subject and progress, outside the graph [107.74ms]
+(pass) team-view D2: the hover card > clamps the card inside a small viewport when the host exposes one [99.31ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the hover card > a coordinate-less focus never parks the card at the viewport origin (D2 repair) [109.44ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the hover card > labels the elapsed dash `not started` ONLY when the task never started (CodeRabbit repair) [112.16ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) team-view D2: the hover card > a legacy payload's progress falls back to STATUS, so claimed is 10 and in_progress 50 (CodeRabbit repair) [131.43ms]
+(pass) team-view D2: the hover card > pinning makes the next hover OPAQUE, leaves the detail body open, and mouseleave closes the card [150.63ms]
+(pass) team-view D2: the hover card > falls back to `unassigned` for a task with no owner, and clamps the progress bar [183.04ms]
+(pass) team-view D2: elapsed formatting and the ticker > formats Xs, Xm Ys and Xh Ym, and dashes a record that cannot answer [84.02ms]
+(pass) team-view D2: elapsed formatting and the ticker > ticks once a second ONLY while a running task is visible, and cleans the interval up [0.32ms]
+(pass) team-view D2: elapsed formatting and the ticker > the drawing stays CJK-free while the card shows the raw subject [94.44ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the geometry publishes one frame per group, SIZED BY ITS INTERIOR, and the flat model publishes none [104.62ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the render emits svg → frames → nodes, and NO `data-mpd-node` carries a group id [108.11ms]
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the containment instrument catches a curve INSIDE the frame, and the real routes never enter it [90.22ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) D4 narrow seam: a subcell is a frame, not a task card > a flat render has no frames layer at all (the backward guarantee, on the DOM) [100.27ms]
+(pass) T23 · the recursive geometry draws a box's interior inside it > a frame is sized by its INTERIOR, and an inner subcell frame nests STRICTLY inside it [85.46ms]
+(pass) T23 · the recursive geometry draws a box's interior inside it > an interior keeps its OWN columns: a flattened layout would put both of its cards at one x [83.60ms]
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.
+(pass) T23 · the recursive geometry draws a box's interior inside it > the nested render places cards ABSOLUTELY inside the frames, and the layers still order svg → frames → nodes [102.66ms]
+(pass) T25 · mixed heights keep the nested lanes apart > equal MIDDLES in neighbouring columns never become collinear runs [85.73ms]
+
+ 481 pass
+ 0 fail
+ 18629 expect() calls
+Ran 481 tests across 27 files. [13.29s]

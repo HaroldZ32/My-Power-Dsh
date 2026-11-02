@@ -11,7 +11,7 @@
 // read-only services (`mpdTeams`, `mpdRoles`) and the config service are declared STRUCTURALLY, because
 // the cross-package coupling inventory is frozen and may only shrink.
 import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type CellReadFailure, type CellState, type CellMemberRecord } from "./state"
-import { callerContext, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
+import { callerContext, type TeamActionsServiceView, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
 import { readRequirements, storedRequirementsText, validateRequirementsText, writeRequirements } from "./requirements"
 import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
@@ -171,6 +171,12 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
     /** The service object, or undefined. */
     const service = deps.ctx.get?.("mpdTeams", false)
     return typeof service === "object" && service !== null ? service as TeamsServiceView : undefined
+  }
+  /** The TEAM-PLANE write service, probed per call (wave W2-D: the plane owns dispatch and cancel). */
+  const teamActions = (): TeamActionsServiceView | undefined => {
+    /** The service object, or undefined. */
+    const service = deps.ctx.get?.("mpdTeamActions", false)
+    return typeof service === "object" && service !== null ? service as TeamActionsServiceView : undefined
   }
   /** The roster service, probed per call. */
   const roster = (): RosterServiceView | undefined => {
@@ -813,6 +819,8 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         // whose workspace differs from the process cwd would read another tree's board (or none at all)
         // for the dispatch pass and for closing the open splitter row.
         recordFor: (teamId: string) => recordOf(teams(), caller.workspace, teamId),
+        // THE PLANE'S WRITE SEAM: it pairs the materialised board and closes the rows this revision dropped.
+        teamActions,
         // ONE compact row per artifact (contract C8): the accumulated state is journalled ONCE, below,
         // when the pass fails — never once per artifact (defect D7).
         progress: (step: ActivateProgress): void => {

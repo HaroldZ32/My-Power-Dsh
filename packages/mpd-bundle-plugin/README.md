@@ -67,7 +67,7 @@ and writes NO workspace `<workspace>/.mpd/mpd.jsonc` (the only writer of that fi
 legacy `mpd`-namespace write-back, dormant on the pinned harness, while a hand edit of the file is
 still read on every resolution), and the disclosure is SCOPED per knob instead of promising a blanket
 restart: the model routes, the team-gate knobs, the `team.stateDir` reader and the two guards act in
-the RUNNING process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and
+the RUNNING process, while `hashline.*`, `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir` and
 `goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER half: its
 own row reads `settingsReader("mpd")` (refused here) and parses `<workspace>/.mpd/mpd.jsonc` itself, so
 a hand edit of that file is live while a form save never reaches those knobs (`docs/user-guide.md` §9.1

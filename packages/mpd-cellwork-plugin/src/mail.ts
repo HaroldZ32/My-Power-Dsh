@@ -44,8 +44,12 @@ export interface CellMailSend {
   to: string
   /** One-line subject. */
   subject: string
-  /** The full body, stored and delivered verbatim. */
+  /** The body as stored; bounded at the shared 4000-char write bound (W4-A6b). */
   body: string
+  /** Whether the body was cut at the store's bound; the pre-cut text is NOT kept. */
+  truncated?: boolean
+  /** The body's length BEFORE the cut, recorded only when {@link truncated} is true. */
+  originalLength?: number
   /** ISO instant the row was written. */
   at: string
   /**
@@ -650,4 +654,70 @@ export async function deliverCellMail(deps: MailDeliveryDeps): Promise<MailDeliv
     }
   }
   return { landed: true, wakeSent: outcome.sent === true, ...(outcome.reason === undefined ? {} : { wakeReason: outcome.reason }) }
+}
+
+// ── THE INBOX PROJECTION'S OWN TWO HELPERS (wave T43) ────────────────────────────────────────────
+//
+// WHY THEY LIVE HERE AND NOT IN THE TEAM STORE: `mpd-dsh-adapter-plugin`'s cross-package coupling
+// inventory is SHRINK-ONLY, and cellwork's one frozen import from the team plane is `sendMany`. Capping
+// what a SURFACE renders (and how a stored body is bounded before this row writes it) is the surface's own
+// projection concern, so the two behaviours are spelled here rather than widening that import.
+//
+// THE RULE IS SHARED EVEN THOUGH THE CODE IS NOT: the team mailbox bounds a body at the same 4000
+// characters and pages with the same default 20 (`.mpd-team-core-plugin/src/mailbox-store.ts`,
+// `MAIL_BODY_MAX` / `pageOf`). A change to either number is a CONTRACT change that must land in both
+// rows in the same wave — the comment is the pointer, and `mail-cap` arms on both planes pin the values.
+
+/** The default number of inbox rows one render shows, matching the team mailbox's page size. */
+export const CELL_MAIL_PAGE = 20
+
+/** The hard bound on ONE cell message body, in characters, applied before this row is stored. */
+export const CELL_MAIL_BODY_MAX = 4000
+
+/** One rendered page of inbox rows, with the pointer the caller walks to see the rest. */
+export interface CellMailPage<T> {
+  /** The rows this render shows (and acknowledges). */
+  page: T[]
+  /** How many rows sit behind this page and stay unread until a later call. */
+  more: number
+  /** The offset to pass next time, or `null` when this page is the last one. */
+  nextOffset: number | null
+  /** The clamped page size this call used. */
+  limit: number
+  /** The clamped start of this page. */
+  offset: number
+}
+
+/**
+ * Draw one page of inbox rows, clamping both bounds.
+ *
+ * @param rows - every unread row, in insertion order.
+ * @param limit - the requested page size; defaults to {@link CELL_MAIL_PAGE}, clamped to 1..100.
+ * @param offset - the requested start; defaults to 0.
+ * @returns the page, the count behind it and the next offset (`null` on the last page).
+ */
+export function pageCellMail<T>(rows: readonly T[], limit?: number, offset?: number): CellMailPage<T> {
+  /** The clamped page size this call uses. */
+  const size = Number.isFinite(Number(limit)) ? Math.min(Math.max(Math.trunc(Number(limit)), 1), 100) : CELL_MAIL_PAGE
+  /** The clamped start of the page. */
+  const start = Number.isFinite(Number(offset)) ? Math.max(Math.trunc(Number(offset)), 0) : 0
+  /** The rows this page renders. */
+  const page = rows.slice(start, start + size)
+  /** Rows behind this page, which stay unread until a later call fetches them. */
+  const more = Math.max(rows.length - (start + page.length), 0)
+  return { page, more, nextOffset: more === 0 ? null : start + page.length, limit: size, offset: start }
+}
+
+/**
+ * Bound one body at {@link CELL_MAIL_BODY_MAX}.
+ *
+ * The pre-cut text is deliberately NOT kept: the bound protects the reader's context, and a side copy on
+ * disk would be read back by the same reader. A cut body reports its ORIGINAL length (so the cut is
+ * visible) and never the lost text.
+ * @param text - the body exactly as the sender passed it.
+ * @returns the body to store, whether it was cut, and the pre-cut length.
+ */
+export function truncateCellMailBody(text: string): { body: string; truncated: boolean; originalLength: number } {
+  if (text.length <= CELL_MAIL_BODY_MAX) return { body: text, truncated: false, originalLength: text.length }
+  return { body: text.slice(0, CELL_MAIL_BODY_MAX), truncated: true, originalLength: text.length }
 }

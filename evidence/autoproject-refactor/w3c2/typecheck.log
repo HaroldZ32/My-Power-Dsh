@@ -1,0 +1,6 @@
+$ tsgo --noEmit
+packages/mpd-workmate-plugin/src/index.ts(2009,76): error TS2304: Cannot find name 'exec'.
+packages/mpd-workmate-plugin/src/index.ts(2067,76): error TS2304: Cannot find name 'exec'.
+packages/mpd-workmate-plugin/src/index.ts(2283,27): error TS2554: Expected 4 arguments, but got 3.
+packages/mpd-workmate-plugin/test/workmate.test.ts(86,25): error TS2741: Property 'workspaces' is missing in type '{ name: string; baseId: string; baseName: string; description: string; provider: string; model: string; readonly: boolean; createdAt: string; updatedAt: string; uses: number; lastTask: string; renamedFrom: never[]; personaRevision: number; personaHash: string; baseRevision: string; }' but required in type 'Meta'.
+error: script "typecheck" exited with code 1

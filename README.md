@@ -89,7 +89,7 @@ recorded deviations. Read the ledger before you rely on the TUI for a Web capabi
   boundary. The official `dsh.team*` service is only the contained FALLBACK for a composition that runs
   the official executor (its rows are disabled in a TUI composition). A durable mailbox, a Web panel
   and a TUI scene read the same live record.
-- **A durable plan ledger** — ULW rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
+- **A durable plan ledger** — autoproject rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
   boulder ledger anchored to a plan file, and a persisted goal that survives across sessions.
 - **Memory and edits that hold up** — a VCS-backed memory store with a reflection state machine, plus
   hash-anchored editing, a write guard and a declaration-comment gate.
@@ -194,7 +194,7 @@ are kept as history — what earlier releases actually pinned.
 Two commands worth knowing from the first minute:
 
 ```text
-/ulw  <objective>     drive a long objective to done, in rounds, with gates
+/autoproject  <objective>     drive a long objective to done, in rounds, with gates
 /mpd  team            open the team scene (DSH-TUI)
 ```
 
@@ -221,7 +221,7 @@ version:
 | Get a scoped second opinion | the **specialist roster** — `mpd_role_spawn` | [user guide §4](./docs/user-guide.md#4-specialists-the-roster) |
 | Keep a specialist that accumulates knowledge | the **workmate library** — `mpd_workmate_*` | [user guide §5](./docs/user-guide.md#5-workmate-library-durable-evolving-specialists) |
 | Run a real multi-agent workflow | **team mode** — `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch` (the official `spawn_teammate` / `team_task_*` verbs are REFUSED) | [user guide §6](./docs/user-guide.md#6-team-mode) |
-| Drive a long objective to done | the **ULW loop** — `/ulw` | [user guide §13.2](./docs/user-guide.md#132-the-ulw-loop-and-its-gates) |
+| Drive a long objective to done | the **autoproject loop** — `/autoproject` | [user guide §13.2](./docs/user-guide.md#132-the-autoproject-loop-and-its-gates) |
 | Track a multi-step plan durably | the **boulder ledger** — `mpd_boulder_*` | [user guide §13.6](./docs/user-guide.md#136-the-boulder-ledger) |
 | Remember facts across sessions | the **memory engine** — `mpd_memory_*` | [user guide §13.7](./docs/user-guide.md#137-memory) |
 | Edit files without line-drift mistakes | **hash-anchored editing** — `mpd_hashline_*` | [user guide §13.5](./docs/user-guide.md#135-hash-anchored-edits) |

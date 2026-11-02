@@ -38,7 +38,8 @@ import { atomicWriteText, appendJournal, contractPath, type CellMemberRecord, ty
 import type { CellworkConfig } from "./config"
 import type { SplitTaskVerdict, SplitVerdict } from "./split"
 import { roleKey } from "./split"
-import { contractRelativePath, dispatchOwnerOnly, sendThroughExecutor, type DispatchMemberView, type DispatchRecordView, type DispatchReport } from "./dispatch"
+import { contractRelativePath, type DispatchMemberView, type DispatchRecordView, type DispatchReport } from "./dispatch"
+import type { TeamActionsServiceView } from "./caller"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { findSplitTicket } from "./staging"
 
@@ -90,7 +91,15 @@ export interface ActivateDeps {
   /** The roster persona text for one role, or null when the roster service cannot answer. */
   personaFor: (role: string) => string | null
   /** Read the live team record by id, or undefined when the team service cannot answer. */
-  recordFor: (teamId: string) => DispatchRecordView | undefined
+  recordFor: (teamId: string) => Record<string, unknown> | undefined
+  /**
+   * The TEAM-PLANE write surface, probed per call.
+   *
+   * The plane OWNS dispatch pairing and cancellation (wave W2-D): this pass asks it for one owner-only
+   * pass and closes the rows the split dropped through it. Absent means a composition without the team
+   * row, which the dispatch stage reports instead of guessing.
+   */
+  teamActions: () => TeamActionsServiceView | undefined
   /**
    * Journal ONE compact progress row per artifact as it is created (contract C8).
    *
@@ -582,10 +591,16 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     const memberName = resolvedMemberName(task)
     /** The mapped blockers: keys already minted become board ids; a cell role is not a task so none remain. */
     const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference)
+    // THE FROZEN-CONTRACT POINTER RIDES THE BOARD ROW, NOT A PRIVATE MESSAGE BUILDER (wave W2-B step 1).
+    // Any dispatcher — the team plane today — delivers the description VERBATIM, so putting the pointer
+    // here is what keeps Amendment 6 R1 true through the plane instead of only through cellwork's own
+    // message text. The pointer names the SPLIT KEY's contract file, never the board id's.
+    /** The path the verifier's loop froze for this split key. */
+    const contractPointer = "FROZEN CONTRACT: " + contractRelativePath(deps.cell.cellId, task.key)
     /** The task's description; a review task additionally names its frozen contract. */
-    const description = task.kind === "review"
+    const description = (task.kind === "review"
       ? reviewTaskDescription(task, deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task, deps.cell.cellId)
-      : task.description
+      : task.description) + "\n\n" + contractPointer
     /** The live append. */
     const appended = await call({
       action: "create_task",
@@ -684,6 +699,25 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     cancelled.push({ key, boardId })
     appendJournal(deps.workspace, deps.cell.cellId, { event: "task-cancelled", key, boardId, revision: deps.split.revision, reason: "the accepted split no longer carries this task; the board row is kept and dispatch skips it" }, deps.now)
   }
+  // THE BOARD IS THE AUTHORITY (wave W2-D step C): the rows this revision dropped are CLOSED through the
+  // team plane, so no later pass — the plane's or this cell's — can pair them. The cell record keeps its
+  // own cancelled map for status; the plane's terminal `cancelled` row is what actually stops a dispatch.
+  if (cancelled.length > 0) {
+    /** The rows to close, with the ids the previous activation minted. */
+    const cancelledIds = cancelled.map((entry) => entry.boardId).filter((id) => id !== "")
+    /** The plane's write surface. */
+    const plane = deps.teamActions()
+    if (cancelledIds.length > 0 && plane?.cancelTasks === undefined) {
+      // A REFUSAL, not a silent skip: an unclosed row stays dispatchable, which is the defect this step
+      // exists to remove. The failure names the service so the operator knows what is missing.
+      return fail("cellwork_activate dropped " + String(cancelledIds.length) + " row(s) but this composition exposes no mpdTeamActions.cancelTasks, so they would stay dispatchable — the activation is left un-dispatched and can be resumed")
+    }
+    if (cancelledIds.length > 0 && plane?.cancelTasks !== undefined) {
+      /** The plane's answer for the cancellation. */
+      const closed = (await plane.cancelTasks({ workspace: deps.workspace, teamId: deps.cell.teamId, taskIds: cancelledIds, note: "the accepted split no longer carries this task" })) as Record<string, unknown>
+      if (closed?.ok === false) return fail("cellwork_activate could not close the dropped row(s): " + String(closed.error ?? "the team plane refused the cancellation"))
+    }
+  }
   // 5. DISPATCH, owner-only, after the loops exist. A throw from this stage is a PARTIAL, not a wedge.
   /** The dispatch report the outcome carries. */
   let dispatch: DispatchReport
@@ -691,18 +725,23 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   let record: DispatchRecordView | undefined
   try {
     record = deps.recordFor(teamId)
-    /** The delivery binding, when this composition exposes the team executor. */
-    const send = sendThroughExecutor(deps.dsh.teamExecutor(), deps.captainAgent)
-    /** The board ids this cell will never dispatch: every row cancelled before, plus this revision's. */
-    const excludedTaskIds = [...Object.values(deps.cell.cancelledTasks), ...cancelled.map((entry) => entry.boardId)].filter((id) => id !== "")
-    // THE DISPATCH SEES THE MAPPING IT JUST MINTED. The cell record passed in predates this activation,
-    // so its `activatedTasks` is the PREVIOUS revision's map; the dispatch message resolves each board id
-    // back to its split key through it (Amendment 6 R1), so the pass is handed the map as of THIS revision.
-    /** The cell view the dispatch pass reads: the recorded cell with this revision's key→board id mapping. */
-    const cellForDispatch: CellState = { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }
-    dispatch = send === undefined
-      ? { pairs: [], skipped: [], refused: "the team executor seam is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" }
-      : await dispatchOwnerOnly({ workspace: deps.workspace, cell: cellForDispatch, record, send, excludedTaskIds, now: deps.now })
+    /** The team-plane write surface, probed per call. */
+    const plane = deps.teamActions()
+    // THE PLANE PAIRS (wave W2-D). The pass is owner-only and carries NO exclusion list: the rows this
+    // revision dropped were CLOSED on the board by `cancelTasks` below, so the plane's own `cancelled` rule
+    // skips them and the reason a reader sees is the plane's `cancelled` — one rule, not a private filter.
+    if (plane?.dispatch === undefined) {
+      dispatch = { pairs: [], skipped: [], refused: "the mpdTeamActions service is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" }
+    } else {
+      /** The plane's answer for this pass. */
+      const reply = (await plane.dispatch({ sessionId: deps.cell.captainSessionId, mode: "owner-only" })) as Record<string, unknown>
+      dispatch = reply?.ok === false
+        ? { pairs: [], skipped: [], refused: String(reply.error ?? "the team plane refused the activation pass") }
+        : {
+          pairs: Array.isArray(reply.pairs) ? reply.pairs as DispatchReport["pairs"] : [],
+          skipped: Array.isArray(reply.skipped) ? reply.skipped as DispatchReport["skipped"] : [],
+        }
+    }
   } catch (error) {
     return fail("cellwork_activate could not dispatch: " + errorText(error))
   }

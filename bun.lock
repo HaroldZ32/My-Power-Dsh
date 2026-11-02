@@ -29,16 +29,16 @@
         "dsh-better-sidebar",
       ],
     },
+    "packages/mpd-autoproject-plugin": {
+      "name": "@mpd-dsh/autoproject",
+      "version": "0.2.3",
+    },
     "packages/mpd-better-sidebar-host": {
       "name": "@mpd-dsh/better-sidebar-host",
       "version": "0.1.0",
     },
     "packages/mpd-bootstrap-plugin": {
       "name": "@mpd-dsh/bootstrap",
-      "version": "0.2.3",
-    },
-    "packages/mpd-boulder-plugin": {
-      "name": "@mpd-dsh/boulder",
       "version": "0.2.3",
     },
     "packages/mpd-bundle": {
@@ -148,10 +148,6 @@
     "packages/mpd-tui-plugin": {
       "name": "@mpd-dsh/mpd-tui",
       "version": "0.1.0",
-    },
-    "packages/mpd-ulw-plugin": {
-      "name": "@mpd-dsh/ulw",
-      "version": "0.2.3",
     },
     "packages/mpd-verify-plugin": {
       "name": "@mpd-dsh/verify-plugin",
@@ -385,11 +381,11 @@
 
     "@modelcontextprotocol/sdk": ["@modelcontextprotocol/sdk@1.32.1", "", { "dependencies": { "@hono/node-server": "^1.19.9 || ^2.0.5", "ajv": "^8.17.1", "ajv-formats": "^3.0.1", "content-type": "^1.0.5", "cors": "^2.8.5", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.0", "express": "^5.2.1", "express-rate-limit": "^8.2.1", "hono": "^4.11.4", "jose": "^6.1.3", "json-schema-typed": "^8.0.2", "pkce-challenge": "^5.0.0", "raw-body": "^3.0.0", "zod": "^3.25 || ^4.0", "zod-to-json-schema": "^3.25.1" }, "peerDependencies": { "@cfworker/json-schema": "^4.1.1" }, "optionalPeers": ["@cfworker/json-schema"] }, "sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw=="],
 
+    "@mpd-dsh/autoproject": ["@mpd-dsh/autoproject@workspace:packages/mpd-autoproject-plugin"],
+
     "@mpd-dsh/better-sidebar-host": ["@mpd-dsh/better-sidebar-host@workspace:packages/mpd-better-sidebar-host"],
 
     "@mpd-dsh/bootstrap": ["@mpd-dsh/bootstrap@workspace:packages/mpd-bootstrap-plugin"],
-
-    "@mpd-dsh/boulder": ["@mpd-dsh/boulder@workspace:packages/mpd-boulder-plugin"],
 
     "@mpd-dsh/bundle": ["@mpd-dsh/bundle@workspace:packages/mpd-bundle-plugin"],
 
@@ -444,8 +440,6 @@
     "@mpd-dsh/tools": ["@mpd-dsh/tools@workspace:packages/mpd-tools-plugin"],
 
     "@mpd-dsh/tui-adapter": ["@mpd-dsh/tui-adapter@workspace:packages/mpd-tui-adapter-plugin"],
-
-    "@mpd-dsh/ulw": ["@mpd-dsh/ulw@workspace:packages/mpd-ulw-plugin"],
 
     "@mpd-dsh/verify-plugin": ["@mpd-dsh/verify-plugin@workspace:packages/mpd-verify-plugin"],
 

@@ -6,8 +6,8 @@ The bundle's host-plane patch layer is `cordis.patch.yml`, and it sits at the **
 `dsh.bundle.patch` entry). It mounts every mpd-dsh plugin row —
 MCP servers (ast-grep / git-bash / lsp / codegraph + the remote context7 / grep.app rows),
 the B/C-line plugins (mpd-config first so the mpdConfig service is visible to the rows
-below, then mpd-dsh-adapter / mpd-tools / modelchain / roles / ulw / hashline /
-boulder / comment-checker / codegraph / memory / workmate), the bundle's OWN team plane
+below, then mpd-dsh-adapter / mpd-tools / modelchain / roles / autoproject / hashline /
+comment-checker / codegraph / memory / workmate), the bundle's OWN team plane
 (`mpd-team-core` / `mpd-team-watchdog` / `mpd-team-compact`), the `mpd-web-compat` self-row
 (`name: '@mpd-dsh/mpd'` — the loader entry that carries the bundle's web client),
 mpd-bootstrap provisioning, and the THREE official Agent Teams rows (`mpd-agent-team`,

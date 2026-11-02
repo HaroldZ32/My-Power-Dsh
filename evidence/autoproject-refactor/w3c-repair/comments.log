@@ -1,0 +1,17 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 553 TypeScript file(s) of 553 in the source set; inspected 49846 declaration(s); skipped 24067 inline callback(s) as out of family
+
+VERDICT: FAIL — 4 violation(s) across 2 file(s).
+
+packages/mpd-cellwork-plugin/src/protocol.ts (2)
+  1147: comment — limit
+  1150: comment — offset
+
+packages/mpd-team-core-plugin/src/index.ts (2)
+  3124: comment — limit
+  3127: comment — offset
+
+error: script "verify:comments" exited with code 1
+comments exit=1

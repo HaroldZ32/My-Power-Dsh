@@ -10,6 +10,7 @@ import { test, expect } from "bun:test"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 import { apply } from "../src/index.ts"
 import { journalPath, newCellState, readActiveCell, readCell, requirementsPath, writeCell, type CellState } from "../src/state.ts"
 import { validateHandoffText } from "../src/handoff.ts"
@@ -24,8 +25,9 @@ import {
   promoteAfterHandoff,
 } from "../src/protocol-core.ts"
 import { foldCellMail, readCellMail } from "../src/mail.ts"
+import { sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
 import type { DshContextPressure } from "../../mpd-dsh-adapter-plugin/src/index"
-import { dispatchOwnerOnly, type DispatchRecordView } from "../src/dispatch.ts"
+import { nameKey, type DispatchRecordView } from "../src/dispatch.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
 
 /** One fake live agent: the session id the dispatch carries and its workspace header. */
@@ -296,6 +298,15 @@ function makeHarness(): Harness {
     tools: toolsService,
     commands: commandsService,
     agents: { list: (): FakeAgent[] => [captain] },
+    // THE TEAM-PLANE DOUBLE (wave W2-D): the dispatch stage and the cancelled-row closure now go through
+    // `mpdTeamActions`, so this harness answers that service with the ONE shared in-memory plane. Its
+    // record is the SAME object `mpdTeams` answers, and its deliveries land in `sends`.
+    mpdTeamActions: createTeamActionsDouble({
+      // The double's record shape is a SLICE of the harness's loose record map; the cast is the one
+      // boundary where the fixture's `Record<string, any>` meets the double's declared interface.
+      record: () => teamRecords.get("team-1") as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+      send: (handle: string, text: string) => { sends.push({ handle, text }); events.push("send") },
+    }).service,
     mpdTeams: {
       /**
        * Answer one team read, recording WHICH workspace was asked about.
@@ -669,41 +680,12 @@ test("activate: a STALE split is refused unless its revision is passed explicitl
 
 // ── B7: the owner-only dispatch decision ───────────────────────────────────
 
-test("owner-only dispatch reports a busy or absent owner and never substitutes another member", async () => {
-  /** A board with one ready task per owner situation, and one member already busy. */
-  const record: DispatchRecordView = {
-    teamId: "team-x",
-    members: [
-      { name: "Senior Engineer", status: "running", executorRef: "handle-se" },
-      { name: "Reviewer", status: "running", executorRef: "handle-rv" },
-    ],
-    tasks: [
-      { id: "T1", subject: "busy owner", status: "pending", owner: "Senior Engineer", blockedBy: [] },
-      { id: "T2", subject: "free owner", status: "pending", owner: "Reviewer", blockedBy: [] },
-      { id: "T3", subject: "no owner", status: "pending", blockedBy: [] },
-      { id: "T4", subject: "blocked", status: "pending", owner: "Senior Engineer", blockedBy: ["T1"] },
-      { id: "T5", subject: "already busy", status: "in_progress", owner: "Senior Engineer" },
-    ],
-  }
-  /** The messages delivered. */
-  const sent: Array<{ handle: string; content: string }> = []
-  /** The report. */
-  const report = await dispatchOwnerOnly({
-    workspace: mkdtempSync(join(tmpdir(), "mpd-cellwork-dispatch-")),
-    cell: { cellId: "cell-x" } as never,
-    record,
-    send: async (handle, content): Promise<void> => { sent.push({ handle, content }) },
-    now: new Date(),
-  })
-  expect(report.pairs.length).toBe(1)
-  expect(report.pairs[0].memberName).toBe("Reviewer")
-  expect(sent[0].handle).toBe("handle-rv")
-  /** The skip reasons, by task id. */
-  const reasons = new Map(report.skipped.map((skip) => [skip.taskId, skip.reason]))
-  expect(String(reasons.get("T1"))).toContain("BUSY")
-  expect(String(reasons.get("T3"))).toContain("no declared owner")
-  expect(String(reasons.get("T4"))).toContain("not ready")
-})
+// PROVENANCE (wave T45): the arm that used to live here drove `dispatchOwnerOnly` directly to assert the
+// owner-only pairing decisions (BUSY / no declared owner / blocked / in_progress). Those decisions are the
+// TEAM PLANE's now — `cellwork_dispatch` delegates and only MAPS the report — so the coverage moved with the
+// rule: `packages/mpd-team-core-plugin/test/dispatch.test.ts` and `.../team-toolchain.test.ts` assert the
+// same four outcomes (owner-only, busy, ownerless, not-ready) on the engine that actually decides, and this
+// package's `dispatch-fenced` / `dispatch-reassign` arms assert the report at the tool boundary.
 
 // ── Amendment 5, arm (a): an update re-dispatches the SAME split task ───────
 
@@ -812,12 +794,21 @@ test("B8: planCheckpoint never guesses, fires once at the ratio, and suppresses 
   expect(firing.inject).toBe(true)
   expect(firing.usedTokens).toBe(50000)
   expect(firing.windowTokens).toBe(100000)
-  // The flip records the checkpoint and puts the seat in checkpoint mode; a second decision is suppressed.
+  // THE PURE FUNCTION LOGS, IT DOES NOT CLOSE THE SEAT (wave W2-E provenance re-pin): a closed seat is the
+  // PLANE's fact (`mode:"checkpoint"`), and the cell row is its mirror written by the caller that owns the
+  // transition (the pre-step listener). So this arm asserts the LOG here, and the mirror where it is written.
   /** The record after the injection. */
   const after = applyCheckpoint(cell, firing, "session-worker", new Date())
-  expect(after.members.worker.mode).toBe("checkpoint")
+  expect(after.members.worker.mode).toBe("member")
+  expect(after.members.worker).toBe(cell.members.worker)
   expect(after.checkpoints.length).toBe(1)
-  expect(planCheckpoint(after, "worker", pressureAt(0.7, 100000, "observed"), config, 4).inject).toBe(false)
+  // …and the mirror IS written by the listener: this is the one place the cell row closes, and it closes
+  // AFTER the log. The mirror is also what SUPPRESSES the next injection, so the suppression below is
+  // asserted on the record the listener PERSISTS — the same record the next turn's pre-step reads.
+  /** The cell row as the listener leaves it. */
+  const mirrored: CellState = { ...after, members: { ...after.members, worker: { ...after.members.worker, mode: "checkpoint" } } }
+  expect(mirrored.members.worker.mode).toBe("checkpoint")
+  expect(planCheckpoint(mirrored, "worker", pressureAt(0.7, 100000, "observed"), config, 4).inject).toBe(false)
   // A subcaptain and a handoff-ready member are never checkpointed.
   /** The cell with the worker promoted. */
   const promoted = { ...cell, members: { worker: { ...cell.members.worker, mode: "subcaptain" as const, handoffReady: false } } }
@@ -935,6 +926,58 @@ test("B9: cellwork_send writes a durable row and cellwork_inbox acknowledges it 
   /** The second read. */
   const again = await runTool(harness, "cellwork_inbox", {}, harness.captain)
   expect((again.messages as unknown[]).length).toBe(0)
+})
+
+// W4-A6b: a cell inbox renders ONE page and acknowledges ONLY that page.
+test("B9b: cellwork_inbox renders 20 of 25, reports more:5, and leaves the other 5 UNREAD", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  /** The live cell record the seeded rows belong to. */
+  const active = readActiveCell(harness.workspace)
+  expect(active.ok).toBe(true)
+  if (!active.ok || active.cell === null) return
+  /** The cell record, captured so the arms below keep the narrowed (non-null) type. */
+  const cell = active.cell
+  // Seed 25 durable rows through the SHARED store (the same write `cellwork_send` makes), with the
+  // backlog bound disabled, so this arm is about the INBOX's paging and acknowledgement rule.
+  /** The stable seat id the shared store addresses and the ack compares (`seat:<cell>/<name>`). */
+  const seatId = (name: string): string => "seat:" + cell.state.cellId + "/" + nameKey(name)
+  /** The captain's seat id. */
+  const captainKey = seatId("captain")
+  /** Every member's stable seat key, so the store's address rules accept the rows. */
+  const memberIds = Object.values(cell.state.members).map((member) => seatId(member.name))
+  for (let index = 0; index < 25; index += 1) {
+    /** One seeded send's verdict. */
+    const wrote = sendMany(harness.workspace, {
+      fromId: seatId("cell-planner"), fromName: "cell-planner",
+      toId: captainKey, toName: "captain", subject: "row " + index, body: "body " + index,
+      memberIds, leadIds: [captainKey], teamId: cell.state.teamId,
+      cellId: cell.state.cellId, fromMemberId: "cell-planner", maxUndelivered: 0,
+    }, [{ id: captainKey, name: "captain" }], new Date(Date.now() + index))
+    expect(wrote.ok).toBe(true)
+  }
+  /** The seeded rows as the cell view reads them, which pins the seed itself. */
+  expect(readCellMail(harness.workspace, cell.state.cellId).length).toBe(25)
+  /** The first page: the default 20, with the receipt for the remaining 5. */
+  const first = await runTool(harness, "cellwork_inbox", {}, harness.captain)
+  expect(first.ok).toBe(true)
+  expect((first.messages as unknown[]).length).toBe(20)
+  expect(first.more).toBe(5)
+  expect(first.unreadTotal).toBe(25)
+  expect(first.nextOffset).toBe(20)
+  expect(first.acknowledged).toBe(20)
+  /** The second page, fetched with the pointer the first answer carried. */
+  const second = await runTool(harness, "cellwork_inbox", { offset: 20 }, harness.captain)
+  expect((second.messages as unknown[]).length).toBe(5)
+  expect(second.more).toBe(0)
+  expect(second.nextOffset).toBeNull()
+  expect(second.acknowledged).toBe(5)
+  // Everything is acknowledged now; a third read is empty, which proves the first read did NOT
+  // acknowledge the rows past its page.
+  /** The third read. */
+  const third = await runTool(harness, "cellwork_inbox", {}, harness.captain)
+  expect((third.messages as unknown[]).length).toBe(0)
 })
 
 // ── B8: the depth fence ─────────────────────────────────────────────────────

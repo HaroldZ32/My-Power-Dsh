@@ -137,8 +137,8 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 |---|---|---|
 | 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具 —— 想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
-| 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
-| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
+| 推进长任务 | `mpd_autoproject`（`light` 或 `heavy` 档：计划关卡、执行轮次、验证关卡），或其 `/autoproject <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 该命令会注入 autoproject 激活指令 —— 运行自主执行，只在它的三个决策点停下等人类，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
+| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 autoproject 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放 —— 新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
@@ -419,7 +419,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 `/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 原有 13 个、按名册 agent 各一行三片叶子
 （三十三个 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子；每片叶子是只可选择字段，选项
 来自实时模型目录，回退到声明列表）、再加 TUI 界面自身的一个旋钮，其中包括 `hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
+`commentChecker.autoCheck`、`autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
 harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
 同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
 `<workspace>/.mpd/mpd.jsonc` 写入**：保存下来的 override 就是最顶层的配置层，并在进程内生效；而把表单
@@ -528,10 +528,10 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 |---|---|---|
 | `memory.vcs` | mpd-memory | `git` / `svn` / `both` |
 | `memory.dir`、`memory.agentSlug`、`memory.reflectionEvery` | mpd-memory | 记忆根目录、agent slug、反思节奏 |
-| `boulder.dir` | mpd-boulder | boulder 台账位置 |
+| `boulder.dir` | mpd-autoproject | boulder 台账位置 |
 | `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册表文件 |
 | `commentChecker.*` | mpd-comment-checker | autoCheck、二进制、超时 |
-| `ulw.*` | mpd-ulw | 轮数、计划/状态目录、provider/model 路由 |
+| `autoproject.*` | mpd-autoproject | 轮数、计划/状态目录、provider/model 路由 |
 | `goal.enabled`、`goal.autoAnchor`、`goal.autoRounds` | mpd-goal | 持久化 goal 桥：总开关、长任务是否自行 anchor goal、自动 anchor 的轮次上限（默认 `true` / `true` / `32`）。见 §13.10 |
 | `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §10） |
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
@@ -572,10 +572,10 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 |---|---|---|---|
 | `hashline.*` | mpd-hashline | 挂载时 | `dsh` 重启后 |
 | `commentChecker.*` | mpd-comment-checker | 挂载时 | 重启后 |
-| `ulw.*` | mpd-ulw | 挂载时 | 重启后 |
+| `autoproject.*` | mpd-autoproject | 挂载时 | 重启后 |
 | `goal.*` | mpd-goal | 挂载时 | 重启后 |
 | `memory.*` | mpd-memory | 挂载时 | 重启后 |
-| `boulder.dir` | mpd-boulder | 挂载时 | 重启后 |
+| `boulder.dir` | mpd-autoproject | 挂载时 | 重启后 |
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
@@ -705,8 +705,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的七条命令**
-（`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
+（`mpd-autoproject` 注册 `/autoproject`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
 `/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`，`mpd-cellwork` 注册
 `/cellwork`），以及本 bundle 只是
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
@@ -715,8 +715,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 | 命令 | 作用 | 可用位置 |
 |---|---|---|
-| `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
-| `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
+| `/autoproject <objective>` | 针对该目标启动 autoproject 循环 —— 与 `mpd_autoproject` 同一引擎，并把 autoproject 激活指令作为你的下一条用户消息提交 | Web + TUI |
 | `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交 —— 模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | 共享命令平面：agent 注册表 + **TUI 面板已测量**；Web 未测量 |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
@@ -725,7 +724,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 | `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
 | `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
 
-命令名之后是自由文本形式的目标。不带目标的裸 `/ulw` 会打印用法、不会启动任何东西；在无法裁决命令
+命令名之后是自由文本形式的目标。不带目标的裸 `/autoproject` 会打印用法、不会启动任何东西；在无法裁决命令
 的表面（headless 运行）上，同样的文本会作为指令提交。
 
 **`可用位置` 一列以什么为测量基准（0.16.2）。** 本次发布唯一的一手见证是 harness 自己的 `commands`
@@ -784,20 +783,35 @@ record 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个写�
 回退路径）不是工具调用，**不**受这道门约束 —— 这就是那条已声明的边界。基于过期 `revision` 的任务更新会被拒绝 ——
 正是这道拒绝让被改派的任务不再接受迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
 
-### 13.2 ULW 循环与它的关卡
+### 13.2 autoproject 循环与它的关卡
 
 ```text
-mpd_ulw { "objective": "Make every link in the doc pair resolve" }
-mpd_ultrawork { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
-/ulw Make every documented command resolve to a real registration
+mpd_autoproject { "objective": "Make every link in the doc pair resolve" }
+mpd_autoproject { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
+/autoproject Make every documented command resolve to a real registration
 ```
 
-`mpd_ulw` 是轻量别名（档位 `light`、不写计划文件）；`mpd_ultrawork` 跑完整纪律：可选的对抗式
+`mpd_autoproject` 跑完整纪律，由 `tier` 决定形态：`light`（不写计划文件）或 `heavy` —— 可选的对抗式
 hyperplan 波、使用计划文件时的**计划关卡**（planner + plan review）、按标准逐项推进的执行轮次
 （PIN → RED → GREEN → SURFACE → CLEAN）、当存在计划且（`tier: "heavy"` 或 `strictReview`）时的
-**验证关卡**（momus 复审，最多 2 次再复审），最后是带逐泳道台账的**最终质量关卡**。状态与台账位于
-`.mpd/ulw/<id>`。被激活的运行不会向你提问：它先做三角定位，在工作确需团队时自行建队，然后走完
-各道关卡才收尾。
+**验证关卡**，最后是带逐泳道台账的**最终质量关卡**。状态、台账与升级产物位于
+`.mpd/autoproject/<runId>/`。
+
+**运行是自主的，但有边界。** 它只在三个明确的决策点停下来等人工 —— 超限升级触发且
+`autoproject.escalate.mode` 为 `ask`；缺少凭证、密钥或外部能力；或下一次写入会离开已声明的 scope。
+除此之外不会停下。只有在 verification 的 PASS 通过 `mpd_verify_*` 平面被**记录**后才会报告
+`complete`（`strictReview` 仅为兼容而接受，关卡无论如何都会跑）；每轮的子智能体都是经
+`mpd_role_spawn` 的 roster 咨询；boulder 台账（`.mpd/boulder.json`，六个 `mpd_boulder_*` 工具名不变，
+已由 autoproject 包注册）是进行中的事实。
+
+**超限升级是唯一一个独立决定**，由引擎在轮次边界作出：`S2 ∨ S3 ∨ count(S1,S4,S5,S6,S7) ≥ 2`，
+其中 S1 = 成功标准数超过 `autoproject.escalate.criteriaMax`（12），S2 = 达到 `maxRounds`，
+S3 = 连续两个无果的 discovery wave，S4 = 台账字节超过 `ledgerBytesMax`，S6 = 不同 scope 树超过
+`scopePathsMax`（20），S7 = 同一标准的 verify FAIL 达到两次。**S5 已退役**（`tasksMax` 仍可解析，
+但没有信号读取它）。
+`autoproject.escalate.mode`（`off` / `ask` / `auto`）只决定接下来做什么；产物是
+`.mpd/autoproject/<runId>/escalation.json`；交给 cell 模式的入口是 `cellwork_open`（该工具存在时），
+否则运行返回 `/cellwork <objective>` 指令。
 
 ### 13.3 专家（单次咨询）
 
@@ -930,8 +944,8 @@ mpd_goal_anchor { "objective": "交付 cordis-dev skill 及其证据", "maxRound
 mpd_goal_finish { "outcome": "complete" }
 ```
 
-**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 ULW 运行
-（`mpd_ultrawork` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
+**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 autoproject 运行
+（`mpd_autoproject` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
 为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。团队计划的
 **批准**也会 anchor 一个，并在同一路径写入待办（§6）：一次批准同时打包团队记录、goal 与待办清单。运行
 结束时：
@@ -982,7 +996,7 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 |---|---|---|---|
 | 团队模式 —— 队友执行平面、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
-| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
+| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时用的是非 MIT 的自有许可，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
 | 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** —— **不是**声明依赖；CLI 由 `resolveAstGrepBinary` 在运行时解析（调用方环境固定值 → `$MPD_AST_GREP_BIN_DIR` → 该包自身的 `bin` 入口 → `.toolchain/node_modules/.bin` → `node_modules/.bin`） | MIT；`0.45.2`；不再分发 | `packages/mpd-mcp-shared/bin-resolve.ts`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
@@ -1017,3 +1031,65 @@ dsh plugin --profile web add @dsh-std/adapter-dsh
 patch 行所点名的组件清单做后验 —— 从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
 后验（adapter 同时被声明为依赖并被 patch 行点名）：`dsh plugin add` 直接硬拒绝并回滚了整个
 bundle 的安装。
+
+## 15. 新增与变更的接口（autoproject 重构）
+
+本波次引入的行为速查。未在此处提到的能力保持原义。
+
+### 15.1 团队平面：owner-only 派发与新动词
+
+`agent_teams_dispatch` 把就绪任务配给它**声明的** owner。owner 忙碌、缺席、被 fence 或已失败时，
+该行会被**报告**并保持 pending —— 绝不会被替换。`mode: "roster"` 是显式逃生口（恢复按序回退），
+`reassign` 把指定的行交给另一位成员（先在板子上为该成员 claim，记 `task-reassigned`，再投递）。
+`reassign`、`mode: "roster"` 与 fence 仅限 Lead。
+
+`agent_teams_task {action:"context"}` 回答调用者自己的占用与席位状态（从不猜测窗口：`provenance`
+说明它是 `observed`、`no-window` 还是 `unavailable`）；`{action:"handoff"}` 校验七段式交接文档并把该成员
+标为 handoff-ready。`agent_teams_control {action:"fence"|"unfence", member}` 停止向某成员的**新**派发，
+其已持有的行保持不动，仅 Lead 可调用。**值得记住的组合语义：** `release` 会**清除** owner，所以
+"先 release 再 dispatch" 必须走 `reassign`（或 `mode:"roster"`）—— 这是两个动词的组合性质，不是缺陷。
+
+### 15.2 cellwork 与团队平面
+
+`cellwork_open {objective, mandate?}` 是 autoproject 升级流程使用的程序化入口。它拒绝非 captain 的调用者、
+已存在的活动 cell，以及 `mandate` 指向的 `.mpd/autoproject/<runId>/escalation.json` 不在磁盘上的情况。
+`/cellwork` 是**同一条**路径上的薄处理器，因此命令与工具不会分叉。工具没有 `invocation.submit`，
+所以工具路径返回指令而不是提交它 —— 这条边界是真实的，被明确写出而不是隐藏。
+
+cell **模式**的引擎（requirements、split、activate、recon、budget）仍留在 cellwork 包内。**团队级**的工作不在：
+`cellwork_dispatch`、`cellwork_context`、`cellwork_subteam` 与 handoff 路径现在通过
+`mpdTeams` / `mpdTeamActions` 服务读写**团队记录**（含 owner-only 派发、占用率与深度预算），且没有跨包 import。
+
+### 15.3 workmate 的自动绑定、优化与 persona 覆盖
+
+团队批准时，每个已暂存成员按**确定性**规则绑定：显式给出名字 → 绑定或**拒绝**；否则
+`mpd_workmate_match`（得分 ≥ 0.35 且该名字在团队内空闲）→ **复用**；否则在 `workmates.autoInit`
+（默认 `true`）且库小于 `workmates.max`（默认每工作区 12）时 → **初始化**；否则该成员保持普通成员，原因 `cap`。
+
+`mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` 与 `/workmate-optimize` 合并
+"同一专长、各自跑偏"的 workmate：默认 dry-run；仅当同一 base、`readonly` 相等、都不在归档、都空闲，且
+note 得分 ≥ 0.6 或 tag Jaccard ≥ 0.5 时才可合并。被合并掉的源会**归档**，绝不 purge。
+`mpd_workmate_persona_set` 写入带版本的 persona 覆盖，用 `baseRevision` 做 CAS；当 base persona 已经前进时，
+该 workmate 会报 `defaultUpdated`（并给出 `baseDriftLines`），而不是静默过期。
+
+### 15.4 全局记忆
+
+`mpd_memory_write` / `read` / `status` 接受 `scope: "workspace"`（默认 —— 现有调用含义不变）或 `"global"`，
+后者读写 `~/.mpd/memory` 的共享存储（`memory.globalDir` 可覆盖根目录）。`mpd_memory_read` 支持分页
+（`offset`、`limit`、`next_offset`）。
+
+memory 行里**唯一**一个归档钩子监听 `mpd_boulder_complete`、`cellwork_stop` 与
+`agent_teams_plan {action:"delete"}`，生成**确定性**摘要（不调用模型），并为每个项目键写一条
+`kind:"fact"`、`scope:"global"` 条目；同一键的第二次事件会**覆盖**该条目并记 `superseded`。
+全局写入走**共享**的 HOME 守卫：当根目录不在隔离启动（`DSH_HOME` 已设置）的沙箱 `$HOME` 之内时**拒绝**写入，
+`memory.globalDir` 受同一条规则约束。
+
+### 15.5 准入强度与评审机器人轮次上限
+
+复杂度 gate 现在报告是谁**准入**了这项工作，而不只是工作是否足够大：`explicit`（已消费的
+`team:` / `!team` 标记，或在人类轮次中点名自动化）、`inferred`（命中至少一个复杂度信号的人类轮次）、
+`ignore`（模型撰写的文本，或无信号的人类轮次）。暂存判定式不变 —— `explicitFlag || signals ≥ 1` ——
+所以这一档只描述来源；`ignore` 只对传入生产者文本的调用者可达。
+
+每个自动化评审者（目前是 CodeRabbit，未来任何机器人）对同一个 pull request 最多**三轮**评审。第四轮需要
+用户明确决定，并记录在该 PR 中。

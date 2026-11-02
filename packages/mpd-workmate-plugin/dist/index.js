@@ -1,11 +1,14 @@
 // packages/mpd-workmate-plugin/src/index.ts
-import { existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
-import { homedir, userInfo } from "node:os";
-import { join as join2, resolve as resolve3, sep as sep2 } from "node:path";
+import { existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join as join2 } from "node:path";
+import { createHash } from "node:crypto";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -394,6 +397,53 @@ function workspaceRootOf(exec) {
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
   return process.cwd();
+}
+
+class HomeGuardRefusal extends Error {
+  code;
+  status;
+  constructor(code, message, status) {
+    super(message);
+    this.name = "HomeGuardRefusal";
+    this.code = code;
+    this.status = status;
+  }
+}
+function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertHomeMutationSandboxed(guard) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[guard.allowEnv] === "1")
+    return;
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
 var rowLogSinks = new Map;
 function rowLogLine(name, line) {
@@ -2240,15 +2290,11 @@ var READONLY_DENY = [
 ];
 var LEAF_SPAWN_DENY = ["mpd_role_spawn", "mpd_workmate_spawn"];
 
-class WorkmateError extends Error {
-  code;
-  status;
+class WorkmateError extends HomeGuardRefusal {
   blocking;
   constructor(code, message, status, blocking = []) {
-    super(message);
+    super(code, message, status);
     this.name = "WorkmateError";
-    this.code = code;
-    this.status = status;
     this.blocking = blocking;
   }
 }
@@ -2282,42 +2328,22 @@ function workmateRoot() {
   return join2(homeDir(), ".mpd", "workmate");
 }
 var WORKMATE_ALLOW_REAL_HOME_ENV = "MPD_DSH_WORKMATE_ALLOW_REAL_HOME";
-function realUserHome() {
-  if (process.platform === "win32") {
-    const profile = process.env.USERPROFILE;
-    if (typeof profile === "string" && profile !== "")
-      return profile;
-  }
-  try {
-    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
-    if (uid !== undefined) {
-      const line = readFileSync("/etc/passwd", "utf8").split(`
-`).find((l) => l.split(":")[2] === String(uid));
-      const home = line === undefined ? undefined : line.split(":")[5];
-      if (home !== undefined && home !== "")
-        return home;
-    }
-  } catch {}
-  try {
-    const api = userInfo().homedir;
-    if (api !== "" && resolve3(api) !== resolve3(process.env.HOME ?? api))
-      return api;
-  } catch {}
-  return;
-}
 function assertMutationSandboxed(operation) {
-  const dshHome = process.env.DSH_HOME;
-  if (dshHome === undefined || dshHome === "")
-    return;
-  if (process.env[WORKMATE_ALLOW_REAL_HOME_ENV] === "1")
-    return;
-  const root = workmateRoot();
-  const home = process.env.HOME;
-  const realHome = realUserHome();
-  const inside = (h) => root === h || root.startsWith(h.endsWith(sep2) ? h : h + sep2);
-  if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
-    return;
-  throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
+  assertHomeMutationSandboxed({
+    root: workmateRoot(),
+    operation,
+    label: "mpd_workmate",
+    allowEnv: WORKMATE_ALLOW_REAL_HOME_ENV
+  });
+}
+var WORKSPACE_ATTRIBUTION_CAP = 8;
+function attuneWorkspaces(existing, workspace) {
+  const key = String(workspace ?? "").trim();
+  if (key === "")
+    return [...existing];
+  if (existing[0] === key && existing.length <= WORKSPACE_ATTRIBUTION_CAP)
+    return [...existing];
+  return [key, ...existing.filter((entry) => entry !== key)].slice(0, WORKSPACE_ATTRIBUTION_CAP);
 }
 function wmDir(name2) {
   const key = sanitizeName(name2);
@@ -2352,8 +2378,8 @@ function readMeta(dir) {
   try {
     if (!existsSync(join2(dir, "meta.json")))
       return null;
-    const m = JSON.parse(readFileSync(join2(dir, "meta.json"), "utf8"));
-    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [] };
+    const m = JSON.parse(readFileSync2(join2(dir, "meta.json"), "utf8"));
+    return { name: String(m.name ?? ""), baseId: String(m.baseId ?? ""), baseName: String(m.baseName ?? ""), description: String(m.description ?? ""), provider: String(m.provider ?? ""), model: String(m.model ?? ""), readonly: Boolean(m.readonly), createdAt: String(m.createdAt ?? ""), updatedAt: String(m.updatedAt ?? ""), uses: Number(m.uses ?? 0), lastTask: m.lastTask == null ? null : String(m.lastTask), renamedFrom: Array.isArray(m.renamedFrom) ? m.renamedFrom.map(String) : [], personaRevision: Number.isInteger(m.personaRevision) && Number(m.personaRevision) > 0 ? Number(m.personaRevision) : 0, personaHash: typeof m.personaHash === "string" ? m.personaHash : "", baseRevision: typeof m.baseRevision === "string" ? m.baseRevision : "", workspaces: Array.isArray(m.workspaces) ? m.workspaces.map(String).filter((workspace) => workspace !== "").slice(0, WORKSPACE_ATTRIBUTION_CAP) : [] };
   } catch {
     return null;
   }
@@ -2375,7 +2401,7 @@ function readIndex() {
   try {
     if (!existsSync(indexPath()))
       return {};
-    const v = JSON.parse(readFileSync(indexPath(), "utf8"));
+    const v = JSON.parse(readFileSync2(indexPath(), "utf8"));
     return v && typeof v === "object" && !Array.isArray(v) ? v : {};
   } catch {
     return {};
@@ -2414,14 +2440,14 @@ function restoreIndexEntry(key, entry) {
 }
 function readNote(key) {
   try {
-    return readFileSync(join2(wmDir(key), "note.md"), "utf8").trim();
+    return readFileSync2(join2(wmDir(key), "note.md"), "utf8").trim();
   } catch {
     return "";
   }
 }
 function readMemory(key, tailBytes = MEMORY_CAP) {
   try {
-    const t = readFileSync(join2(wmDir(key), "memory.md"), "utf8").trim();
+    const t = readFileSync2(join2(wmDir(key), "memory.md"), "utf8").trim();
     if (t.length <= tailBytes)
       return t;
     return `…[earlier memory trimmed]…
@@ -2432,7 +2458,7 @@ function readMemory(key, tailBytes = MEMORY_CAP) {
 }
 function readPersona(key) {
   try {
-    return readFileSync(join2(wmDir(key), "persona.md"), "utf8").trim();
+    return readFileSync2(join2(wmDir(key), "persona.md"), "utf8").trim();
   } catch {
     return "";
   }
@@ -2448,7 +2474,7 @@ function autoNote(meta, persona, memory, previous = "") {
 }
 function appendMemory(key, entry) {
   const path = join2(wmDir(key), "memory.md");
-  const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
+  const existing = (existsSync(path) ? readFileSync2(path, "utf8") : "").trim();
   const next = (existing ? existing + `
 
 ` : "") + entry.trim();
@@ -2474,16 +2500,155 @@ function appendMemory(key, entry) {
 `);
   return out;
 }
-function mergePersona(key, revision) {
-  const path = join2(wmDir(key), "persona.md");
-  const existing = (existsSync(path) ? readFileSync(path, "utf8") : "").trim();
+var UNKNOWN_HASH = "unknown";
+function versionsDir(dir) {
+  return join2(dir, "persona.versions");
+}
+function baseSnapshotPath(dir) {
+  return join2(dir, "persona.base.md");
+}
+function readPersonaIn(dir) {
+  try {
+    return readFileSync2(join2(dir, "persona.md"), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+function readBaseSnapshot(dir) {
+  try {
+    const path = baseSnapshotPath(dir);
+    return existsSync(path) ? readFileSync2(path, "utf8").trim() : null;
+  } catch {
+    return null;
+  }
+}
+function writeBaseSnapshot(dir, baseText) {
+  const path = baseSnapshotPath(dir);
+  if (existsSync(path))
+    return;
+  writeFileSync(path, baseText.trim() + `
+`);
+}
+var MAX_DIFF_LINES = 800;
+function lcsLines(a, b) {
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  let prev = new Array(long.length + 1).fill(0);
+  for (let i = 1;i <= short.length; i++) {
+    const cur = new Array(long.length + 1).fill(0);
+    for (let j = 1;j <= long.length; j++)
+      cur[j] = short[i - 1] === long[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]);
+    prev = cur;
+  }
+  return prev[long.length];
+}
+function lineDiffCount(a, b) {
+  const left = String(a ?? "").split(`
+`);
+  const right = String(b ?? "").split(`
+`);
+  if (String(a ?? "").trim() === "" && String(b ?? "").trim() === "")
+    return 0;
+  if (left.length > MAX_DIFF_LINES || right.length > MAX_DIFF_LINES) {
+    const pool = new Map;
+    for (const line of right)
+      pool.set(line, (pool.get(line) ?? 0) + 1);
+    let changed = 0;
+    for (const line of left) {
+      const count = pool.get(line) ?? 0;
+      if (count > 0)
+        pool.set(line, count - 1);
+      else
+        changed += 1;
+    }
+    for (const count of pool.values())
+      changed += count;
+    return changed;
+  }
+  return left.length + right.length - 2 * lcsLines(left, right);
+}
+function nextFreeRevision(dir, from) {
+  const versions = versionsDir(dir);
+  let revision = Math.max(1, Math.trunc(from));
+  for (let step = 0;step < 1e5; step++) {
+    if (!existsSync(join2(versions, revision + ".md")))
+      return revision;
+    revision += 1;
+  }
+  throw new Error("mpd_workmate: this workmate's persona version history is corrupt (no free revision number below 100000)");
+}
+function writePersonaVersion(dir, revision, text) {
+  mkdirSync2(versionsDir(dir), { recursive: true });
+  const path = join2(versionsDir(dir), revision + ".md");
+  if (existsSync(path))
+    throw new Error("mpd_workmate: persona revision " + revision + " already exists and is never overwritten");
+  writeFileSync(path, text + `
+`);
+}
+function personaRecordOf(dir, meta, currentBase) {
+  const persona = readPersonaIn(dir);
+  const hasFile = existsSync(join2(dir, "persona.md"));
+  const revision = meta.personaRevision > 0 ? meta.personaRevision : Math.max(1, highestVersionOf(dir));
+  const baseRevision = meta.baseRevision !== "" ? meta.baseRevision : currentBase !== null ? sha256Of(String(currentBase).trim()) : UNKNOWN_HASH;
+  return { revision, hash: hasFile ? sha256Of(persona) : UNKNOWN_HASH, baseRevision, backfilled: meta.personaRevision <= 0 || meta.personaHash === "" || meta.baseRevision === "" };
+}
+function highestVersionOf(dir) {
+  const versions = versionsDir(dir);
+  try {
+    if (!existsSync(versions))
+      return 0;
+    let highest = 0;
+    for (const file of readdirSync(versions)) {
+      const n = /^([1-9]\d*)\.md$/.exec(file)?.[1];
+      if (n === undefined)
+        continue;
+      if (Number(n) > highest)
+        highest = Number(n);
+    }
+    return highest;
+  } catch {
+    return 0;
+  }
+}
+function applyPersonaWrite(input) {
+  const record = personaRecordOf(input.dir, input.meta, input.currentBase);
+  if (!existsSync(join2(versionsDir(input.dir), record.revision + ".md")))
+    writePersonaVersion(input.dir, record.revision, readPersonaIn(input.dir));
+  if (input.currentBase !== null)
+    writeBaseSnapshot(input.dir, input.currentBase);
+  const persona = input.bump ? capText(String(input.text ?? ""), PERSONA_CAP).trim() : readPersonaIn(input.dir);
+  const revision = input.bump ? nextFreeRevision(input.dir, record.revision + 1) : record.revision;
+  if (input.bump) {
+    writeFileSync(join2(input.dir, "persona.md"), persona + `
+`);
+    writePersonaVersion(input.dir, revision, persona);
+  }
+  const hash = sha256Of(persona);
+  input.meta.personaRevision = revision;
+  input.meta.personaHash = hash;
+  input.meta.baseRevision = record.baseRevision;
+  return { persona, revision, hash };
+}
+function personaDrift(meta, dir, currentBase) {
+  if (currentBase === null || meta.baseRevision === "" || meta.baseRevision === UNKNOWN_HASH)
+    return { defaultUpdated: false, baseDriftLines: 0, baseDriftUnknown: true };
+  const current = String(currentBase).trim();
+  if (sha256Of(current) === meta.baseRevision)
+    return { defaultUpdated: false, baseDriftLines: 0, baseDriftUnknown: false };
+  return { defaultUpdated: true, baseDriftLines: lineDiffCount(readBaseSnapshot(dir) ?? "", current), baseDriftUnknown: false };
+}
+function noteWithDrift(note, drift) {
+  const bare = note.replace(/\n?\[defaultUpdated=[^\]]*\]/g, "").trim();
+  if (!drift.defaultUpdated)
+    return bare;
+  return capText(bare + `
+[defaultUpdated=true baseDriftLines=` + drift.baseDriftLines + " — the base persona moved ahead of this workmate]", NOTE_CAP);
+}
+function mergedPersonaText(existing, revision) {
   const merged = capText(existing + (revision ? `
 
 ## Persona revision (${now()})
 ${revision.trim()}` : ""), PERSONA_CAP);
-  writeFileSync(path, merged + `
-`);
-  return merged;
+  return merged.trim();
 }
 function ensureInstance(name2) {
   const key = sanitizeName(name2);
@@ -2578,7 +2743,7 @@ function busyTeams(key, roots) {
         if (!existsSync(file))
           continue;
         try {
-          const team = JSON.parse(readFileSync(file, "utf8"));
+          const team = JSON.parse(readFileSync2(file, "utf8"));
           const members = Array.isArray(team?.members) ? team.members : [];
           for (const m of members)
             note(String(team?.id ?? entry.name), typeof m?.name === "string" ? m.name : "");
@@ -2593,7 +2758,7 @@ function busyTeams(key, roots) {
         if (!name2.endsWith(".json"))
           continue;
         try {
-          const team = JSON.parse(readFileSync(join2(records, name2), "utf8"));
+          const team = JSON.parse(readFileSync2(join2(records, name2), "utf8"));
           if (team?.endedAt !== undefined)
             continue;
           const members = Array.isArray(team?.members) ? team.members : [];
@@ -2649,7 +2814,7 @@ function rewriteNoteIdentity(dir, baseName, oldKey, newKey) {
   const path = join2(dir, "note.md");
   let raw;
   try {
-    raw = readFileSync(path, "utf8");
+    raw = readFileSync2(path, "utf8");
   } catch {
     return;
   }
@@ -2721,6 +2886,170 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
     const fate = removed ? "the workmate left the library but leftover bytes may remain under the archive directory" : "the workmate is unchanged";
     throw new WorkmateError("internal", `mpd_workmate: delete of "${key}" failed (${String(e?.code ?? "error")}) — ${fate}`, 500);
   }
+}
+var MERGE_THRESHOLD = 0.6;
+var MERGE_TAG_THRESHOLD = 0.5;
+var MERGE_RECORD_VERSION = 1;
+function sha256Of(text) {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+function memoryBlocksOf(text) {
+  return String(text ?? "").split(/\n## /).map((block, index) => index === 0 ? block : "## " + block).map((block) => block.trim()).filter((block) => block !== "");
+}
+function tagsOf(note, baseName) {
+  return new Set(unique(tokenize(note + " " + baseName)));
+}
+function jaccardOf(a, b) {
+  if (a.size === 0 || b.size === 0)
+    return 0;
+  let shared = 0;
+  for (const tag of a)
+    if (b.has(tag))
+      shared += 1;
+  return shared / (a.size + b.size - shared);
+}
+function archivedCopiesOf(key) {
+  try {
+    const root = join2(workmateRoot(), ".archive");
+    if (!existsSync(root))
+      return [];
+    const shapes = new RegExp("^" + key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:-\\d{8}T\\d{6}Z(?:-\\d+)?|-merged-.+)$");
+    return readdirSync(root).filter((entry) => entry === key || shapes.test(entry));
+  } catch {
+    return [];
+  }
+}
+function planWorkmateMerges(options = {}) {
+  const instances = listInstances();
+  const byName = new Map(instances.map((instance) => [instance.name, instance]));
+  const threshold = typeof options.mergeThreshold === "number" && options.mergeThreshold >= 0 && options.mergeThreshold <= 1 ? options.mergeThreshold : MERGE_THRESHOLD;
+  const proposals = [];
+  if (options.pairs !== undefined && options.pairs.length > 0) {
+    for (const pair of options.pairs)
+      proposals.push({ from: sanitizeName(pair?.from ?? ""), into: sanitizeName(pair?.into ?? "") });
+  } else {
+    const groups = new Map;
+    for (const instance of instances) {
+      const group = groups.get(instance.meta.baseName) ?? [];
+      group.push(instance);
+      groups.set(instance.meta.baseName, group);
+    }
+    for (const group of groups.values()) {
+      if (group.length < 2)
+        continue;
+      const ordered = [...group].sort((a, b) => b.meta.uses - a.meta.uses || a.name.localeCompare(b.name));
+      for (const source of ordered.slice(1))
+        proposals.push({ from: source.name, into: ordered[0].name });
+    }
+  }
+  const rows = [];
+  const claimedSources = new Set;
+  for (const proposal of proposals) {
+    const repeatedSource = claimedSources.has(proposal.from);
+    claimedSources.add(proposal.from);
+    const source = byName.get(proposal.from);
+    const target = byName.get(proposal.into);
+    const score = source === undefined || target === undefined ? 0 : scoreMatch(source.note, { note: target.note, baseName: target.meta.baseName, description: target.meta.description, memoryTail: readMemory(target.name, 600) });
+    const jaccard = source === undefined || target === undefined ? 0 : jaccardOf(tagsOf(source.note, source.meta.baseName), tagsOf(target.note, target.meta.baseName));
+    const roundedScore = Math.round(score * 100) / 100;
+    const roundedJaccard = Math.round(jaccard * 100) / 100;
+    const reason = repeatedSource ? "duplicate-source" : source === undefined || target === undefined ? "missing" : proposal.from === proposal.into ? "same" : source.meta.baseName !== target.meta.baseName ? "base-mismatch" : source.meta.readonly !== target.meta.readonly ? "readonly-mismatch" : archivedCopiesOf(proposal.from).length > 0 || archivedCopiesOf(proposal.into).length > 0 ? "archived" : busyTeams(proposal.from, options.teamRoots).length > 0 || busyTeams(proposal.into, options.teamRoots).length > 0 || inUseCount(proposal.from) > 0 || inUseCount(proposal.into) > 0 ? "in-use" : !(roundedScore >= threshold || roundedJaccard >= MERGE_TAG_THRESHOLD) ? "not-similar" : undefined;
+    rows.push({ from: proposal.from, into: proposal.into, score: roundedScore, jaccard: roundedJaccard, mergeable: reason === undefined, ...reason === undefined ? {} : { reason } });
+  }
+  return rows;
+}
+function mergeArchivePathFor(fromKey, intoKey) {
+  const root = join2(workmateRoot(), ".archive");
+  mkdirSync2(root, { recursive: true });
+  const stamp = compactUtcStamp();
+  let candidate = join2(root, `${fromKey}-merged-${intoKey}-${stamp}`);
+  for (let i = 2;lstatOrNull(candidate) != null && i < 1000; i++)
+    candidate = join2(root, `${fromKey}-merged-${intoKey}-${stamp}-${i}`);
+  return candidate;
+}
+function mergeOneWorkmate(fromKey, intoKey) {
+  const source = resolveTarget(fromKey);
+  const target = resolveTarget(intoKey);
+  const sourcePersona = readPersona(fromKey);
+  const targetPersona = readPersona(intoKey);
+  const longerPersona = sourcePersona.length > targetPersona.length ? sourcePersona : targetPersona;
+  const persona = capText(longerPersona === "" ? "" : longerPersona + `
+
+merged-from: ` + fromKey, PERSONA_CAP);
+  const seen = new Set;
+  const blocks = [];
+  for (const block of [...memoryBlocksOf(readMemory(intoKey, Number.MAX_SAFE_INTEGER)), ...memoryBlocksOf(readMemory(fromKey, Number.MAX_SAFE_INTEGER))]) {
+    const sha = sha256Of(block);
+    if (seen.has(sha))
+      continue;
+    seen.add(sha);
+    blocks.push(block);
+  }
+  let memory = "";
+  for (let index = blocks.length - 1;index >= 0; index--) {
+    const candidate = blocks[index] + (memory === "" ? "" : `
+
+` + memory);
+    if (candidate.length > MEMORY_CAP)
+      break;
+    memory = candidate;
+  }
+  const sourceMemoryShas = memoryBlocksOf(readMemory(fromKey, Number.MAX_SAFE_INTEGER)).map(sha256Of);
+  const meta = {
+    ...target.meta,
+    uses: target.meta.uses + source.meta.uses,
+    renamedFrom: unique([...target.meta.renamedFrom, fromKey, ...source.meta.renamedFrom]).slice(-10),
+    updatedAt: now()
+  };
+  const note = autoNote(meta, persona, memory, readNote(intoKey));
+  applyPersonaWrite({ dir: target.dir, meta, text: persona, currentBase: null, bump: true });
+  writeFileSync(join2(target.dir, "memory.md"), memory === "" ? "" : memory + `
+`);
+  writeFileSync(join2(target.dir, "note.md"), note + `
+`);
+  writeFileSync(join2(target.dir, "meta.json"), JSON.stringify(meta, null, 2) + `
+`);
+  writeIndexEntry(intoKey, meta);
+  const archive = mergeArchivePathFor(fromKey, intoKey);
+  renameSync2(source.dir, archive);
+  dropIndexKey(fromKey);
+  writeJson(join2(archive, "merge.json"), {
+    version: MERGE_RECORD_VERSION,
+    from: fromKey,
+    into: intoKey,
+    at: now(),
+    memoryShas: sourceMemoryShas,
+    personaSha: sha256Of(persona)
+  });
+  return archive;
+}
+function optimizeWorkmates(options = {}) {
+  const plan = planWorkmateMerges({ ...options.mergeThreshold === undefined ? {} : { mergeThreshold: options.mergeThreshold }, ...options.pairs === undefined ? {} : { pairs: options.pairs }, ...options.teamRoots === undefined ? {} : { teamRoots: options.teamRoots } });
+  const skipped = plan.filter((row) => !row.mergeable).map((row) => ({ from: row.from, into: row.into, reason: row.reason ?? "refused" }));
+  const apply = options.confirm === true && options.dryRun !== true;
+  if (!apply)
+    return { plan, applied: [], skipped };
+  assertMutationSandboxed("merge workmates");
+  const applied = [];
+  for (const row of plan) {
+    if (!row.mergeable)
+      continue;
+    try {
+      assertNotBusy([row.from, row.into], options.teamRoots);
+      applied.push({ from: row.from, into: row.into, archive: mergeOneWorkmate(row.from, row.into) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      skipped.push({ from: row.from, into: row.into, reason: "failed: " + message });
+    }
+  }
+  return { plan, applied, skipped };
+}
+function renderOptimizeTable(result) {
+  const head = result.applied.length > 0 ? "workmate merge — APPLIED " + result.applied.length + " pair(s)" : "workmate merge — DRY RUN (nothing written)";
+  const rows = result.plan.length === 0 ? ["  (nothing to merge: no base group carries two instances and no pair was named)"] : result.plan.map((row) => "  " + row.from + " -> " + row.into + "  score=" + row.score.toFixed(2) + " jaccard=" + row.jaccard.toFixed(2) + "  " + (row.mergeable ? result.applied.some((entry) => entry.from === row.from) ? "MERGED" : "MERGE" : "skip:" + String(row.reason)));
+  const tail = result.applied.length > 0 ? ["archived: " + result.applied.map((entry) => entry.archive).join(", ")] : ["re-run with confirm:true to apply (mpd_workmate_optimize {confirm:true} or /workmate-optimize confirm)"];
+  return [head, ...rows, ...tail].join(`
+`);
 }
 function spawnMaxDepthOf(agent) {
   const header = agent?.session?.header;
@@ -2864,7 +3193,21 @@ function apply(ctx) {
     }
     return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: String(base.chain?.[0]?.provider ?? ""), model: String(base.chain?.[0]?.model ?? ""), persona: String(base.persona ?? "") };
   }
-  function initWorkmate(baseKey, nameArg, noteArg) {
+  function workspaceOf(adapter, exec) {
+    try {
+      return String(adapter.workspaceRoot(exec) ?? "").trim();
+    } catch {
+      return "";
+    }
+  }
+  function currentBaseTextOf(meta) {
+    try {
+      return String(resolveBase(meta.baseName).persona ?? "").trim();
+    } catch {
+      return null;
+    }
+  }
+  function initWorkmate(baseKey, nameArg, noteArg, workspace) {
     assertMutationSandboxed("initialize a workmate");
     const base = resolveBase(baseKey);
     const given = sanitizeName(nameArg);
@@ -2890,11 +3233,16 @@ function apply(ctx) {
       }
       return { provider: base.provider, model: base.model };
     })();
-    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] };
+    const bornPersona = capText(base.persona, PERSONA_CAP).trim();
+    const bornBase = String(base.persona ?? "").trim();
+    const meta = { name: name2, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [], personaRevision: 1, personaHash: sha256Of(bornPersona), baseRevision: bornBase === "" ? UNKNOWN_HASH : sha256Of(bornBase), workspaces: attuneWorkspaces([], workspace) };
     writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
-    writeFileSync(join2(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + `
+    writeFileSync(join2(dir, "persona.md"), bornPersona + `
 `);
+    writePersonaVersion(dir, 1, bornPersona);
+    if (bornBase !== "")
+      writeBaseSnapshot(dir, bornBase);
     writeFileSync(join2(dir, "memory.md"), "");
     const note = capText(String(noteArg ?? "").trim() || autoNote(meta, base.persona, ""), NOTE_CAP);
     writeFileSync(join2(dir, "note.md"), note + `
@@ -2929,10 +3277,33 @@ function apply(ctx) {
     description: "List the workmate library (~/.mpd/workmate): each durable evolving agent instance with its base specialist, use count, last-updated time and note summary. Use before delegating a task: if a workmate's note matches well you can reuse it; otherwise initialize a new one.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a, v) => textBlock("workmates (" + v.count + `):
-` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " :: " + String(w.note).slice(0, 140)).join(`
+` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " rev=" + w.personaRevision + (w.defaultUpdated ? " default-updated:" + w.baseDriftLines + "L" : w.baseDriftUnknown ? " default-unverified" : "") + " :: " + String(w.note).slice(0, 140)).join(`
 `) || "(empty)") },
     execute: async () => {
-      const list = listInstances().map(({ name: name2, meta, note }) => ({ name: name2, baseName: meta.baseName, readonly: meta.readonly, provider: meta.provider, model: meta.model, uses: meta.uses, updatedAt: meta.updatedAt, lastTask: meta.lastTask, renamedFrom: meta.renamedFrom, note }));
+      const list = listInstances().map(({ name: name2, meta, note }) => {
+        const base = currentBaseTextOf(meta);
+        const record = personaRecordOf(wmDir(name2), meta, base);
+        const drift = personaDrift(meta, wmDir(name2), base);
+        return {
+          name: name2,
+          baseName: meta.baseName,
+          readonly: meta.readonly,
+          provider: meta.provider,
+          model: meta.model,
+          uses: meta.uses,
+          updatedAt: meta.updatedAt,
+          lastTask: meta.lastTask,
+          renamedFrom: meta.renamedFrom,
+          workspaces: meta.workspaces,
+          note: noteWithDrift(note, drift),
+          personaRevision: record.revision,
+          personaHash: record.hash,
+          baseRevision: meta.baseRevision === "" ? UNKNOWN_HASH : meta.baseRevision,
+          defaultUpdated: drift.defaultUpdated,
+          baseDriftLines: drift.baseDriftLines,
+          baseDriftUnknown: drift.baseDriftUnknown
+        };
+      });
       return { workmates: list, count: list.length };
     }
   });
@@ -2942,7 +3313,7 @@ function apply(ctx) {
     parameters: { type: "object", properties: { base: { type: "string", description: `the specialist's functional name (e.g. "Deep Worker")` }, name: { type: "string", description: "independent workmate name (lowercase kebab; auto-generated from the functional name if omitted)" }, note: { type: "string", description: "optional initial note card" } }, required: ["base"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, baseName: { type: "string" }, readonly: { type: "boolean" }, provider: { type: "string" }, model: { type: "string" }, path: { type: "string" }, note: { type: "string" } }, required: ["name", "baseName"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " initialized (base " + v.baseName + (v.readonly ? ", readonly" : "") + ", " + v.provider + "/" + v.model + `)
 note: ` + v.note) },
-    execute: async (args) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""))
+    execute: async (args, exec) => initWorkmate(String(args?.base ?? ""), String(args?.name ?? ""), String(args?.note ?? ""), workspaceOf(dsh, exec))
   });
   dsh.registerTool({
     name: "mpd_workmate_spawn",
@@ -2957,6 +3328,13 @@ details: ` + v.details : "")) },
       if (tooDeep !== undefined)
         throw new Error(tooDeep);
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
+      const attributed = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
+      if (attributed.join("\x00") !== meta.workspaces.join("\x00")) {
+        meta.workspaces = attributed;
+        writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
+`);
+        writeIndexEntry(key, meta);
+      }
       const task = String(args?.task ?? "").trim();
       if (!task)
         throw new Error("mpd_workmate_spawn: task required");
@@ -3007,7 +3385,7 @@ Work with the tools your role requires (read-only workmates must never modify an
     description: "Self-evolve a workmate after a completed work session: append a bounded memory entry (oldest evicted past the cap), merge an optional persona revision, regenerate its short note, and bump the use count. Call this at the end of every task a workmate did — the workmate itself is instructed to do so; the caller may also call it on its behalf.",
     parameters: { type: "object", properties: { name: { type: "string" }, task: { type: "string" }, outcome: { type: "string" }, persona_delta: { type: "string", description: "optional persona revision text (merged, capped)" }, note: { type: "string", description: "optional replacement note card; auto-generated if omitted" } }, required: ["name", "task", "outcome"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, uses: { type: "integer" }, personaChars: { type: "integer" }, memoryChars: { type: "integer" }, noteChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " reflected (uses=" + v.uses + ", persona " + v.personaChars + "B / memory " + v.memoryChars + "B / note " + v.noteChars + "B)") },
-    execute: async (args) => {
+    execute: async (args, exec) => {
       assertMutationSandboxed("reflect a workmate");
       const { meta, key } = ensureInstance(String(args?.name ?? ""));
       const task = String(args?.task ?? "").trim();
@@ -3016,19 +3394,63 @@ Work with the tools your role requires (read-only workmates must never modify an
         throw new Error("mpd_workmate_reflect: task and outcome required");
       appendMemory(key, `## ${now()} — ${capText(task, 200)}
 ${capText(outcome, 1200)}`);
-      const persona = mergePersona(key, String(args?.persona_delta ?? "").trim());
+      const delta = String(args?.persona_delta ?? "").trim();
+      const written = applyPersonaWrite({ dir: wmDir(key), meta, text: mergedPersonaText(readPersonaIn(wmDir(key)), delta), currentBase: currentBaseTextOf(meta), bump: delta !== "" });
+      const persona = written.persona;
       const memory = readMemory(key);
       meta.uses += 1;
       meta.lastTask = task;
       meta.updatedAt = now();
+      meta.workspaces = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
       meta.name = key;
       writeFileSync(join2(wmDir(key), "meta.json"), JSON.stringify(meta, null, 2) + `
 `);
       const note = capText(String(args?.note ?? "").trim() || autoNote(meta, persona, memory, readNote(key)), NOTE_CAP);
-      writeFileSync(join2(wmDir(key), "note.md"), note + `
+      writeFileSync(join2(wmDir(key), "note.md"), noteWithDrift(note, personaDrift(meta, wmDir(key), currentBaseTextOf(meta))) + `
 `);
       writeIndexEntry(key, meta);
       return { name: key, updated: true, uses: meta.uses, personaChars: persona.length, memoryChars: memory.length, noteChars: note.length };
+    }
+  });
+  dsh.registerTool({
+    name: "mpd_workmate_persona_set",
+    description: "REPLACE a workmate's persona text under a COMPARE-AND-SET guard. The caller names the revision its draft was based on (`baseRevision` = the INTEGER `personaRevision` reported by mpd_workmate_list, which is a DIFFERENT thing from the meta.json baseline of the same name); a stale token is REFUSED and NOTHING is written — the result carries the current revision and the current persona length so the caller can rebase and retry. A matching write replaces persona.md, bumps personaRevision, rewrites personaHash and stores the whole text as persona.versions/<revision>.md, where a version file is NEVER overwritten, so any two revisions can be diffed. Use it to prune or rewrite a persona that has evolved; mpd_workmate_reflect remains the append-a-delta path.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "workmate instance name" },
+        persona: { type: "string", description: "the COMPLETE new persona text — this REPLACES the current one" },
+        baseRevision: { type: "integer", description: "the personaRevision this draft is based on (from mpd_workmate_list); a stale value is refused" }
+      },
+      required: ["name", "persona", "baseRevision"],
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { name: { type: "string" }, updated: { type: "boolean" }, revision: { type: "integer" }, personaChars: { type: "integer" }, personaHash: { type: "string" }, refused: { type: "string" }, currentRevision: { type: "integer" }, currentPersonaChars: { type: "integer" } }, required: ["name", "updated"], additionalProperties: false },
+      render: (_a, v) => textBlock(v.updated === true ? "workmate " + v.name + " persona set at revision " + v.revision + " (" + v.personaChars + "B, sha256 " + String(v.personaHash).slice(0, 12) + ")" : "workmate " + v.name + " persona REFUSED — " + String(v.refused) + " (current revision " + v.currentRevision + ", " + v.currentPersonaChars + "B)")
+    },
+    execute: async (args, exec) => {
+      assertMutationSandboxed("set a workmate persona");
+      const { meta, dir } = resolveTarget(sanitizeName(String(args?.name ?? "")));
+      const next = String(args?.persona ?? "");
+      if (next.trim() === "")
+        throw new Error("mpd_workmate_persona_set: persona required (an empty persona would erase this workmate's identity)");
+      const base = currentBaseTextOf(meta);
+      const record = personaRecordOf(dir, meta, base);
+      const expected = Number(args?.baseRevision);
+      if (!Number.isInteger(expected) || expected !== record.revision) {
+        rowLogLine("mpd-workmate", "persona_set refused (stale baseRevision) for " + meta.name);
+        return { name: meta.name, updated: false, refused: "stale baseRevision: the draft was based on revision " + String(args?.baseRevision) + " but this workmate is at revision " + record.revision + "; re-read the persona and rebase", currentRevision: record.revision, currentPersonaChars: readPersonaIn(dir).length };
+      }
+      const written = applyPersonaWrite({ dir, meta, text: next, currentBase: base, bump: true });
+      meta.updatedAt = now();
+      meta.workspaces = attuneWorkspaces(meta.workspaces, workspaceOf(dsh, exec));
+      meta.name = sanitizeName(String(args?.name ?? ""));
+      writeFileSync(join2(dir, "meta.json"), JSON.stringify(meta, null, 2) + `
+`);
+      writeIndexEntry(meta.name, meta);
+      rowLogLine("mpd-workmate", "persona_set " + meta.name + " revision " + record.revision + " -> " + written.revision + " (sha256 " + written.hash.slice(0, 12) + ")");
+      return { name: meta.name, updated: true, revision: written.revision, personaChars: written.persona.length, personaHash: written.hash };
     }
   });
   dsh.registerTool({
@@ -3068,6 +3490,41 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
     output: { schema: { type: "object", properties: { ok: { type: "boolean" }, name: { type: "string" }, archived: { oneOf: [{ type: "string" }, { type: "null" }] }, purged: { type: "boolean" } }, required: ["ok", "name", "archived", "purged"], additionalProperties: false }, render: (_a, v) => textBlock('workmate "' + v.name + '" ' + (v.purged ? "PURGED (permanently removed)" : "archived (gone from the library, still restorable)")) },
     execute: async (args, exec) => deleteWorkmate(args?.name, args?.purge, args?.confirm, [dsh.workspaceRoot(exec)])
   });
+  dsh.registerTool({
+    name: "mpd_workmate_optimize",
+    description: "Merge similar workmates and shrink the library. Two instances are MERGEABLE when they share the same roster base and readonly posture, neither is archived, neither is busy in a live team, AND (their note score clears the merge threshold OR their tag overlap is at least 0.5). A merge PRESERVES the evolved record — memory blocks concatenated and deduplicated by sha256 under the cap, the LONGER persona plus one merged-from line, use counts summed, name history accumulated, the note regenerated — and ARCHIVES the source to ~/.mpd/workmate/.archive/<name>-merged-<target>-<ts>/ with a merge.json record. It never deletes and cannot purge. DRY RUN BY DEFAULT: it returns the plan table and writes nothing unless confirm is literally true. A pair refused for live-team use skips ONLY that pair, and a pair that cannot run at all is REPORTED in `skipped` instead of aborting the rest. The in-use gate scans EVERY live workspace of this process (the library is cross-project); DECLARED BOUND: a live team in ANOTHER dsh process is not visible to this gate.",
+    parameters: {
+      type: "object",
+      properties: {
+        dryRun: { type: "boolean", description: "true = print the plan only (the default when confirm is absent)" },
+        confirm: { type: "boolean", description: "true = APPLY the plan; without it nothing is written" },
+        pairs: { type: "array", description: "explicit merge pairs; omitted = every fork in one base group", items: { type: "object", properties: { from: { type: "string" }, into: { type: "string" } }, required: ["from", "into"], additionalProperties: false } },
+        mergeThreshold: { type: "number", description: "note-score floor, 0..1; defaults to 0.6" }
+      },
+      additionalProperties: false
+    },
+    output: {
+      schema: { type: "object", properties: { plan: { type: "array", items: { type: "object" } }, applied: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } } }, required: ["plan", "applied", "skipped"], additionalProperties: false },
+      render: (_a, v) => textBlock(renderOptimizeTable(v))
+    },
+    execute: async (args, exec) => optimizeWorkmates({
+      dryRun: args?.dryRun === true,
+      confirm: args?.confirm === true,
+      ...Array.isArray(args?.pairs) ? { pairs: args.pairs.map((pair) => ({ from: String(pair?.from ?? ""), into: String(pair?.into ?? "") })) } : {},
+      ...typeof args?.mergeThreshold === "number" ? { mergeThreshold: args.mergeThreshold } : {},
+      teamRoots: agentlessRoots(dsh)
+    })
+  });
+  dsh.registerCommand({
+    name: "workmate-optimize",
+    description: "Merge/optimise the workmate library: prints the merge plan (dry run) — add the word `confirm` to apply it",
+    input: { hint: "confirm" },
+    handler: (invocation) => {
+      const confirm = String(invocation?.rawInput ?? "").trim().toLowerCase() === "confirm";
+      const result = optimizeWorkmates({ confirm, teamRoots: agentlessRoots(dsh) });
+      return { kind: "success", text: renderOptimizeTable(result) };
+    }
+  });
   let webRegistered = false;
   const registerWebSurface = () => {
     if (webRegistered)
@@ -3081,8 +3538,8 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
       res.end(JSON.stringify(body));
     };
     const failure = (res, e) => {
-      if (e instanceof WorkmateError) {
-        json(res, e.status, { error: e.message, reason: e.code, ...e.blocking.length > 0 ? { blocking: e.blocking } : {} });
+      if (e instanceof HomeGuardRefusal) {
+        json(res, e.status, { error: e.message, reason: e.code, ...e instanceof WorkmateError && e.blocking.length > 0 ? { blocking: e.blocking } : {} });
         return;
       }
       json(res, 500, { error: `mpd_workmate: internal error (${String(e?.code ?? "error")})`, reason: "internal" });
@@ -3159,7 +3616,7 @@ previous names: ` + v.renamedFrom.join(", ") : "")) },
           return;
         }
         try {
-          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""));
+          const created = initWorkmate(String(body?.base ?? ""), String(body?.name ?? ""), String(body?.note ?? ""), "");
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify(created));
         } catch (e) {
@@ -3218,22 +3675,34 @@ export {
   LEAF_SPAWN_DENY,
   MATCH_THRESHOLD,
   MEMORY_CAP,
+  MERGE_RECORD_VERSION,
+  MERGE_TAG_THRESHOLD,
+  MERGE_THRESHOLD,
   NOTE_CAP,
   PERSONA_CAP,
   READONLY_DENY,
+  UNKNOWN_HASH,
   WORKMATE_ALLOW_REAL_HOME_ENV,
+  WORKSPACE_ATTRIBUTION_CAP,
   WorkmateError,
   apply,
   assertMutationSandboxed,
+  attuneWorkspaces,
   autoNote,
   busyTeams,
   capText,
   consultDepthRefusal,
   deleteWorkmate,
   inject,
+  lineDiffCount,
   name,
   nameKey,
+  noteWithDrift,
+  optimizeWorkmates,
+  personaDrift,
+  planWorkmateMerges,
   renameWorkmate,
+  renderOptimizeTable,
   sanitizeName,
   scoreMatch,
   spawnMaxDepthOf,

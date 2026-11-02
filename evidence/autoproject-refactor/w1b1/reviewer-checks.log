@@ -1,0 +1,89 @@
+# R-W1B1 independent re-measurements — 2026-11-02T11:41:41Z (by reviewer-a, not the writer)
+
+## 1. residue: the six retired spellings, shipped code paths (excludes evidence/docs/README/dist/.mpd/plan/golden)
+packages/mpd-cellwork-plugin/src/prompts.ts:5:// carrying this text (producer tag `mpd-cellwork`), which is the same seam `/ulw` uses.
+packages/mpd-dsh-adapter-plugin/src/index.ts:221: * against its own `COMMAND_NAME` pattern, so `/ulw` registers as `"ulw"`. A
+packages/mpd-dsh-adapter-plugin/src/index.ts:223: * registers `/ulw` and `/ultrawork` as two separate definitions.
+packages/mpd-dsh-adapter-plugin/src/index.ts:226:  /** The lowercase command name WITHOUT the leading slash: `/ulw` registers as `ulw`. */
+packages/mpd-dsh-adapter-plugin/src/index.ts:240:// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-ulw',…}`.
+packages/mpd-dsh-adapter-plugin/src/index.ts:2045:   *   NO leading slash (`/ulw` registers as `"ulw"`).
+scripts/verify-docs-parity.ts:1071:      "docs/ulw-deepseek-optimization.md", "docs/tui-edition-report.md",
+scripts/verify-docs-parity.ts:1105:        "docs/ulw-deepseek-optimization.md", "docs/adder4.md", "docs/cnt8.md", "docs/tui-edition-report.md",
+scripts/docker-e2e.ts:728:   * The frozen capture predates the W1-B1 rename (`/ulw` + `/ultrawork` collapsed into ONE
+
+## 2. dist provenance: new package entry vs HEAD ulw entry
+897766ae1c8914ad2a963cc9a1bb225326315ac6f86697b73b73da20cfe7f792  packages/mpd-autoproject-plugin/dist/index.js
+897766ae1c8914ad2a963cc9a1bb225326315ac6f86697b73b73da20cfe7f792  -
+retired-name hits in that dist: 7
+boulder tool hits: 0
+
+## 3. dist files that still carry a retired identifier (rebuild list)
+mpd-autoproject-plugin/dist/index.js
+mpd-config-plugin/dist/index.js
+mpd-verify-plugin/dist/index.js
+
+## 4. rename-insensitive residual (old ulw src vs new autoproject src, all rename tokens normalised)
+removed lines: 82
+added lines:   71
+residual hunks:
+@@ -1,8 +1,10 @@
+@@ -14,10 +16,13 @@
+@@ -48,13 +53,18 @@
+@@ -142,7 +152,7 @@
+@@ -172,11 +182,11 @@
+@@ -207,11 +217,11 @@
+@@ -248,7 +258,7 @@
+@@ -269,11 +279,11 @@
+@@ -292,8 +302,8 @@
+@@ -305,13 +315,13 @@
+@@ -409,7 +419,7 @@
+@@ -451,7 +461,7 @@
+@@ -461,7 +471,7 @@
+@@ -473,7 +483,7 @@
+@@ -486,7 +496,7 @@
+@@ -505,7 +515,7 @@
+@@ -535,7 +545,7 @@
+@@ -548,13 +558,13 @@
+@@ -568,7 +578,7 @@
+@@ -578,7 +588,7 @@
+@@ -598,7 +608,7 @@
+@@ -609,7 +619,7 @@
+@@ -651,7 +661,7 @@
+@@ -667,6 +677,9 @@
+@@ -922,7 +935,7 @@
+@@ -996,56 +1009,32 @@
+@@ -1053,14 +1042,14 @@
+@@ -1091,12 +1080,12 @@
+
+## 5. boulder module residual (old boulder src vs new src/boulder)
+-// C5 mpd-XPROJ-plugin: durable work-state machine (tm) on the DSH tool seam.
++// The tm durable work-state machine (merged from the retired mpd-XPROJ-plugin row) — the
++// SAME `.mpd/tm.json` ledger, the SAME six `mpd_TM_*` tools, registered by this package.
+-import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
++import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../../mpd-dsh-adapter-plugin/src/index"
+-import { resolveTmDir } from "../../mpd-roles-plugin/src/complexity-gate.ts"
++import { resolveTmDir } from "../../../mpd-roles-plugin/src/complexity-gate.ts"
+-/** Cordis plugin name of this row; the loader keys the mounted instance on it. */
+-export const name = "mpd-XPROJ"
+-/** Harness services required before `apply` runs: only the tool registrar, named by its adapter constant. */
+-export const inject = dshSeamInject(DSH_SEAM_TOOLS)
++/** The log-sink name this module's row-level lines use: the ONE mounted row, `mpd-XPROJ`. */
++const ROW_LOG = "mpd-XPROJ"
+-export function apply(ctx: Ctx, config: Config = {}): void {
++export function applyTm(ctx: Ctx, config: Config = {}): void {
+-      if (outcome?.ok === false) dsh.rowLog("mpd-XPROJ", "goal anchor refused: " + String(outcome.error ?? "unknown"))
++      if (outcome?.ok === false) dsh.rowLog(ROW_LOG, "goal anchor refused: " + String(outcome.error ?? "unknown"))
+-      dsh.rowLog("mpd-XPROJ", "goal anchor failed: " + String(error?.message ?? error))
++      dsh.rowLog(ROW_LOG, "goal anchor failed: " + String(error?.message ?? error))
+-        dsh.rowLog("mpd-XPROJ", "goal finish refused: " + String(outcome.error ?? "unknown"))
+
+## 6. settings knob count (runtime)
+SETTINGS_KNOBS = 47
+paths: the knob entry is `{ path: ["autoproject", "maxRounds"], ... }` — verified by grep, not by this probe (the array is an object list, not a string list)
+
+## 7. lockfile
+note: skipped 2 workspaces listed in bun.lock but not on disk: "@mpd-dsh/boulder", "@mpd-dsh/ulw"
+error: bun is unable to write files to tempdir: EROFS
+
+## 8. evidence untouched
+(empty above = no historical evidence modified)

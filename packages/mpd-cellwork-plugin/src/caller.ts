@@ -28,6 +28,42 @@ import { cellDir, listCellIds, readCell, type CellMemberMode, type CellReadFailu
 export interface TeamsServiceView {
   /** One team by id; undefined for an unknown id or an unreadable record. */
   get?: (workspace: string, teamId: string) => unknown
+  /**
+   * One member's context occupancy, read from the TEAM plane's own wrap of the harness meter.
+   *
+   * Optional because a composition may mount an older `mpd-team-core`: the answer is parsed at the
+   * boundary (`protocol.ts#planePressureOf`), and an absent member reads as "this plane cannot answer".
+   */
+  memberContext?: (workspace: string, teamId: string, memberName: string) => unknown
+  /**
+   * One team's nesting depth and the bound the depth knob leaves it.
+   *
+   * The SAME knob cellwork reads (`cellwork.depthMax`), read through the plane so a team and a cell can
+   * never disagree about how deep the project may nest. Absent means the plane cannot answer, and
+   * `cellwork_subteam` falls back to the cell record's own depth.
+   */
+  depthBudget?: (workspace: string, teamId: string) => unknown
+}
+
+/**
+ * The slice of `mpdTeamActions` this module (and the protocol tools) read, declared STRUCTURALLY.
+ *
+ * Declared here for the same reason as {@link TeamsServiceView}: the cross-package coupling inventory is
+ * frozen and may only shrink, and the two rows talk through a SERVICE at runtime. The replies are typed
+ * `unknown` because every tool PARSES them at its own boundary; the authoritative declarations live in
+ * `packages/mpd-team-core-plugin/src/team-actions.ts`.
+ */
+export interface TeamActionsServiceView {
+  /** One dispatch pass, owner-only by default; `reassign` is validated by the PLANE. */
+  dispatch?: (input: { sessionId: string; limit?: number; dryRun?: boolean; mode?: string; reassign?: unknown }) => Promise<unknown>
+  /** Fence one seat (Lead-only on the plane). */
+  fence?: (input: { sessionId: string; member: string; reason?: string }) => Promise<unknown>
+  /** Clear one seat's fence and its checkpoint window (Lead-only on the plane). */
+  unfence?: (input: { sessionId: string; member: string }) => Promise<unknown>
+  /** Record a member's hand-off and close its seat. */
+  handoff?: (input: { sessionId: string; content: string }) => Promise<unknown>
+  /** Cancel named board rows, so no pass can pair them. */
+  cancelTasks?: (input: { workspace: string; teamId: string; taskIds: readonly string[]; note?: string }) => Promise<unknown>
 }
 
 /** What one dispatch's caller is, as far as the cell is concerned. */
@@ -216,21 +252,35 @@ function compareIds(left: string, right: string): number {
 function seatIn(cell: CellState, workspace: string, sessionId: string, deps: CallerDeps): { member: string; seat: CellworkSeat } | undefined {
   if (sessionId === "") return undefined
   if (sessionId === cell.captainSessionId) return { member: "captain", seat: { cellId: cell.cellId, name: "captain", mode: "captain" } }
-  for (const member of Object.values(cell.members)) {
-    if (member.sessionId === sessionId) return { member: member.name, seat: { cellId: cell.cellId, name: member.name, mode: memberMode(member.mode) } }
-  }
+  // THE LIVE TEAM RECORD IS READ FIRST, because it is the AUTHORITY for a closed seat (wave W2-E): the
+  // cell row's `mode` is a mirror written after a plane write, so a plane-side fence must reach the guard
+  // even when the cell row has not caught up. Both loops below consult it and prefer its answer.
   /** The live team record for this cell, when the team row is mounted and the id is known. */
   const rawRecord = cell.teamId === "" ? undefined : deps.teams?.()?.get?.(workspace, cell.teamId)
   /** The same value read as a record, because the service's answer is typed `unknown`. */
   const record = typeof rawRecord === "object" && rawRecord !== null ? rawRecord as Record<string, unknown> : undefined
-  if (record === undefined) return undefined
   /** The roster rows this build can read; anything else is skipped rather than trusted. */
-  const rows = Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : []
+  const rows = record !== undefined && Array.isArray(record.members) ? record.members.filter((row) => typeof row === "object" && row !== null) as Array<Record<string, unknown>> : []
+  /**
+   * The PLANE's reading of one seat, or undefined when the record does not name it.
+   * @param name - the member's display name.
+   * @returns `checkpoint` when the record fences the seat, else undefined.
+   */
+  const planeFence = (name: string): CellMemberMode | undefined => {
+    /** The roster row this name names, when the record holds one. */
+    const row = rows.find((candidate) => candidate.name === name || (typeof candidate.id === "string" && candidate.id === name))
+    if (row === undefined) return undefined
+    return row.mode === "checkpoint" || row.fenced === true ? "checkpoint" : undefined
+  }
+  for (const member of Object.values(cell.members)) {
+    if (member.sessionId === sessionId) return { member: member.name, seat: { cellId: cell.cellId, name: member.name, mode: memberMode(planeFence(member.name) ?? member.mode) } }
+  }
+  if (record === undefined) return undefined
   for (const row of rows) {
     if (row.executorRef !== sessionId) continue
     /** The board name, which the cell record normally also holds. */
     const name = typeof row.name === "string" && row.name !== "" ? row.name : "member"
-    return { member: name, seat: { cellId: cell.cellId, name, mode: memberMode(cell.members[name]?.mode) } }
+    return { member: name, seat: { cellId: cell.cellId, name, mode: memberMode(planeFence(name) ?? cell.members[name]?.mode) } }
   }
   return undefined
 }

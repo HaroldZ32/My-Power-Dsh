@@ -220,8 +220,7 @@ const EXPECTED: readonly string[] = [
   //     `/mpd-model` are documented TUI-ONLY, so the palette is THEIR required surface; the other
   //     five need the live `commands` registry AND the palette.
   "userSurface.commandCorpus",
-  "userSurface.command.ulw",
-  "userSurface.command.ultrawork",
+  "userSurface.command.autoproject",
   "userSurface.command.cellwork",
   "userSurface.command.agent-teams",
   "userSurface.command.mpd",

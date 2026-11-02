@@ -14,7 +14,19 @@ import { describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { isReadonlyMemberName, pairingRefusal, planDispatch, readonlyMemberKeys, type DispatchMember, type DispatchTask } from "../src/dispatch"
+import { isReadonlyMemberName, pairingRefusal, planDispatch, readonlyMemberKeys, type DispatchMember, type DispatchPlan, type DispatchTask } from "../src/dispatch"
+/**
+ * The EXPLICIT positional engine.
+ *
+ * These arms are the retired pairing rule's own regression suite (owner-first, then roster order), and
+ * the rule is no longer the default — `planDispatch` pairs owner-only unless a caller asks for
+ * `mode:"roster"`. Asking HERE keeps every arm testing the rule it was written for; the owner-only
+ * default has its own arms in `team-toolchain.test.ts`.
+ * @param input - the pass to decide.
+ * @returns the decision, under the explicit roster rule.
+ */
+const rosterPlan = (input: Parameters<typeof planDispatch>[0]): DispatchPlan => planDispatch({ ...input, mode: "roster" })
+
 import { isLiveTeam, isLiveTeamPhase, readArchivedPlanIndex, reapReapedTeams, resolveTeamRecord, type ArchivedPlanIndex } from "../src/team-lifecycle"
 import { readTeam, writeTeam, type TeamPhase, type TeamRecord } from "../src/team-store"
 import { ROLES } from "../../mpd-roles-plugin/src/roles.data"
@@ -52,7 +64,7 @@ const EMPTY_INDEX: ArchivedPlanIndex = { approved: new Set<string>(), unapproved
 describe("C7-1 — a pairing may not cross teams", () => {
   test("(a) a task and a member from DIFFERENT teams are refused, naming BOTH team ids", () => {
     /** The task of team-a and the only free member, which belongs to team-b. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [task("T1", { teamId: "team-a" })],
       members: [member("m-foreign", "qa-reader-writer", { teamId: "team-b" })],
       ledger: {},
@@ -78,7 +90,7 @@ describe("C7-1 — a pairing may not cross teams", () => {
 describe("C7-2 — a write task is never paired with a read-only specialist", () => {
   test("(b) the write task is refused the read-only member, and the reason is REPORTED", () => {
     /** The measured incident: a task with write scopes, and Plan Reviewer as the only free member. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [task("T5", { teamId: "team-a", writeScopes: ["packages/mpd-team-core-plugin/src"] })],
       members: [member("m-ro", "Plan Reviewer", { teamId: "team-a", readonly: true })],
       ledger: {},
@@ -94,7 +106,7 @@ describe("C7-2 — a write task is never paired with a read-only specialist", ()
 
   test("(b2) a refused member is skipped while an ELIGIBLE one is still paired — no wrong-but-free grab", () => {
     /** A read-only member first in roster order, and a worker second: the worker must take the task. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [task("T6", { writeScopes: ["src/"] })],
       members: [
         member("m-ro", "Explorer", { readonly: true }),
@@ -186,7 +198,7 @@ describe("C7-3 — resolution skips a terminal/archived team", () => {
 describe("(d) THE NEGATIVE CONTROL — a valid pairing must still succeed", () => {
   test("a same-team, write-capable member is paired exactly as before the guards existed", () => {
     /** A write task and a write-capable member of the SAME team: the gate must not over-block. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [task("T2", { teamId: "team-a", writeScopes: ["packages/mpd-team-core-plugin/src"] })],
       members: [member("m-w", "Senior Engineer", { teamId: "team-a", readonly: false })],
       ledger: {},
@@ -198,7 +210,7 @@ describe("(d) THE NEGATIVE CONTROL — a valid pairing must still succeed", () =
 
   test("an UNTAGGED board and roster keep the pre-guard behaviour exactly (no teamId, no readonly)", () => {
     /** The legacy shape: neither side declares a team or a read-only flag. */
-    const plan = planDispatch({ tasks: [task("t1"), task("t2")], members: [member("m1", "member m1"), member("m2", "member m2")], ledger: {} })
+    const plan = rosterPlan({ tasks: [task("t1"), task("t2")], members: [member("m1", "member m1"), member("m2", "member m2")], ledger: {} })
     expect(plan.pairs.map((pair) => [pair.taskId, pair.memberId])).toEqual([["t1", "m1"], ["t2", "m2"]])
     expect(plan.skipped).toEqual([])
   })

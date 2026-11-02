@@ -453,3 +453,27 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 
 精确的工具参数、拒绝文案与逐条用例清单，以本包的 README 对为准；模式的设计与每一波交付了什么，见仓库
 `.mpd/plans/` 下的计划与契约。
+
+## 程序化入口：`cellwork_open`
+
+`cellwork_open {objective, mandate?}` 无需命令即可开启一个 cell。它拒绝**三种**情况：不是 captain 的调用者、
+已存在的活动 cell，以及 `mandate` 指向的 `<workspace>/.mpd/autoproject/<runId>/escalation.json` 不在磁盘上。
+`/cellwork` 是**同一条**开启路径上的薄处理器，因此命令与工具在行为上不可能分叉。
+
+工具路径无法提交用户轮次 —— 工具没有 `invocation.submit` —— 所以它返回激活指令、由调用者自行提交；而命令
+会自己提交。这条边界是刻意的，并被明确写出而不是隐藏。
+
+## 它交给团队平面的部分
+
+cell **模式**的引擎（requirements、split、activate、recon、budget）留在本包：它们是**写**看板的工作流层。
+**团队级**逻辑属于团队平面，以服务方式访问 —— 没有跨包 import：
+
+| cellwork 接口 | 现在读取 / 写入 |
+|---|---|
+| `cellwork_dispatch` | 团队记录的派发过程；`reassign` 走团队平面自己的 claim / 记账 / 投递路径 |
+| `cellwork_context` | `mpdTeams.memberContext` —— 与团队工具相同的计量与 provenance，adapter 读取只作为有据可查的降级 |
+| `cellwork_subteam` | `mpdTeams.depthBudget` —— 父链深度与**同一个** `cellwork.depthMax` 上界；服务缺席时回退到 cell 记录 |
+| handoff / checkpoint | 团队平面的交接记账与 journal |
+
+值得记住的后果：看板、fence 状态、占用率读数与深度预算都只有**一个**所有者（团队平面）。若 cellwork 保留一份
+与之不一致的副本，那就是第二套策略 —— 而这里没有第二套。

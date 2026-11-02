@@ -50,6 +50,55 @@ export type TaskStatus = "pending" | "claimed" | "in_progress" | "completed" | "
 /** A member's own state, mirroring the vocabulary the official roster uses so a reader sees one set. */
 export type MemberStatus = "provisioning" | "running" | "inactive" | "failed"
 
+/**
+ * What a member's seat is FORCING right now.
+ *
+ * `member` is the ordinary open seat. `checkpoint` is the handoff window: the member wrote its handoff
+ * and must end its turn, so a dispatch pass must not wake it again until the barrier has compacted or
+ * reseeded it (the rule `packages/mpd-cellwork-plugin/src/dispatch.ts` learned from D4/D5: waking a
+ * checkpointed seat burns the retry budget on a claim its own guard refuses).
+ */
+export type TeamMemberMode = "member" | "checkpoint"
+
+/**
+ * HOW one seat was bound to the durable workmate library, as the workmate wave records it.
+ *
+ * DELIBERATELY NOT {@link TeamMemberMode}: `mode` is the SEAT the team plane enforces, and overloading
+ * it would make one field answer two unrelated questions. `none` is a real value HERE — it says the
+ * binding pass ran and left the seat plain — which is why an ABSENT field is not the same as one set to
+ * `none`: absence means the record predates the binding pass.
+ */
+export type WorkmateBindMode = "reuse" | "init" | "none"
+
+/** The handoff document one member wrote.
+ *
+ * Only the LAST one is kept on the record (the earlier documents stay on disk); the ordinal is what
+ * makes "the 3rd handoff of Senior Engineer" answerable without listing the directory.
+ */
+export interface TeamHandoffRecord {
+  /** Absolute path of the handoff document. */
+  path: string
+  /** 1-based ordinal: the Nth handoff this member has written. */
+  ordinal: number
+}
+
+/**
+ * The last context checkpoint the team plane injected into a member's session.
+ *
+ * The occupancy numbers are recorded VERBATIM from the observation that fired the checkpoint — nulls
+ * included — so a later reader can audit the decision instead of re-deriving it from a guessed window.
+ */
+export interface TeamContextCheckpoint {
+  /** ISO instant the checkpoint was injected. */
+  at: string
+  /** The observed occupancy that crossed the threshold; null when the meter reported none. */
+  usedTokens: number | null
+  /** The window those tokens were measured against; null when the meter reported none. */
+  windowTokens: number | null
+  /** `usedTokens / windowTokens`, or null when either side is unknown. */
+  ratio: number | null
+}
+
 /** One member of a team, as mpd records it. */
 export interface TeamMemberRecord {
   /** mpd-minted, stable, short id (`M1`, `M2`, …); never reused inside a team. */
@@ -71,6 +120,28 @@ export interface TeamMemberRecord {
    * while nothing has been spawned. mpd never mints it and never depends on its shape.
    */
   executorRef?: string
+  /** The seat mode the team plane enforces; ABSENT means the ordinary `member` seat. */
+  mode?: TeamMemberMode
+  /**
+   * True when the compaction barrier GAVE UP on this member.
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written: {@link MemberPatch} uses `false`
+   * to DELETE the key, so "not fenced" has exactly one spelling on disk (absence). A fenced member is
+   * never messaged — the dispatch pass reports it and the row is repaired with a reassignment.
+   */
+  fenced?: boolean
+  /** The one-sentence reason recorded when {@link fenced} was set. */
+  fencedReason?: string
+  /** The LAST handoff this member wrote, so a reader can continue from that document. */
+  handoff?: TeamHandoffRecord
+  /** The last context checkpoint the team plane injected into this member's session, for audit. */
+  contextCheckpoint?: TeamContextCheckpoint
+  /** The workmate instance bound to this seat (the workmate wave, W3-C, binds it). */
+  workmate?: string
+  /** HOW the seat was bound; ABSENT on a record written before the binding pass existed. */
+  workmateMode?: WorkmateBindMode
+  /** Why the seat was left plain, written beside {@link workmateMode} `none`. */
+  workmateReason?: string
 }
 
 /** One task of a team's board, as mpd records it. */
@@ -1096,6 +1167,27 @@ export function recordNamesLead(record: TeamRecord, caller: readonly string[]): 
 }
 
 /**
+ * Whether one seat is in the CHECKPOINT window — the plane's ONE spelling for "handed off, closed".
+ *
+ * THE MAPPING, STATED ONCE (wave W2-C): `packages/mpd-cellwork-plugin` keeps a `handoffReady` flag on its
+ * OWN cell row; that flag maps to this record's `mode: "checkpoint"` and NOTHING ELSE. A caller must ask
+ * this predicate rather than invent a second spelling, so the plane never grows a parallel `handoffReady`
+ * field, and the two rows cannot disagree about which seat is closed.
+ *
+ * WHY NOT KEY ON `handoff`: the LAST hand-off document STAYS on the row after the seat is reopened (an
+ * `unfence` clears `mode`, never the history), so a document existing means "wrote one once", not "is
+ * closed now". Only `mode` says which it is.
+ * @param record - the team record to read.
+ * @param key - the member id (`M1`) or its display name.
+ * @returns true when the seat is in the checkpoint window.
+ */
+export function memberIsCheckpoint(record: TeamRecord, key: string): boolean {
+  /** The roster row this key names, when the record holds one. */
+  const member = record.members.find((row) => row.id === key || row.name === key)
+  return member?.mode === "checkpoint"
+}
+
+/**
  * The member this caller's spellings name on the record's roster, or `undefined`.
  *
  * The ONE roster lookup: {@link recordNamesMember} is this predicate's boolean form, and the terminal
@@ -1171,6 +1263,27 @@ export interface MemberPatch {
   executorRef?: string
   /** The `provider/model` the roster resolved. */
   route?: string
+  /** The seat mode the team plane enforces (`member` | `checkpoint`). */
+  mode?: TeamMemberMode
+  /**
+   * `true` fences the seat; `false` CLEARS the fence.
+   *
+   * Clearing DELETES `fenced` and `fencedReason` instead of writing `false`, because absence is the one
+   * on-disk spelling of "not fenced" — a reader never has to treat two values as the same state.
+   */
+  fenced?: boolean
+  /** The one-sentence fence reason; written only beside `fenced: true`. */
+  fencedReason?: string
+  /** The last handoff document the member wrote. */
+  handoff?: TeamHandoffRecord
+  /** The last context checkpoint injected into the member's session. */
+  contextCheckpoint?: TeamContextCheckpoint
+  /** The workmate instance bound to this seat. */
+  workmate?: string
+  /** HOW the seat was bound (`reuse` | `init` | `none`). */
+  workmateMode?: WorkmateBindMode
+  /** Why the seat was left plain, written beside `workmateMode: "none"`. */
+  workmateReason?: string
 }
 
 /**
@@ -1187,12 +1300,28 @@ export function updateTeamMember(record: TeamRecord, key: string, patch: MemberP
   const members = record.members.map((member) => {
     if (member.id !== key && member.name !== key) return member
     touched = true
-    return {
-      ...member,
-      ...(patch.status === undefined ? {} : { status: patch.status }),
-      ...(patch.executorRef === undefined ? {} : { executorRef: patch.executorRef }),
-      ...(patch.route === undefined ? {} : { route: patch.route }),
+    /** The patched row, built field by field so `fenced: false` can DELETE a key. */
+    const next: TeamMemberRecord = { ...member }
+    if (patch.status !== undefined) next.status = patch.status
+    if (patch.executorRef !== undefined) next.executorRef = patch.executorRef
+    if (patch.route !== undefined) next.route = patch.route
+    if (patch.mode !== undefined) next.mode = patch.mode
+    if (patch.fenced === true) next.fenced = true
+    if (patch.fenced === false) {
+      delete next.fenced
+      delete next.fencedReason
     }
+    // The reason is only meaningful WITH a fence: a clearing patch never keeps a stale sentence.
+    if (patch.fencedReason !== undefined && patch.fenced !== false) next.fencedReason = patch.fencedReason
+    if (patch.handoff !== undefined) next.handoff = patch.handoff
+    if (patch.contextCheckpoint !== undefined) next.contextCheckpoint = patch.contextCheckpoint
+    if (patch.workmate !== undefined) next.workmate = patch.workmate
+    if (patch.workmateMode !== undefined) next.workmateMode = patch.workmateMode
+    // The reason is only meaningful when a binding pass ran: a plain member (no `workmateMode` at all)
+    // never gains a stale sentence, and a `reuse`/`init` patch never keeps a leftover `none` reason.
+    if (patch.workmateReason !== undefined) next.workmateReason = patch.workmateReason
+    else if (patch.workmateMode !== undefined && patch.workmateMode !== "none") delete next.workmateReason
+    return next
   })
   return touched ? { ...record, members } : record
 }
@@ -1579,7 +1708,11 @@ export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
 export function idleMembers(record: TeamRecord): TeamMemberRecord[] {
   /** Every spelling a task in flight may have stamped: the member's name or its executor handle. */
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner): owner is string => owner !== undefined))
+  // A FENCED SEAT IS NOT IDLE (R-W1A nit, closed by the derived stage): the compaction barrier gave up on
+  // it, the dispatch pass never messages it, and the web payload renders exactly this set — so counting it
+  // here made a dead seat read as available and let a reader expect work it cannot take.
   return record.members.filter((member) => (member.status === "running" || member.status === "inactive")
+    && member.fenced !== true
     && !busy.has(member.name)
     // A member whose claim stamped its handle is BUSY; matching only the name would let dispatch book
     // a second task onto it (the same two-spelling defect `memberProgress` documents).

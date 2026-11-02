@@ -1,12 +1,13 @@
 # License Notices
 
 - **This repository's own code is MIT** — [`LICENSE.md`](./LICENSE.md), `Copyright (c) 2026 HaroldZ32`.
-  It is **not** under the Sustainable Use License any more: the de-omo program (waves A–F, 2026-10-08)
-  purged and replaced every derived byte, and the licence swap itself is wave E.
+  It is **not** under the upstream project's former licence any more: the de-omo program (waves A–F,
+  2026-10-08) purged and replaced every derived byte, and the licence swap itself is wave E.
 - **Read this file as a RECORD, not as a claim.** It keeps (a) every still-true third-party notice and
   (b) the history of what was removed and why, with the tense corrected. A licence record that erases
-  its own past is defective, so every `SUL-1.0` / "Sustainable Use" mention below is HISTORY: it
-  describes the upstream project oh-my-openagent
+  its own past is defective, so every sentence below that recounts the upstream project's former,
+  non-MIT licence is HISTORY and is marked as such where it appears: it describes the upstream project
+  oh-my-openagent
   (<https://github.com/code-yeongyu/oh-my-openagent>; commit `8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29`,
   v5.0.0-beta.20) and the vendored content that used to carry those terms.
 - This repository's roster names, stable ids and model-chain vocabulary are adapted from that upstream
@@ -19,7 +20,7 @@
 
 ## Skill corpus (MIT) — re-sourced from `code-yeongyu/lazycodex`
 
-**The served skill corpus is no longer vendored from oh-my-openagent under SUL-1.0.** The 16 skills
+**The served skill corpus is no longer vendored from oh-my-openagent.** The 16 skills
 ported from that corpus — `ast-grep`, `data-scientist`, `debugging`, `frontend`, `git-master`,
 `init-deep`, `lsp-setup`, `programming`, `refactor`, `remove-ai-slops`, `review-work`,
 `ultimate-browsing`, `ulw-execute`, `ulw-plan`, `ulw-research`, `visual-qa` — are sourced from the
@@ -37,7 +38,7 @@ SAME AUTHOR's own MIT re-license of that corpus:
   > If any source was ported from omo or pi-rules, that ported source is re-licensed
   > here under MIT for distribution as a Codex plugin. See LICENSE for terms.
 
-  The copyright holder of the SUL-1.0 corpus and the licensor of this MIT grant are the same
+  The copyright holder of that corpus and the licensor of this MIT grant are the same
   person, so the grant is the rightsholder's own re-license of the source it covers.
 
 Every re-sourced skill carries its own `skills/<name>/ATTRIBUTION.md` recording the source path, the
@@ -111,7 +112,7 @@ sha256 `e343d30bc6631a1c8377b7aac26e7b1c5b38366913a98ef71fe6861fe812dcd4`). Noth
 no engine file was changed by this notice fix; full detail in
 `skills/ultimate-browsing/ATTRIBUTION.md` §1.
 
-## oh-my-openagent MCP servers (SUL-1.0, with one MIT component) — snapshots REMOVED
+## oh-my-openagent MCP servers (the upstream's former licence, with one MIT component) — snapshots REMOVED
 
 **This section is now a HISTORICAL record, kept for provenance: the snapshotted sources are gone.**
 Between them the snapshots covered the three MCP servers this bundle used to ship
@@ -121,16 +122,16 @@ repository (https://github.com/code-yeongyu/oh-my-openagent) at commit
 `8c57e463e62ddc8d2c7b4a6770dcd2927e91ef29` (v5.0.0-beta.20).
 
 Licensing was MEASURED, never assumed: oh-my-openagent's own `LICENSE.md` placed its content under
-the Sustainable Use License 1.0 — the UPSTREAM's terms, never this repository's current licence — and
+its own non-MIT terms — the UPSTREAM's licence, never this repository's current one — and
 six of the seven
 snapshotted packages declared no `license` field at all; only `lsp-daemon`
-(`@code-yeongyu/lsp-daemon`) self-declared MIT. The snapshot was therefore **SUL-1.0 with that one
+(`@code-yeongyu/lsp-daemon`) self-declared MIT. The snapshot was therefore **that former licence with that one
 MIT component — it was not MIT**, which is exactly why wave B2 replaced it rather than relicensed it.
 
 **REMOVED in de-omo wave B2 (2026-10-08), and nothing was carried over from it:** the snapshot
 (`vendor/mcp-src/**`, 459 files), the offline builder `scripts/build-mcp.ts`, the two built servers it
 produced (`packages/mpd-mcp-{lsp,gitbash}/dist/cli.js` with their `BUILD.lock` files) and the LSP
-build overlay (`packages/mpd-mcp-lsp/overlay/**`) are deleted outright — no SUL-derived source is
+build overlay (`packages/mpd-mcp-lsp/overlay/**`) are deleted outright — no source derived from it is
 shipped or read any more, and the `VENDOR_LOCK.json` asset that fingerprinted the snapshot is gone with
 it. What replaced each capability, under which licence, is recorded in
 `packages/mpd-mcp-lsp/README.md` and `packages/mpd-mcp-gitbash/README.md`: our own ast-grep server
@@ -139,14 +140,14 @@ it. What replaced each capability, under which licence, is recorded in
 
 S2 adds NO new third-party component and NO vendored bytes: the language→server catalog, the config assembler and the HDL reference pages are our own MIT code. The only server this repository is wired to remains `typescript-language-server` (Apache-2.0), which arrives as a dependency of the already-declared `cclsp` (MIT); nothing is redistributed, because the bundle only SPAWNS a user-installed server. The catalog records the licence of every server it names, of which EIGHT are not permissive — Eclipse JDT LS EPL-2.0 · terraform-ls MPL-2.0 · Intelephense's server proprietary · C# Dev Kit language server proprietary · lemminx EPL-2.0 · nixd LGPL-3.0 · vhdl_ls MPL-2.0 · texlab GPL-3.0 — plus the Roslyn nuance (compiler and the standalone NuGet package MIT; the shipped C# Dev Kit server proprietary) and the `protols` dispute.
 
-## Vendored plugin cores — REPLACED / WRITTEN, no SUL source (wave de-omo C)
+## Vendored plugin cores — REPLACED / WRITTEN, no upstream source (wave de-omo C)
 
-The three `src/vendor/**` cores that the first audit missed were dealt with in one wave. **No SUL-1.0
-bytes remain in any `src/vendor/**` tree**, and each surviving core is now fingerprinted by
+The three `src/vendor/**` cores that the first audit missed were dealt with in one wave. **No bytes
+under that former licence remain in any `src/vendor/**` tree**, and each surviving core is now fingerprinted by
 `VENDOR_LOCK.json`.
 
 - **`packages/mpd-hashline-plugin/src/vendor/**` — REPLACED, and MIT-derived.** The former core
-  (`packages/hashline-core` at oh-my-openagent `8c57e46`, SUL-1.0) is gone. The tree is now our own
+  (`packages/hashline-core` at oh-my-openagent `8c57e46`) is gone. The tree is now our own
   TypeScript, ported from the **DESIGN** of `crates/pi-edit` in:
 
   - Repository: <https://github.com/can1357/oh-my-pi>
@@ -193,7 +194,7 @@ bytes remain in any `src/vendor/**` tree**, and each surviving core is now finge
   SOFTWARE.
 
 - **`packages/mpd-boulder-plugin/src/vendor/**` — WRITTEN HERE, mpd-owned.** The former core
-  (`packages/boulder-state` at oh-my-openagent `8c57e46`, SUL-1.0) is gone; the tree is a durable,
+  (`packages/boulder-state` at oh-my-openagent `8c57e46`) is gone; the tree is a durable,
   workspace-scoped JSON ledger plus per-task timers written in this repository against the contract the
   `mpd_boulder_*` tools already documented. It carries **no third-party source and no third-party
   licence obligation**, and the `.mpd` state-root convention and the legacy `codex:`/`opencode:`/`senpi:`
@@ -328,7 +329,7 @@ read it at
 ## Roster persona texts — re-sourced under permissive licences (wave D)
 
 The eleven roster persona texts (`packages/mpd-roles-plugin/personas/*.md`, one per specialist, named in
-AGENTS.md §13) are no longer adapted from `oh-my-openagent` (SUL-1.0). They are this repository's own
+AGENTS.md §13) are no longer adapted from `oh-my-openagent`. They are this repository's own
 prose, **adapted from** the permissively licensed public agent prompts listed below: the seed supplied
 the shape of the role's discipline, the wording is new, and no seed text is redistributed. Two of the
 eleven — **Vision Analyst** and **Junior Engineer** — have NO upstream model and were written here.
@@ -393,7 +394,7 @@ upstream-attributable any more. The header's feature list was also trimmed to wh
 actually ships (the upstream-described `dream` trigger is not implemented here).
 
 **History kept:** the earlier draft DID mirror upstream's state-machine vocabulary (base `8c57e46`,
-SUL-1.0). That is recorded in the package header and README pair as history, and wave F is what
+under the upstream's then-current licence). That is recorded in the package header and README pair as history, and wave F is what
 replaced it; the end state is mpd-owned code re-expressed from DOCUMENTED BEHAVIOUR, with no
 translated upstream source.
 

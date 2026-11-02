@@ -1,0 +1,85 @@
+# R-W3D reviewer probes — 2026-11-02T12:49:10Z
+
+## A. probe-archive.ts (matcher matrix, idempotence, listener containment)
+== globalRoot derivation ==
+sandbox HOME  : /tmp/w3d-log-6BgcBd/home/.mpd/memory | inside HOME: true
+globalDir wins: /tmp/w3d-log-6BgcBd/elsewhere
+scopeOf({})   : workspace | global: global | typo: workspace
+
+== matchArchiveEvent matrix ==
+mpd_boulder_complete -> "boulder_complete" {"kind":"boulder_complete","projectKey":"w-1"}
+mpd_boulder_complete -> null 
+mpd_boulder_complete -> "boulder_complete" {"kind":"boulder_complete","projectKey":"arg-w"}
+cellwork_stop -> "cellwork_stop" {"kind":"cellwork_stop","projectKey":"cell-1"}
+cellwork_stop -> null 
+agent_teams_plan -> null 
+agent_teams_plan -> "team_plan_archive" {"kind":"team_plan_archive","projectKey":"team-9","plan":{"planId":"plan-7","teamId":"team-9","approvedAt":"2026-11-02T10:00:00Z","path":"/tmp/w3d-log-6BgcBd/plans-archive/plan-7/plan.json"}}
+agent_teams_plan -> null 
+teams absent  -> null | log: agent_teams_plan archived a plan but the mpdTeams service is absent — no project memory was written
+approvedAt '' -> null
+not in listing-> null | log: agent_teams_plan reported archive /tmp/w3d-log-6BgcBd/nope but the mpdTeams listing does not contain it — no project memory was written
+
+== idempotence: same key twice, then another workspace ==
+first: {"key":"/tmp/w3d-log-6BgcBd/wsA:w-1","file":"project-w-1-58e034cb.md","superseded":false}
+second: {"key":"/tmp/w3d-log-6BgcBd/wsA:w-1","file":"project-w-1-58e034cb.md","superseded":true}
+other ws: {"key":"/tmp/w3d-log-6BgcBd/wsB:w-1","file":"project-w-1-313a014d.md","superseded":false}
+entry files: ["project-w-1-313a014d.md","project-w-1-58e034cb.md"]
+index.json:
+{
+  "version": 1,
+  "entries": {
+    "/tmp/w3d-log-6BgcBd/wsA:w-1": {
+      "key": "/tmp/w3d-log-6BgcBd/wsA:w-1",
+      "workspace": "/tmp/w3d-log-6BgcBd/wsA",
+      "projectKey": "w-1",
+      "eventKind": "cellwork_stop",
+      "file": "project-w-1-58e034cb.md",
+      "at": "2026-11-02T12:49:10.869Z",
+      "superseded": 1
+    },
+    "/tmp/w3d-log-6BgcBd/wsB:w-1": {
+      "key": "/tmp/w3d-log-6BgcBd/wsB:w-1",
+      "workspace": "/tmp/w3d-log-6BgcBd/wsB",
+      "projectKey": "w-1",
+      "eventKind": "boulder_complete",
+      "file": "project-w-1-313a014d.md",
+      "at": "2026-11-02T12:49:10.876Z",
+      "superseded": 0
+    }
+  }
+}
+journal.jsonl:
+{"at":"2026-11-02T12:49:10.862Z","kind":"archive","eventKind":"boulder_complete","projectKey":"w-1","key":"/tmp/w3d-log-6BgcBd/wsA:w-1","file":"project-w-1-58e034cb.md"}
+{"at":"2026-11-02T12:49:10.870Z","kind":"archive","eventKind":"cellwork_stop","projectKey":"w-1","key":"/tmp/w3d-log-6BgcBd/wsA:w-1","file":"project-w-1-58e034cb.md"}
+{"at":"2026-11-02T12:49:10.870Z","kind":"superseded","by":"cellwork_stop","key":"/tmp/w3d-log-6BgcBd/wsA:w-1","file":"project-w-1-58e034cb.md","previous":"boulder_complete"}
+{"at":"2026-11-02T12:49:10.876Z","kind":"archive","eventKind":"boulder_complete","projectKey":"w-1","key":"/tmp/w3d-log-6BgcBd/wsB:w-1","file":"project-w-1-313a014d.md"}
+
+entry body head:
+---
+{"description":"project archive: w-1 (cellwork_stop)","kind":"fact","scope":"global","tags":["project","archive","cellwork_stop"]}
+---
+# w-1
+
+event: cellwork_stop
+workspace: /tmp/w3d-log-6BgcBd/wsA
+archived: 2026-11-02T12:49:10.869Z
+
+## What was built
+
+== T-43/F1 guard: a root OUTSIDE $HOME under a DSH_HOME-set boot ==
+outside-HOME : {"name":"HomeGuardRefusal","code":"real-home-refused","status":403,"message":"mpd_memory: refusing to record a global project-archive memory inside the REAL library /tm"} | dir created: false
+HOME unset   : {"name":"HomeGuardRefusal","code":"real-home-refused"} | real ~/.mpd/memory untouched by this probe: true
+
+== the listener: always undefined, contains its own throw ==
+listener returned: undefined
+disposer type: function
+disposer called: ok
+install on a throwing adapter returns a no-op: function
+
+handleArchiveCall on a guard-refused path returns null: null | log: project-archive memory was not written for mpd_boulder_complete: mpd_memory: ref
+
+## B. probe-guard.ts (T-43 arms, pure: guard only, no write)
+sandbox HOME  -> ALLOWED root=/tmp/w3d-g-GMGMoc/.mpd/memory
+real HOME     -> REFUSED real-home-refused "mpd_memory: refusing to x inside the REAL library /home/haroldzhao/.mp"
+HOME unset    -> REFUSED real-home-refused "mpd_memory: refusing to x inside the REAL library /home/haroldzhao/.mp"
+normal session -> ALLOWED (guard no-ops)

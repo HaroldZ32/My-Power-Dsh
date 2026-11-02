@@ -1,3 +1,4 @@
+import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 // END-TO-END PROOF OF RESUMABLE ACTIVATION (contract C12, defect D1): one arm per STAGE — contract,
 // member, task, verify loop, dispatch — each failing `cellwork_activate` at that stage, re-running the
 // SAME tool call, and asserting CONVERGENCE: no duplicate member, task or verify loop, a final phase
@@ -310,6 +311,12 @@ function makeHarness(): Harness {
         return team
       },
     },
+    // THE TEAM-PLANE DOUBLE (wave W2-D): activation now asks `mpdTeamActions` for its owner-only pass and
+    // closes dropped rows through it, so this harness answers that service with the shared in-memory plane.
+    mpdTeamActions: createTeamActionsDouble({
+      record: () => team as unknown as Parameters<typeof createTeamActionsDouble>[0] extends never ? never : any,
+      send: (handle: string, text: string) => { harness.sends.push({ handle, text }) },
+    }).service,
     mpdRoles: {
       /** @returns the roster rows the persona reader asks for. */
       list: (): Array<{ name: string; persona: string }> => ROSTER.map((entry) => ({ ...entry })),

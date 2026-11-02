@@ -246,16 +246,16 @@ describe("namespace ownership (design §10.1): THIS package registers, with the 
   test("one registration, applies:'restart', and the base is the FILE layer — never the resolved value", () => {
     /** Workspace fixture whose FILE carries both layers' values, to be distinguished from L3. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{\n  // file layer\n  "ulw": { "maxRounds": 3 },\n  "hashline": { "maxDiffChars": 111 },\n}\n`)
-    /** Fake adapter whose user section overrides only `ulw.maxRounds`, so the base may not use it. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 } } })
+    writeFileSync(file, `{\n  // file layer\n  "autoproject": { "maxRounds": 3 },\n  "hashline": { "maxDiffChars": 111 },\n}\n`)
+    /** Fake adapter whose user section overrides only `autoproject.maxRounds`, so the base may not use it. */
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 } } })
     apply(h.ctx)
     expect(h.registrations).toHaveLength(1)
     expect(h.registrations[0].ns).toBe("mpd")
     expect(h.registrations[0].options?.applies).toBe("restart")
     // the base carries the FILE values (L1+L2), so a front door can mark an override and reset
     // back to the file's value; the settings-layer value (9) is the user section, not the base
-    expect(h.registrations[0].options?.base).toEqual({ ulw: { maxRounds: 3 }, hashline: { maxDiffChars: 111 } })
+    expect(h.registrations[0].options?.base).toEqual({ autoproject: { maxRounds: 3 }, hashline: { maxDiffChars: 111 } })
     expect(h.provided.mpdConfig.states().settings.registration).toBe("registered")
     expect(h.provided.mpdConfig.states().settings.baseFromFiles).toBe(true)
     expect(h.provided.mpdConfig.states().settings.baseReason).toBe("one-live-root")
@@ -282,21 +282,21 @@ describe("namespace ownership (design §10.1): THIS package registers, with the 
     const a = sandbox()
     /** Second live workspace, with a DIFFERENT file value, so a wrong pick would be visible. */
     const b = sandbox()
-    writeFileSync(a.file, `{ "ulw": { "maxRounds": 3 } }`)
-    writeFileSync(b.file, `{ "ulw": { "maxRounds": 4 } }`)
+    writeFileSync(a.file, `{ "autoproject": { "maxRounds": 3 } }`)
+    writeFileSync(b.file, `{ "autoproject": { "maxRounds": 4 } }`)
     /** Fake adapter reporting both workspaces, the case where the WRITE is refused. */
-    const h = harness({ roots: [a.root, b.root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [a.root, b.root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     expect(h.provided.mpdConfig.states().writeback.skipped).toBe("ambiguous-multi-root")
     // no file was written …
-    expect(readFileSync(a.file, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
-    expect(readFileSync(b.file, "utf8")).toBe(`{ "ulw": { "maxRounds": 4 } }`)
+    expect(readFileSync(a.file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
+    expect(readFileSync(b.file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 4 } }`)
     // … and the host-global settings layer applies to EVERY workspace's resolved config, so the
     // edit is delayed in persistence, never lost (captain ruling 1)
-    expect(h.provided.mpdConfig.reload({ agent: { session: { header: { cwd: a.root } } } })?.ulw?.maxRounds).toBe(11)
-    expect(h.provided.mpdConfig.reload({ agent: { session: { header: { cwd: b.root } } } })?.ulw?.maxRounds).toBe(11)
+    expect(h.provided.mpdConfig.reload({ agent: { session: { header: { cwd: a.root } } } })?.autoproject?.maxRounds).toBe(11)
+    expect(h.provided.mpdConfig.reload({ agent: { session: { header: { cwd: b.root } } } })?.autoproject?.maxRounds).toBe(11)
   })
 })
 
@@ -304,13 +304,13 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
   test("L3 outranks the file layers, and a missing L3 key falls back to the file", () => {
     /** Workspace fixture whose file supplies the value L3 must outrank. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{\n  // keep me\n  "ulw": { "maxRounds": 3 },\n  "hashline": { "maxDiffChars": 111 },\n}\n`)
-    /** Fake adapter whose user section carries the winning `ulw.maxRounds` value. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 } } })
+    writeFileSync(file, `{\n  // keep me\n  "autoproject": { "maxRounds": 3 },\n  "hashline": { "maxDiffChars": 111 },\n}\n`)
+    /** Fake adapter whose user section carries the winning `autoproject.maxRounds` value. */
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 } } })
     apply(h.ctx)
     /** The `mpdConfig` service the row provided, read through the seam consumers use. */
     const service = h.provided.mpdConfig
-    expect(service.get("ulw.maxRounds")).toBe(9) // L3 wins
+    expect(service.get("autoproject.maxRounds")).toBe(9) // L3 wins
     expect(service.get("hashline.maxDiffChars")).toBe(111) // L2 survives underneath
     /** The settings half of `states()`, which reports the namespace's health and revision. */
     const settingsState = service.states().settings
@@ -321,12 +321,12 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
   test("the in-namespace marker never becomes config and never reaches the file", () => {
     /** Workspace fixture: the live root, and the `.mpd/mpd.jsonc` the layer reads. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{\n  "ulw": { "maxRounds": 3 },\n}\n`)
+    writeFileSync(file, `{\n  "autoproject": { "maxRounds": 3 },\n}\n`)
     /** Fake adapter with the user section seeded, so the marker case starts from a real save. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 }, bridge: { migratedRevision: 4 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 }, bridge: { migratedRevision: 4 } } })
     apply(h.ctx)
     expect(h.provided.mpdConfig.get("bridge")).toBeUndefined()
-    expect(h.provided.mpdConfig.get()).toEqual({ ulw: { maxRounds: 9 } })
+    expect(h.provided.mpdConfig.get()).toEqual({ autoproject: { maxRounds: 9 } })
     // D-18: the namespace answer is "restart" (the host's `applies` is PER NAMESPACE and both
     // registrations say restart; the RESOLVED value still reaches the process — that is the
     // `BridgeReport.applies` field, a different surface).
@@ -336,11 +336,11 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
   test("with the namespace unserved the file layers still resolve (degraded, not fatal)", () => {
     /** Workspace fixture whose file carries a value the degraded read must still find. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 4 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 4 } }`)
     /** Fake adapter with the `mpd` namespace UNSERVED, so only the file layers can answer. */
     const h = harness({ roots: [root], settingsAvailable: false })
     apply(h.ctx)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(4)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(4)
     expect(h.provided.mpdConfig.states().settings.served).toBe(false)
     // TWO lines, both declared: the registration line, and the one-time seed's "nothing was
     // written" line — this stub provides NO llm seam, which is the contract's documented
@@ -358,12 +358,12 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     /** Sole live workspace, whose file the save must rewrite in place. */
     const { root, file } = sandbox()
     /** Exact pre-save text, compared afterwards to prove only the edited value moved. */
-    const original = `{\n  // human comment\n  "ulw": { "maxRounds": 3 },\n}\n`
+    const original = `{\n  // human comment\n  "autoproject": { "maxRounds": 3 },\n}\n`
     writeFileSync(file, original)
     /** Fake adapter whose user section mirrors the file, so the save is a real change of that leaf. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     expect(readFileSync(file, "utf8")).toBe(original.replace("3", "11"))
     expect(readFileSync(file, "utf8")).toContain("// human comment")
@@ -378,15 +378,15 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
 
   test("U13: zero live roots writes NOTHING anywhere and says so", () => {
     /** Fake adapter with NO live session, so the save has no workspace to target. */
-    const h = harness({ roots: [], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     /** The report for a save with nowhere to write; it must name that reason, not invent a target. */
     const report = h.provided.mpdConfig.states().writeback
     expect(report.skipped).toBe("no-live-session")
     expect(report.writtenTo).toEqual([])
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(11) // the settings layer still took effect
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(11) // the settings layer still took effect
     expect(h.logs.some((line) => line.includes("not yet written to any .mpd/mpd.jsonc"))).toBe(true)
   })
 
@@ -395,12 +395,12 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     const a = sandbox()
     /** Second live workspace, with a different file value than `a` so a wrong pick is visible. */
     const b = sandbox()
-    writeFileSync(a.file, `{ "ulw": { "maxRounds": 3 } }`)
-    writeFileSync(b.file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(a.file, `{ "autoproject": { "maxRounds": 3 } }`)
+    writeFileSync(b.file, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Fake adapter reporting BOTH workspaces live, the ambiguous-target case. */
-    const h = harness({ roots: [a.root, b.root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [a.root, b.root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     /** The refusal report; it must name both candidates and claim no write. */
     const report = h.provided.mpdConfig.states().writeback
@@ -408,8 +408,8 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     expect(report.writtenTo).toEqual([])
     expect(report.candidates).toEqual([a.root, b.root])
     expect(report.results).toEqual([])
-    expect(readFileSync(a.file, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
-    expect(readFileSync(b.file, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
+    expect(readFileSync(a.file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
+    expect(readFileSync(b.file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
     /** The ambiguous-target log line, which must name both workspaces a human may choose from. */
     const loud = h.logs.find((line) => line.includes("ambiguous"))
     expect(loud).toContain(a.root)
@@ -425,13 +425,13 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     /** The file the row config names — deliberately NOT the default target of this root. */
     const override = resolve(join(root, "custom", "mpd.jsonc"))
     mkdirSync(join(root, "custom"), { recursive: true })
-    writeFileSync(override, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(override, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Both files start at the pre-save value, so a wrong target is visible as a changed byte. */
-    writeFileSync(defaultFile, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(defaultFile, `{ "autoproject": { "maxRounds": 3 } }`)
     /** The fake adapter with the override-bearing row config and one live root. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx, { projectFile: override })
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     /** The bridge's own report: the file it claims it wrote. */
     const report = h.provided.mpdConfig.states().writeback
@@ -439,52 +439,52 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     expect(report.writtenTo).toEqual([override])
     expect(readFileSync(override, "utf8")).toContain("11")
     // ...and the default path is byte-untouched: the pre-fix bridge wrote (and would CREATE) it.
-    expect(readFileSync(defaultFile, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
+    expect(readFileSync(defaultFile, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
   })
 
   test("A6 negative control: the switch disables the FILE write only, never the value", () => {
     /** Sole live workspace, whose file must stay byte-identical while the switch is off. */
     const { root, file } = sandbox()
     /** Pre-save text, compared afterwards to prove the disabled write touched nothing. */
-    const original = `{ "ulw": { "maxRounds": 3 } }`
+    const original = `{ "autoproject": { "maxRounds": 3 } }`
     writeFileSync(file, original)
     /** Fake adapter for a one-root save, applied with the nested `settingsBridge.writeBack` switch off. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx, { settingsBridge: { writeBack: false } })
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     expect(readFileSync(file, "utf8")).toBe(original)
     expect(h.provided.mpdConfig.states().writeback.skipped).toBe("disabled")
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(11)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(11)
     expect(h.logs.some((line) => line.includes("write-back is DISABLED"))).toBe(true)
   })
 
   test("the design's flat key (`writeBack:false`) disables it too, and both spellings are reported", () => {
     /** Sole live workspace, whose file must stay byte-identical while the switch is off. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Fake adapter for a one-root save, applied with the FLAT `writeBack` spelling. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx, { writeBack: false })
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
-    expect(readFileSync(file, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
+    expect(readFileSync(file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
     expect(h.provided.mpdConfig.states().writeback.skipped).toBe("disabled")
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(11)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(11)
     expect(h.provided.mpdConfig.states().settings.writeBackEnabled).toBe(false)
   })
 
   test("the env lever disables it too (MPD_DSH_TUI_SETTINGS_BRIDGE=off)", () => {
     /** Sole live workspace, whose file must stay byte-identical while the env lever is off. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     process.env.MPD_DSH_TUI_SETTINGS_BRIDGE = "off"
     /** Fake adapter for a one-root save, with the disable coming from the environment only. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
-    expect(readFileSync(file, "utf8")).toBe(`{ "ulw": { "maxRounds": 3 } }`)
+    expect(readFileSync(file, "utf8")).toBe(`{ "autoproject": { "maxRounds": 3 } }`)
     expect(h.provided.mpdConfig.states().writeback.skipped).toBe("disabled")
   })
 
@@ -492,26 +492,26 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     /** Sole live workspace, which a provider-sourced event must NOT rewrite. */
     const { root, file } = sandbox()
     /** Pre-event text, compared afterwards to prove the read-in stayed a read. */
-    const original = `{ "ulw": { "maxRounds": 3 } }`
+    const original = `{ "autoproject": { "maxRounds": 3 } }`
     writeFileSync(file, original)
     /** Fake adapter for a one-root save, driven with `provider` as the event source. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 42 } })
+    h.setUser({ autoproject: { maxRounds: 42 } })
     h.emit("provider")
     expect(readFileSync(file, "utf8")).toBe(original)
     expect(h.provided.mpdConfig.states().writeback).toBeNull()
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42) // still the read-in value
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(42) // still the read-in value
   })
 
   test("a raw-section change with NO new leaf writes nothing (the loop gate)", () => {
     /** Sole live workspace, whose file must stay byte-identical when no leaf changed. */
     const { root, file } = sandbox()
     /** Pre-event text, compared afterwards to prove the unchanged section wrote nothing. */
-    const original = `{ "ulw": { "maxRounds": 3 } }`
+    const original = `{ "autoproject": { "maxRounds": 3 } }`
     writeFileSync(file, original)
     /** Fake adapter whose user section ALREADY mirrors the file, so a new revision adds no leaf. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
     h.emit("update") // same section, new revision
     expect(readFileSync(file, "utf8")).toBe(original)
@@ -525,7 +525,7 @@ describe("the project-file watcher's lifetime (S5)", () => {
   test("an unload closes the watcher: a later file edit no longer reloads the config", async () => {
     /** Sole live workspace, whose project file the watcher observes. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     // L3 carries a key the FILE does not, so the value read below can only have come from the
     // file — i.e. from a reload the WATCHER performed, never from a settings-layer echo.
     /** Fake adapter whose save establishes the watcher through a real write-back. */
@@ -534,16 +534,16 @@ describe("the project-file watcher's lifetime (S5)", () => {
     h.setUser({ boulder: { maxRounds: 1 } })
     h.emit("update") // the write-back is what calls watchRoot(root)
     // POSITIVE CONTROL: while the row is mounted, a direct file edit IS observed (150ms debounce).
-    writeFileSync(file, `{ "ulw": { "maxRounds": 42 }, "boulder": { "maxRounds": 1 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 42 }, "boulder": { "maxRounds": 1 } }`)
     await wait(WATCH_SETTLE_MS)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(42)
     // THE UNLOAD: every disposer the row registered in its OWN scope runs, as cordis does on teardown.
     h.unload()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 77 }, "boulder": { "maxRounds": 1 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 77 }, "boulder": { "maxRounds": 1 } }`)
     await wait(WATCH_SETTLE_MS)
     // With the watcher closed and its debounce timer cleared, nothing reloads: the resolved value
     // still carries what the mounted row last read. (Pre-fix: 77, because the watcher survived.)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(42)
   })
 })
 
@@ -552,12 +552,12 @@ describe("migration (design §6, U15)", () => {
     /** Sole live workspace that receives the migrated section. */
     const { root, file } = sandbox()
     /** Fake adapter whose pre-seeded section carries a value the migration must persist. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 } }, revision: 4 })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 } }, revision: 4 })
     apply(h.ctx)
     await h.settle()
     /** The migrated document, whose JSON half and header are asserted separately below. */
     const text = readFileSync(file, "utf8")
-    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 9 } })
+    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ autoproject: { maxRounds: 9 } })
     expect(text.startsWith("// mpd.jsonc — written by the mpd settings bridge (")).toBe(true)
     // the marker names the revision the section has once the marker write lands (rev 4 -> 5)
     expect(h.mutates).toEqual([{ ns: "mpd", ops: [{ op: "set", path: ["bridge", "migratedRevision"], value: 5 }], expected: 4 }])
@@ -569,11 +569,11 @@ describe("migration (design §6, U15)", () => {
     const { root, file } = sandbox()
     /** The exact header the bridge writes when it creates a document, replayed byte for byte. */
     const header = `// mpd.jsonc — written by the mpd settings bridge (2026-09-15T00:00:00.000Z)\n// Comments and key order are preserved: the bridge rewrites only the values it is asked to change.\n`
-    writeFileSync(file, header + `{\n  "ulw": {\n    "maxRounds": 9,\n  },\n}\n`)
+    writeFileSync(file, header + `{\n  "autoproject": {\n    "maxRounds": 9,\n  },\n}\n`)
     /** The pre-boot text, compared afterwards to prove the second boot wrote nothing at all. */
     const before = readFileSync(file, "utf8")
     /** Fake adapter reporting the recorded revision and marker, i.e. a second boot of the same state. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 }, bridge: { migratedRevision: 4 } }, revision: 4 })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 }, bridge: { migratedRevision: 4 } }, revision: 4 })
     apply(h.ctx)
     await h.settle()
     expect(readFileSync(file, "utf8")).toBe(before)
@@ -585,7 +585,7 @@ describe("migration (design §6, U15)", () => {
     /** The explicit mount-time root, which the migration must leave untouched. */
     const mount = mountRootFixture()
     /** Fake adapter with NO live root, so the migration can only be deferred. */
-    const h = harness({ roots: [], mountRoot: mount, user: { ulw: { maxRounds: 9 } }, revision: 2 })
+    const h = harness({ roots: [], mountRoot: mount, user: { autoproject: { maxRounds: 9 } }, revision: 2 })
     apply(h.ctx)
     await h.settle()
     expect(h.provided.mpdConfig.states().migration).toBe("deferred-no-workspace")
@@ -605,7 +605,7 @@ describe("migration (design §6, U15)", () => {
     /** Second live workspace; neither file may be created while the target is ambiguous. */
     const b = sandbox()
     /** Fake adapter reporting both roots as live for a migration that must be deferred. */
-    const h = harness({ roots: [a.root, b.root], user: { ulw: { maxRounds: 9 } }, revision: 2 })
+    const h = harness({ roots: [a.root, b.root], user: { autoproject: { maxRounds: 9 } }, revision: 2 })
     apply(h.ctx)
     await h.settle()
     expect(h.provided.mpdConfig.states().migration).toBe("deferred-ambiguous-multi-root")
@@ -616,13 +616,13 @@ describe("migration (design §6, U15)", () => {
   test("a refusing target aborts the migration loudly and leaves the document alone", async () => {
     /** Sole live workspace whose existing file is deliberately unparsable. */
     const { root, file } = sandbox()
-    writeFileSync(file, '{ "ulw": }') // unparsable
+    writeFileSync(file, '{ "autoproject": }') // unparsable
     /** Fake adapter carrying a section to migrate, so the failure is the target's, not an empty one. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 9 } }, revision: 2 })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 9 } }, revision: 2 })
     apply(h.ctx)
     await h.settle()
     expect(h.provided.mpdConfig.states().migration).toBe("writeback-failed")
-    expect(readFileSync(file, "utf8")).toBe('{ "ulw": }')
+    expect(readFileSync(file, "utf8")).toBe('{ "autoproject": }')
     expect(h.mutates).toEqual([])
     expect(h.logs.some((line) => line.includes("migration did NOT complete"))).toBe(true)
   })
@@ -632,24 +632,24 @@ describe("the §1.2 clearing rule (a fresh FILE edit wins over a stale override)
   test("a file value the bridge recorded is unset from the user section under the revision fence", async () => {
     /** Sole live workspace, whose file the human edit below rewrites behind the settings document. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Fake adapter whose section starts equal to the file and whose revision fence is 4. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } }, revision: 4 })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } }, revision: 4 })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 6 } })
+    h.setUser({ autoproject: { maxRounds: 6 } })
     h.emit("update") // the bridge records the file value it wrote (6)
     expect(readFileSync(file, "utf8")).toContain("6")
     // now a HUMAN edits the file directly, without touching the settings document …
-    writeFileSync(file, `{ "ulw": { "maxRounds": 99 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 99 } }`)
     // … and the layer re-reads (the watcher/reload path) — the override must be cleared
     h.provided.mpdConfig.reload()
     await h.settle()
-    expect(h.provided.mpdConfig.states().cleared).toEqual(["ulw.maxRounds"])
+    expect(h.provided.mpdConfig.states().cleared).toEqual(["autoproject.maxRounds"])
     /** The `unset` mutation among the recorded ones, i.e. the clear this rule exists to perform. */
     const unset = h.mutates.find((call) => call.ops[0].op === "unset")
-    expect(unset?.ops).toEqual([{ op: "unset", path: ["ulw", "maxRounds"] }])
+    expect(unset?.ops).toEqual([{ op: "unset", path: ["autoproject", "maxRounds"] }])
     expect(h.logs.some((line) => line.includes("a file edit won"))).toBe(true)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(99) // the USER SECTION is gone; the file is now the authority
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(99) // the USER SECTION is gone; the file is now the authority
     expect(readFileSync(file, "utf8")).toContain("99")
   })
 })
@@ -740,21 +740,21 @@ describe("the per-agent routes have NO read-path default layer (contract §1/§2
   test("NEGATIVE CONTROL: an unrelated settings-document save never injects an agentRoutes block into the file", async () => {
     /** Sole live workspace that receives the unrelated knob's new value. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Fake adapter whose save below changes a knob the routes do not depend on. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
     // A save of an UNRELATED knob through the settings document: the bridge writes that leaf and
     // only that leaf, because its delta comes from the settings document, never from the resolved
     // config — so no route leaf can leak into the workspace file.
-    h.setUser({ ulw: { maxRounds: 11 } })
+    h.setUser({ autoproject: { maxRounds: 11 } })
     h.emit("update")
     await h.settle()
     /** The written file, whose whole text is inspected for any trace of a route block. */
     const text = readFileSync(file, "utf8")
     expect(text).toContain('"maxRounds": 11')
     expect(text).not.toContain("agentRoutes")
-    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 11 } })
+    expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ autoproject: { maxRounds: 11 } })
     expect(h.provided.mpdConfig.states().writeback.writtenTo).toEqual([file])
     // the READ path still answers NO route, and the raw read carries none either
     expect(h.provided.mpdConfig.get("agentRoutes")).toBeUndefined()
@@ -764,15 +764,15 @@ describe("the per-agent routes have NO read-path default layer (contract §1/§2
   test("a route leaf SAVED through the settings document is what lands in the file (the routes stay editable)", async () => {
     /** Sole live workspace that receives the saved route leaf. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }`)
     /** Fake adapter whose save below carries one route leaf, which the file must then hold. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 3 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 3 } } })
     apply(h.ctx)
-    h.setUser({ ulw: { maxRounds: 3 }, agentRoutes: { Architect: { model: "deepseek-v4-pro" } } })
+    h.setUser({ autoproject: { maxRounds: 3 }, agentRoutes: { Architect: { model: "deepseek-v4-pro" } } })
     h.emit("update")
     await h.settle()
     expect(JSON.parse(readFileSync(file, "utf8").replace(/^\s*\/\/.*$/gm, ""))).toEqual({
-      ulw: { maxRounds: 3 },
+      autoproject: { maxRounds: 3 },
       agentRoutes: { Architect: { model: "deepseek-v4-pro" } },
     })
     // The saved leaf is served VERBATIM — no sibling leaf is filled in by a default.

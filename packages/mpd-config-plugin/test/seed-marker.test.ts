@@ -77,7 +77,7 @@ describe("seedAgentRoutesOnce â€” the versioned one-time protocol (amendment 2 Â
   test("a version-2 MARKER wins first: nothing is re-seeded, nothing rewritten", () => {
     /** A workspace initialized once: the v2 marker exists, the block does not. */
     const { file, marker } = workspace()
-    writeFileSync(file, `{\n  "ulw": { "maxRounds": 3 }\n}\n`)
+    writeFileSync(file, `{\n  "autoproject": { "maxRounds": 3 }\n}\n`)
     writeFileSync(marker, `{\n  "version": 2,\n  "source": "catalog"\n}\n`)
     /** The file's bytes before the attempt, compared after it. */
     const before = readFileSync(file, "utf8")
@@ -180,7 +180,7 @@ describe("seedAgentRoutesOnce â€” the versioned one-time protocol (amendment 2 Â
     /** A workspace whose file no JSONC reader accepts. */
     const { file, marker } = workspace()
     /** The broken bytes that must survive the attempt verbatim. */
-    const broken = `{ "ulw": `
+    const broken = `{ "autoproject": `
     writeFileSync(file, broken)
     expect(seedAgentRoutesOnce(file, marker, CATALOG)).toMatchObject({ status: "unreadable" })
     expect(readFileSync(file, "utf8")).toBe(broken)
@@ -289,7 +289,7 @@ describe("the mounted row: ONE log line per root, and the version-2 marker beats
     await settled()
     expect(existsSync(marker)).toBe(true)
     // The user deletes the block ON PURPOSE, keeping everything else in the file.
-    const deleted = `{\n  "ulw": { "maxRounds": 3 }\n}\n`
+    const deleted = `{\n  "autoproject": { "maxRounds": 3 }\n}\n`
     writeFileSync(file, deleted)
     /** The same workspace mounted again: the marker must stop the second seed. */
     const second = mount(root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }])
@@ -408,7 +408,7 @@ describe("the mounted row: ONE log line per root, and the version-2 marker beats
     /** A workspace whose file no JSONC reader accepts. */
     const { root, file, marker } = workspace()
     /** The broken bytes that must survive verbatim. */
-    const broken = `{ "ulw": `
+    const broken = `{ "autoproject": `
     writeFileSync(file, broken)
     /** The isolated home. */
     const home = join(root, "..", "home")

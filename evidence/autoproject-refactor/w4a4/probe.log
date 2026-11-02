@@ -1,0 +1,36 @@
+# R-W4A4 reviewer probe output — 2026-11-02T12:20:24Z
+
+== truth table ==
+model+5signals        : {"trigger":false,"signals":["B","C","D","E","F"],"strength":"ignore"}
+human+1signal         : {"trigger":true,"signals":["D"],"strength":"inferred"}
+human+0               : {"trigger":false,"signals":[],"strength":"ignore"}
+flag                  : {"trigger":true,"signals":["A"],"strength":"explicit"}
+model+flag            : {"trigger":true,"signals":["A"],"strength":"explicit"}
+model+5signals+GESTURE: {"trigger":true,"signals":["B","C","D","E","F"],"strength":"explicit"}
+model+GESTURE only    : "explicit"
+unknown+flag          : "explicit"
+unknown+0             : "ignore"
+
+== totality ==
+non-string number     : "ignore"
+non-string null       : "ignore"
+non-string object     : "ignore"
+null-proto object     : THREW:TypeError:Cannot convert object to primitive value
+hostile toString      : THREW:Error:boom
+bad source at runtime : "ignore"
+undefined source rung : "ignore"
+
+== trigger equivalence: absent source vs the ORIGINAL predicate ==
+combinations: 64 | drift: 0
+
+== notice delta ==
+advisory lengths: 688 709 delta 21 | lines 4 4
+advisory with rung : [AgentTeams] Session-start team rule: this session shows complexity signals B (admission inferred), and NO team was staged — the gate is ADVISORY and stages nothing while complexity is merely being judged.
+- Stage a team yourself when the work warrants one: `agent_teams_plan` {action:"add_member"} → {action:"create_task"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:"approve"}; drive the team with `agent_teams_task` and `agent_teams_dispatch`.
+- If the work does not warrant a team (a short or single-threaded task), continue solo — and say so in one line.
+- A team is NOT a precondition of this session, and you may not create a second team while leading one.
+
+## node import cycle, order A (admission first)
+OK admissionOf= explicit gate= {"trigger":true,"signals":["D"],"strength":"inferred"}
+## node import cycle, order B (gate first)
+OK gate= {"trigger":true,"signals":["D"],"strength":"inferred"} admissionOf= explicit
