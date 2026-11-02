@@ -741,6 +741,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -911,6 +1009,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1242,6 +1345,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -1292,7 +1397,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -1507,6 +1614,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextAnswers = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return questionAnswersOf(await next());
+        };
+        return handler(request, nextAnswers);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2293,6 +2464,427 @@ function registerWatchdogRoutes(webServer, deps) {
   return { state, ack };
 }
 
+// packages/mpd-bundle-plugin/src/dshgo-panel.ts
+var DSHGO_PANEL_ID = "mpd";
+var DSHGO_POLL_MS = 2000;
+var DSHGO_MAX_SNAPSHOT_BYTES = 32768;
+var DSHGO_MAX_READY_ROWS = 10;
+var DSHGO_MAX_OPTIONS = 4;
+var DSHGO_ACTION_TIMEOUT_MS = 4000;
+var TOAST_NO_SESSION = "Open a conversation first";
+var TOAST_UNAVAILABLE = "Unavailable here";
+var TOAST_REFUSED = "The action was refused";
+var TOAST_STILL_RUNNING = "Still working — check the team panel";
+var TOAST_APPROVED = "Approved";
+var TOAST_DISPATCHED = "Dispatched";
+var TOAST_ANSWERED = "Answered";
+var LIMITS_TEXT = "Local engine only: these actions drive this host's MPD team and need a live conversation.";
+var TRUNCATED_TEXT = "Only the first four options are shown; answer the rest from another client.";
+var MAX_TITLE_CHARS = 120;
+var MAX_CAPTION_CHARS = 80;
+var MAX_QUESTION_CHARS = 400;
+var MAX_LABEL_CHARS = 80;
+var MAX_TOAST_CHARS = 40;
+function emptySnapshot() {
+  return { team: null, plan: null, question: null, readyTasks: [] };
+}
+function bind(path) {
+  return { $: path };
+}
+function recordOf(value) {
+  return typeof value === "object" && value !== null ? value : undefined;
+}
+function stringOf(value) {
+  return typeof value === "string" ? value : "";
+}
+function arrayOf(value) {
+  return Array.isArray(value) ? value : [];
+}
+function clip(value, max) {
+  const flat = value.replace(/\s+/g, " ").trim();
+  return flat.length <= max ? flat : flat.slice(0, max);
+}
+function clipToast(value) {
+  const text = clip(value, MAX_TOAST_CHARS);
+  return text === "" ? TOAST_UNAVAILABLE : text;
+}
+function probe(read, fallback) {
+  try {
+    return read();
+  } catch {
+    return fallback;
+  }
+}
+function faceOf(services, name) {
+  return probe(() => {
+    const service = typeof services.get === "function" ? services.get(name, false) : undefined;
+    return recordOf(service) === undefined ? undefined : service;
+  }, undefined);
+}
+function sessionIdOfScope(scope) {
+  const record = recordOf(scope);
+  return record === undefined ? "" : stringOf(record.sessionId);
+}
+function scopeKeyOf(scope) {
+  return sessionIdOfScope(scope);
+}
+function teamStatusOf2(record) {
+  if (stringOf(record.endedAt) !== "")
+    return "ended";
+  return stringOf(record.approvedAt) !== "" ? "approved" : "staged";
+}
+var RELEASING_STATUSES = new Set(["completed", "cancelled", "failed"]);
+function readyRowsOf(tasks) {
+  const statusById = new Map;
+  for (const task of tasks)
+    statusById.set(stringOf(task.id), stringOf(task.status));
+  const rows = [];
+  for (const task of tasks) {
+    if (stringOf(task.status) !== "pending")
+      continue;
+    const blocked = arrayOf(task.blockedBy).some((entry) => {
+      const status = statusById.get(stringOf(entry));
+      return status !== undefined && !RELEASING_STATUSES.has(status);
+    });
+    if (blocked)
+      continue;
+    const caption = [stringOf(task.kind), stringOf(task.owner)].filter((part) => part !== "").join(" · ");
+    rows.push({ title: clip(stringOf(task.subject), MAX_TITLE_CHARS), subtitle: clip(caption === "" ? "ready" : caption, MAX_CAPTION_CHARS) });
+    if (rows.length >= DSHGO_MAX_READY_ROWS)
+      break;
+  }
+  return rows;
+}
+function teamSnapshotOf(value) {
+  const record = recordOf(value);
+  if (record === undefined)
+    return null;
+  const members = arrayOf(record.members).map((member) => recordOf(member)).filter((member) => member !== undefined);
+  return {
+    id: stringOf(record.teamId),
+    name: clip(stringOf(record.name), MAX_TITLE_CHARS),
+    status: teamStatusOf2(record),
+    phase: stringOf(record.phase) === "" ? "staged" : stringOf(record.phase),
+    members: members.filter((member) => stringOf(member.status) !== "failed").length,
+    tasks: arrayOf(record.tasks).length
+  };
+}
+function planSnapshotOf(value) {
+  const payload = recordOf(value);
+  const plan = payload === undefined ? undefined : recordOf(payload.plan);
+  if (plan === undefined)
+    return null;
+  return {
+    ready: plan.approved !== true && plan.discarded !== true,
+    members: arrayOf(plan.members).length,
+    tasks: arrayOf(plan.tasks).length
+  };
+}
+function questionSnapshotOf(value) {
+  const parked = arrayOf(value).map((entry2) => recordOf(entry2)).filter((entry2) => entry2 !== undefined);
+  const entry = parked[0];
+  if (entry === undefined)
+    return null;
+  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question) => question !== undefined);
+  if (item === undefined)
+    return null;
+  const options = arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => ({ label: clip(stringOf(option.label), MAX_LABEL_CHARS) })).filter((option) => option.label !== "");
+  return { id: stringOf(entry.id), question: clip(stringOf(item.question), MAX_QUESTION_CHARS), options };
+}
+function readPanelSnapshot(read) {
+  const sessionId = read.sessionId;
+  const workspace = read.workspace;
+  if (sessionId === "" || workspace === undefined || workspace === "")
+    return emptySnapshot();
+  const teams = faceOf(read.services, "mpdTeams");
+  const questions = faceOf(read.services, "mpdQuestions");
+  const record = teams?.active === undefined ? undefined : probe(() => teams.active?.(workspace, sessionId), undefined);
+  return {
+    team: teamSnapshotOf(record),
+    plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
+    question: questions?.list === undefined ? null : questionSnapshotOf(probe(() => questions.list?.({ sessionId }), undefined)),
+    readyTasks: readyRowsOf(arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task) => task !== undefined))
+  };
+}
+function buildPanelView(snapshot) {
+  const children = [
+    {
+      type: "keyValue",
+      items: [
+        { label: "Team", value: bind("data.team.name") },
+        { label: "Status", value: bind("data.team.status") },
+        { label: "Phase", value: bind("data.team.phase") },
+        { label: "Members", value: bind("data.team.members") },
+        { label: "Tasks", value: bind("data.team.tasks") },
+        { label: "Plan members", value: bind("data.plan.members") },
+        { label: "Plan tasks", value: bind("data.plan.tasks") }
+      ]
+    },
+    { type: "list", items: bind("data.readyTasks") }
+  ];
+  if (snapshot.question !== null) {
+    children.push({ type: "callout", tone: "info", text: bind("data.question.question") });
+    const buttons = snapshot.question.options.slice(0, DSHGO_MAX_OPTIONS).map((_option, index) => ({
+      label: bind("data.question.options." + index + ".label"),
+      action: "answer:" + index
+    }));
+    if (buttons.length > 0)
+      children.push({ type: "actions", items: buttons });
+    if (snapshot.question.options.length > DSHGO_MAX_OPTIONS)
+      children.push({ type: "text", tone: "muted", text: TRUNCATED_TEXT });
+  }
+  children.push({
+    type: "actions",
+    items: [
+      { label: "Approve plan", action: "approve", style: "primary" },
+      { label: "Dispatch", action: "dispatch" }
+    ]
+  });
+  children.push({ type: "text", tone: "muted", text: LIMITS_TEXT });
+  return { v: 1, type: "stack", title: "MPD", children };
+}
+function isRefusal(value) {
+  const record = recordOf(value);
+  return record !== undefined && record.ok === false;
+}
+function messageOf(value) {
+  if (value instanceof Error)
+    return value.message;
+  const record = recordOf(value);
+  if (record !== undefined) {
+    const text = stringOf(record.error);
+    if (text !== "")
+      return text;
+  }
+  return typeof value === "string" ? value : "";
+}
+var TIMED_OUT = Symbol("mpd-panel-timeout");
+async function settleWithin(run, timeoutMs) {
+  const guarded = Promise.resolve().then(run).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+  let timer;
+  const deadline = new Promise((resolve3) => {
+    timer = setTimeout(() => resolve3(TIMED_OUT), timeoutMs);
+  });
+  try {
+    return await Promise.race([guarded, deadline]);
+  } finally {
+    if (timer !== undefined)
+      clearTimeout(timer);
+  }
+}
+function actionIdOf(event) {
+  const record = recordOf(event);
+  if (record === undefined)
+    return "";
+  const action = stringOf(record.action);
+  if (action !== "")
+    return action;
+  const value = recordOf(record.value);
+  return value === undefined ? "" : stringOf(value.action);
+}
+function optionIndexOf(action) {
+  const match = /^answer:(\d+)$/.exec(action);
+  if (match === null)
+    return;
+  const index = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(index) && index >= 0 && index < DSHGO_MAX_OPTIONS ? index : undefined;
+}
+function parkedAnswerOf(parked) {
+  const entries = arrayOf(parked).map((entry2) => recordOf(entry2)).filter((entry2) => entry2 !== undefined);
+  const entry = entries[0];
+  if (entry === undefined)
+    return;
+  const item = arrayOf(entry.questions).map((question) => recordOf(question)).find((question) => question !== undefined);
+  if (item === undefined)
+    return;
+  return {
+    questionId: stringOf(entry.id),
+    itemId: stringOf(item.id),
+    labels: arrayOf(item.options).map((option) => recordOf(option)).filter((option) => option !== undefined).map((option) => stringOf(option.label)).filter((label) => label !== "")
+  };
+}
+function createPanelActions(options) {
+  const teamActions = () => faceOf(options.ctx, "mpdTeamActions");
+  const questions = () => faceOf(options.ctx, "mpdQuestions");
+  const approve = async (scope) => {
+    const sessionId = sessionIdOfScope(scope);
+    if (sessionId === "")
+      return { toast: TOAST_NO_SESSION };
+    const face = teamActions();
+    if (face?.approve === undefined)
+      return { toast: TOAST_UNAVAILABLE };
+    const outcome = await settleWithin(() => face.approve?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS);
+    if (outcome === TIMED_OUT)
+      return { toast: TOAST_STILL_RUNNING };
+    if (outcome.ok === false)
+      return { toast: clipToast(messageOf(outcome.error)) };
+    if (isRefusal(outcome.value))
+      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
+    return { toast: TOAST_APPROVED };
+  };
+  const dispatch = async (scope) => {
+    const sessionId = sessionIdOfScope(scope);
+    if (sessionId === "")
+      return { toast: TOAST_NO_SESSION };
+    const face = teamActions();
+    if (face?.dispatch === undefined)
+      return { toast: TOAST_UNAVAILABLE };
+    const outcome = await settleWithin(() => face.dispatch?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS);
+    if (outcome === TIMED_OUT)
+      return { toast: TOAST_STILL_RUNNING };
+    if (outcome.ok === false)
+      return { toast: clipToast(messageOf(outcome.error)) };
+    if (isRefusal(outcome.value))
+      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
+    return { toast: TOAST_DISPATCHED };
+  };
+  const answerWith = async (scope, event) => {
+    const sessionId = sessionIdOfScope(scope);
+    if (sessionId === "")
+      return { toast: TOAST_NO_SESSION };
+    const index = optionIndexOf(actionIdOf(event));
+    if (index === undefined)
+      return { toast: TOAST_UNAVAILABLE };
+    const face = questions();
+    if (face?.list === undefined || face.answer === undefined)
+      return { toast: TOAST_UNAVAILABLE };
+    const parked = parkedAnswerOf(probe(() => face.list?.({ sessionId }), undefined));
+    const label = parked?.labels[index];
+    if (parked === undefined || label === undefined)
+      return { toast: TOAST_UNAVAILABLE };
+    const outcome = await settleWithin(() => face.answer?.({ id: parked.questionId, answers: [{ id: parked.itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS);
+    if (outcome === TIMED_OUT)
+      return { toast: TOAST_STILL_RUNNING };
+    if (outcome.ok === false)
+      return { toast: clipToast(messageOf(outcome.error)) };
+    if (outcome.value === true)
+      return { toast: TOAST_ANSWERED };
+    if (isRefusal(outcome.value))
+      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
+    return { toast: TOAST_UNAVAILABLE };
+  };
+  const actions = { approve, dispatch };
+  for (let index = 0;index < DSHGO_MAX_OPTIONS; index += 1)
+    actions["answer:" + index] = answerWith;
+  return actions;
+}
+function registerDshGoPanel(options) {
+  const log = options.log ?? ((line) => {
+    rowLogLine("mpd-bundle", line);
+  });
+  const pollMs = options.pollMs ?? DSHGO_POLL_MS;
+  let registered = false;
+  let announced = "";
+  let offBound;
+  const latest = new Map;
+  const emitted = new Map;
+  const questionKeys = new Map;
+  const timers = new Set;
+  const announce = (state) => {
+    if (announced === state)
+      return;
+    announced = state;
+    log("[mpd] dshGo=" + state);
+  };
+  const workspaceOf = (sessionId) => {
+    const fromBridge = probe(() => typeof options.dsh.workspaceRootForSession === "function" ? options.dsh.workspaceRootForSession(sessionId) : undefined, undefined);
+    if (typeof fromBridge === "string" && fromBridge !== "")
+      return fromBridge;
+    return probe(() => options.workspace?.(sessionId), undefined);
+  };
+  const snapshotOf = (scope) => readPanelSnapshot({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) });
+  const published = new Set;
+  let overBudget = false;
+  const readScope = (scope) => {
+    const snapshot = snapshotOf(scope);
+    latest.set(scopeKeyOf(scope), snapshot);
+    return snapshot;
+  };
+  const announceQuestionSet = (key, snapshot, seed) => {
+    const questionKey = snapshot.question === null ? "" : snapshot.question.id;
+    if (questionKeys.get(key) === questionKey)
+      return;
+    const changed = !seed && questionKeys.has(key);
+    questionKeys.set(key, questionKey);
+    if (changed)
+      probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
+  };
+  const publishInto = (key, snapshot, send, seed) => {
+    const serialized = JSON.stringify(snapshot);
+    if (seed || !published.has(key) || emitted.get(key) !== serialized) {
+      emitted.set(key, serialized);
+      published.add(key);
+      if (new TextEncoder().encode(serialized).length > DSHGO_MAX_SNAPSHOT_BYTES && !overBudget) {
+        overBudget = true;
+        log("[mpd] dshGo=snapshot-over-budget");
+      }
+      probe(() => send?.(snapshot), undefined);
+    }
+    announceQuestionSet(key, snapshot, seed);
+  };
+  const data = (scope, emit) => {
+    const send = typeof emit === "function" ? emit : undefined;
+    const key = scopeKeyOf(scope);
+    publishInto(key, readScope(scope), send, true);
+    const timer = setInterval(() => {
+      publishInto(key, readScope(scope), send, false);
+    }, pollMs);
+    timers.add(timer);
+    return () => {
+      clearInterval(timer);
+      timers.delete(timer);
+      latest.delete(key);
+      emitted.delete(key);
+      questionKeys.delete(key);
+      published.delete(key);
+    };
+  };
+  const spec = {
+    view: (scope) => buildPanelView(latest.get(scopeKeyOf(scope)) ?? emptySnapshot()),
+    data,
+    actions: createPanelActions(options)
+  };
+  const attempt = () => {
+    if (registered)
+      return;
+    const present = probe(() => options.dsh.dshGoPresent() === true, false);
+    if (!present) {
+      if (offBound === undefined) {
+        offBound = probe(() => {
+          const off = options.dsh.onServiceBound(["dshGo"], () => {
+            attempt();
+          });
+          return typeof off === "function" ? off : () => {};
+        }, () => {});
+      }
+      announce("absent");
+      return;
+    }
+    const accepted = probe(() => options.dsh.dshGoPanel(DSHGO_PANEL_ID, spec) === true, false);
+    if (!accepted) {
+      announce("absent");
+      return;
+    }
+    registered = true;
+    announce("panel");
+  };
+  attempt();
+  return {
+    registered,
+    dispose: () => {
+      for (const timer of timers)
+        clearInterval(timer);
+      timers.clear();
+      published.clear();
+      latest.clear();
+      emitted.clear();
+      questionKeys.clear();
+      probe(() => offBound?.(), undefined);
+      offBound = undefined;
+    }
+  };
+}
+
 // packages/mpd-bundle-plugin/src/index.ts
 var name = "@mpd-dsh/mpd";
 var inject = [];
@@ -2383,6 +2975,22 @@ function apply(ctx) {
       registerRoutes();
     });
   }
+  try {
+    const panel = registerDshGoPanel({
+      dsh,
+      ctx,
+      log: (line) => {
+        rowLogLine("mpd-bundle", line);
+      }
+    });
+    if (typeof ctx?.effect === "function") {
+      try {
+        ctx.effect(() => () => {
+          panel.dispose();
+        }, "mpd-dshgo-panel");
+      } catch {}
+    }
+  } catch {}
 }
 export {
   WATCHDOG_WEB_READER,
