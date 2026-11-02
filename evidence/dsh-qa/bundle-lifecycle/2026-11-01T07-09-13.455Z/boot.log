@@ -1,0 +1,9 @@
+[roles-probe] SETUP_SEQ=1 mode=Context
+[roles-probe] HOST_READY=tools:true skills:true polls:1
+[roles-probe] PRESET_MPD=fail:mpd-dsh-adapter: harness service "agentPresets" is unavailable — cannot resolve preset "mpd"
+[roles-probe] ADAPTER_SEAMS=toolsPreExecute,toolsPostExecute,events,agentPreStep ABSENT=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,turnSubmit,agents,compaction,compactionForAgent,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentScope,agentTurnStart,agentTurnCancel,agentTurnSteer,agentTurnInject,agentPromptSection,agentPreStepScope,team,teamTasks,teamMessages,subagentsProviderRegister,goals,goalTools
+[roles-probe] ADAPTER_TOOL_CALL=fail:the harness tool runtime has no execute()
+[roles-probe] ROSTER=
+[roles-probe] ROSTER_NAMES=
+[roles-probe] AGENT_TEAMS_TOOLS=0/7 MISSING=agent_teams_interject_request,agent_teams_interject_decide,agent_teams_mailbox_clear,agent_teams_send_message,agent_teams_update_task,mpd_team_compact_run,mpd_team_compact_status
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=false

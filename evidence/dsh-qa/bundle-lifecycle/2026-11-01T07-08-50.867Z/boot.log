@@ -1,0 +1,19 @@
+[roles-probe] SETUP_SEQ=1 mode=Context
+[roles-probe] HOST_READY=tools:true skills:true polls:1
+[roles-probe] PRESET_MPD=ok
+[roles-probe] PRESET_RESOLVE_POLLS=1 id=mpd
+[roles-probe] PRESET_PATH=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml trust=bundle
+[roles-probe] ADAPTER_SEAMS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals ABSENT=turnSubmit,compaction,compactionForAgent,agentScope,agentTurnStart,agentTurnCancel,agentTurnSteer,agentTurnInject,agentPromptSection,agentPreStepScope,goalTools
+[roles-probe] ADAPTER_TOOL_CALL=ok
+[roles-probe] ROSTER=oracle,librarian,prometheus,hephaestus,sisyphus,atlas,explore,metis,momus,multimodal-looker,sisyphus-junior
+[roles-probe] ROSTER_NAMES=Architect,Researcher,Planner,Deep Worker,Senior Engineer,Lead,Explorer,Reviewer,Plan Reviewer,Vision Analyst,Junior Engineer
+[llm-deepseek-api-key] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+[llm-deepseek-account] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)
+[roles-probe] AGENT_TEAMS_TOOLS=0/7 MISSING=agent_teams_interject_request,agent_teams_interject_decide,agent_teams_mailbox_clear,agent_teams_send_message,agent_teams_update_task,mpd_team_compact_run,mpd_team_compact_status
+[roles-probe] AGENT_TEAMS_NEW_TOOLS_OK=false
+[roles-probe] TEAM_COMPACT_TOOLS=0/2 MISSING=mpd_team_compact_run,mpd_team_compact_status
+[roles-probe] TOOL_PARAM_SCHEMAS=0/0
+[roles-probe] SKILLS=fail:mpd-dsh-adapter: harness service "skills" is unavailable — cannot list skills
+[roles-probe] DBG raw=0 own=0 getTools=false getSkills=false propSkills=THROW:cannot get property "skills" without inject dshSkills=fail:mpd-dsh-adapter: harness service "skills" is unavailable — cannot list skills
+[roles-probe] SETUP_DONE=1 ms=4615
+[roles-probe] FAIL
