@@ -262,6 +262,78 @@ export interface DshUserMessageInput {
   source?: DshUserMessageSource
 }
 
+/**
+ * One selectable answer of a user question, in the bundle's own vocabulary.
+ *
+ * A structural copy of the harness's `AskUserQuestionOption`, redeclared HERE on purpose: no
+ * consumer may import a harness type (AGENTS.md §6 — the adapter is the ONE contact surface), and
+ * the two labels are what an answer travels back as, never an index.
+ */
+export interface DshQuestionOption {
+  /** The label this option is answered with; matching is by label, never by position. */
+  label: string
+  /** Optional extra context a capable UI renders beside the label. */
+  description?: string
+}
+
+/** One question of a user-questions request, narrowed to the fields this bundle forwards. */
+export interface DshQuestionItem {
+  /** Stable caller-provided id, echoed on the answer for this item. */
+  id: string
+  /** The question text to display. */
+  question: string
+  /** Optional short heading/group label. */
+  header?: string
+  /** Choices a UI may render; absent means the question expects free text. */
+  options?: DshQuestionOption[]
+  /** Whether more than one option may be selected; the harness defaults to single-select. */
+  multiSelect?: boolean
+}
+
+/** One answer to one question, in the bundle's own vocabulary. */
+export interface DshQuestionAnswer {
+  /** The id of the question this answer belongs to. */
+  id: string
+  /** Selected option labels; may accompany `custom` for a multi-select question. */
+  selected: string[]
+  /** Free-text "Other" answer, present only when the human typed one. */
+  custom?: string
+}
+
+/** A user-question request as this bundle exposes it: the questions, their session, cancellation. */
+export interface DshUserQuestionRequest {
+  /** Questions to display, in ask order. */
+  questions: DshQuestionItem[]
+  /** Live session that owns the request, when the harness request names one. */
+  sessionId?: string
+  /** Cancellation lifetime of the pending request, forwarded unchanged. */
+  signal?: AbortSignal
+}
+
+/** Input for {@link DshAdapter.askUserQuestion}: the questions plus their cancellation lifetime. */
+export interface DshAskUserQuestionInput {
+  /** Questions to display, in ask order. */
+  questions: DshQuestionItem[]
+  /** Cancellation lifetime, forwarded to the harness service unchanged. */
+  signal?: AbortSignal
+}
+
+/**
+ * Panel spec for {@link DshAdapter.dshGoPanel}.
+ *
+ * Opaque to this adapter by contract: `view`, `data` and `actions` are the DSH Go bridge's own
+ * shapes, so they are forwarded verbatim rather than re-typed here (a copy would pin this file to
+ * one bridge version).
+ */
+export interface DshGoPanelSpec {
+  /** The view tree the bridge renders; required, passed through verbatim. */
+  view: unknown
+  /** Data bindings the view reads; passed through verbatim. */
+  data?: unknown
+  /** Tap actions keyed by action name; passed through verbatim. */
+  actions?: Record<string, unknown>
+}
+
 /** Waterfall decision handed to a post-execute listener (the downstream result). */
 export interface DshPostDecision {
   /** Which side of the waterfall produced the decision: a replacement or a veto. */
@@ -1005,6 +1077,25 @@ export interface DshCapabilities {
    * degrades to the durable read.
    */
   goalTools: boolean
+  /**
+   * The harness `userQuestions` service answered at probe time, i.e.
+   * {@link DshAdapter.askUserQuestion} finds a service to drive.
+   *
+   * Presence is the flag's whole subject (the method's own check for a callable `ask` stays
+   * authoritative, like every other per-call throw in this file). Deliberately NOT the waterfall
+   * flag: `onUserQuestionRequest` rides the event bus ({@link DshCapabilities.events}), so a
+   * composition can accept questions without being able to ask one, and a caller must be able to
+   * tell the two halves apart.
+   */
+  askUser: boolean
+  /**
+   * The DSH Go bridge service `dshGo` is bound, i.e. {@link DshAdapter.dshGoPanel} and
+   * {@link DshAdapter.dshGoRefresh} reach a live native-panel bridge.
+   *
+   * A composition without the bridge is the NORMAL case for a non-DSH-Go host, so this probe is
+   * read per call rather than cached: a bridge that binds after the row applies is still seen.
+   */
+  dshGo: boolean
 }
 
 /**
@@ -2059,6 +2150,70 @@ export interface DshAdapter {
   webRequestRejection(request: unknown): 401 | 403 | undefined
   /** Run `callback` when one of `names` binds (or rebinds) as a service; returns a disposer. */
   onServiceBound(names: readonly string[], callback: (name: string) => void): () => void
+  /**
+   * Ask the human a structured question through the harness `userQuestions` service.
+   *
+   * The adapter is the ONLY place a harness question shape is read: the caller passes its own
+   * {@link DshQuestionItem} list and receives a plain {@link DshQuestionAnswer} array, so no
+   * consumer imports a harness type.
+   *
+   * Degrade: THROWS `ask_user_question failed: no user-questions service` when the service (or its
+   * `ask`) is absent — an empty answer would be a wrong turn, not a degraded one — and rethrows a
+   * service rejection as `ask_user_question failed: <message>` with the harness `code`
+   * (e.g. `NO_PROVIDER`) copied onto the error, so a caller can tell a missing answerer from a
+   * malformed call.
+   * @param request - the questions plus the caller's cancellation lifetime.
+   * @returns one answer entry per answered question, in the harness's own order.
+   */
+  askUserQuestion(request: DshAskUserQuestionInput): Promise<DshQuestionAnswer[]>
+  /**
+   * Register a WATERFALL answerer on the harness `user-questions/request` event.
+   *
+   * The listener receives the narrowed {@link DshUserQuestionRequest} plus a `next` continuation
+   * that resolves the DOWNSTREAM answerer's answer (mapped to plain answers). Returning an answer
+   * claims the request; awaiting `next()` delegates to the next answerer. A rejection from
+   * `handler` is propagated unchanged — the harness must see a broken answerer rather than an
+   * invented answer.
+   *
+   * Degrade: when the harness event bus is unavailable (`ctx.on` missing or throwing) ONE warning
+   * line is logged and a no-op disposer returned, so a composition without the waterfall still
+   * boots. The listener registration is row-scoped, which is well-defined for this event: every
+   * answerer observes the request, and `next()` composes them.
+   * @param handler - the answerer; its second argument is the waterfall continuation.
+   * @param label - optional caller name used in the degrade warning (the bus takes no label).
+   * @returns the registration's disposer (a no-op in the degraded case).
+   */
+  onUserQuestionRequest(
+    handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>,
+    label?: string,
+  ): () => void
+  /**
+   * Whether the DSH Go bridge service `dshGo` is bound; the per-call form of
+   * `capabilities().dshGo`, read through the same probe.
+   */
+  dshGoPresent(): boolean
+  /**
+   * Publish or replace one DSH Go native panel: `service.panel(id, spec)`.
+   *
+   * `spec` is forwarded VERBATIM: `view`/`data`/`actions` are the bridge's own contract, and
+   * re-shaping them here would pin this adapter to one bridge version.
+   *
+   * Degrade: `false` — plus ONE warning line — when the bridge is absent or the call throws, so a
+   * host without DSH Go renders nothing instead of failing the row that publishes the panel.
+   * @param id - the panel id the DSH Go manifest declares.
+   * @param spec - the panel's view/data/actions, passed through unchanged.
+   * @returns true only when the bridge accepted the call without throwing.
+   */
+  dshGoPanel(id: string, spec: DshGoPanelSpec): boolean
+  /**
+   * Ask the DSH Go bridge to re-render one panel because its data changed.
+   *
+   * Never throws and never logs: this is called from a polling path, so a missing bridge or a
+   * failed refresh is a silent no-op by contract rather than a per-tick diagnostic.
+   * @param id - the panel id to refresh.
+   * @returns nothing; the refresh is best-effort.
+   */
+  dshGoRefresh(id: string): void
   /** Register the pre-step listener inside ONE agent's own scope — the site delivery reliably reaches. */
   registerAgentPreStep(
     agent: unknown,
@@ -3438,6 +3593,194 @@ function textOfOutput(output: unknown): string {
   return parts.join("")
 }
 
+/**
+ * Narrow one harness question item onto {@link DshQuestionItem}, or `undefined` when it is not
+ * question-shaped.
+ *
+ * Only the fields this bundle forwards are read: the harness item also carries `detail` and
+ * `intent`, which are presentation hints for a capable UI and deliberately NOT forwarded (a
+ * consumer that received them would be reading harness vocabulary). The narrowing keeps a
+ * question's `header`/`multiSelect` only when they are present, so absence stays absence.
+ * @param raw - the harness item, read as `unknown` so no harness type is imported.
+ * @returns the narrowed item, or undefined when it carries no usable id/question pair.
+ */
+function questionItemOf(raw: unknown): DshQuestionItem | undefined {
+  if (raw === null || typeof raw !== "object") return undefined
+  /** The item's own fields, read defensively: a service double may answer anything. */
+  const fields = raw as { id?: unknown; question?: unknown; header?: unknown; options?: unknown; multiSelect?: unknown }
+  if (typeof fields.id !== "string" || typeof fields.question !== "string") return undefined
+  /** The option list, present only when the harness sent an array. */
+  const options = questionOptionsOf(fields.options)
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...(typeof fields.header === "string" ? { header: fields.header } : {}),
+    ...(options === undefined ? {} : { options }),
+    ...(typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}),
+  }
+}
+
+/**
+ * Narrow a harness option list, keeping each option's `label` and optional `description`.
+ * @param raw - the harness `options` field, read as `unknown`.
+ * @returns the narrowed options, or undefined when the field is not an array — absence is not an
+ *   empty list, because a question with no options expects free text.
+ */
+function questionOptionsOf(raw: unknown): DshQuestionOption[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  /** The options that carry a usable label, in the harness's own order. */
+  const options: DshQuestionOption[] = []
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object") continue
+    /** One option's fields, read defensively. */
+    const fields = entry as { label?: unknown; description?: unknown }
+    if (typeof fields.label !== "string") continue
+    options.push({
+      label: fields.label,
+      ...(typeof fields.description === "string" ? { description: fields.description } : {}),
+    })
+  }
+  return options
+}
+
+/**
+ * Narrow a harness question array, dropping entries that are not question-shaped.
+ * @param raw - the request's `questions` field, read as `unknown`.
+ * @returns the narrowed questions, in ask order; a non-array reports no questions.
+ */
+function questionItemsOf(raw: unknown): DshQuestionItem[] {
+  if (!Array.isArray(raw)) return []
+  /** The questions that passed the item narrowing, in ask order. */
+  const items: DshQuestionItem[] = []
+  for (const entry of raw) {
+    /** One narrowed item, or undefined when the entry is not question-shaped. */
+    const item = questionItemOf(entry)
+    if (item !== undefined) items.push(item)
+  }
+  return items
+}
+
+/**
+ * Narrow the harness answer batch (`{answers:[{id,selected,custom?}]}`) onto plain answers.
+ *
+ * `custom` is kept ONLY when defined, so an absent free-text answer stays absent instead of
+ * becoming an empty string a UI would render as a blank "Other" row. A `selected` entry that is
+ * not a string is dropped, because answers are matched by label and a non-label can never match.
+ * @param raw - the harness answer object, read as `unknown`.
+ * @returns one entry per answer that carries a string id; a malformed batch yields [].
+ */
+function questionAnswersOf(raw: unknown): DshQuestionAnswer[] {
+  if (raw === null || typeof raw !== "object") return []
+  /** The batch's own `answers` field, kept only when it is an array. */
+  const items = (raw as { answers?: unknown }).answers
+  if (!Array.isArray(items)) return []
+  /** The answers that carry a usable id, in the harness's own order. */
+  const answers: DshQuestionAnswer[] = []
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object") continue
+    /** One answer's fields, read defensively. */
+    const fields = entry as { id?: unknown; selected?: unknown; custom?: unknown }
+    if (typeof fields.id !== "string") continue
+    /** The selected labels, keeping only the strings a caller can match. */
+    const selected = Array.isArray(fields.selected)
+      ? fields.selected.filter((label: unknown): label is string => typeof label === "string")
+      : []
+    answers.push({
+      id: fields.id,
+      selected,
+      ...(typeof fields.custom === "string" ? { custom: fields.custom } : {}),
+    })
+  }
+  return answers
+}
+
+/**
+ * Read the harness error's stable `code` (e.g. `NO_PROVIDER`) when it carries one.
+ *
+ * The harness's `UserQuestionError` extends `HarnessError`, which puts `code` on the instance; the
+ * adapter copies it so a caller can branch on the taxonomy without importing the harness class.
+ * @param error - the rejection, read as `unknown`.
+ * @returns the code string, or undefined when the error carries none.
+ */
+function errorCodeOf(error: unknown): string | undefined {
+  if (error === null || typeof error !== "object") return undefined
+  /** The error's own `code` field, kept only when it is a non-empty string. */
+  const code = (error as { code?: unknown }).code
+  return typeof code === "string" && code.length > 0 ? code : undefined
+}
+
+/**
+ * The message an unknown rejection carries, or its string form when it is not an object.
+ * @param error - the rejection, read as `unknown`.
+ * @returns a human message; never throws, and falls back to the value's own string form.
+ */
+function errorTextOf(error: unknown): string {
+  if (error !== null && typeof error === "object") {
+    /** The rejection's own `message` field, when it is a non-empty string. */
+    const message = (error as { message?: unknown }).message
+    if (typeof message === "string" && message.length > 0) return message
+  }
+  return String(error)
+}
+
+/**
+ * The request's cancellation lifetime, forwarded as-is.
+ *
+ * A structural guard instead of `instanceof AbortSignal`: the harness request is read as `unknown`
+ * here (no harness type may leak), and the field IS the harness's own AbortSignal — the only thing
+ * left to establish is that it is an object-shaped signal. The cast projects from `unknown`; it
+ * does not re-interpret the value.
+ * @param raw - the request's `signal` field.
+ * @returns the signal, or undefined when the field is absent or not signal-shaped.
+ */
+function abortSignalOf(raw: unknown): AbortSignal | undefined {
+  return raw !== null && typeof raw === "object" && typeof (raw as { aborted?: unknown }).aborted === "boolean"
+    ? raw as AbortSignal
+    : undefined
+}
+
+/**
+ * The live session id a harness user-questions request belongs to.
+ *
+ * The harness request carries the owner `Agent` (`agent?: Agent`), whose `id` IS the shared
+ * session id (`dsh-agent` `types.d.ts`: `readonly id: SessionId`). Read structurally so no harness
+ * type is imported; a request with no agent, or an agent without a string id, reports `undefined`
+ * rather than a guess.
+ * @param raw - the request's `agent` field.
+ * @returns the session id, or undefined when it is not plainly available.
+ */
+function requestSessionIdOf(raw: unknown): string | undefined {
+  if (raw === null || typeof raw !== "object") return undefined
+  /** The agent's own id field, kept only when it is a non-empty string. */
+  const id = (raw as { id?: unknown }).id
+  return typeof id === "string" && id.length > 0 ? id : undefined
+}
+
+/**
+ * Narrow a harness user-questions request onto {@link DshUserQuestionRequest}.
+ *
+ * Only what this bundle forwards is read: the questions, the owner session (from the harness
+ * request's `agent` scope) and the cancellation signal. The request's `wait` field is a Client-card
+ * hint the relay never needs, so it is dropped rather than smuggled through as `unknown`.
+ * @param raw - the harness request, read as `unknown`.
+ * @returns the narrowed request; a malformed field degrades to its empty form, never a throw.
+ */
+function userQuestionRequestOf(raw: unknown): DshUserQuestionRequest {
+  /** The request's own fields, read defensively: a service double may dispatch anything. */
+  const fields = raw !== null && typeof raw === "object"
+    ? raw as { questions?: unknown; agent?: unknown; signal?: unknown }
+    : undefined
+  /** The owner session id, when the request's agent scope names one. */
+  const sessionId = requestSessionIdOf(fields?.agent)
+  /** The cancellation lifetime, forwarded only when the field is signal-shaped. */
+  const signal = abortSignalOf(fields?.signal)
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...(sessionId === undefined ? {} : { sessionId }),
+    ...(signal === undefined ? {} : { signal }),
+  }
+}
+
 /** Build one adapter over a cordis ctx; every seam is probed lazily, so construction never throws. */
 export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number } = {}): DshAdapter {
   /** The row's configured `executeTool` timeout, or the module default. */
@@ -3729,6 +4072,22 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return typeof disposer === "function" ? disposer : () => { /* event bus owns teardown */ }
     } catch {
       return undefined
+    }
+  }
+
+  /**
+   * ONE warning line for a DSH Go seam that could not be used.
+   *
+   * A panel is a rendering extra, so every failure degrades silently to `false`/no-op at the call
+   * site; this line is the only trace a host gets, which is why it says WHICH panel and why.
+   * @param detail - the reason plus the panel id, already formatted by the caller.
+   * @returns nothing; the line is best-effort and never throws.
+   */
+  function warnDshGo(detail: string): void {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail)
+    } catch {
+      // A missing log seam must never take the row down.
     }
   }
 
@@ -4296,6 +4655,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const agentTeams = service("agentTeams")
       /** The host-plane goal service snapshot, read for the durable goal read. */
       const goalService = service("goals")
+      /** The harness user-questions service snapshot: the seam `askUserQuestion` drives. */
+      const questionService = service("userQuestions")
+      /** The DSH Go bridge snapshot; absent on every host that is not the DSH Go app. */
+      const dshGoService = service("dshGo")
       /** One live Agent, the sample every live-registry flag is probed against. */
       const sample = liveAgents()[0]
       /** That Agent's own scoped context, probed for the per-agent flags. */
@@ -4379,6 +4742,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // then degrade differently) ──────────────────────────────────────────────
         goals: typeof goalService?.get === "function",
         goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        // ── the drive surface (question relay + DSH Go native panel) ─────────
+        // Both are optional SERVICES rather than event seams, so each flag names exactly the
+        // probe its method performs; the methods re-probe per call, so a late bind is seen.
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null,
       }
     },
 
@@ -4733,6 +5101,122 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         }
       })
       return typeof off === "function" ? off : () => {}
+    },
+
+    /**
+     * Ask the harness's own question service and project its answer batch onto plain answers.
+     *
+     * See the interface declaration for the failure contract: a missing service is an ACTIONABLE
+     * throw (an empty array would read as "the human answered nothing"), and a rejection keeps the
+     * harness `code` so a relay can recognise `NO_PROVIDER` without importing the harness class.
+     * The `ask` call passes the caller's questions and signal through unchanged.
+     */
+    async askUserQuestion(request: DshAskUserQuestionInput): Promise<DshQuestionAnswer[]> {
+      /** The harness user-questions service, or undefined when this composition has none. */
+      const questionService = service("userQuestions")
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service")
+      }
+      /** The service's answer batch, projected below; a rejection is re-shaped, never swallowed. */
+      let raw: unknown
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...(request.signal === undefined ? {} : { signal: request.signal }),
+        })
+      } catch (error) {
+        /** The harness taxonomy code (`NO_PROVIDER`, `ASK_ABORTED`, …) when the original had one. */
+        const code = errorCodeOf(error)
+        /** The re-shaped failure: the required prefix plus the code, so a caller can branch. */
+        const failure = Object.assign(
+          new Error("ask_user_question failed: " + errorTextOf(error)),
+          code === undefined ? {} : { code },
+        )
+        throw failure
+      }
+      return questionAnswersOf(raw)
+    },
+
+    /**
+     * Register a waterfall answerer for the harness's user-question request.
+     *
+     * The listener's LAST argument is the waterfall continuation: cordis dispatches
+     * `(request, next)` and takes the listener's own promise as the answer. `handler` owns the
+     * decision (answer now, or await `next()` first), and its rejection is returned as-is so the
+     * harness sees a broken answerer instead of an invented answer.
+     */
+    onUserQuestionRequest(
+      handler: (request: DshUserQuestionRequest, next: () => Promise<DshQuestionAnswer[]>) => Promise<DshQuestionAnswer[]>,
+      label?: string,
+    ): () => void {
+      /** The registered listener's disposer, or undefined when the event bus is unavailable. */
+      const off = onEvent("user-questions/request", (...args: unknown[]) => {
+        /** The harness request, narrowed by {@link userQuestionRequestOf}. */
+        const request = userQuestionRequestOf(args[0])
+        /** The waterfall continuation: cordis passes it as the listener's LAST argument. */
+        const next = args[args.length - 1]
+        /** The next answerer's answer, awaited and mapped onto plain answers. */
+        const nextAnswers = async (): Promise<DshQuestionAnswer[]> => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()")
+          }
+          // `typeof` narrows to `Function`, which carries no call signature, so the cast restores the
+          // harness's own zero-argument continuation shape — it does not change the value.
+          return questionAnswersOf(await (next as () => unknown)())
+        }
+        return handler(request, nextAnswers)
+      })
+      if (off === undefined) {
+        // ONE line per degraded registration (a row registers once), naming WHO could not attach.
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`)
+        } catch {
+          // A missing log seam must never take the row down.
+        }
+        return noop
+      }
+      return off
+    },
+
+    /** Whether the DSH Go bridge is bound right now; see the interface member for the contract. */
+    dshGoPresent(): boolean {
+      /** The bridge service, or undefined when this host is not DSH Go. */
+      const bridge = service("dshGo")
+      return bridge !== undefined && bridge !== null
+    },
+
+    /**
+     * Publish one native panel through the DSH Go bridge.
+     *
+     * `spec` is forwarded by identity — the bridge's own contract — and a bridge that is absent or
+     * throws becomes ONE warning line plus `false`, never a failed row.
+     */
+    dshGoPanel(id: string, spec: DshGoPanelSpec): boolean {
+      /** The bridge service, or undefined when this host is not DSH Go. */
+      const bridge = service("dshGo")
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`)
+        return false
+      }
+      try {
+        bridge.panel(id, spec)
+        return true
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`)
+        return false
+      }
+    },
+
+    /** Ask the bridge to re-render one panel; a no-op (never a throw, never a log) without one. */
+    dshGoRefresh(id: string): void {
+      /** The bridge service, or undefined when this host is not DSH Go. */
+      const bridge = service("dshGo")
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function") return
+      try {
+        bridge.refresh(id)
+      } catch {
+        // A refresh is best-effort by contract: a polling caller must never see a rejected tick.
+      }
     },
 
     /**

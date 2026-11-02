@@ -42,6 +42,11 @@
 | `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | 由适配器调用 `next()`；listener 收到 `(payload, downstream)`，可返回**修改后的**决策（建议性通知正是这样注入的），或返回 `undefined` 表示放行；listener 抛错会被兜住；无事件总线时为空操作 |
 | 活跃 agent 自有的 scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | 段落被**逐字节**转发到**该 agent 自己的** scope（绑定接收者、disposer 透传），因此该贡献只送达某一个 preset 的 session，而不是本进程服务的所有 session；agent scope 无此接缝时在调用点抛错 |
 | `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | 单个活跃会话的已占用上下文，归一化为 `{usedTokens, windowTokens, ratio, provenance}`：`usedTokens = projectedTokens ?? pressureTokens`，`windowTokens` 取自模型自报的 `contextWindow`（**绝不**设默认值），仅当两者都是大于 0 的数字时才给出 `ratio`，provenance 为 `observed \| no-window \| unavailable`；同步、绝不抛错；接受活跃 Agent、Session 对象或 session id |
+| `ctx.userQuestions.ask` | `askUserQuestion({ questions, signal? })` | 输入本 bundle 自己的 `DshQuestionItem[]`，输出 `DshQuestionAnswer[]`（按 label，绝不按索引）；服务缺失、或 `ask` 不可调用时**抛错** `ask_user_question failed: no user-questions service`；服务拒绝时重新抛为 `ask_user_question failed: <message>`，并把 Harness 的 `code`（存在时）复制到新错误上 |
+| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | WATERFALL 应答器：`handler(request, next)`，`next()` 解析**下游**应答器的答案，瀑布未提供后续时 reject；handler 自己的 reject **原样**传播；无事件总线 → 空操作 disposer + **一行**日志点名 label |
+| `ctx.dshGo`（存在性） | `dshGoPresent()` | 此刻桥接服务是否已绑定 —— `capabilities().dshGo` 的按次调用形式，走同一个探针 |
+| `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` **逐字节**转发（它们是桥接层自己的契约）；仅当调用返回时为 `true`，桥接缺失或调用抛错时返回 `false` + **一行**警告 —— 绝不抛错 |
+| `ctx.dshGo.refresh` | `dshGoRefresh(id)` | 尽力而为的重渲染；桥接缺失时静默空操作，绝不抛错、绝不写日志（轮询调用方不得看到被 reject 的 tick） |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
 
 上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：当时采纳的
@@ -61,6 +66,10 @@
 `subagentsProviderRegister` —— 且绝不更名既有标志。两个 **AGENT 作用域**的行
 （`onAgentPreStep`、`agentPromptSection`）报告 `agentPreStep`（事件总线）与
 `agentPromptSection`（实时探针：某个活跃 agent 自己的 scope 带有 `systemPrompt.section`）。
+
+五个**驱动面**接缝各自报告**两个新标志** —— `askUser`（探测时能解析到 `userQuestions` 服务）与
+`dshGo`（桥接服务已绑定）—— 且绝不更名既有标志。`askUser` 刻意**不是**瀑布标志：
+`onUserQuestionRequest` 走事件总线（`events`），所以一个组合可以「接受别人问的问题」，却无法「自己发起提问」。
 
 ### 单个活跃会话的上下文压力（`contextPressure`）
 
@@ -90,6 +99,50 @@
 `target` 可以是活跃 Agent（使用其自身的 `session`）、Session 对象，或 session id（经 Harness
 `sessions` 存储解析，失败时回退到活跃 agent 注册表）。不做任何缓存：每次调用都重新读取投影，
 因此检查点决策绝不会基于过期数字。
+
+## 驱动面——提问与 DSH Go 面板
+
+五个接缝让「不是模型回合」的客户端也能驱动 Harness：发起一个结构化提问、通过瀑布回答一个提问、
+发布或刷新一个 DSH Go 原生面板。下面所有形状都是本 bundle **自己的纯数据** —— 没有任何 Harness
+类型越过适配器（AGENTS.md §6），因此消费方永远不需要 import 它们：
+
+```ts
+export interface DshQuestionOption { label: string; description?: string }
+export interface DshQuestionItem { id: string; question: string; header?: string; options?: DshQuestionOption[]; multiSelect?: boolean }
+export interface DshQuestionAnswer { id: string; selected: string[]; custom?: string }
+export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
+export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
+export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
+```
+
+- **`askUserQuestion(request): Promise<DshQuestionAnswer[]>`** 驱动 `userQuestions` 服务的 `ask`，
+  把 `questions` 与 `signal` 原样转发，并把返回批次投影为 `DshQuestionAnswer[]` —— 只保留带字符串
+  `id` 的条目、只保留 `selected` 中的字符串 label，且仅当 `custom` 是字符串时才写入它（缺失的
+  `custom` 被丢弃）。服务缺失 —— 或服务的 `ask` 不可调用 —— 会**抛错**
+  `ask_user_question failed: no user-questions service`：返回空数组会被读成「人什么都没答」。
+  服务 reject 时重新抛为 `ask_user_question failed: <message>`，当 Harness 的 `code`
+  （`NO_PROVIDER`、`ASK_ABORTED` 等）是非空字符串时复制到新错误上，于是调用方能区分「没有应答器」
+  与「调用形态不对」，且无需 import Harness 的类。
+- **`onUserQuestionRequest(handler, label?): () => void`** 在 `user-questions/request` 上注册一个
+  WATERFALL 应答器。`handler` 收到 `(request, next)`：返回答案即认领该请求，而 `await next()` 会解析
+  **下游**应答器的答案（映射为纯答案）。事件没有携带后续函数时，`next()` 以
+  `ask_user_question failed: the user-questions waterfall supplied no next()` reject。`handler` 的
+  reject 会**原样**传播 —— Harness 必须看到一个坏掉的应答器，而不是一个编造的答案。降级：`ctx.on`
+  缺失或抛错时，只写**一行**警告并点名 label（`onUserQuestionRequest(<label|anonymous>) degraded — …`），
+  返回的 disposer 是空操作，因此插件行仍能启动。事件总线不接受 label；label 只用于这条诊断。
+- **`dshGoPresent(): boolean`** 在 `dshGo` 服务已绑定时为 true，走与 `capabilities().dshGo`
+  **同一个**探针、且每次调用重新读取，因此「插件行 apply 之后才绑定」的桥接也能被看到。
+- **`dshGoPanel(id, spec): boolean`** 调用 `service.panel(id, spec)`，`view`/`data`/`actions`
+  **逐字节**转发 —— 它们是桥接层自己的契约，在这里重塑会把适配器钉死在某个桥接版本上。仅当调用
+  未抛错地返回时为 `true`；桥接缺失（或没有暴露 `panel`）与调用抛错都返回 `false` 并写**一行**警告，
+  两者都不会拖垮发布面板的插件行。
+- **`dshGoRefresh(id): void`** 在 `service.refresh(id)` 可调用时调用它，否则静默空操作。它绝不抛错、
+  绝不写日志：调用方是轮询路径，桥接缺失或刷新失败都不能变成每个 tick 一条诊断。
+
+**边界。** 接缝不是挂载。`dshGoPresent()` 为 true 只证明那一刻有服务被绑定；它不证明某个插件行已启动、
+不证明有 DSH Go 引擎接入、也不证明任何面板渲染过。同理，`askUserQuestion` 证明的是通往服务的调用路径，
+不是「有人、或任何界面，正在看这个提问」。这些接缝都不证明真实的挂载或启动；那需要一次真正**挂载**这些
+插件行的启动，属于另一种测量。
 
 ## 官方 Agent Teams 平面
 

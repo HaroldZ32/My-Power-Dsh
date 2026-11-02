@@ -45,6 +45,11 @@ instead of across every plugin.
 | `ctx.on("agent/pre-step")` | `onAgentPreStep(listener)` | the adapter owns `next()`; the listener receives `(payload, downstream)` and may return an AMENDED decision (that is how an advisory notice is injected) or `undefined` to pass through; a throwing listener is contained; no event bus → no-op |
 | a live agent's own scoped `ctx.systemPrompt.section` | `agentPromptSection(agent, section)` | the section is forwarded VERBATIM to THAT agent's scope (receiver-bound, disposer passed back), so a contribution reaches one preset's sessions instead of every session this process serves; THROW at the call when the agent scope exposes no section |
 | `ctx.sessionProjections.stateOf` / `.snapshot` | `contextPressure(target)` | ONE live session's occupied context, normalized to `{usedTokens, windowTokens, ratio, provenance}`: `usedTokens = projectedTokens ?? pressureTokens`, `windowTokens` is the model-reported `contextWindow` (NEVER defaulted), `ratio` only when both numbers are greater than 0, provenance `observed \| no-window \| unavailable`; synchronous and never throwing; accepts a live Agent, a Session object or a session id |
+| `ctx.userQuestions.ask` | `askUserQuestion({ questions, signal? })` | plain `DshQuestionItem[]` in, `DshQuestionAnswer[]` out (labels, never indices); a missing service, or one whose `ask` is not callable, THROWS `ask_user_question failed: no user-questions service`; a service rejection is rethrown as `ask_user_question failed: <message>` with the harness `code` copied onto the error when present |
+| `ctx.on("user-questions/request")` | `onUserQuestionRequest(handler, label?)` | a WATERFALL answerer: `handler(request, next)` where `next()` resolves the DOWNSTREAM answerer's answers, or rejects when the waterfall supplied no continuation; the handler's own rejection propagates unchanged; no event bus → no-op disposer + ONE log line naming the label |
+| `ctx.dshGo` (presence) | `dshGoPresent()` | whether the bridge service is bound right now — the per-call form of `capabilities().dshGo`, through the same probe |
+| `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` forwarded VERBATIM (they are the bridge's own contract); `true` only when the call returned, `false` + ONE warning line when the bridge is absent or the call throws — never a throw |
+| `ctx.dshGo.refresh` | `dshGoRefresh(id)` | best-effort re-render; a silent no-op without the bridge, and never a throw, never a log (a polling caller must not see a rejected tick) |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
 
 The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
@@ -66,6 +71,11 @@ The team-plane rows below them report their OWN four flags —
 existing one. The two AGENT-scoped rows (`onAgentPreStep`, `agentPromptSection`) report
 `agentPreStep` (the event bus) and `agentPromptSection` (a LIVE probe: a live agent whose own
 scope carries `systemPrompt.section`).
+
+The five DRIVE-SURFACE seams report their OWN two flags — `askUser` (the `userQuestions` service
+resolves at probe time) and `dshGo` (the bridge service is bound) — and never rename an existing one.
+`askUser` is deliberately NOT the waterfall flag: `onUserQuestionRequest` rides the event bus
+(`events`), so a composition can accept questions without being able to ask one.
 
 ### Context pressure for one live session (`contextPressure`)
 
@@ -96,6 +106,58 @@ with these rules, none of which may be relaxed:
 `target` may be a live Agent (its own `session` is used), a Session object, or a session id
 (resolved through the harness `sessions` store, falling back to the live-agent registry). Nothing is
 cached: every call re-reads the projection, so a checkpoint decision never runs on a stale figure.
+
+## The drive surface — questions and the DSH Go panel
+
+Five seams let a client that is not a model turn drive the harness: ask a structured question, answer
+one through the waterfall, and publish or refresh a DSH Go native panel. Every shape below is this
+bundle's OWN plain data — no harness type crosses the adapter (AGENTS.md §6), so a consumer never
+imports one:
+
+```ts
+export interface DshQuestionOption { label: string; description?: string }
+export interface DshQuestionItem { id: string; question: string; header?: string; options?: DshQuestionOption[]; multiSelect?: boolean }
+export interface DshQuestionAnswer { id: string; selected: string[]; custom?: string }
+export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
+export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
+export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
+```
+
+- **`askUserQuestion(request): Promise<DshQuestionAnswer[]>`** drives the `userQuestions` service's
+  `ask`, forwarding `questions` and `signal` unchanged, and projects the batch onto
+  `DshQuestionAnswer[]` — only entries carrying a string `id`, only string labels in `selected`, and
+  `custom` written only when it is a string (an absent `custom` is dropped). An absent service — or
+  one whose `ask` is not callable — THROWS `ask_user_question failed: no user-questions service`: an
+  empty answer array would read as "the human answered nothing". A service rejection is rethrown as
+  `ask_user_question failed: <message>` with the harness `code` (`NO_PROVIDER`, `ASK_ABORTED`, …)
+  copied onto the new error when it was a non-empty string, so a caller can tell a missing answerer
+  from a malformed call without importing the harness class.
+- **`onUserQuestionRequest(handler, label?): () => void`** registers a WATERFALL answerer on
+  `user-questions/request`. `handler` receives `(request, next)`: returning an answer claims the
+  request, while `await next()` resolves the DOWNSTREAM answerer's answers, mapped to plain answers.
+  `next()` rejects with `ask_user_question failed: the user-questions waterfall supplied no next()`
+  when the event carried no continuation. A rejection from `handler` propagates UNCHANGED — the
+  harness must see a broken answerer, never an invented answer. Degradation: when `ctx.on` is
+  missing or throws, ONE warning line names the label
+  (`onUserQuestionRequest(<label|anonymous>) degraded — …`) and the returned disposer is a no-op, so
+  the row still boots. The bus takes no label; it exists only for that diagnostic.
+- **`dshGoPresent(): boolean`** is true when the `dshGo` service is bound, read through the SAME probe
+  as `capabilities().dshGo` and re-read per call, so a bridge that binds after the row applies is
+  seen.
+- **`dshGoPanel(id, spec): boolean`** calls `service.panel(id, spec)` with `view`/`data`/`actions`
+  forwarded VERBATIM — they are the bridge's own contract, and re-shaping them here would pin this
+  adapter to one bridge version. `true` only when the call returned without throwing; an absent
+  bridge (or one exposing no `panel`) and a throwing call each answer `false` with ONE warning line,
+  and neither takes the publishing row down.
+- **`dshGoRefresh(id): void`** calls `service.refresh(id)` when it is callable and is otherwise a
+  silent no-op. It never throws and never logs: it is called from a polling path, so a missing bridge
+  or a failed refresh must not become a per-tick diagnostic.
+
+**Bound.** A seam is not a mount. `dshGoPresent()` true proves a service was bound at that instant; it
+does not prove a row booted, that a DSH Go engine is attached, or that any panel rendered. Likewise
+`askUserQuestion` proves the call path to a service, not that a human — or any surface — is in front of
+the question. No live mount or boot is proved by these seams; that takes a boot which MOUNTS the rows,
+a different measurement from this one.
 
 ## The official Agent Teams plane
 
