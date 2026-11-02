@@ -33,7 +33,7 @@ own:
 
 | Member | Input | Success |
 |---|---|---|
-| `approve` | `{ sessionId }` | `{ ok: true, plan, team, created, unresolved }` |
+| `approve` | `{ sessionId }` | `{ ok: true, plan, team, created }` — `created.unresolved` when a blocker named no task |
 | `dispatch` | `{ sessionId, limit?, dryRun? }` | `{ ok: true, pairs, skipped }` |
 
 The bodies are the tool handlers' own bodies, moved into an exec-free module: same validation order,

@@ -29,7 +29,7 @@ process.cwd()`）。HTTP 路由把它放在 `?sessionId=` 查询参数里，**�
 
 | 成员 | 输入 | 成功 |
 |---|---|---|
-| `approve` | `{ sessionId }` | `{ ok: true, plan, team, created, unresolved }` |
+| `approve` | `{ sessionId }` | `{ ok: true, plan, team, created }` —— 当有阻塞项没有指名任务时，`created.unresolved` 会带上它 |
 | `dispatch` | `{ sessionId, limit?, dryRun? }` | `{ ok: true, pairs, skipped }` |
 
 函数体就是工具处理函数原本的函数体，整体搬进了免 exec 的模块：同样的校验顺序、同样的存储写入、同样的
