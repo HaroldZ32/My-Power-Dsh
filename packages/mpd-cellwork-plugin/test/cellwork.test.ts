@@ -473,10 +473,12 @@ test("a composition without the tools.guard seam installs nothing and says so", 
   // The tools and the command are still registered: the mode still records and still refuses on its
   // own tools; only the dispatch fence is absent.
   expect(harness.commands).toHaveLength(1)
+  // FIFTEEN names since the programmatic entry landed (contract §4.5): the fourteen the mode always
+  // shipped plus `cellwork_open`. Every OLD name is unchanged, which is the part the contract pins.
   expect(harness.tools.map((tool) => tool.name).sort()).toEqual([
     "cellwork_activate", "cellwork_context", "cellwork_dispatch", "cellwork_handoff", "cellwork_inbox",
-    "cellwork_recon", "cellwork_requirements", "cellwork_send", "cellwork_split", "cellwork_start",
-    "cellwork_status", "cellwork_stop", "cellwork_subteam", "cellwork_supervise",
+    "cellwork_open", "cellwork_recon", "cellwork_requirements", "cellwork_send", "cellwork_split",
+    "cellwork_start", "cellwork_status", "cellwork_stop", "cellwork_subteam", "cellwork_supervise",
   ])
 })
 
@@ -784,4 +786,70 @@ test("CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guar
   expect(directive).toContain("cell-sub")
   expect(directive).toContain("cell-parent")
   expect(directive).toContain("team-1")
+})
+
+// ── §4.5: the PROGRAMMATIC entry (`cellwork_open`) ─────────────────────────
+
+test("cellwork_open creates ONE cell and returns the directive instead of submitting it", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  apply(harness.ctx, {})
+  // No objective: refused before anything is written.
+  /** The empty objective's refusal. */
+  const empty = await runTool(harness, "cellwork_open", {})
+  expect(empty.ok).toBe(false)
+  expect(String(empty.error)).toContain("objective")
+  /** The opening call. */
+  const opened = await runTool(harness, "cellwork_open", { objective: "  build the importer  " })
+  expect(opened.ok).toBe(true)
+  expect(String(opened.phase)).toBe("requirements")
+  // THE DIRECTIVE COMES BACK AS TEXT: a tool has no turn surface, so nothing was submitted.
+  expect(String(opened.directive)).toContain("cellwork")
+  expect(harness.submitted).toHaveLength(0)
+  // THE RECORD EXISTS and carries the trimmed objective and this caller as captain.
+  /** The active cell after the open. */
+  const active = readActiveCell(harness.workspace)
+  if (!active.ok || active.cell === null) throw new Error("the tool reported success but wrote no active cell")
+  expect(active.cell.state.cellId).toBe(String(opened.cellId))
+  expect(active.cell.state.objective).toBe("build the importer")
+  expect(active.cell.state.captainSessionId).toBe("session-captain")
+  // A SECOND call refuses while that cell is active, naming it.
+  /** The second open attempt. */
+  const second = await runTool(harness, "cellwork_open", { objective: "another front" })
+  expect(second.ok).toBe(false)
+  expect(String(second.error)).toContain(String(opened.cellId))
+})
+
+test("cellwork_open refuses a DELEGATED caller, and accepts a mandate only when its escalation artifact exists", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  apply(harness.ctx, {})
+  // A member session (no cell is active yet, so this is the tool's own captain check, not the guard's).
+  /** The delegated child handle the harness recorded. */
+  const child = { id: "session-child", session: { id: "session-child", header: { cwd: harness.workspace, parentSession: "session-captain", origin: "subagent", delegationDepth: 1 } } }
+  /** The delegated caller's refusal. */
+  const refused = await runTool(harness, "cellwork_open", { objective: "escape the fence" }, child)
+  expect(refused.ok).toBe(false)
+  expect(String(refused.error)).toContain("CAPTAIN-ONLY")
+  // AN UNKNOWN MANDATE is refused and names the artifact it looked for; nothing is written.
+  /** The unknown mandate's refusal. */
+  const unknown = await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: "run-missing" })
+  expect(unknown.ok).toBe(false)
+  expect(String(unknown.error)).toContain("escalation.json")
+  // NOTHING WAS WRITTEN: after the two refusals the workspace still has no active cell.
+  /** The workspace scan after the refusals. */
+  const scan = readActiveCell(harness.workspace)
+  expect(scan.ok ? scan.cell : null).toBeNull()
+  // A SEPARATOR is not a run id: the mandate is one path segment, never a path.
+  /** The traversal attempt. */
+  const traversal = await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: "../elsewhere" })
+  expect(traversal.ok).toBe(false)
+  expect(String(traversal.error)).toContain("ONE path segment")
+  // WITH the artifact on disk the same call opens the cell.
+  mkdirSync(join(harness.workspace, ".mpd", "autoproject", "run-1"), { recursive: true })
+  writeFileSync(join(harness.workspace, ".mpd", "autoproject", "run-1", "escalation.json"), JSON.stringify({ reason: "over the composite threshold" }))
+  /** The mandated open. */
+  const mandated = await runTool(harness, "cellwork_open", { objective: "escalated work", mandate: "run-1" })
+  expect(mandated.ok).toBe(true)
+  expect(String(mandated.cellId)).not.toBe("")
 })

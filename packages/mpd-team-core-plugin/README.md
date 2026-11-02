@@ -453,3 +453,37 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   composed without `mpd-team-core` keeps only the spawn preamble's prose.
 - **Without a lazy spawn the spawn turn still costs one model turn.** The guard makes it a
   one-directive, zero-tool turn, not a free one; lazy spawn is not implemented.
+
+
+## Owner-only dispatch, fence, handoff and occupancy (wave W1-A)
+
+The five tool NAMES are unchanged; their ACTIONS and record fields grew. This section is the contract
+for those additions.
+
+**Dispatch is owner-only by DEFAULT.** `agent_teams_dispatch` pairs a READY task with its DECLARED
+owner. A busy, absent, FENCED or failed owner is REPORTED and the row stays pending — never
+substituted. Two escapes exist and both are Lead-gated: `mode: "roster"` restores the positional
+fallback, and `reassign: [{task_id, owner}]` claims the named rows for that member on the board,
+journals `task-reassigned`, then delivers. A BLOCKED row is not reassignable. **Consequence worth
+knowing:** `release` CLEARS the owner, so "release then dispatch" goes through `reassign` (or
+`mode: "roster"`) — a combination semantic of the two verbs, not a defect.
+
+**Seat verbs.** `agent_teams_task {action:"context"}` answers the caller's own occupancy and seat state,
+and never guesses a window: `provenance` reports `observed`, `no-window` or `unavailable`.
+`{action:"handoff"}` validates the seven-section document, writes it under
+`.mpd/team/handoff/<teamId>/<member>-<n>.md`, flips the member to `mode:"checkpoint"` and journals
+`handoff-written`. `agent_teams_control {action:"fence"|"unfence", member}` closes or reopens ONE seat
+(Lead only); a fenced seat is never messaged, and its rows are repaired with `reassign`.
+
+**Service surface.** `mpdTeams` gains `memberContext` (one seat's occupancy), `depthBudget` (a bounded
+parent-chain walk with cycle detection; the limit comes from `cellwork.depthMax`, default 3),
+`archivedPlans` and `cancelTasks`. `mpdTeamActions` carries the exec-free actions `fence`, `unfence`,
+`handoff` and `dispatch`, so a panel button, a service caller and the tool drive the same sequence.
+
+**Workmate binding fields.** A staged member records `workmate`, `workmateMode` (which branch bound it)
+and `workmateReason` (why); `fenced: false` DELETES the fence keys, so there is exactly one on-disk
+spelling of "not fenced".
+
+**The tool-surface budget is a BOUND, not a promise:** five action-based tools plus one command stay
+under 6,400 characters (`test/tool-surface.test.ts`; measured 6,399 as wave A6b closed), and each tool
+DESCRIPTION stays under 700.

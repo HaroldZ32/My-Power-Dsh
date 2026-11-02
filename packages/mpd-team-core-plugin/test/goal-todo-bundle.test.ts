@@ -176,6 +176,11 @@ function harness(options: HarnessOptions = {}): Harness {
      * @returns a successful result, a marked error result, or (in a `throw` arm) nothing.
      */
     executeTool: async (input: { name: string; arguments?: unknown; agent?: unknown; signal?: AbortSignal }): Promise<{ ok: boolean; isError: boolean; value?: unknown; error?: string }> => {
+      // THE APPROVAL ALSO BINDS WORKMATES (W3-C): `approveTeam` reaches the library through this same
+      // seam, and this fixture models a composition WITHOUT that row. The workmate tools answer as
+      // unavailable (so every seat stays plain, exactly as before the wave) and are NOT recorded —
+      // `toolCalls` is the goal/todo bundle's own call list, which is what every arm below counts.
+      if (input.name.startsWith("mpd_workmate_")) return { ok: false, isError: true, error: "the workmate row is not mounted in this composition" }
       toolCalls.push({ name: input.name, arguments: (input.arguments ?? {}) as Record<string, unknown>, agent: input.agent, ...(input.signal === undefined ? {} : { signal: input.signal }) })
       if (options.todoThrows === true) throw new Error("todo_write exploded")
       if (options.todoErrors === true) return { ok: false, isError: true, error: "the tool refused the write" }

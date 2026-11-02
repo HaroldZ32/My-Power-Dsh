@@ -100,12 +100,12 @@ function arms(): Arm[] {
   /** The accumulated arms, in the plan's order. */
   const out: Arm[] = []
   /** (a) a cross-team pairing is refused, with BOTH ids in the sentence. */
-  const cross = planDispatch({ tasks: [task("T1", { teamId: "team-a" })], members: [member("m-foreign", "qa-reader-writer", { teamId: "team-b" })], ledger: {} })
+  const cross = planDispatch({ tasks: [task("T1", { teamId: "team-a" })], members: [member("m-foreign", "qa-reader-writer", { teamId: "team-b" })], ledger: {}, mode: "roster" })
   /** The refusal sentence, which must name the task team and the member team. */
   const crossReason = cross.skipped[0]?.reason ?? ""
   out.push({ id: "a", claim: "cross-team pairing REFUSED, naming both team ids", ok: cross.pairs.length === 0 && crossReason.includes("team-a") && crossReason.includes("team-b") && crossReason.includes("CROSS-TEAM"), observed: crossReason })
   /** (b) a write task never pairs with a read-only specialist, and the reason is reported. */
-  const readOnly = planDispatch({ tasks: [task("T5", { teamId: "team-a", writeScopes: ["packages/x"] })], members: [member("m-ro", "Plan Reviewer", { teamId: "team-a", readonly: isReadonlyMemberName("Plan Reviewer", READONLY_KEYS) })], ledger: {} })
+  const readOnly = planDispatch({ tasks: [task("T5", { teamId: "team-a", writeScopes: ["packages/x"] })], members: [member("m-ro", "Plan Reviewer", { teamId: "team-a", readonly: isReadonlyMemberName("Plan Reviewer", READONLY_KEYS) })], ledger: {}, mode: "roster" })
   /** The refusal sentence for the read-only arm. */
   const readOnlyReason = readOnly.skipped[0]?.reason ?? ""
   out.push({ id: "b", claim: "write task × read-only member REFUSED, reason reported", ok: readOnly.pairs.length === 0 && readOnlyReason.includes("WRITE-TASK-ON-READ-ONLY") && readOnlyReason.includes("Plan Reviewer"), observed: readOnlyReason })
@@ -137,7 +137,7 @@ function arms(): Arm[] {
   const legacyKeyIgnored = isLiveTeam(archiveGhost, { approved: new Set<string>(), unapproved: new Set<string>(["lead-1\u0000wave"]) })
   out.push({ id: "c", claim: "terminal/archived team SKIPPED, live team resolves, none when only a ghost, and the archive arm keys by the record's OWN plan id", ok: resolved.record?.teamId === "team-live" && none.record === undefined && isLiveTeamPhase("active") && !isLiveTeamPhase("archived") && archiveReaped === false && archiveLiveKept === true && legacyKeyIgnored === true, observed: `resolved=${resolved.record?.teamId ?? "(none)"} onlyGhost=${none.record?.teamId ?? "(none)"} archiveReaped=${archiveReaped} archiveLiveKept=${archiveLiveKept} legacyKeyIgnored=${legacyKeyIgnored}` })
   /** (d) THE NEGATIVE CONTROL: a valid same-team, write-capable pairing still succeeds. */
-  const valid = planDispatch({ tasks: [task("T2", { teamId: "team-a", writeScopes: ["packages/x"] })], members: [member("m-w", "Senior Engineer", { teamId: "team-a", readonly: isReadonlyMemberName("Senior Engineer", READONLY_KEYS) })], ledger: {} })
+  const valid = planDispatch({ tasks: [task("T2", { teamId: "team-a", writeScopes: ["packages/x"] })], members: [member("m-w", "Senior Engineer", { teamId: "team-a", readonly: isReadonlyMemberName("Senior Engineer", READONLY_KEYS) })], ledger: {}, mode: "roster" })
   out.push({ id: "d", claim: "NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS", ok: valid.pairs.length === 1 && valid.pairs[0]?.memberId === "m-w" && valid.skipped.length === 0, observed: JSON.stringify(valid.pairs.map((pair) => [pair.taskId, pair.memberId])) })
   return out
 }
@@ -187,9 +187,9 @@ function realLaneArms(): { arms: Arm[]; workspace: string } {
   /** The roster in the dispatch engine's shape, exactly as the tool builds it (readonly from the service rows). */
   const members = opened.members.map((m) => ({ id: m.executorRef ?? m.id, name: m.name, status: "inactive", teamId: opened.teamId, readonly: isReadonlyMemberName(m.name, READONLY_KEYS) || (m.role !== undefined && isReadonlyMemberName(m.role, READONLY_KEYS)) }))
   /** A pass with ONLY the read-only member idle: the write task must be refused. */
-  const refused = planDispatch({ tasks, members: members.filter((m) => m.readonly === true), ledger: {} })
+  const refused = planDispatch({ tasks, members: members.filter((m) => m.readonly === true), ledger: {}, mode: "roster" })
   /** A pass with ONLY the write-capable member idle: the same task must pair (the negative control). */
-  const paired = planDispatch({ tasks, members: members.filter((m) => m.readonly !== true), ledger: {} })
+  const paired = planDispatch({ tasks, members: members.filter((m) => m.readonly !== true), ledger: {}, mode: "roster" })
   // (c) the phantom: a terminal record bound for a lead.
   writeTeam(workspace, record({ teamId: "team-phantom", name: "phantom", leadSessionId: "lead-ghost", phase: "archived" as TeamPhase }))
   bindActiveTeam(workspace, "lead-ghost", "team-phantom")

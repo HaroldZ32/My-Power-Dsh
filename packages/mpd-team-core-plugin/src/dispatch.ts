@@ -31,6 +31,8 @@
 // rows mpd-roles-plugin's OWN service publishes (`mpdRoles.list()`, whose `readonly` flag is the same
 // flag that decides whether a spawn passes `READONLY_DENY`), and the tool reads that service per call.
 
+import type { TeamMemberMode } from "./team-store"
+
 /** One shared task, as the board reports it. */
 export interface DispatchTask {
   /** Board task id; the ledger key pairs it with the team id ({@link ledgerKey}). */
@@ -137,6 +139,16 @@ export function isReadonlyMemberName(name: string, keys: ReadonlySet<string>): b
   return withoutSuffix !== key && withoutSuffix !== "" && keys.has(withoutSuffix)
 }
 
+/**
+ * The pairing rule one pass runs under.
+ *
+ * `owner-only` is the DEFAULT and the contract's rule: a row is paired with its DECLARED owner or with
+ * nobody, and a busy / absent / fenced / failed owner is reported instead of substituted. `roster` keeps
+ * the retired positional fallback reachable for the callers that explicitly ask for it — it is never
+ * implicit, because a silent substitution is what put a review task on a writer (measured 2026-10-07).
+ */
+export type DispatchMode = "owner-only" | "roster"
+
 /** One team member, as the roster reports it. */
 export interface DispatchMember {
   /** The member's session id, which is what a pairing actually records. */
@@ -145,6 +157,17 @@ export interface DispatchMember {
   name: string
   /** Roster status; only `inactive` makes a member a dispatch candidate. */
   status: string
+  /**
+   * The member's seat mode, when the record carries one (`member` | `checkpoint`).
+   *
+   * A `checkpoint` seat is the handoff window and is treated like a fence: it must not be messaged.
+   * Typed by the STORE's own union (not `string`) so a new seat mode cannot reach this rule untyped.
+   */
+  mode?: TeamMemberMode
+  /** True when the compaction barrier gave up on this member; a fenced seat is NEVER messaged. */
+  fenced?: boolean
+  /** Why the barrier fenced the member, carried into the report so the repair is actionable. */
+  fencedReason?: string
   /**
    * The team this member belongs to, when the caller knows it.
    *
@@ -189,6 +212,78 @@ export function pairingRefusal(task: DispatchTask, member: DispatchMember): stri
     return `refused a WRITE-TASK-ON-READ-ONLY pairing: task ${task.id} has write scopes (${task.writeScopes.join(", ")}) while member ${JSON.stringify(member.name)} is a read-only specialist`
   }
   return undefined
+}
+
+/**
+ * Why one member's seat must NOT be messaged, or `undefined` when it is a normal open seat.
+ *
+ * TWO spellings of the same closed state are read, because the team record writes both: the explicit
+ * `fenced` marker (the barrier gave up) and `mode: checkpoint` (the member wrote its handoff and must
+ * end its turn). MEASURED (D4/D5, carried from cellwork): waking a seat in either state burned the
+ * retry budget on a claim its own guard refuses — four deliveries of one ticket, then three handoffs in
+ * seven minutes — so the pass REPORTS the owner and leaves the row pending for a reassignment.
+ * @param member - the roster row under consideration.
+ * @returns the reason sentence, or `undefined` for an open seat.
+ */
+export function memberFenceReason(member: DispatchMember): string | undefined {
+  if (member.fenced === true) {
+    return "the compaction barrier gave up and fenced it" + (typeof member.fencedReason === "string" && member.fencedReason !== "" ? " (" + member.fencedReason + ")" : "")
+  }
+  if (member.mode === "checkpoint") return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it"
+  return undefined
+}
+
+/**
+ * One task's decision under the OWNER-ONLY rule: the member to pair, or the reason the row stays pending.
+ *
+ * THE RULE IS THE CONTRACT (D4): a row is paired with its declared owner or with nobody. Every way the
+ * owner can be unavailable is a DIFFERENT sentence, because they need different repairs — an absent owner
+ * is a roster problem, a busy one is a sequencing problem, and a fenced one is repaired by reassigning the
+ * row. The retired engine substituted the next free member in all four cases, which is exactly what
+ * handed a review task to a writer.
+ * @param task - the ready task under consideration.
+ * @param members - the team's whole roster, as the pass sees it.
+ * @param available - the members still unpaired in this pass.
+ * @param busy - the member ids already booked by the ledger.
+ * @param paired - the name keys already paired in this pass.
+ * @returns the owner to pair, or the sentence saying why the row was left pending.
+ */
+function ownerOnlyDecision(
+  task: DispatchTask,
+  members: readonly DispatchMember[],
+  available: readonly DispatchMember[],
+  busy: ReadonlySet<string>,
+  paired: ReadonlySet<string>,
+): { member?: DispatchMember; reason?: string } {
+  /** The declared owner, normalised; the empty string means the board credited none. */
+  const ownerKey = dispatchNameKey(task.ownerName ?? "")
+  if (ownerKey === "") {
+    return { reason: "the row declares no owner — owner-only dispatch never substitutes a member (declare `owner` on the row, or run the pass with mode:\"roster\")" }
+  }
+  /** The roster row the declared owner names. */
+  const owner = members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey)
+  if (owner === undefined) {
+    return { reason: "declared owner " + JSON.stringify(String(task.ownerName ?? "")) + " is not on this team's roster — the row stays pending" }
+  }
+  /** Why this owner's seat must not be messaged, when it must not. */
+  const fence = memberFenceReason(owner)
+  if (fence !== undefined) {
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " is FENCED (" + fence + ") — a fenced member is never messaged; reassign the row: agent_teams_dispatch {reassign:[{task_id:" + JSON.stringify(task.id) + ", owner:\"<another member>\"}]}" }
+  }
+  if (owner.status === "failed") return { reason: "declared owner " + JSON.stringify(owner.name) + " FAILED to start" }
+  if (owner.status === "provisioning") return { reason: "declared owner " + JSON.stringify(owner.name) + " is still being raised" }
+  // THE C7 GUARDS APPLY TO THE OWNER TOO: a read-only owner on a write task (or a cross-team row) is a
+  // refusal, not a reason to hand the work to somebody the board never named.
+  const refusal = pairingRefusal(task, owner)
+  if (refusal !== undefined) return { reason: refusal }
+  // Availability is checked LAST so the specific sentences above win over the generic one: a fenced
+  // owner is also "not idle", and the fence is the fact the caller must see.
+  if (!available.includes(owner)) {
+    if (paired.has(ownerKey)) return { reason: "declared owner " + JSON.stringify(owner.name) + " was already paired in this pass (one task per member)" }
+    if (busy.has(owner.id)) return { reason: "declared owner " + JSON.stringify(owner.name) + " is BUSY on another task — reported, never substituted" }
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " is not idle (status " + JSON.stringify(owner.status) + ")" }
+  }
+  return { member: owner }
 }
 
 /** One recorded pairing: which member is working which task, since when. */
@@ -300,11 +395,15 @@ export function dispatchMessage(task: DispatchTask, description: string): string
 /**
  * Decide one dispatch pass.
  *
- * The pairing rule, in order: a task's DECLARED OWNER when that member is idle and unbooked;
- * otherwise the first free member in roster order, with the fallback and its reason carried on the
- * pairing's `note`. One member is consumed per pairing, so a pass never double-books.
+ * TWO MODES, one default. Under `owner-only` (the default, and the contract's rule) a task is paired with
+ * its DECLARED OWNER when that member is idle, unbooked, unfenced and eligible; every other outcome is a
+ * REPORTED skip and the row stays pending for a human or a reassignment. Under `roster` — reachable ONLY
+ * by asking for it explicitly — the retired rule survives: the owner first, otherwise the first free
+ * member in roster order, with the substitution carried on the pairing's `note`. One member is consumed
+ * per pairing, so a pass never double-books; a fenced or checkpointed seat is NEVER messaged in either
+ * mode.
  *
- * @param input - the board, the roster, the ledger and the hold.
+ * @param input - the board, the roster, the ledger, the hold, the cap and the pairing mode.
  * @returns the pairs to dispatch and, for every other considered task, why it was skipped.
  */
 export function planDispatch(input: {
@@ -316,10 +415,14 @@ export function planDispatch(input: {
   hold?: string
   /** Cap on pairs per pass; `0` means no cap. */
   limit?: number
+  /** The pairing rule; absent means `owner-only`. */
+  mode?: DispatchMode
 }): DispatchPlan {
   if (input.hold !== undefined && input.hold !== "") {
     return { pairs: [], skipped: [], halted: input.hold }
   }
+  /** The pairing rule this pass runs under: the explicit mode, or the owner-only default. */
+  const mode: DispatchMode = input.mode ?? "owner-only"
   /** Member ids already holding a task, so one pass never double-books a member (this team's rows only). */
   const busy = new Set(
     Object.values(input.ledger)
@@ -328,18 +431,31 @@ export function planDispatch(input: {
   )
   /** Task ids the ledger already records, so a second pass cannot re-dispatch a task (this team's view). */
   const claimed = new Set(Object.values(input.ledger).map((entry) => entry.taskId))
-  /** Roster members that are idle and unbooked — the pool this pass draws from. */
-  const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id))
+  // A FENCED SEAT IS NEVER A CANDIDATE, in either mode: the record says the barrier gave up or the member
+  // is inside its handoff window, and a message to it could only be refused by that member's own guard.
+  /** Roster members that are idle, unbooked and unmessaged — the pool this pass draws from. */
+  const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id) && memberFenceReason(member) === undefined)
   /** The decision being built; every considered task lands in one of its two lists. */
   const plan: DispatchPlan = { pairs: [], skipped: [] }
   /** The still-unpaired candidates, shrinking as the pass consumes them. */
   let available = [...candidates]
+  /** The name keys this pass already paired, so one member takes at most one task per pass. */
+  const paired = new Set<string>()
   /** Effective per-pass pair limit; absent or non-positive means unlimited. */
   const cap = input.limit === undefined || input.limit <= 0 ? Number.POSITIVE_INFINITY : input.limit
 
   for (const task of input.tasks) {
     if (plan.pairs.length >= cap) {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "the pass reached its limit" })
+      continue
+    }
+    // A CANCELLED ROW NEVER DISPATCHES (wave W2 gap 2). It is TERMINAL by the caller's own decision, so it
+    // must leave the ready set with its own reason — without this branch a cancelled row that is still
+    // `pending`-shaped would be reported as "not ready", which reads like a blocking problem rather than
+    // what it is. The reason is the ONE word the contract names, so a reader (and a skip-filter) can match
+    // it exactly.
+    if (task.status === "cancelled") {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "cancelled" })
       continue
     }
     if (task.status === "completed") {
@@ -355,6 +471,22 @@ export function planDispatch(input: {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `not ready${Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " (blocked by " + task.blockedBy.join(", ") + ")" : ""}` })
       continue
     }
+    // ── THE DEFAULT RULE: OWNER-ONLY (D4) ──
+    if (mode === "owner-only") {
+      /** This task's owner-only decision: the member to pair, or why the row stays pending. */
+      const decision = ownerOnlyDecision(task, input.members, available, busy, paired)
+      if (decision.member === undefined) {
+        plan.skipped.push({ taskId: task.id, subject: task.subject, reason: decision.reason ?? "no eligible declared owner" })
+        continue
+      }
+      /** The declared owner this task is paired with. */
+      const owner = decision.member
+      available = available.filter((candidate) => candidate !== owner)
+      paired.add(dispatchNameKey(owner.name))
+      plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: owner.id, memberName: owner.name })
+      continue
+    }
+    // ── THE EXPLICIT FALLBACK: ROSTER ORDER (mode:"roster") ──
     if (available.length === 0) {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" })
       continue
@@ -372,16 +504,17 @@ export function planDispatch(input: {
     const ownerKey = dispatchNameKey(task.ownerName ?? "")
     /** Where the declared owner sits in the ELIGIBLE pool, or -1 when it is neither free nor eligible. */
     const ownerIndex = ownerKey === "" ? -1 : eligible.findIndex((candidate) => dispatchNameKey(candidate.name) === ownerKey)
-    // OWNER-FIRST, POSITIONAL ONLY AS A FALLBACK (captain ruling, 2026-10-07). A declared owner is
-    // PREFERRED: the board's `owner` is the captain's own dispatch decision, and re-deciding it here
-    // is what put a review task on a writer. The fallback to roster order is kept because a busy,
-    // absent or GUARD-REFUSED owner must never stall a ready task — but it is REPORTED on the pairing,
-    // so a wrong pairing can never read as a right one.
+    // OWNER-FIRST, POSITIONAL AS THE EXPLICIT FALLBACK (captain ruling, 2026-10-07; demoted to
+    // `mode:"roster"` by D4). A declared owner is PREFERRED: the board's `owner` is the captain's own
+    // dispatch decision, and re-deciding it is what put a review task on a writer. The positional rule
+    // survives only here, and its reason is REPORTED on the pairing, so a wrong pairing never reads as
+    // a right one.
     /** The position this task takes in the eligible pool: the owner's when it is free and eligible, else the first. */
     const memberIndex = ownerIndex >= 0 ? ownerIndex : 0
     /** The member this task is paired with. */
     const member = eligible[memberIndex]
     available = available.filter((candidate) => candidate !== member)
+    paired.add(dispatchNameKey(member.name))
     /** The board's roster entry for the declared owner, used only to spell a fallback reason. */
     const declaredOwner = ownerKey === "" ? undefined : input.members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey)
     /** Why the declared owner was passed over by a GUARD, when it was — reported distinctly from busy/absent. */
@@ -405,6 +538,63 @@ export function planDispatch(input: {
     })
   }
   return plan
+}
+
+/**
+ * One `reassign` pair: the row being handed over and the member it goes to.
+ *
+ * This is the REPAIR path the owner-only rule needs: a fenced, failed or departed owner leaves a ready
+ * row that no pass may pair, and substituting silently is exactly what the rule forbids — so the captain
+ * names the new owner instead.
+ */
+export interface ReassignPair {
+  /** The board row being handed over. */
+  taskId: string
+  /** The member the row is claimed FOR and delivered to. */
+  owner: string
+}
+
+/**
+ * Read the `reassign` argument of a dispatch call without trusting its shape.
+ *
+ * The harness validates the tool schema, but the action is also reachable from the service and the HTTP
+ * route, so every entry is checked here: a blank id, a blank owner, or the same row named twice is
+ * REPORTED as one sentence (the readable entries still apply) rather than thrown.
+ * @param value - the raw argument value.
+ * @returns the readable pairs, and one sentence per entry this build refused.
+ */
+export function readReassign(value: unknown): { pairs: ReassignPair[]; invalid: string[] } {
+  /** The readable pairs, in the caller's order. */
+  const pairs: ReassignPair[] = []
+  /** One sentence per entry that could not be read. */
+  const invalid: string[] = []
+  if (value === undefined) return { pairs, invalid }
+  if (!Array.isArray(value)) return { pairs, invalid: ["`reassign` must be an array of {task_id, owner} objects"] }
+  /** The task ids already asked for, so one row is never claimed twice in one call. */
+  const seen = new Set<string>()
+  for (const entry of value) {
+    /** The entry read as a record, or undefined when it is not a plain object. */
+    const row = typeof entry === "object" && entry !== null && !Array.isArray(entry) ? entry as Record<string, unknown> : undefined
+    // TWO SPELLINGS, ONE READING: the TOOL's wire shape is `task_id` (snake, like every other tool
+    // argument), while a TypeScript SERVICE caller writes `taskId` (the shape its own interface declares).
+    // The validator is the ONE place both surfaces meet, so it accepts both rather than making a service
+    // caller translate into the wire dialect it never sees.
+    /** The board id this entry names, trimmed, from either spelling. */
+    const taskId = typeof row?.task_id === "string" ? row.task_id.trim() : typeof row?.taskId === "string" ? row.taskId.trim() : ""
+    /** The member name this entry names, trimmed. */
+    const owner = typeof row?.owner === "string" ? row.owner.trim() : ""
+    if (taskId === "" || owner === "") {
+      invalid.push("every `reassign` entry needs a non-empty `task_id` and `owner` (got " + JSON.stringify(entry) + ")")
+      continue
+    }
+    if (seen.has(taskId)) {
+      invalid.push("task " + JSON.stringify(taskId) + " is named twice in `reassign` — one claim per row per call")
+      continue
+    }
+    seen.add(taskId)
+    pairs.push({ taskId, owner })
+  }
+  return { pairs, invalid }
 }
 
 /**

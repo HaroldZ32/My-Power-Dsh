@@ -312,7 +312,7 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     // `!team` is stripped WITH its trailing whitespace, and only at a TOKEN BOUNDARY.
     expect(consumeExplicitFlag("please !team take this on")).toEqual({ flagged: true, text: "please take this on" })
     expect(consumeExplicitFlag("a team: inside the sentence")).toEqual({ flagged: false, text: "a team: inside the sentence" })
-    expect(evaluateComplexityGate("tiny task", { explicitFlag: true })).toEqual({ trigger: true, signals: ["A"] })
+    expect(evaluateComplexityGate("tiny task", { explicitFlag: true })).toEqual({ trigger: true, signals: ["A"], strength: "explicit" })
   })
 
   test("P8: a QUOTED !team is neither an activation nor stripped (only the earliest boundary one is)", () => {
@@ -355,13 +355,13 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
   })
 
   test("signal D reads an ACTIVE boulder work, never a plan FILE", () => {
-    expect(evaluateComplexityGate("small task", { activeBoulder: true })).toEqual({ trigger: true, signals: ["D"] })
-    expect(evaluateComplexityGate("small task", { activeBoulder: false })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate("small task", { activeBoulder: true })).toEqual({ trigger: true, signals: ["D"], strength: "inferred" })
+    expect(evaluateComplexityGate("small task", { activeBoulder: false })).toEqual({ trigger: false, signals: [], strength: "ignore" })
   })
 
   test("no signal: nothing fires, and the trigger needs at least one", () => {
-    expect(evaluateComplexityGate("fix the typo in the readme")).toEqual({ trigger: false, signals: [] })
-    expect(evaluateComplexityGate("")).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate("fix the typo in the readme")).toEqual({ trigger: false, signals: [], strength: "ignore" })
+    expect(evaluateComplexityGate("")).toEqual({ trigger: false, signals: [], strength: "ignore" })
   })
 
   test("the advisory text carries the frozen marker, names the signals and stages nothing", () => {
@@ -1369,7 +1369,7 @@ describe("team.sensitivity and signal F: the eager default, with `normal` pinned
     }
     // NORMAL IS THE PRE-WAVE PREDICATE: every verb of this message is a wave addition, so the row
     // reproduces the measured PRE-CHANGE verdict exactly — zero signals, no trigger.
-    expect(evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [], strength: "ignore" })
     // STRICT is a deliberate opt-in: the same message stays silent there (77 Han < 80).
     expect(evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "strict" }).trigger).toBe(false)
   })
@@ -1379,7 +1379,7 @@ describe("team.sensitivity and signal F: the eager default, with `normal` pinned
     // DELIVERABLE set and from the pre-wave ACTION set, so `normal` cannot fire B, C2 or C3.
     const waveOnly = "please fix create update and rename the helpers"
     expect(evaluateComplexityGate(waveOnly).signals).toEqual(["B"])
-    expect(evaluateComplexityGate(waveOnly, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate(waveOnly, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [], strength: "ignore" })
     // …and the PRE-WAVE four still fire B on the normal row, so the selector is not a dead lexicon.
     const preWaveOnly = "align, migrate, refactor and audit the module"
     expect(evaluateComplexityGate(preWaveOnly, { sensitivity: "normal" }).signals).toContain("B")
@@ -1401,10 +1401,10 @@ describe("team.sensitivity and signal F: the eager default, with `normal` pinned
   })
 
   test("signal F: a large workspace fires the trivial prompt on easy only", () => {
-    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true })).toEqual({ trigger: true, signals: ["F"] })
-    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: false })).toEqual({ trigger: false, signals: [] })
-    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
-    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "strict" })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true })).toEqual({ trigger: true, signals: ["F"], strength: "inferred" })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: false })).toEqual({ trigger: false, signals: [], strength: "ignore" })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "normal" })).toEqual({ trigger: false, signals: [], strength: "ignore" })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "strict" })).toEqual({ trigger: false, signals: [], strength: "ignore" })
   })
 
   test("readWorkspaceScale: a manifest AND a project dir AND >= 8 visible entries", async () => {

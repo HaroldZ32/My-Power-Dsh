@@ -4,7 +4,7 @@
 Plan C / C3 — hash-anchored edit discipline on the DeepSeek Harness tool seam.
 
 This tree is our own TypeScript, ported **BY DESIGN** from the `crates/pi-edit` crate of
-`can1357/oh-my-pi` @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca` (MIT). No SUL-1.0 source is
+`can1357/oh-my-pi` @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca` (MIT). No source under that upstream licence is
 inherited any more, and the port is a DELIBERATE REDUCTION: the replaced core's fuzzy
 "autocorrect" heuristics are not reproduced. The port carries the MIT obligation that crate's
 design comes under — the upstream MIT permission text and copyright lines are reproduced

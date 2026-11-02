@@ -279,3 +279,24 @@ convergence with no duplicate), `split-refused`, `requirements-subheadings`, `di
 The seam rule for this package is the repository's: every harness touch goes through
 `resolveDshAdapter(ctx)`, and the design background is in the
 [plugin authoring reference](../../agent-references/plugin-authoring.md).
+
+
+## The team plane it shares, and `cellwork_open` (wave W2)
+
+**`cellwork_open {objective, mandate?}`** is the programmatic entry the autoproject escalation uses. It
+REFUSES a caller that is not the captain, an already-active cell, and a `mandate` whose
+`<workspace>/.mpd/autoproject/<runId>/escalation.json` is not on disk. `/cellwork` is a thin handler
+over the SAME open path, so the command and the tool cannot diverge. A tool has no
+`invocation.submit`, so the tool path RETURNS the activation directive instead of submitting it — a
+stated bound, not a hidden one.
+
+**The TEAM-level logic is the team plane's**, reached as services (no cross-package import):
+`cellwork_context` reads `mpdTeams.memberContext`, `cellwork_subteam` reads `mpdTeams.depthBudget` (the
+same `cellwork.depthMax` bound, with the cell record as the documented fallback when that service is
+absent), and `cellwork_dispatch` plus the handoff path read or write the team record through
+`mpdTeams` / `mpdTeamActions`. The cell-MODE engines (requirements, split, activate, recon, budget) stay
+in this package: they are the workflow layer that WRITES the board.
+
+**State on disk is unchanged and read-compatible:** `.mpd/cellwork/**` stays version 1 (no migration),
+with the per-cell journal and mail. The FROZEN CONTRACT of a wave lives in the board task description,
+so the row an owner claims carries the acceptance text it is judged against.

@@ -105,7 +105,7 @@ const CORE_TOOLS: readonly string[] = [
   "mpd_roles_list",
   "mpd_config_get",
   "mpd_workmate_list",
-  "mpd_ultrawork",
+  "mpd_autoproject",
   "mpd_hashline_read",
   "mpd_memory_status",
 ]

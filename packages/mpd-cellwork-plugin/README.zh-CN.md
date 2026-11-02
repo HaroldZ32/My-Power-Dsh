@@ -229,3 +229,20 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 
 本包的接缝规则就是仓库的规则：所有对 harness 的接触都经 `resolveDshAdapter(ctx)`，设计背景见
 [插件编写参考](../../agent-references/plugin-authoring.md)。
+
+
+## 它共享的团队平面与 `cellwork_open`（波次 W2）
+
+**`cellwork_open {objective, mandate?}`** 是 autoproject 升级流程使用的程序化入口。它**拒绝**非 captain 的
+调用者、已存在的活动 cell，以及 `mandate` 指向的 `<workspace>/.mpd/autoproject/<runId>/escalation.json`
+不在磁盘上的情况。`/cellwork` 是**同一条**开启路径上的薄处理器，因此命令与工具不可能分叉。工具没有
+`invocation.submit`，所以工具路径**返回**激活指令而不是提交它 —— 这是明确写出的边界，不是隐藏的。
+
+**团队级逻辑属于团队平面**，以服务方式访问（无跨包 import）：`cellwork_context` 读
+`mpdTeams.memberContext`；`cellwork_subteam` 读 `mpdTeams.depthBudget`（同一个 `cellwork.depthMax` 上界；
+服务缺席时以 cell 记录为有据可查的回退）；`cellwork_dispatch` 与 handoff 路径通过
+`mpdTeams` / `mpdTeamActions` 读写团队记录。cell **模式**的引擎（requirements、split、activate、recon、
+budget）留在本包：它们是**写**看板的工作流层。
+
+**磁盘状态不变且向后可读：** `.mpd/cellwork/**` 仍是 version 1（无迁移），保留每 cell 的 journal 与邮件。
+一个波次的**冻结契约**存放在看板任务描述里，因此 owner claim 的那一行就带着它被评判的验收文本。

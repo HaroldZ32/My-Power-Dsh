@@ -204,9 +204,9 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | 行 id | 包 | Composition | 用途 | 工具 / 服务 | 关键配置 |
 |---|---|---|---|---|---|
 | `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | 本地 ast-grep stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制（env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire 可选依赖 → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`；每个候选都会展开为该主机可执行的各种拼写：win32 解析 `.exe`/`.com`，绝不使用无 shell 运行器无法启动的 `.cmd` 垫片） | `mcp__ast_grep__*`（search / rewrite / scan） | `serverName: ast_grep`、`toolCallTimeoutMs: 60000` |
-| `mcp-git` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git stdio 服务器：薄启动器 `mpd-mcp-gitbash/dist/launch.js` 从已安装 profile 解析已声明的 `@cyanheads/git-mcp-server` 依赖（B2 波替换掉了 vendored 的 SUL-1.0 服务器） | 启用后为 `mcp__git__git_*`（28 个工具） | 改 `disabled: false` 启用；需要 `PATH` 上有 `git` |
+| `mcp-git` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 本地 git stdio 服务器：薄启动器 `mpd-mcp-gitbash/dist/launch.js` 从已安装 profile 解析已声明的 `@cyanheads/git-mcp-server` 依赖（B2 波替换掉了 vendored 的服务器） | 启用后为 `mcp__git__git_*`（28 个工具） | 改 `disabled: false` 启用；需要 `PATH` 上有 `git` |
 | `mcp-shell` | dsh-mcp-client | web + dsh-tui，**默认禁用** | 同一个启动器加 `shell` 词元：解析已声明的 `mcp-server-commands` 依赖 | 启用后为 `mcp__shell__run_process` | 改 `disabled: false` 启用；取代已退役的 `git_bash` 裸 shell 工具 |
-| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP stdio 服务器：薄启动器 `mpd-mcp-lsp/dist/launch.js` 解析已声明的 `cclsp` 依赖，并把其配置指向随附的 `typescript-language-server`（B2 波替换掉了 vendored 的 SUL-1.0 daemon） | `mcp__lsp__*`（cclsp 的 12 个工具） | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
+| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | 本地 LSP stdio 服务器：薄启动器 `mpd-mcp-lsp/dist/launch.js` 解析已声明的 `cclsp` 依赖，并把其配置指向随附的 `typescript-language-server`（B2 波替换掉了 vendored 的 daemon） | `mcp__lsp__*`（cclsp 的 12 个工具） | `serverName: lsp`、`toolCallTimeoutMs: 60000` |
 | `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | 本地 codegraph stdio 服务器；`launch.ts` 按 bundle 相对路径解析二进制，并且只在调用方未设置时写入 `MPD_CODEGRAPH_BIN` | `mcp__codegraph__*` | `serverName: codegraph`、`toolCallTimeoutMs: 60000` |
 | `mcp-context7` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
 | `mcp-grepapp` | dsh-mcp-client | web + dsh-tui（需网络） | 远端 streamable-http MCP 服务器（公共服务，按需使用） | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
@@ -218,10 +218,10 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
 | `mpd-ext` | mpd-ext-plugin | web + dsh-tui | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
 | `mpd-roles` | mpd-roles-plugin | web + dsh-tui | 专家名册中的 11 个专家（正常名字/persona/模型链/只读），并在每次调用时与扩展贡献的 role 合并；为 Lead 注册名册提示词小节（persona 文本经 `mpd_role_persona` 取得，并写明实测的模型路由边界），并为名字规范化后落在只读名册成员上的在线 Team 队友注册**只读工具守卫** | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona`；服务 `mpdRoles` | `personasDir` |
-| `mpd-ulw` | mpd-ulw-plugin | web + dsh-tui | 固定 plan→execute→verify 循环纪律（C2 ultrawork v2） | `mpd_ultrawork`、`mpd_ulw`（轻量别名）；命令 `/ulw`、`/ultrawork` | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
+| `mpd-autoproject` | mpd-autoproject-plugin | web + dsh-tui | 固定 plan→execute→verify 循环纪律（C2 autoproject v2） | `mpd_autoproject`、`mpd_boulder_*`；命令 `/autoproject` | `maxRounds`、`maxReReviews`、`provider/model/reviewerModel`、`planDir`、`stateDir` |
 | `mpd-hashline` | mpd-hashline-plugin | web + dsh-tui | 哈希锚定编辑纪律（`LINE#HASH` 锚点） | `mpd_hashline_read`、`mpd_hashline_edit`、`mpd_hashline_format`、`mpd_hashline_restore` | `guardEditTools`、`maxDiffChars`、`registryFile` |
-| `mpd-boulder` | mpd-boulder-plugin | web + dsh-tui | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
-| `mpd-goal` | mpd-goal-plugin | web + dsh-tui | C8 —— 把持久化 GOAL 作为持续化执行的依据：桥接 harness 的 goal 域，并为 heavy 档 ULW 运行或绑定 plan 的 boulder 工作自动 anchor 一个 goal，使"持续化执行的依据"是这次运行的**目标**（而非某次工具调用），从而在自动续行轮次中推进会话 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`；服务 `mpdGoal` | `enabled`、`autoAnchor`、`autoRounds` |
+| `mpd-autoproject` | mpd-autoproject-plugin | web + dsh-tui | 绑定计划 markdown 文件的持久化工作台账 | `mpd_boulder_status`、`mpd_boulder_start`、`mpd_boulder_complete`、`mpd_boulder_task_timer`、`mpd_boulder_plan_progress`、`mpd_boulder_plans` | `boulderDir` |
+| `mpd-goal` | mpd-goal-plugin | web + dsh-tui | C8 —— 把持久化 GOAL 作为持续化执行的依据：桥接 harness 的 goal 域，并为 heavy 档 autoproject 运行或绑定 plan 的 boulder 工作自动 anchor 一个 goal，使"持续化执行的依据"是这次运行的**目标**（而非某次工具调用），从而在自动续行轮次中推进会话 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`；服务 `mpdGoal` | `enabled`、`autoAnchor`、`autoRounds` |
 | `mpd-verify` | mpd-verify-plugin | web + dsh-tui | 验证法则（THE VERIFICATION LAW）：委派 + 验证回路、verifier 席位封套、黑盒证据探针与记录校验器（没有引用文档或没有关卡证据的 PASS 会被**拒绝**；FAIL 会开出修复任务）；台账位于 `<workspace>/.mpd/verify/` | `mpd_verify_open`、`mpd_verify_escape`、`mpd_verify_seat`、`mpd_verify_evidence`、`mpd_verify_record` | `escapeUses` |
 | `mpd-comment-checker` | mpd-comment-checker-plugin | web + dsh-tui | 注释/docstring 检测（可选二进制） | `mpd_comment_check` | `autoCheck`、`binary`、`timeoutMs`、`maxMessageChars` |
 | `mpd-codegraph` | mpd-codegraph-plugin | web + dsh-tui | codegraph 二进制解析 + 工程索引初始化 | effect（自动初始化）+ `/mpd-codegraph` 注册在**共享命令平面**上 —— agent 注册表 + TUI 面板**已测量** 2026-10-28（`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`），Web 未测量 | `autoInit`、`initTimeoutMs`、`cooldownMs`、`binary` |
@@ -351,7 +351,7 @@ key**。
 |---|---|---|
 | `<workspace>/.mpd/team/` | mpd-team-core（记录 + 其工作流边车）+ mpd-team-watchdog（它**自己的**命名空间） | `teams/<teamId>.json` 是**权威**团队记录 —— 名册、任务板、DAG、`kind`/`attempt`/`round`/`verdict` 以及每个成员/任务的执行器句柄 —— 由 mpd-team-core 写入，被每个 mpd 界面读取（TUI、web、看门狗、compact、workmate 在用闸门）。旁边是工作流边车：`dispatch.json`（按团队作用域的派发账本）、`staging/<sessionId>.json`（暂存中的 plan）、`contracts/<taskId>.json`（冻结的契约 + attempt）、`hold.json`（工作区停机）、`archive/<planId>/`（暂存过的内容，批准或 `delete` 之后保留）。看门狗在同一根下维护 `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}`。已退役内置插件的"一团队一目录" `<teamId>/team.json` 是**只读**旧版，仍保留它的工作区照常工作；**官方** Team 服务把它的名册/邮箱/任务板保存在 Lead 的会话日志里，但那个平面只是执行器后端，绝不是团队真相 |
 | `<workspace>/.mpd/team-compact/` | mpd-team-compact | 已结束团队成员上下文的压缩审计 |
-| `<workspace>/.mpd/plans/` | mpd-boulder / mpd-ulw | 计划 markdown 文件 |
+| `<workspace>/.mpd/plans/` | mpd-autoproject / mpd-autoproject | 计划 markdown 文件 |
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | 键值注释 |
 | `<workspace>/.mpd/`（VCS 记忆目录） | mpd-memory | git/svn 支撑的记忆 + 反思 |
 | `<workspace>/.mpd/mpd.jsonc` | mpd-config | 工程配置层 |
@@ -397,7 +397,7 @@ key**。
 - 随包消费方使用的是**适配器自己的**团队面：`teamMembership`、`teamListMembers`、
   `teamListTasks`、`teamCreateTask`、`teamGetTask`、`teamUpdateTask`、`teamSendMessage`、
   `teamSpawnTeammate`、`teamInterrupt`、`teamWaitForChange` 与 `teamLiveTeams` —— 每一个都是对
-  已挂载 `agentTeams` 服务的薄投影且从不抛错，因此没有任何 mpd 插件（看门狗、名册守卫、ULW 引擎、
+  已挂载 `agentTeams` 服务的薄投影且从不抛错，因此没有任何 mpd 插件（看门狗、名册守卫、autoproject 引擎、
   TUI 或 web 路由）直接引用 `ctx.agentTeams`。
 
 ## 6c. Agent 预设层（`mpd` 预设）

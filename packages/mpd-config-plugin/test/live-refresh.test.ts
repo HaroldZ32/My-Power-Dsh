@@ -201,32 +201,32 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
   test("the entry refresh SURVIVES a later tool reload (the override is not reverted to the apply-time config)", async () => {
     /** Sole live workspace; its file exists so a reload has something to re-read. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }\n`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }\n`)
     /** Fake adapter whose entry document starts UNSET. */
     const h = harness({ roots: [root] })
     apply(h.ctx)
-    h.saveEntry({ ulw: { maxRounds: 9 } })
+    h.saveEntry({ autoproject: { maxRounds: 9 } })
     h.emitEntry()
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(9)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(9)
     // A tool's `reload(exec)` re-reads every layer — the FRESH entry knobs must still be the L4
     // layer, or the reload would silently revert the save to the apply-time row config.
     h.provided.mpdConfig.reload({ agent: { session: { header: { cwd: root } } } })
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(9)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(9)
   })
 
   test("the legacy mpd-namespace listener still fires beside the entry one (extend, not replace)", () => {
     /** Sole live workspace; its file receives the legacy bridge's write-back. */
     const { root, file } = sandbox()
     /** Fake adapter serving BOTH documents, with one leaf already saved on the legacy namespace. */
-    const h = harness({ roots: [root], user: { ulw: { maxRounds: 2 } } })
+    const h = harness({ roots: [root], user: { autoproject: { maxRounds: 2 } } })
     apply(h.ctx)
     // A save on the LEGACY namespace document still runs the bridge path (state re-load + file
     // write-back) — the two subscriptions coexist, each on its own document.
-    h.setLegacyUser({ ulw: { maxRounds: 3 } })
-    h.saveEntry({ ulw: { maxRounds: 9 } })
+    h.setLegacyUser({ autoproject: { maxRounds: 3 } })
+    h.saveEntry({ autoproject: { maxRounds: 9 } })
     h.emitEntry()
     h.emitLegacy("update")
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(9)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(9)
     expect(readFileSync(file, "utf8")).toContain('"maxRounds": 3')
     // And the entry save survived the legacy save's own state re-load (both layers in force).
     expect(h.provided.mpdConfig.states().settings.namespace).toBe("mpd")
@@ -235,16 +235,16 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
   test("R1's file half: a HAND edit of .mpd/mpd.jsonc reaches state through the MOUNT-ARMED watcher", async () => {
     /** Sole live workspace, whose file pre-exists so the mount-time watcher has a directory. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }\n`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }\n`)
     /** Fake adapter with NO save of any kind — pre-wave, this mount armed NO watcher at all. */
     const h = harness({ roots: [root] })
     apply(h.ctx)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(3)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(3)
     // A hand edit (no settings save, no write-back, no reload call): only the mount-armed
     // project-file watcher can observe it — the 150ms debounce reloads state.
-    writeFileSync(file, `{ "ulw": { "maxRounds": 42 } }\n`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 42 } }\n`)
     await wait(WATCH_SETTLE_MS)
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(42)
     // The watcher is a row-scoped resource: it registered a disposer under the row's own effect.
     expect(h.effects.some((registered) => (registered.label ?? "").includes(file))).toBe(true)
   })
@@ -252,24 +252,24 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
   test("a MATERIALISED default in the entry document never becomes L4: a file edit still wins (measured host)", async () => {
     /** Sole live workspace, whose file carries a knob the entry document also materialises. */
     const { root, file } = sandbox()
-    writeFileSync(file, `{ "ulw": { "maxRounds": 3 } }\n`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 3 } }\n`)
     // The measured host split: the resolved VALUE and the inherited BASE both still carry their
     // materialised defaults while the OVERRIDE half (`user`) is the only saved layer — empty here.
-    const h = harness({ roots: [root], entryValue: { ulw: { maxRounds: 9 } }, entryBase: { ulw: { maxRounds: 7 } } })
+    const h = harness({ roots: [root], entryValue: { autoproject: { maxRounds: 9 } }, entryBase: { autoproject: { maxRounds: 7 } } })
     apply(h.ctx)
     // The fixture is NOT vacuous: the stale halves really do carry their numbers.
     /** The entry descriptor the double serves, read back so the fixture's own staleness is asserted. */
     const entryDescriptor = h.ctx.get?.("mpdDsh")?.settingsReader?.("mpd-config")?.describe()
-    expect(entryDescriptor?.value).toEqual({ ulw: { maxRounds: 9 } })
-    expect(entryDescriptor?.base).toEqual({ ulw: { maxRounds: 7 } })
+    expect(entryDescriptor?.value).toEqual({ autoproject: { maxRounds: 9 } })
+    expect(entryDescriptor?.base).toEqual({ autoproject: { maxRounds: 7 } })
     // The mount read applies the FILE's 3 — neither stale number may sit above it as L4.
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(3)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(3)
     // A hand edit moves the file, then the entry event re-reads the document: a composition that took
     // `value` (9) or `base` (7) would bury BOTH file values; only the empty override leaves 42.
-    writeFileSync(file, `{ "ulw": { "maxRounds": 42 } }\n`)
+    writeFileSync(file, `{ "autoproject": { "maxRounds": 42 } }\n`)
     await wait(WATCH_SETTLE_MS)
     h.emitEntry()
-    expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+    expect(h.provided.mpdConfig.get("autoproject.maxRounds")).toBe(42)
   })
 })
 

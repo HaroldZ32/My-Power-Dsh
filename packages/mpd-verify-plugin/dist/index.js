@@ -4,7 +4,7 @@ import { join as join6 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -2396,7 +2396,7 @@ import { join as join4 } from "node:path";
 // packages/mpd-verify-plugin/src/ledger.ts
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, statSync as statSync2, writeFileSync } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join2, relative as relative2, sep as sep2 } from "node:path";
+import { isAbsolute as isAbsolute2, join as join2, relative as relative2, sep as sep3 } from "node:path";
 function verifyRoot(workspace) {
   return join2(workspace, ".mpd", "verify");
 }
@@ -2481,12 +2481,12 @@ function hashDoc(workspace, path) {
   if (digest === "")
     return;
   const rel = relative2(workspace, path);
-  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep2) && !isAbsolute2(rel);
+  const inside = rel !== "" && rel !== ".." && !rel.startsWith(".." + sep3) && !isAbsolute2(rel);
   if (!inside)
     return { path, sha256: digest };
   return { path: toPosixRelative(rel), sha256: digest };
 }
-function toPosixRelative(rel, separator = sep2) {
+function toPosixRelative(rel, separator = sep3) {
   return separator === "/" ? rel : rel.split(separator).join("/");
 }
 function readLoops(workspace) {
@@ -2783,8 +2783,7 @@ var DELEGATION_TOOLS = [
   "team_task_update",
   "mpd_role_spawn",
   "mpd_workmate_spawn",
-  "mpd_ultrawork",
-  "mpd_ulw",
+  "mpd_autoproject",
   "subagent",
   "subagent_fork",
   "workflow",

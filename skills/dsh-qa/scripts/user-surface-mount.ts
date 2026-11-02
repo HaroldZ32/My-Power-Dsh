@@ -442,7 +442,7 @@ function selfTestArms(): SelfTestArm[] {
   /** The corpus with `/cellwork` deliberately removed — the negative control. */
   const dropped = CONTRIBUTED_COMMANDS.filter((name) => name !== "cellwork")
   arm("corpus.droppedNameReddens", corpusProblems(dropped).some((problem) => problem.includes("cellwork")), "dropping cellwork -> " + (corpusProblems(dropped)[0] ?? "NO PROBLEM (defect)"))
-  arm("corpus.duplicateReddens", corpusProblems([...CONTRIBUTED_COMMANDS, "ulw"]).length > 0, "a duplicate hides a dropped name")
+  arm("corpus.duplicateReddens", corpusProblems([...CONTRIBUTED_COMMANDS, "autoproject"]).length > 0, "a duplicate hides a dropped name")
   arm("corpus.unknownReddens", corpusProblems([...CONTRIBUTED_COMMANDS, "roster"]).length > 0, "a command the bundle does not contribute reddens")
 
   // 5. The command verdicts, both planes, both witnesses, and the fabricated-name control.
@@ -462,7 +462,7 @@ function selfTestArms(): SelfTestArm[] {
   // 5b. THE COMMAND GATE (CodeRabbit F11, PR #75; AC-3): a FAILURE on a fully mounted boot GATES for
   //     EVERY command. The old one-id whitelist (`/mpd-codegraph`) is retired by the D-1 fix, and the
   //     empty list is pinned here, so re-opening an exemption breaks an arm instead of the gate.
-  arm("command.passGates", commandGates("ulw", true, true), "a pass rides as a gating assertion")
+  arm("command.passGates", commandGates("autoproject", true, true), "a pass rides as a gating assertion")
   arm("command.failureGates", commandGates("cellwork", false, true), "an UNDOCUMENTED failure on a complete composition GATES (the old rule recorded it as a finding)")
   arm("command.whitelistIsEmpty", NON_GATING_COMMANDS.length === 0, "the exemption list is EMPTY after the D-1 fix (it was exactly mpd-codegraph)")
   // The deliberate BROKEN COMPOSITION, in pure form: the name the whitelist used to excuse, with no
@@ -575,7 +575,7 @@ function selfTestArms(): SelfTestArm[] {
     ...healthyRows.filter((row) => row.name !== "userSurface.negativeControl"),
     redRow("userSurface.negativeControl", false, "aliveBefore=null aliveAfter=null"),
     redRow("userSurface.command.mpd", false, "registry=no palette=none (no palette box in the capture)"),
-    redRow("userSurface.command.ulw", false, "registry=no palette=none (no palette box in the capture)"),
+    redRow("userSurface.command.autoproject", false, "registry=no palette=none (no palette box in the capture)"),
   ]
   /** That demo's verdict, read once so its three arms grade the same object. */
   const paletteBrokenVerdict = classifyExpectRed(paletteBroken, [], expectTarget)

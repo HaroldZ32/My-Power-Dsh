@@ -36,14 +36,15 @@ mpd-dsh/
 │   ├── mpd-verify-plugin/        # THE VERIFICATION LAW (§5): the ledger under .mpd/verify/, the five
 │   │                             #   mpd_verify_* tools, the record validator and the receipt probe
 │   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
-│   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
+│   ├── mpd-autoproject-plugin/   # C2 autoproject v2 engine: mpd_autoproject + the ONE /autoproject command
+│   │                             #   MERGED C5 boulder half: src/boulder/** — the six mpd_boulder_* tools
+│   │                             #   (names unchanged) and the durable .mpd/boulder.json ledger
 │   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
 │   │                             # the MCP servers: AST search, code graph, git-bash, LSP, shared libs
 │   ├── mpd-tools-plugin/         # B1: write guard, output truncation, edit-error recovery
 │   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendored hashline-core)
-│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state); anchors a goal
 │   ├── mpd-goal-plugin/          # C8: the persisted-GOAL bridge — mpd_goal_* + the `mpdGoal` service
-│   │                             #   ULW/boulder auto-anchor from (`goal.*`, the anchors sidecar)
+│   │                             #   autoproject/boulder auto-anchor from (`goal.*`, the anchors sidecar)
 │   ├── mpd-config-plugin/        # C7: the mpd.jsonc runtime config layer (read by the plugins above)
 │   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + the reflection state machine
 │   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)

@@ -16,7 +16,7 @@ describe("the row Config", () => {
     // `Config` viewed as the raw schemastery node tree the marking walk mutates in place.
     const schema = Config as unknown as { meta?: { volatile?: boolean }; dict?: Record<string, { meta?: { volatile?: boolean } }> }
     expect(schema.meta?.volatile).toBe(true)
-    for (const key of ["hashline", "commentChecker", "ulw", "memory", "team", "boulder", "teamModels", "watchdog"]) {
+    for (const key of ["hashline", "commentChecker", "autoproject", "memory", "team", "boulder", "teamModels", "watchdog"]) {
       expect(schema.dict?.[key]?.meta?.volatile).toBe(true)
     }
     // the nested per-agent leaves too: the settings form reaches them through `dict`
@@ -54,7 +54,7 @@ describe("the row config is an EFFECTIVE layer", () => {
     // The workspace box: the only root this config load is allowed to see.
     const box = mkdtempSync(join(tmpdir(), "mpd-row-layer-"))
     mkdirSync(join(box, ".mpd"), { recursive: true })
-    writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ ulw: { maxRounds: 4 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } }))
+    writeFileSync(join(box, ".mpd", "mpd.jsonc"), JSON.stringify({ autoproject: { maxRounds: 4 }, watchdog: { enabled: false, warnStreakToEscalate: 9 } }))
     // The ambient DSH_HOME this case overrides, restored in the finally block below.
     /** The ambient DSH_HOME this case overrides, restored in the finally block below. */
     const previous = process.env.DSH_HOME
@@ -63,9 +63,9 @@ describe("the row config is an EFFECTIVE layer", () => {
       // Imported only after DSH_HOME points at the sandbox, so a module-scope read cannot see the caller's.
       const { loadConfig } = await import("../src/index")
       // The resolved config: the row layer's knob on top of the file's untouched siblings.
-      const out = loadConfig({ ulw: { maxRounds: 7 } } as never, box)
+      const out = loadConfig({ autoproject: { maxRounds: 7 } } as never, box)
       // the row layer WINS over the file for the knob it carries...
-      expect(out.config.ulw.maxRounds).toBe(7)
+      expect(out.config.autoproject.maxRounds).toBe(7)
       // ...and touches nothing it does not carry
       expect(out.config.watchdog.enabled).toBe(false)
       expect(out.config.watchdog.warnStreakToEscalate).toBe(9)
@@ -96,7 +96,7 @@ describe("the row config is an EFFECTIVE layer", () => {
       // A load whose row config carries ONLY routing keys — none may reach the effective config.
       const out = loadConfig({ projectFile: join(box, ".mpd", "mpd.jsonc"), userFile: join(box, "u.jsonc"), writeBack: false, settingsBridge: { writeBack: false } } as never, box)
       for (const key of ["projectFile", "userFile", "writeBack", "settingsBridge"]) expect(out.config[key]).toBeUndefined()
-      expect(out.config.ulw).toBeUndefined()
+      expect(out.config.autoproject).toBeUndefined()
     } finally {
       if (previous === undefined) delete process.env.DSH_HOME
       else process.env.DSH_HOME = previous

@@ -247,8 +247,8 @@ const READY = {
   mode: "host",
   writable: true,
   revision: 7,
-  value: { hashline: { maxDiffChars: 20000 }, ulw: { maxRounds: 6 } },
-  user: { ulw: { maxRounds: 6 } },
+  value: { hashline: { maxDiffChars: 20000 }, autoproject: { maxRounds: 6 } },
+  user: { autoproject: { maxRounds: 6 } },
 }
 
 /** Mount the section with a configForms service bound to one scope. */
@@ -340,7 +340,7 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
     expect(CARD_SOURCE).toContain("WHICH knobs take the new value in the RUNNING process — no restart")
     expect(CARD_SOURCE).toContain("are read per use")
     // at least one mount-captured group in the exception half, + the boot wording
-    expect(CARD_SOURCE).toContain("hashline.*, commentChecker.*, ulw.*, memory.*")
+    expect(CARD_SOURCE).toContain("hashline.*, commentChecker.*, autoproject.*, memory.*")
     expect(CARD_SOURCE).toContain("waits for the next dsh boot")
     // T16-F1: the FILE parenthetical is SCOPED, not blanket — the settings document gets the value at
     // once, the file only on a host that still serves the legacy namespace. The retracted wording is
@@ -416,7 +416,7 @@ describe("the card's form behaviour", () => {
     /** The tree flattened and serialized, so the assertions can scan it. */
     const text = textOf(tree) + " " + JSON.stringify(tree)
     expect(text).toContain("hashline.maxDiffChars")
-    expect(text).toContain("ulw.maxRounds")
+    expect(text).toContain("autoproject.maxRounds")
     expect(text).toContain("20000")
     expect(text).toContain("6")
     expect(text).toContain("persists in the HOST's settings document")
@@ -448,9 +448,9 @@ describe("the card's form behaviour", () => {
     const { registration } = mountedCard(fakeScope(READY, calls))
     /** The section's host-facing face. */
     const face = registration.inject()
-    face.resetField("ulw.maxRounds")
+    face.resetField("autoproject.maxRounds")
     await face.save()
-    expect(calls[0].ops).toEqual([{ op: "unset", path: ["ulw", "maxRounds"] }])
+    expect(calls[0].ops).toEqual([{ op: "unset", path: ["autoproject", "maxRounds"] }])
 
     /** Every mutation the read-only scope recorded, which must stay empty. */
     const calls2: ScopeCall[] = []
@@ -475,7 +475,7 @@ describe("the card's form behaviour", () => {
     const state = face.hooks.mpdCard.getSnapshot()
     expect(state.writable).toBe(false)
     expect(state.mode).toBe("memory")
-    face.edit("ulw.maxRounds", "9")
+    face.edit("autoproject.maxRounds", "9")
     /** The rendered section tree. */
     const tree = await client.hooks.render(registration.component, { useMpdCard: (selector) => selector(face.hooks.mpdCard.getSnapshot()), t: (key) => key })
     /** The tree flattened and serialized, so the assertions can scan it. */

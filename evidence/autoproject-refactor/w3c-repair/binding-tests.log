@@ -1,0 +1,17 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/workmate-binding.test.ts:
+(pass) updateTeamMember — the workmate binding fields (W3-C2) > workmateMode/workmateReason round-trip, and a reuse patch CLEARS a stale reason [0.97ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > (a) an explicit workmate that does not exist REFUSES the whole approval [2.25ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > (a2) an explicit workmate that EXISTS is bound, and the seat takes its name and its context head [1.35ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > (b) a STRONG match reuses and renames the member; a WEAK match initializes a new workmate [0.82ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > (c) at workmates.max the seat falls back to mode:none with reason:cap, and the inits equal min(N,cap) [0.75ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > (c2) the auto-init cap is PER WORKSPACE (R-W3C Medium 1): another project's instances are free [1.04ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > workmates.mode:none leaves every seat plain and touches no tool [0.55ms]
+(pass) approveTeam — deterministic workmate binding (W3-C) > a composition with NO tool seam leaves every seat plain, with one log line and no throw [0.59ms]
+
+ 8 pass
+ 0 fail
+ 46 expect() calls
+Ran 8 tests across 1 file. [185.00ms]
+binding exit=0

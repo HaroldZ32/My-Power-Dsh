@@ -164,7 +164,7 @@ describe("§7 — thirty-three per-agent rows in the ONE declaration, in group o
     expect(SETTINGS_KNOBS.slice(0, 13).map((knob) => [...knob.path])).toEqual([
       ["hashline", "maxDiffChars"],
       ["commentChecker", "autoCheck"],
-      ["ulw", "maxRounds"],
+      ["autoproject", "maxRounds"],
       ["memory", "vcs"],
       ["team", "stateDir"],
       ["boulder", "dir"],
@@ -421,20 +421,20 @@ describe("the mounted service: the typed read and the raw pass-through", () => {
 describe("the FILE no-data-loss lock: a live `agentRoutes` block survives an unrelated save", () => {
   test("saving an unrelated leaf leaves the old block byte-identical", () => {
     // A workspace file carrying an unrelated knob plus a full route table.
-    /** The exact bytes a save of `ulw.maxRounds` must leave untouched around the block. */
-    const original = `{\n  "ulw": { "maxRounds": 3 },\n  "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }\n}\n`
+    /** The exact bytes a save of `autoproject.maxRounds` must leave untouched around the block. */
+    const original = `{\n  "autoproject": { "maxRounds": 3 },\n  "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }\n}\n`
     /** The file the writer targets (inside one sandbox workspace). */
     const { root, file } = sandbox()
     writeFileSync(file, original)
     // The settings-document save writes ONE leaf; it never rewrites the file wholesale.
     /** The writer's report for that single-leaf delta. */
-    const report = writeBackLeaves([{ root, file }], [{ path: ["ulw", "maxRounds"], value: 11 }])
+    const report = writeBackLeaves([{ root, file }], [{ path: ["autoproject", "maxRounds"], value: 11 }])
     expect(report.results[0]?.outcome).toBe("written")
     /** The bytes after the save, where the untouched block must still be present verbatim. */
     const text = readFileSync(file, "utf8")
     expect(text).toContain('"agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }')
     expect(JSON.parse(stripJsonc(text))).toEqual({
-      ulw: { maxRounds: 11 },
+      autoproject: { maxRounds: 11 },
       agentRoutes: { "Deep Worker": { provider: "gateway", model: "deepseek-v4-pro" } },
     })
   })

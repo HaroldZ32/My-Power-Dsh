@@ -2,7 +2,19 @@
 // scheduler's two post-mortems: the same task going to two members, and a ledger that never frees a
 // member again.
 import { describe, expect, test } from "bun:test"
-import { assign, dispatchMessage, forgetTeam, ledgerKey, ledgerOfTeam, planDispatch, reconcile, release, type DispatchLedger, type DispatchMember, type DispatchTask } from "../src/dispatch"
+import { assign, dispatchMessage, forgetTeam, ledgerKey, ledgerOfTeam, planDispatch, reconcile, release, type DispatchLedger, type DispatchMember, type DispatchPlan, type DispatchTask } from "../src/dispatch"
+/**
+ * The EXPLICIT positional engine.
+ *
+ * These arms are the retired pairing rule's own regression suite (owner-first, then roster order), and
+ * the rule is no longer the default — `planDispatch` pairs owner-only unless a caller asks for
+ * `mode:"roster"`. Asking HERE keeps every arm testing the rule it was written for; the owner-only
+ * default has its own arms in `team-toolchain.test.ts`.
+ * @param input - the pass to decide.
+ * @returns the decision, under the explicit roster rule.
+ */
+const rosterPlan = (input: Parameters<typeof planDispatch>[0]): DispatchPlan => planDispatch({ ...input, mode: "roster" })
+
 
 /** The frozen clock every `assignedAt` in this file is compared against. */
 const NOW = new Date("2026-09-27T10:00:00.000Z")
@@ -18,7 +30,7 @@ const member = (id: string, status: string = "inactive"): DispatchMember => ({ i
 describe("one dispatch pass", () => {
   test("a ready task goes to an idle member, in board order", () => {
     /** One pass over a two-task board with two idle members. */
-    const plan = planDispatch({ tasks: [task("t1"), task("t2")], members: [member("m1"), member("m2")], ledger: {} })
+    const plan = rosterPlan({ tasks: [task("t1"), task("t2")], members: [member("m1"), member("m2")], ledger: {} })
     expect(plan.pairs.map((pair) => [pair.taskId, pair.memberId])).toEqual([["t1", "m1"], ["t2", "m2"]])
     expect(plan.skipped).toEqual([])
   })
@@ -27,37 +39,37 @@ describe("one dispatch pass", () => {
     /** A ledger that already books m1, so this pass must leave that member alone. */
     const ledger: DispatchLedger = { [ledgerKey(TEAM, "t0")]: { teamId: TEAM, taskId: "t0", memberId: "m1", memberName: "member m1", assignedAt: NOW.toISOString() } }
     /** The pass whose only free member is m2, because the ledger above books m1. */
-    const plan = planDispatch({ tasks: [task("t1")], members: [member("m1"), member("m2")], ledger })
+    const plan = rosterPlan({ tasks: [task("t1")], members: [member("m1"), member("m2")], ledger })
     expect(plan.pairs.map((pair) => pair.memberId)).toEqual(["m2"])
   })
 
   test("THE SAME TASK IS NEVER DISPATCHED TWICE — the ledger is the reason, not the message", () => {
     /** The pass that pairs t1 with m1 for the first time. */
-    const first = planDispatch({ tasks: [task("t1")], members: [member("m1")], ledger: {} })
+    const first = rosterPlan({ tasks: [task("t1")], members: [member("m1")], ledger: {} })
     /** The ledger recording that pairing, which is what must prevent a second dispatch. */
     const ledger = assign({}, { teamId: TEAM, ...first.pairs[0] }, NOW)
     /** A second pass over the SAME task, now with a spare member available to take it. */
-    const second = planDispatch({ tasks: [task("t1")], members: [member("m1"), member("m2")], ledger })
+    const second = rosterPlan({ tasks: [task("t1")], members: [member("m1"), member("m2")], ledger })
     expect(second.pairs).toEqual([])
     expect(second.skipped[0].reason).toContain("already dispatched to member m1")
   })
 
   test("a running member is not idle: the roster status is the gate", () => {
     /** The pass whose first member is running: only the second may receive the task. */
-    const plan = planDispatch({ tasks: [task("t1")], members: [member("m1", "running"), member("m2", "inactive")], ledger: {} })
+    const plan = rosterPlan({ tasks: [task("t1")], members: [member("m1", "running"), member("m2", "inactive")], ledger: {} })
     expect(plan.pairs.map((pair) => pair.memberId)).toEqual(["m2"])
   })
 
   test("no idle member is reported per task, not as a silent no-op", () => {
     /** The pass whose only member is busy, so the task must be REPORTED rather than dropped. */
-    const plan = planDispatch({ tasks: [task("t1")], members: [member("m1", "running")], ledger: {} })
+    const plan = rosterPlan({ tasks: [task("t1")], members: [member("m1", "running")], ledger: {} })
     expect(plan.pairs).toEqual([])
     expect(plan.skipped).toEqual([{ taskId: "t1", subject: "task t1", reason: "no idle member is free" }])
   })
 
   test("a blocked task waits and says what blocks it; a completed one is skipped", () => {
     /** The pass over one blocked task and one completed one: neither may be paired. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [{ id: "t1", subject: "blocked", status: "pending", ready: false, blockedBy: ["t0"] }, task("t2", true, "completed")],
       members: [member("m1"), member("m2")],
       ledger: {},
@@ -69,7 +81,7 @@ describe("one dispatch pass", () => {
 
   test("a HALT refuses the whole pass and names the reason — and touches nothing else", () => {
     /** The pass under a hold, which must refuse everything and pair nothing. */
-    const plan = planDispatch({ tasks: [task("t1")], members: [member("m1")], ledger: {}, hold: "waiting for the user" })
+    const plan = rosterPlan({ tasks: [task("t1")], members: [member("m1")], ledger: {}, hold: "waiting for the user" })
     expect(plan.pairs).toEqual([])
     expect(plan.halted).toBe("waiting for the user")
     expect(plan.skipped).toEqual([])
@@ -77,7 +89,7 @@ describe("one dispatch pass", () => {
 
   test("the limit caps one pass and reports the rest as capped", () => {
     /** A two-task board with the pass limit set to one. */
-    const plan = planDispatch({ tasks: [task("t1"), task("t2")], members: [member("m1"), member("m2")], ledger: {}, limit: 1 })
+    const plan = rosterPlan({ tasks: [task("t1"), task("t2")], members: [member("m1"), member("m2")], ledger: {}, limit: 1 })
     expect(plan.pairs).toHaveLength(1)
     expect(plan.skipped[0].reason).toBe("the pass reached its limit")
   })
@@ -117,7 +129,7 @@ describe("the ledger", () => {
     expect(forgotten.sort()).toEqual(["t1", "t2", "t3"])
     expect(Object.keys(next)).toEqual([])
     // and the member becomes dispatchable again
-    const plan = planDispatch({ tasks: [task("t4")], members: [member("m1")], ledger: next })
+    const plan = rosterPlan({ tasks: [task("t4")], members: [member("m1")], ledger: next })
     expect(plan.pairs).toHaveLength(1)
   })
 
@@ -133,13 +145,13 @@ describe("the ledger", () => {
     // Each team's VIEW sees only its own row, so the second team's pass is not told "already dispatched".
     expect(Object.keys(ledgerOfTeam(both, OTHER_TEAM))).toEqual([ledgerKey(OTHER_TEAM, "T1")])
     /** Team B's own pass over its own T1: the row's member is B's, never A's. */
-    const planB = planDispatch({ tasks: [task("T1")], members: [member("m9")], ledger: ledgerOfTeam(both, OTHER_TEAM) })
+    const planB = rosterPlan({ tasks: [task("T1")], members: [member("m9")], ledger: ledgerOfTeam(both, OTHER_TEAM) })
     expect(planB.pairs).toHaveLength(0)
     expect(planB.skipped[0].reason).toContain("already dispatched to nine")
     // A task B has NOT dispatched is dispatchable even though A already used that id.
     // A member B has NOT booked (m9 is busy with B's T1) takes a task whose id A also uses.
     /** A task id used by team A but absent from team B's view. */
-    const planBNext = planDispatch({ tasks: [task("T2")], members: [member("m10")], ledger: ledgerOfTeam(both, OTHER_TEAM) })
+    const planBNext = rosterPlan({ tasks: [task("T2")], members: [member("m10")], ledger: ledgerOfTeam(both, OTHER_TEAM) })
     expect(planBNext.pairs.map((pair) => pair.taskId)).toEqual(["T2"])
   })
 

@@ -1,3 +1,4 @@
+import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 // Offline tests for `cellwork_dispatch {reassign}` (contract C6, defects D4/D5).
 //
 // A fenced owner's rows are not lost work: the captain hands each row to another member by CLAIMING it
@@ -175,7 +176,16 @@ function makeHarness(cell: CellState, rows: FakeBoard): Harness {
   }
   installCellworkProtocol({
     dsh: adapter as unknown as DshAdapter,
-    ctx: { get: (name: string): unknown => name === "mpdTeams" ? { get: (): unknown => ({ teamId: TEAM_ID, members: harness.board.members, tasks: harness.board.tasks }) } : undefined },
+    ctx: {
+      // THE SHARED PLANE DOUBLE (wave W2-D): the tool now asks `mpdTeamActions` for the pass, so this
+      // harness answers it over the SAME board the `mpdTeams` double reads, delivering into `sends`.
+      get: (name: string): unknown => name === "mpdTeamActions"
+        ? createTeamActionsDouble({
+          record: () => ({ teamId: TEAM_ID, members: harness.board.members, tasks: harness.board.tasks }) as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+          send: (handle: string, text: string): void => { harness.sends.push({ handle, text }) },
+        }).service
+        : name === "mpdTeams" ? { get: (): unknown => ({ teamId: TEAM_ID, members: harness.board.members, tasks: harness.board.tasks }) } : undefined,
+    },
     config: DEFAULT_CELLWORK_CONFIG,
     warn: (): void => {},
   })
@@ -353,35 +363,35 @@ test("C6: cellwork_dispatch claims through the board, journals, delivers, and ne
   /** The captain's repair pass. */
   const answer = await runTool(harness, "cellwork_dispatch", { reassign: [{ task_id: "T1", owner: "Reviewer" }] })
   expect(answer.ok).toBe(true)
-  // THE BOARD WRITE IS THE TOOL THE ROBOT ALREADY USES, with the row and the claimant named.
-  expect(harness.calls.length).toBe(1)
-  expect(harness.calls[0].name).toBe("agent_teams_task")
-  expect(harness.calls[0].arguments.action).toBe("claim")
-  expect(harness.calls[0].arguments.task_id).toBe("T1")
-  expect(harness.calls[0].arguments.claimant).toBe("Reviewer")
+  // THE CLAIM IS THE PLANE'S NOW (wave W2-D, provenance re-pinned): cellwork no longer calls the board's
+  // claim tool at all — the fact an arm can observe is the RECORD the plane wrote, which is also what
+  // stops a second delivery. This asserts the delegation as an ABSENCE plus its effect.
+  expect(harness.calls.length).toBe(0)
+  /** The row the hand-over claimed, read back off the board the harness shares with the plane. */
+  const claimedRow = harness.board.tasks.find((task) => task.id === "T1")
+  expect(claimedRow).toMatchObject({ status: "in_progress", owner: "Reviewer" })
   // The hand-over is reported as the SEPARATE facts it is.
   /** The reassignment outcome the tool reported. */
   const reassigned = answer.reassigned as Array<Record<string, unknown>>
   expect(reassigned).toEqual([{ taskId: "T1", owner: "Reviewer", claimed: true, delivered: true }])
-  // ONE delivery: the hand-over of T1. The pass then refuses T2 because Reviewer now OWNS an in-flight
-  // row — the board claim is what makes the member busy, and it is also what stops a second delivery.
+  // ONE delivery: the hand-over of T1, in the plane's own message text. The pass then refuses T2 because
+  // Reviewer now OWNS an in-flight row — the claim is what makes the member busy.
   expect(harness.sends.length).toBe(1)
   expect(harness.sends[0].text).toContain("T1")
-  expect(harness.sends.filter((send) => send.text.includes("your task T1")).length).toBe(1)
+  expect(harness.sends.filter((send) => send.text.includes("You have been assigned shared task T1")).length).toBe(1)
   /** The rows the pass left alone, with why. */
   const skipped = answer.skipped as Array<Record<string, unknown>>
-  expect(skipped.map((row) => row.taskId).sort()).toEqual(["T1", "T2"])
+  // T1 IS NOT REPORTED: a row claimed by the hand-over is no longer a decision for the captain (the tool's
+  // documented report lists the rows it DECIDED about). T2 is, because its owner is now busy.
+  expect(skipped.map((row) => row.taskId)).toEqual(["T2"])
   /** The skip reason keyed by row, so each rule is asserted on the row it belongs to. */
   const reasons = new Map(skipped.map((row) => [String(row.taskId), String(row.reason)]))
-  // T1 is no longer pending: the CLAIM the hand-over wrote is what the pass reads back, so the row is
-  // never delivered twice. T2 waits because Reviewer now owns an in-flight row.
-  expect(String(reasons.get("T1"))).toContain("not pending")
-  expect(String(reasons.get("T2"))).toContain("BUSY")
-  // The journal row existed when the FIRST message went out (claim → journal → deliver).
-  expect(harness.atSend[0].reassigned).toBe(1)
+  // The plane words a busy owner as "not idle" (the SAME rule, its own sentence).
+  expect(String(reasons.get("T2"))).toContain("not idle")
   /** The journal rows the tool wrote. */
   const rows = journalRows(harness.workspace, CELL_ID)
-  expect(rows.filter((row) => row.event === "task-reassigned").length).toBe(1)
+  // THE PLANE JOURNALS ITS OWN hand-over row (`task-reassigned` in `.mpd/team/journal.jsonl`); this
+  // cell's journal carries the pass summary, which is what a cellwork reader lists.
   expect(rows.filter((row) => row.event === "dispatch-reassign").length).toBe(1)
 })
 
@@ -393,18 +403,27 @@ test("C6: a reassignment the board refuses is reported in the result, and the pa
     members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer" }, { name: "Reviewer", status: "running", executorRef: "handle-Reviewer" }],
     tasks: [{ id: "T2", subject: "healthy work", status: "pending", owner: "Reviewer", blockedBy: [] }],
   })
+  // TWO REFUSALS, TWO LAYERS (provenance re-pinned by wave W2-D): a WELL-FORMED pair naming something
+  // the board does not hold is a per-pair outcome the pass reports and survives; a MALFORMED entry is
+  // refused by the PLANE's one validator for the whole call. The old tool split that second case per
+  // entry; the plane does not, so this arm asserts where each refusal now lives.
   /** The captain's pass, naming a row the board does not hold. */
-  const answer = await runTool(harness, "cellwork_dispatch", { reassign: [{ task_id: "T404", owner: "Reviewer" }, { task_id: "T2", owner: "" }] })
+  const answer = await runTool(harness, "cellwork_dispatch", { reassign: [{ task_id: "T404", owner: "Reviewer" }] })
   expect(answer.ok).toBe(true)
   /** The reassignment outcome. */
   const reassigned = answer.reassigned as Array<Record<string, unknown>>
   expect(reassigned.length).toBe(1)
   expect(reassigned[0].claimed).toBe(false)
   expect(String(reassigned[0].reason)).toContain("no board row")
-  // An entry with no owner is reported as unreadable, and the readable pairs still ran.
-  expect((answer.reassignInvalid as unknown[]).length).toBe(1)
+  // The pass STILL RAN: the healthy row was delivered.
   expect(harness.sends.length).toBe(1)
   expect(harness.sends[0].text).toContain("T2")
+  /** A pass whose argument the plane cannot read at all. */
+  const malformed = await runTool(harness, "cellwork_dispatch", { reassign: [{ task_id: "T2", owner: "" }] })
+  expect(malformed.ok).toBe(false)
+  expect(String(malformed.error)).toContain("every `reassign` entry needs a non-empty `task_id` and `owner`")
+  // NOTHING WAS DELIVERED by the refused call: the count is still the one above.
+  expect(harness.sends.length).toBe(1)
 })
 
 test("C6: the pass skips a fenced owner's row with the repair named, and delivers nothing to it", async () => {
@@ -412,7 +431,9 @@ test("C6: the pass skips a fenced owner's row with the repair named, and deliver
   const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint" }) })
   /** The harness with one ready row for that owner. */
   const harness = makeHarness(cell, {
-    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer" }],
+    // THE FENCE LIVES ON THE PLANE'S RECORD (wave W2-D): the seat mode is the TEAM record's, and the cell
+    // row mirrors it. An arm that set only the cell row would be asserting a state the plane cannot see.
+    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }],
     tasks: [{ id: "T1", subject: "fenced work", status: "pending", owner: "Senior Engineer", blockedBy: [] }],
   })
   /** The captain's pass with nothing to reassign. */

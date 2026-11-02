@@ -24,7 +24,8 @@ import { DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, dshSeamInject, resolveDshAdapter, te
 import { callerContext, sessionIdOf, type CallerContext, type TeamsServiceView } from "./caller"
 import { resolveCellworkConfig, type CellworkConfig } from "./config"
 import { installCellworkGuard } from "./guard"
-import { CELLWORK_USAGE, activationDirective } from "./prompts"
+import { CELLWORK_USAGE } from "./prompts"
+import { openCell, type OpenCellOutcome } from "./open"
 import { installCellworkFlow, type FlowCtx } from "./flow"
 import { installCellworkProtocol } from "./protocol"
 import type { ProtocolCtx } from "./protocol-core"
@@ -703,6 +704,75 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
     },
   }))
 
+  // ── cellwork_open — the PROGRAMMATIC entry (contract §4.5) ───────────────
+  // WHY A TOOL AND NOT A SECOND COMMAND. An autoproject run escalates into cell mode from its own turn:
+  // it cannot invoke a slash command, and it must enter through the SAME gate the user does. The tool is
+  // that door — it refuses a non-captain caller itself (a member or a delegated child may not open a
+  // second front), refuses an already-active cell and a mandate with no escalation artifact, and returns
+  // the activation directive as TEXT because a tool call has no turn surface of its own.
+  disposers.push(dsh.registerTool({
+    name: "cellwork_open",
+    description: "The PROGRAMMATIC cell entry: create one cell for an objective and return its activation directive. CAPTAIN-ONLY (a member or a delegated child may not open a second front); refuses when a cell is already active in this workspace; a `mandate` is accepted only when `.mpd/autoproject/<runId>/escalation.json` exists. `/cellwork` is the same path with a live turn to submit into.",
+    parameters: {
+      type: "object",
+      properties: {
+        objective: { type: "string", description: "The objective, in the user's terms." },
+        mandate: { type: "string", description: "The autoproject run id whose escalation.json authorises this cell." },
+      },
+      required: ["objective"],
+      additionalProperties: false,
+    },
+    output: {
+      schema: {
+        type: "object",
+        properties: {
+          ok: { type: "boolean" },
+          error: { type: "string" },
+          path: { type: "string" },
+          cellId: { type: "string" },
+          phase: { type: "string" },
+          statePath: { type: "string" },
+          directive: { type: "string" },
+          injected: { type: "boolean" },
+        },
+        required: ["ok"],
+      },
+      render: (_args: unknown, value: unknown): unknown => render(value),
+    },
+    execute: async (args: unknown, exec: DshToolExec): Promise<Record<string, unknown>> => {
+      /** The caller's workspace, resolved through the adapter for THIS call. */
+      const workspace = dsh.workspaceRoot(exec)
+      /** The caller's session id, which becomes this cell's captain. */
+      const sessionId = sessionIdOf(exec.agent)
+      // THE TOOL'S OWN CAPTAIN CHECK (contract §4.5): the command IS the user's turn, so it needs no such
+      // test; a tool call can come from any member, and a member opening a second front would fight the
+      // first cell for the same board.
+      /** Why this caller may not open a cell, when it may not. */
+      const refusal = nonCaptainCallerReason(exec.agent)
+      if (refusal !== undefined) return { ok: false, error: "cellwork_open is CAPTAIN-ONLY: " + refusal }
+      /** The shared open outcome. */
+      const outcome = openCell({
+        workspace,
+        objective: String(readArgs(args)["objective"] ?? ""),
+        captainSessionId: sessionId,
+        ...(typeof readArgs(args)["mandate"] === "string" ? { mandate: String(readArgs(args)["mandate"]) } : {}),
+        now: new Date(),
+      })
+      if (!outcome.ok) return { ok: false, error: outcome.error, ...(outcome.path === undefined ? {} : { path: outcome.path }) }
+      // BEST-EFFORT INJECTION: the directive is ALSO returned, so a host without the seam (or a refusal
+      // from it) still lets the caller relay the text instead of losing the only way into the mode.
+      /** Whether the directive reached the caller's own turn surface. */
+      let injected = false
+      try {
+        dsh.injectAgentMessage(exec.agent, dsh.userMessage({ text: outcome.directive, source: { kind: "mpd-cellwork", reason: "activation-directive" } }))
+        injected = true
+      } catch {
+        injected = false
+      }
+      return { ok: true, cellId: outcome.cellId, phase: outcome.phase, statePath: outcome.statePath, directive: outcome.directive, injected }
+    },
+  }))
+
   // ── /cellwork — THE ONLY ENTRY POINT (contract B1) ───────────────────────
   // A command handler runs "without sending the command to the model", so the handler WRITES the cell
   // record and then SUBMITS the activation directive as the invoking agent's own next user turn. An
@@ -715,40 +785,21 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
     /** The user's objective from the invocation, trimmed. */
     const objective = String(invocation?.rawInput ?? "").trim()
     if (objective === "") return { kind: "error", text: CELLWORK_USAGE }
-    // THE SESSION ID IS CHECKED BEFORE ANYTHING IS WRITTEN. `normalizeCellState` treats an empty
-    // `captainSessionId` as an identity failure, so a record written without one is a record no later
-    // call can read — and every `/cellwork` after it would refuse with "cannot be read", leaving a cell
-    // that only a hand edit could clear. A sessionless agent therefore gets a teaching refusal and the
-    // workspace is left untouched.
-    /** The invoking agent's session id, which becomes this cell's captain. */
-    const captainSessionId = sessionIdOf(invocation?.agent)
-    if (captainSessionId === "") return { kind: "error", text: "cellwork refused: the invoking agent carries no session id, so no captain can be recorded — nothing was written" }
     /** The command's workspace, resolved from the invoking agent. */
     const workspace = dsh.workspaceRoot({ agent: invocation?.agent } as DshToolExec)
-    /** The workspace's current cell scan. */
-    const active = readActiveCell(workspace)
-    if (!active.ok) return { kind: "error", text: "cellwork refused: " + refusalText(active) }
-    if (active.cell !== null) {
-      return {
-        kind: "error",
-        text: "cellwork refused: cell " + active.cell.state.cellId + " is still active in this workspace (phase " + active.cell.state.phase + ") — one cell at a time, and a second one would fight the first for the same team board. Read it with `cellwork_status`, finish it, or end it with `cellwork_stop` first.",
-      }
-    }
-    /** The instant this cell is minted at, which its id also encodes. */
-    const now = new Date()
-    /** The fresh record, phase `requirements`, capturing the captain session. */
-    const created = newCellState({ cellId: freeCellId(workspace, now), objective, captainSessionId, now })
-    writeCell(workspace, created)
-    recordTransition(workspace, created, { event: "start", phase: created.phase, objective, captainSessionId: created.captainSessionId }, now)
-    /** The activation directive submitted as the invoking agent's own next user turn. */
-    const directive: DshUserMessage = dsh.userMessage({ text: activationDirective({ state: created, workspace }), source: { kind: "mpd-cellwork", reason: "activation-directive" } })
-    if (invocation?.submit?.(directive) !== true) {
-      // NOTHING RUNS IF NOTHING WAS INJECTED. Leaving the record active would fence a captain whose
-      // turn never received the directive, so the just-created cell is archived with the reason.
-      recordTransition(workspace, { ...created, phase: "stopped", archived: true, stopReason: "no-live-turn-surface" }, { event: "stop", reason: "no-live-turn-surface", forced: false }, now)
-      return { kind: "error", text: "cellwork could not start: no live agent turn surface to submit the activation directive, so cell " + created.cellId + " was archived immediately and no mode is active" }
-    }
-    return { kind: "success", text: "cellwork active: " + created.cellId + " — the activation directive was submitted as this agent's next turn" }
+    // THE COMMAND IS THE USER'S OWN TURN, so it can SUBMIT the directive as the agent's next turn; the
+    // shared open path owns every refusal and the record write (see `open.ts`).
+    /** The shared open outcome. */
+    const outcome: OpenCellOutcome = openCell({
+      workspace,
+      objective,
+      captainSessionId: sessionIdOf(invocation?.agent),
+      now: new Date(),
+      submit: (text: string): boolean => invocation?.submit?.(dsh.userMessage({ text, source: { kind: "mpd-cellwork", reason: "activation-directive" } })) === true,
+    })
+    return outcome.ok
+      ? { kind: "success", text: "cellwork active: " + outcome.cellId + " — the activation directive was submitted as this agent's next turn" }
+      : { kind: "error", text: outcome.error }
   }
   // ── the flow tools (B4–B7) from their own module ──────────────────────────
   disposers.push(...installCellworkFlow({ dsh, ctx: ctx as FlowCtx, config: cfg, warn }))
@@ -764,6 +815,33 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // `effect`, so a teardown releases the guard, the tools and the command together.
   if (typeof ctx.effect === "function") ctx.effect(() => () => { for (const dispose of disposers) dispose() }, "mpd-cellwork.registrations")
   warn("[mpd-cellwork] mounted: guard=" + (guard.installed ? "on" : "OFF(" + String(guard.reason ?? "?") + ")") + " depthMax=" + String(cfg.depthMax) + " checkpointRatio=" + String(cfg.checkpointRatio) + " windowFraction=" + String(cfg.windowFraction) + " windowOverride=" + String(cfg.windowOverride ?? "none"))
+}
+
+/**
+ * Why one agent handle may NOT open a cell, or `undefined` when it is a captain.
+ *
+ * A TOOL has no command invocation to trust: its caller can be any session, and the cells that must not
+ * open a second front are exactly the ones the harness RECORDED as delegated — `origin: "subagent"`, a
+ * `parentSession` link, or a non-zero `delegationDepth`. The header is read structurally because the
+ * adapter's tool exec carries the agent opaquely, and an absent header is a captain (the documented
+ * default: a top-level session carries no delegation fields at all).
+ * @param agent - the opaque agent handle from the tool exec.
+ * @returns the refusal sentence, or undefined for a captain.
+ */
+function nonCaptainCallerReason(agent: unknown): string | undefined {
+  /** The handle read as a record, so every access below is checked. */
+  const handle = typeof agent === "object" && agent !== null ? agent as Record<string, unknown> : undefined
+  /** The nested session member the harness fuses into a live agent. */
+  const session = typeof handle?.session === "object" && handle.session !== null ? handle.session as Record<string, unknown> : undefined
+  /** The session header, which carries the delegation facts. */
+  const header = typeof session?.header === "object" && session.header !== null ? session.header as Record<string, unknown> : undefined
+  /** The session id, for the sentence. */
+  const id = typeof session?.id === "string" && session.id !== "" ? session.id : "(unknown session)"
+  if (header === undefined) return undefined
+  if (header.origin === "subagent") return "session " + id + " was recorded as a delegated subagent, so it cannot open a cell of its own"
+  if (typeof header.parentSession === "string" && header.parentSession !== "") return "session " + id + " is a child of session " + header.parentSession + ", so it cannot open a cell of its own"
+  if (typeof header.delegationDepth === "number" && header.delegationDepth > 0) return "session " + id + " sits at delegation depth " + String(header.delegationDepth) + ", so it cannot open a cell of its own"
+  return undefined
 }
 
 /**

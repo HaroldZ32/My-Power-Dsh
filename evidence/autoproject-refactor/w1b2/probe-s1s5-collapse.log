@@ -1,0 +1,4 @@
+criteria=13 checklist=3  -> {"escalate":false,"signals":[{"id":"S1","value":13,"threshold":12}]}
+criteria=13 checklist=13 -> {"escalate":true,"signals":[{"id":"S1","value":13,"threshold":12},{"id":"S5","value":13,"threshold":8}]}
+criteria=9  checklist=9  -> {"escalate":false,"signals":[{"id":"S5","value":9,"threshold":8}]}
+topLevelScope(doc-only evidence) -> ["docs","agent-references","evidence","skills","packages"]

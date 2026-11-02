@@ -223,8 +223,8 @@ function pathExpr(rel: string): string { return jsVal(BP + " + \"" + rel + "\"")
 /** Every plugin package the shipped patch mounts; a missing `dist/` for one of them is a hard FAIL. */
 const PLUGIN_PKGS: readonly string[] = [
   "mpd-dsh-adapter-plugin",
-  "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-ulw-plugin",
-  "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
+  "mpd-tools-plugin", "mpd-modelchain-plugin", "mpd-autoproject-plugin",
+  "mpd-codegraph-plugin", "mpd-hashline-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
   // mpd-project-init-plugin is MOUNTED by the bundle patch (row `mpd-project-init`, R3):
@@ -295,7 +295,7 @@ const PLUGIN_PKGS: readonly string[] = [
   // reached; adding the entry is the whole fix.
   "mpd-tui-adapter-plugin",
   // mpd-goal-plugin is MOUNTED by the bundle patch (row `mpd-goal`): the persisted-goal bridge
-  // (`mpd_goal_*` plus the `mpdGoal` service ULW/boulder consume). The FIFTH occurrence of the
+  // (`mpd_goal_*` plus the `mpdGoal` service autoproject/boulder consume). The FIFTH occurrence of the
   // silent-omission class this list keeps recording, caught by the positive closure check below the
   // moment the row landed — `[pack-mpd] FAIL: cordis.patch.yml mounts
   // packages/mpd-goal-plugin/dist/index.js but the packed tree has no such file` (measured

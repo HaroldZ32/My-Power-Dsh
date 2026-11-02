@@ -1,0 +1,6 @@
+mpd-dag-group      4
+data-mpd-group     3
+data-mpd-frames    1
+mpd-dag-node       4
+be8d472cb638c8683d49b6a5234477195378d7f7bd8cfc86947a7c6f6a5be4c1  packages/mpd-bundle-plugin/client.js
+818294 packages/mpd-bundle-plugin/client.js

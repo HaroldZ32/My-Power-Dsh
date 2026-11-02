@@ -1,0 +1,22 @@
+-- stale vocabulary (want 0 hits each):
+   interior is COLLAPSED                                0
+   NOT claimed by this build                            0
+   recursive, variable-column geometry (a subcell       0
+   no frame of its own yet                              0
+-- kept flat path:
+   layoutFlat          3
+   layoutNested        3
+-- the nested/ flat distinction in the comment (context around the geometry contract):
+--- `GraphGeometry.groups` at -1 ---
+
+--- `each rectangle ENCLOSES` at -1 ---
+
+--- `ENCLOSE` at -1 ---
+
+--- `interior + FRAME_PAD` at -1 ---
+
+--- `innermost` at 734397 ---
+f one team: every frame laid out from its own items, recursively.        *        * The returned `columns` is EMPTY on purpose — the drawing is not a uniform grid, so the DOM branch        * positions the cards from `nodes[].left/top/width/height` (`nested: true` is what tells it to) — and        * `groups` carries EVERY frame, innermost included, each with its absolute rectangle.        * @param tasks - the board, in the order the route served it (the ROOT frame's cards).        * @param radius - the corner radius the painted curves are built with.        * @param served - the host's model, which must declare at least one group.        * @returns the 
+
+--- `declares no groups` at -1 ---
+

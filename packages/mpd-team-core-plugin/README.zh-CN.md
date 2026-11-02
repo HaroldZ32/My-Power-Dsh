@@ -350,3 +350,30 @@ your turn and wait for a dispatch`。由于拒绝本身就是**工具结果**，
   书面约定。
 - **没有惰性 spawn 时，spawn 回合仍要花一次模型回合。** 守卫把它变成一次只有一条指令、零工具的回合，而不是免费
   的回合；惰性 spawn 未实现。
+
+
+## owner-only 派发、fence、handoff 与占用读数（波次 W1-A）
+
+五个工具**名称**不变，增长的是 `action` 与记录字段。本节就是这些新增能力的契约。
+
+**派发默认 owner-only。** `agent_teams_dispatch` 把就绪任务配给它**声明的** owner。owner 忙碌、缺席、被
+fence 或已失败时，该行会被**报告**并保持 pending —— 绝不替换。两个逃生口都仅限 Lead：`mode: "roster"`
+恢复按序回退；`reassign: [{task_id, owner}]` 先为该成员在板子上 claim 这些行、记 `task-reassigned`，再投递。
+**被阻塞（BLOCKED）的行不可 reassign。值得记住的后果：** `release` 会**清除** owner，所以「先 release
+再 dispatch」必须走 `reassign`（或 `mode: "roster"`）—— 这是两个动词的组合语义，不是缺陷。
+
+**席位动词。** `agent_teams_task {action:"context"}` 回答调用者自己的占用与席位状态，且从不猜测窗口：
+`provenance` 报 `observed`、`no-window` 或 `unavailable`。`{action:"handoff"}` 校验七段式文档，写入
+`.mpd/team/handoff/<teamId>/<member>-<n>.md`，把该成员切到 `mode:"checkpoint"` 并记 `handoff-written`。
+`agent_teams_control {action:"fence"|"unfence", member}` 关闭或重开**一个**席位（仅 Lead）；被 fence 的席位
+永不被投递，它的行通过 `reassign` 修复。
+
+**服务面。** `mpdTeams` 新增 `memberContext`（单个席位的占用）、`depthBudget`（带环检测的有界父链遍历，
+上限取自 `cellwork.depthMax`，默认 3）、`archivedPlans` 与 `cancelTasks`。`mpdTeamActions` 承载无 exec 的
+动作 `fence`、`unfence`、`handoff`、`dispatch`，因此面板按钮、服务调用与工具走同一条序列。
+
+**workmate 绑定字段。** 已暂存成员会记录 `workmate`、`workmateMode`（由哪条分支绑定）与
+`workmateReason`（原因）；`fenced: false` 会**删除** fence 键，所以「未 fence」在磁盘上只有一种写法。
+
+**工具面预算是一个上界，不是承诺：** 五个 action 型工具加一条命令必须保持在 6,400 字符以内
+（`test/tool-surface.test.ts`；A6b 收尾时实测 6,399），且每个工具的**描述**必须低于 700。

@@ -1,6 +1,8 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -438,6 +440,53 @@ function workspaceRootOf(exec) {
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
   return process.cwd();
+}
+
+class HomeGuardRefusal extends Error {
+  code;
+  status;
+  constructor(code, message, status) {
+    super(message);
+    this.name = "HomeGuardRefusal";
+    this.code = code;
+    this.status = status;
+  }
+}
+function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertHomeMutationSandboxed(guard) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[guard.allowEnv] === "1")
+    return;
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
 var rowLogSinks = new Map;
 function rowLogLine(name2, line) {
@@ -2339,10 +2388,12 @@ export {
   DSH_SEAM_WEB_RUNTIME,
   DSH_SEAM_WEB_SERVER,
   GOAL_TOOL_NAMES,
+  HomeGuardRefusal,
   SERVICE_NAME,
   agentUnconfiguredMessage,
   agentUnconfiguredRefusal,
   apply,
+  assertHomeMutationSandboxed,
   bundleRootOf,
   createDshAdapter,
   createLazyDshAdapter,
@@ -2355,6 +2406,7 @@ export {
   isRecord,
   modelDeclaresNoEffort,
   name,
+  realUserHome,
   resolveDshAdapter,
   resolveRunRoute,
   resolveTeamMemberRoute,

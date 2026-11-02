@@ -1,0 +1,12 @@
+# verify-comment-coverage
+
+scanned 552 TypeScript file(s) of 552 in the source set; inspected 49792 declaration(s); skipped 23987 inline callback(s) as out of family
+
+VERDICT: FAIL — 2 violation(s) across 2 file(s).
+
+packages/mpd-cellwork-plugin/test/lib/team-actions-double.ts (1)
+  399: comment — ids
+
+packages/mpd-roles-plugin/test/admission.test.ts (1)
+  125: comment — toString
+

@@ -15,7 +15,9 @@
 import { appendJournal, cellIdAt, handoffPath, newCellState, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
-import { dispatchOwnerOnly, sendThroughExecutor, type DispatchRecordView, type DispatchReport } from "./dispatch"
+// The dispatch engine moved to the TEAM PLANE (wave W2-D): this module no longer pairs, sends or
+// reasons about a pairing, so it imports nothing from cellwork's own dispatch module.
+
 import { validateHandoffText, writeHandoff } from "./handoff"
 import { appendCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -135,22 +137,22 @@ export function planCheckpoint(cell: CellState, memberName: string, pressure: Ds
 }
 
 /**
- * Record one injected checkpoint and flip the member's seat to `checkpoint`.
+ * Record one injected checkpoint — the LOG entry only.
  *
+ * THE SEAT MODE IS NOT WRITTEN HERE (wave W2-E). A closed seat is the TEAM record's fact
+ * (`mode:"checkpoint"`, written by `mpdTeamActions.fence`/`handoff`), and the cell row is its MIRROR: a
+ * module that flipped the cell mode on its own would be a second authority for the seat, which is exactly
+ * the divergence the migration removes. The plane writes first; the mirror follows through the caller that
+ * owns the write (the pre-step listener), never from a pure state function.
  * @param state - the cell record.
  * @param plan - the decision that was taken.
  * @param sessionId - the member's session id.
  * @param now - the instant of the injection.
- * @returns the record after the checkpoint.
+ * @returns the record with the checkpoint logged.
  */
 export function applyCheckpoint(state: CellState, plan: CheckpointPlan, sessionId: string, now: Date): CellState {
-  /** The member row after the mode flip, when the cell still knows it. */
-  const member = state.members[plan.memberName]
-  /** The members map after the flip. */
-  const members = member === undefined ? state.members : { ...state.members, [plan.memberName]: { ...member, mode: "checkpoint" as const } }
   return {
     ...state,
-    members,
     checkpoints: [...state.checkpoints, { sessionId, at: now.toISOString(), usedTokens: plan.usedTokens, contextWindow: plan.windowTokens, turn: plan.turn ?? 0 }],
   }
 }

@@ -1,0 +1,112 @@
+== declared-by-writer hashes vs measured
+declared-check exit=0
+packages/mpd-bundle-plugin/src/team-view.ts: OK
+packages/mpd-bundle-plugin/test/team-view.test.ts: OK
+packages/mpd-bundle-plugin/test/client-built-frames.test.ts: OK
+packages/mpd-bundle-plugin/client.js: OK
+packages/mpd-bundle-plugin/dist/index.js: OK
+packages/mpd-bundle-plugin/README.md: OK
+packages/mpd-bundle-plugin/README.zh-CN.md: OK
+
+== hash sandwich: start 2026-10-26T13:56:02Z
+e384e6aa84e1752b6eb52f7a49495e61f61cf6a3a34a75f64da7d7c6bb669bc1  evidence/cellwork/web-d4/2026-10-26T13-56-02Z-T24/scope-start.sha256
+== settle window 50 s
+e384e6aa84e1752b6eb52f7a49495e61f61cf6a3a34a75f64da7d7c6bb669bc1  evidence/cellwork/web-d4/2026-10-26T13-56-02Z-T24/scope-postsettle.sha256
+
+== bundle suite
+bundle exit=0
+ 228 pass
+ 0 fail
+Ran 228 tests across 11 files. [5.99s]
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > one frame re-reads the routes while the fallback interval never fires 
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > each MOUNT owns its own stream: both sidebar hosts, mounted together, hold one each 
+(pass) the card's form behaviour > a save writes nested PATHS through scope.mutate with the revision fence 
+(pass) isolation and front-door parity > the four DISPLAY group headings are declared, and grouping is stated as display-only 
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > G-1: each display group renders its heading, and each AGENT renders as ONE row holding its three cells 
+(pass) the team-model slots render as DEPENDENT pickers fed by the live catalog (A5) > NEGATIVE CONTROL: the group/agent lookup is falsifiable (a wrong attribute finds nothing) 
+(pass) the effective model-config route > the roster mirror IS the shared declaration's eleven agents, in group order 
+(pass) the BUILT client parses, registers its factories, and ships the frame layer 
+(pass) the watchdog page renders the bundle's OWN state route > an empty store renders the honest 'no stuck team' line instead of a fake banner 
+(pass) team-view panels > a workspace with genuinely NO teams keeps the honest empty state 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the geometry publishes one frame per group, SIZED BY ITS INTERIOR, and the flat model publishes none 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the render emits svg → frames → nodes, and NO `data-mpd-node` carries a group id 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > the containment instrument catches a curve INSIDE the frame, and the real routes never enter it 
+(pass) D4 narrow seam: a subcell is a frame, not a task card > a flat render has no frames layer at all (the backward guarantee, on the DOM) 
+(pass) T23 · the recursive geometry draws a box's interior inside it > a frame is sized by its INTERIOR, and an inner subcell frame nests STRICTLY inside it 
+(pass) T23 · the recursive geometry draws a box's interior inside it > an interior keeps its OWN columns: a flattened layout would put both of its cards at one x 
+(pass) T23 · the recursive geometry draws a box's interior inside it > the nested render places cards ABSOLUTELY inside the frames, and the layers still order svg → frames → nodes 
+built-frames exit=0
+(pass) the BUILT client parses, registers its factories, and ships the frame layer 
+
+== the BUILT client: channel + RECURSION markers
+mpd-dag-group          4
+data-mpd-group         3
+data-mpd-frames        1
+layoutFrame            0
+groups.length === 0    4
+552daa5014d16d98559182fe1cc9fea71b57e31cb8dbc5ea0d159fd74b8007e7  packages/mpd-bundle-plugin/client.js
+854760 packages/mpd-bundle-plugin/client.js
+
+== FLAT-path guard must survive (byte-identical flat path) + nested emission visible
+--- frames-layer guard (`graph.groups === undefined`) at 795007 ---
+d : drawingTasks.find((candidate) => candidate.id === tip.id)         /** The ids this drawing paints as FRAMES, so the node layer never draws one as a task card. */         const frameIds = new Set((graph.groups === undefined ? [] : graph.groups).map((frame) => frame.id))         /** The panel's elements, in render order. */         const children            = [           // ONE SCOPED STYLESHEET AT THE PANEL ROOT, outside `[data-mpd-graph]`: the material
+
+--- frame rect publish (`data-mpd-group`) at 803468 ---
+BETWEEN the edge plane and the task cards — so an               // arriving edge passes UNDER the frame's border while the tasks stay ABOVE it. It is               // `pointer-events: none` scenery; `data-mpd-group` is the witness a verifier reads, and a               // frame's id is deliberately NOT a `data-mpd-node`, so the task layer never claims a box               // it does not draw. NULL when the model declares no group, which leaves a flat picture
+
+--- recursive layout function (`layoutFrame`) at -1 ---
+
+--- frame origin arithmetic (`frameOrigin`) at -1 ---
+
+
+== README pair: the delivered recursion must be CLAIMED and the old bound RETIRED
+113:## Nested groups: a subcell is a frame
+120:- **A box is its INTERIOR, laid out recursively.** Each frame's own items are placed by the same rules a
+122:  boxes for the rank-skipping edges — and the box is then sized to that interior plus the frame's own
+124:  the cards and the nested boxes it holds. Nesting repeats: a subcell inside a subcell gets its own frame,
+129:  the no-two-runs-share-a-pixel promise extends to every interior unchanged.
+130:- **One canvas, absolute coordinates.** The nested branch emits every card, run and frame in the canvas's
+132:  absolutely instead of inside rank columns; a box's interior is re-planned at the origin its box was
+135:  `nested` flag and the render emits no frames layer at all, so a flat picture's bytes and DOM are what
+138:  draws it on the left); the geometry lists its witness in `nestedBackEdges` so the omission is visible
+140:  unlike the flat path — and the hover halo covers the root frame's cards (an interior card keeps its own
+11:   - 一个 `@mpd-dsh/mpd` 注册，其 factory 把 workmate 库贡献为它自己的 **DSH-better-sidebar** Tab（`mpd-workmate`，order 90，`single: true`），它通过 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/init` 读取和创建 workmate，并通过 `POST /plugins/mpd-workmate/{rename,delete}` 重命名/删除 —— 按 reason 编码的拒绝分支处理（`invalid-name` / `confirm-required` / `unknown` / `collision` / `in-use`（带阻塞团队列表）），删除是显式两步（确认 → 归档，或输入名称后彻底删除），文案 zh/en。base 只按**功能名**寻址：该 Tab 渲染名称，绝不渲染名册 id（id 属内部，workmate 路由也不再携带它们）。它还保留了那个隐藏 `/agent-teams` 命令结果的 `conversation.chat.commandview` 空行（仅供仍把该结果路由到该插槽的宿主使用）。两个页面都**没有**浮动回退：只要有 mpd client 源注册了 `agent-teams-activity`、`conversation.chat.node`、`shell.overlay` 或 `sidebar.footer.action`，`scripts/build-mpd-client.ts` 就会让构建失败。
+25:## 嵌套分组：子单元画成帧框
+31:- **盒子就是它的内部，递归布局。** 每个帧框自己的条目按扁平绘制的同一套规则放置——按服务下发的列分列、
+32:  列内按 id 排序、在盒子之上预留一条跨越带给跳列的边——然后盒子按这个内部加上帧框自身的留白定尺寸，因此它
+33:  发布的矩形（`data-mpd-group="<id>,<left>,<top>,<width>,<height>"`）**包住**它内部的卡片与嵌套盒子。嵌套
+37:  "任意两条线不共用一像素"的承诺原样扩展到每个内部。
+38:- **一块画布、绝对坐标。** 嵌套分支把每张卡、每条线、每个帧框都写进画布自己的像素坐标
+40:  内部会在**其盒子被放置的那个原点**重新规划，因此绘制出的路径与测试用来证明"不进入盒子"的折线是同一条曲线。
+43:- **声明边界。** 单个帧框**内部**的环状依赖本构建不路由（扁平路径会把它画在左侧），几何把它的见证记入
+45:  悬停光晕覆盖**根帧**的卡片（内部卡片保持自己的色调）。
+
+== flat expectations must not have been relaxed (test-file diff, metadata only)
+-- (an empty list means no existing flat expectation was deleted)
+
+== dist freshness + typecheck + comments + docs
+dist exit=0
+[verify-dist-fresh] ok: 1/1 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 41ms
+typecheck exit=0
+$ tsgo --noEmit
+comments exit=0
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+docs exit=0
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=52 failed=0 violations=0 exempt=24 derived=3 links=465 dead=0 — PASS
+
+== scope metadata (stat only)
+ M packages/mpd-bundle-plugin/README.md
+ M packages/mpd-bundle-plugin/README.zh-CN.md
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/team-view.ts
+ M packages/mpd-bundle-plugin/test/team-view.test.ts
+?? packages/mpd-bundle-plugin/test/client-built-frames.test.ts
+ packages/mpd-bundle-plugin/README.zh-CN.md        |  22 +
+ packages/mpd-bundle-plugin/client.js              | 725 +++++++++++++++++++++-
+ packages/mpd-bundle-plugin/src/team-view.ts       | 725 +++++++++++++++++++++-
+ packages/mpd-bundle-plugin/test/team-view.test.ts | 326 +++++++++-
+ 5 files changed, 1816 insertions(+), 12 deletions(-)
+
+== hash sandwich: end 2026-10-26T13:57:02Z
+e384e6aa84e1752b6eb52f7a49495e61f61cf6a3a34a75f64da7d7c6bb669bc1  evidence/cellwork/web-d4/2026-10-26T13-56-02Z-T24/scope-end.sha256
+SANDWICH OK: start == end (after settle)

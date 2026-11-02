@@ -1,0 +1,51 @@
+# W1-B1 residue grep — patterns: mpd-ulw | mpd_ulw | mpd_ultrawork | /ulw | /ultrawork | .mpd/ulw
+# generated 2026-11-02T11:26:18Z from the repository root (UTC)
+# searched: packages scripts docker tests skills/dsh-qa cordis.patch.yml presets dsh-plugin.json dsh-distribution.json
+# excluded: packages/*/dist + dist/ (integration owns every dist target, T-88), tests/golden/ (frozen fixtures), node_modules/
+
+## 1. HITS INSIDE THIS LANE'S OWN FILES (1)
+  scripts/docker-e2e.ts:728:   * The frozen capture predates the W1-B1 rename (`/ulw` + `/ultrawork` collapsed into ONE
+
+## 2. HITS IN ANOTHER LANE'S OR THE DOCUMENTATION BAND'S FILES — reported, not edited here (38)
+  [not this lane] packages/mpd-cellwork-plugin/src/prompts.ts:5:// carrying this text (producer tag `mpd-cellwork`), which is the same seam `/ulw` uses.
+  [not this lane] packages/mpd-dsh-adapter-plugin/src/index.ts:221: * against its own `COMMAND_NAME` pattern, so `/ulw` registers as `"ulw"`. A
+  [not this lane] packages/mpd-dsh-adapter-plugin/src/index.ts:223: * registers `/ulw` and `/ultrawork` as two separate definitions.
+  [not this lane] packages/mpd-dsh-adapter-plugin/src/index.ts:226:  /** The lowercase command name WITHOUT the leading slash: `/ulw` registers as `ulw`. */
+  [not this lane] packages/mpd-dsh-adapter-plugin/src/index.ts:240:// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-ulw',…}`.
+  [not this lane] packages/mpd-dsh-adapter-plugin/src/index.ts:2045:   *   NO leading slash (`/ulw` registers as `"ulw"`).
+  [not this lane] scripts/verify-docs-parity.ts:1071:      "docs/ulw-deepseek-optimization.md", "docs/tui-edition-report.md",
+  [not this lane] scripts/verify-docs-parity.ts:1105:        "docs/ulw-deepseek-optimization.md", "docs/adder4.md", "docs/cnt8.md", "docs/tui-edition-report.md",
+  [docs band / W5]  packages/mpd-goal-plugin/README.md:24:## The `mpdGoal` service (consumed by `mpd-ulw` and `mpd-boulder`)
+  [docs band / W5]  packages/mpd-goal-plugin/README.md:34:| `mpd_ultrawork` with `tier=heavy` or `plan=true` | Anchors a goal for the run's objective; the goal id lands in the run's `state.json`. |
+  [docs band / W5]  packages/mpd-goal-plugin/README.zh-CN.md:23:## `mpdGoal` 服务（由 `mpd-ulw` 与 `mpd-boulder` 消费）
+  [docs band / W5]  packages/mpd-goal-plugin/README.zh-CN.md:33:| `mpd_ultrawork` 且 `tier=heavy` 或 `plan=true` | 为该次运行的目标 anchor 一个 goal；goal id 写入本次运行的 `state.json`。 |
+  [docs band / W5]  packages/mpd-schemastery/README.md:42:`packages/mpd-ulw-plugin/test/engine.test.ts`. They are self-contained: the eight relocated files
+  [docs band / W5]  packages/mpd-schemastery/README.zh-CN.md:39:`packages/mpd-ulw-plugin/test/engine.test.ts`。这八个迁入文件是自足的：除本包内部与 `node:*`
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:1:# mpd-ulw-plugin
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:5:replaces the B3 loop; `mpd_ulw` remains as a lightweight compatibility alias).
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:9:- `/ulw <objective>` and `/ultrawork <objective>` (identical behaviour) — inject the ULW
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:11:- No command surface (headless): a plain-text `/ulw …` / `/ultrawork …` message is
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:74:bundle (the `mpd` toolbox, the five `agent_teams_*` tools this harness has, `.mpd/ulw`, the
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:90:- Final quality gate: gate reviewer stamps per-lane ledger (`.mpd/ulw/<id>/ledger.jsonl`:
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:99:- `mpd_ultrawork({objective, tier?, plan?, hyperplan?, strictReview?, maxRounds?})`
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:100:- `mpd_ulw({objective, maxRounds?})` — alias (light tier, no plan).
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:104:`.mpd/ulw/<id>/{state.json, ledger.jsonl}`; plans land in `.mpd/plans/`.
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:113:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:116:Test: `bun test packages/mpd-ulw-plugin`.
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.md:117:Live QA: `node skills/dsh-qa/scripts/ultrawork-smoke.ts`.
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:1:# mpd-ulw-plugin
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:4:Plan C / C2 — 在 DSH subagent seam 上的固定策略 ultrawork 引擎（v2，取代 B3 loop；`mpd_ulw` 仍以轻量兼容别名形式存在）。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:8:- `/ulw <objective>` 与 `/ultrawork <objective>`（行为完全一致）——为该目标注入 ULW 激活指令并启动运行；空输入返回用法。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:9:- 无命令界面（headless）：纯文本 `/ulw …` / `/ultrawork …` 消息会在插件的 `agent/pre-step` 边界被识别，并收到同一条指令。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:28:这套纪律的**形态**来自上游：它依据**已记录的**上游 ultrawork 纪律（base 8c57e46）重新表达。此处发布的**措辞**是本包自己的——**没有找到、也没有复制任何上游提示词、策略或错误文本**；下列条款只在本 bundle 中成立（`mpd` 工具箱、本 harness 上的五个 `agent_teams_*` 工具、`.mpd/ulw`、`mpdConfig` 键）。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:36:- Final quality gate：gate reviewer 为每条 lane 盖章 ledger（`.mpd/ulw/<id>/ledger.jsonl`：code quality、hands-on QA、goal verification）；任一 FAIL 都会阻止完成。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:42:- `mpd_ultrawork({objective, tier?, plan?, hyperplan?, strictReview?, maxRounds?})`
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:43:- `mpd_ulw({objective, maxRounds?})` — 别名（light tier，无 plan）。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:47:`.mpd/ulw/<id>/{state.json, ledger.jsonl}`；plans 落在 `.mpd/plans/`。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:54:bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:57:测试：`bun test packages/mpd-ulw-plugin`。
+  [docs band / W5]  packages/mpd-autoproject-plugin/README.zh-CN.md:58:Live QA：`node skills/dsh-qa/scripts/ultrawork-smoke.ts`。
+
+## 3. FILE NAMES still carrying the word under packages/ scripts/ docker/ skills/ presets/ tests/
+  (none)
+

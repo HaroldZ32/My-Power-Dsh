@@ -1,0 +1,25 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/team-record-source.test.ts:
+(pass) the record is the primary team source > the workflow carries the review fields the official board has no column for [0.74ms]
+(pass) the record is the primary team source > the derived states agree: a blocked review, a running task, a failed repair [0.22ms]
+(pass) the record is the primary team source > a task claimed under the member's EXECUTOR HANDLE is credited to that member [0.19ms]
+(pass) the record is the primary team source > phase is the STORED lifecycle, not a guess from the roster [0.27ms]
+(pass) the record is the primary team source > a cycle is REPORTED as a note rather than drawn as if the board were sound [0.12ms]
+(pass) the source selection > readBoardState shows the RECORD even when the official readout is empty [0.30ms]
+(pass) the source selection > an ENDED team does not hide the running one behind it [0.05ms]
+(pass) the source selection > the record read degrades to [] with no service, and never throws [0.05ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > a model for THIS team is attached, receives the team id, and joins ghost + ranks [0.48ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > a model for a DIFFERENT team is ignored — the board draws alone [0.16ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > a throwing service costs the model, never the board [0.10ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > a service with no graph member is simply a composition without a model [0.06ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > a FOREIGN model with the SAME T1.. numbering plus one task is REJECTED [0.10ms]
+(pass) living-graph · the served model reaches the projection only when it is the same board > the OFFICIAL-VIEW arms never ask for a model by workspace alone [0.27ms]
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > a LIVE parent+child pair attaches the merged model and the DAG page carries the group frame [1.85ms]
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > a FLAT team keeps the flat drawing: no groups on the model, the page or the view [0.64ms]
+(pass) nested teams · the merged model reaches the LIVE projection (T31) > an UNEXPLAINED extra task still costs the model — the nesting does not open the guard [0.27ms]
+
+ 17 pass
+ 0 fail
+ 72 expect() calls
+Ran 17 tests across 1 file. [137.00ms]

@@ -81,7 +81,7 @@ test("sanitizeName / capText / autoNote / scoreMatch units", () => {
   expect(capped.length).toBeLessThanOrEqual(80)
   expect(capped.includes("truncated")).toBe(true)
   /** A never-renamed instance fixture, so `renamedFrom` is empty: the directory key is its first name. */
-  const meta = { name: "alice", baseId: "hephaestus", baseName: "Deep Worker", description: "autonomous goal-driven implementation", provider: "deepseek-official", model: "deepseek-v4-flash", readonly: false, createdAt: "", updatedAt: "", uses: 1, lastTask: "implement verilog counter", renamedFrom: [] }
+  const meta = { name: "alice", baseId: "hephaestus", baseName: "Deep Worker", description: "autonomous goal-driven implementation", provider: "deepseek-official", model: "deepseek-v4-flash", readonly: false, createdAt: "", updatedAt: "", uses: 1, lastTask: "implement verilog counter", renamedFrom: [], personaRevision: 1, personaHash: "", baseRevision: "", workspaces: [] }
   /** The auto-generated note card, built from the identity prefix and the newest memory heading. */
   const note = autoNote(meta, "You are the Deep Worker.", "## 2026-01-01 — implement counter\nwrote cnt8.v")
   expect(note).toContain("Deep Worker")

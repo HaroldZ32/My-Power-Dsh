@@ -605,7 +605,7 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 ### 6.2 `/settings` 区块**已**打通——entry 保存由宿主持久化、**不写工作区文件**；旧命名空间回写已具名且在此休眠
 
 该区块声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及
+`autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及
 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子 —— 每个名册 agent 一行三片叶子），它们是**本行 config 的入口文档**
 （entry `mpd-config`）里的键，经 harness **自带的**表单编辑（entry 由 `packages/mpd-config-plugin` 拥有；
 本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的兜底）。
@@ -645,7 +645,7 @@ Ctrl+A 接管的前提下**双向**实时（保存的 `false` 之后再来 `true
 **行配置**禁用了接管（`dashboardKey: false`）时才是**单向**：该组合在 `apply()` 时根本不会注册接触点，
 保存的 `true` 无法凭空创建它，需要以允许接管的行配置重启一次。在行自己的
 `apply()` 里被捕获 —— **需要重启**、捕获值保持到下一次 `dsh` 启动：`hashline.*`、`commentChecker.*`、
-`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 与 `extensions.*`。本 bundle 自己的提示常量把两半都写了
+`autoproject.*`、`memory.*`、`boulder.dir`、`goal.*` 与 `extensions.*`。本 bundle 自己的提示常量把两半都写了
 出来 —— `BRIDGE_DISCLOSURE`（实时条款，点名模型路由）与 `BRIDGE_RESTART_LIMIT`（边界），而**逐旋钮的
 权威表是 [`user-guide.zh-CN.md`](user-guide.zh-CN.md) §9.1**。插件真正使用的是**已解析的值
 （resolved value）**加上配置层的**逐次调用文件读取**：L1/L2 文件层在每次解析时都会被重新读取，因此即便
@@ -809,9 +809,9 @@ harness 针对 `mpd` 会话 agent 的 `commands` 注册表清单 **加上** TUI 
 | `mpd-modelchain-plugin` | 模型链解析 + 工作区记忆 | usable | 工具 `mpd_modelchain_resolve` |
 | `mpd-ext-plugin` | 扩展注册表（技能/流程/角色/MCP） | usable | 工具 `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` |
 | `mpd-roles-plugin` | 专家花名册 | usable | 工具 `mpd_role_persona`、`mpd_role_spawn`、`mpd_roles_list` |
-| `mpd-ulw-plugin` | ulw 循环纪律 | usable | 工具 `mpd_ultrawork`、`mpd_ulw` |
+| `mpd-autoproject-plugin` | autoproject 循环纪律 + 合并后的 boulder 台账 | usable | 工具 `mpd_autoproject`、`mpd_boulder_*` |
 | `mpd-hashline-plugin` | 锚点编辑纪律 | usable | 4 个 `mpd_hashline_*` 工具 |
-| `mpd-boulder-plugin` | 持久工作台账 | usable | 6 个 `mpd_boulder_*` 工具 |
+| `mpd-autoproject-plugin` | 持久工作台账 | usable | 6 个 `mpd_boulder_*` 工具 |
 | `mpd-comment-checker-plugin` | 注释/文档串检测（可选二进制） | usable | 工具 `mpd_comment_check` |
 | `mpd-codegraph-plugin` | codegraph 项目初始化 + 二进制解析 | usable | 2026-10-28 重新测量：命令 `mpd-codegraph` 既在 `mpd` 会话的 harness 注册表里，也画在 TUI 面板上（`userSurface.command.mpd-codegraph` PASS，`evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`）；应用期 `[mpd-codegraph] init status=…` 行只是初始化本身的副作用见证 |
 | `mpd-memory-plugin` | git/svn 支撑的记忆 + 反思 | usable | 7 个 `mpd_memory_*` 工具 |

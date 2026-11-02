@@ -136,7 +136,7 @@ describe("seedAgentRoutesFile — writes once, never rewrites, never loses a byt
     /** Fixture holding a commented, trailing-comma document to prove the splice is surgical. */
     const { file } = fixture()
     /** The human-written bytes the seed must leave untouched (comments included). */
-    const original = `{\n  // the user's own knob\n  "ulw": { "maxRounds": 3 },\n}\n`
+    const original = `{\n  // the user's own knob\n  "autoproject": { "maxRounds": 3 },\n}\n`
     writeFileSync(file, original)
     /** The eleven entries this case writes and compares. */
     const entries = buildAgentRoutesSeedBlock({ provider: "p", model: "m" })
@@ -145,7 +145,7 @@ describe("seedAgentRoutesFile — writes once, never rewrites, never loses a byt
     const text = readFileSync(file, "utf8")
     expect(text).toContain("// the user's own knob")
     expect(text).toContain('"maxRounds": 3 },')
-    expect(JSON.parse(stripJsonc(text))).toEqual({ ulw: { maxRounds: 3 }, agentRoutes: entries })
+    expect(JSON.parse(stripJsonc(text))).toEqual({ autoproject: { maxRounds: 3 }, agentRoutes: entries })
   })
 
   test("a file that ALREADY declares agentRoutes — even partially — is left byte-identical", () => {
@@ -170,7 +170,7 @@ describe("seedAgentRoutesFile — writes once, never rewrites, never loses a byt
     /** Fixture holding a document no JSONC reader accepts. */
     const { file } = fixture()
     /** The broken bytes that must survive the attempt verbatim. */
-    const broken = `{ "ulw": `
+    const broken = `{ "autoproject": `
     writeFileSync(file, broken)
     /** The refusal, whose outcome is `unreadable` and whose detail names the parse failure. */
     const result = seedAgentRoutesFile(file, buildAgentRoutesSeedBlock({ provider: "p", model: "m" }))

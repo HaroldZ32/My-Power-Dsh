@@ -5,7 +5,7 @@ import { basename, dirname as dirname2, join as join3, resolve as resolve4 } fro
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -3115,7 +3115,7 @@ function teamModelSlotOfMember(member) {
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(false) }),
-  ulw: Schema.object({ maxRounds: Schema.number().default(6) }),
+  autoproject: Schema.object({ maxRounds: Schema.number().default(6) }),
   memory: Schema.object({ vcs: Schema.union([Schema.const("git"), Schema.const("svn"), Schema.const("both")]).default("git") }),
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
@@ -3133,7 +3133,7 @@ var SettingsSchema = Schema.object({
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
 var BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)";
-var BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)";
+var BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session";
 function markVolatile(schema) {
   const node = schema;
@@ -3212,7 +3212,7 @@ var AGENT_ROUTE_KNOBS = ROSTER_AGENT_NAMES.flatMap((agent) => {
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
-  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+  { path: ["autoproject", "maxRounds"], label: "Autoproject rounds", zh: "Autoproject 轮数", kind: "number" },
   { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
   { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
   { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
@@ -4629,7 +4629,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, agentRoutes.<Agent>.provider/model/reasoningEffort/fallbacks (one route per roster agent, including an absent entry). The legacy teamModels block is answerable verbatim but is NOT a routing input.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, autoproject.maxRounds/autoproject.planDir/autoproject.stateDir/autoproject.provider/autoproject.model/autoproject.reviewerModel/autoproject.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, agentRoutes.<Agent>.provider/model/reasoningEffort/fallbacks (one route per roster agent, including an absent entry). The legacy teamModels block is answerable verbatim but is NOT a routing input.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {

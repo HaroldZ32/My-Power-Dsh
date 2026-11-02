@@ -9,7 +9,7 @@
 //     one reads the config, so the sentence names the live groups (`agentRoutes.*`,
 //     `modelchain.*`, `watchdog.*`, `team.stateDir`, `team.gate`/`team.sensitivity`,
 //     `captain.investigation`, `delegation.gate`) and the mount-captured exception (`hashline.*`,
-//     `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`) that waits for the next
+//     `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir`, `goal.*`) that waits for the next
 //     boot. The pre-t35 "not bridged" sentence stays DELETED, and so does the blanket
 //     "takes effect in the RUNNING process — no restart" claim the exception contradicts;
 //   • the §D.2 `no-live-session` RUNTIME NOTICE is present in the built bytes AND wired into

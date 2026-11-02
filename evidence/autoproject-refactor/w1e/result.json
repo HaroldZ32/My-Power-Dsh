@@ -1,0 +1,79 @@
+{
+  "task": "T22 / W1-E (+ the Lead's gate-verdict addendum)",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a74.2 (bounded activation policy) + W4-A4's additive `strength`",
+  "lane": "Senior Engineer (single skills writer)",
+  "generatedAt": "2026-11-02T12:05:38Z",
+  "filesTouched": [
+    "skills/dsh-qa/scripts/autoproject-command.ts",
+    "skills/dsh-qa/scripts/session-start-team.ts",
+    "skills/dsh-qa/scripts/autoproject-smoke.ts",
+    "skills/dsh-qa/SKILL.md"
+  ],
+  "probes": {
+    "head": {
+      "before": "/ask the user nothing/",
+      "after": "/^AUTOPROJECT ACTIVATION \\(user-invoked; execute autonomously, and stop for a human ONLY at the three decision points below\\)/",
+      "id": "noQuestions -> boundedHead"
+    },
+    "loop": {
+      "before": "/LOOP TO COMPLETION[\\s\\S]{0,120}never stop early to ask the user/",
+      "after": "/LOOP TO COMPLETION[\\s\\S]{0,400}round boundary/"
+    },
+    "new": "CLAUSE_PROBES.decisionPoints + RETIRED_AUTONOMY_PHRASES (four phrases asserted ABSENT by evaluateDirective)",
+    "fixture": "DIRECTIVE_SRC added: the literal moved to src/directive.ts (W1-B2); PLUGIN_SRC stays the build entry"
+  },
+  "gateVerdictPin": {
+    "site": "skills/dsh-qa/scripts/session-start-team.ts:922",
+    "before": "JSON.stringify(verdict) compared with JSON.stringify({trigger:false, signals:[]})",
+    "after": "normalVerdict.trigger !== false || normalVerdict.signals.length !== 0",
+    "strengthKept": true
+  },
+  "sweep": {
+    "wholeObjectPins": [
+      "session-start-team.ts:922 (fixed)"
+    ],
+    "fieldReadsAlready": "session-start-team.ts 915,932,940,943,947,959,962,1031,1034,1096-1098,1104,1470,1479-1481",
+    "errorMessageOnly": "917,941,944,955,981,990,1003,1072,1079,1105,1479-1481",
+    "fakeGateLiterals": "1315/1320 \u2014 typed against the script's OWN narrow ComplexityVerdict; not a pin, typecheck clean",
+    "otherImporters": "delegation-gate.ts (sessionIsMpdCaptain/sessionRank) and captain-scope.ts (resolveGateMode) \u2014 no verdict shape",
+    "casesJson": "no prose about the retired clauses"
+  },
+  "thirdBreakageFixed": "skills/dsh-qa/scripts/autoproject-smoke.ts \u2014 stale-dist marker carrier widened to index.ts/engine.ts/directive.ts/escalation.ts/boulder/index.ts after W1-B2 split the package",
+  "gates": [
+    {
+      "command": "node skills/dsh-qa/scripts/autoproject-command.ts --self-test",
+      "exit": 0,
+      "observed": "ok: registry listing + usage + activation + directive order/objective + command lifecycle predicates, each with a negative control; shipped directive literal and SKILL.md row verified",
+      "log": "autoproject-command-selftest.log"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/session-start-team.ts --self-test",
+      "exit": 0,
+      "observed": "ok (full contract summary); normal verdict prints {trigger:false, signals:[], strength:ignore} and the arm stays silent",
+      "log": "session-start-team-selftest.log"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/autoproject-smoke.ts --self-test",
+      "exit": 0,
+      "observed": "ok: engine symbols + bundle row verified",
+      "log": "autoproject-smoke-selftest.log"
+    },
+    {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed; 0 FAILED",
+      "log": "test-qa.log"
+    },
+    {
+      "command": "grep -rn 'ask the user nothing|never stop early to ask the user|no user confirmation|never ask the user for approval' skills/",
+      "exit": 0,
+      "observed": "5 hits, ALL inside RETIRED_AUTONOMY_PHRASES or its negative-control string",
+      "log": "residue-grep.log"
+    }
+  ],
+  "notProven": [
+    "the LIVE lanes (run-qa-lanes --only=autoproject-command / session-start-team) need a real dsh + credentials and were not run",
+    "no VENDOR_LOCK re-pin here: this edit rides the wave's single skills re-pin at integration",
+    "no package source touched, no dist rebuild, no git"
+  ]
+}

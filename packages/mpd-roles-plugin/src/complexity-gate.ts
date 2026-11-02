@@ -36,6 +36,11 @@
 // (one notice, stage nothing) or `off` (the gate does nothing at all).
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
 import { join } from "node:path"
+// THE ADMISSION LADDER (contract §10 A4): who may originate work, as a classification BESIDE the
+// complexity predicate. The two modules read each other on purpose — this one needs the rung, and the
+// ladder reads the ONE signal predicate rather than a copy of the lexicons — and both directions are
+// function calls at CALL time only, so the cycle has no initialisation order to get wrong.
+import { admissionOf, type AdmissionSource, type AdmissionStrength } from "./admission.ts"
 
 /** The notice marker (frozen; AGENTS.md §1 and the retired implementation both carry it). */
 export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
@@ -442,6 +447,29 @@ export interface ComplexityGateInput {
   sensitivity?: GateSensitivity
   /** Whether the workspace looks like a large project (signal F; evaluated on `easy` only). */
   workspaceScale?: boolean
+  /**
+   * Who PRODUCED the text; ABSENT reads `human`, deliberately.
+   *
+   * BACKWARD COMPATIBLE BY CONSTRUCTION: every caller before this field existed fed the gate a user turn
+   * (`latestUserMessage` filters to `HUMAN_SOURCE_KIND`), so an absent source cannot name a different
+   * producer than the one that was there. Passing `model` is what makes `strength: "ignore"` reachable.
+   */
+  source?: AdmissionSource
+}
+
+/** What one evaluation answered: whether it stages, which signals fired, and WHO admitted the work. */
+export interface ComplexityGateVerdict {
+  /** Whether the gate triggers — the frozen predicate, unchanged for every caller that omits `source`. */
+  trigger: boolean
+  /** The fired signal letters, in A–F order. */
+  signals: string[]
+  /**
+   * The admission rung this text carries (contract §10 A4).
+   *
+   * A NEW FIELD, and deliberately not part of `trigger`: the predicate's second half is unchanged, so no
+   * current behaviour moves. `ignore` is reachable only for a caller that passes producer text.
+   */
+  strength: AdmissionStrength
 }
 
 /**
@@ -474,7 +502,7 @@ export interface ComplexityGateInput {
 export function evaluateComplexityGate(
   text: string,
   input: ComplexityGateInput = {},
-): { trigger: boolean; signals: string[] } {
+): ComplexityGateVerdict {
   /** The goal text as given; a non-string reads as empty rather than throwing. */
   const source = String(text ?? "")
   /** The threshold row this call reads; an absent or unknown sensitivity reads `easy`. */
@@ -497,7 +525,17 @@ export function evaluateComplexityGate(
   if (input.activeBoulder === true) signals.push("D")
   if (cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs) signals.push("E")
   if (thresholds.workspaceScale && input.workspaceScale === true) signals.push("F")
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals }
+  // THE ADMISSION RUNG, decided from the SAME facts this evaluation just produced (the flag the caller
+  // consumed and the signals above), so the two can never disagree about what the text carried.
+  /** Who admitted this work, through the ladder. */
+  const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length })
+  return {
+    // THE FROZEN PREDICATE, with the rung as a CONJUNCT: the second half is untouched, so every verdict
+    // that staged before still stages (an absent source is human, hence never `ignore`).
+    trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
+    signals,
+    strength,
+  }
 }
 
 /** What ONE workspace's boulder ledger says about an active work — signal D's only input. */
@@ -803,6 +841,18 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
 }
 
 /**
+ * The ONE notice clause the admission rung adds, or the empty string when the caller passed none.
+ *
+ * ONE SHORT PARENTHETICAL, never a new line: both notices are injected at session start and their length
+ * discipline is a property the arms measure, so the rung is reported where the signals already are.
+ * @param strength - the rung the verdict carried, when the caller reports one.
+ * @returns ` (admission <rung>)`, or "" for a caller that predates the field.
+ */
+function ADMISSION_CLAUSE_OF(strength: AdmissionStrength | undefined): string {
+  return strength === undefined ? "" : " (admission " + strength + ")"
+}
+
+/**
  * The ADVISORY notice: what fired, that NOTHING was staged, and what to do instead.
  *
  * Used by the `advisory` mode and by EVERY degradation of the mechanical route, so the notice
@@ -815,12 +865,13 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
  *
  * @param signals - the fired signal letters, in A–F order.
  * @param explicit - whether an explicit `team:` / `!team` marker was consumed from the goal.
+ * @param strength - the admission rung to report in ONE short clause; absent keeps the text unchanged.
  * @returns the notice text, always carrying {@link STARTUP_NOTICE_MARKER}.
  */
-export function advisoryNoticeText(signals: readonly string[], explicit: boolean): string {
+export function advisoryNoticeText(signals: readonly string[], explicit: boolean, strength?: AdmissionStrength): string {
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/")
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY "
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(strength) + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY "
     + "and stages nothing while complexity is merely being judged."
     + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "")
     + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + "` {action:\"" + PLAN_EXTEND_ACTIONS[0]
@@ -853,6 +904,8 @@ export function mechanicalNoticeText(input: {
   explicit: boolean
   /** Whether a plan was ALREADY staged for this session, so this fire did not stage one. */
   alreadyStaged: boolean
+  /** The admission rung the verdict carried; absent keeps the notice byte-identical for old callers. */
+  strength?: AdmissionStrength
 }): string {
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
@@ -881,7 +934,7 @@ export function mechanicalNoticeText(input: {
     : input.alreadyStaged
       ? "\n- Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead."
       : "\n- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing."
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and "
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(input.strength) + ", and "
     + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id
     + " (0 members, 0 tasks: a SHELL, not a team)."
     + (input.alreadyStaged ? "\n- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan." : "")

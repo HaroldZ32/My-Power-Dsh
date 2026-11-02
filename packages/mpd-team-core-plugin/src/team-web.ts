@@ -16,7 +16,7 @@
 // why it can carry `kind`, `attempt`, `round` and `verdict` at all.
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
-import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
+import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberIsCheckpoint, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
@@ -222,6 +222,23 @@ export interface TeamWebMember {
   current?: string
   /** `provider/model` when the roster resolved a slot for this member. */
   route?: string
+  /**
+   * How this seat's workmate was bound at approval (`reuse` | `init` | `explicit` | `none`).
+   *
+   * THE RECORD IS THE SOURCE: the value is copied straight off `TeamMemberRecord.workmateMode`, never
+   * derived here — the web payload is a projection, so a second decision would be a second authority.
+   */
+  workmateMode?: string
+  /** Why the seat was left plain, written beside `workmateMode: "none"`. */
+  workmateReason?: string
+  /**
+   * Whether the seat is in the CHECKPOINT window (handed off, closed until the barrier reopens it).
+   *
+   * DERIVED THROUGH THE PLANE'S ONE PREDICATE (`team-store.ts#memberIsCheckpoint`), which is also the
+   * place that states cellwork's `handoffReady` maps onto `mode: "checkpoint"`. It is reported so a
+   * browser drawing a roster cannot render a closed seat as live.
+   */
+  checkpoint: boolean
 }
 
 /** One task row, as the browser reads it. */
@@ -543,6 +560,12 @@ export function buildTeamState(
         total: progress.total,
         ...(progress.current === undefined ? {} : { current: progress.current }),
         ...(member.route === undefined ? {} : { route: member.route }),
+        // THE BINDING DECISION IS THE RECORD'S (W3-C2 could not reach this file): mode and reason are
+        // copied verbatim, so the panel shows WHY a seat is plain without re-deciding it.
+        ...(member.workmateMode === undefined ? {} : { workmateMode: member.workmateMode }),
+        ...(member.workmateReason === undefined ? {} : { workmateReason: member.workmateReason }),
+        // THE CLOSED-SEAT FLAG, through the ONE predicate (see `TeamWebMember.checkpoint`).
+        checkpoint: memberIsCheckpoint(record, member.name),
       }
     }),
     tasks,

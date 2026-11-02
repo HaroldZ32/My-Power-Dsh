@@ -82,6 +82,16 @@ export interface MailMessage extends ProtocolMailMessage {
   /** The cell a wake or broadcast came from, when its writer stamped one; likewise inert here. */
   fromCell?: string
   /**
+   * Whether THIS row's body was cut at {@link MAIL_BODY_MAX} when it was stored.
+   *
+   * A cut is never silent: the flag rides the stored row, the original length is recorded beside it,
+   * and the READ rendering says so. The pre-truncation text is NOT kept anywhere — the bound exists to
+   * stop one message from flooding a model's context, so keeping the whole body on disk would defeat it.
+   */
+  truncated?: boolean
+  /** The body's length BEFORE the cut, recorded only when {@link truncated} is true. */
+  originalLength?: number
+  /**
    * The sender's ROSTER id, when it has one (`M1`), recorded beside its session id.
    *
    * WHY BOTH: a row is ADDRESSED to a roster id, while a session answers as its own session id — two
@@ -89,6 +99,55 @@ export interface MailMessage extends ProtocolMailMessage {
    * the same member, so the roster id is recorded at send time instead of being guessed later.
    */
   fromMemberId?: string
+}
+
+/**
+ * One page of rows plus the receipt a caller needs to fetch the rest (W4-A6b).
+ *
+ * WHY IT LIVES IN THE STORE: both mail readers — `agent_teams_mail`'s unread answer and cellwork's
+ * inbox — must page IDENTICALLY, and cellwork already imports this module, so one implementation keeps
+ * them from drifting. The rows themselves are never removed: paging is a READ view over the full set.
+ *
+ * @param rows - the full row set, in display order.
+ * @param limit - rows per page; clamped to 1..100, defaulting to 20 for a non-numeric value.
+ * @param offset - the first row of the page; clamped to a non-negative integer.
+ * @returns the page, the rows behind it, the next page's offset (null at the end) and the bounds used.
+ */
+export function pageOf<T>(rows: readonly T[], limit?: number, offset?: number): { page: T[]; more: number; nextOffset: number | null; limit: number; offset: number } {
+  /** The clamped page size this call uses. */
+  const size = Number.isFinite(Number(limit)) ? Math.min(Math.max(Math.trunc(Number(limit)), 1), 100) : 20
+  /** The clamped start of the page. */
+  const start = Number.isFinite(Number(offset)) ? Math.max(Math.trunc(Number(offset)), 0) : 0
+  /** The rows this page renders. */
+  const page = rows.slice(start, start + size)
+  /** Rows behind this page, which stay unread until a later call fetches them. */
+  const more = Math.max(rows.length - (start + page.length), 0)
+  return { page, more, nextOffset: more === 0 ? null : start + page.length, limit: size, offset: start }
+}
+
+/**
+ * The hard bound on ONE message body, in characters, applied when the row is STORED (W4-A6b).
+ *
+ * WHY A STORE-TIME BOUND: a mailbox read is fed back into a model's context, so one 200 KB body costs a
+ * whole context window for one row. The cap is applied at the WRITE so every reader — `unread`, the
+ * cellwork inbox, a future GUI — inherits it, and the stored row carries `truncated` + `originalLength`
+ * so the cut is visible rather than invisible.
+ */
+export const MAIL_BODY_MAX = 4000
+
+/**
+ * Bound one body at {@link MAIL_BODY_MAX}.
+ *
+ * The original text is deliberately NOT preserved: the bound protects the reader's context, and a side
+ * copy on disk would be read back by the same reader. A cut body therefore reports its original LENGTH
+ * (so a caller knows what was lost) and never the lost text.
+ *
+ * @param text - the body exactly as the sender passed it.
+ * @returns the body to store, whether it was cut, and the pre-cut length.
+ */
+export function truncateMailBody(text: string): { body: string; truncated: boolean; originalLength: number } {
+  if (text.length <= MAIL_BODY_MAX) return { body: text, truncated: false, originalLength: text.length }
+  return { body: text.slice(0, MAIL_BODY_MAX), truncated: true, originalLength: text.length }
 }
 
 /** The folded state: messages in insertion order, plus what the fold had to report. */
@@ -126,8 +185,9 @@ export function mailboxPath(workspace: string): string {
  * row with no `kind` (read as `message`), a state row whose `send` line was lost, and a foreign record
  * kind (a cellwork `wake`), and it RESOLVES every thread (I7). That is the ONE definition of what a
  * mail row means, so the team plane and the cellwork view cannot drift apart. This function adds the
- * two PASS-THROUGH stamps the protocol fold does not project: it reads them off each raw `send` line
- * and attaches them to the folded message, so `cellId` still scopes a cell view.
+ * pass-through fields the protocol fold does not project: it reads them off each raw `send` line and
+ * attaches them to the folded message, so `cellId` still scopes a cell view and the body bound
+ * (`truncated`/`originalLength`) survives the fold.
  *
  * @param records - the parsed log lines, oldest first; a torn trailing line may be included.
  * @returns the folded messages in log order, each carrying its envelope and its state.
@@ -138,11 +198,11 @@ export function fold(records: readonly unknown[]): MailboxState {
   /** The messages the protocol fold proved, in log order. */
   const messages: readonly MailMessage[] = folded.messages
   /** The stamps by message id, read from the raw `send` lines the protocol does not project. */
-  const stamps = new Map<string, { cellId?: string; fromCell?: string; fromMemberId?: string }>()
+  const stamps = new Map<string, { cellId?: string; fromCell?: string; fromMemberId?: string; truncated?: boolean; originalLength?: number }>()
   for (const raw of records) {
     if (raw === null || typeof raw !== "object") continue
     /** One raw line, read loosely: only the stamps this projection adds are taken from it. */
-    const line = raw as { t?: unknown; id?: unknown; cellId?: unknown; fromCell?: unknown; fromMemberId?: unknown }
+    const line = raw as { t?: unknown; id?: unknown; cellId?: unknown; fromCell?: unknown; fromMemberId?: unknown; truncated?: unknown; originalLength?: unknown }
     if (line.t !== "send" || typeof line.id !== "string" || line.id === "") continue
     // FIRST-WINS, the SAME content policy the protocol fold applies to the content itself: the message
     // kept for an id is the FIRST `send` row (a later duplicate is reported, not merged), so a later
@@ -154,11 +214,17 @@ export function fold(records: readonly unknown[]): MailboxState {
     const fromCell = typeof line.fromCell === "string" && line.fromCell !== "" ? line.fromCell : undefined
     /** The sender's roster id, on the same rule; it is the identity the ownership rules compare. */
     const fromMemberId = typeof line.fromMemberId === "string" && line.fromMemberId !== "" ? line.fromMemberId : undefined
-    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined) continue
+    /** Whether the stored body was cut at the write bound (W4-A6b); only a literal `true` counts. */
+    const truncated = line.truncated === true ? true : undefined
+    /** The pre-cut body length, carried only on a cut row. */
+    const originalLength = typeof line.originalLength === "number" ? line.originalLength : undefined
+    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined && truncated === undefined && originalLength === undefined) continue
     stamps.set(line.id, {
       ...(cellId === undefined ? {} : { cellId }),
       ...(fromCell === undefined ? {} : { fromCell }),
       ...(fromMemberId === undefined ? {} : { fromMemberId }),
+      ...(truncated === undefined ? {} : { truncated }),
+      ...(originalLength === undefined ? {} : { originalLength }),
     })
   }
   return {
@@ -637,6 +703,8 @@ export function sendMany(workspace: string, input: SendInput, targets: readonly 
   const threadById = envelope.kind === "answer" ? workspaceById : new Map(scoped.messages.map((message) => [message.id, message]))
   /** The ONE thread every row of this send shares: explicit, else inherited, else this send's first id (I6/I7). */
   const threadId = inheritedThreadId(envelope, threadById) ?? ids[0]
+  /** The body as STORED: bounded at {@link MAIL_BODY_MAX}, with its pre-cut length when it was cut. */
+  const storedBody = truncateMailBody(input.body)
   /** The rows, one per recipient, each carrying the same envelope and the same thread. */
   const messages: MailMessage[] = targets.map((target: MailAddress, index: number) => ({
     id: ids[index],
@@ -650,7 +718,8 @@ export function sendMany(workspace: string, input: SendInput, targets: readonly 
     toId: target.id,
     toName: target.name,
     subject: input.subject,
-    body: input.body,
+    body: storedBody.body,
+    ...(storedBody.truncated ? { truncated: true, originalLength: storedBody.originalLength } : {}),
     sentAt: at,
     ...(input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId }),
     ...(input.cellId === undefined || input.cellId === "" ? {} : { cellId: input.cellId }),

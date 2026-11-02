@@ -36,7 +36,7 @@
 而不是替身：`packages/mpd-team-watchdog-plugin/test/{pre-step-waterfall,tool-inflight}.test.ts`、
 `packages/mpd-tui-plugin/test/plugin.test.ts`、
 `packages/mpd-dsh-adapter-plugin/test/adapter.test.ts` 与
-`packages/mpd-ulw-plugin/test/engine.test.ts`。这八个迁入文件是自足的：除本包内部与 `node:*`
+`packages/mpd-autoproject-plugin/test/engine.test.ts`。这八个迁入文件是自足的：除本包内部与 `node:*`
 内建模块外不导入任何东西，因此测试套件无需网络，也不新增任何 npm 依赖。
 
 ## 导入形态

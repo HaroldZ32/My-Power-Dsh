@@ -86,7 +86,7 @@ That has three consequences, and all three are checkable:
    **inlines the sibling's module body** into the consumer's own `dist/index.js` (as any bundler
    does for a source-level import). Measured: the adapter's module body is present in **18
    distinct `dist/index.js` artifacts**; `function dshSeamInject` and the adapter's helpers appear
-   verbatim inside e.g. `packages/mpd-boulder-plugin/dist/index.js`. Two rows that both "import the
+   verbatim inside e.g. `packages/mpd-autoproject-plugin/dist/index.js`. Two rows that both "import the
    adapter" do not share an object graph — they each own a copy.
 2. **An adapter edit changes the artifacts of the rows that consume it**, and only theirs: `bun
    build` tree-shakes an export a consumer never references. Measured while single-sourcing the

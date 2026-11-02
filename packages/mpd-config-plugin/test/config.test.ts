@@ -6,13 +6,13 @@ import { stripJsonc, deepMerge, apply } from "../src/index.ts"
 
 test("stripJsonc removes comments and trailing commas", () => {
   // A JSONC document carrying a line comment, an inline block comment and a trailing comma.
-  const src = ['{', '  // user layer', '  "memory": { "vcs": "git", /* inline */ "enabled": true },', '  "ulw": { "maxRounds": 5, },', '}'].join(String.fromCharCode(10))
+  const src = ['{', '  // user layer', '  "memory": { "vcs": "git", /* inline */ "enabled": true },', '  "autoproject": { "maxRounds": 5, },', '}'].join(String.fromCharCode(10))
   // The stripped text, which must parse as strict JSON with no comment markers left.
   const out = stripJsonc(src)
   expect(out).not.toContain("//")
   expect(out).not.toContain("/*")
   expect(() => JSON.parse(out)).not.toThrow()
-  expect(JSON.parse(out)).toEqual({ memory: { vcs: "git", enabled: true }, ulw: { maxRounds: 5 } })
+  expect(JSON.parse(out)).toEqual({ memory: { vcs: "git", enabled: true }, autoproject: { maxRounds: 5 } })
 })
 
 test("stripJsonc keeps comments inside strings", () => {
@@ -25,12 +25,12 @@ test("deepMerge project wins, nested merged, pollution safe", () => {
   // Lower layer: two nested keys, shaped like a file a user declares.
   const base = { memory: { vcs: "git", dir: ".mpd/memory" }, team: { stateDir: ".mpd/team" } } as any
   // Higher layer: one overlapping leaf plus one key the base does not have at all.
-  const over = { memory: { vcs: "both" }, ulw: { maxRounds: 3 } }
+  const over = { memory: { vcs: "both" }, autoproject: { maxRounds: 3 } }
   // The merge under test: nested objects merge, and the LATER layer wins on a shared leaf.
   const merged = deepMerge(base, over)
   expect(merged.memory).toEqual({ vcs: "both", dir: ".mpd/memory" })
   expect(merged.team.stateDir).toBe(".mpd/team")
-  expect(merged.ulw.maxRounds).toBe(3)
+  expect(merged.autoproject.maxRounds).toBe(3)
   // A `__proto__` key arriving from parsed JSON must never reach the prototype chain.
   const polluted = deepMerge({}, JSON.parse('{"__proto__":{"pol":true}}'))
   expect((Object.prototype as any).pol).toBeUndefined()

@@ -300,6 +300,8 @@ test("T28: activation raises TWO Chinese-named members of one role, never one me
     split: verdict,
     personaFor: (): null => null,
     recordFor: (): { teamId: string; members: []; tasks: [] } => ({ teamId: "team-1", members: [], tasks: [] }),
+    // The plane is absent here: this arm's subject is the owner mapping, not dispatch.
+    teamActions: (): undefined => undefined,
     // The progress sink is a no-op here: this arm measures the RAISES, not the journal.
     progress: (): void => {},
     now: new Date(),

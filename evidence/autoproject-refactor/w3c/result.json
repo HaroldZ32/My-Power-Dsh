@@ -1,0 +1,80 @@
+{
+  "task": "T12 / W3-C",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a74.6 (requirement 4)",
+  "lane": "Senior Engineer",
+  "generatedAt": "2026-11-02T11:56:20Z",
+  "changed": [
+    "packages/mpd-team-core-plugin/src/team-actions.ts \u2014 workmate binding pass at approveTeam + TeamWorkmateBinding + payload.bindings",
+    "packages/mpd-team-core-plugin/test/workmate-binding.test.ts \u2014 NEW (arms a, a2, b, c, config-off, no-seam)",
+    "packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts \u2014 fixture answers mpd_workmate_* as absent (the approval now binds)",
+    "packages/mpd-team-core-plugin/test/team-actions.test.ts \u2014 one macrotask awaited before the concurrency precondition (approval has an await before spawn now)",
+    "packages/mpd-workmate-plugin/src/index.ts \u2014 planWorkmateMerges / optimizeWorkmates / mergeOneWorkmate / renderOptimizeTable + mpd_workmate_optimize tool + /workmate-optimize command",
+    "packages/mpd-workmate-plugin/test/optimize.test.ts \u2014 NEW (arms d, d2, e, e2, auto-rule, command)"
+  ],
+  "bindingDecisionTable": [
+    {
+      "step": 0,
+      "when": "workmates.mode === 'none'",
+      "result": "plain seat, mode none, reason config"
+    },
+    {
+      "step": 1,
+      "when": "member names an explicit workmate",
+      "result": "bind it OR refuse the whole approval"
+    },
+    {
+      "step": 2,
+      "when": "otherwise",
+      "result": "mpd_workmate_match over <description> <role>"
+    },
+    {
+      "step": 3,
+      "when": "score >= threshold AND name free on this team",
+      "result": "REUSE: rename seat, prompt head = persona+note+memory, mode reuse"
+    },
+    {
+      "step": 4,
+      "when": "autoInit AND library < max",
+      "result": "INIT <role-slug>-<smallest free n>, mode init"
+    },
+    {
+      "step": 5,
+      "when": "else",
+      "result": "plain seat, mode none, reason cap|no-role|auto-init-off|no-seam|no-library|init-refused|binding-failed"
+    }
+  ],
+  "mergePredicate": "same baseName AND equal readonly AND neither archived AND neither busy (live team or in-flight) AND (noteScore >= mergeThreshold(0.6) OR tagJaccard >= 0.5)",
+  "archivePathShape": "~/.mpd/workmate/.archive/<from>-merged-<into>-<compactUtcStampZ>/ + merge.json {version,from,into,at,memoryShas,personaSha}; no purge path exists",
+  "gates": [
+    {
+      "command": "bun test packages/mpd-workmate-plugin",
+      "exit": 0,
+      "observed": "69 pass, 0 fail, 7 files",
+      "log": "workmate-tests.log"
+    },
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "521 pass, 0 fail, 34 files",
+      "log": "team-core-tests.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "PASS \u2014 543 files, every declaration documented and fully typed",
+      "log": "verify-comments.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 1,
+      "observed": "7 errors, ALL in packages/mpd-memory-plugin/src/index.ts (W3-D in flight); zero in this lane's files",
+      "log": "typecheck.log"
+    }
+  ],
+  "notProven": [
+    "the binding MODE is not persisted on the record: TeamMemberRecord.workmate is (the name), the mode is in TeamApprovePayload.bindings; TeamMemberRecord.mode is the SEAT mode and team-store.ts is outside this lane's write scope",
+    "no real MOUNT boot of the new tool/command",
+    "the approve tool's output schema/render does not declare or print bindings (src/index.ts is outside the scope; the schema is non-strict, so the field reaches the reply)",
+    "skills/** and docs untouched (wave W5); no dist rebuild, no git"
+  ]
+}

@@ -1,0 +1,12 @@
+# instruction-budget measurement (AGENTS.md §3)
+
+before: 63478 bytes (HEAD)
+before (working tree, at task start): 63478 bytes
+after:  63136 bytes
+
+cut:            65536 bytes
+margin:         2400 bytes  (>= 2048 required: True)
+historical target <= 65024: True
+
+MOVE-FIRST: rule 5 of §5 shortened 2405 -> 1291 bytes (-1114); long form moved to agent-references/git-model.md
+ADDED: the round-cap bullet under the CodeRabbit rule (+~700 bytes)

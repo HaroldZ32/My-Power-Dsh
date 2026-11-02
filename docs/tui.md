@@ -748,7 +748,7 @@ SHA-256 digest proves byte identity only — never publisher identity.
 ### 6.2 The `/settings` section IS bridged — an entry save is host-persisted with NO workspace write; the legacy namespace write-back is named and dormant here
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
-`ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the thirty-three
+`autoproject.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the thirty-three
 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves, three per roster agent) as this row's
 config, through the
 harness's own form for the config ENTRY `mpd-config` (`packages/mpd-config-plugin` owns the entry; this
@@ -796,7 +796,7 @@ config disabled the takeover (`dashboardKey: false`): that composition never reg
 `apply()`, so a saved `true` cannot create one and a boot with the row config permitting it is what
 does. Captured inside a row's own
 `apply()` — RESTART, the captured value keeps until the next `dsh` boot: `hashline.*`,
-`commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
+`commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
 hint constants state both halves — `BRIDGE_DISCLOSURE` (the live clause, naming the model routes) and
 `BRIDGE_RESTART_LIMIT` (the bound) — and the **canonical per-knob table is
 [`user-guide.md`](user-guide.md) §9.1**. What the plugins actually use is the **resolved value** plus
@@ -990,9 +990,9 @@ initialisation. Class unchanged (`usable`). Every other row's witness is untouch
 | `mpd-modelchain-plugin` | model-chain resolution + workspace memory | usable | tool `mpd_modelchain_resolve` |
 | `mpd-ext-plugin` | extension registry (skills/flows/roles/MCP) | usable | tools `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` |
 | `mpd-roles-plugin` | specialist roster | usable | tools `mpd_role_persona`, `mpd_role_spawn`, `mpd_roles_list` |
-| `mpd-ulw-plugin` | ulw loop discipline | usable | tools `mpd_ultrawork`, `mpd_ulw` |
+| `mpd-autoproject-plugin` | autoproject loop discipline + the merged boulder ledger | usable | tools `mpd_autoproject`, `mpd_boulder_*` |
 | `mpd-hashline-plugin` | anchored edit discipline | usable | 4 `mpd_hashline_*` tools |
-| `mpd-boulder-plugin` | durable work ledger | usable | 6 `mpd_boulder_*` tools |
+| `mpd-autoproject-plugin` | durable work ledger | usable | 6 `mpd_boulder_*` tools |
 | `mpd-comment-checker-plugin` | comment/docstring detector (opt-in binary) | usable | tool `mpd_comment_check` |
 | `mpd-codegraph-plugin` | codegraph project init + binary resolve | usable | RE-MEASURED 2026-10-28: command `mpd-codegraph` is in the harness registry for the `mpd` session AND drawn in the TUI palette (`userSurface.command.mpd-codegraph` PASS, `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`); the apply-time `[mpd-codegraph] init status=…` line is the init side-effect witness only |
 | `mpd-memory-plugin` | git/svn-backed memory + reflection | usable | 7 `mpd_memory_*` tools |

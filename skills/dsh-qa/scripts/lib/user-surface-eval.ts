@@ -43,8 +43,7 @@ export interface ArtifactRows {
 
 /** The seven slash commands this bundle CONTRIBUTES, as `docs/user-guide.md` §12 publishes them. */
 export const CONTRIBUTED_COMMANDS: readonly string[] = [
-  "ulw",
-  "ultrawork",
+  "autoproject",
   "cellwork",
   "mpd-codegraph",
   "agent-teams",
@@ -493,7 +492,7 @@ export function evaluateCommand(name: string, registryNames: readonly string[], 
   const registered = registryNames.includes(name)
   /** True when the documented plane for this command is the TUI only. */
   const tuiOnly = TUI_ONLY_COMMANDS.includes(name)
-  /** The palette rows that carry the name exactly (so /ulw never matches /ultrawork). */
+  /** The palette rows that carry the name exactly (a prefix such as /autoproject-model never matches). */
   const listed = paletteCommandRows(pane).filter((row) => row === name)
   /** The palette's own count, quoted so a reader sees whether the box drew anything at all. */
   const count = paletteCount(pane)

@@ -1,0 +1,6 @@
+$ tsgo --noEmit
+packages/mpd-cellwork-plugin/test/activate-resume.test.ts(769,5): error TS2322: Type '() => DispatchRecordView' is not assignable to type '(teamId: string) => Record<string, unknown> | undefined'.
+  Type 'DispatchRecordView' is not assignable to type 'Record<string, unknown>'.
+    Index signature for type 'string' is missing in type 'DispatchRecordView'.
+packages/mpd-cellwork-plugin/test/split-task-owner.test.ts(294,9): error TS2741: Property 'teamActions' is missing in type '{ dsh: ActivateDeps["dsh"]; workspace: string; cell: { version: number; cellId: string; phase: CellPhase; archived: boolean; objective: string; createdAt: string; updatedAt: string; captainSessionId: string; ... 18 more ...; teamId: string; }; ... 6 more ...; now: Date; }' but required in type 'ActivateDeps'.
+error: script "typecheck" exited with code 1

@@ -96,6 +96,23 @@ describe("the consolidated surface", () => {
     // MEASURED 6,289 on top of the 5,414 above — the new descriptions are already the shortest spelling
     // that still says what each argument means. The bound moves to 6,400, again recorded rather than
     // removed, so the next addition still has to justify itself.
+    //
+    // NOT re-baselined 2026-11-02 by the team-toolchain completion (D4): `agent_teams_task` gained
+    // `context`/`handoff` AND the required `content` field, `agent_teams_control` gained
+    // `fence`/`unfence` and the `member` field, and `agent_teams_dispatch` gained `mode`/`reassign`.
+    // That addition measured 6,939 — 539 over the bound — so the DESCRIPTIONS were tightened instead
+    // (the mail/plan/task/dispatch/control prose and a handful of argument hints, semantics kept) and
+    // the surface now measures 6,371. The bound stays 6,400: an addition that does not fit has to be
+    // paid for by the text it makes redundant, not by moving the number.
+    //
+    // RE-MEASURED 2026-11-02 by R-W1A: the dispatch description gained the Lead-only clause for
+    // `reassign`/`mode:"roster"` (an authorization rule a model must read BEFORE it calls), paid for by
+    // tightening the same sentence's wording — MEASURED 6,379, so 21 characters of headroom remain.
+    //
+    // RE-MEASURED 2026-11-02 by W3-C2 (workmate binding mode): the approve answer gained the declared
+    // `bindings` OUTPUT property and one render line per seat. `costOf` below charges NAME +
+    // DESCRIPTION + PARAMETERS only — an output schema and a render are not part of the model's tool
+    // list — so the surface is UNCHANGED at MEASURED 6,379; the headroom stays 21 characters.
     expect(total).toBeLessThan(6400)
     expect(captured.tools.length + captured.commands.length).toBeLessThanOrEqual(6)
   })
@@ -116,14 +133,17 @@ describe("the consolidated surface", () => {
     // is the only board, and a board whose rows never reach a terminal state cannot advance its DAG.
     // (2026-10-23) `depend` joins DELIBERATELY: `create_task` mints a row and could not wire an existing
     // one, so a lane added mid-run could not enter the DAG at all (contract team-tool plan surface §2).
-    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "contract", "depend", "fail", "release"])
+    // (2026-11-02) `context`/`handoff` join with the team toolchain completion (D4): the member's own
+    // occupancy and its checkpoint document are steps of the SAME workflow, not new tools.
+    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "context", "contract", "depend", "fail", "handoff", "release"])
     // dispatch absorbed dispatch/dispatch_release
     expect(actions("agent_teams_dispatch").sort()).toEqual(["release", "run"])
     // mail absorbed mailbox (and the older observation-only counter); `permit`/`wait` join with the
     // permit-bounded wait (contract §7)
     expect(actions("agent_teams_mail").sort()).toEqual(["permit", "read", "send", "summary", "unread", "wait"])
-    // control absorbed halt/resume
-    expect(actions("agent_teams_control").sort()).toEqual(["halt", "resume"])
+    // control absorbed halt/resume, and (2026-11-02) the two seat verbs `fence`/`unfence` (D4): a fenced
+    // member is never messaged, so closing a seat belongs beside the team-level holds.
+    expect(actions("agent_teams_control").sort()).toEqual(["fence", "halt", "resume", "unfence"])
   })
 
   test("the retired TOOL NAMES are gone — a re-added one would redden here", () => {

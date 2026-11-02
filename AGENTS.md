@@ -61,7 +61,7 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 | `agent-references/repository-layout.md` | the map of §3: every root entry, every `packages/<dir>` and what each one owns (moved VERBATIM 2026-10-08) | you need to know where a file, a package or a gate lives |
 | `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement), the Docker-lane policy, and "§5 rule 2 — the captain's tool pack" | you run a verification pass, or a Docker step skipped |
 | `agent-references/seam-adapters.md` | §6's two contact surfaces: the harness adapter and the DSH-TUI adapter, the fifteen `tui*` seams with their binder/probe/degrade discipline, the R5 rule and its gates, the WEB-plane residual | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or add a THIRD contact surface |
-| `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the gate's softer signals | you need the provenance or composition history before restating it |
+| `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the retired agent-teams body, the declared-dependency mount mechanism, the autoproject/GOAL detail and the gate's softer signals | you need the provenance or composition history before restating it |
 | `agent-references/plugin-authoring.md` | the full §6 body: the adapter surfaces, the counted host-setup bypass, the R1–R5 residuals, the tool/guard/waterfall/subagent API signatures and the state-resolution rules | you author or debug a plugin row or need an exact adapter signature |
 | `agent-references/qa-discipline.md` | the full §7 body: the triple-isolation rationale, the session-log decode trap, the T-90 calibration bound and the conformance failure modes | you set up a QA lane or a conformance case reddens without a cause |
 | `agent-references/installer-and-profiles.md` | the full §8 body: the one-command install, the build-script-free dependency closure, the packed layout and the legacy `install-profile.ts` flow | you change `files`/`dsh.*`, a patch row or an install path |
@@ -113,10 +113,10 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
 - **A dependency a bundle DECLARES is mounted by a row that needs it** — the official Agent Teams
   packages are declared in `dependencies` and materialized by `dsh-app-boot`'s
   `healProfileModuleFallback` before the loader runs.
-- **The persisted GOAL and ULW.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
+- **The persisted GOAL and autoproject.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
   `mpd_goal_anchor` / `mpd_goal_finish` plus the `goal.*` auto-anchor contract); a run that ends
   `max-rounds` deliberately LEAVES ITS GOAL ARMED, and goal mutations go through the harness goal TOOLS,
-  never `ctx.goals`. `mpd-ulw-plugin` answers `/ulw` and `/ultrawork` by submitting the ULW activation
+  never `ctx.goals`. `mpd-autoproject-plugin` answers `/autoproject` by submitting the autoproject activation
   directive as the invoking agent's OWN next user turn, so the run actually starts.
 - **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE PLAN
   SHELL, never a team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at
@@ -277,6 +277,14 @@ lands (§9/§11).
   FIXED / STALE / STILL-VALID with file:line evidence, and record that reconciliation in the PR. CI
   green plus an independent verifier is NOT a substitute; a pending review is never a pass. If the bot is
   stuck, state the pending state in the PR and wait for the user's decision.
+  - **Round cap — at most THREE rounds per pull request, binding (user-set, 2026-11-02).** Each
+    automated reviewer (CodeRabbit today, any future bot) gets at most three review rounds on ONE pull
+    request. A FOURTH round needs the USER's explicit decision, and the PR says that the cap was raised
+    and why; the wave also records how many rounds each automated reviewer took in the PR body. Inside a
+    round: a finding already fixed and verified is resolved SILENTLY (no reply needed), and a declined
+    one gets ONE sentence saying why. The cap is what stops a bot that always finds something new from
+    looping forever; it does NOT relax the wait rule above — a round still has to COMPLETE before merge,
+    and an unfinished round is still not a pass.
 - **Attribution cannot come from the author field.** A shared checkout writes every commit under ONE
   configured identity, so attribute by task ownership + content + reflog ORDER, never by `%an`.
 - **The captain's standing rules (user-set, 2026-09-16)** — instructions, not suggestions:
@@ -327,25 +335,13 @@ lands (§9/§11).
      blockers are not satisfied — the SAME readiness predicate dispatch uses — while `complete`/`fail`/
      `release` stay open, so a stranded row is always closable. `agent_teams_dispatch` pairs a ready task
      with its DECLARED owner when that member is free, and falls back to roster order ONLY with the
-     reason reported. **ONE git writer per working tree — the binding bullet earlier in this section — is PROSE since
-     2026-10-17:** the
-     mechanical denial of git write commands for member sessions lived in the withdrawn
-     `installVerifyGuard` hook (`commit`, `add`, `rm`, `mv`, `checkout`, `switch`, `restore`, `reset`,
-     `stash`, `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`, `clean`, `apply`, `am`,
-     `update-index`, `worktree`, `init`, `clone` are listed here as the RULE, not as a matcher that still
-     runs); the rule is unchanged and binding, and its enforcement is the dispatch
-     contract — members edit files and run gates, the captain commits — plus review. A session is a child
-     only when the harness RECORDED a subagent origin or a delegation depth ≥ 1, so the user's own
-     session (`parentSession` + `isSeeded`, depth `0`, no `origin: "subagent"`) is the CAPTAIN.
-     **The old bypass is CLOSED at the tool boundary (2026-10-23).** The team-door guard REFUSES the
-     five official authoring verbs — `spawn_teammate`, `team_task_create`, `team_task_list`,
-     `team_task_get`, `team_task_update` — while `send_message`, `list_agents`, `wait_agent` and
-     `interrupt_agent` stay for agent communication (they are also base global harness rows this preset
-     mounts, and the harness tells every continuable child to call `send_message`). The mpd RECORD is
-     still the only board, so every rule above runs on every task a session can create. **The closure
-     stops at the TOOL boundary:** a ROW that calls the team SERVICE directly (the official-executor
-     fallback) is not a tool call and is NOT gated — the bound, and the no-preset-bypass divergence,
-     are stated in `packages/mpd-team-core-plugin/README.md`.
+     reason reported. **ONE git writer per working tree** (the binding bullet earlier in this section) is
+     PROSE since 2026-10-17 and still binding: its enforcement is the dispatch contract — members edit
+     files and run gates, the captain commits — plus review. The five official Agent Teams authoring
+     verbs are REFUSED at the tool boundary (2026-10-23), so the mpd RECORD is the only board any
+     session can create a task on. **Long form** — the withdrawn hook's command list, how a session is
+     classified as a child versus the captain, and where the closure stops (a row calling the team
+     SERVICE directly is not gated): `agent-references/git-model.md`.
 
 ---
 
@@ -393,7 +389,7 @@ analysis, the delta-registry mechanics and every adapter API signature — is in
   cwds, `[]` when the agent registry is absent) for agentless surfaces such as web routes. Resolve it
   PER CALL: never cache the root in a module-level const, never `chdir`, and never set
   `DSH_WORKSPACE_ROOT` from a row. An explicit row/config override (`boulder.dir`,
-  `hashline.registryFile`, `memory.dir`, `ulw.planDir`, `config.projectFile`,
+  `hashline.registryFile`, `memory.dir`, `autoproject.planDir`, `config.projectFile`,
   `MPD_DSH_VERIF_VENV|WORK`) still wins. Sanctioned exceptions: (1) the bundle writes NOTHING to the home
   any more — `mpd-bootstrap` serves `<bundle>/skills` by reference and the patch roots `agent-presets` at
   `<bundle>/presets` (§8); (2) the **workmate library** lives under the user's HOME (`~/.mpd/workmate`,

@@ -26,7 +26,9 @@
 // never throws at construction: a missing seam surfaces as an actionable error
 // at call time, or as a `capabilities()` flag a caller can degrade on.
 import { randomUUID } from "node:crypto"
-import { resolve } from "node:path"
+import { readFileSync } from "node:fs"
+import { userInfo } from "node:os"
+import { resolve, sep } from "node:path"
 import { errorMessage } from "./shared"
 // R5: the ONE log sink every row routes its diagnostics through. The adapter is the sanctioned
 // contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
@@ -216,12 +218,12 @@ export interface DshCommandInvocation {
  *
  * `name` is the LOWERCASE name WITHOUT the leading slash: the host parses
  * `/^\/([a-z][a-z0-9_-]*)(?=$|[\t\n\r ])/u` and validates the registered name
- * against its own `COMMAND_NAME` pattern, so `/ulw` registers as `"ulw"`. A
- * duplicate name THROWS inside the host registry, which is why a caller
- * registers `/ulw` and `/ultrawork` as two separate definitions.
+ * against its own `COMMAND_NAME` pattern, so `/autoproject` registers as
+ * `"autoproject"` — the ONE command this bundle contributes, which runs the
+ * `mpd_autoproject` tool. A duplicate name THROWS inside the host registry.
  */
 export interface DshCommandDef {
-  /** The lowercase command name WITHOUT the leading slash: `/ulw` registers as `ulw`. */
+  /** The lowercase command name WITHOUT the leading slash: `/autoproject` registers as `autoproject`. */
   name: string
   /** Model-facing description shown by the command surface. */
   description: string
@@ -235,7 +237,7 @@ export interface DshCommandDef {
 // PRODUCER-OWNED kind and REFUSES the retired shared `plugin` member (measured on
 // 0.1.7-rc.2: `dsh: format v4 message requires a producer-owned source kind`, which
 // takes the whole boot down), so a producer names itself — `{kind:'user'}`,
-// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-ulw',…}`.
+// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-autoproject',…}`.
 export interface DshUserMessageSource {
   /** Producer-owned tag naming the injector; the format-v4 gate refuses the retired shared `plugin` member. */
   kind: string
@@ -2040,7 +2042,7 @@ export interface DshAdapter {
    * programming errors and stay loud, unlike a missing optional seam.
    *
    * @param definition - `{name, description, input?, handler}`; the name carries
-   *   NO leading slash (`/ulw` registers as `"ulw"`).
+   *   NO leading slash (`/autoproject` registers as `"autoproject"`).
    * @returns the registry's disposer, or a no-op when the seam is absent.
    */
   registerCommand(definition: DshCommandDef): () => void
@@ -2813,6 +2815,123 @@ export function workspaceRootOf(exec?: DshToolExec): string {
   const override = process.env.DSH_WORKSPACE_ROOT
   if (typeof override === "string" && override.length > 0) return resolve(override)
   return process.cwd()
+}
+
+/**
+ * The home-scoped state root one mutation would write, plus the row's own message identity.
+ *
+ * WHY THIS EXISTS (wave W0): two rows keep state under the user's HOME — the workmate library
+ * (`~/.mpd/workmate`) and, since the global-memory decision D6, `~/.mpd/memory`. Both must refuse a
+ * mutation in an isolated QA boot (T-43), so the PREDICATE lives here ONCE and a row supplies only its
+ * own root, its message prefix and its deliberate-override variable name. Moving it here is what keeps
+ * each row's refusal text byte-identical instead of forking a second copy that drifts.
+ */
+export interface HomeMutationGuard {
+  /** The home-scoped state root the mutation would write (e.g. `<HOME>/.mpd/workmate`). */
+  root: string
+  /** The operation the refusal names, phrased by the row itself (e.g. "rename a workmate"). */
+  operation: string
+  /** The row's message prefix (e.g. `mpd_workmate`), so a row's refusal text survives the shared move. */
+  label: string
+  /** The env var that deliberately overrides the refusal for this row (e.g. `MPD_DSH_WORKMATE_ALLOW_REAL_HOME`). */
+  allowEnv: string
+}
+
+/** A refused home-scoped mutation, carrying the wire reason and HTTP status a row's transport maps verbatim. */
+export class HomeGuardRefusal extends Error {
+  /** The wire reason (`real-home-refused`) a row's HTTP layer maps onto its own protocol. */
+  code: string
+  /** The HTTP status a row's transport answers with for this refusal. */
+  status: number
+  /** Build the refusal the shared guard throws; a row may subclass it to add its own fields. */
+  constructor(code: string, message: string, status: number) {
+    super(message)
+    this.name = "HomeGuardRefusal"
+    this.code = code
+    this.status = status
+  }
+}
+
+/**
+ * T-43 — the REAL user home, determined WITHOUT reading `$HOME`.
+ *
+ * `homedir()` must not be used for the isolation comparison: on POSIX it reads `$HOME`, so comparing
+ * `$HOME` against it is a tautology — which is how the T-43 guard came to refuse the SANCTIONED
+ * sandboxed boot while being unable to tell it from the real home. The passwd entry for the effective
+ * uid is consulted first (it cannot follow `$HOME`); `userInfo()` is only the fallback.
+ *
+ * Windows first: `%USERPROFILE%` is the OS profile variable and is HOME-INDEPENDENT by construction,
+ * which is exactly what this comparison needs. It is also the only source that survives a failing
+ * libuv passwd emulation — measured on a Windows host: node's `userInfo()` throws
+ * `uv_os_get_passwd returned ENOMEM`, which collapsed the real home to `undefined` and made the guard
+ * REFUSE the sanctioned sandboxed boot (T-43).
+ *
+ * @returns the real user's home directory, or `undefined` when this host cannot report one.
+ */
+export function realUserHome(): string | undefined {
+  if (process.platform === "win32") {
+    /** %USERPROFILE% on Windows: the HOME-independent profile variable this comparison needs. */
+    const profile = process.env.USERPROFILE
+    if (typeof profile === "string" && profile !== "") return profile
+  }
+  try {
+    /** The effective uid, or undefined on a host that cannot report one. */
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined
+    if (uid !== undefined) {
+      /** The /etc/passwd entry for that uid — passwd-derived, so it cannot follow $HOME. */
+      const line = readFileSync("/etc/passwd", "utf8").split("\n").find((l) => l.split(":")[2] === String(uid))
+      /** The passwd home field, when the entry carries one. */
+      const home = line === undefined ? undefined : line.split(":")[5]
+      if (home !== undefined && home !== "") return home
+    }
+  } catch { /* fall through to the API below */ }
+  try {
+    /** The OS API's home, consulted only when passwd could not answer (and only when it differs from $HOME). */
+    const api = userInfo().homedir
+    if (api !== "" && resolve(api) !== resolve(process.env.HOME ?? api)) return api
+  } catch { /* undeterminable on this host */ }
+  return undefined
+}
+
+/**
+ * T-43 — refuse a home-scoped MUTATION that would land in the real user's home while `DSH_HOME` marks
+ * an isolated (QA/verification) boot.
+ *
+ * The rows that keep state under HOME are the ONE user-approved exception to the workspace-scoped
+ * state rule (AGENTS.md §6), so an isolated boot that forgets `HOME=<sandbox>` would write the user's
+ * REAL library. This guard refuses that and does nothing else:
+ *   · it fires ONLY when the process looks isolated (`DSH_HOME` is set) AND the row's root would land
+ *     in the real user home — i.e. `HOME` is absent/empty, or equals the real home, or does not cover
+ *     the root;
+ *   · a NORMAL session (`DSH_HOME` unset) is never refused, and reads are never guarded;
+ *   · the deliberate escape hatch is the row's own `allowEnv` variable set to `1`.
+ *
+ * The message is built from the row's `label` and `operation`, so a row that moves its guard here keeps
+ * its refusal text byte-identical; {@link HomeGuardRefusal} carries the wire reason and HTTP status.
+ *
+ * @param guard the row's root, the operation it names, its message prefix and its override variable.
+ * @returns nothing; when it fires it THROWS a {@link HomeGuardRefusal} (403 `real-home-refused`).
+ */
+export function assertHomeMutationSandboxed(guard: HomeMutationGuard): void {
+  /** The isolation marker: unset means a normal session, which is never refused. */
+  const dshHome = process.env.DSH_HOME
+  if (dshHome === undefined || dshHome === "") return                 // normal session: unaffected
+  if (process.env[guard.allowEnv] === "1") return                     // explicit, documented override
+  /** The sandbox HOME this process was booted with, if any. */
+  const home = process.env.HOME
+  /** The real user's home, determined WITHOUT reading $HOME, so the comparison is not a tautology. */
+  const realHome = realUserHome()
+  /** Whether the row's root would land inside a given home directory. */
+  const inside = (h: string): boolean => guard.root === h || guard.root.startsWith(h.endsWith(sep) ? h : h + sep)
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
+  throw new HomeGuardRefusal(
+    "real-home-refused",
+    guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root
+      + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set "
+      + guard.allowEnv + "=1 to override deliberately"
+      + (realHome === undefined ? " (the real home could not be determined on this host)" : ""),
+    403,
+  )
 }
 
 /**

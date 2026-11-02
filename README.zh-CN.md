@@ -78,7 +78,7 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
   `agent_teams_task` / `agent_teams_dispatch` 任务板驱动它，官方的撰写动词（`spawn_teammate`、
   `team_task_*`）在工具边界被**拒绝**。官方 `dsh.team*` 服务只是给运行官方执行器的组合用的封闭回退
   （在 TUI 组合里它的行是禁用的）。持久信箱、Web 面板与 TUI 场景同时读同一份活跃记录。
-- **持久的计划台账**——ULW 轮次，每条验收标准走 PIN → RED → GREEN → SURFACE → CLEAN；锚定到计划文件的
+- **持久的计划台账**——autoproject 轮次，每条验收标准走 PIN → RED → GREEN → SURFACE → CLEAN；锚定到计划文件的
   boulder 台账；以及能跨会话存活的持久 goal。
 - **记忆与编辑都经得起时间**——VCS 托管的记忆库加一台反思状态机，外加哈希锚定编辑、写入守卫与声明注释关卡。
 - **有牙齿的验证**——一个智能体写的代码由**另一个**智能体验证，依据是冻结的契约，留下判决与关卡证据。
@@ -174,7 +174,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 第一分钟就值得知道的两条命令：
 
 ```text
-/ulw  <目标>          把长目标按轮次推到完工，带关卡
+/autoproject  <目标>          把长目标按轮次推到完工，带关卡
 /mpd  team            打开团队场景（DSH-TUI）
 ```
 
@@ -199,7 +199,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 要一个受约束的第二意见 | **专家名册** —— `mpd_role_spawn` | [使用者指南 §4](./docs/user-guide.zh-CN.md#4-专家名册) |
 | 让一位专家积累知识 | **workmate 库** —— `mpd_workmate_*` | [使用者指南 §5](./docs/user-guide.zh-CN.md#5-workmate-库持久会演化的专家) |
 | 跑真正的多智能体流程 | **团队模式** —— `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch`（官方的 `spawn_teammate` / `team_task_*` 动词被**拒绝**） | [使用者指南 §6](./docs/user-guide.zh-CN.md#6-团队模式) |
-| 把长目标推到完工 | **ULW 循环** —— `/ulw` | [使用者指南 §13.2](./docs/user-guide.zh-CN.md#132-ulw-循环与它的关卡) |
+| 把长目标推到完工 | **autoproject 循环** —— `/autoproject` | [使用者指南 §13.2](./docs/user-guide.zh-CN.md#132-autoproject-循环与它的关卡) |
 | 持久跟踪多步计划 | **boulder 台账** —— `mpd_boulder_*` | [使用者指南 §13.6](./docs/user-guide.zh-CN.md#136-boulder-台账) |
 | 跨会话记住事实 | **记忆引擎** —— `mpd_memory_*` | [使用者指南 §13.7](./docs/user-guide.zh-CN.md#137-记忆) |
 | 编辑文件不因行号漂移出错 | **哈希锚定编辑** —— `mpd_hashline_*` | [使用者指南 §13.5](./docs/user-guide.zh-CN.md#135-哈希锚定编辑) |

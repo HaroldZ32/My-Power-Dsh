@@ -152,8 +152,8 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 |---|---|---|
 | Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (cclsp: definitions, references, implementation, diagnostics, hover, workspace symbols, call hierarchy, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. Two more families are **not available by default**: `mcp__git__*` (a git toolbox, 28 tools) and `mcp__shell__*` (`run_process`, raw shell). Both rows ship `disabled: true`, so no such tool appears in a normal session — enable the one you want by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
-| Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
-| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run, a plan-bound boulder work or an `agent_teams_plan` approval anchors one (`goal.autoAnchor` covers the long runs; a team approval anchors on its own), and it stays armed when the in-turn engine stops short of the objective |
+| Drive long work | `mpd_autoproject` (tier `light` or `heavy`: plan gate, execution rounds, verification gate) or its `/autoproject <objective>` command, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the command injects the autoproject activation directive — the run executes autonomously and stops for a human only at its three decision points, and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
+| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy autoproject run, a plan-bound boulder work or an `agent_teams_plan` approval anchors one (`goal.autoAnchor` covers the long runs; a team approval anchors on its own), and it stays armed when the in-turn engine stops short of the objective |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | ONE-SHOT single-call consult subagents (the activation is disposed after the report — ask a new question with a new spawn); read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
@@ -476,7 +476,7 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 (the thirty-three `agentRoutes.<Agent>.{provider,model,reasoningEffort}` leaves; each leaf is a
 selection-only field whose options come from the live model catalog, with the declared lists as
 fallback) and the TUI surface's own knob — among them `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — through
+`commentChecker.autoCheck`, `autoproject.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — through
 the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
 uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
 performs NO `<workspace>/.mpd/mpd.jsonc` write**: the saved override is the top config layer and takes
@@ -608,10 +608,10 @@ rather than by a graph-layout library.
 |---|---|---|
 | `memory.vcs` | mpd-memory | `git` / `svn` / `both` |
 | `memory.dir`, `memory.agentSlug`, `memory.reflectionEvery` | mpd-memory | memory root, agent slug, reflection cadence |
-| `boulder.dir` | mpd-boulder | boulder ledger location |
+| `boulder.dir` | mpd-autoproject | boulder ledger location |
 | `hashline.*` | mpd-hashline | guard flag, diff cap, registry file |
 | `commentChecker.*` | mpd-comment-checker | autoCheck, binary, timeouts |
-| `ulw.*` | mpd-ulw | rounds, plan/state dirs, provider/model routes |
+| `autoproject.*` | mpd-autoproject | rounds, plan/state dirs, provider/model routes |
 | `goal.enabled`, `goal.autoAnchor`, `goal.autoRounds` | mpd-goal | the persisted-goal bridge: master switch, whether long runs anchor a goal by themselves, and the round cap an auto-anchored goal is created with (defaults `true` / `true` / `32`). See §13.10 |
 | `extensions.enable`, `extensions.disable` | mpd-ext | per-id enable/disable lists for extensions (process-level: see §10) |
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
@@ -657,10 +657,10 @@ Three things do not wait for that restart, and all are useful:
 |---|---|---|---|
 | `hashline.*` | mpd-hashline | at mount | after a `dsh` restart |
 | `commentChecker.*` | mpd-comment-checker | at mount | after a restart |
-| `ulw.*` | mpd-ulw | at mount | after a restart |
+| `autoproject.*` | mpd-autoproject | at mount | after a restart |
 | `goal.*` | mpd-goal | at mount | after a restart |
 | `memory.*` | mpd-memory | at mount | after a restart |
-| `boulder.dir` | mpd-boulder | at mount | after a restart |
+| `boulder.dir` | mpd-autoproject | at mount | after a restart |
 | `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
@@ -807,7 +807,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**seven commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+**six commands this bundle contributes** (`mpd-autoproject` registers `/autoproject`,
 `mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd` and the model pick-list
 `/mpd-model`, the team row registers `/agent-teams`, and `mpd-cellwork` registers `/cellwork`), and
 the **two HOST-provided commands the
@@ -818,8 +818,7 @@ roster is reached with the `mpd_roles_list` tool).
 
 | Command | What it does | Where |
 |---|---|---|
-| `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
-| `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
+| `/autoproject <objective>` | starts the autoproject loop on the objective — the same engine as `mpd_autoproject`, and it submits the autoproject activation directive as your own next turn | Web + TUI |
 | `/cellwork <objective>` | starts the dispatch-only cell-work mode: the command writes one cell record and submits the activation directive as your own next turn — the mode, its tools and its bounds are in [`cellwork.md`](cellwork.md) | Web + TUI |
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | shared command plane: agent registry + **TUI palette measured**; Web unmeasured |
 | `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
@@ -828,7 +827,7 @@ roster is reached with the `mpd_roles_list` tool).
 | `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
 | `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
 
-The objective is free text after the command name. A bare `/ulw` with no objective prints usage and
+The objective is free text after the command name. A bare `/autoproject` with no objective prints usage and
 starts nothing; on surfaces without command adjudication (a headless run) the same text is submitted
 as a directive instead.
 
@@ -895,21 +894,35 @@ rejection is the mechanism that stops a reassigned task from
 accepting a late result. No teammate exists before the plan that names it is APPROVED, and the
 quality discipline is whatever the captain puts in the task description.
 
-### 13.2 The ULW loop and its gates
+### 13.2 The autoproject loop and its gates
 
 ```text
-mpd_ulw { "objective": "Make every link in the doc pair resolve" }
-mpd_ultrawork { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
-/ulw Make every documented command resolve to a real registration
+mpd_autoproject { "objective": "Make every link in the doc pair resolve" }
+mpd_autoproject { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
+/autoproject Make every documented command resolve to a real registration
 ```
 
-`mpd_ulw` is the light alias (tier `light`, no plan file); `mpd_ultrawork` runs the full discipline:
+`mpd_autoproject` runs the whole discipline, and its `tier` picks the shape: `light` (no plan file) or `heavy` —
 the optional adversarial hyperplan wave, the **plan gate** (planner + plan review) when a plan file is
 used, execution rounds driven per criterion (PIN → RED → GREEN → SURFACE → CLEAN), the **verification
-gate** (momus reviewer, at most 2 re-reviews) when a plan exists AND (`tier: "heavy"` or
-`strictReview`), then the **final quality gate** with a per-lane ledger. State and ledger live under
-`.mpd/ulw/<id>`. An activated run asks you nothing: it triages first, stages its own team when the
-work warrants one, and closes out through the gates.
+gate** when a plan exists AND (`tier: "heavy"` or `strictReview`), then the **final quality gate** with a
+per-lane ledger. State, ledger and the escalation artifact live under `.mpd/autoproject/<runId>/`.
+
+**The run is autonomous but BOUNDED.** It stops for a human at exactly three decision points — the
+over-limit escalation fired while `autoproject.escalate.mode` is `ask`; a credential, a secret or an
+external capability is absent; or the next write would leave the declared scope. Nothing else stops it.
+It reports `complete` only after a verification PASS is RECORDED through the `mpd_verify_*` plane
+(`strictReview` is accepted for compatibility; the gate runs regardless), every round child is a roster
+consult through `mpd_role_spawn`, and the boulder ledger (`.mpd/boulder.json`, the six `mpd_boulder_*`
+tool names unchanged, registered by the autoproject package) is the in-flight truth.
+
+**Over-limit escalation is the ONE independent decision**, taken by the engine at the round boundary:
+`S2 ∨ S3 ∨ count(S1,S4,S6,S7) ≥ 2`, where S1 = criteria over `autoproject.escalate.criteriaMax` (12),
+S2 = the run hit `maxRounds`, S3 = two fruitless discovery waves, S4 = ledger over `ledgerBytesMax`,
+S6 = distinct scope trees over `scopePathsMax` (20), S7 = two same-criterion verify FAILs. **S5 is
+retired** (`tasksMax` still parses, but no signal reads it). `autoproject.escalate.mode` (`off` / `ask` / `auto`) decides only what
+happens next, the artifact is `.mpd/autoproject/<runId>/escalation.json`, and the hand-off to cell mode is
+`cellwork_open` when that tool exists (otherwise the run returns the `/cellwork <objective>` instruction).
 
 ### 13.3 Specialists (single-call consults)
 
@@ -1046,8 +1059,8 @@ mpd_goal_anchor { "objective": "ship the cordis-dev skill and its evidence", "ma
 mpd_goal_finish { "outcome": "complete" }
 ```
 
-**You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy ULW run
-(`mpd_ultrawork` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
+**You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy autoproject run
+(`mpd_autoproject` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
 goal for their own objective before they start, so the run's objective — not the tool call — is the
 basis of continuous execution. A team-plan APPROVAL anchors one too, beside the todo seeding it does
 (§6): one approval bundles the team record, the goal and the todo list. When the run ends:
@@ -1102,7 +1115,7 @@ other people's. The authoritative record, with the full licence texts, is
 |---|---|---|---|
 | Team mode — the teammate execution plane, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` and the Web panel | the **official** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` packages, mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows | MIT (harness package set); declared in `package.json` `dependencies` | `cordis.patch.yml`; `README.md` (*What the install mounts*) |
 | The adopted (then retired, then DELETED) vendored `agent-teams` body | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounted it since 0.1.7-rc.2, and the de-vendor wave (2026-10-07) removed `packages/mpd-agent-teams-plugin/**` — two relocated pieces survive as our own code: `packages/mpd-schemastery/**` and the adopted browser bundle at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` | `LICENSE-NOTICES.md` §*dsh-agent-teams* |
-| The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) — historical provenance for the NAMES and the vocabulary; the persona texts were re-sourced under permissive licences in wave D | MIT (this repository's own work); the upstream those names came from was SUL-1.0, recorded as history only | `LICENSE-NOTICES.md`; `VENDOR_LOCK.json` |
+| The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) — historical provenance for the NAMES and the vocabulary; the persona texts were re-sourced under permissive licences in wave D | MIT (this repository's own work); the upstream those names came from carried its own, non-MIT licence — recorded as history only | `LICENSE-NOTICES.md`; `VENDOR_LOCK.json` |
 | The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the 16 ported skills are re-sourced from **lazycodex** (the same author's MIT re-license of the oh-my-openagent corpus); `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | MIT — `Copyright (c) 2026 Yeongyu Kim` for the re-sourced corpus; the referenced harness material is MIT and not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** — NOT a declared dependency; the CLI is resolved at runtime by `resolveAstGrepBinary` (a caller env pin, `$MPD_AST_GREP_BIN_DIR`, the package's own `bin` entry, `.toolchain/node_modules/.bin`, then `node_modules/.bin`) | MIT; `0.45.2`; not redistributed | `packages/mpd-mcp-shared/bin-resolve.ts`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
@@ -1141,3 +1154,75 @@ dependencies plus the component manifests the changed bundle's patch rows name �
 scan of the transitive closure. A measured v1 variant of this change (the adapter declared as a
 dependency and named by a patch row) was caught by that second pass: `dsh plugin add` hard-rejected
 and rolled back the whole bundle install.
+
+## 15. New and changed surfaces (the autoproject refactor)
+
+Compact reference for the behaviour this wave introduced. Anything not stated here keeps its old
+meaning.
+
+### 15.1 Team plane: owner-only dispatch and the new verbs
+
+`agent_teams_dispatch` pairs a READY task with its DECLARED owner. A busy, absent, fenced or failed owner
+is REPORTED and the row stays pending — it is never substituted. `mode: "roster"` is the explicit escape
+hatch that restores the positional fallback, and `reassign` hands named rows to another member (it claims
+the row for that member on the board, journals `task-reassigned`, then delivers). `reassign`,
+`mode: "roster"` and fencing are Lead-only.
+
+`agent_teams_task {action:"context"}` answers the caller's own occupancy and seat state (never guessing a
+window: `provenance` says whether it was `observed`, `no-window` or `unavailable`), and
+`{action:"handoff"}` validates a seven-section handoff document and marks the member handoff-ready.
+`agent_teams_control {action:"fence"|"unfence", member}` stops NEW dispatch to one member while keeping its
+rows; only the Lead may call it. **Combination semantic worth knowing:** `release` CLEARS the owner, so
+"release then dispatch" must go through `reassign` (or `mode:"roster"`) — that is a property of the two
+verbs, not a defect.
+
+### 15.2 Cellwork and the team plane
+
+`cellwork_open {objective, mandate?}` is the programmatic entry the autoproject escalation uses. It refuses
+a caller that is not the captain, an already-active cell, and a `mandate` whose
+`.mpd/autoproject/<runId>/escalation.json` is not on disk. `/cellwork` is a thin handler over the SAME
+path, so the command and the tool cannot diverge. A tool has no `invocation.submit`, so the tool path
+returns the directive instead of submitting it — that bound is real and stated rather than hidden.
+
+The cell-MODE engines (requirements, split, activate, recon, budget) still live in the cellwork package.
+The TEAM-level work does not: `cellwork_dispatch`, `cellwork_context`, `cellwork_subteam` and the handoff
+path now read or write the TEAM record through the `mpdTeams` / `mpdTeamActions` services (owner-only
+dispatch, context occupancy and depth budget included), with no cross-package import.
+
+### 15.3 Workmate auto-binding, optimization and persona overrides
+
+At team approval each staged member is bound DETERMINISTICALLY: an explicit name binds or REFUSES; else
+`mpd_workmate_match` (score ≥ 0.35 AND the name is free on the team) REUSES a workmate; else
+`workmates.autoInit` (default `true`) AND the library under `workmates.max` (default 12 per workspace)
+INITIALIZES one; otherwise the member stays plain with reason `cap`.
+
+`mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` and `/workmate-optimize` merge
+workmates that are the same specialty grown apart: dry-run by default, mergeable only when both share the
+same base, equal `readonly`, neither archived, both idle, and the note score ≥ 0.6 or tag Jaccard ≥ 0.5.
+The merged-away source is ARCHIVED, never purged. `mpd_workmate_persona_set` writes a versioned persona
+override fenced by a `baseRevision` compare-and-set; a workmate whose base persona moved ahead reports
+`defaultUpdated` (with `baseDriftLines`) instead of silently going stale.
+
+### 15.4 Global memory
+
+`mpd_memory_write` / `read` / `status` take `scope: "workspace"` (the default — no existing call changes
+meaning) or `"global"`, which reads and writes the shared store at `~/.mpd/memory` (`memory.globalDir`
+overrides the root). `mpd_memory_read` is paginated (`offset`, `limit`, `next_offset`).
+
+ONE archive hook in the memory row listens for `mpd_boulder_complete`, `cellwork_stop` and
+`agent_teams_plan {action:"delete"}`, builds a DETERMINISTIC digest (no model call) and writes one
+`kind:"fact"`, `scope:"global"` entry per project key; a second event with the same key OVERWRITES the
+entry and journals `superseded`. Global writes go through the SHARED HOME guard: a write is REFUSED when
+its root is not inside the sandbox `$HOME` of an isolated boot (`DSH_HOME` set), and `memory.globalDir` is
+contained by the same rule.
+
+### 15.5 Admission strength and the review-bot round cap
+
+The complexity gate now reports WHO admitted the work rather than only whether it is big enough:
+`explicit` (a consumed `team:` / `!team` marker, or a human turn naming the automation), `inferred` (a
+human turn that matched at least one complexity signal), `ignore` (model-authored text, or a human turn
+with no signal). The staging predicate is unchanged — `explicitFlag || signals ≥ 1` — so a rung only
+describes the producer; `ignore` is reachable only for a caller that passes producer text.
+
+Each automated reviewer (CodeRabbit today, any future bot) gets at most THREE review rounds on one pull
+request. A fourth round needs the user's explicit decision and is recorded in the PR.

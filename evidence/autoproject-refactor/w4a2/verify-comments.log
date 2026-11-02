@@ -1,0 +1,12 @@
+# verify-comment-coverage
+
+scanned 555 TypeScript file(s) of 555 in the source set; inspected 50035 declaration(s); skipped 24160 inline callback(s) as out of family
+
+VERDICT: FAIL — 2 violation(s) across 2 file(s).
+
+packages/mpd-autoproject-plugin/src/engine.ts (1)
+  237: comment — RunState
+
+packages/mpd-cellwork-plugin/test/lib/team-actions-double.ts (1)
+  343: comment — ids
+

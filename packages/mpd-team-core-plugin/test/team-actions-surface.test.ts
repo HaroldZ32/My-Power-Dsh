@@ -531,7 +531,7 @@ describe("mpdTeamActions — the service the routes and a panel both read", () =
     const service = h.services.get(ACTIONS_SERVICE) as MpdTeamActionsService
     await h.call("agent_teams_plan", { action: "create", name: "dispatchable", description: "ship it" })
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own it", blocked_by: [] } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own it", blocked_by: [], owner: "Senior Engineer" } })
     /** The approval, run through the service too. */
     const approved = await service.approve({ sessionId: LEAD })
     if (!approved.ok) throw new Error(approved.error)
@@ -575,7 +575,9 @@ function dispatchTeam(workspace: string): TeamRecord {
   // A member is DISPATCHABLE only once its raise settled (`inactive`) — the state an approved plan
   // leaves behind, and the one `idleMembers` reads.
   record = updateTeamMember(record, "Senior Engineer", { status: "inactive", executorRef: "child-se-b" })
-  record = addTeamTask(record, { subject: "core", description: "own it", blockedBy: [] }, F4_NOW)
+  // THE OWNER IS DECLARED: owner-only is the dispatch DEFAULT, and these arms are about LINEAGE — an
+  // unowned row would be reported instead of paired and the differential would prove nothing.
+  record = addTeamTask(record, { subject: "core", description: "own it", blockedBy: [], owner: "Senior Engineer" }, F4_NOW)
   writeTeam(workspace, record)
   return record
 }

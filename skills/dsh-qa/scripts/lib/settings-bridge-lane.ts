@@ -141,16 +141,16 @@ function readJsoncLike(text: string): unknown {
  * @returns the fixture's file text (JSONC, trailing newline included).
  */
 export function fixture(value: number): string {
-  return `{\n  // human comment: must survive the write-back\n  "hashline": {\n    "maxDiffChars": ${value},\n  },\n  "ulw": { "maxRounds": 6 },\n}\n`
+  return `{\n  // human comment: must survive the write-back\n  "hashline": {\n    "maxDiffChars": ${value},\n  },\n  "autoproject": { "maxRounds": 6 },\n}\n`
 }
 
 /**
  * A file with a DUPLICATED leaf key, so the lane can witness the settled duplicate-key ruling.
- * @param value - the second `ulw.maxRounds` value, which must win over the first one.
+ * @param value - the second `autoproject.maxRounds` value, which must win over the first one.
  * @returns the fixture's file text (JSONC, trailing newline included).
  */
 function duplicateFixture(value: number): string {
-  return `{\n  "ulw": {\n    "maxRounds": 3,\n    "maxRounds": ${value},\n  },\n}\n`
+  return `{\n  "autoproject": {\n    "maxRounds": 3,\n    "maxRounds": ${value},\n  },\n}\n`
 }
 
 /** The one report line shape the bridge emits, so a lane asserts on structure, not prose. */
@@ -303,7 +303,7 @@ export function evaluateBridge(observed: BridgeObserved): LaneVerdict {
     const value = KNOB.reduce<unknown>((acc, part) => (acc == null ? undefined : (acc as JsonRecord)[part]), parsed)
     add("W3", value === observed.expectedValue, "the written value is " + observed.expectedValue + " (read back " + JSON.stringify(value) + ")")
     add("W4", String(observed.fileAfter).includes("// human comment: must survive the write-back"), "the human comment survived (F2)")
-    add("W5", String(observed.fileAfter).includes('"ulw": { "maxRounds": 6 }') && String(observed.fileAfter).indexOf('"hashline"') < String(observed.fileAfter).indexOf('"ulw"'), "key order was not rewritten (F2)")
+    add("W5", String(observed.fileAfter).includes('"autoproject": { "maxRounds": 6 }') && String(observed.fileAfter).indexOf('"hashline"') < String(observed.fileAfter).indexOf('"autoproject"'), "key order was not rewritten (F2)")
     add("W6", String(observed.fileAfter).includes(String(observed.initialValue)) === false, "the previous value is gone from the edited span")
     // The first report that names at least one written file (the structured half of the log).
     const wrote = structured.find((report) => Array.isArray(report.writtenTo) && report.writtenTo.length > 0)
@@ -733,7 +733,7 @@ export const TUI_NOTICE = "saved to settings — not yet written to any .mpd/mpd
 export const TUI_DISCLOSURE_LIVE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
 
 /** The MOUNT-CAPTURED half of the same disclosure, byte-copied from `BRIDGE_RESTART_LIMIT`. */
-export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
+export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
 
 /**
  * The RETIRED blanket sentence (D-18, audit wave 2026-10-25). Its ABSENCE is asserted on the built

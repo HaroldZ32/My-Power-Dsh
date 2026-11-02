@@ -1,0 +1,108 @@
+{
+  "task": "T27 / W5-A",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a74.1 + \u00a77 (rename-only half of W5)",
+  "lane": "Senior Engineer (single skills writer)",
+  "generatedAt": "2026-11-02T12:19:45Z",
+  "filesTouched": 39,
+  "bands": {
+    "root": [
+      "README.md",
+      "README.zh-CN.md"
+    ],
+    "docs": [
+      "docs/index.md(+zh)",
+      "docs/user-guide.md(+zh)",
+      "docs/design.md(+zh)",
+      "docs/feature-audit.md(+zh)",
+      "docs/independence.md(+zh)",
+      "docs/tui.md(+zh)",
+      "docs/upstream-parity-ledger.md(+zh)"
+    ],
+    "assets": [
+      "docs/assets/images/autoproject-loop.svg (renamed from ulw-loop.svg, relabelled)",
+      "docs/assets/images/architecture.svg (labels)"
+    ],
+    "packages": [
+      "mpd-autoproject-plugin",
+      "mpd-bundle-plugin",
+      "mpd-bundle",
+      "mpd-config-plugin",
+      "mpd-goal-plugin",
+      "mpd-schemastery",
+      "mpd-tui-plugin \u2014 README + README.zh-CN each"
+    ],
+    "agentReferences": [
+      "overview-and-provenance.md",
+      "plugin-authoring.md",
+      "repository-layout.md",
+      "qa-discipline.md",
+      "verification-flow.md",
+      "index.md"
+    ],
+    "agents": [
+      "AGENTS.md (\u00a71 GOAL bullet, \u00a76 state-root override list)"
+    ]
+  },
+  "collapseFixes": [
+    "AGENTS.md \u00a71: two /autoproject -> one (Lead-flagged)",
+    "user-guide \u00a712: 'seven commands' -> 'six', duplicated command row collapsed",
+    "user-guide \u00a713.2: 'light alias' pair -> ONE tool, tier picks the shape",
+    "user-guide \u00a711 tool table: pair -> one tool with two tiers",
+    "feature-audit: 'the seven \u2026 the autoproject pair' -> six, one command; light-alias claim removed",
+    "design: plugin row's duplicated tool/command pair collapsed",
+    "tui: 'ulw loop discipline' + duplicate tools -> autoproject + mpd_boulder_*",
+    "autoproject README(+zh): 'compatibility alias' sentence and duplicated command bullets removed"
+  ],
+  "anchors": [
+    "#132-the-ulw-loop-and-its-gates -> #132-the-autoproject-loop-and-its-gates",
+    "#132-ulw-\u5faa\u73af\u4e0e\u5b83\u7684\u5173\u5361 -> #132-autoproject-\u5faa\u73af\u4e0e\u5b83\u7684\u5173\u5361"
+  ],
+  "gates": [
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 \u2014 PASS",
+      "log": "verify-docs.log"
+    },
+    {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS resolved=153 over-report=73 under-report=82 declared=2",
+      "log": "verify-manual-paths.log"
+    },
+    {
+      "command": "wc -c AGENTS.md",
+      "exit": 0,
+      "observed": "63136 -> 63167 (+31); margin 2369 >= 2048 under 65536; <= 63500",
+      "log": "residue-grep.log"
+    },
+    {
+      "command": "residue grep over the policed band",
+      "exit": 0,
+      "observed": "ZERO retired spellings; three PROTECTED occurrences named",
+      "log": "residue-grep.log"
+    }
+  ],
+  "declined": [
+    "docs/bline-report.md",
+    "docs/decisions.md",
+    "docs/omo-parity-gap.md",
+    "docs/review-p0-p3.md",
+    "docs/track-a-report.md",
+    "docs/tui-edition-report.md",
+    "docs/ulw-deepseek-optimization.md",
+    "docs/plan-0.1.7-adaptation.md",
+    "docs/plan-c.md",
+    "docs/plan-e.md",
+    "docs/plan-f.md"
+  ],
+  "handedToEngineDescriptionTask": [
+    "autoproject README(+zh): 'asks the user nothing' autonomy-policy section (the retired blanket policy)",
+    "user-guide \u00a713.2(+zh): 'An activated run asks you nothing'",
+    "goal-anchoring prose that still calls a run 'heavy autoproject'"
+  ],
+  "notProven": [
+    "no gate checks doc PROSE against code \u2014 verify:docs proves the pair and the links; the behaviour claims above are reading-verified only",
+    "CHANGELOG.md / .mpd/readme-ref / dist/mpd-package untouched (outside the T27 bands)"
+  ]
+}

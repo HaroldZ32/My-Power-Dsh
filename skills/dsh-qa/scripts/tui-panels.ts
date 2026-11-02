@@ -344,7 +344,7 @@ export const SURFACES: readonly SurfaceSpec[] = [
       /delegation\.gate/,
       /tui\.dashboardKey is live ONE WAY/,
       /captured by their plugins at mount/,
-      /hashline\.\*.*commentChecker\.\*.*ulw\.\*.*memory\.\*.*boulder\.dir.*goal\.\*/,
+      /hashline\.\*.*commentChecker\.\*.*autoproject\.\*.*memory\.\*.*boulder\.dir.*goal\.\*/,
       /never lost/,
     ],
     // The retired BLANKET sentence must never come back on the rendered surface.

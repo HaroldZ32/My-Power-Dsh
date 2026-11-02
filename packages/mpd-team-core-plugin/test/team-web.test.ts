@@ -15,7 +15,7 @@ import { describe, expect, test } from "bun:test"
 import { TEAM_EVENTS_PATH, TEAM_MAIL_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, TEAM_TASK_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes, taskProgress } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
-import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
+import { addTeamMember, addTeamTask, createTeam, updateTeamMember, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -897,4 +897,33 @@ describe("the events route", () => {
     // NOTHING was streamed: no `retry`, no `hello`, and no keep-alive left running behind the refusal.
     expect(captured.frames).toEqual([])
   })
+})
+
+test("the MEMBER payload carries the workmate binding and the checkpoint flag, read FROM THE RECORD", () => {
+  // W3-C2 could not reach this projection: `TeamWebMember` is an explicit whitelist, so the web panel
+  // showed a bound seat without its mode (and a closed seat as live). Both are the RECORD's facts copied
+  // through — the payload decides nothing here.
+  /** The seeded record, whose two members are then bound/closed. */
+  const seeded = record()
+  /** The workspace the record lives in. */
+  const workspace = workspaceOf(seeded)
+  /** The board with one bound seat and one seat in the checkpoint window. */
+  const bound = updateTeamMember(
+    updateTeamMember(seeded, "Senior Engineer", { workmate: "core-dev", workmateMode: "reuse" }),
+    "Reviewer",
+    { mode: "checkpoint" },
+  )
+  writeTeam(workspace, bound)
+  /** The payload the browser reads. */
+  const state = buildTeamState(bound, workspace, "sess-1", EXECUTOR)
+  /** The bound seat's row. */
+  const engineer = state.members.find((member) => member.name === "Senior Engineer")
+  /** The closed seat's row. */
+  const reviewer = state.members.find((member) => member.name === "Reviewer")
+  // THE BINDING MODE IS VISIBLE, and so is the checkpoint window the tool refuses to message.
+  expect(engineer?.workmateMode).toBe("reuse")
+  expect(engineer?.checkpoint).toBe(false)
+  expect(reviewer?.checkpoint).toBe(true)
+  // A seat whose record carries NO binding reports no mode, rather than a fabricated one.
+  expect(reviewer?.workmateMode).toBeUndefined()
 })

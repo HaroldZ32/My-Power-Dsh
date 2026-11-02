@@ -21,7 +21,7 @@ the harness's job rather than a second human instruction.
 | `mpd_goal_anchor` | Put a persisted goal in place for a long objective. An unfinished goal already current is KEPT, never replaced. |
 | `mpd_goal_finish` | Complete (or attempt to block) the current goal and disarm continuation. |
 
-## The `mpdGoal` service (consumed by `mpd-ulw` and `mpd-boulder`)
+## The `mpdGoal` service (consumed by `mpd-autoproject` and `mpd-autoproject`)
 
 `available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?})` /
 `finish(exec, {outcome, source, reason?})`. Both consumers resolve it lazily with
@@ -31,7 +31,7 @@ the harness's job rather than a second human instruction.
 
 | Trigger | What happens |
 |---|---|
-| `mpd_ultrawork` with `tier=heavy` or `plan=true` | Anchors a goal for the run's objective; the goal id lands in the run's `state.json`. |
+| `mpd_autoproject` with `tier=heavy` or `plan=true` | Anchors a goal for the run's objective; the goal id lands in the run's `state.json`. |
 | `mpd_boulder_start` (plan-bound work) | Anchors a goal named after the plan and the work id. |
 | Run ends `complete` | The goal is completed (the anchor record is dropped). |
 | Run ends `blocked` | A `blocked` transition is ATTEMPTED; the harness may refuse it before its consecutive-round threshold, and the refusal is logged, never fatal. |
