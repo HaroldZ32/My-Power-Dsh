@@ -1604,6 +1604,104 @@ function textOfOutput(output) {
   }
   return parts.join("");
 }
+function questionItemOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const fields = raw;
+  if (typeof fields.id !== "string" || typeof fields.question !== "string")
+    return;
+  const options = questionOptionsOf(fields.options);
+  return {
+    id: fields.id,
+    question: fields.question,
+    ...typeof fields.header === "string" ? { header: fields.header } : {},
+    ...options === undefined ? {} : { options },
+    ...typeof fields.multiSelect === "boolean" ? { multiSelect: fields.multiSelect } : {}
+  };
+}
+function questionOptionsOf(raw) {
+  if (!Array.isArray(raw))
+    return;
+  const options = [];
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.label !== "string")
+      continue;
+    options.push({
+      label: fields.label,
+      ...typeof fields.description === "string" ? { description: fields.description } : {}
+    });
+  }
+  return options;
+}
+function questionItemsOf(raw) {
+  if (!Array.isArray(raw))
+    return [];
+  const items = [];
+  for (const entry of raw) {
+    const item = questionItemOf(entry);
+    if (item !== undefined)
+      items.push(item);
+  }
+  return items;
+}
+function questionAnswersOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return [];
+  const items = raw.answers;
+  if (!Array.isArray(items))
+    return [];
+  const answers = [];
+  for (const entry of items) {
+    if (entry === null || typeof entry !== "object")
+      continue;
+    const fields = entry;
+    if (typeof fields.id !== "string")
+      continue;
+    const selected = Array.isArray(fields.selected) ? fields.selected.filter((label) => typeof label === "string") : [];
+    answers.push({
+      id: fields.id,
+      selected,
+      ...typeof fields.custom === "string" ? { custom: fields.custom } : {}
+    });
+  }
+  return answers;
+}
+function errorCodeOf(error) {
+  if (error === null || typeof error !== "object")
+    return;
+  const code = error.code;
+  return typeof code === "string" && code.length > 0 ? code : undefined;
+}
+function errorTextOf(error) {
+  if (error !== null && typeof error === "object") {
+    const message = error.message;
+    if (typeof message === "string" && message.length > 0)
+      return message;
+  }
+  return String(error);
+}
+function abortSignalOf(raw) {
+  return raw !== null && typeof raw === "object" && typeof raw.aborted === "boolean" ? raw : undefined;
+}
+function requestSessionIdOf(raw) {
+  if (raw === null || typeof raw !== "object")
+    return;
+  const id = raw.id;
+  return typeof id === "string" && id.length > 0 ? id : undefined;
+}
+function userQuestionRequestOf(raw) {
+  const fields = raw !== null && typeof raw === "object" ? raw : undefined;
+  const sessionId = requestSessionIdOf(fields?.agent);
+  const signal = abortSignalOf(fields?.signal);
+  return {
+    questions: questionItemsOf(fields?.questions),
+    ...sessionId === undefined ? {} : { sessionId },
+    ...signal === undefined ? {} : { signal }
+  };
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -1774,6 +1872,11 @@ function createDshAdapter(ctx, config = {}) {
     } catch {
       return;
     }
+  }
+  function warnDshGo(detail) {
+    try {
+      rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
+    } catch {}
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -2105,6 +2208,8 @@ function createDshAdapter(ctx, config = {}) {
       const systemPrompt = service("systemPrompt");
       const agentTeams = service("agentTeams");
       const goalService = service("goals");
+      const questionService = service("userQuestions");
+      const dshGoService = service("dshGo");
       const sample = liveAgents()[0];
       const sampleScoped = sample?.ctx;
       let scopedCompaction = false;
@@ -2155,7 +2260,9 @@ function createDshAdapter(ctx, config = {}) {
         teamMessages: typeof agentTeams?.sendMessage === "function" && typeof agentTeams?.waitForChange === "function",
         subagentsProviderRegister: typeof subagents?.registerProvider === "function",
         goals: typeof goalService?.get === "function",
-        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName))
+        goalTools: GOAL_TOOL_NAMES.every((goalToolName) => toolReachable(goalToolName)),
+        askUser: questionService !== undefined && questionService !== null,
+        dshGo: dshGoService !== undefined && dshGoService !== null
       };
     },
     workspaceRoot,
@@ -2370,6 +2477,70 @@ function createDshAdapter(ctx, config = {}) {
         } catch {}
       });
       return typeof off === "function" ? off : () => {};
+    },
+    async askUserQuestion(request) {
+      const questionService = service("userQuestions");
+      if (questionService === undefined || questionService === null || typeof questionService.ask !== "function") {
+        throw new Error("ask_user_question failed: no user-questions service");
+      }
+      let raw;
+      try {
+        raw = await questionService.ask({
+          questions: request.questions,
+          ...request.signal === undefined ? {} : { signal: request.signal }
+        });
+      } catch (error) {
+        const code = errorCodeOf(error);
+        const failure = Object.assign(new Error("ask_user_question failed: " + errorTextOf(error)), code === undefined ? {} : { code });
+        throw failure;
+      }
+      return questionAnswersOf(raw);
+    },
+    onUserQuestionRequest(handler, label) {
+      const off = onEvent("user-questions/request", (...args) => {
+        const request = userQuestionRequestOf(args[0]);
+        const next = args[args.length - 1];
+        const nextAnswers = async () => {
+          if (typeof next !== "function") {
+            throw new Error("ask_user_question failed: the user-questions waterfall supplied no next()");
+          }
+          return questionAnswersOf(await next());
+        };
+        return handler(request, nextAnswers);
+      });
+      if (off === undefined) {
+        try {
+          rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: onUserQuestionRequest(${label ?? "anonymous"}) degraded — the harness event bus is unavailable (ctx.on), so no question will be routed to this answerer`);
+        } catch {}
+        return noop;
+      }
+      return off;
+    },
+    dshGoPresent() {
+      const bridge = service("dshGo");
+      return bridge !== undefined && bridge !== null;
+    },
+    dshGoPanel(id, spec) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.panel !== "function") {
+        warnDshGo(`panel "${id}" not published — the bridge service is absent or exposes no panel()`);
+        return false;
+      }
+      try {
+        bridge.panel(id, spec);
+        return true;
+      } catch (error) {
+        warnDshGo(`panel "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoRefresh(id) {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null || typeof bridge.refresh !== "function")
+        return;
+      try {
+        bridge.refresh(id);
+      } catch {}
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
