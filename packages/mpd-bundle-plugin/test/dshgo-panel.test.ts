@@ -650,7 +650,7 @@ describe("the emitted snapshot is narrow, bounded and change-driven", () => {
     const live = livePanel()
     /** The seeded snapshot, which is the first thing the app shows. */
     const snapshot = live.emitter.snapshots[0] as PanelSnapshot
-    expect(Object.keys(snapshot).sort()).toEqual(["plan", "question", "readyTasks", "team"])
+    expect(Object.keys(snapshot).sort()).toEqual(["alert", "counts", "memory", "plan", "question", "readyTasks", "team", "workmates"])
     expect(snapshot.team).toEqual({ id: "team-1", name: "Drive surface", status: "approved", phase: "active", members: 2, tasks: 3 })
     expect(snapshot.plan).toBeNull()
     expect(snapshot.question).toBeNull()
@@ -723,13 +723,13 @@ describe("the emitted snapshot is narrow, bounded and change-driven", () => {
       workspace: "/ws",
       sessionId: "s1",
     })
-    expect(snapshot).toEqual({ team: null, plan: null, question: null, readyTasks: [] })
+    expect(snapshot).toEqual({ team: null, plan: null, question: null, readyTasks: [], counts: { ready: 0, active: 0, done: 0, total: 0, completion: 0, members: 0 }, alert: null, workmates: [], memory: null })
   })
 
   test("a panel with no conversation reads nothing at all", () => {
     /** A live panel subscribed without a session id. */
     const live = livePanel(fakeState(), "")
-    expect(live.emitter.snapshots[0]).toEqual({ team: null, plan: null, question: null, readyTasks: [] })
+    expect(live.emitter.snapshots[0]).toEqual({ team: null, plan: null, question: null, readyTasks: [], counts: { ready: 0, active: 0, done: 0, total: 0, completion: 0, members: 0 }, alert: null, workmates: [], memory: null })
     live.cancel()
   })
 
@@ -756,7 +756,7 @@ describe("the emitted snapshot is narrow, bounded and change-driven", () => {
     /** The app-side emitter. */
     const sink = emitter()
     dataOf(panel.spec)({ sessionId: "s1" }, sink.emit)
-    expect(sink.snapshots[0]).toEqual({ team: null, plan: null, question: null, readyTasks: [] })
+    expect(sink.snapshots[0]).toEqual({ team: null, plan: null, question: null, readyTasks: [], counts: { ready: 0, active: 0, done: 0, total: 0, completion: 0, members: 0 }, alert: null, workmates: [], memory: null })
     // Nothing was read: a guessed root would have asked the registry about another project's team.
     expect(host.state.workspacesSeen).toEqual([])
   })
@@ -874,8 +874,8 @@ describe("the view tree is v1-only and inside the panel budget", () => {
   })
 })
 
-describe("refresh follows the question SET, not its contents", () => {
-  test("one refresh per set change and none for a content-only change", () => {
+describe("refresh follows the question's IDENTITY, not its text", () => {
+  test("one refresh per id or option change and none for a text-only change", () => {
     clock = installFakeClock()
     /** A live panel with one question parked. */
     const live = livePanel((() => {
@@ -886,21 +886,27 @@ describe("refresh follows the question SET, not its contents", () => {
     })())
     // The subscription's own seed is not a change: the app just fetched the view.
     expect(live.host.refreshes).toHaveLength(0)
-    // A CONTENT-ONLY change (same parked id, new text and a new option) emits but must not re-fetch.
-    live.host.state.parked = [{ id: "q1", sessionId: "s1", createdAt: 1, questions: [{ id: "item-1", question: "Pick one, now", options: [{ label: "main" }, { label: "dev" }, { label: "edge" }] }] }]
+    // A TEXT-ONLY change (same parked id, same options) emits but must not re-fetch: the question
+    // text is a BOUND node, so the data push carries it without a new tree.
+    live.host.state.parked = [{ id: "q1", sessionId: "s1", createdAt: 1, questions: [{ id: "item-1", question: "Pick one, now", options: [{ label: "main" }, { label: "dev" }] }] }]
     clock.tick()
     expect(live.emitter.snapshots).toHaveLength(2)
     expect(live.host.refreshes).toHaveLength(0)
+    // An OPTION change is structural: the buttons carry LITERAL labels (the kit's action builder takes
+    // a string), so the tree must be rebuilt — this is the one content change that does re-fetch.
+    live.host.state.parked = [{ id: "q1", sessionId: "s1", createdAt: 1, questions: [{ id: "item-1", question: "Pick one, now", options: [{ label: "main" }, { label: "dev" }, { label: "edge" }] }] }]
+    clock.tick()
+    expect(live.host.refreshes).toHaveLength(1)
     // A SET change (a different parked id) refreshes exactly once and names the panel.
     live.host.state.parked = [{ id: "q2", sessionId: "s1", createdAt: 2, questions: [{ id: "item-2", question: "Next?", options: [{ label: "yes" }] }] }]
     clock.tick()
-    expect(live.host.refreshes).toEqual(["mpd"])
+    expect(live.host.refreshes).toEqual(["mpd", "mpd"])
     // Settling it empties the set: one more refresh, then quiet.
     live.host.state.parked = []
     clock.tick()
-    expect(live.host.refreshes).toHaveLength(2)
+    expect(live.host.refreshes).toHaveLength(3)
     clock.tick()
-    expect(live.host.refreshes).toHaveLength(2)
+    expect(live.host.refreshes).toHaveLength(3)
     live.cancel()
   })
 })
@@ -1036,18 +1042,18 @@ describe("the first view is a live read, not the unseeded push cache", () => {
     const panel = unseededPanel(state)
     /** The first view the app would render, built with no seeded cache behind it. */
     const view = viewOf(panel.spec)({ sessionId: "s1" })
-    /** Every callout the view carries. */
+    /** Every callout the view carries; the v1 fallback flattens ALL tabs into one stack, so the
+     *  overview's staged-plan notice rides beside the question's own callout. */
     const callouts: ViewNode[] = []
     walkNodes(view, 1, (node) => { if (node.type === "callout") callouts.push(node) })
-    expect(callouts).toHaveLength(1)
-    expect(callouts[0]?.text).toEqual({ $: "data.question.question" })
+    expect(callouts.length).toBeGreaterThanOrEqual(1)
+    expect(callouts.map((node) => node.text)).toContainEqual({ $: "data.question.question" })
     /** The answer buttons alone, keyed by the ids the action map registers. */
     const answers = actionButtonsOf(view).filter((button) => button.action.startsWith("answer:"))
     expect(answers.map((button) => button.action)).toEqual(["answer:0", "answer:1"])
-    expect(answers.map((button) => button.label)).toEqual([
-      { $: "data.question.options.0.label" },
-      { $: "data.question.options.1.label" },
-    ])
+    // Labels are LITERAL now: the kit's action builder takes a string, and a label change refreshes
+    // the view (the signature carries the labels), so a bound label would add nothing.
+    expect(answers.map((button) => button.label)).toEqual(["main", "dev"])
     /** The live read of the SAME reader the push path uses, which every binding must resolve in. */
     const snapshot = readPanelSnapshot({ services: panel.host.ctx, workspace: "/ws", sessionId: "s1" })
     expect(snapshot.question?.question).toBe("Pick one")
@@ -1200,11 +1206,12 @@ describe("the bundle row wires the panel from apply", () => {
         on: (): (() => void) => () => {},
       }
       apply(ctx)
-      expect(published.map((panel) => panel.id)).toEqual([DSHGO_PANEL_ID])
+      // TWO panels now (contract D2): the workbench and the team board, in that order.
+      expect(published.map((panel) => panel.id)).toEqual([DSHGO_PANEL_ID, "mpd-team"])
       // The definition is the live panel: a view function, a data function and the tap map.
       expect(typeof published[0]?.spec.view).toBe("function")
       expect(typeof published[0]?.spec.data).toBe("function")
-      expect(Object.keys(published[0]?.spec.actions ?? {}).sort()).toEqual(["answer:0", "answer:1", "answer:2", "answer:3", "approve", "dispatch"])
+      expect(Object.keys(published[0]?.spec.actions ?? {}).sort()).toEqual(["answer-custom", "answer:0", "answer:1", "answer:2", "answer:3", "approve", "dispatch", "refresh"])
     } finally {
       if (saved === undefined) delete process.env.DSH_WORKSPACE_ROOT
       else process.env.DSH_WORKSPACE_ROOT = saved

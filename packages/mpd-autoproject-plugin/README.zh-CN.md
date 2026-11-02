@@ -67,3 +67,10 @@ bun build packages/mpd-autoproject-plugin/src/index.ts --target node --format es
 
 测试：`bun test packages/mpd-autoproject-plugin`。
 Live QA：`node skills/dsh-qa/scripts/autoproject-smoke.ts`。
+
+## dsh-Go 工具卡片
+
+`mpd_boulder_status` 还会通过 `output.presentationMeta` 发布原生 **dsh-Go 工具卡片**：一棵 v1 视图树
+（`stack` 标题 → `row` 指标 → `keyValue` → `table`），不带数据绑定、不带按钮，并在发布前按应用的
+8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
+文本 `render` 与输出 schema 均未改动。

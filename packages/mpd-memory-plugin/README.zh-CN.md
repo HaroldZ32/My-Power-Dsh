@@ -103,3 +103,10 @@ bun test    # workspace + global 存储、HOME 守卫、归档钩子、svn 后�
 归档钩子为每个项目键写**一条** `kind:"fact"`、`scope:"global"` 条目。同一键的第二次事件会**覆盖**该条目并记
 `superseded`（条目自身的计数器记录被后续事件替换了多少次），因此一个已完工项目永远不会长出第二条全局条目。
 摘要是**确定性**的 —— 建了什么、证明路径、范围与未完成项 —— 不调用模型、不联网。
+
+## dsh-Go 工具卡片
+
+`mpd_memory_read`、`mpd_memory_write` 与 `mpd_memory_status` 还会通过 `output.presentationMeta` 发布原生
+**dsh-Go 工具卡片**：每张卡片都是一棵 v1 视图树（`stack` 标题 → `row` 指标 → `keyValue`/`table`），不带数据
+绑定、不带按钮，并在发布前按应用的 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，
+应用于是回退到通用工具行。文本 `render` 与各输出 schema 均未改动。

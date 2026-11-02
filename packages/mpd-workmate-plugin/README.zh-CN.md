@@ -203,3 +203,10 @@ bun test packages/mpd-workmate-plugin   # 离线生命周期测试（沙箱 HOME
 与 `baseDriftLines`，而不是静默过期。
 
 **归属：** `meta.workspaces` 记录一个实例的按工作区归属（有上限），因此共享库能看出是哪些工作区在用它。
+
+## dsh-Go 工具卡片
+
+`mpd_workmate_list` 与 `mpd_workmate_match` 还会通过 `output.presentationMeta` 发布原生 **dsh-Go 工具卡片**：
+每张卡片都是一棵 v1 视图树（`stack` 标题 → `row` 指标 → `table`），不带数据绑定、不带按钮，并在发布前
+按应用的 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
+文本 `render` 与输出 schema 均未改动。

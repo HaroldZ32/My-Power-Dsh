@@ -530,3 +530,11 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/paths.ts` | every path, resolved per call |
 | `src/web.ts` | the two fenced web routes (hold / resume), mounted on the host's server through the adapter |
 | `test/web.test.ts` | the route arms: method guard, fence-before-work, body cap, agentless workspace, store round-trip |
+
+## dsh-Go tool cards
+
+`session-watchdog-status` also publishes a native **dsh-Go tool card** through
+`output.presentationMeta`: a v1 tree (`stack` title → `row` of metrics → `keyValue` → `table`) with no
+data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
+depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
+generic tool row. The text `render` and the output schema are unchanged.

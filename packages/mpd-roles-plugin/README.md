@@ -105,6 +105,20 @@ output, route or GUI exposes.
 The tool-facing path accepts NAME spellings only, so `mpd_modelchain_resolve`, the roster
 tools and the workmate library (`mpd_workmate_init base=...`) all address a role by name.
 
+### Native tool cards (dsh-Go)
+
+`mpd_roles_list` and `mpd_role_spawn` carry `output.presentationMeta`, so the dsh-Go app draws them
+as a **native card** in the chat log instead of a generic tool row: the roster table (name, route,
+read-only/writes) plus any refused extension for the list tool; the role, its status metric and the
+bounded report sections for the spawn tool. Each card is a **v1** view tree (`stack` with a title,
+then metrics, `keyValue`, tables and short text) with **no `$` binding, no `actions` and no `style`
+key** — a chat-log entry has no data model and no action channel, and an older app must still be able
+to draw it. `toolCard()` from `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` is the seam: a
+failed build, a v2 component or a tree over **8 KiB / 40 nodes / depth 6** degrades to `{}` and the
+app falls back to its generic row, so a card can never break a tool call. The builders are pure
+functions in `src/tool-cards.ts`, and the unit test runs them through the SAME wrapper the
+registration uses.
+
 ## Extension-contributed roles
 
 An `mpd-ext` extension may contribute roles. They are merged into this roster **per call**

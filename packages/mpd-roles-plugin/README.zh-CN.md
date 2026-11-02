@@ -40,6 +40,10 @@
 
 `ctx.get("mpdRoles").get(key)` 仍使用同一套解析 —— 这是**内部**路径。面向工具的路径只接受 NAME 拼写，因此 `mpd_modelchain_resolve`、名册工具与 workmate library（`mpd_workmate_init base=...`）都只按名称称呼 role。
 
+### 原生工具卡片（dsh-Go）
+
+`mpd_roles_list` 与 `mpd_role_spawn` 都带有 `output.presentationMeta`，因此 dsh-Go 客户端会把它们画成聊天记录里的**原生卡片**，而不是通用的工具行：名册工具给出名册表（名称、路由、只读/可写）与被拒的扩展；spawn 工具给出 role、状态 metric 以及有界的报告段落。每张卡片都是一棵 **v1** 视图树（带标题的 `stack`，随后是 metric、`keyValue`、表格与短文本），**没有 `$` 数据绑定、没有 `actions`，也没有 `style` 键** —— 聊天记录既没有数据模型也没有动作通道，而且更旧的客户端仍然必须能画出来。接缝是 `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` 的 `toolCard()`：构建失败、出现 v2 组件，或任一维度超过 **8 KiB / 40 节点 / 深度 6**，都会退化成 `{}`，客户端回落到通用工具行 —— 所以卡片永远不会弄坏一次工具调用。构建器是 `src/tool-cards.ts` 里的纯函数，单元测试跑的是注册所包装的**同一个**包装器。
+
 ## 由扩展贡献的 role
 
 `mpd-ext` 扩展可以贡献 role。它们**按调用**合并进本名册（`ctx.get("mpdExtensions")`，在工具执行时惰性解析 —— 绝不是 apply 期缓存，因此稍后才 apply、甚至稍后才注册的扩展同样可见），并且与基础 role 拥有完全相同的 surface：

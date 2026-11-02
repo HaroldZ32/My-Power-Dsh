@@ -16,6 +16,7 @@
 // the wrong thing. Only a genuinely broken precondition (no team, no task) throws.
 import type { DshAdapter, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { textBlock } from "../../mpd-dsh-adapter-plugin/src/index"
+import { VERIFY_EVIDENCE_CARD, VERIFY_RECORD_CARD } from "./dshgo-cards"
 import { DEFAULT_CONTRACT_PATH, loopContractPath, normalizeContractPath, resolvePositiveInt, sessionKeyOf } from "./law.ts"
 import {
   appendEscape, ensureDir, evidenceDir, hashDoc, loopsDir, mintId, readEvidence, readJson, readLoops, readRecords,
@@ -372,6 +373,7 @@ function evidenceTool(deps: VerifyToolDeps): DshToolDef {
       additionalProperties: false,
     },
     output: {
+      presentationMeta: VERIFY_EVIDENCE_CARD,
       render: (_args: unknown, value: any) => textBlock(
         value?.refused !== undefined ? "refused: " + value.refused
           : value?.probe !== undefined ? value.probe.length + " artifact(s) probed"
@@ -501,6 +503,7 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
       additionalProperties: false,
     },
     output: {
+      presentationMeta: VERIFY_RECORD_CARD,
       render: (_args: unknown, value: any) => textBlock(
         value?.refused !== undefined ? "refused [" + value.refused.reason + "]: " + value.refused.detail
           : "record " + value.recordId + " " + value.verdict + (value.repair === undefined ? "" : " -> repair " + value.repair.repairId),

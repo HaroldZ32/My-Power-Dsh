@@ -133,3 +133,11 @@ the SAME key OVERWRITES that entry and journals `superseded` (the entry's own co
 later events replaced it), so a finished project never grows a second global entry. The digest is
 DETERMINISTIC — what was built, the proof paths, the scope and the open items — with no model call and
 no network.
+
+## dsh-Go tool cards
+
+`mpd_memory_read`, `mpd_memory_write` and `mpd_memory_status` also publish native **dsh-Go tool
+cards** through `output.presentationMeta`: each card is a v1 tree (`stack` title → `row` of metrics →
+`keyValue`/`table`) with no data bindings and no actions, measured before publication against the
+app's 8 KiB / 40 nodes / depth-6 tool-card budget. A card that cannot be built returns `{}`, so the
+app falls back to its generic tool row. The text `render` and the output schemas are unchanged.
