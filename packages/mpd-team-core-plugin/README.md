@@ -101,7 +101,9 @@ happened instead of every 1000–2000 ms.
 Server-Sent Events, under the same `/plugins/mpd-team/*` family as the four JSON routes (the host
 throws on a duplicate exact route, and `/plugins/events` belongs to the harness's own HMR row).
 The workspace and session are resolved from the request **per request**, exactly as the JSON routes
-resolve them.
+resolve them. The two MUTATING routes in that same family — `POST /plugins/mpd-team/approve` and
+`POST /plugins/mpd-team/dispatch` — are documented under **The action plane** below; this section
+covers the read/stream family only.
 
 ```
 HTTP/1.1 200 OK
@@ -140,6 +142,91 @@ data: {"rev":8}
 - The feed follows the **team record and the teams index**. The sidecar files (the staged plan, the
   contracts, the hold, the mailbox) are not published by it.
 - `revision` is **per process**. Two processes serving the same workspace each count their own windows.
+
+## The action plane — exec-free actions and their two routes
+
+The two bodies used to live inline in the `agent_teams_plan` / `agent_teams_dispatch` handlers, which
+made the only surface that could drive them a model turn carrying a live tool-call context
+(`exec.agent`) to spawn and send; a browser panel, a phone or a native DSH Go panel has no such
+context. `src/team-actions.ts` holds those bodies now as two exec-free functions — same validation
+order, same store writes, same reply fields — and the row exposes the SAME sequence three ways: the
+tool handlers, the `mpdTeamActions` service and two HTTP routes. That is what lets a button (a browser
+panel, a phone, a native DSH Go panel) drive a team.
+
+### The service (`mpdTeamActions`)
+
+The row publishes it under the id `mpdTeamActions` (the exported constant `TEAM_ACTIONS_SERVICE`)
+BEFORE its tools, so a consumer that resolves it during this row's own activation finds a live member.
+
+| Member | Signature | Contract |
+|---|---|---|
+| `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | approve the plan staged by `sessionId`, as that session's live agent |
+| `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | one dispatch pass for that session's team; `limit` `0`/absent means no cap, `dryRun` decides the pairing and sends nothing |
+
+`TeamActionResult<Payload>` is `({ ok: true } & Payload) | { ok: false; error: string }` — a RESULT,
+never a rejection, because a route must answer instead of throwing into the host and a panel has to
+render the refusal.
+
+- `approve`'s payload: `plan` (on a real approval the persisted plan, marked approved; on the `dryRun`
+  preview the staged plan unchanged), `team` (the record it wrote; ABSENT only on `dryRun`), `created`
+  (`{ members: [{ name, id }], tasks: [{ subject, id }] }` — real ids on approval, empty strings on the
+  preview — plus `unresolved` when a blocker named no task), and `stoppedAt` when a spawn stopped the
+  sequence.
+- `dispatch`'s payload: `pairs` (the pairings the transport accepted — `taskId`, `subject`, `memberId`,
+  `memberName`, optional `note`), `skipped` (every task left out, with `taskId`, `subject`, `reason`)
+  and, when relevant, `forgotten`, `holdRead`, `reaped`, `halted` or `refused`.
+- **"not live" is an answer, not a throw.** A session the live registry does not know answers
+  `{ ok: false, error: "session <id> is not live" }` from BOTH members; a session whose workspace cannot
+  be attributed answers `{ ok: false, error: <the resolver's message> }`. Neither member throws for a
+  bad session id.
+
+**The functions are exec-free.** `approveTeam(deps, caller)` and `runDispatch(deps, caller, input)`
+read no cordis context and no tool exec: the clock, the executor, the approval effects, the team
+resolver, the watchdog reading, the service lookup, the row log, the idle guard's dispatch window and
+the two approval-time guards all arrive on `TeamActionDeps`. The caller is explicit too —
+`{ workspace, sessionId, lineage, agent?, signal? }`. The ONE permitted difference from the tool body
+is the missing agent: with `caller.agent` absent both functions answer
+`{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` **before the
+first store write** — no record, no spawn, no approval effect, no dispatch window. A tool caller always
+carries an agent, so its behaviour is unchanged. That refusal is what makes a route safe: a route has no
+tool-call context to inherit, so it must never spawn, send or half-write a team just to discover that it
+cannot act.
+
+### The two routes (`POST /plugins/mpd-team/approve`, `POST /plugins/mpd-team/dispatch`)
+
+| Route | Body | Success (`200`) |
+|---|---|---|
+| `POST /plugins/mpd-team/approve` | parsed, then IGNORED; empty or `{}` is accepted | `{ ok: true, team: { id, name, memberCount, taskCount }, created: string[] }` — `created` lists the members' executor handles, then the board's task ids |
+| `POST /plugins/mpd-team/dispatch` | `{ limit?: number, dryRun?: boolean }`; `limit` a finite number `>= 0`, `dryRun` a boolean; an empty body is one uncapped pass | `{ ok: true, pairs: [{ taskId, memberId, memberName }], skipped: [{ taskId, subject, reason }] }` |
+
+- **The session comes from `?sessionId=` and nowhere else.** It is resolved by the same
+  `workspaceForRequest` the read routes use, so a request acts on the workspace that session owns; a
+  body field cannot select a session (extra fields are dropped at the boundary). A request that names
+  no session is a `400`.
+- **The order is the contract.** The host fence (`dsh.webRequestRejection`, delegated through the
+  adapter) answers `401`/`403` BEFORE the method guard, the body stream, the session lookup and the
+  store; then this module's own `405` (with `allow: POST`); then the byte cap; then the JSON parse
+  and the dispatch body's field validation; then session presence and liveness; only then the action.
+  It is the shipped
+  `mpd-team-watchdog-plugin/src/web.ts` discipline applied to a mutation.
+- **The cap is 64 KiB on the RAW BYTES** (`MAX_ACTION_BODY_BYTES = 64 * 1024` = 65,536 bytes),
+  enforced while streaming and BEFORE any parse: an oversized body is a `413` and never becomes a
+  JavaScript value. An empty body is admitted as `undefined`.
+- **The success payload is the narrow projection above** — never a store object, never a path.
+
+| Status | When |
+|---|---|
+| `200` | the action succeeded; the projection above |
+| `400` | malformed JSON, an invalid dispatch body (`limit`/`dryRun`, or a body that is not a JSON object), a request naming no session, or an action refusal (including an unattributable workspace) |
+| `405` | any method other than `POST`; the answer carries `allow: POST` |
+| `409` | the named session has no live agent — the action NEVER runs |
+| `413` | the body exceeds 65,536 bytes, refused unparsed |
+| `500` | an unexpected throw; the client gets ONE sentence and no path (the detail goes to the row log) |
+
+Both routes delegate to the published `mpdTeamActions` members, never to a second copy of the
+sequence, so a button and a tool call run the same approval or dispatch pass. They are registered ONLY
+when the composition supplies the action surface: a row that cannot act does not advertise an endpoint
+that can only fail, and a read-only composition mounts the read routes alone.
 
 ## Semantics
 

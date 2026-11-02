@@ -20,6 +20,9 @@ import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, me
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
+// TYPE ONLY: the mutations are EXECUTED by the row (which owns the service); this module only shapes
+// the HTTP boundary around their payloads, so it needs the payload types and nothing at runtime.
+import type { TeamActionResult, TeamApprovePayload, TeamDispatchPayload } from "./team-actions"
 
 /** The route the Web team view polls. Exported so the client and the route cannot drift. */
 export const TEAM_STATE_PATH = "/plugins/mpd-team/state"
@@ -54,6 +57,124 @@ export const TEAM_EVENTS_PATH = "/plugins/mpd-team/events"
 
 /** Every route this module registers, so a reader and a test can enumerate them from one place. */
 export const TEAM_ROUTES: readonly string[] = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH, TEAM_EVENTS_PATH]
+
+/**
+ * The route that APPROVES the session's staged plan — the first of the two MUTATING routes.
+ *
+ * Under the same `/plugins/mpd-team/*` family as the read routes so a client has one prefix to allow,
+ * and mounted through the SAME seam (`registerTeamRoutes`, whose caller owns the server probe, the
+ * effect and the late-binding retry): a second mount mechanism would be a second place a route can be
+ * forgotten.
+ */
+export const TEAM_APPROVE_PATH = "/plugins/mpd-team/approve"
+
+/** The route that runs ONE dispatch pass for the session's team — the second mutating route. */
+export const TEAM_DISPATCH_PATH = "/plugins/mpd-team/dispatch"
+
+/** Every MUTATING route this module registers, kept separate from the read family in {@link TEAM_ROUTES}. */
+export const TEAM_ACTION_ROUTES: readonly string[] = [TEAM_APPROVE_PATH, TEAM_DISPATCH_PATH]
+
+/** The largest request body these routes accept; anything larger is refused with 413, unparsed. */
+export const MAX_ACTION_BODY_BYTES = 64 * 1024
+
+/**
+ * What one mutating route needs from the row: the two actions, addressed by session, plus liveness.
+ *
+ * The row passes the `mpdTeamActions` service's OWN members here, so the routes and the service cannot
+ * answer differently about what an approval is; `isLive` is the service's liveness rule, exposed so the
+ * route can answer 409 BEFORE acting rather than parsing an error sentence.
+ */
+export interface TeamWebActions {
+  /** Whether the named session has a live agent; a route answers 409 when it does not. */
+  isLive: (sessionId: string) => boolean
+  /** Approve the plan staged by one session. Never throws for a bad session id. */
+  approve: (sessionId: string) => Promise<TeamActionResult<TeamApprovePayload>>
+  /** Run one dispatch pass for one session's team. Never throws for a bad session id. */
+  dispatch: (sessionId: string, input: { limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>
+}
+
+/** The outcome of reading a mutating route's body, before any field is validated. */
+type ActionBodyRead = { ok: true; value: unknown } | { ok: false; status: 400 | 413 }
+
+/** One body chunk as bytes: a string is encoded here, a buffer is already bytes. */
+const actionEncoder = new TextEncoder()
+
+/** Decode the joined body ONCE, so a multi-byte character split across chunks still round-trips. */
+const actionDecoder = new TextDecoder()
+
+/**
+ * Read one mutating route's body under the 64 KiB cap.
+ *
+ * THE CAP IS ON BYTES, not UTF-16 units, and it is enforced BEFORE the parse: an oversized body is
+ * refused with 413 without ever becoming a JavaScript value. An EMPTY body is admitted as `undefined`
+ * — the approve route ignores its body entirely, and the dispatch route's fields are all optional —
+ * while a non-empty body that is not JSON is a 400 at this boundary, so no interior code re-validates.
+ * @param request - the route's request, treated as a byte stream.
+ * @returns the parsed JSON value, or the status the route must answer.
+ */
+async function readActionBody(request: unknown): Promise<ActionBodyRead> {
+  /** The request narrowed to the streaming surface; a non-Node request fails this probe. */
+  const req = request as Partial<AsyncIterable<unknown>> | undefined
+  if (req === undefined || typeof req[Symbol.asyncIterator] !== "function") return { ok: false, status: 400 }
+  /** The body chunks as bytes, kept separate until the whole body is decoded once. */
+  const parts: Uint8Array[] = []
+  /** Bytes accumulated so far, measured for the 413 bound. */
+  let size = 0
+  for await (const chunk of req as AsyncIterable<unknown>) {
+    /** One chunk as bytes; a non-string non-buffer chunk is stringified. */
+    const part = typeof chunk === "string" ? actionEncoder.encode(chunk) : chunk instanceof Uint8Array ? chunk : actionEncoder.encode(String(chunk))
+    size += part.byteLength
+    if (size > MAX_ACTION_BODY_BYTES) return { ok: false, status: 413 }
+    parts.push(part)
+  }
+  /** The joined bytes, one contiguous buffer for the single decode below. */
+  const bytes = new Uint8Array(size)
+  /** Write offset while joining. */
+  let at = 0
+  for (const part of parts) {
+    bytes.set(part, at)
+    at += part.byteLength
+  }
+  /** The fully decoded body text. */
+  const raw = actionDecoder.decode(bytes)
+  if (raw.trim() === "") return { ok: true, value: undefined }
+  try {
+    return { ok: true, value: JSON.parse(raw) }
+  } catch {
+    return { ok: false, status: 400 }
+  }
+}
+
+/**
+ * Validate the dispatch body at this boundary; every field is optional.
+ *
+ * `limit` must be a finite number `>= 0` (`0`/absent = no cap, the tool's own rule) and `dryRun` a
+ * boolean, so a mistyped tuning field is a 400 here rather than an engine surprise downstream. An
+ * empty body means "one uncapped pass", which is exactly what a panel button sends.
+ * @param body - the parsed JSON value, or undefined for an empty body.
+ * @returns the validated input, or the reason the boundary refused it.
+ */
+function parseDispatchInput(body: unknown): { ok: true; value: { limit?: number; dryRun?: boolean } } | { ok: false; error: string } {
+  if (body === undefined) return { ok: true, value: {} }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return { ok: false, error: "the request body must be a JSON object" }
+  /** The body as a plain record, now that its shape is known. */
+  const record = body as Record<string, unknown>
+  /** The cap, read once so the check below narrows the value it returns. */
+  const limit = record.limit
+  if (limit !== undefined && !(typeof limit === "number" && Number.isFinite(limit) && limit >= 0)) {
+    return { ok: false, error: "limit must be a finite number >= 0 when present" }
+  }
+  /** The preview flag, read once for the same reason. */
+  const dryRun = record.dryRun
+  if (dryRun !== undefined && typeof dryRun !== "boolean") return { ok: false, error: "dryRun must be a boolean when present" }
+  return {
+    ok: true,
+    value: {
+      ...(limit === undefined ? {} : { limit }),
+      ...(dryRun === undefined ? {} : { dryRun }),
+    },
+  }
+}
 
 /**
  * The exact phrase an approval gate demands for one staged plan.
@@ -736,14 +857,23 @@ export function registerTeamRoutes(
      * teams. Absent in a composition that never built a cache.
      */
     graph?: (workspace: string, teamId?: string) => GraphModel | undefined
+    /**
+     * The MUTATION surface: the two team actions plus liveness, absent in a read-only composition.
+     *
+     * Absent means the two POST routes are NOT registered at all (not registered-and-refusing): a row
+     * that cannot act should not advertise an endpoint that can only fail. Present means the routes
+     * delegate to the row's published `mpdTeamActions` service members, so a button and a tool call
+     * run the same sequence.
+     */
+    actions?: TeamWebActions
   },
 ): boolean {
   if (webServer === undefined || typeof webServer.register !== "function") return false
   /** Answer one JSON response, using only the two methods a handler may rely on. */
-  const json = (res: unknown, status: number, body: unknown): void => {
+  const json = (res: unknown, status: number, body: unknown, headers: Record<string, string> = {}): void => {
     /** The response, narrowed to the write surface this module uses. */
     const out = res as RouteResponse
-    out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" })
+    out.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers })
     out.end(JSON.stringify(body))
   }
   /** The session id the request names, or the empty string when it names none. */
@@ -816,6 +946,108 @@ export function registerTeamRoutes(
       return false
     }
   }
+  /**
+   * Register one FENCED MUTATING route: fence, own method guard, capped body, boundary parse, action.
+   *
+   * THE ORDER IS THE CONTRACT, copied from the one shipped mutating precedent
+   * (`mpd-team-watchdog-plugin/src/web.ts`): the host's fence runs BEFORE anything else, so a refused
+   * request never reaches the method guard, the body stream, the session lookup or the store; then this
+   * module's own 405 (a GET must not fall through to a mutation); then the 64 KiB-capped, single-decode
+   * body; then the boundary parse; then the session and its liveness; and only then the action. A
+   * success answer is the caller's NARROW projection — never a store object, never a path — and every
+   * failure is a JSON payload, because a handler that throws takes the host's request listener with it.
+   *
+   * STATUS MAP: 400 for a bad body, a session the query does not name, an unattributable workspace or
+   * an action refusal; 409 for a session with no live agent; 500 for an unexpected throw. The action
+   * itself never rejects for a bad id — the row answers `{ ok: false, error }` — so the 500 arm is only
+   * for a genuinely broken read.
+   * @param path - the exact route path, echoed in the refusal sentences.
+   * @param parse - the boundary parser for this route's body.
+   * @param run - the action, addressed by session and validated input.
+   * @param project - the narrow success payload this route answers.
+   * @returns whether the route registered.
+   */
+  const mountAction = <Body, Payload>(
+    path: string,
+    parse: (body: unknown) => { ok: true; value: Body } | { ok: false; error: string },
+    run: (sessionId: string, body: Body) => Promise<TeamActionResult<Payload>>,
+    project: (payload: Payload) => Record<string, unknown>,
+  ): boolean => {
+    /** The action surface this attempt registers against; absent means no route at all. */
+    const actions = deps.actions
+    if (actions === undefined) return false
+    try {
+      deps.effect(() => (webServer as { register: (route: unknown) => unknown }).register({
+        kind: "exact",
+        path,
+        handler: async (req: unknown, res: unknown): Promise<void> => {
+          try {
+            // THE FENCE RUNS BEFORE ANY WORK: a refused request never reaches the method guard, the
+            // body stream, the session lookup or the store.
+            /** The host's verdict for this request, when the composition supplies a fence. */
+            const rejection = deps.authorize?.(req)
+            if (rejection !== undefined) {
+              json(res, rejection, { ok: false, error: `mpd-team-core: the request is not authenticated for ${path}` })
+              return
+            }
+            // OUR OWN GUARD: these routes MUTATE, so a GET is answered here rather than falling
+            // through to a handler that would act on it. `allow` states the one accepted verb.
+            if ((req as { method?: unknown } | undefined)?.method !== "POST") {
+              json(res, 405, { ok: false, error: `mpd-team-core: ${path} accepts POST only` }, { allow: "POST" })
+              return
+            }
+            /** The body as the request streamed it, capped before any parse. */
+            const read = await readActionBody(req)
+            if (!read.ok) {
+              json(res, read.status, {
+                ok: false,
+                error: read.status === 413
+                  ? `mpd-team-core: the request body exceeds ${MAX_ACTION_BODY_BYTES} bytes`
+                  : "mpd-team-core: the request body is not valid JSON",
+              })
+              return
+            }
+            /** The parsed, validated body, or the reason this boundary refused it. */
+            const body = parse(read.value)
+            if (!body.ok) {
+              json(res, 400, { ok: false, error: `mpd-team-core: ${body.error}` })
+              return
+            }
+            // THE SESSION COMES FROM THE QUERY ONLY (the existing `?sessionId=` convention): no body
+            // field may carry one, so a request cannot act on a session its caller did not name.
+            /** The session this request names, or "" when it names none. */
+            const sessionId = sessionOf(req)
+            if (sessionId === "") {
+              json(res, 400, { ok: false, error: "mpd-team-core: the request names no session" })
+              return
+            }
+            if (!actions.isLive(sessionId)) {
+              json(res, 409, { ok: false, error: `mpd-team-core: session ${sessionId} is not live` })
+              return
+            }
+            /** The action's outcome; the row guarantees this resolves, but the throw arm below is why
+             * an unexpected rejection from a store is still an answer rather than a dead request. */
+            const result = await run(sessionId, body.value)
+            if (!result.ok) {
+              json(res, 400, { ok: false, error: `mpd-team-core: ${result.error}` })
+              return
+            }
+            json(res, 200, { ok: true, ...project(result) })
+          } catch (error) {
+            // NEVER THROW OUT OF A HANDLER. The detail goes to the row log; the CLIENT message is one
+            // sentence and carries no filesystem path.
+            deps.warn(`route ${path} failed: ${String((error as Error)?.message ?? error)}`)
+            try { json(res, 500, { ok: false, error: "mpd-team-core: the request could not be completed" }) } catch { /* the response is already gone */ }
+          }
+        },
+      }), `mpd-team-core: web route ${path}`)
+      return true
+    } catch (error) {
+      deps.warn(`registering ${path} failed: ${String((error as Error)?.message ?? error)}`)
+      return false
+    }
+  }
+
   /**
    * Answer one Server-Sent-Events stream of team-state revisions.
    *
@@ -969,5 +1201,28 @@ export function registerTeamRoutes(
   // LAST, and streaming: it is the only route whose handler does not return a body, so it registers
   // through its own helper rather than through `mount`'s one-shot shape.
   all = mountStream(TEAM_EVENTS_PATH, events) && all
+  // ── THE TWO MUTATIONS, in their OWN family ────────────────────────────────
+  // Registered ONLY when the row supplies the action surface: a composition that cannot act does not
+  // advertise an endpoint that can only fail. Both answer the NARROW projection — the id/counts of the
+  // team and what was created, or the pairs and skips of one pass — never a store object, never a path,
+  // because a browser/panel client has no business reading the record's raw bytes.
+  /** The action surface, captured ONCE: the two closures below must drive the same members. */
+  const actions = deps.actions
+  if (actions !== undefined) {
+    all = mountAction(TEAM_APPROVE_PATH, () => ({ ok: true, value: undefined }), (sessionId: string) => actions.approve(sessionId), (payload: TeamApprovePayload) => ({
+      team: {
+        id: payload.team?.teamId ?? "",
+        name: payload.team?.name ?? "",
+        memberCount: payload.team?.members.length ?? 0,
+        taskCount: payload.team?.tasks.length ?? 0,
+      },
+      // WHAT APPROVAL CREATED, by id: the executor's handle per member, then the board id per task.
+      created: [...payload.created.members.map((member) => member.id), ...payload.created.tasks.map((task) => task.id)],
+    })) && all
+    all = mountAction(TEAM_DISPATCH_PATH, parseDispatchInput, (sessionId: string, body: { limit?: number; dryRun?: boolean }) => actions.dispatch(sessionId, body), (payload: TeamDispatchPayload) => ({
+      pairs: payload.pairs.map((pair) => ({ taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName })),
+      skipped: payload.skipped,
+    })) && all
+  }
   return all
 }

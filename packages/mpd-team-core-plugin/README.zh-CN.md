@@ -68,6 +68,8 @@
 
 Server-Sent Events，与四个 JSON 路由同属 `/plugins/mpd-team/*` 家族（宿主遇到重复的 exact 路由会抛错，
 而 `/plugins/events` 属于 harness 自己的 HMR 行）。工作区与会话**按请求**解析，与 JSON 路由的解析方式完全一致。
+同一家族里的两条**变更**路由 —— `POST /plugins/mpd-team/approve` 与 `POST /plugins/mpd-team/dispatch`
+—— 记录在下面的**动作平面**一节；本节只讲读取/事件流家族。
 
 ```
 HTTP/1.1 200 OK
@@ -103,6 +105,81 @@ data: {"rev":8}
   只有进程内通知，外加一行日志。
 - 事件流跟随的是**团队记录与 teams 索引**。sidecar 文件（暂存计划、契约、hold、信箱）不由它推送。
 - `revision` 是**按进程**的。两个进程服务同一个工作区时，各自数自己的窗口。
+
+## 动作平面——免 exec 的动作与两条路由
+
+这两段函数体过去内联在 `agent_teams_plan` / `agent_teams_dispatch` 的处理器里，于是唯一能驱动它们的
+界面，是带着活的工具调用上下文（`exec.agent`）去 spawn 与 send 的模型回合；浏览器面板、手机、DSH Go
+原生面板都没有这种上下文。现在 `src/team-actions.ts` 以两个**免 exec** 的函数持有这两段函数体 ——
+相同的校验顺序、相同的存储写入、相同的返回字段 —— 于是同一套序列有三种入口：工具处理器、
+`mpdTeamActions` 服务，以及两条 HTTP 路由。这正是「一个按钮」（浏览器面板、手机、DSH Go 原生面板）
+能够驱动团队的原因。
+
+### 服务（`mpdTeamActions`）
+
+行以 id `mpdTeamActions`（导出的常量 `TEAM_ACTIONS_SERVICE`）在**工具之前**发布它，因此在本行
+激活期间解析该服务的消费方，拿到的一定是活着的成员。
+
+| 成员 | 签名 | 契约 |
+|---|---|---|
+| `approve` | `(input: { sessionId: string }) => Promise<TeamActionResult<TeamApprovePayload>>` | 以 `sessionId` 那个会话的活 agent 身份，批准它暂存的计划 |
+| `dispatch` | `(input: { sessionId: string; limit?: number; dryRun?: boolean }) => Promise<TeamActionResult<TeamDispatchPayload>>` | 为该会话的团队跑**一次**派发；`limit` 为 `0` 或缺省表示不限，`dryRun` 只做配对决策、不发送 |
+
+`TeamActionResult<Payload>` 是 `({ ok: true } & Payload) | { ok: false; error: string }` —— 是**结果**、
+绝不是 reject：路由必须作答而不是把异常抛进宿主，面板也要能渲染拒绝理由。
+
+- `approve` 的载荷：`plan`（真实批准时是已持久化、标记为已批准的计划；`dryRun` 预览时是原样的暂存
+  计划）、`team`（它写入的记录；**仅**在 `dryRun` 上缺席）、`created`
+  （`{ members: [{ name, id }], tasks: [{ subject, id }] }` —— 批准时是真实 id，预览时为空串 ——
+  当某个 blocker 没有指向任何任务时另有 `unresolved`），以及 spawn 中途停下时的 `stoppedAt`。
+- `dispatch` 的载荷：`pairs`（传输层真正接受的配对 —— `taskId`、`subject`、`memberId`、
+  `memberName`，可选 `note`）、`skipped`（每个未派发的任务，带 `taskId`、`subject`、`reason`），
+  以及按需出现的 `forgotten`、`holdRead`、`reaped`、`halted` 或 `refused`。
+- **「不活跃」是一个答案，不是抛错。** 活跃注册表不认识的会话，两个成员都答
+  `{ ok: false, error: "session <id> is not live" }`；会话无法归属到某个工作区时答
+  `{ ok: false, error: <解析器给出的消息> }`。两个成员都不会因为一个坏 session id 抛错。
+
+**这两个函数是免 exec 的。** `approveTeam(deps, caller)` 与 `runDispatch(deps, caller, input)`
+不读取任何 cordis 上下文、也不读取工具 exec：时钟、执行器、批准副作用、团队解析器、watchdog 读数、
+服务查找、行日志、空闲守卫的派发窗口，以及两道批准期守卫，全部经 `TeamActionDeps` 显式传入。
+caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signal? }`。与工具函数体相比，
+**唯一**允许的差异是 agent 缺失：当 `caller.agent` 缺席时，两个函数都在**第一次写存储之前**回答
+`{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` —— 不写记录、
+不 spawn、不跑批准副作用、不开派发窗口。工具调用方永远带着 agent，因此其行为不变。这道拒绝也正是
+路由得以安全存在的原因：路由没有可继承的工具调用上下文，因此它绝不能在「发现自己无法行动」的过程中
+去 spawn、send，或把团队写了一半。
+
+### 两条路由（`POST /plugins/mpd-team/approve`、`POST /plugins/mpd-team/dispatch`）
+
+| 路由 | 请求体 | 成功（`200`） |
+|---|---|---|
+| `POST /plugins/mpd-team/approve` | 会被解析、随后**忽略**；空体或 `{}` 均可 | `{ ok: true, team: { id, name, memberCount, taskCount }, created: string[] }` —— `created` 先列成员的执行器句柄，再列看板任务 id |
+| `POST /plugins/mpd-team/dispatch` | `{ limit?: number, dryRun?: boolean }`；`limit` 为 `>= 0` 的有限数字，`dryRun` 为布尔值；空体表示一次不限量的派发 | `{ ok: true, pairs: [{ taskId, memberId, memberName }], skipped: [{ taskId, subject, reason }] }` |
+
+- **会话只来自 `?sessionId=`，不来自别处。** 它由读取路由所用的同一个 `workspaceForRequest` 解析，
+  因此请求只会作用于该会话自己的工作组；请求体字段**不能**选择会话（边界处多余的字段会被丢弃）。
+  没有点名任何会话的请求是 `400`。
+- **顺序就是契约。** 宿主围栏（`dsh.webRequestRejection`，经适配器委托）在方法守卫、请求体流、
+  会话查找和存储**之前**先答 `401`/`403`；随后是本模块自己的 `405`（带 `allow: POST`）；再是字节上限；
+  再是 JSON 解析与派发体的字段校验；再是会话存在性与活跃性；最后才执行动作。这就是已发布的
+  `mpd-team-watchdog-plugin/src/web.ts` 纪律，套用到一次变更操作上。
+- **上限是 64 KiB，按原始字节计**（`MAX_ACTION_BODY_BYTES = 64 * 1024` = 65,536 字节），在流式读取时、
+  且**在任何解析之前**执行：超限的请求体得到 `413`，永远不会变成 JavaScript 值。空请求体按
+  `undefined` 接纳。
+- **成功载荷就是上面的窄投影** —— 绝不是存储对象，绝不含路径。
+
+| 状态码 | 何时 |
+|---|---|
+| `200` | 动作成功；返回上面的投影 |
+| `400` | JSON 非法、派发体非法（`limit`/`dryRun`，或请求体不是 JSON 对象）、请求没有点名会话，或动作拒绝（包括工作区无法归属） |
+| `405` | 任何非 `POST` 方法；应答带 `allow: POST` |
+| `409` | 点名的会话没有活 agent —— 动作**绝不会**执行 |
+| `413` | 请求体超过 65,536 字节，未解析即拒绝 |
+| `500` | 意外抛错；客户端只得到**一句**话、且不含路径（细节进本行日志） |
+
+两条路由都委托给已发布的 `mpdTeamActions` 成员，而不是第二份序列，因此一个按钮与一次工具调用跑的是
+同一个批准或派发过程。只有当组合提供动作面（`actions`）时它们才被注册：一个无法行动的插件行不该
+对外宣告一个只会失败的端点，只读组合只挂载读取路由。
 
 ## 语义
 
