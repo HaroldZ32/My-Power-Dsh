@@ -1,7 +1,0 @@
-packages/mpd-bundle-plugin/src/team-view.ts: OK
-packages/mpd-bundle-plugin/test/team-view.test.ts: OK
-packages/mpd-bundle-plugin/test/client-built-frames.test.ts: OK
-packages/mpd-bundle-plugin/client.js: OK
-packages/mpd-bundle-plugin/dist/index.js: OK
-packages/mpd-bundle-plugin/README.md: OK
-packages/mpd-bundle-plugin/README.zh-CN.md: OK

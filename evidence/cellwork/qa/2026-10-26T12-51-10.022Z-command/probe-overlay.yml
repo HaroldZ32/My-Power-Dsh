@@ -1,6 +1,0 @@
-- insert:
-    - id: cellwork-command-probe
-      name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/lib/cellwork-command-probe.ts"
-      config:
-        outFile: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/cellwork/qa/2026-10-26T12-51-10.022Z-command/probe.json"
-        objective: "qa-cellwork-objective-command"
