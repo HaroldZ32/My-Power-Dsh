@@ -386,6 +386,14 @@
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
     },
     {
+      "case": "surface-pin",
+      "script": "skills/dsh-qa/scripts/surface-pin.ts",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the case writes NO evidence directory at all (it is a fully offline declaration pin over the shipped sources)"
+    },
+    {
       "case": "autoproject-smoke",
       "script": "skills/dsh-qa/scripts/autoproject-smoke.ts",
       "suites": [

@@ -1708,7 +1708,11 @@ export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
 export function idleMembers(record: TeamRecord): TeamMemberRecord[] {
   /** Every spelling a task in flight may have stamped: the member's name or its executor handle. */
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner): owner is string => owner !== undefined))
+  // A FENCED SEAT IS NOT IDLE (R-W1A nit, closed by the derived stage): the compaction barrier gave up on
+  // it, the dispatch pass never messages it, and the web payload renders exactly this set — so counting it
+  // here made a dead seat read as available and let a reader expect work it cannot take.
   return record.members.filter((member) => (member.status === "running" || member.status === "inactive")
+    && member.fenced !== true
     && !busy.has(member.name)
     // A member whose claim stamped its handle is BUSY; matching only the name would let dispatch book
     // a second task onto it (the same two-spelling defect `memberProgress` documents).

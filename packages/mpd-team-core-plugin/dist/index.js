@@ -3831,7 +3831,7 @@ function readyTasks(record) {
 }
 function idleMembers(record) {
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
-  return record.members.filter((member) => (member.status === "running" || member.status === "inactive") && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
+  return record.members.filter((member) => (member.status === "running" || member.status === "inactive") && member.fenced !== true && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
@@ -4181,6 +4181,53 @@ function installTeamDoorGuard(dsh, options) {
   }
 }
 
+// packages/mpd-team-core-plugin/src/stage.ts
+var UNRESOLVED_VERDICTS = ["fail", "failed", "changes", "change-requested"];
+function isTerminal(task) {
+  return task.status === "completed" || task.status === "failed" || task.status === "cancelled";
+}
+function isInFlight(task) {
+  return task.status === "claimed" || task.status === "in_progress";
+}
+function waitingForAnswer(members) {
+  return members.find((member) => member.status !== "running" && member.status !== "provisioning" && member.handoff !== undefined);
+}
+function teamStage(record, taskId) {
+  const tasks = Array.isArray(record?.tasks) ? record.tasks : [];
+  const members = Array.isArray(record?.members) ? record.members : [];
+  const scope = taskId === undefined ? tasks : tasks.filter((task) => task.id === taskId);
+  const failed = scope.find((task) => task.status === "failed");
+  if (failed !== undefined)
+    return { kind: "person", reason: "failed", taskId: failed.id };
+  const review = scope.find((task) => task.kind === "review" && task.verdict !== undefined && !String(task.verdict).toLowerCase().startsWith("pass") && UNRESOLVED_VERDICTS.includes(String(task.verdict).toLowerCase()));
+  if (review !== undefined)
+    return { kind: "person", reason: "review", taskId: review.id };
+  const blocked = scope.find((task) => !isTerminal(task) && !isInFlight(task) && taskVisual(task, tasks) === "blocked");
+  if (blocked !== undefined)
+    return { kind: "person", reason: "blocked", taskId: blocked.id };
+  const boardFinished = tasks.length > 0 && tasks.every((task) => isTerminal(task) && task.status !== "failed");
+  if (taskId === undefined && boardFinished && derivePhase(record) !== "ended")
+    return { kind: "person", reason: "delivery" };
+  if (taskId === undefined && !tasks.some(isInFlight)) {
+    const waiting = waitingForAnswer(members);
+    if (waiting !== undefined)
+      return { kind: "person", reason: "answer" };
+  }
+  const inFlight = tasks.some(isInFlight);
+  if (inFlight) {
+    const queued = tasks.some((task) => task.status === "pending" && task.owner === undefined && !isTerminal(task) && taskVisual(task, tasks) !== "blocked");
+    return { kind: "working", queued };
+  }
+  return derivePhase(record) === "ended" ? { kind: "ended" } : { kind: "idle" };
+}
+function stageLabel(stage) {
+  if (stage.kind === "working")
+    return stage.queued ? "working:queued" : "working";
+  if (stage.kind === "person")
+    return "person:" + stage.reason;
+  return stage.kind;
+}
+
 // packages/mpd-team-core-plugin/src/team-web.ts
 var TEAM_STATE_PATH = "/plugins/mpd-team/state";
 var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
@@ -4262,6 +4309,7 @@ function buildWorkspaceTeams(teams, activeId) {
         failed: team.tasks.filter((task) => task.status === "failed").length
       },
       members: team.members.filter((member) => member.status !== "failed").length,
+      stage: stageLabel(teamStage(team)),
       active: team.teamId === activeId
     })),
     ...activeId === undefined ? {} : { activeId }
@@ -4347,7 +4395,7 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
         id: member.id,
         name: member.name,
         ...member.role === undefined ? {} : { role: member.role },
-        status: member.status === "running" && idle.has(member.name) ? "idle" : member.status,
+        status: member.fenced === true ? "fenced" : member.status === "running" && idle.has(member.name) ? "idle" : member.status,
         done: progress.done,
         total: progress.total,
         ...progress.current === undefined ? {} : { current: progress.current },
@@ -7683,10 +7731,18 @@ function apply(ctx) {
           }
         },
         active: (workspace, sessionId) => recordFor(workspace, sessionId ?? "workspace"),
-        summary: (record) => summariseTeam(record),
+        summary: (record) => ({ ...summariseTeam(record), stage: stageLabel(teamStage(record)) }),
         visual: (record, taskId) => {
           const task = record.tasks.find((candidate) => candidate.id === taskId);
-          return task === undefined ? "unknown" : taskVisual(task, record.tasks);
+          if (task === undefined)
+            return "unknown";
+          const own = taskVisual(task, record.tasks);
+          if (own === "running") {
+            const stage = teamStage(record);
+            if (stage.kind === "person")
+              return stage.reason;
+          }
+          return own;
         },
         progress: (record, name2) => memberProgress(record, name2),
         memberContext: (workspace, teamId, memberName) => {

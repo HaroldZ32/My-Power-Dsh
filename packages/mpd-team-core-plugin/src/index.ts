@@ -126,6 +126,7 @@ import {
   type TeamRecord,
   type TeamTaskRecord,
 } from "./team-store"
+import { stageLabel, teamStage } from "./stage"
 import {
   isLiveTeam,
   readArchivedPlanIndex,
@@ -212,9 +213,21 @@ export interface MpdTeamsService {
   get: (workspace: string, teamId: string) => TeamRecord | undefined
   /** The team bound to one Lead session, or undefined when that session has none. */
   active: (workspace: string, sessionId?: string) => TeamRecord | undefined
-  /** The tallies, edges, cycles and per-task rank of one team. */
-  summary: (record: TeamRecord) => ReturnType<typeof summariseTeam>
-  /** The visual state a renderer draws for one task of one team (`blocked` is derived here). */
+  /**
+   * The tallies, edges, cycles and per-task rank of one team, PLUS its derived `stage` (A1).
+   *
+   * `stage` is the first-match classification a reader acts on (`stage.ts#teamStage`), added beside the
+   * counts rather than folded into them: every existing key keeps its exact meaning, and no key that a
+   * caller already reads changes shape.
+   */
+  summary: (record: TeamRecord) => ReturnType<typeof summariseTeam> & { stage: string }
+  /**
+   * The visual state a renderer draws for one task of one team (`blocked` is derived here).
+   *
+   * STAGE-AWARE (A1): a task that is `claimed`/`in_progress` while the TEAM's stage is `person(...)`
+   * answers that stage instead of `running` — a board that cannot advance must never be drawn as working.
+   * Every other case is unchanged, so a task with its own definite state renders exactly as before.
+   */
   visual: (record: TeamRecord, taskId: string) => string
   /** The completed/total counts and the current task of one member. */
   progress: (record: TeamRecord, name: string) => ReturnType<typeof memberProgress>
@@ -1709,11 +1722,23 @@ export function apply(ctx: any): void {
         list: (workspace: string) => { try { return listTeams(workspace) } catch { return [] } },
         get: (workspace: string, teamId: string) => { try { return readTeam(workspace, teamId) } catch { return undefined } },
         active: (workspace: string, sessionId?: string) => recordFor(workspace, sessionId ?? "workspace"),
-        summary: (record: TeamRecord) => summariseTeam(record),
+        // ADDITIVE (A1): the derived stage rides beside the counts, computed by the ONE classifier so no
+        // surface re-derives it. The counts themselves are untouched.
+        summary: (record: TeamRecord) => ({ ...summariseTeam(record), stage: stageLabel(teamStage(record)) }),
         visual: (record: TeamRecord, taskId: string) => {
           /** The task asked about, or undefined when the id is not on this board. */
           const task = record.tasks.find((candidate) => candidate.id === taskId)
-          return task === undefined ? "unknown" : taskVisual(task, record.tasks)
+          if (task === undefined) return "unknown"
+          /** This task's own rendered state. */
+          const own = taskVisual(task, record.tasks)
+          // A1: the BOARD's need outranks a row's own busy state. A team waiting on a human must not be
+          // drawn as working just because one row is still marked in flight.
+          if (own === "running") {
+            /** The team's derived stage. */
+            const stage = teamStage(record)
+            if (stage.kind === "person") return stage.reason
+          }
+          return own
         },
         progress: (record: TeamRecord, name: string) => memberProgress(record, name),
         // THE CONTEXT READING (D4). Wraps the adapter's occupancy seam, so the number is the SAME one the

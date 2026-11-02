@@ -1,3 +1,4 @@
+import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
 // Offline tests for the FENCED-OWNER rule (contract C7, defects D4/D5).
 //
 // A member at its context checkpoint, or with a handoff already waiting for the compaction barrier, or
@@ -15,7 +16,7 @@ import { test, expect } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { cellMemberOf, dispatchOwnerOnly, fenceReasonOf, type DispatchRecordView } from "../src/dispatch.ts"
+import { fenceReasonOf, type DispatchRecordView } from "../src/dispatch.ts"
 import { handoffPath, journalPath, newCellState, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
 import { installCellworkProtocol } from "../src/protocol.ts"
 import { checkpointUnrecoverableEntry, memberAfterBarrier } from "../src/protocol-core.ts"
@@ -96,6 +97,42 @@ function cellWith(members: Record<string, CellMemberRecord>): CellState {
  * @param owners - the member names, one pending row each.
  * @returns the team-record slice the dispatch pass reads.
  */
+/**
+ * One roster row, CLOSED by the plane's own spelling.
+ *
+ * @param name - the member's board name.
+ * @param closing - `checkpoint` (a hand-off window) or `fenced` (the barrier gave up).
+ * @returns the roster row.
+ */
+function closedRow(name: string, closing: "checkpoint" | "fenced"): Record<string, unknown> {
+  return { name, status: "running", executorRef: "handle-" + name, ...(closing === "checkpoint" ? { mode: "checkpoint" } : { fenced: true, fencedReason: "no-engine" }) }
+}
+
+/**
+ * A board whose named rows are CLOSED by the plane, every other row healthy.
+ *
+ * THE FENCE LIVES ON THE TEAM RECORD NOW (wave T45): the plane is the authority for a closed seat and the
+ * cell row is its mirror, so an arm that writes only the cell row would assert a state no dispatcher reads.
+ * @param closed - the member names to close, by plane spelling.
+ * @param owners - every member that owns a row, closed ones included.
+ * @returns the team-record slice the pass reads.
+ */
+function boardWithClosed(closed: Record<string, "checkpoint" | "fenced">, ...owners: string[]): DispatchRecordView {
+  /** The healthy board first. */
+  const healthy = board(...owners)
+  return { ...healthy, members: (healthy.members ?? []).map((row) => {
+    /** The closure this row carries on the plane's record, when the arm named it. */
+    const closing = closed[String(row.name)]
+    return closing === undefined ? row : { ...closedRow(String(row.name), closing) }
+  }) }
+}
+
+/**
+ * A board whose ready rows are owned by the given members, every roster row healthy.
+ *
+ * @param owners - the member names, one pending row each.
+ * @returns the team-record slice the dispatch pass reads.
+ */
 function board(...owners: string[]): DispatchRecordView {
   return {
     teamId: TEAM_ID,
@@ -111,18 +148,19 @@ function board(...owners: string[]): DispatchRecordView {
  * @param record - the live board.
  * @returns the report and the messages the executor was handed.
  */
-async function pass(cell: CellState, record: DispatchRecordView): Promise<{ report: Awaited<ReturnType<typeof dispatchOwnerOnly>>; sent: Array<{ handle: string; content: string }> }> {
-  /** The messages delivered, if any. */
-  const sent: Array<{ handle: string; content: string }> = []
-  /** The report the pass produced. */
-  const report = await dispatchOwnerOnly({
-    workspace: mkdtempSync(join(tmpdir(), "mpd-cellwork-fence-")),
-    cell,
-    record,
-    send: async (handle: string, content: string): Promise<void> => { sent.push({ handle, content }) },
-    now: new Date("2026-10-31T00:00:00.000Z"),
-  })
-  return { report, sent }
+async function pass(cell: CellState, record: DispatchRecordView): Promise<{ report: Record<string, any>; sent: Array<{ handle: string; content: string }> }> {
+  // THE PASS IS THE TOOL NOW (wave T45): `cellwork_dispatch` delegates to the team plane, so an arm that
+  // wants a pass runs the REAL tool against the shared double instead of a private engine. The harness's
+  // cell is rebuilt from the given member rows and the given board is dropped onto its live record, which
+  // is the same state the old helper handed the engine.
+  /** The harness whose cell mirrors this arm's rows. */
+  const harness = makeHarness(Object.fromEntries(Object.entries(cell.members).map(([name, row]) => [name, row])))
+  // THE BOARD IS COPIED, not aliased: the plane MUTATES rows it claims, and each arm passes a fresh board.
+  harness.record.members = (record.members ?? []).map((row) => ({ ...row }))
+  harness.record.tasks = (record.tasks ?? []).map((row) => ({ ...row }))
+  /** The tool's answer. */
+  const report: Record<string, any> = await runTool(harness, "cellwork_dispatch", {}, harness.captain)
+  return { report, sent: harness.sends.map((message) => ({ handle: message.handle, content: message.text })) }
 }
 
 /**
@@ -173,7 +211,16 @@ function makeHarness(members: Record<string, CellMemberRecord>): Harness {
   }
   installCellworkProtocol({
     dsh: adapter as unknown as DshAdapter,
-    ctx: { get: (name: string): unknown => name === "mpdTeams" ? { get: (): unknown => harness.record } : undefined },
+    ctx: {
+      // THE SHARED PLANE DOUBLE (wave T45): `cellwork_dispatch` asks `mpdTeamActions`, so this harness
+      // answers it over the SAME record `mpdTeams` reads, delivering into `harness.sends`.
+      get: (name: string): unknown => name === "mpdTeamActions"
+        ? createTeamActionsDouble({
+          record: () => harness.record as unknown as Parameters<typeof createTeamActionsDouble>[0]["record"] extends () => infer R ? R : never,
+          send: (handle: string, text: string): void => { harness.sends.push({ handle, text }) },
+        }).service
+        : name === "mpdTeams" ? { get: (): unknown => harness.record } : undefined,
+    },
     config: { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 1, idleBarrierDelayMs: 0 },
     warn: (): void => {},
   })
@@ -242,13 +289,11 @@ test("C7: fenceReasonOf names each of the three signals and clears a working sea
   expect(String(fenceReasonOf({ fenced: true, fencedReason: "no-engine" }))).toContain("no-engine")
 })
 
-test("C7: cellMemberOf matches the cell row by name and by the dispatch name key", () => {
-  /** A cell whose member row is stored under the normalised key spelling. */
-  const cell = { members: { "senior-engineer": memberRow("Senior Engineer") } } as unknown as CellState
-  expect(String(cellMemberOf(cell, "Senior Engineer")?.name)).toBe("Senior Engineer")
-  expect(String(cellMemberOf(cell, "senior engineer")?.name)).toBe("Senior Engineer")
-  expect(cellMemberOf(cell, "Reviewer")).toBeUndefined()
-})
+// PROVENANCE (wave T45): this arm asserted `cellMemberOf`, the engine's case-insensitive lookup of a CELL
+// member row. The engine is being deleted and nothing in `src/` used the helper any more; the behaviour a
+// reader still needs — "a seat is found by name OR by its record id" — is asserted on the PLANE's own
+// repository by `test/lib/team-actions-double.ts` consumers (`team-core`'s `memberIsCheckpoint` arm) and by
+// `team-web`'s member projection arm, both of which resolve a seat the same way.
 
 // ── the dispatch skip ─────────────────────────────────────────────────────
 
@@ -256,11 +301,11 @@ test("C7: a member at its CONTEXT CHECKPOINT is FENCED, reported with the repair
   /** The cell whose only owner sits at its checkpoint. */
   const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint" }) })
   /** The pass over a board holding one ready row for that owner. */
-  const { report, sent } = await pass(cell, board("Senior Engineer"))
+  const { report, sent } = await pass(cell, boardWithClosed({ "Senior Engineer": "checkpoint" }, "Senior Engineer"))
   expect(sent.length).toBe(0)
   expect(report.pairs.length).toBe(0)
   /** The skip this board produces. */
-  const skip = report.skipped.find((row) => row.taskId === "T1")
+  const skip = (report.skipped as Array<Record<string, unknown>>).find((row) => row.taskId === "T1")
   expect(String(skip?.reason)).toContain("FENCED")
   expect(String(skip?.reason)).toContain('"Senior Engineer"')
   expect(String(skip?.reason)).toContain("reassign")
@@ -269,29 +314,39 @@ test("C7: a member at its CONTEXT CHECKPOINT is FENCED, reported with the repair
 test("C7: a written handoff waiting for the barrier FENCES the member (the D4 re-delivery defect)", async () => {
   /** The cell whose owner already handed off. */
   const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { handoffReady: true }) })
+  // THE PLANE SPELLS A WRITTEN HANDOFF AS `mode:"checkpoint"` (wave T45), so the record carries it and the
+  // cell row's `handoffReady` is the mirror this arm also sets.
   /** The pass. */
-  const { report, sent } = await pass(cell, board("Senior Engineer"))
+  const { report, sent } = await pass(cell, boardWithClosed({ "Senior Engineer": "checkpoint" }, "Senior Engineer"))
   expect(sent.length).toBe(0)
-  expect(String(report.skipped.find((row) => row.taskId === "T1")?.reason)).toContain("handoff is already written")
+  // THE PLANE'S OWN SENTENCE (provenance re-pinned, wave T45): a written hand-off is `mode:"checkpoint"`,
+  // so the reason names the checkpoint window rather than cellwork's old "handoff is already written".
+  expect(String((report.skipped as Array<Record<string, unknown>>).find((row) => row.taskId === "T1")?.reason)).toContain("checkpoint")
 })
 
 test("C7: the barrier's explicit `fenced` marker fences a member whose mode still looks ordinary", async () => {
   /** The cell whose owner the barrier gave up on. */
   const cell = cellWith({ "Deep Worker": memberRow("Deep Worker", { fenced: true, fencedReason: "no-engine" }) })
+  // The plane records the same fence; the cell row mirrors it.
   /** The pass. */
-  const { report, sent } = await pass(cell, board("Deep Worker"))
+  const { report, sent } = await pass(cell, boardWithClosed({ "Deep Worker": "fenced" }, "Deep Worker"))
   expect(sent.length).toBe(0)
   /** The skip reason, which must quote the barrier's own classification. */
-  const reason = String(report.skipped.find((row) => row.taskId === "T1")?.reason)
+  const reason = String((report.skipped as Array<Record<string, unknown>>).find((row) => row.taskId === "T1")?.reason)
   expect(reason).toContain("FENCED")
   expect(reason).toContain("no-engine")
 })
 
-test("C7: the fence comes from the CELL record even when the roster row looks healthy", async () => {
+// PROVENANCE (wave T45): this arm used to assert the OPPOSITE direction — that a cell-only fence stops a
+// delivery. The migration makes the TEAM RECORD the authority for a closed seat and the cell row its
+// MIRROR, so the arm now asserts the direction that holds: a fence the PLANE records stops the delivery
+// even when the cell row looks healthy. The behaviour replaced is "a closed seat is never messaged"; the
+// guard-side read of the same authority is `test/cellwork.test.ts`'s record-fence arm.
+test("C7: the fence comes from the TEAM RECORD even when the cell row looks healthy", async () => {
   /** The cell whose member row sits at its checkpoint. */
   const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint" }) })
   /** A board whose roster row is `running` with a live handle — the exact shape D4 messaged. */
-  const record: DispatchRecordView = { teamId: TEAM_ID, members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-se" }], tasks: [{ id: "T1", subject: "work", status: "pending", owner: "Senior Engineer", blockedBy: [] }] }
+  const record: DispatchRecordView = { teamId: TEAM_ID, members: [closedRow("Senior Engineer", "checkpoint")], tasks: [{ id: "T1", subject: "work", status: "pending", owner: "Senior Engineer", blockedBy: [] }] }
   /** The pass. */
   const { report, sent } = await pass(cell, record)
   expect(sent.length).toBe(0)
@@ -305,20 +360,20 @@ test("C7 control: a promoted subcaptain and a healthy member are both paired", a
     "Deep Worker": memberRow("Deep Worker", { mode: "subcaptain" }),
     Reviewer: memberRow("Reviewer"),
   })
-  /** The pass over one ready row per member. */
+  /** The pass over one ready row per member, both seats HEALTHY on the plane's record. */
   const { report, sent } = await pass(cell, board("Deep Worker", "Reviewer"))
   expect(sent.length).toBe(2)
-  expect(report.pairs.map((pair) => pair.memberName).sort()).toEqual(["Deep Worker", "Reviewer"])
+  expect((report.pairs as Array<Record<string, unknown>>).map((pair) => String(pair.memberName)).sort()).toEqual(["Deep Worker", "Reviewer"])
 })
 
 test("C7: fencing one owner does not stop another owner's ready row", async () => {
   /** The cell with one fenced and one healthy owner. */
   const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint" }), Reviewer: memberRow("Reviewer") })
   /** The pass. */
-  const { report, sent } = await pass(cell, board("Senior Engineer", "Reviewer"))
+  const { report, sent } = await pass(cell, boardWithClosed({ "Senior Engineer": "checkpoint" }, "Senior Engineer", "Reviewer"))
   expect(sent.length).toBe(1)
-  expect(report.pairs.map((pair) => pair.memberName)).toEqual(["Reviewer"])
-  expect(String(report.skipped.find((row) => row.taskId === "T1")?.reason)).toContain("FENCED")
+  expect((report.pairs as Array<Record<string, unknown>>).map((pair) => String(pair.memberName))).toEqual(["Reviewer"])
+  expect(String((report.skipped as Array<Record<string, unknown>>).find((row) => row.taskId === "T1")?.reason)).toContain("FENCED")
 })
 
 // ── what a given-up barrier leaves behind ─────────────────────────────────

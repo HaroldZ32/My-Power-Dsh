@@ -27,7 +27,7 @@ import {
 import { foldCellMail, readCellMail } from "../src/mail.ts"
 import { sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
 import type { DshContextPressure } from "../../mpd-dsh-adapter-plugin/src/index"
-import { dispatchOwnerOnly, nameKey, type DispatchRecordView } from "../src/dispatch.ts"
+import { nameKey, type DispatchRecordView } from "../src/dispatch.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
 
 /** One fake live agent: the session id the dispatch carries and its workspace header. */
@@ -680,41 +680,12 @@ test("activate: a STALE split is refused unless its revision is passed explicitl
 
 // ── B7: the owner-only dispatch decision ───────────────────────────────────
 
-test("owner-only dispatch reports a busy or absent owner and never substitutes another member", async () => {
-  /** A board with one ready task per owner situation, and one member already busy. */
-  const record: DispatchRecordView = {
-    teamId: "team-x",
-    members: [
-      { name: "Senior Engineer", status: "running", executorRef: "handle-se" },
-      { name: "Reviewer", status: "running", executorRef: "handle-rv" },
-    ],
-    tasks: [
-      { id: "T1", subject: "busy owner", status: "pending", owner: "Senior Engineer", blockedBy: [] },
-      { id: "T2", subject: "free owner", status: "pending", owner: "Reviewer", blockedBy: [] },
-      { id: "T3", subject: "no owner", status: "pending", blockedBy: [] },
-      { id: "T4", subject: "blocked", status: "pending", owner: "Senior Engineer", blockedBy: ["T1"] },
-      { id: "T5", subject: "already busy", status: "in_progress", owner: "Senior Engineer" },
-    ],
-  }
-  /** The messages delivered. */
-  const sent: Array<{ handle: string; content: string }> = []
-  /** The report. */
-  const report = await dispatchOwnerOnly({
-    workspace: mkdtempSync(join(tmpdir(), "mpd-cellwork-dispatch-")),
-    cell: { cellId: "cell-x" } as never,
-    record,
-    send: async (handle, content): Promise<void> => { sent.push({ handle, content }) },
-    now: new Date(),
-  })
-  expect(report.pairs.length).toBe(1)
-  expect(report.pairs[0].memberName).toBe("Reviewer")
-  expect(sent[0].handle).toBe("handle-rv")
-  /** The skip reasons, by task id. */
-  const reasons = new Map(report.skipped.map((skip) => [skip.taskId, skip.reason]))
-  expect(String(reasons.get("T1"))).toContain("BUSY")
-  expect(String(reasons.get("T3"))).toContain("no declared owner")
-  expect(String(reasons.get("T4"))).toContain("not ready")
-})
+// PROVENANCE (wave T45): the arm that used to live here drove `dispatchOwnerOnly` directly to assert the
+// owner-only pairing decisions (BUSY / no declared owner / blocked / in_progress). Those decisions are the
+// TEAM PLANE's now — `cellwork_dispatch` delegates and only MAPS the report — so the coverage moved with the
+// rule: `packages/mpd-team-core-plugin/test/dispatch.test.ts` and `.../team-toolchain.test.ts` assert the
+// same four outcomes (owner-only, busy, ownerless, not-ready) on the engine that actually decides, and this
+// package's `dispatch-fenced` / `dispatch-reassign` arms assert the report at the tool boundary.
 
 // ── Amendment 5, arm (a): an update re-dispatches the SAME split task ───────
 

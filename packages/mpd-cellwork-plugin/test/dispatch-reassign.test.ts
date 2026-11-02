@@ -1,4 +1,5 @@
 import { createTeamActionsDouble } from "./lib/team-actions-double.ts"
+import type { DispatchRecordView } from "../src/dispatch.ts"
 // Offline tests for `cellwork_dispatch {reassign}` (contract C6, defects D4/D5).
 //
 // A fenced owner's rows are not lost work: the captain hands each row to another member by CLAIMING it
@@ -13,7 +14,7 @@ import { test, expect } from "bun:test"
 import { mkdtempSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import { applyReassignments, reassignPairs, type DispatchRecordView, type ReassignPair } from "../src/dispatch.ts"
+
 import { journalPath, newCellState, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
 import { installCellworkProtocol } from "../src/protocol.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
@@ -211,143 +212,27 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
 
 // ── reading the argument ──────────────────────────────────────────────────
 
-test("C6: reassignPairs reads the pairs, trims them, and reports what it cannot use", () => {
-  expect(reassignPairs(undefined)).toEqual({ pairs: [], invalid: [] })
-  expect(reassignPairs([{ task_id: " T1 ", owner: " Reviewer " }]).pairs).toEqual([{ taskId: "T1", owner: "Reviewer" }])
-  /** The refusals of a list with three bad entries and one duplicate. */
-  const parsed = reassignPairs([{ task_id: "", owner: "Reviewer" }, { task_id: "T2" }, "nope", { task_id: "T3", owner: "Reviewer" }, { task_id: "T3", owner: "Lead" }])
-  expect(parsed.pairs).toEqual([{ taskId: "T3", owner: "Reviewer" }])
-  expect(parsed.invalid.length).toBe(4)
-  expect(String(parsed.invalid[3])).toContain("named twice")
-  expect(reassignPairs("T1").invalid[0]).toContain("must be an array")
-})
-
-// ── the order the pre-pass must keep ──────────────────────────────────────
-
-test("C6: applyReassignments claims on the board, journals `task-reassigned`, THEN delivers", async () => {
-  /** The workspace the journal is read from. */
-  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-reassign-unit-"))
-  /** The claims the board seam was asked for, in order. */
-  const claims: Array<{ taskId: string; owner: string }> = []
-  /** The messages delivered, with the journal state at each one. */
-  const deliveries: Array<{ handle: string; content: string; reassignedRows: number }> = []
-  /** The pairs this arm applies. */
-  const pairs: ReassignPair[] = [{ taskId: "T1", owner: "Reviewer" }]
-  /** What the pre-pass did. */
-  const outcomes = await applyReassignments({
-    workspace,
-    cell: cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint" }), Reviewer: memberRow("Reviewer") }),
-    record: board("Senior Engineer", "Reviewer"),
-    pairs,
-    claim: async (taskId: string, owner: string): Promise<{ ok: boolean }> => { claims.push({ taskId, owner }); return { ok: true } },
-    send: async (handle: string, content: string): Promise<void> => {
-      deliveries.push({ handle, content, reassignedRows: journalRows(workspace, CELL_ID).filter((row) => row.event === "task-reassigned").length })
-    },
-    now: new Date("2026-10-31T18:00:00.000Z"),
-    handleFor: (name: string): string => "handle-" + name,
-  })
-  expect(claims).toEqual([{ taskId: "T1", owner: "Reviewer" }])
-  expect(deliveries.length).toBe(1)
-  // THE JOURNAL IS ALREADY WRITTEN when the message goes out — the hand-over survives a crash of either.
-  expect(deliveries[0].reassignedRows).toBe(1)
-  expect(deliveries[0].handle).toBe("handle-Reviewer")
-  // The message is the NORMAL dispatch message: it names the board row the member must work and claim.
-  expect(deliveries[0].content).toContain("T1")
-  expect(deliveries[0].content).toContain("CLAIM IT FIRST")
-  expect(outcomes).toEqual([{ taskId: "T1", owner: "Reviewer", claimed: true, delivered: true }])
-  /** The journal row the hand-over wrote. */
-  const row = journalRows(workspace, CELL_ID).find((entry) => entry.event === "task-reassigned")
-  expect(row?.taskId).toBe("T1")
-  expect(row?.from).toBe("Senior Engineer")
-  expect(row?.to).toBe("Reviewer")
-})
-
-test("C6: a REFUSED claim is reported, nothing is delivered, and no journal row is written", async () => {
-  /** The workspace the journal is read from. */
-  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-reassign-refused-"))
-  /** The messages delivered (must stay empty). */
-  const sent: string[] = []
-  /** What the pre-pass did. */
-  const outcomes = await applyReassignments({
-    workspace,
-    cell: cellWith({ Reviewer: memberRow("Reviewer") }),
-    record: board("Reviewer"),
-    pairs: [{ taskId: "T1", owner: "Reviewer" }],
-    claim: async (): Promise<{ ok: boolean; error: string }> => ({ ok: false, error: "task T1 is BLOCKED by T0" }),
-    send: async (content: string): Promise<void> => { sent.push(content) },
-    now: new Date("2026-10-31T18:00:00.000Z"),
-  })
-  expect(sent).toEqual([])
-  expect(outcomes.length).toBe(1)
-  expect(outcomes[0].claimed).toBe(false)
-  expect(outcomes[0].delivered).toBe(false)
-  expect(String(outcomes[0].reason)).toContain("BLOCKED by T0")
-  expect(journalRows(workspace, CELL_ID).filter((row) => row.event === "task-reassigned").length).toBe(0)
-})
-
-test("C6: a row that cannot be handed over is REPORTED — never thrown, never claimed", async () => {
-  /** The workspace the outcomes are built in. */
-  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-reassign-guards-"))
-  /** Every claim the seam was asked for (must stay empty). */
-  const claims: string[] = []
-  /** The board: T1 is terminal, T2 is owned by a fenced member, T3 is fine, T4's owner is unknown. */
-  const record: DispatchRecordView = {
-    teamId: TEAM_ID,
-    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-se" }, { name: "Reviewer", status: "running", executorRef: "handle-rv" }],
-    tasks: [
-      { id: "T1", subject: "done", status: "completed", owner: "Senior Engineer" },
-      { id: "T2", subject: "fenced target", status: "pending", owner: "Senior Engineer", blockedBy: [] },
-      { id: "T3", subject: "handled", status: "pending", owner: "Senior Engineer", blockedBy: [] },
-    ],
-  }
-  /** What the pre-pass did. */
-  const outcomes = await applyReassignments({
-    workspace,
-    cell: cellWith({ "Senior Engineer": memberRow("Senior Engineer", { fenced: true, fencedReason: "no-engine" }), Reviewer: memberRow("Reviewer") }),
-    record,
-    pairs: [
-      { taskId: "T1", owner: "Reviewer" },
-      { taskId: "T9", owner: "Reviewer" },
-      { taskId: "T2", owner: "Senior Engineer" },
-      { taskId: "T3", owner: "Nobody" },
-      { taskId: "T3", owner: "Reviewer" },
-    ],
-    claim: async (taskId: string): Promise<{ ok: boolean }> => { claims.push(taskId); return { ok: true } },
-    send: async (): Promise<void> => {},
-    now: new Date("2026-10-31T18:00:00.000Z"),
-  })
-  expect(outcomes.length).toBe(5)
-  expect(String(outcomes[0].reason)).toContain("already completed")
-  expect(String(outcomes[1].reason)).toContain("no board row")
-  expect(String(outcomes[2].reason)).toContain("FENCED")
-  expect(String(outcomes[3].reason)).toContain("does not name")
-  expect(outcomes[4].claimed).toBe(true)
-  // Only the last pair reached the board: a refusal never claims, and a claim always follows a check.
-  expect(claims).toEqual(["T3"])
-})
-
-test("C6: a target with no executor handle is reported BEFORE the claim (a claim would hide the row)", async () => {
-  /** The workspace the outcome is built in. */
-  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-reassign-handle-"))
-  /** Every claim the seam was asked for (must stay empty). */
-  const claims: string[] = []
-  /** What the pre-pass did. */
-  const outcomes = await applyReassignments({
-    workspace,
-    cell: cellWith({ Reviewer: memberRow("Reviewer") }),
-    // The roster row names the member but carries no handle, and the cell record has none either.
-    record: { teamId: TEAM_ID, members: [{ name: "Reviewer", status: "inactive" }], tasks: [{ id: "T1", subject: "work", status: "pending", owner: "Senior Engineer", blockedBy: [] }] },
-    pairs: [{ taskId: "T1", owner: "Reviewer" }],
-    claim: async (taskId: string): Promise<{ ok: boolean }> => { claims.push(taskId); return { ok: true } },
-    send: async (): Promise<void> => {},
-    now: new Date("2026-10-31T18:00:00.000Z"),
-  })
-  expect(claims).toEqual([])
-  expect(outcomes[0].claimed).toBe(false)
-  expect(String(outcomes[0].reason)).toContain("no executor handle")
-})
-
-// ── the tool that exposes it ──────────────────────────────────────────────
+// ── THE ENGINE'S ARGUMENT READER AND PRE-PASS ARE GONE (wave T45) ──────────────────────────────────
+//
+// FIVE ARMS WERE DELETED HERE, each with the subject it used to cover and where that subject lives now:
+//  • "reassignPairs reads the pairs, trims them, and reports what it cannot use" — the ENGINE's wire
+//    reader. The PLANE validates the argument now, and this file asserts the resulting REFUSAL through the
+//    tool in "a reassignment the board refuses is reported in the result, and the pass still runs" below
+//    (malformed entry -> `agent_teams_dispatch: every \`reassign\` entry needs a non-empty \`task_id\` and
+//    \`owner\`", the whole call refused).
+//  • "applyReassignments claims on the board, journals `task-reassigned`, THEN delivers" — the hand-over
+//    itself. Asserted by `packages/mpd-team-core-plugin/test/team-toolchain.test.ts` ("it claims the row
+//    for the target, journals task-reassigned, delivers, and books the ledger") and, at this boundary, by
+//    "cellwork_dispatch claims through the board, ..." below.
+//  • "a REFUSED claim is reported, nothing is delivered, and no journal row is written" — the claim
+//    refusal is the plane's CAS; asserted on the plane in the same team-toolchain suite ("no board row",
+//    "already <status>", "release it first") and surfaced here by the tool's `reassigned` report.
+//  • "a row that cannot be handed over is REPORTED — never thrown, never claimed" — the same plane-side
+//    arms as above; "never thrown" is the tool's own envelope, asserted when the malformed-argument arm
+//    above and the tool arms below call it.
+//  • "a target with no executor handle is reported BEFORE the claim" — the plane's own check; its sentence
+//    ("has no executor handle (never raised)") is asserted through the tool in this file's fenced/busy
+//    arms and on the plane in team-toolchain.
 
 test("C6: cellwork_dispatch claims through the board, journals, delivers, and never re-delivers the row", async () => {
   /** The cell whose `Senior Engineer` is fenced and whose `Reviewer` can work. */
