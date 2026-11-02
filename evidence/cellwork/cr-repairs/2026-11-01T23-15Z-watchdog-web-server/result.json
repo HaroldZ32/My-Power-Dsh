@@ -1,0 +1,23 @@
+{
+  "task": "CodeRabbit findings A (strip filesystem path from the 200 hold answer) and B (track mounted routes per web-server instance)",
+  "branch": "feature/mpd-workbench-view",
+  "filesChanged": [
+    "packages/mpd-team-watchdog-plugin/src/web.ts",
+    "packages/mpd-team-watchdog-plugin/test/web.test.ts",
+    "packages/mpd-team-watchdog-plugin/dist/index.js"
+  ],
+  "notTouched": ["packages/mpd-bundle-plugin/**"],
+  "gitWrites": "none (no add/commit/stash/checkout; only read-only status/diff/show)",
+  "gates": {
+    "bun test packages/mpd-team-watchdog-plugin": "153 pass / 0 fail, 769 expect() calls, 15 files, exit 0",
+    "build pinned bun 1.4.0": "Bundled 19 modules, index.js 222.12 KB, exit 0",
+    "node scripts/verify-dist-fresh.ts": "35/35 targets fresh (rebuilt twice, byte-identical), 1 NOT COVERED listed, exit 0",
+    "node scripts/verify-comment-coverage.ts": "521 files, 46711 declarations, VERDICT PASS, exit 0",
+    "bun run typecheck": "tsgo --noEmit, no diagnostics, exit 0"
+  },
+  "newArms": [
+    "registration > a REPLACED web-server object gets its own registration, and the same object is never registered twice",
+    "the mutations > the 200 hold answer keeps the consumer fields and carries NO filesystem path at any depth"
+  ],
+  "falsifiability": "both new arms FAIL against HEAD source (11 pass / 2 fail, exit 1), see falsifiability.md"
+}

@@ -140,6 +140,31 @@ each of those items into a `.mpd-dag-group` rectangle in a layer of its own — 
   unlike the flat path — and the hover halo covers the root frame's cards (an interior card keeps its own
   tone).
 
+## The Workbench page — one `conversation.view` entry
+
+`src/web-client.ts` registers ONE `conversation.view` entry — id `mpd-workbench`, label `Workbench`,
+locale namespace `mpdWorkbench` — which the conversation shell renders as a full-page tab beside
+Chat/Trajectory.
+
+- **What it shows.** The team header (phase, id, member count) with the hold line and the two buttons
+  under it, then the task board's rows (id, owner, status). The empty states are explicit and separate:
+  still reading, unreadable routes, no team in this session, a STAGED plan awaiting approval, nothing
+  staged, and the other teams this workspace holds.
+- **It READS three existing routes.** `/plugins/mpd-team/state` and `/plugins/mpd-team/plan` (the mpd
+  record) plus `/plugins/mpd-team-watchdog/state` (the live holds), re-read on its own 3000 ms interval —
+  the page has no stream.
+- **It WRITES only through the two fenced watchdog routes.** Pause POSTs
+  `/plugins/mpd-team-watchdog/hold` with `{teamId, reason: "workbench"}`, so a human pause records its own
+  cause instead of the watchdog's `silence`; Resume POSTs `{teamId}` to
+  `/plugins/mpd-team-watchdog/resume`. Both buttons are disabled while a write is in flight, and the page
+  re-reads the routes instead of trusting the POST's echo.
+- **The registration is GATED.** The entry waits for the shell's own `conversation.view` declaration
+  through `ctx.slots.inject`; a slot that never arrives, or a registry that refuses the registration,
+  costs the TAB and nothing else — ONE diagnostic line names the reason and the rest of the client mounts
+  as usual.
+- **`order` is NOT used.** The shell projects its tab list from registration order, so the entry registers
+  on the slot's first declaration instead of competing for a position.
+
 ## Config
 
 None. This is infrastructure: the self-row carries no config in the bundle patch.

@@ -1,0 +1,77 @@
+{
+  "domain": "web",
+  "slug": "workbench-view",
+  "runAt": "2026-11-01T13:05:12Z",
+  "branch": "feature/mpd-workbench-view",
+  "role": "Senior Engineer",
+  "summary": "Registered ONE conversation.view entry (id mpd-workbench, label Workbench) as a full-page MPD workbench, with Pause/Resume against the fenced watchdog routes.",
+  "changed": [
+    "packages/mpd-bundle-plugin/src/web-client.ts",
+    "packages/mpd-bundle-plugin/client.js (derived, rebuilt)",
+    "packages/mpd-bundle-plugin/test/workbench-view.test.ts (new)",
+    "packages/mpd-bundle-plugin/test/sidebar-tab.test.ts"
+  ],
+  "registration": {
+    "slot": "conversation.view",
+    "id": "mpd-workbench",
+    "label": "Workbench",
+    "locale": "mpdWorkbench",
+    "order": null,
+    "gate": "service probe on ctx.slots (inject+register) then slots.inject + a bounded settle line; never throws"
+  },
+  "gates": [
+    {
+      "command": "node scripts/build-mpd-client.ts",
+      "exit": 0,
+      "observed": "wrote packages/mpd-bundle-plugin/client.js (882479 bytes as JS string length; 895113 bytes on disk)"
+    },
+    {
+      "command": "loader ids from the artifact",
+      "exit": 0,
+      "observed": "4 ids: @nanmicoder/dsh-agent-teams, @mpd-dsh/team-page, @mpd-dsh/settings-card, @mpd-dsh/mpd"
+    },
+    {
+      "command": "bun test packages/mpd-bundle-plugin",
+      "exit": 0,
+      "observed": "246 pass / 0 fail / 17085 expect() calls / 12 files / 5.67s"
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "35/35 targets fresh, 1 NOT COVERED listed"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "521 files, 46695 declarations, PASS"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "EXPECTED: client.js sha256 mismatch; VENDOR_LOCK.json untouched on purpose (captain re-pins)"
+    },
+    {
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "PASS; 1135 files in npm pack --dry-run"
+    }
+  ],
+  "artifactSha256": "c68a18846f2ed5474e7c1927cfa0b7672a3c529dc2415c53c251bc19a9153474",
+  "sessionId": {
+    "resolved": true,
+    "source": "the session-scope standard kit: ui-session publishes props { sessionId } for the session scope binding, and the renderer spreads scopeBinding.props into every slot component's props",
+    "fallback": "no prop -> the reads omit ?sessionId= and address the workspace principal"
+  },
+  "unproven": [
+    "no live browser/DOM run: the tab is proven by the offline harness and the shipped bytes, not by a rendered page",
+    "the two POSTs are proven against canned responses, not against the parallel lane's live routes",
+    "tab POSITION (registration order) is unobserved",
+    "in-flight disabling is proven synchronously offline; a hanging double was not used"
+  ],
+  "artifactSize": "882479 JS chars / 895113 UTF-8 bytes"
+}

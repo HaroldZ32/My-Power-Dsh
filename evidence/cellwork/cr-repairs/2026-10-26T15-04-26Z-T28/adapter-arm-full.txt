@@ -1,0 +1,47 @@
+ARM at 14986
+a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks", async () => {
+    /** Counts the activation's teardown calls. */
+    const disposals = { count: 0 }
+    /** The harness whose backend answers without a handle. */
+    const h = harness({ childId: "", disposals })
+    await expect(h.executor.spawn(h.lead, { ...REQUEST })).rejects.toThrow(/reported no child id/)
+    // The registry stayed empty: a member with no handle is a member no call could reach.
+    expect(h.executor.members()).toEqual([])
+    // THE SLOT IS HANDED BACK (contract `.mpd/plans/agent-slot-hygiene.md`): the harness counted that
+    // child the moment it started, so a refusal that walked away would leak one active child per attempt
+    // — the measured way to `subagent limit reached (active child limit: 8)`.
+    expect(disposals.count).toBe(1)
+  })
+
+  test("send delivers through sendMessage, which cold-resumes an absent child", async () => {
+    /** The harness under test. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST })
+    await h.executor.send(h.lead, "child-1", "work on T2")
+    /** The send the double recorded. */
+    const call = h.calls.find((entry) => entry.seam === "sendMessage")
+    expect(call).toBeDefined()
+    expect(call?.args[0]).toBe(h.lead)
+    expect(call?.args[1]).toBe("child-1")
+    expect(call?.args[2]).toEqual([{ type: "text", text: "work on T2" }])
+    // The options bag always carries a signal: the manager requires one.
+    expect((call?.args[3] as { signal: unknown }).signal).toBeDefined()
+  })
+
+  test("interrupt uses the ANCESTOR authority, which is the form this seam can honestly present", async () => {
+    /** The harness under test. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST })
+    await h.executor.interrupt(h.lead, "child-1")
+    /** The interrupt the double recorded. */
+    const call = h.calls.find((entry) => entry.seam === "interrupt")
+    expect(call?.args[0]).toBe("child-1")
+    expect(call?.args[1]).toEqual({ kind: "ancestor", agent: h.lead })
+  })
+
+  test("membership answers for a handle THIS adapter raised, and is a MISS for anyone else", async () => {
+    /** The harness under test. */
+    const h = harness()
+    await h.executor.spawn(h.lead, { ...REQUEST })
+    // The child agent object identifies itself BY the handle, which is what makes the answer
+    // possible without asking any service — and what keeps the read-only guard working.

@@ -161,10 +161,11 @@ describe("with DSH-better-sidebar installed", () => {
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
     expect(definitions.some((definition) => definition.name === "conversation.chat.node")).toBe(false);
-    // Non-sidebar surfaces: the slash-command admission row (never a GUI panel) and the t35
-    // settings UI, which since w14 targets its OWN top-level settings section instead of the
-    // Plugins tab's keyed item slot.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
+    // Non-sidebar surfaces: the slash-command admission row (never a GUI panel), the FULL-PAGE MPD
+    // workbench (`conversation.view`, which the conversation shell renders beside Chat/Trajectory and
+    // a mobile host projects as a tab) and the t35 settings UI, which since w14 targets its OWN
+    // top-level settings section instead of the Plugins tab's keyed item slot.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "conversation.view", "settings.section"]);
   });
   test("the adopted client half is never applied (it would re-register the removed surfaces)", () => {
     expect(client.calls.agentTeamsApplied).toBeUndefined();
@@ -820,14 +821,15 @@ describe("without DSH-better-sidebar", () => {
     }
     expect(client.calls.registerTab.length).toBe(0);
     // No overlay, no footer toggle: the registrations left are the non-GUI slash-command
-    // admission row and the t35 settings UI (which since w14 targets its OWN top-level settings
-    // section, not the sidebar) — a profile without the sidebar still gets both. The section's own
-    // ACTUAL registration additionally needs the `settingsScope` service, which this harness does
-    // not mount; its own test file provides it and asserts that registration.
-    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "settings.section"]);
+    // admission row, the full-page workbench (`conversation.view`, which is not a sidebar surface at
+    // all) and the t35 settings UI (which since w14 targets its OWN top-level settings section, not
+    // the sidebar) — a profile without the sidebar still gets all three. The section's own ACTUAL
+    // registration additionally needs the `settingsScope` service, which this harness does not mount;
+    // its own test file provides it and asserts that registration.
+    expect(client.calls.slots ?? []).toEqual(["conversation.chat.commandview", "conversation.view", "settings.section"]);
     /** Every keyed slot registration the mount recorded. */
     const definitions = client.calls.slotsRegistered ?? [];
-    expect(definitions.map((definition) => definition.name)).toEqual(["conversation.chat.commandview"]);
+    expect(definitions.map((definition) => definition.name)).toEqual(["conversation.chat.commandview", "conversation.view"]);
     // Nothing is registered, and nothing is warned about either: the injection simply never
     // fires, which is the point of using ctx.inject instead of a fatal static declaration.
     expect(client.provideSidebar()).toBe(false);

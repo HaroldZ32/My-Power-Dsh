@@ -1,0 +1,59 @@
+=== corrected arm diff vs the pre-repair tree (LC_ALL=C) ===
+pre=2612 post=2626
+--- ADDED ---
+CR 4377306675: a promoted subcaptain resolves to ITS OWN sub-cell — dispatch/supervise/activate accepted — and the captain stays on its own cell
+CR 4377306675: the parent REFUSES a silent stop while its sub-cell is live, and the forced way is journaled
+CR 4377306686: the team record is read from the CALLER's workspace, not the process root
+CR 4377306694: a repeated finalize of the SAME content (no trailing newline) is IDEMPOTENT, not CHANGED
+CR 4377306710: the captain refusal recommends `cellwork_dispatch` (owner-only), never `agent_teams_dispatch`
+CR 4377306716: `/cellwork` refuses a SESSIONLESS agent and writes no state at all
+CR 4377306737: the sub-cell directive names ONLY verbs the subcaptain guard admits
+CR 4377316529: a mid-staging failure is PRESERVED on the cell record and the retry RESUMES the same plan
+CR 4377316529: an approval that stops mid-way PERSISTS the team id and its members, and the retry reuses that team
+CR 4377316529: an approved-but-UNRECORDED team is recovered and its missing member repaired, never re-approved
+D3 · an edge CROSSES or TERMINATES, and the picture says which > cr R2: a served column HOLE is closed for the layout, and the frame edges land on the drawn columns
+cr R2: a pass cancelled BEFORE the barrier never polls, and records cancellation not timeout
+cr R2: a pass cancelled DURING the barrier stops at the poll that saw the abort
+the nesting walk reads the team list once > CR 4377306770: a three-level tree costs ONE list read per build, not one per level
+--- REMOVED (want none) ---
+
+=== artifact checks on the BUILT cellwork + team-core dists ===
+F1 liveTree / deepest-match scan:
+      1 function callerContext
+      2 liveTree
+F2 recordFor gone (want 0) + caller.workspace binding:
+recordFor=2
+65
+F3 sessionless refusal (no-write guard):
+      1 no session id
+F4 staging slot / partial result:
+     13 partial
+     16 planName
+F5 storedRequirementsText (shared normalisation):
+3
+F8 childrenByParent index (one list read):
+2
+F8 listTeams call sites in the groups walk:
+2453:function listTeams(workspace) {
+3554:    return buildTeamState(record, workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)), model);
+4635:  for (const record of listTeams(workspace)) {
+5155:  const candidates = listTeams(workspace).filter((record) => recordNamesMember(record, caller) && !recordNamesLead(record, caller) && isLiveTeam(record, archive));
+5338:        teams: listTeams(workspace),
+=== F8: childrenByParent index (one read) and the walk that consumes it ===
+4695:  const index = childrenByParent(list(workspace));
+4696-  const groups = groupInputsOf(index, record.teamId, readArchivedPlanIndex(workspace), warn, new Set([record.teamId]));
+4697-  return groups.length === 0 ? {} : { groups };
+4698-}
+4699:function childrenByParent(records) {
+4700-  const index = new Map;
+4701-  for (const record of records) {
+4702-    const parent = record.parentTeamId;
+4703-    if (parent === undefined || parent === "")
+4704-      continue;
+4705-    const held = index.get(parent);
+4706-    if (held === undefined)
+4707-      index.set(parent, [record]);
+4708-    else
+4709-      held.push(record);
+4710-  }
+4711-  for (const children of index.values())

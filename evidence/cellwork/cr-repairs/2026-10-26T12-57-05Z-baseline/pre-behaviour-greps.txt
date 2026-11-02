@@ -1,0 +1,14 @@
+--- F4377306710: the captain refusal names agent_teams_dispatch (pre-repair, expected present) ---
+1
+never substituted
+never substituted
+--- F4377306737: the sub-cell directive teaches cellwork_stop (pre-repair, expected present) ---
+To leave your sub-cell call `cellwork_stop`; the parent cell keeps its record.
+12
+--- F4377306675: caller resolution symbols ---
+2258:function callerContext(dsh, exec, deps = {}) {
+--- F4377306778: TUI frame-edge indexing sites (pre-repair) ---
+6
+--- F4377306758: compact barrier wait site (pre-repair) ---
+2250:        ...entry.staged ? { outcome: "skipped-staged", reason: "member has no session id yet (not spawned)" } : entry.agent === undefined ? { outcome: "skipped-not-live", reason: "no live Agent for this session id" } : { outcome: "failed", failureCode: "cancelled", error: "the pass was cancelled during the idle barrier; nothing was compacted for this member" }
+2264:        reason: entry.staged ? "member has no session id yet (not spawned)" : entry.agent === undefined ? "no live Agent for this session id" : busy.includes(entry.member.name) ? "still busy when the barrier expired" : "idle, but the barrier never cleared so no drive was issued"

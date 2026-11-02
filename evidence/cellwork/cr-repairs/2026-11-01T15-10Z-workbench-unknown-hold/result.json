@@ -1,0 +1,46 @@
+{
+  "task": "CodeRabbit finding: the workbench must not report 'not held' when the /plugins/mpd-team-watchdog/state read FAILED (packages/mpd-bundle-plugin/src/web-client.ts, the Workbench component)",
+  "branch": "feature/mpd-workbench-view",
+  "filesChanged": [
+    "packages/mpd-bundle-plugin/src/web-client.ts",
+    "packages/mpd-bundle-plugin/test/workbench-view.test.ts",
+    "packages/mpd-bundle-plugin/client.js"
+  ],
+  "notTouched": [
+    "VENDOR_LOCK.json"
+  ],
+  "gitWrites": "none (no add/commit/stash/checkout/reset; only read-only status/diff/show)",
+  "stateField": {
+    "name": "holdKnown",
+    "type": "boolean",
+    "where": "WorkbenchData snapshot (interface + EMPTY_WORKBENCH + readWorkbench return)",
+    "source": "readWorkbench's own success discriminator: holdKnown = watchdog.value !== null, i.e. the reader's `ok:true` value; never inferred from hold === null"
+  },
+  "behaviour": {
+    "holdLine": "when !holdKnown the hold line renders the new copy key hold.unknown ('unknown — the watchdog state could not be read' / '未知 — 无法读取暂停状态') instead of 'not held'",
+    "pause": "disabled while busy, while held, OR while the hold state is unknown",
+    "resume": "disabled only when the page KNOWS there is nothing to clear (holdKnown && hold === null), so it stays live in the unknown state",
+    "act": "the same two guards are repeated inside act(kind), so a programmatic call cannot slip past the disabled attribute (pause refuses when !holdKnown; resume refuses only when the hold is KNOWN to be absent)"
+  },
+  "gates": {
+    "node scripts/build-mpd-client.ts": "wrote packages/mpd-bundle-plugin/client.js (884633 bytes), exit 0",
+    "bun test packages/mpd-bundle-plugin": "250 pass / 0 fail, 17111 expect() calls, 12 files, exit 0 (the workbench file: 21 pass, 0 fail)",
+    "node scripts/verify-dist-fresh.ts": "35/35 targets fresh (each rebuilt twice, byte-identical), 1 NOT COVERED listed, exit 0",
+    "node scripts/verify-comment-coverage.ts": "521 files, 46729 declarations, VERDICT PASS, exit 0",
+    "bun run typecheck": "tsgo --noEmit, no diagnostics, exit 0",
+    "node scripts/verify-vendor.ts": "EXPECTED RED (exit 1): 'asset packages/mpd-bundle-plugin/client.js sha256 mismatch' — VENDOR_LOCK.json is the captain's single re-pin; new sha256 93abe7050634… (old c68a18846f2e…)",
+    "bun test packages/mpd-bundle-plugin/test/workbench-view.test.ts": "21 pass / 0 fail, 152 expect() calls, exit 0 (17 pre-existing + 4 new arms)"
+  },
+  "newArms": [
+    "a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > a refused watchdog read renders the unknown sentence and never claims 'not held'",
+    "a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unreadable watchdog payload (no ok:true) is unknown too, and its holds are not trusted",
+    "a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > an unknown hold freezes Pause (button AND action) while Resume stays live",
+    "a failed watchdog read is an UNKNOWN hold, never the claim 'not held' > a successful read with no hold still says 'not held' and offers Pause"
+  ],
+  "falsifiability": "3 of the 4 new arms FAIL against the PRE-FIX source (18 pass / 3 fail, exit 1); the 4th is the unchanged-behaviour control that passes in both states. Transcript: falsifiability.log; the fixed source + artifact were restored, rebuilt and sha256 -c'd equal (3 OK lines, RESTORE OK).",
+  "bounds": [
+    "No browser was driven: the arms read the REAL committed client.js through the offline harness, not a live page.",
+    "verify-vendor stays red until the captain re-pins client.js in VENDOR_LOCK.json (deliberately not touched here).",
+    "Not proven: how a real mobile host renders the unknown sentence (copy length/wrap) — visual QA is out of this scope."
+  ]
+}

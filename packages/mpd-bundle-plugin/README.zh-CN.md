@@ -44,6 +44,24 @@
   `nestedBackEdges`，让省略可见而不是静默；列按 rank 顺序打包、顶部对齐堆叠（不同于扁平路径的重心松弛）；
   悬停光晕覆盖**根帧**的卡片（内部卡片保持自己的色调）。
 
+## Workbench 页面 —— 一个 `conversation.view` 条目
+
+`src/web-client.ts` 注册**一个** `conversation.view` 条目 —— id `mpd-workbench`、label `Workbench`、
+locale 命名空间 `mpdWorkbench` —— 会话外壳把它渲染成 Chat/Trajectory 旁的一个整页 Tab。
+
+- **它显示什么。** 团队头部（phase、id、成员数），其下是 hold 行与两个按钮，再往下是任务板的行
+  （id、owner、状态）。空态是显式且互相区分的：仍在读取、路由读不到、本会话没有团队、已 staged 待批准的
+  计划、什么都没 staged，以及本工作区里的其他团队。
+- **它读取三条既有路由。** `/plugins/mpd-team/state` 与 `/plugins/mpd-team/plan`（mpd 记录），加上
+  `/plugins/mpd-team-watchdog/state`（实时 hold），按自身 3000 ms 的间隔重读 —— 该页面没有流。
+- **它只经由两条带护栏的看门狗路由写入。** 暂停以 `{teamId, reason: "workbench"}` POST
+  `/plugins/mpd-team-watchdog/hold`，因此人工暂停记录的是自己的原因，而不是看门狗的 `silence`；恢复以
+  `{teamId}` POST 到 `/plugins/mpd-team-watchdog/resume`。写入进行中两个按钮都禁用，且页面在写入后
+  **重新读取**路由，而不信任 POST 的回显。
+- **注册是有闸门的。** 条目经 `ctx.slots.inject` 等待外壳自己声明 `conversation.view`；插槽始终不出现，
+  或注册表拒绝这次注册，损失的只是那个 Tab —— **一行**诊断说明原因，客户端其余部分照常挂载。
+- **不使用 `order`。** 外壳按注册顺序投影 Tab 列表，因此该条目在插槽首次声明时注册，而不去竞争位置。
+
 ## 配置
 
 无。这是基础设施：自引用行在 bundle patch 中不携带任何配置。

@@ -1924,6 +1924,711 @@
     publishSettle(preferred, registered)
   }
 
+  // ── THE MPD WORKBENCH: the bundle's `conversation.view` full-page surface ──────────────────
+  // WHY THIS SLOT. A mobile host (the DSH Go Android app) surfaces a plugin's `conversation.view`
+  // entry as a full-page tab beside Chat/Trajectory, and it finds that tab by the entry's `id` +
+  // `label`. It is the cheapest real mobile surface this bundle can offer, because the SAME code
+  // renders in the desktop web app. The tab's POSITION is the registration order (the conversation
+  // shell projects its list from `slots.entries("conversation.view")` and never reads `order`), so
+  // this entry registers on the FIRST declaration of the slot instead of waiting for anything else.
+  //
+  // WHY IT READS ROUTES AND NOT A CLIENT STORE: same reason as `team-view.ts`. The mpd record is the
+  // truth; a client store can only carry what a mounted service projected. The page reads the three
+  // read-only routes below and POSTs the two fenced watchdog routes — nothing else.
+  /** The LIST slot the conversation shell renders as one full page per registered entry. */
+  const WORKBENCH_SLOT = "conversation.view"
+  /** The stable entry id, short and unique among the slot's entries; the mobile host keys the tab on it. */
+  const WORKBENCH_VIEW_ID = "mpd-workbench"
+  /**
+   * The tab label, CONSTANT on purpose.
+   *
+   * The mobile host matches the tab by `id` + `label`, so a label that moved with the page's locale
+   * would stop matching on a device whose language differs from the web page's. The settings
+   * section's own "MPD" label is the same precedent, and this one is short because a phone's tab
+   * strip holds four at most.
+   */
+  const WORKBENCH_VIEW_LABEL = "Workbench"
+  /** The locale namespace the page's own copy lives in (the label above is deliberately outside it). */
+  const WORKBENCH_LOCALE_NS = "mpdWorkbench"
+  /** How often the page re-reads its routes: they are cheap status reads, and the page has no stream. */
+  const WORKBENCH_POLL_MS = 3000
+  /** The watchdog state route: the ONE served payload that carries the live holds. */
+  const WORKBENCH_WATCHDOG_PATH = "/plugins/mpd-team-watchdog/state"
+  /** The fenced POST that pauses NEW dispatch into one team. */
+  const WORKBENCH_HOLD_PATH = "/plugins/mpd-team-watchdog/hold"
+  /** The fenced POST that clears one team's hold (a 200 no-op for a team that is not held). */
+  const WORKBENCH_RESUME_PATH = "/plugins/mpd-team-watchdog/resume"
+  /**
+   * The cause a Pause from this page records in the hold sidecar.
+   *
+   * The route stores the body's `reason` as the hold's `cause`, and its own default is `silence` —
+   * the watchdog's stall word. A human pressing Pause is not a stall, so the page says so, and a
+   * later reader of `<stateDir>/watchdog/hold/<teamId>.json` can tell the two apart.
+   */
+  const WORKBENCH_HOLD_CAUSE = "workbench"
+
+  /** The page's English copy — the fallback AND the key list the zh table stays complete against. */
+  const WORKBENCH_COPY_EN: Record<string, string> = {
+    "view.title": "MPD workbench",
+    "header.members": "{count} members",
+    "header.hold": "Hold",
+    "hold.none": "not held",
+    "hold.unknown": "unknown — the watchdog state could not be read",
+    "hold.held": "held — {cause}",
+    "hold.unknownCause": "(no cause recorded)",
+    "tasks.empty": "This board has no tasks.",
+    "actions.pause": "Pause",
+    "actions.resume": "Resume",
+    "actions.pausing": "Pausing…",
+    "actions.resuming": "Resuming…",
+    "empty.reading": "Reading the team routes…",
+    "empty.unread": "The team routes could not be read.",
+    "empty.noTeam": "No team in this session.",
+    "empty.staged": "A plan is staged for this session — approve it to create the team.",
+    "empty.nothing": "Nothing is staged here: stage a plan (agent_teams_plan), then approve it.",
+    "empty.workspace": "This workspace has {count} other team(s): {teams}",
+    "error.read": "Could not read {path}: {message}",
+    "error.fence": "The host refused the request ({status}): this browser session is not allowed to write.",
+    "error.method": "The route rejected the method (405): this server build has no such write route.",
+    "error.write": "The {action} request failed.",
+  }
+
+  /** The page's 简体中文 copy, key-complete against the English table above. */
+  const WORKBENCH_COPY_ZH: Record<string, string> = {
+    "view.title": "MPD 工作台",
+    "header.members": "{count} 名成员",
+    "header.hold": "暂停状态",
+    "hold.none": "未暂停",
+    "hold.unknown": "未知 — 无法读取暂停状态",
+    "hold.held": "已暂停 — {cause}",
+    "hold.unknownCause": "（未记录原因）",
+    "tasks.empty": "这块任务板是空的。",
+    "actions.pause": "暂停",
+    "actions.resume": "恢复",
+    "actions.pausing": "暂停中…",
+    "actions.resuming": "恢复中…",
+    "empty.reading": "正在读取团队路由…",
+    "empty.unread": "团队路由读取失败。",
+    "empty.noTeam": "本会话没有团队。",
+    "empty.staged": "本会话有一个已暂存的计划 — 批准它即可创建团队。",
+    "empty.nothing": "这里也还没有计划：先调用 agent_teams_plan，再批准它。",
+    "empty.workspace": "本工作区还有 {count} 个团队：{teams}",
+    "error.read": "无法读取 {path}：{message}",
+    "error.fence": "主机拒绝了该请求（{status}）：当前浏览器会话没有写权限。",
+    "error.method": "路由拒绝了该方法（405）：这个服务端构建没有对应的写路由。",
+    "error.write": "{action} 请求失败。",
+  }
+
+  /** The snapshot before the first read answers: nothing known, and nothing claimed. */
+  const EMPTY_WORKBENCH: WorkbenchData = { team: null, tasks: [], workspace: [], staged: false, hold: null, holdKnown: false, loaded: false }
+
+  /** One task row as `/plugins/mpd-team/state` serves it (only the three cells this page renders). */
+  interface WorkbenchTaskPayload {
+    /** The mpd task id (`T1`). */
+    id?: unknown
+    /** The owning member's display name, absent while the task is unowned. */
+    owner?: unknown
+    /** The stored status. */
+    status?: unknown
+    /** The RENDERED state the route derived (`blocked` included), preferred over the stored status. */
+    visual?: unknown
+  }
+
+  /** One of the workspace's teams, as the state payload lists it. */
+  interface WorkbenchWorkspacePayload {
+    /** The mpd team id. */
+    id?: unknown
+    /** The team name the user reads. */
+    name?: unknown
+    /** `staged` | `active` | `idle` | `ended`. */
+    phase?: unknown
+    /** The roster size, already excluding members the store marked `failed`. */
+    members?: unknown
+  }
+
+  /** The slice of `/plugins/mpd-team/state` this page reads. */
+  interface WorkbenchStatePayload {
+    /** The route's own success marker; a payload without it is treated as unreadable. */
+    ok?: unknown
+    /** The session's team head, or null when it has none. */
+    team?: { id?: unknown; name?: unknown; phase?: unknown } | null
+    /** The roster, counted for the header. */
+    members?: unknown[]
+    /** The board, in the route's own order. */
+    tasks?: WorkbenchTaskPayload[]
+    /** The workspace's teams, newest first — the answer for a session that has none of its own. */
+    workspaceTeams?: { records?: WorkbenchWorkspacePayload[] }
+  }
+
+  /** The slice of `/plugins/mpd-team/plan` the empty state reads. */
+  interface WorkbenchPlanPayload {
+    /** The staged plan, or null when this session has none. */
+    plan?: unknown
+  }
+
+  /** One hold sidecar, as the watchdog payload lists it (only the fields this page reads). */
+  interface WorkbenchHoldPayload {
+    /** The team the hold applies to; the page keeps only the one matching its own team. */
+    teamId?: unknown
+    /** The human-readable cause recorded with the hold. */
+    cause?: unknown
+    /** Epoch milliseconds the hold was applied. */
+    since?: unknown
+  }
+
+  /** The slice of `/plugins/mpd-team-watchdog/state` this page reads. */
+  interface WorkbenchWatchdogPayload {
+    /** Every hold sidecar found across the searched roots (additive, so absent on an older host). */
+    held?: WorkbenchHoldPayload[]
+    /** The single banner the watchdog panel renders, used as the hold fallback on a host without `held`. */
+    banner?: { kind?: unknown; teamId?: unknown; cause?: unknown; since?: unknown } | null
+  }
+
+  /** One team this page names: the session's own, or a workspace sibling in the empty state. */
+  interface WorkbenchTeam {
+    /** The mpd team id, which is also the `teamId` the write routes take. */
+    id: string
+    /** The team name the user reads (the id when the record carried no name). */
+    name: string
+    /** `staged` | `active` | `idle` | `ended`. */
+    phase: string
+    /** The roster size, counted from the payload's own member list. */
+    members: number
+  }
+
+  /** One board row: the three cells this page renders, and nothing else. */
+  interface WorkbenchTask {
+    /** The task id (`T1`). */
+    id: string
+    /** The owning member's display name, or "" while the task is unowned. */
+    owner: string
+    /** The RENDERED state the route derived, falling back to the stored status. */
+    status: string
+  }
+
+  /** The live hold on this page's team. */
+  interface WorkbenchHold {
+    /** Why the hold was raised (the recorded cause, or "" when none was). */
+    cause: string
+    /** Epoch milliseconds the hold was applied, or 0 when the payload carried no stamp. */
+    since: number
+  }
+
+  /** Everything one poll pass yields, in ONE value so the header, the board and the hold cannot disagree. */
+  interface WorkbenchData {
+    /** The session's own team, or null when the route served none. */
+    team: WorkbenchTeam | null
+    /** That team's board, in the route's own order. */
+    tasks: WorkbenchTask[]
+    /** The workspace's OTHER teams, named by the empty state instead of a blank page. */
+    workspace: WorkbenchTeam[]
+    /** Whether a plan is staged for this session (the empty state names the next step after it). */
+    staged: boolean
+    /** The live hold on {@link WorkbenchData.team}, or null when the team is not held. */
+    hold: WorkbenchHold | null
+    /**
+     * Whether the WATCHDOG route actually answered, i.e. whether {@link WorkbenchData.hold} is a fact.
+     *
+     * A failed `/plugins/mpd-team-watchdog/state` read yields `hold: null` too, and that value is
+     * indistinguishable from a team nobody holds. This flag keeps the two apart: without it the page
+     * would state "not held" about an UNKNOWN state and would offer Pause on an absent-fact. Pause
+     * follows it; Resume does not, because the repository-owned resume route defines an absent hold
+     * as a successful no-op.
+     */
+    holdKnown: boolean
+    /** Whether the STATE route has answered at least once, so "no team" is never claimed before an answer. */
+    loaded: boolean
+  }
+
+  /** A read failure: which route failed, and what it failed with. */
+  interface WorkbenchFailure {
+    /** The route path that failed. */
+    path: string
+    /** The failure value: a status record, a thrown error, or an unreadable body. */
+    cause: unknown
+  }
+
+  /**
+   * The props the conversation shell hands one `conversation.view` entry.
+   *
+   * TWO SOURCES, one object: the four owner props are passed by the shell at its own `renderSlot`
+   * call site (`DefaultConversationViews`), while `sessionId` and `t` are the framework's standard kit
+   * for a session-scope slot — the session binder publishes `{ sessionId }` and the renderer adds `t`
+   * for an entry that declares `locale`.
+   */
+  interface WorkbenchProps {
+    /** The session this view renders; "" on a host that passes none, which reads the workspace principal. */
+    sessionId?: unknown
+    /** The host translator bound to {@link WORKBENCH_LOCALE_NS}, absent on a host that binds none. */
+    t?: Translate
+    /** The one-shot focus request addressed to the selected view, or null when there is none. */
+    viewRequest?: { view?: unknown; focus?: unknown } | null
+    /** Acknowledge the current one-shot focus request. */
+    completeViewRequest?: () => unknown
+    /** Select a view and address an opaque focus identity to it; accepted and unread (this page opens nothing). */
+    openView?: (view: string, focus: string) => unknown
+    /** Open a tool call's inspector; accepted and unread (this page inspects no call). */
+    inspectCall?: ((callId: string) => void) | undefined
+  }
+
+  /** One payload value as display text: a string verbatim, a number stringified, anything else "". */
+  function workbenchText(value: unknown): string {
+    if (typeof value === "string") return value
+    return typeof value === "number" && Number.isFinite(value) ? String(value) : ""
+  }
+
+  /** One payload value as a count: a finite non-negative number floored, anything else 0. */
+  function workbenchCount(value: unknown): number {
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0
+  }
+
+  /** A status word as the colour a reader can tell apart at a glance (an unknown word reads grey). */
+  function workbenchStateColor(state: string): string {
+    // `blocked` is DERIVED by the route rather than stored, so it is not in the shared status table.
+    if (state === "blocked") return "#c98a12"
+    return STATUS_COLOR[state] ?? "#8a8f98"
+  }
+
+  /** One hold instant as a short local time, or "" when the payload carried no usable stamp. */
+  function workbenchTime(ms: number): string {
+    if (ms <= 0) return ""
+    try {
+      return new Date(ms).toLocaleTimeString()
+    } catch {
+      return ""
+    }
+  }
+
+  /** One failure as a phrase: an HTTP status for a refused read, else the thrown message. */
+  function workbenchFailureText(cause: unknown): string {
+    if (cause !== null && typeof cause === "object" && "status" in cause) {
+      /** The status an unreadable-answer record carries. */
+      const status = (cause as { status?: unknown }).status
+      if (typeof status === "number") return "HTTP " + String(status)
+    }
+    if (cause instanceof Error) return cause.message
+    return workbenchText(cause)
+  }
+
+  /**
+   * The page's translator: the host's bound `t` when it passed one, else this page's English table.
+   *
+   * NOT `translateFor`, and the difference matters: that helper falls back to the WORKMATE page's
+   * dictionary, so a workbench key it has never seen would render as the raw key. The host's own
+   * translator wins whenever it exists, which is the case the `locale:` declaration buys.
+   * @param props - the entry props the shell rendered with.
+   * @returns the translator this render uses.
+   */
+  function workbenchSay(props: WorkbenchProps | undefined): Translate {
+    if (props !== undefined && typeof props.t === "function") return props.t
+    return (key: string, params?: Record<string, unknown>): string => interpolate(WORKBENCH_COPY_EN[key] ?? key, params)
+  }
+
+  /** The session suffix every read takes, so the three routes can never address different sessions. */
+  function workbenchQuery(sessionId: string): string {
+    return sessionId === "" ? "" : "?sessionId=" + encodeURIComponent(sessionId)
+  }
+
+  /**
+   * Read ONE of the workbench's routes, never rejecting: a failure is a VALUE the page renders.
+   *
+   * The `ok: true` marker is REQUIRED, exactly as `team-view.ts`'s own reader requires it: a payload
+   * without it is a route that failed, and rendering it as an empty team would claim "no team" about
+   * a read that never happened. That reader lives inside `createTeamView`'s closure and cannot be
+   * imported here, so the guard is repeated rather than re-derived.
+   * @param path - the route to read.
+   * @param sessionId - the session to address; "" omits the query and reads the workspace principal.
+   * @returns the served payload, or null plus the failure that prevented it.
+   */
+  async function readWorkbenchRoute<T>(path: string, sessionId: string): Promise<{ value: T | null; error?: unknown }> {
+    try {
+      /** The host's own transport; the page never assumes a proxy. */
+      const response = await fetch(path + workbenchQuery(sessionId), { headers: { accept: "application/json" } })
+      if (!response.ok) return { value: null, error: { status: response.status } }
+      /** The served payload, validated below rather than trusted. */
+      const payload = await response.json() as T & { ok?: unknown }
+      if (payload === null || typeof payload !== "object" || payload.ok !== true) return { value: null, error: { status: response.status, body: payload } }
+      return { value: payload }
+    } catch (error) {
+      return { value: null, error }
+    }
+  }
+
+  /**
+   * The live hold on ONE team, from whichever half of the watchdog payload carries it.
+   * @param payload - the watchdog state payload, or null when the route could not answer.
+   * @param teamId - the team the page is showing.
+   * @returns the hold, or null when this team is not held (or the payload names no hold for it).
+   */
+  function workbenchHoldOf(payload: WorkbenchWatchdogPayload | null, teamId: string): WorkbenchHold | null {
+    for (const sidecar of payload?.held ?? []) {
+      if (workbenchText(sidecar?.teamId) !== teamId) continue
+      return { cause: workbenchText(sidecar?.cause), since: workbenchCount(sidecar?.since) }
+    }
+    /** The panel banner, which a host that serves no `held` list still answers for the held team. */
+    const banner = payload?.banner ?? null
+    if (banner !== null && workbenchText(banner.kind) === "held" && workbenchText(banner.teamId) === teamId) {
+      return { cause: workbenchText(banner.cause), since: workbenchCount(banner.since) }
+    }
+    return null
+  }
+
+  /**
+   * Read every route the workbench shows in ONE pass.
+   * @param sessionId - the session to address; "" reads the workspace principal (no query is sent).
+   * @returns the assembled snapshot plus the FIRST failure, so the page can say what it could not see.
+   */
+  async function readWorkbench(sessionId: string): Promise<{ data: WorkbenchData; failure: WorkbenchFailure | null }> {
+    // THREE ROUTES IN ONE PASS: the deadline is one answer, and a page that polled them separately
+    // could show a staged plan beside a team that approval had already replaced. `/plugins/mpd-team/
+    // task` (the frozen acceptance contracts) is deliberately NOT read: this page renders no contract.
+    const [state, plan, watchdog] = await Promise.all([
+      readWorkbenchRoute<WorkbenchStatePayload>(TEAM_STATE_PATH, sessionId),
+      readWorkbenchRoute<WorkbenchPlanPayload>(TEAM_PLAN_PATH, sessionId),
+      readWorkbenchRoute<WorkbenchWatchdogPayload>(WORKBENCH_WATCHDOG_PATH, sessionId),
+    ])
+    /** The first route that failed, in the order the page reads them. */
+    const failure: WorkbenchFailure | null =
+      state.error !== undefined ? { path: TEAM_STATE_PATH, cause: state.error }
+        : plan.error !== undefined ? { path: TEAM_PLAN_PATH, cause: plan.error }
+          : watchdog.error !== undefined ? { path: WORKBENCH_WATCHDOG_PATH, cause: watchdog.error }
+            : null
+    /** The session's team head, when the route served one. */
+    const head = state.value?.team ?? null
+    /** The team this page renders; the roster is counted from the payload's own member list. */
+    const team: WorkbenchTeam | null = head === null ? null : {
+      id: workbenchText(head.id),
+      name: workbenchText(head.name) === "" ? workbenchText(head.id) : workbenchText(head.name),
+      phase: workbenchText(head.phase),
+      members: Array.isArray(state.value?.members) ? state.value.members.length : 0,
+    }
+    /** The board rows; a row with no id is skipped rather than rendered blank. */
+    const tasks: WorkbenchTask[] = []
+    for (const row of state.value?.tasks ?? []) {
+      /** The row's id, the one cell this page cannot invent. */
+      const id = workbenchText(row?.id)
+      if (id === "") continue
+      /** The RENDERED state, which is what a reader can act on, with the stored status as the fallback. */
+      const visual = workbenchText(row?.visual)
+      tasks.push({ id, owner: workbenchText(row?.owner), status: visual === "" ? workbenchText(row?.status) : visual })
+    }
+    // THE WORKSPACE LISTING IS GATHERED ONLY FOR THE EMPTY STATE: when the session has a team of its
+    // own the listing is noise, and this page is a workbench rather than a workspace browser.
+    /** The workspace's teams, named by the empty state instead of a dead end. */
+    const workspace: WorkbenchTeam[] = []
+    if (team === null) {
+      for (const record of state.value?.workspaceTeams?.records ?? []) {
+        /** The listed team's id; an unreadable row is dropped rather than named blank. */
+        const id = workbenchText(record?.id)
+        if (id === "") continue
+        workspace.push({
+          id,
+          name: workbenchText(record?.name) === "" ? id : workbenchText(record?.name),
+          phase: workbenchText(record?.phase),
+          members: workbenchCount(record?.members),
+        })
+      }
+    }
+    return {
+      data: {
+        team,
+        tasks,
+        workspace,
+        staged: (plan.value?.plan ?? null) !== null,
+        hold: team === null ? null : workbenchHoldOf(watchdog.value, team.id),
+        // THE WATCHDOG READ'S OWN ANSWER, not a reading of `hold`: the reader above returns a value
+        // ONLY for an `ok: true` payload, so null here means the route failed and the page knows
+        // nothing about the hold — which is not the same claim as "not held".
+        holdKnown: watchdog.value !== null,
+        // `loaded` is the STATE route's own answer: a failed read is never reported as "no team".
+        loaded: state.value !== null,
+      },
+      failure,
+    }
+  }
+
+  /**
+   * POST one of the two fenced write routes.
+   *
+   * NOTHING HERE THROWS AT THE PAGE: the caller turns every rejection — a 401 from the host fence, a
+   * 405 from a server build without the route, a dead network — into the inline error line, so a
+   * phone with an expired session still renders the whole board.
+   * @param path - the route to POST.
+   * @param body - the JSON body the route's own contract declares.
+   * @returns the route's answer, or a `RequestFailure` carrying its status and body.
+   */
+  function writeWorkbench(path: string, body: ApiBody): Promise<ApiBody> {
+    return request<ApiBody>(path, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify(body),
+    })
+  }
+
+  /**
+   * One refused or failed write as the sentence the page shows inline.
+   * @param error - whatever the write rejected with.
+   * @param action - which action was attempted, for the generic fallback sentence.
+   * @param say - the translator for this render.
+   * @returns the message to render, never empty.
+   */
+  function workbenchWriteFailure(error: unknown, action: string, say: Translate): string {
+    /** The HTTP status the route answered with, when the failure carried one. */
+    const status = error !== null && typeof error === "object" && "status" in error ? (error as RequestFailure).status : undefined
+    // THE FENCE IS THE FIRST THING A READER MUST KNOW ABOUT: 401/403 mean the host refused the write,
+    // which is a different fix (re-open the page in a fenced session) from a server without the route.
+    if (status === 401 || status === 403) return interpolate(say("error.fence"), { status: String(status) })
+    if (status === 405) return say("error.method")
+    if (error instanceof Error && error.message !== "") return error.message
+    return interpolate(say("error.write"), { action })
+  }
+
+  /**
+   * The MPD workbench: the bundle's full-page `conversation.view` surface.
+   *
+   * READ-ONLY except for TWO fenced POSTs (pause / resume), so a phone gets a real MPD surface with
+   * no tool call. Every failure becomes a sentence on the page; nothing here throws.
+   * @param props - the entry props the conversation shell renders with.
+   * @returns the page element.
+   */
+  function WorkbenchView(props: WorkbenchProps | undefined): unknown {
+    /** The translator for this render: the host's bound `t`, or the page's own English table. */
+    const say = workbenchSay(props)
+    /** The session addressed by every read; "" reads the workspace principal (the query is omitted). */
+    const sessionId = sessionIdOfSeat(props)
+    /** The last snapshot; the empty value until the first read answers. */
+    const [data, setData] = react.useState<WorkbenchData>(EMPTY_WORKBENCH)
+    /** Which write is in flight, or "" when none is: BOTH buttons are disabled while it is set. */
+    const [busy, setBusy] = react.useState<"" | "hold" | "resume">("")
+    /** The last READ failure, cleared by the next successful read. */
+    const [readError, setReadError] = react.useState<string>("")
+    /** The last WRITE failure, cleared when the next write starts — a poll must never erase it. */
+    const [writeError, setWriteError] = react.useState<string>("")
+    // ONE READ PATH AND ONE CLOCK. The effect owns the first read and the interval, and its disposer
+    // stops both, so an unmounted page leaves no timer and no reader behind.
+    react.useEffect(() => {
+      /** Set once the effect is disposed, so a late answer never writes state into a dead component. */
+      let stopped = false
+      /** One poll pass: read every route, then publish the whole snapshot at once. */
+      const tick = async (): Promise<void> => {
+        /** This pass's answer, failures included. */
+        const read = await readWorkbench(sessionId)
+        if (stopped) return
+        setData(read.data)
+        setReadError(read.failure === null ? "" : interpolate(say("error.read"), { path: read.failure.path, message: workbenchFailureText(read.failure.cause) }))
+      }
+      void tick()
+      /** The interval, cleared by the disposer below. */
+      const timer = setInterval(() => { void tick() }, WORKBENCH_POLL_MS)
+      return () => {
+        stopped = true
+        clearInterval(timer)
+      }
+    }, [sessionId])
+    // THE ONE-SHOT FOCUS REQUEST. The shell may address a focus request to this tab; acknowledging it
+    // is the whole protocol, and a request addressed to ANOTHER view is left for that view to consume.
+    /** The request this render sees, if any. */
+    const request = props?.viewRequest ?? null
+    /** Its identity, so the effect fires once per request rather than on every render. */
+    const requestKey = request === null ? "" : workbenchText(request.view) + ":" + workbenchText(request.focus)
+    react.useEffect(() => {
+      if (requestKey === "" || request === null || workbenchText(request.view) !== WORKBENCH_VIEW_ID) return
+      if (typeof props?.completeViewRequest !== "function") return
+      props.completeViewRequest()
+    }, [requestKey])
+    /**
+     * Run ONE write, then re-read so the header flips without waiting out the poll.
+     * @param kind - the action the buttons pressed.
+     */
+    const act = (kind: "hold" | "resume"): void => {
+      /** The team the write addresses; a page with no team has nothing to hold. */
+      const team = data.team
+      if (team === null || busy !== "") return
+      // THE GUARD THE BUTTON ALSO CARRIES, repeated HERE so a programmatic call cannot slip past it:
+      // with the watchdog route unread, an absent hold may be a hold this page simply cannot see, so
+      // Pause is refused.
+      if (kind === "hold" && !data.holdKnown) return
+      // THE MIRROR FOR RESUME, deliberately NOT symmetrical: a KNOWN-empty hold is nothing to clear, so
+      // the call is refused exactly when the button is. An UNKNOWN state is NOT refused — the route
+      // treats an absent hold as a successful no-op, which is why Resume stays live while it cannot be
+      // read.
+      if (kind === "resume" && data.holdKnown && data.hold === null) return
+      setBusy(kind)
+      setWriteError("")
+      void (async (): Promise<void> => {
+        try {
+          // A HUMAN PAUSE CARRIES ITS OWN CAUSE. The hold route's `reason` IS the sidecar's recorded
+          // `cause`, and omitting it would store the route's default (`silence`) — which would read
+          // on disk as a watchdog stall that never happened. `resume` takes only the team id.
+          await writeWorkbench(
+            kind === "hold" ? WORKBENCH_HOLD_PATH : WORKBENCH_RESUME_PATH,
+            kind === "hold" ? { teamId: team.id, reason: WORKBENCH_HOLD_CAUSE } : { teamId: team.id },
+          )
+          /** The answer the page re-renders with: the read is the truth, not the POST's echo. */
+          const read = await readWorkbench(sessionId)
+          setData(read.data)
+        } catch (error) {
+          setWriteError(workbenchWriteFailure(error, kind, say))
+        } finally {
+          setBusy("")
+        }
+      })()
+    }
+    /** The team the header names, when the read found one. */
+    const team = data.team
+    /** The phase chip's colour (an unknown phase reads grey, never invisible). */
+    const phaseColor = team === null ? "#8a8f98" : STATUS_COLOR[team.phase] ?? "#8a8f98"
+    /** The hold's stamped instant, or "" when the payload carried none. */
+    const stamp = data.hold === null ? "" : workbenchTime(data.hold.since)
+    /** The hold line: the UNKNOWN state first (a failed read is not "not held"), then cause, then none. */
+    const holdText = !data.holdKnown
+      ? say("hold.unknown")
+      : data.hold === null
+        ? say("hold.none")
+        : interpolate(say("hold.held"), { cause: data.hold.cause === "" ? say("hold.unknownCause") : data.hold.cause }) + (stamp === "" ? "" : " · " + stamp)
+    /** The error line: the WRITE channel first, because that is the action the user just took. */
+    const errorText = writeError !== "" ? writeError : readError
+    /** The empty-state headline, which is never a blank page. */
+    const emptyTitle = data.loaded ? say("empty.noTeam") : errorText === "" ? say("empty.reading") : say("empty.unread")
+    return h("div", { style: SURFACE_STYLE, "data-mpd-workbench": WORKBENCH_VIEW_ID },
+      h("div", { style: { display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" } },
+        h("span", { style: { fontWeight: 700, fontSize: "14px" } }, say("view.title")),
+        team === null ? null : h("span", { style: chip(phaseColor) }, team.phase),
+        team === null ? null : h("span", { style: { ...dim, fontFamily: "monospace" } }, team.id),
+        team === null ? null : h("span", { style: dim }, interpolate(say("header.members"), { count: String(team.members) })),
+      ),
+      team === null ? null : h("div", { style: { display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", flexWrap: "wrap" } },
+        h("button", {
+          type: "button",
+          // PAUSE NEEDS A KNOWN HOLD: a failed watchdog read must not offer a write on an unknown state.
+          disabled: busy !== "" || data.hold !== null || !data.holdKnown,
+          style: { ...BUTTON_STYLE, opacity: busy !== "" || data.hold !== null || !data.holdKnown ? 0.5 : 1 },
+          onClick: () => act("hold"),
+        }, busy === "hold" ? say("actions.pausing") : say("actions.pause")),
+        h("button", {
+          type: "button",
+          // RESUME STAYS LIVE WITHOUT A KNOWN HOLD: that route defines an absent hold as a successful
+          // no-op, so it is refused only when the page KNOWS there is nothing to clear.
+          disabled: busy !== "" || (data.holdKnown && data.hold === null),
+          style: { ...BUTTON_STYLE, opacity: busy !== "" || (data.holdKnown && data.hold === null) ? 0.5 : 1 },
+          onClick: () => act("resume"),
+        }, busy === "resume" ? say("actions.resuming") : say("actions.resume")),
+        h("span", { style: dim }, say("header.hold") + ": " + holdText),
+      ),
+      errorText === "" ? null : h("div", { role: "alert", style: { color: "#c33", fontSize: "12px", whiteSpace: "pre-wrap" } }, errorText),
+      team === null
+        ? h("div", { style: { ...dim, padding: "10px 0", fontSize: "12px", lineHeight: "18px", display: "flex", flexDirection: "column", gap: "4px" } },
+            h("div", { style: { fontWeight: 600, color: "inherit" } }, emptyTitle),
+            data.loaded ? h("div", null, data.staged ? say("empty.staged") : say("empty.nothing")) : null,
+            data.workspace.length === 0 ? null : h("div", null, interpolate(say("empty.workspace"), {
+              count: String(data.workspace.length),
+              // The phase is omitted rather than invented when the record carried none: `x (…)` with
+              // a borrowed word would read as a state the route never stated.
+              teams: data.workspace.map((other) => other.phase === "" ? other.id : other.id + " (" + other.phase + ")").join(", "),
+            })),
+          )
+        : h("div", { style: { display: "flex", flexDirection: "column", minHeight: 0, overflowY: "auto" } },
+            data.tasks.length === 0
+              ? h("div", { style: { ...dim, padding: "6px 0" } }, say("tasks.empty"))
+              : data.tasks.map((task) => h("div", { key: task.id, style: rowStyle },
+                  h("span", { style: { ...dim, fontFamily: "monospace", flex: "0 0 auto" } }, task.id),
+                  h("span", { style: { ...ellipsis, flex: "1 1 auto" } }, task.owner === "" ? "—" : task.owner),
+                  h("span", { style: chip(workbenchStateColor(task.status)) }, task.status),
+                )),
+          ),
+    )
+  }
+
+  /** Whether this client module load already emitted its one workbench diagnostic. */
+  let workbenchReported: boolean = false
+
+  /**
+   * Report the workbench's absence ONCE, with the reason.
+   * @param why - what could not be done, phrased as the console line should read.
+   */
+  function reportNoWorkbench(why: string): void {
+    if (workbenchReported) return
+    workbenchReported = true
+    console.info("[mpd] the MPD workbench view is not registered: " + why)
+  }
+
+  /**
+   * Register the MPD workbench as the bundle's ONE `conversation.view` entry.
+   *
+   * THE GATE, and why it is not a one-shot `ctx.get` probe: `conversation.view` is DECLARED by the
+   * conversation shell's own `conversation.session` registration, so a probe at apply time races that
+   * shell exactly the way the better-sidebar probe raced its host. `ctx.slots.inject` waits for the
+   * declaration (running synchronously when it already exists) — and it says NOTHING when the slot
+   * never arrives, so a bounded wait reports that absence in ONE line, the same shape as the sidebar's
+   * settle check. Nothing in this function throws: a host build without the slot simply has no tab.
+   * @param ctx - the client entry's context.
+   */
+  function mountWorkbenchView(ctx: ClientContext): void {
+    // THE SERVICE PROBE. `slots` is a declared dependency of this entry, so this is a SHAPE check on
+    // both seams the registration needs — never a guess about which host is mounted.
+    if (ctx === null || ctx === undefined || ctx.slots === undefined
+      || typeof ctx.slots.inject !== "function" || typeof ctx.slots.register !== "function") {
+      reportNoWorkbench("this client ctx exposes no slots.inject")
+      return
+    }
+    try {
+      ctx.effect(() => ctx.locale.register(WORKBENCH_LOCALE_NS, { en: WORKBENCH_COPY_EN, zh: WORKBENCH_COPY_ZH }), "mpd-workbench: dictionaries")
+    } catch (error) {
+      // A locale seam that refuses the copy must not cost the TAB: the page then renders its English
+      // literals, which is the same degrade every other surface in this file falls back to.
+      console.info("[mpd] the workbench copy could not be registered: " + String(error))
+    }
+    /** Whether the registration was accepted on this mount. */
+    let registered: boolean = false
+    /** The bounded-wait handle, cleared when the registration lands or the entry is disposed. */
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    if (typeof setTimeout === "function") {
+      settleTimer = setTimeout(() => {
+        settleTimer = undefined
+        if (!registered) reportNoWorkbench("this host build never declared \"" + WORKBENCH_SLOT + "\" within " + settleTimeoutMsValue + "ms")
+      }, settleTimeoutMsValue)
+    }
+    try {
+      ctx.slots.inject(WORKBENCH_SLOT, () => {
+        try {
+          /** The unregister function the slot registry answered with. */
+          const unregister = ctx.slots.register({
+            name: WORKBENCH_SLOT,
+            id: WORKBENCH_VIEW_ID,
+            // A THUNK, because that is the shape the host resolves at read time (a string would be
+            // read once and would then be unable to follow anything); the value itself is constant.
+            label: () => WORKBENCH_VIEW_LABEL,
+            locale: WORKBENCH_LOCALE_NS,
+          }, WorkbenchView)
+          registered = true
+          if (settleTimer !== undefined) {
+            clearTimeout(settleTimer)
+            settleTimer = undefined
+          }
+          // NO SUCCESS LINE ON PURPOSE. This entry mounts on EVERY web boot, so a line here is noise
+          // on a healthy page — and the repo's own arms capture the boot's console and pin it as
+          // empty (settings-card's model-catalog arms measure exactly that). The presence of the tab
+          // is what a user checks; the ABSENCE is what needs a line, and it has one below.
+          return unregister
+        } catch (error) {
+          // A REFUSING REGISTRY IS NOT AN ABSENT SLOT, and conflating the two is how a real defect
+          // reads as an optional surface. The attempt stays contained; the report gate is one line.
+          reportNoWorkbench("the slot registry refused the registration: " + String(error))
+          return undefined
+        }
+      })
+    } catch (error) {
+      reportNoWorkbench("the \"" + WORKBENCH_SLOT + "\" slot could not be awaited: " + String(error))
+    }
+    ctx.effect(() => () => {
+      if (settleTimer !== undefined) {
+        clearTimeout(settleTimer)
+        settleTimer = undefined
+      }
+      if (!registered) reportNoWorkbench("\"" + WORKBENCH_SLOT + "\" was never declared in this profile")
+    }, "mpd: workbench view report")
+  }
+
   /** The client entry: mount the command row, both sidebar pages and the settings card. */
   function apply(ctx: ClientContext): void {
     // The slash-command admission row (not a GUI panel) goes in immediately: `slots` is a
@@ -1944,6 +2649,12 @@
     // this module is the one the client-module registry APPLIES (a sibling
     // `__ModuleLoader__.load` block is loaded as a module and never applied).
     mountHarnessSidebar(ctx);
+    // THE FULL-PAGE SURFACE. A `conversation.view` entry is rendered by the conversation shell as one
+    // page beside Chat/Trajectory — which is also what a mobile host projects as a tab — so the
+    // workbench is registered THERE rather than as another sidebar panel. It is mounted last so the
+    // two sidebar hosts keep their own registration order, and it is contained like every other
+    // optional surface: a host build without the slot loses the tab and nothing else.
+    mountWorkbenchView(ctx);
     // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
     // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
     // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided

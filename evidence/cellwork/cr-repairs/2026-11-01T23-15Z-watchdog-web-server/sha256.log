@@ -1,0 +1,3 @@
+a6552ede929dbce4e5140ceea627d4299bc8e613273b27e6b4b00479399edf83  packages/mpd-team-watchdog-plugin/dist/index.js
+cd93f6a968d996055d66fc446b1de25b9c09a38041085a7b35540c30210b883a  packages/mpd-team-watchdog-plugin/src/web.ts
+0da7d32d62e6f20c54e72ca7aefcc6707662acc294dfb0afea6ce113bcd16b16  packages/mpd-team-watchdog-plugin/test/web.test.ts

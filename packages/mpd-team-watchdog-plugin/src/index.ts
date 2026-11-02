@@ -38,6 +38,7 @@
 import z from "../../mpd-schemastery"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
+import { registerWatchdogWeb, WATCHDOG_ROUTES, type WatchdogEffect } from "./web.js"
 import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"
 import type { MpdTeamsRead } from "./team.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
@@ -304,6 +305,26 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
     disposers = engine.install()
   } catch (error) {
     warn(resolved.logPrefix, "registration degraded: " + message(error))
+  }
+
+  // ── THE WEB MUTATIONS: pause/resume ONE team from a browser or a mobile client ────────────────
+  // The two routes share the SAME `stateDir` and the SAME `HoldRegistry` as the tools above, so a
+  // pause applied over HTTP is visible to the dispatch gates in this process at once. A composition
+  // with no web server mounts nothing (the row stays tool-only) and never throws.
+  try {
+    /** The ctx's effect seam, passed as the row's route-lifetime owner; absent in a bare test ctx. */
+    const effect: WatchdogEffect | undefined =
+      typeof context.effect === "function" ? (register: () => unknown) => context.effect?.(register) : undefined
+    /** Whether both routes mounted at apply; false is normal on a headless profile. */
+    const mounted = registerWatchdogWeb(dsh, effect, {
+      stateDir: resolved.stateDir,
+      registry,
+      holdTtlMs: () => engine.getKnobs().holdTtlMs,
+      warn: (line: string) => warn(resolved.logPrefix, line),
+    })
+    if (mounted) warn(resolved.logPrefix, "web routes: " + WATCHDOG_ROUTES.join(" "))
+  } catch (error) {
+    warn(resolved.logPrefix, "web route registration degraded: " + message(error))
   }
 
   // Exactly ONE interval owns the cadence; a live knob change replaces it, never

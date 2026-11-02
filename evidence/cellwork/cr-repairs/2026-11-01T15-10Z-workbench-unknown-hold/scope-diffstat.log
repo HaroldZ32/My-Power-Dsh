@@ -1,0 +1,18 @@
+# my scope:
+ packages/mpd-bundle-plugin/client.js               |  48 +++++++--
+ packages/mpd-bundle-plugin/src/web-client.ts       |  48 +++++++--
+ .../mpd-bundle-plugin/test/workbench-view.test.ts  | 110 +++++++++++++++++++++
+ 3 files changed, 188 insertions(+), 18 deletions(-)
+
+# full worktree status (the mpd-team-watchdog-plugin rows are NOT mine — another repair):
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/web-client.ts
+ M packages/mpd-bundle-plugin/test/workbench-view.test.ts
+ M packages/mpd-team-watchdog-plugin/dist/index.js
+ M packages/mpd-team-watchdog-plugin/src/web.ts
+ M packages/mpd-team-watchdog-plugin/test/web.test.ts
+
+# falsifiability arms crossed-check: the workbench file after restore
+ 21 pass
+ 0 fail
+Ran 21 tests across 1 file. [366.00ms]

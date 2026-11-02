@@ -1,0 +1,76 @@
+# web/workbench-view — the bundle's ONE `conversation.view` entry (client half)
+
+Branch: `feature/mpd-workbench-view` · run at 2026-11-01T13:05:12Z (UTC) · no git write commands were run.
+
+Scope of the change (3 files touched + 1 added):
+
+| Path | Change |
+|---|---|
+| `packages/mpd-bundle-plugin/src/web-client.ts` | +679 lines: the workbench slice (`mountWorkbenchView` + `WorkbenchView` + its readers/types/copy) and the one call added to `apply()` |
+| `packages/mpd-bundle-plugin/client.js` | DERIVED artifact, rebuilt with `node scripts/build-mpd-client.ts` (882479 JS chars / 895113 UTF-8 bytes) |
+| `packages/mpd-bundle-plugin/test/workbench-view.test.ts` | NEW: 17 arms driving the real artifact through `test/client-harness.ts` |
+| `packages/mpd-bundle-plugin/test/sidebar-tab.test.ts` | 2 exact-list pins learn the new injected slot name (`conversation.view`) |
+
+## Commands and observed results (verbatim tails)
+
+1. `node scripts/build-mpd-client.ts`
+   → `[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (882479 bytes)` · exit 0
+   (895113 bytes on disk; the printed figure is the JS string LENGTH, and the CJK copy is 3 bytes per char)
+   (stderr: `ExperimentalWarning: stripTypeScriptTypes is an experimental feature`)
+
+2. loader ids, read back from the artifact (`node -e` … `__ModuleLoader__.load({ id: "…"`)`
+   → `["@nanmicoder/dsh-agent-teams","@mpd-dsh/team-page","@mpd-dsh/settings-card","@mpd-dsh/mpd"]` · count 4
+
+3. `node --check packages/mpd-bundle-plugin/client.js`
+   → exit 0 ("artifact syntax OK")
+
+4. `bun test packages/mpd-bundle-plugin`
+   → `246 pass` · `0 fail` · `17085 expect() calls` · `Ran 246 tests across 12 files. [5.60s]` · exit 0
+
+5. `node scripts/verify-dist-fresh.ts`
+   → `ok: 35/35 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 744ms` · exit 0
+   (toolchain: `bun 1.4.0 from the repository toolchain (.toolchain/node_modules/.bin/bun)`)
+
+6. `node scripts/verify-comment-coverage.ts`
+   → `scanned 521 TypeScript file(s) of 521 … inspected 46695 declaration(s) … VERDICT: PASS` · exit 0
+
+7. `bun run typecheck`
+   → `$ tsgo --noEmit` · exit 0
+
+8. `node scripts/verify-vendor.ts`
+   → `FAIL - asset packages/mpd-bundle-plugin/client.js sha256 mismatch` · exit 1
+   ARTIFACT sha256 = `c68a18846f2ed5474e7c1927cfa0b7672a3c529dc2415c53c251bc19a9153474`
+   **EXPECTED and INTENTIONAL**: `VENDOR_LOCK.json` was NOT touched (captain re-pins). Every other
+   asset in that gate passed (skills 390, codegraph serve.js 1, hashline 8, boulder 13, schemastery 19,
+   adopted 2).
+
+9. `bun run verify:manifest` (not requested; run because the package tree gained a file)
+   → `VERDICT: PASS` · `files-allowlist: 25 pattern(s); 0 required path(s) not admitted` ·
+   `packed-content: npm pack --dry-run lists 1135 file(s); 0 required path(s) absent` · exit 0
+
+## What the new arms prove (`test/workbench-view.test.ts`, 17/17 pass)
+
+- exactly ONE `conversation.view` registration, `id: "mpd-workbench"`, `label() === "Workbench"`,
+  `locale: "mpdWorkbench"`, NO `order`, NO keyed `key`;
+- the zh/en tables are key-complete and both render ("MPD 工作台", "2 名成员", "暂停");
+- the header carries team id / phase / member count / live hold; the board carries id / owner /
+  rendered state; the Pause/Resume pair follows the hold;
+- the empty state is explicit in all three shapes (nothing at all, a staged plan, workspace siblings);
+- a payload WITHOUT `ok:true` renders "The team routes could not be read." + `HTTP 200`, and is NOT
+  rendered as "No team in this session.";
+- Pause POSTs `{teamId, reason:"workbench"}` to the hold route, disables BOTH buttons synchronously
+  mid-flight (busy label "Pausing…"), then re-reads; Resume POSTs `{teamId}` to the resume route;
+- 403 → "The host refused the request (403) …" with the board still rendered and Pause usable again;
+  405 → "The route rejected the method (405) …";
+- `sessionId` prop → every read carries `?sessionId=`; absent prop → NO `sessionId` is invented;
+- a ctx without `slots.inject` → `apply()` does not throw and emits exactly ONE diagnostic line;
+- a host that never declares the slot → ONE settle line, `never declared "conversation.view" within 10ms`.
+
+## Bounds (not proven here)
+
+- No browser/DOM run: the registration is proven against the offline harness + the shipped bytes, not
+  against a live `dsh web` page. Tab POSITION (registration order) is therefore unobserved.
+- The two POSTs are proven against canned responses, not against the parallel lane's server routes
+  (`packages/mpd-team-watchdog-plugin/src/web.ts`, present but uncommitted in this tree).
+- `VENDOR_LOCK.json` is stale for `client.js` on purpose; `verify:vendor` stays RED until the captain
+  re-pins.
