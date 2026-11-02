@@ -1630,6 +1630,39 @@ function createDshAdapter(ctx, config = {}) {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
   }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
+  }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
   function warnLlmCatalogOnce(detail) {
@@ -2294,6 +2327,55 @@ function createDshAdapter(ctx, config = {}) {
         bridge.refresh(id);
       } catch {}
     },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
+    },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
     },
@@ -2822,14 +2904,370 @@ function probeMpdDsh(ctx, strict) {
   }
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-autoproject-plugin/src/boulder/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
+}
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function tail(value, max) {
+  return value.length <= max ? value : "…" + value.slice(value.length - (max - 1));
+}
+function buildBoulderStatusCard(_args, value) {
+  const v = recordOf(value);
+  const activeWorks = recordsAt(v, "activeWorks");
+  const resumeOptions = recordsAt(v, "resumeOptions");
+  const state = recordOf(v.state);
+  const planProgress = recordOf(v.planProgress);
+  const children = [
+    row([
+      metric({ label: "Active works", value: activeWorks.length }),
+      metric({ label: "Resumable", value: resumeOptions.length })
+    ]),
+    keyValue([
+      ["Ledger", tail(stringOf(v.stateFile, "(unknown)"), 72)],
+      ["Active work", clip(stringOf(state.active_work_id, "none"), 32)],
+      ["Status", stringOf(state.status, "idle")]
+    ])
+  ];
+  if (resumeOptions.length === 0) {
+    children.push(text("No active boulder work in this workspace."));
+  } else {
+    children.push(table({
+      columns: ["Plan", "Status", "Done"],
+      rows: resumeOptions.slice(0, 10).map((option) => {
+        const progress = recordOf(option.progress);
+        return [clip(stringOf(option.plan_name, "?"), 40), stringOf(option.status, "active"), numberOf(progress.completed) + "/" + numberOf(progress.total)];
+      })
+    }));
+  }
+  if (Object.keys(planProgress).length > 0) {
+    const error = typeof planProgress.error === "string" ? planProgress.error : "";
+    if (error !== "")
+      children.push(text(clip("plan unreadable: " + error, 300), { tone: "warn" }));
+    else
+      children.push(row([metric({ label: "Plan done", value: numberOf(planProgress.completed) + "/" + numberOf(planProgress.total), tone: planProgress.isComplete === true ? "good" : "muted" })]));
+  }
+  return stack(children, { title: "Boulder status" });
+}
+var BOULDER_STATUS_CARD = toolCard(buildBoulderStatusCard);
+
 // packages/mpd-roles-plugin/src/complexity-gate.ts
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
 import { join as join5 } from "node:path";
 
 // packages/mpd-roles-plugin/src/admission.ts
 var AUTOMATION_GESTURE_PATTERN = /\b(?:autoproject|auto-project|orchestrate|orchestration)\b|自动化|编排/iu;
-function admissionOf(source, text, evidence = {}) {
-  const body = typeof text === "string" ? text : "";
+function admissionOf(source, text2, evidence = {}) {
+  const body = typeof text2 === "string" ? text2 : "";
   const explicit = evidence.explicitFlag ?? consumeExplicitFlag(body).flagged;
   if (explicit)
     return "explicit";
@@ -2940,33 +3378,33 @@ var CJK_ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.cjkVerbs;
 var GATE_PLAN_NAME_MAX = 60;
 var GATE_PLAN_EXCERPT_MAX = 500;
 var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
-function distinctMatches(text, pattern) {
+function distinctMatches(text2, pattern) {
   const seen = new Set;
-  for (const match of text.matchAll(pattern))
+  for (const match of text2.matchAll(pattern))
     seen.add(match[0].toLowerCase());
   return seen.size;
 }
-function enumeratedLineCount(text) {
+function enumeratedLineCount(text2) {
   let count = 0;
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `))
     if (ENUMERATED_LINE_PATTERN.test(line))
       count += 1;
   return count;
 }
-function clauseStepCount(text, pattern) {
+function clauseStepCount(text2, pattern) {
   let count = 0;
-  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
+  for (const clause of text2.split(CLAUSE_SEPARATOR_PATTERN))
     if (pattern.test(clause))
       count += 1;
   return count;
 }
-function cjkCharCount(text) {
-  const matches = text.match(CJK_CHAR_PATTERN);
+function cjkCharCount(text2) {
+  const matches = text2.match(CJK_CHAR_PATTERN);
   return matches === null ? 0 : matches.length;
 }
-function consumeExplicitFlag(text) {
-  const source = String(text ?? "");
+function consumeExplicitFlag(text2) {
+  const source = String(text2 ?? "");
   const trimmed = source.trimStart();
   const prefix = /^team:\s*/iu.exec(trimmed);
   if (prefix !== null)
@@ -2976,8 +3414,8 @@ function consumeExplicitFlag(text) {
     return { flagged: true, text: source.replace(/(^|\s)!team\b\s*/iu, "$1") };
   return { flagged: false, text: source };
 }
-function evaluateComplexityGate(text, input = {}) {
-  const source = String(text ?? "");
+function evaluateComplexityGate(text2, input = {}) {
+  const source = String(text2 ?? "");
   const thresholds = SENSITIVITY_THRESHOLDS[resolveSensitivity(input.sensitivity)];
   const lexicon = GATE_LEXICONS[thresholds.lexicon];
   const signals = [];
@@ -3077,8 +3515,8 @@ function resolveGateMode(value) {
     return GATE_MODE_OFF;
   return GATE_MODE_MECHANICAL;
 }
-function collapseWhitespace(text) {
-  return String(text ?? "").replace(/\s+/gu, " ").trim();
+function collapseWhitespace(text2) {
+  return String(text2 ?? "").replace(/\s+/gu, " ").trim();
 }
 function gatePlanShell(input) {
   const goal = String(input.goal ?? "");
@@ -3154,7 +3592,7 @@ function applyBoulder(ctx, config = {}) {
     output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a, v) => textBlock("boulder status: " + v.stateFile + `
 active works: ` + JSON.stringify(v.activeWorks, null, 1) + `
 resume: ` + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? `
-plan: ` + JSON.stringify(v.planProgress) : "")) },
+plan: ` + JSON.stringify(v.planProgress) : "")), presentationMeta: BOULDER_STATUS_CARD },
     execute: async (args, exec) => {
       const dir = root(exec);
       const state = readBoulderState(dir);
@@ -3311,8 +3749,8 @@ var ESCALATION_DEFAULTS = {
   ledgerBytesMax: 262144
 };
 var ESCALATE_PREFIX = "autoproject.escalate";
-function escalationReader(live, row) {
-  const block = row !== null && typeof row === "object" ? row : undefined;
+function escalationReader(live, row2) {
+  const block = row2 !== null && typeof row2 === "object" ? row2 : undefined;
   return (key) => {
     try {
       const value = live?.(key);
@@ -3393,12 +3831,12 @@ function evidenceAttribution(entry) {
 function topLevelScope(entries) {
   const trees = [];
   for (const raw of entries) {
-    const text = String(raw ?? "").trim().replace(/^\.\//, "");
-    if (/^(?:[A-Za-z][A-Za-z0-9+.-]*:\/\/|\/|~)/.test(text))
+    const text2 = String(raw ?? "").trim().replace(/^\.\//, "");
+    if (/^(?:[A-Za-z][A-Za-z0-9+.-]*:\/\/|\/|~)/.test(text2))
       continue;
-    if (!text.includes("/"))
+    if (!text2.includes("/"))
       continue;
-    const segment = text.split("/")[0];
+    const segment = text2.split("/")[0];
     if (segment === undefined || segment === "" || segment === "." || segment === "..")
       continue;
     if (!trees.includes(segment))
@@ -3493,8 +3931,8 @@ function declaredScopeOf(value) {
   }
   return declared.length === 0 ? null : declared;
 }
-function isRouteUnconfigured(text) {
-  return /AGENT_UNCONFIGURED|no configured route|UNCONFIGURED/.test(text);
+function isRouteUnconfigured(text2) {
+  return /AGENT_UNCONFIGURED|no configured route|UNCONFIGURED/.test(text2);
 }
 function goalBridgeOf(ctx) {
   return ctx.get?.("mpdGoal");
@@ -3717,9 +4155,9 @@ async function runAutoproject(args, exec, deps) {
   async function consultOnce(role, task, context, signal) {
     const result = await dsh.executeTool({ name: ROLE_SPAWN_TOOL, arguments: { role, task, ...context === undefined || context === "" ? {} : { context } }, agent: exec?.agent, signal });
     if (result?.ok !== true || result.isError === true) {
-      const text = errorTextOf2(result?.error ?? "the role-spawn call did not report ok");
-      stamp(isRouteUnconfigured(text) ? "route-unconfigured:" + role : "child-degraded:" + role, "skipped", text);
-      dsh.rowLog?.(ROW_LOG2, "consult " + role + " degraded: " + text);
+      const text2 = errorTextOf2(result?.error ?? "the role-spawn call did not report ok");
+      stamp(isRouteUnconfigured(text2) ? "route-unconfigured:" + role : "child-degraded:" + role, "skipped", text2);
+      dsh.rowLog?.(ROW_LOG2, "consult " + role + " degraded: " + text2);
       return null;
     }
     const value = result.value ?? {};
@@ -4050,9 +4488,9 @@ verify: ` + refusal + " — no PASS record exists for " + verifyLoopId + ", so t
       const report = reviews[index] ?? null;
       return { lane, verdict: recommendationVerdict(report?.recommendation ?? "") === "PASS" ? "PASS" : "FAIL", evidence: report?.summary || report?.details || "no report" };
     });
-    for (const row of gateLedger)
-      stamp("quality-" + row.lane, row.verdict, row.evidence);
-    if (gateLedger.some((row) => row.verdict === "FAIL")) {
+    for (const row2 of gateLedger)
+      stamp("quality-" + row2.lane, row2.verdict, row2.evidence);
+    if (gateLedger.some((row2) => row2.verdict === "FAIL")) {
       status = "blocked";
       finalReport += `
 quality gate: a lane FAILED`;
@@ -4125,21 +4563,21 @@ function claimGesture(messages) {
   for (const message of messages) {
     if (message?.role !== "user")
       continue;
-    const text = messageText(message);
-    if (text === undefined)
+    const text2 = messageText(message);
+    if (text2 === undefined)
       continue;
-    const match = GESTURE_PATTERN.exec(text.trim());
+    const match = GESTURE_PATTERN.exec(text2.trim());
     if (match !== null)
-      return { message, text, match };
+      return { message, text: text2, match };
   }
   return;
 }
-function rewriteMessageText(message, text) {
+function rewriteMessageText(message, text2) {
   const content = Array.isArray(message?.content) ? message.content : [];
   const at = content.findIndex((block) => block?.type === "text");
   if (at < 0)
     return message;
-  return { ...message, content: content.map((block, index) => index === at ? { ...block, text } : block) };
+  return { ...message, content: content.map((block, index) => index === at ? { ...block, text: text2 } : block) };
 }
 var CONFIG_SERVICE = "mpdConfig";
 var TEAMS_SERVICE = "mpdTeams";

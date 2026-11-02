@@ -1015,6 +1015,39 @@ function createDshAdapter(ctx, config = {}) {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
   }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
+  }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
   function warnLlmCatalogOnce(detail) {
@@ -1679,6 +1712,55 @@ function createDshAdapter(ctx, config = {}) {
         bridge.refresh(id);
       } catch {}
     },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
+    },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
     },
@@ -2207,6 +2289,391 @@ function probeMpdDsh(ctx, strict) {
   }
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function callout(value, props = {}) {
+  return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-memory-plugin/src/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
+}
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function tail(value, max) {
+  return value.length <= max ? value : "…" + value.slice(value.length - (max - 1));
+}
+function buildMemoryWriteCard(_args, value) {
+  const v = recordOf(value);
+  const committedTo = Array.isArray(v.committedTo) ? v.committedTo.map(String) : [];
+  const errors = Array.isArray(v.errors) ? v.errors.map(String).filter((line) => line !== "") : [];
+  const reflectionDue = v.reflectionDue === true;
+  const children = [
+    row([
+      metric({ label: "Scope", value: stringOf(v.scope, "workspace") }),
+      metric({ label: "Reflection", value: reflectionDue ? "due" : "not due", tone: reflectionDue ? "warn" : "muted" })
+    ]),
+    keyValue([
+      ["File", tail(stringOf(v.file, "(unknown)"), 80)],
+      ["VCS", stringOf(v.vcs, "git")],
+      ["Committed to", committedTo.length === 0 ? "none" : committedTo.join(", ")]
+    ])
+  ];
+  if (errors.length > 0)
+    children.push(callout(clip("commit failed: " + errors.join("; "), 400), { tone: "warn" }));
+  return stack(children, { title: "Memory written" });
+}
+function buildMemoryReadCard(_args, value) {
+  const v = recordOf(value);
+  const entries = recordsAt(v, "entries");
+  const nextOffset = v.next_offset === null || v.next_offset === undefined ? "end" : String(v.next_offset);
+  const children = [
+    row([
+      metric({ label: "Matched", value: numberOf(v.count) }),
+      metric({ label: "Returned", value: numberOf(v.returned) }),
+      metric({ label: "Next offset", value: nextOffset })
+    ])
+  ];
+  if (entries.length === 0) {
+    children.push(text("No memory entries matched."));
+  } else {
+    children.push(table({
+      columns: ["Kind", "Description"],
+      rows: entries.slice(0, 20).map((entry) => [clip(stringOf(entry.kind, "note"), 12), clip(stringOf(entry.description, "(untitled)"), 80)])
+    }));
+  }
+  return stack(children, { title: "Memory entries" });
+}
+function buildMemoryStatusCard(_args, value) {
+  const v = recordOf(value);
+  const reflection = recordOf(v.reflection);
+  const reflectionsCompleted = numberOf(reflection.reflectionsCompleted);
+  const stepsSince = numberOf(reflection.stepsSinceReflection);
+  const children = [
+    row([
+      metric({ label: "Entries", value: numberOf(v.entries) }),
+      metric({ label: "Journal lines", value: numberOf(v.journalLines) }),
+      metric({ label: "Reflections", value: reflectionsCompleted })
+    ]),
+    keyValue([
+      ["VCS", stringOf(v.vcs, "git")],
+      ["Scope", stringOf(v.scope, "workspace")],
+      ["Root", tail(stringOf(v.root, "(unknown)"), 80)],
+      ["Steps since reflection", stepsSince]
+    ])
+  ];
+  return stack(children, { title: "Memory status" });
+}
+var MEMORY_WRITE_CARD = toolCard(buildMemoryWriteCard);
+var MEMORY_READ_CARD = toolCard(buildMemoryReadCard);
+var MEMORY_STATUS_CARD = toolCard(buildMemoryStatusCard);
+
 // packages/mpd-memory-plugin/src/store.ts
 import { existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, appendFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -2550,9 +3017,9 @@ function planDigest(context, event) {
     digest.tasks = capList(staged.map((task) => textOf(task?.subject)).filter((title) => title !== ""), 12);
     digest.scopes = capList(uniqueStrings(staged.flatMap((task) => Array.isArray(task?.writeScopes) ? task.writeScopes.map(textOf) : [])), 20);
     const unresolved = Array.isArray(plan.value?.created?.unresolved) ? plan.value.created.unresolved : [];
-    for (const row of unresolved) {
-      const taskId = textOf(row?.taskId);
-      const references = Array.isArray(row?.references) ? row.references.map(textOf).filter((r) => r !== "") : [];
+    for (const row2 of unresolved) {
+      const taskId = textOf(row2?.taskId);
+      const references = Array.isArray(row2?.references) ? row2.references.map(textOf).filter((r) => r !== "") : [];
       if (taskId !== "" && references.length > 0)
         digest.open.push("unresolved blocker reference(s) on " + taskId + ": " + references.join(", "));
     }
@@ -2641,9 +3108,9 @@ function proofLines(workspace) {
   return { lines, unreadable };
 }
 function planItems(planPath) {
-  let text;
+  let text2;
   try {
-    text = readFileSync3(planPath, "utf8");
+    text2 = readFileSync3(planPath, "utf8");
   } catch {
     return;
   }
@@ -2652,7 +3119,7 @@ function planItems(planPath) {
   let section = "other";
   let structured = false;
   let fence = "";
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     const opener = FENCE_OPEN.exec(line);
     if (opener !== null) {
@@ -2789,8 +3256,8 @@ function capList(items, max) {
 function slugForFile(key) {
   return key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "project";
 }
-function shortHash(text) {
-  return createHash("sha1").update(text).digest("hex").slice(0, 8);
+function shortHash(text2) {
+  return createHash("sha1").update(text2).digest("hex").slice(0, 8);
 }
 
 // packages/mpd-memory-plugin/src/index.ts
@@ -2858,7 +3325,7 @@ function apply(ctx, config = {}) {
     name: "mpd_memory_write",
     description: `Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. scope:"workspace" (default, this agent's store) or "global" (the shared ~/.mpd/memory store, guarded: a global write is refused when its root is not inside the sandbox $HOME of an isolated boot, and it never advances the per-agent reflection counter). A workspace write increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.`,
     parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store this entry belongs to; workspace is the default." } }, required: ["title", "content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")") },
+    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")"), presentationMeta: MEMORY_WRITE_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
       const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
@@ -2913,7 +3380,7 @@ function apply(ctx, config = {}) {
     parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 50, description: "Page size; clamped to 1..50, default 20." }, offset: { type: "integer", minimum: 0, description: "Page start in the matched set; default 0. Pass the previous answer's next_offset to continue." }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store to read; workspace is the default." } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" }, offset: { type: "integer" }, returned: { type: "integer" }, next_offset: { oneOf: [{ type: "integer" }, { type: "null" }] }, scope: { type: "string" } }, required: ["entries", "count"] }, render: (_a, v) => textBlock("memory entries: " + v.count + " total, offset=" + v.offset + " returned=" + v.returned + " next=" + (v.next_offset === null ? "end" : v.next_offset) + `
 ` + v.entries.map((e) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join(`
-`)) },
+`)), presentationMeta: MEMORY_READ_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
       const memoryDir = scope === "global" ? globalDirs(cfg).memoryDir : ensureDirs(cfg, dsh.workspaceRoot(exec)).memoryDir;
@@ -2988,7 +3455,7 @@ REFLECTION DUE` : "")) },
     description: `Show memory engine status: vcs mode, store root, entry count, journal line count, reflection counters. scope:"workspace" (default) reports this agent's store, "global" the shared ~/.mpd/memory store (whose reflection counters are still the agent's own, because reflection is workspace-scoped).`,
     parameters: { type: "object", properties: { scope: { type: "string", enum: ["workspace", "global"], description: "Which store to report; workspace is the default." } } },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" }, scope: { type: "string" } }, required: ["vcs", "root", "entries"] }, render: (_a, v) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + `
-reflection: ` + JSON.stringify(v.reflection)) },
+reflection: ` + JSON.stringify(v.reflection)), presentationMeta: MEMORY_STATUS_CARD },
     execute: async (args, exec) => {
       const scope = scopeOf(args);
       if (scope === "global") {

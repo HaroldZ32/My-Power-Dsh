@@ -1079,6 +1079,39 @@ function createDshAdapter(ctx, config = {}) {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
   }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
+  }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
   function warnLlmCatalogOnce(detail) {
@@ -1743,6 +1776,55 @@ function createDshAdapter(ctx, config = {}) {
         bridge.refresh(id);
       } catch {}
     },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
+    },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
     },
@@ -2271,6 +2353,365 @@ function probeMpdDsh(ctx, strict) {
   }
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-workmate-plugin/src/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
+}
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function buildWorkmateListCard(_args, value) {
+  const v = recordOf(value);
+  const workmates = recordsAt(v, "workmates");
+  const readonlyCount = workmates.filter((w) => w.readonly === true).length;
+  const totalUses = workmates.reduce((sum, w) => sum + numberOf(w.uses), 0);
+  const children = [
+    row([
+      metric({ label: "Workmates", value: workmates.length }),
+      metric({ label: "Readonly", value: readonlyCount }),
+      metric({ label: "Total uses", value: totalUses })
+    ])
+  ];
+  if (workmates.length === 0) {
+    children.push(text("No workmates in the library."));
+  } else {
+    children.push(table({
+      columns: ["Name", "Base", "Uses"],
+      rows: workmates.slice(0, 20).map((w) => [clip(stringOf(w.name, "?"), 40), clip(stringOf(w.baseName, "?"), 24), numberOf(w.uses)])
+    }));
+  }
+  return stack(children, { title: "Workmates" });
+}
+function buildWorkmateMatchCard(_args, value) {
+  const v = recordOf(value);
+  const matches = recordsAt(v, "matches");
+  const matched = v.matched === true;
+  const threshold = numberOf(v.threshold);
+  const suggestion = stringOf(v.suggestion, "");
+  const children = [
+    row([
+      metric({ label: "Matched", value: matched ? "yes" : "no", tone: matched ? "good" : "muted", caption: "threshold " + threshold }),
+      metric({ label: "Candidates", value: matches.length })
+    ])
+  ];
+  if (matches.length === 0) {
+    children.push(text("No workmate note was scored."));
+  } else {
+    children.push(table({
+      columns: ["Name", "Score", "Base", "Uses"],
+      rows: matches.slice(0, 10).map((m) => [clip(stringOf(m.name, "?"), 32), numberOf(m.score), clip(stringOf(m.baseName, "?"), 20), numberOf(m.uses)])
+    }));
+  }
+  if (suggestion !== "")
+    children.push(text(clip(suggestion, 300)));
+  return stack(children, { title: "Workmate match" });
+}
+var WORKMATE_LIST_CARD = toolCard(buildWorkmateListCard);
+var WORKMATE_MATCH_CARD = toolCard(buildWorkmateMatchCard);
+
 // packages/mpd-workmate-plugin/src/index.ts
 var name = "mpd-workmate";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
@@ -2352,27 +2793,27 @@ function wmDir(name2) {
   return join2(workmateRoot(), key);
 }
 function workmateKeyFromLabel(label) {
-  const text = typeof label === "string" ? label : "";
-  if (text === "")
+  const text2 = typeof label === "string" ? label : "";
+  if (text2 === "")
     return null;
-  return sanitizeName(text) === text ? text : null;
+  return sanitizeName(text2) === text2 ? text2 : null;
 }
 function sanitizeName(s) {
   const t = String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
   return t;
 }
-function capText(text, max) {
-  if (text.length <= max)
-    return text;
+function capText(text2, max) {
+  if (text2.length <= max)
+    return text2;
   const marker = `
-…[truncated ${text.length - max} chars]…
+…[truncated ${text2.length - max} chars]…
 `;
   if (marker.length >= max)
-    return text.slice(0, Math.max(0, max));
+    return text2.slice(0, Math.max(0, max));
   const budget = max - marker.length;
   const head = Math.floor(budget * 0.75);
   const tail = budget - head;
-  return text.slice(0, head) + marker + text.slice(-tail);
+  return text2.slice(0, head) + marker + text2.slice(-tail);
 }
 function readMeta(dir) {
   try {
@@ -2576,12 +3017,12 @@ function nextFreeRevision(dir, from) {
   }
   throw new Error("mpd_workmate: this workmate's persona version history is corrupt (no free revision number below 100000)");
 }
-function writePersonaVersion(dir, revision, text) {
+function writePersonaVersion(dir, revision, text2) {
   mkdirSync2(versionsDir(dir), { recursive: true });
   const path = join2(versionsDir(dir), revision + ".md");
   if (existsSync(path))
     throw new Error("mpd_workmate: persona revision " + revision + " already exists and is never overwritten");
-  writeFileSync(path, text + `
+  writeFileSync(path, text2 + `
 `);
 }
 function personaRecordOf(dir, meta, currentBase) {
@@ -2890,11 +3331,11 @@ function deleteWorkmate(nameArg, purgeArg, confirmArg, teamRoots) {
 var MERGE_THRESHOLD = 0.6;
 var MERGE_TAG_THRESHOLD = 0.5;
 var MERGE_RECORD_VERSION = 1;
-function sha256Of(text) {
-  return createHash("sha256").update(text, "utf8").digest("hex");
+function sha256Of(text2) {
+  return createHash("sha256").update(text2, "utf8").digest("hex");
 }
-function memoryBlocksOf(text) {
-  return String(text ?? "").split(/\n## /).map((block, index) => index === 0 ? block : "## " + block).map((block) => block.trim()).filter((block) => block !== "");
+function memoryBlocksOf(text2) {
+  return String(text2 ?? "").split(/\n## /).map((block, index) => index === 0 ? block : "## " + block).map((block) => block.trim()).filter((block) => block !== "");
 }
 function tagsOf(note, baseName) {
   return new Set(unique(tokenize(note + " " + baseName)));
@@ -3025,28 +3466,28 @@ merged-from: ` + fromKey, PERSONA_CAP);
 }
 function optimizeWorkmates(options = {}) {
   const plan = planWorkmateMerges({ ...options.mergeThreshold === undefined ? {} : { mergeThreshold: options.mergeThreshold }, ...options.pairs === undefined ? {} : { pairs: options.pairs }, ...options.teamRoots === undefined ? {} : { teamRoots: options.teamRoots } });
-  const skipped = plan.filter((row) => !row.mergeable).map((row) => ({ from: row.from, into: row.into, reason: row.reason ?? "refused" }));
+  const skipped = plan.filter((row2) => !row2.mergeable).map((row2) => ({ from: row2.from, into: row2.into, reason: row2.reason ?? "refused" }));
   const apply = options.confirm === true && options.dryRun !== true;
   if (!apply)
     return { plan, applied: [], skipped };
   assertMutationSandboxed("merge workmates");
   const applied = [];
-  for (const row of plan) {
-    if (!row.mergeable)
+  for (const row2 of plan) {
+    if (!row2.mergeable)
       continue;
     try {
-      assertNotBusy([row.from, row.into], options.teamRoots);
-      applied.push({ from: row.from, into: row.into, archive: mergeOneWorkmate(row.from, row.into) });
+      assertNotBusy([row2.from, row2.into], options.teamRoots);
+      applied.push({ from: row2.from, into: row2.into, archive: mergeOneWorkmate(row2.from, row2.into) });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      skipped.push({ from: row.from, into: row.into, reason: "failed: " + message });
+      skipped.push({ from: row2.from, into: row2.into, reason: "failed: " + message });
     }
   }
   return { plan, applied, skipped };
 }
 function renderOptimizeTable(result) {
   const head = result.applied.length > 0 ? "workmate merge — APPLIED " + result.applied.length + " pair(s)" : "workmate merge — DRY RUN (nothing written)";
-  const rows = result.plan.length === 0 ? ["  (nothing to merge: no base group carries two instances and no pair was named)"] : result.plan.map((row) => "  " + row.from + " -> " + row.into + "  score=" + row.score.toFixed(2) + " jaccard=" + row.jaccard.toFixed(2) + "  " + (row.mergeable ? result.applied.some((entry) => entry.from === row.from) ? "MERGED" : "MERGE" : "skip:" + String(row.reason)));
+  const rows = result.plan.length === 0 ? ["  (nothing to merge: no base group carries two instances and no pair was named)"] : result.plan.map((row2) => "  " + row2.from + " -> " + row2.into + "  score=" + row2.score.toFixed(2) + " jaccard=" + row2.jaccard.toFixed(2) + "  " + (row2.mergeable ? result.applied.some((entry) => entry.from === row2.from) ? "MERGED" : "MERGE" : "skip:" + String(row2.reason)));
   const tail = result.applied.length > 0 ? ["archived: " + result.applied.map((entry) => entry.archive).join(", ")] : ["re-run with confirm:true to apply (mpd_workmate_optimize {confirm:true} or /workmate-optimize confirm)"];
   return [head, ...rows, ...tail].join(`
 `);
@@ -3278,7 +3719,7 @@ function apply(ctx) {
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a, v) => textBlock("workmates (" + v.count + `):
 ` + v.workmates.map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " rev=" + w.personaRevision + (w.defaultUpdated ? " default-updated:" + w.baseDriftLines + "L" : w.baseDriftUnknown ? " default-unverified" : "") + " :: " + String(w.note).slice(0, 140)).join(`
-`) || "(empty)") },
+`) || "(empty)"), presentationMeta: WORKMATE_LIST_CARD },
     execute: async () => {
       const list = listInstances().map(({ name: name2, meta, note }) => {
         const base = currentBaseTextOf(meta);
@@ -3460,7 +3901,7 @@ ${capText(outcome, 1200)}`);
     output: { schema: { type: "object", properties: { matched: { type: "boolean" }, threshold: { type: "number" }, matches: { type: "array", items: { type: "object" } }, suggestion: { type: "string" } }, required: ["matched", "threshold", "matches"], additionalProperties: false }, render: (_a, v) => textBlock((v.matched ? "MATCHED" : "NO MATCH (threshold " + v.threshold + ")") + `
 ` + v.matches.map((m) => "- " + m.name + " score=" + m.score.toFixed(2) + " [" + m.baseName + "] :: " + String(m.note).slice(0, 120)).join(`
 `) + (v.suggestion ? `
-` + v.suggestion : "")) },
+` + v.suggestion : "")), presentationMeta: WORKMATE_MATCH_CARD },
     execute: async (args) => {
       const task = String(args?.task ?? "").trim();
       if (!task)
