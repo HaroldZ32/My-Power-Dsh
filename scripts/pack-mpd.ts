@@ -32,6 +32,12 @@ interface RootManifest {
    * package declared here can never be dropped from the artifact again.
    */
   readonly optionalDependencies?: Record<string, string>
+  /**
+   * The DSH Go native-panel declaration. COPIED into the packed manifest verbatim: every path it
+   * carries (`view: "./dsh-go/views/mpd.json"`) is package-root-relative, i.e. the SAME path inside
+   * the artifact, so it needs no rewriting and ships with the tree it points at.
+   */
+  readonly dshGo?: unknown
 }
 
 /** One patch file the root manifest declares, in the two spellings the packer needs. */
@@ -102,6 +108,8 @@ interface PackedManifest {
       platform: string
     }
   }
+  /** The DSH Go native-panel declaration, mirrored verbatim from the root manifest (absent when it declares none). */
+  dshGo: unknown
   /** Third-party runtime plugin dependencies a loader row mounts, materialized by the boot fallback. */
   dependencies: Record<string, string>
   /** Toolchain binaries the consumer installs separately from this package. */
@@ -305,9 +313,20 @@ const PLUGIN_PKGS: readonly string[] = [
  * living-graph wave left it out and the closure gate reddened on exactly that file (measured
  * 2026-10-19: `packages/mpd-graph-core/dist/index.js … the packed tree has NO counterpart`). Shipping
  * its dist is the whole fix. A package that owns NO dist belongs in `SOURCE_PKGS` instead.
+ * `mpd-mail-protocol` joined on 2026-11-02 in exactly this shape: a protocol library with a tracked
+ * dist and no patch row (see its entry for the measured closure failure).
  */
 const INLINED_PKGS: readonly string[] = [
   "mpd-graph-core",
+  // mpd-mail-protocol is the agent-to-agent mailbox PROTOCOL library (fold/validate/types) the
+  // mail-consuming plugins import; NO patch row mounts it, so it is correctly absent from
+  // PLUGIN_PKGS — but its built `dist/` is a shipped tree file all the same. It joined this list
+  // only on 2026-11-02: the package and its tracked dist were committed by 41c5706f with no packer
+  // entry, so `verify-pack-closure.ts`'s dist contract reddened on
+  // `packages/mpd-mail-protocol/dist/index.js` ("the packed tree has NO counterpart") while the pack
+  // itself exited 0 — a PRE-EXISTING instance of the omission class this list exists to close, not a
+  // defect this wave introduced. Shipping its dist is the whole fix.
+  "mpd-mail-protocol",
 ]
 
 /** The MCP server packages whose launcher modules and assets ship in the packed tree. */
@@ -465,6 +484,10 @@ const ROOT_FILES: readonly string[] = [
   "CONTRIBUTING.zh-CN.md",
   "CHANGELOG.md",
   "EXTENSIONS-FOR-AGENTS.md",
+  // The DSH Go static view is a ROOT DIRECTORY, not a file: `package.json`'s `files` admits the bare
+  // `dsh-go` and the `dshGo` panel points at `./dsh-go/views/mpd.json`, so the anchor names the
+  // directory and the copy above carries its whole tree into the artifact.
+  "dsh-go",
 ]
 
 // The packed CLI's compiled-validator entry. `scripts/mpd-ext.ts` shares ONE validator with the
@@ -593,10 +616,17 @@ function cpAssets(): void {
   /** The declared root assets that failed to arrive, so ONE message names them all. */
   const absentRoot: string[] = []
   for (const f of ROOT_DECLARED.files) {
-    /** One declared root file in this checkout. */
+    /** One declared root entry in this checkout — usually a FILE, but `files` may admit a directory. */
     const from = join(repoRoot, f)
     if (!existsSync(from)) { absentRoot.push(f); continue }
-    cpSync(from, join(outDir, f))
+    // A declared root entry is not necessarily a file: `files` admits the bare `dsh-go` directory so
+    // the DSH Go static view ships, and `cpSync` WITHOUT `recursive` throws ERR_FS_EISDIR on a
+    // directory (measured 2026-11-02: the pack aborted here on `dsh-go/` while every earlier
+    // single-file entry worked). The stat picks the shape; the file arm is the call it always was.
+    /** Whether this entry is a directory the copy must walk, rather than a single file. */
+    const isDirectory = statSync(from).isDirectory()
+    if (isDirectory) cpSync(from, join(outDir, f), { recursive: true })
+    else cpSync(from, join(outDir, f))
   }
   for (const pattern of ROOT_DECLARED.patterns) {
     /** The directory half of a `<dir>/*.<ext>` entry. */
@@ -1001,7 +1031,12 @@ function writeManifest(): void {
     dependencies: { ...PACK_THIRD_PARTY_DEPENDENCIES },
     // Toolchain binaries: the packer's pack-only additions ON TOP of the root's own declaration
     // (PACK_ONLY_OPTIONAL_DEPENDENCIES states why these two are not in the root manifest).
-    optionalDependencies: { ...(root.optionalDependencies ?? {}), ...PACK_ONLY_OPTIONAL_DEPENDENCIES }
+    optionalDependencies: { ...(root.optionalDependencies ?? {}), ...PACK_ONLY_OPTIONAL_DEPENDENCIES },
+    // The DSH Go native-panel declaration travels with the artifact for the same reason every other
+    // root-level field here does: the packed manifest IS the declaration an installer reads, so a
+    // block the root manifest carries and this writer omits would simply not exist after install
+    // (the `dshGo.view` path it names is already copied verbatim by cpAssets()).
+    dshGo: root.dshGo
   }
   writeFileSync(join(outDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
   // The arm runs AFTER the write on purpose: it reads the packed manifest back off the same fields

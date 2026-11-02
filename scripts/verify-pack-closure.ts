@@ -396,15 +396,26 @@ const ROOT_ASSET_KIND: Record<string, string> = { templates: "TEMPLATES", docs: 
 // is DELETED with the body it described (de-vendor wave), so a boot can no longer be debugged
 // against it and naming it here would be a permanent red.
 const REQUIRED_REFERENCE_FILES: readonly string[] = ["index.md", "troubleshooting.md"]
-// Root FILES that must ship by NAME (not by directory). Same shape as the reference list above
-// and for a sharper reason: the manifest arm below is DECLARATION-DRIVEN — a file present but
-// unlisted is loud, a pattern listed but absent is loud, and a file declared NOWHERE is invisible
-// by construction. A `files[]` entry alone would therefore make a future REMOVAL loud but never a
-// future ADDITION-omission, which is exactly the shape that shipped an artifact whose own README,
-// docs/index.md and extension authoring guide linked by relative path to a file it did not carry
-// (T-70: ten such links across six shipped files). This list is the source-side expectation, and
-// `scripts/pack-mpd.ts` carries the matching ROOT_FILES table the static half compares it to.
-const REQUIRED_ROOT_FILES: readonly string[] = ["EXTENSIONS-FOR-AGENTS.md"]
+// Root ENTRIES that must ship by NAME — a plain file, or a DIRECTORY whose whole tree must ship.
+// Same shape as the reference list above and for a sharper reason: the manifest arm below is
+// DECLARATION-DRIVEN — a file present but unlisted is loud, a pattern listed but absent is loud, and
+// a file declared NOWHERE is invisible by construction. A `files[]` entry alone would therefore make
+// a future REMOVAL loud but never a future ADDITION-omission, which is exactly the shape that shipped
+// an artifact whose own README, docs/index.md and extension authoring guide linked by relative path
+// to a file it did not carry (T-70: ten such links across six shipped files). This list is the
+// source-side expectation, and `scripts/pack-mpd.ts` carries the matching ROOT_FILES table the
+// static half compares it to.
+const REQUIRED_ROOT_FILES: readonly string[] = [
+  "EXTENSIONS-FOR-AGENTS.md",
+  // The DSH Go static panel is a ROOT DIRECTORY, not a file: `package.json`'s `dshGo.view` points at
+  // `./dsh-go/views/mpd.json`, and the packer's ROOT_FILES names the bare `dsh-go` so cpAssets() ships
+  // its whole tree. Naming it HERE is what makes the gate BYTE-CHECK the view instead of trusting the
+  // copy: the byte rules below stat-walk a directory entry file by file, so a missing or altered
+  // `views/mpd.json` is a named failure rather than an invisible one (the file-name rules cannot see a
+  // file that never arrived). Measured 2026-11-02: the packed copy was anchored by name but byte-checked
+  // by NOBODY, so an edit between the pack and the install would have shipped with no reading at all.
+  "dsh-go",
+]
 /** Finding kind of a named ROOT FILE the artifact must carry (T-70). */
 const ROOT_FILE_KIND: string = "ROOT-FILE"
 
@@ -558,6 +569,21 @@ function treeFiles(root: string): string[] {
   }
   if (existsSync(root)) walk(root, "")
   return out.sort()
+}
+
+/**
+ * Whether a named root ENTRY is really there. Two shapes arrive in `REQUIRED_ROOT_FILES`: a plain
+ * FILE (`EXTENSIONS-FOR-AGENTS.md`) and a DIRECTORY (`dsh-go`, whose `views/mpd.json` the packed
+ * `dshGo` panel serves). An absent path is not present, and neither is a directory holding no files:
+ * `existsSync` alone would count an empty tree as shipped content, and `readFileSync` on a directory
+ * throws EISDIR instead of answering the question.
+ *
+ * @param abs Absolute path of the entry, in the source tree the packer copies from or in the artifact.
+ * @returns true when the entry exists and, for a directory, holds at least one file.
+ */
+function rootEntryPresent(abs: string): boolean {
+  if (!existsSync(abs)) return false
+  return !statSync(abs).isDirectory() || treeFiles(abs).length > 0
 }
 
 /** `a/b.zh-CN.md` <-> `a/b.md`; undefined for a file that carries no language suffix rule. */
@@ -793,16 +819,36 @@ function checkContentHalf(opts: Options, findings: Finding[], asked: AskedAssets
     }
   }
 
-  // (d) the named ROOT FILES (t9-R1 repair): the byte claim is CLASSIFIED here, next to the trees and
+  // (d) the named ROOT ENTRIES (t9-R1 repair): the byte claim is CLASSIFIED here, next to the trees and
   //     `packages/**`, so a drift caused by a POST-PACK WRITER is the provenance-named EXPECTED reading
   //     instead of a bare red with no writer named. The EXISTENCE half stays in the packed half
-  //     (rule 5b) — a root file missing from the artifact is still a hard finding there.
+  //     (rule 5b) — a root entry missing from the artifact is still a hard finding there.
   for (const file of REQUIRED_ROOT_FILES) {
-    /** The required root file's absolute source path. */
+    /** The required root entry's absolute source path. */
     const srcAbs = join(opts.sourceRoot, file)
-    /** The required root file's absolute artifact path. */
+    /** The required root entry's absolute artifact path. */
     const artAbs = join(packed, file)
     if (!existsSync(srcAbs) || !existsSync(artAbs)) continue
+    // A required entry is USUALLY one file, but `dsh-go` is a DIRECTORY: `readFileSync` on it throws
+    // EISDIR (measured 2026-11-02 — the gate died at `node:fs:797` the moment the entry was named), so
+    // the SHAPE decides the walk. A directory is compared file by file exactly like a ROOT_ASSET_DIRS
+    // tree, which is what makes the packed `views/mpd.json` a byte-checked file rather than an anchor.
+    if (statSync(srcAbs).isDirectory()) {
+      /** The artifact's files under this required directory entry. */
+      const shipped = new Set(treeFiles(artAbs))
+      for (const rel of treeFiles(srcAbs)) {
+        /** The inner file's packed-relative path, anchored at the required entry. */
+        const relPath = file + "/" + rel
+        if (!shipped.has(rel)) {
+          requireCounterpart(relPath, join(srcAbs, rel), "REQUIRED_ROOT_FILES:" + file)
+          continue
+        }
+        completeness.compared += 1
+        completeness.present += 1
+        compareBytes(relPath, join(srcAbs, rel), join(artAbs, rel), ROOT_FILE_KIND)
+      }
+      continue
+    }
     compareBytes(file, srcAbs, artAbs, ROOT_FILE_KIND)
   }
 
@@ -954,21 +1000,25 @@ function checkPackedHalf(opts: Options, findings: Finding[], asked: AskedAssets)
   }
   stats.referenceFiles = REQUIRED_REFERENCE_FILES.filter((file: string): boolean => existsSync(join(packed, "agent-references", file))).length
 
-  // 5b. the named ROOT FILES: EXISTENCE here; BYTE equality is owned by the content sweep (rule 7d),
+  // 5b. the named ROOT ENTRIES: EXISTENCE here; BYTE equality is owned by the content sweep (rule 7d),
   // because only that engine holds the artifact's stamp and can tell a POST-PACK WRITER from a genuine
   // mismatch. Before the t9-R1 repair the byte half lived here and hard-reddened with no writer named —
   // measured: `ROOT-FILE … EXTENSIONS-FOR-AGENTS.md` went red for t25's 07:43:40Z rewrite against the
   // 05:19:48Z artifact, i.e. a legitimate in-flight state with no provenance. The list lives in the GATE
   // rather than being derived from the packer, precisely because a file nobody declared has to be
   // expected from the source side before the artifact can be asked for it (T-70).
+  // An entry may be a DIRECTORY (`dsh-go`): it is accepted on arrival, but only when it is NON-EMPTY —
+  // a packed empty tree serves nothing, and the per-file walk in rule 7d is what then checks its bytes.
   for (const file of REQUIRED_ROOT_FILES) {
-    /** The root file's path inside the artifact. */
+    /** The root entry's path inside the artifact. */
     const packedFile = join(packed, file)
     if (!existsSync(packedFile)) {
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree does not carry " + file + " - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)" })
+    } else if (!rootEntryPresent(packedFile)) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packed tree carries " + file + " but it is an EMPTY directory - a shipped tree with no files serves nothing, and the entry is required by name (T-70)" })
     }
   }
-  stats.rootFiles = REQUIRED_ROOT_FILES.filter((file: string): boolean => existsSync(join(packed, file))).length
+  stats.rootFiles = REQUIRED_ROOT_FILES.filter((file: string): boolean => rootEntryPresent(join(packed, file))).length
 
   // 5c. EVERY DECLARED PACKAGE DIRECTORY must be present in the artifact with at least one file.
   // The static half asserts these entries against the SOURCE, and every other packed rule is
@@ -1139,8 +1189,8 @@ function runCheck(opts: Options): CheckReport {
     if (rootFiles !== null && !rootFiles.includes(file)) {
       findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the packer's ROOT_FILES does not name `" + file + "` - the artifact would omit it while its own shipped README/docs link to it by relative path (T-70)" })
     }
-    if (!existsSync(join(opts.sourceRoot, file))) {
-      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the artifact must ship " + file + " but the tree it copies from has no such file" })
+    if (!rootEntryPresent(join(opts.sourceRoot, file))) {
+      findings.push({ kind: ROOT_FILE_KIND, packages: [], detail: "the artifact must ship " + file + " but the tree it copies from has no such file, or carries it as an EMPTY directory" })
     }
   }
 
@@ -1607,6 +1657,37 @@ function selfTest(): number {
       const fRoot = join(scratch, "packer-without-root-file.mjs")
       writeFileSync(fRoot, keptRoot.join("\n"))
       arm("negative-control (packer ROOT_FILES drops the file, exit 1)", runChecker(["--packer", fRoot]), (c: ChildResult): boolean => c.status === 1 && c.all.includes(ROOT_FILE_KIND) && /does not name/.test(c.all))
+    }
+
+    // Arm 14b — the DIRECTORY class of a required root entry (`dsh-go`). The fixture builds every entry
+    // as a plain file, so this arm re-shapes ONE entry into a tree on both sides and drops a single inner
+    // file from the artifact: the presence rule 5b must stay GREEN (the directory is non-empty) while the
+    // byte walk names the file that never arrived. That is the direction the anchor alone could not prove —
+    // "a packed tree missing a file inside a required directory entry reddens the gate".
+    /** The required root entry whose REAL source shape is a directory — derived, never hard-coded here. */
+    const dirEntry = REQUIRED_ROOT_FILES.find((entry: string): boolean => existsSync(join(repoRoot, entry)) && statSync(join(repoRoot, entry)).isDirectory())
+    if (dirEntry === undefined) {
+      arms.push({ name: "negative-control fixture (required directory entry)", ok: false, exitCode: null, firstLine: "no REQUIRED_ROOT_FILES entry is a directory in " + repoRoot + " - the directory class would go unexercised" })
+    } else {
+      /** The inner file the fixture's artifact copy will lack. */
+      const dirInner = "views/mpd.json"
+      rmSync(join(fxSource, dirEntry), { force: true })
+      put(fxSource, dirEntry + "/" + dirInner, "{}\n")
+      // The source file must PREDATE the artifact stamp: a file written after the pack is the EXPECTED
+      // class, and the arm would then measure the clock instead of the directory walk.
+      /** The inner source file whose mtime is backdated below the fixture pack's stamp. */
+      const dirInnerAbs = join(fxSource, dirEntry, dirInner)
+      /** One hour in the past, i.e. strictly before the fixture's artifact. */
+      const dirBackdate = new Date(Date.now() - 3_600_000)
+      utimesSync(dirInnerAbs, dirBackdate, dirBackdate)
+      rmSync(join(fxPacked, dirEntry), { force: true })
+      put(fxPacked, dirEntry + "/views/other.json", "{}\n")
+      arm("negative-control (packed tree misses a file inside a required directory entry, exit 1)", runChecker(fixtureArgs), (c: ChildResult): boolean => c.status === 1 && c.all.includes(COMPLETENESS_KIND) && c.all.includes(dirEntry + "/" + dirInner))
+      // Restore the plain-file shape every arm below expects from buildPacked().
+      rmSync(join(fxSource, dirEntry), { recursive: true, force: true })
+      rmSync(join(fxPacked, dirEntry), { recursive: true, force: true })
+      put(fxSource, dirEntry, "# fixture root file\n")
+      put(fxPacked, dirEntry, "# fixture root file\n")
     }
 
     // Arm 15 — the DECLARED PACKAGE arm (T-70 finding 2), seeded exactly like the control that
