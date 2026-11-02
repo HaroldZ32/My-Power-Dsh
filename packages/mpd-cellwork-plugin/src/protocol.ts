@@ -154,15 +154,17 @@ function planePressureOf(teams: TeamsServiceView | undefined, workspace: string,
   if (typeof reading !== "object" || reading === null) return undefined
   /** That reading as a record. */
   const row = reading as Record<string, unknown>
-  /** The provenance this boundary accepts; anything else means the plane answered nothing usable. */
-  const provenance = row.provenance
-  if (provenance !== "observed" && provenance !== "no-window" && provenance !== "unavailable") return undefined
-  return {
-    usedTokens: typeof row.usedTokens === "number" ? row.usedTokens : null,
-    windowTokens: typeof row.windowTokens === "number" ? row.windowTokens : null,
-    ratio: typeof row.ratio === "number" ? row.ratio : null,
-    provenance,
-  }
+  // ONLY AN OBSERVED WINDOW IS AN ANSWER (T49). `mpdTeams.memberContext` is TOTAL, so it answers for a
+  // name that is not on the roster too — with `unavailable` (or `no-window`) and null numbers. Accepting
+  // that as a reading LET THE PLANE SILENCE THE CAPTAIN: the captain is never a team member, so after
+  // activation `cellwork_context` reported null tokens and `willCheckpoint:false` while the adapter held
+  // the real meter. A reading without an observed window is therefore treated as NO ANSWER and the caller
+  // falls back to the adapter (the same degradation this row uses for every other plane read).
+  if (row.provenance !== "observed") return undefined
+  if (typeof row.usedTokens !== "number" || typeof row.windowTokens !== "number") return undefined
+  /** The observed ratio, when the plane stated one. */
+  const ratio = typeof row.ratio === "number" ? row.ratio : row.windowTokens === 0 ? null : row.usedTokens / row.windowTokens
+  return { usedTokens: row.usedTokens, windowTokens: row.windowTokens, ratio, provenance: "observed" }
 }
 
 /**
@@ -491,8 +493,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The board ids this cell's own record abandoned. */
       const abandoned = new Set(Object.values(cell.cancelledTasks ?? {}).filter((id) => id !== ""))
       for (const taskId of abandoned) {
+        // ONE guard, and it is LIVE: the plane reports every row it considered, so an abandoned row the
+        // PLANE closed is already in `skipped` (as CANCELLED) and must not be listed twice. The old
+        // `pairs` guard was DEAD and is gone — the plane never pairs a cancelled row — and a row the plane
+        // does not carry at all is added here, because the cell's own map is the only place it is remembered.
         if (skipped.some((row) => String(row.taskId) === taskId)) continue
-        if (pairs.some((row) => String(row.taskId) === taskId)) continue
         skipped.push({ taskId, subject: "", reason: "CANCELLED — this cell's record abandoned the row, so no pass may pair it" })
       }
       if (reassigned.length > 0) {

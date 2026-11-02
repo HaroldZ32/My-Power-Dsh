@@ -1,30 +1,26 @@
-// CELLWORK DISPATCH — pair READY tasks with their DECLARED owner, and nothing else (contract B7).
+// THE DISPATCH MODULE AFTER THE MIGRATION (wave T45/T49) — shared VIEW TYPES plus four surviving helpers.
 //
-// WHY NOT `agent_teams_dispatch`: that tool's decision is OWNER-FIRST but falls back to roster order when
-// the declared owner is busy, absent or unnamed (AGENTS.md §5 rule 5, measured 2026-10-07 sending review
-// work to a writer). Cellwork must NOT inherit that fallback — a review task landing on its own writer
-// destroys the only independence the wave has. This module therefore reimplements the small pairing
-// DECISION inside the cell (the captain ratified this; no team-core import), pairs at most one task per
-// member per pass, and reports every task it leaves alone.
+// WHAT THIS FILE IS NOW: the shape of a team record's dispatch report (`DispatchRecordView`,
+// `DispatchReport`, `DispatchPair`, `DispatchSkip`, `DispatchTaskView`, `DispatchMemberView`), the closed-seat
+// predicate `fenceReasonOf` with its `FenceableView` shape, the name key the ledger and the mail use
+// (`nameKey`), the contract-file path a dispatched member is told to work from
+// (`contractRelativePath`), and the executor binding a delivery goes through (`sendThroughExecutor`).
 //
-// DELIVERY IS THE EXECUTOR'S: `dsh.teamExecutor().send(captainAgent, member.executorRef, text)` — the
-// native backend cold-resumes a member that is not currently live. The member then CLAIMS the task
-// itself (`agent_teams_task {action:"claim"}`); the PASS itself does not write the board, so the record
-// never claims work nobody has started. The ONE board write in this module is the explicit
-// `cellwork_dispatch {reassign}` repair below, which claims a row FOR a member on the captain's own
-// instruction (a fenced owner never claims anything).
+// WHAT IT IS NOT ANY MORE: it does not decide a pairing, does not read a cell row to resolve a member, and
+// does not write the board. The TEAM PLANE owns all three (`mpdTeamActions.dispatch` — pairing, the
+// reassignment CAS and the delivery), and `cellwork_dispatch` only asks for a pass and maps the answer back
+// into the report shape declared here. The owner-only rule cellwork needs is the plane's DEFAULT now, so
+// the private decision this header used to describe no longer exists to describe.
 //
-// A FENCED MEMBER IS NEVER MESSAGED (contract C7). Fenced means its cell record says `mode: checkpoint`,
-// or `handoffReady`, or the compaction barrier gave up and marked it `fenced`. Waking such a member burns
-// the retry budget on a claim its own guard refuses — the defect this rule removes (D4/D5: four
-// deliveries of one ticket, then three handoffs in seven minutes) — so the pass reports it by name
-// together with the repair (`reassign`) and leaves the row pending.
+// A FENCED SEAT IS NEVER MESSAGED (contract C7) — and the fence is the TEAM RECORD's fact
+// (`mode: "checkpoint"` or `fenced`), which is why `fenceReasonOf` is a predicate over one row and the
+// authority for filling that row lives in the plane.
 import { appendJournal, contractPath, type CellState } from "./state"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index"
 import { cellDir } from "./state"
 
 /** The team-task fields this pass reads (structural: the mpdTeams service is read, never imported). */
-export interface DispatchTaskView {
+interface DispatchTaskView {
   /** Board id (`T1`, …). */
   id?: string
   /** The task title. */
@@ -69,7 +65,7 @@ export interface DispatchMemberView {
  * Both the CELL row (`CellMemberRecord`, where `mode`/`handoffReady` live) and a team-roster row
  * satisfy it, so the fence is decided once, by {@link fenceReasonOf}, wherever it is asked.
  */
-export interface FenceableView {
+interface FenceableView {
   /** The member's board name, when the row carries one (the normalised match reads it). */
   name?: string
   /** `member` | `verifier` | `checkpoint` | `subcaptain`, as the cell record stores it. */
@@ -94,7 +90,7 @@ export interface DispatchRecordView {
 
 
 /** One recorded delivery. */
-export interface DispatchPair {
+interface DispatchPair {
   /** The board task id. */
   taskId: string
   /** The task title. */
@@ -106,7 +102,7 @@ export interface DispatchPair {
 }
 
 /** One task this pass deliberately did NOT dispatch, with the reason. */
-export interface DispatchSkip {
+interface DispatchSkip {
   /** The board task id. */
   taskId: string
   /** The task title. */

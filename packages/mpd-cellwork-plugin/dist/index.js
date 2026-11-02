@@ -6020,15 +6020,12 @@ function planePressureOf(teams, workspace, teamId, memberName) {
   if (typeof reading !== "object" || reading === null)
     return;
   const row = reading;
-  const provenance = row.provenance;
-  if (provenance !== "observed" && provenance !== "no-window" && provenance !== "unavailable")
+  if (row.provenance !== "observed")
     return;
-  return {
-    usedTokens: typeof row.usedTokens === "number" ? row.usedTokens : null,
-    windowTokens: typeof row.windowTokens === "number" ? row.windowTokens : null,
-    ratio: typeof row.ratio === "number" ? row.ratio : null,
-    provenance
-  };
+  if (typeof row.usedTokens !== "number" || typeof row.windowTokens !== "number")
+    return;
+  const ratio = typeof row.ratio === "number" ? row.ratio : row.windowTokens === 0 ? null : row.usedTokens / row.windowTokens;
+  return { usedTokens: row.usedTokens, windowTokens: row.windowTokens, ratio, provenance: "observed" };
 }
 function planeDepthOf(teams, workspace, teamId) {
   if (teamId === "")
@@ -6206,8 +6203,6 @@ function installCellworkProtocol(deps) {
       const abandoned = new Set(Object.values(cell.cancelledTasks ?? {}).filter((id) => id !== ""));
       for (const taskId of abandoned) {
         if (skipped.some((row) => String(row.taskId) === taskId))
-          continue;
-        if (pairs.some((row) => String(row.taskId) === taskId))
           continue;
         skipped.push({ taskId, subject: "", reason: "CANCELLED — this cell's record abandoned the row, so no pass may pair it" });
       }

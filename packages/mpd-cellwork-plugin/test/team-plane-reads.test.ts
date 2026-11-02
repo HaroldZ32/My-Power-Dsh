@@ -48,9 +48,10 @@ interface Harness {
 /**
  * Build a minimal harness whose `mpdTeams` service carries the members an arm wants to prove.
  * @param teams - the service members to publish beside the plain `get`.
+ * @param extra - further services the same context answers (the adapter's own seams, for instance).
  * @returns the harness.
  */
-function makeHarness(teams: Record<string, unknown> = {}): Harness {
+function makeHarness(teams: Record<string, unknown> = {}, extra: Record<string, unknown> = {}): Harness {
   /** The temp workspace every root resolves to. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-plane-"))
   process.env.DSH_WORKSPACE_ROOT = workspace
@@ -76,6 +77,8 @@ function makeHarness(teams: Record<string, unknown> = {}): Harness {
     agents: { list: (): FakeAgent[] => [captain] },
     mpdConfig: { get: (): unknown => undefined },
     mpdTeams: { get: (): unknown => undefined, ...teams },
+    // Anything an arm needs beside the two plane services (the adapter's own meter, for instance).
+    ...extra,
   }
   /** The fake host context. */
   const ctx: Parameters<typeof apply>[0] = {
@@ -116,29 +119,66 @@ async function openCellIn(harness: Harness): Promise<string> {
 }
 
 describe("the team plane owns the context reading", () => {
-  test("cellwork_context reports the PLANE's provenance and numbers", async () => {
-    // THE PLANE'S NUMBERS ARE DELIBERATELY DISTINCT: a fallback reading (the adapter, with no meter in
-    // this harness) answers `unavailable` with nulls, so any match below proves the plane answered.
-    /** The harness whose plane answers one observed reading. */
-    const harness = makeHarness({
-      memberContext: (): unknown => ({ member: "captain", usedTokens: 123, windowTokens: 1000, ratio: 0.123, provenance: "observed" }),
-    })
+  test("cellwork_context FALLS BACK to the adapter when the plane cannot answer for this seat", async () => {
+    // THE CAPTAIN IS NEVER A TEAM MEMBER, so a REAL plane answers `unavailable` (with null numbers) for it —
+    // `mpdTeams.memberContext` is total. Accepting that as a reading is the measured regression: after
+    // activation the captain read null tokens and `willCheckpoint:false` while the adapter held the meter.
+    // This arm FAILS if an `unavailable` (or `no-window`) plane reading is ever taken as an answer again.
+    /** The harness whose plane knows no captain and whose adapter observes one window. */
+    const harness = makeHarness(
+      { memberContext: (): unknown => ({ member: "captain", usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }) },
+      // The ADAPTER's meter: the harness's own projection registry, which is where the host keeps the
+      // token meter. Its numbers are deliberately distinct from the plane's (which are absent).
+      { sessionProjections: { stateOf: (): unknown => ({ contextWindow: 10000, pressureTokens: 4242 }) } },
+    )
     apply(harness.ctx, {})
     /** The active cell. */
     const cellId = await openCellIn(harness)
-    // The cell needs a LIVE TEAM ID before the plane can be addressed at all.
-    /** The record with a team id recorded. */
+    /** The record with a team id, so the plane CAN be addressed — it answers, unhelpfully. */
     const read = readCell(harness.workspace, cellId)
     if (!read.ok) throw new Error("expected a cell record")
     writeCell(harness.workspace, { ...read.state, teamId: "team-plane" })
     /** The context call. */
     const context = await runTool(harness, "cellwork_context")
     expect(context.ok).toBe(true)
-    // THE PLANE'S PROVENANCE IS FORWARDED VERBATIM, numbers included.
+    // THE ADAPTER'S READING, not the plane's empty one.
     expect(context.provenance).toBe("observed")
-    expect(context.usedTokens).toBe(123)
-    expect(context.windowTokens).toBe(1000)
-    expect(context.ratio).toBe(0.123)
+    expect(context.usedTokens).toBe(4242)
+    expect(context.windowTokens).toBe(10000)
+    expect(context.ratio).toBeCloseTo(0.4242, 4)
+  })
+
+  test("the PLANE's observed numbers are forwarded when it really knows the seat", async () => {
+    // THE OTHER HALF of the same rule: a plane reading WITH an observed window IS the answer. Asserted on a
+    // MEMBER row (a name the roster can hold) through the read-only sweep, which reports the same provenance
+    // the seat's own row would report.
+    /** The harness whose plane observes one member's window. */
+    const harness = makeHarness({
+      memberContext: (_workspace: string, _teamId: string, member: string): unknown => member === "Reviewer"
+        ? { member: "Reviewer", usedTokens: 123, windowTokens: 1000, ratio: 0.123, provenance: "observed" }
+        : { member, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" },
+    })
+    apply(harness.ctx, {})
+    /** The active cell. */
+    const cellId = await openCellIn(harness)
+    /** The record carrying one member row and the live team id. */
+    const read = readCell(harness.workspace, cellId)
+    if (!read.ok) throw new Error("expected a cell record")
+    writeCell(harness.workspace, {
+      ...read.state,
+      teamId: "team-plane",
+      members: { Reviewer: { name: "Reviewer", role: "Reviewer", sessionId: "session-reviewer", executorRef: "exec-reviewer", mode: "member", handoffReady: false, handoffs: 0, joinedAt: "" } },
+    })
+    /** The sweep. */
+    const sweep = await runTool(harness, "cellwork_supervise")
+    expect(sweep.ok).toBe(true)
+    /** The member row the sweep reported. */
+    const row = (sweep.members as Array<Record<string, unknown>>).find((member) => member.name === "Reviewer")
+    // THE PLANE'S NUMBERS AND PROVENANCE, verbatim.
+    expect(row?.provenance).toBe("observed")
+    expect(row?.usedTokens).toBe(123)
+    expect(row?.windowTokens).toBe(1000)
+    expect(row?.ratio).toBe(0.123)
   })
 })
 
