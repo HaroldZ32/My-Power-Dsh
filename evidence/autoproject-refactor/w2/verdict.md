@@ -150,3 +150,58 @@ Ran: `bun test packages/mpd-cellwork-plugin` (176 pass, 0 fail); `bun run typech
 `a0b27996..HEAD` schema-line diff and the `state.ts` untouched check. **No live dsh boot was run inside this
 package** — the wave's mount proof is `preset-conformance` and `bundle-lifecycle` (both PASS per the wave's
 own record), not the package's own, and I did not re-run them here.
+
+---
+
+# RE-REVIEW after a213e735
+
+Scope: the two blocking findings of the R-W2 verdict plus the two corrections I recorded. Judged at commit
+**a213e735** (on top of `3128fb25`); the migration itself was NOT re-reviewed. Gates re-run here:
+`bun test packages/mpd-cellwork-plugin` (177 pass, 0 fail), `bun run typecheck` (exit 0), scoped
+`verify:comments` PASS, coupling inventory (2 pass) — all on this commit.
+
+### Finding 1 — the captain's occupancy falls back to the adapter: **RESOLVED**
+`protocol.ts::planePressureOf` now returns a reading ONLY for `provenance === "observed"` with numeric
+`usedTokens`/`windowTokens` (the ratio is computed when the plane omits one, `null` for a zero window);
+`unavailable` and `no-window` answer `undefined`, so `cellwork_context`'s
+`planePressureOf(...) ?? dsh.contextPressure(exec.agent)` really reaches the adapter. The masking stub is
+gone: `test/team-plane-reads.test.ts`'s fallback arm has the plane answer `unavailable` with nulls for the
+captain while the ADAPTER's `sessionProjections` reports 4242 of 10000, and asserts the tool answers
+`usedTokens:4242`, `windowTokens:10000`, `ratio ≈ 0.4242`, `provenance:"observed"` — re-inserting the old
+acceptance branch reddens it (the commit records that mutation check). The other direction is pinned on a
+genuine member row: `cellwork_supervise` forwards the plane's observed 123/1000/0.123 verbatim, and the stub
+now refuses every name the roster does not hold — the property whose absence hid the bug.
+One observation, not a finding: with the stricter rule a member whose PLANE reading is `no-window` now shows
+the adapter's provenance instead of the plane's — the same meter behind both, so the two can only agree; the
+plane stays authoritative whenever it observed a window.
+
+### Finding 2 — the stale `dispatch.ts` header: **RESOLVED**
+The header now states what the file IS (the dispatch report types plus `nameKey`, `fenceReasonOf`,
+`contractRelativePath`, `sendThroughExecutor`) and what it is NOT any more (no pairing decision, no cell-row
+member resolution, no board write), naming `mpdTeamActions.dispatch` as the owner of all three. The four
+declarations with no outside consumer (`DispatchTaskView`, `FenceableView`, `DispatchPair`, `DispatchSkip`)
+lost their `export`; no other `src/` or `test/` file imports them, and typecheck stays at 0.
+
+### Correction 1 — three paginated parameter blocks: **RESOLVED as a record**
+The commit body records the §A6 `limit`/`offset` additions on `cellwork_context` / `cellwork_supervise` /
+`cellwork_inbox`; the 15 tool names and every pre-existing parameter are unchanged.
+
+### Correction 2 — the dispatch skip filters: **PARTLY RESOLVED, and one line of my own finding was wrong**
+I was WRONG to call both reason clauses inert: `"already completed"` IS emitted by the plane's pass
+(`planDispatch`'s completed-task skip in `mpd-team-core-plugin`), so that clause is LIVE and should stay.
+The `"not ready (status …)"` clause, however, is still dead — no such string exists anywhere in
+`packages/mpd-team-core-plugin/src` — and it is still present in `protocol.ts`'s skip mapping. The commit
+body's "one dead, one live" describes the ABANDONED-row guards (`skipped.some` / `pairs.some`): removing the
+`pairs.some` guard was correct, but it is not the pair my Nit named.
+
+### NEW findings
+None blocking. One residual Nit: the dead `"not ready (status …)"` clause in `protocol.ts`'s skip mapping
+(optional tidy; it can never match today's plane vocabulary).
+
+### Overall verdict
+With both blocking findings **RESOLVED** and the only new item a Nit, my verdict on the migration — commit
+`3128fb25` as amended by `a213e735` — is **PASS**. The two declared bounds stand unchanged: no live dsh boot
+was run inside this package (the wave's mount proof is `preset-conformance` + `bundle-lifecycle`, which I did
+not re-run), and the plane-first read now degrades to the adapter exactly when the plane has no observed
+window.
+
