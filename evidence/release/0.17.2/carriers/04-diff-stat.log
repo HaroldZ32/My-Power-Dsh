@@ -1,0 +1,25 @@
+$ git diff --stat -- package.json dsh-plugin.json dsh-distribution.json
+ dsh-distribution.json | 14 +++++++-------
+ dsh-plugin.json       |  4 ++--
+ package.json          |  2 +-
+ 3 files changed, 10 insertions(+), 10 deletions(-)
+
+$ git diff --stat -- README.md README.zh-CN.md AGENTS.md CHANGELOG.md packages/mpd-team-core-plugin/
+ AGENTS.md                                     |  2 +-
+ CHANGELOG.md                                  | 70 +++++++++++++++++++++++++++
+ README.md                                     |  9 ++--
+ README.zh-CN.md                               | 11 +++--
+ packages/mpd-team-core-plugin/README.md       | 42 +++++++++++-----
+ packages/mpd-team-core-plugin/README.zh-CN.md | 23 +++++++--
+ 6 files changed, 131 insertions(+), 26 deletions(-)
+
+$ git rev-parse --abbrev-ref HEAD
+release/v0.17.2
+
+$ git log --oneline -1
+6f203dea merge: follow-up — close the post-0.17.1 known issues before 0.17.2 (#93)
+
+$ grep -n 0.17.2 carriers
+package.json:1
+dsh-plugin.json:2
+dsh-distribution.json:7
