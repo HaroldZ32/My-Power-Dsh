@@ -32,6 +32,7 @@ import {
   text,
   textField,
   type DshGoCaps,
+  type DshGoListItem,
   type DshGoTone,
   type DshGoView,
 } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
@@ -167,10 +168,31 @@ function empty(copy: readonly [string, string]): DshGoView {
 function taskRow(task: TeamPanelTask): { title: string; subtitle: string; trailing: string; action: { id: string; args: { task: string } } } {
   return {
     title: task.id + " " + task.subject,
-    subtitle: [task.owner === "" ? "—" : task.owner, task.kind, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
-    trailing: task.status,
+    // DENSER ROW (repair T12): the kind left the subtitle (the Detail tab carries it) and the status
+    // became a short word, so the subject keeps the width the trailing column used to take.
+    subtitle: [task.owner === "" ? "—" : task.owner, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
+    trailing: statusWordOf(task.status),
     action: { id: "select", args: { task: task.id } },
   }
+}
+
+/**
+ * The compact status word a board row's trailing column shows.
+ *
+ * At phone width the trailing column competes with the subject for the same pixels: `in_progress` alone
+ * cost the title about eight characters, so the machine words are spelled as the short human ones and
+ * anything unknown is clipped to the same budget.
+ * @param status - the board row's raw status.
+ * @returns a word of at most eight characters.
+ */
+function statusWordOf(status: string): string {
+  /** The status, lower-cased so the mapping is spelling-insensitive. */
+  const word = status.toLowerCase()
+  if (word === "in_progress" || word === "running" || word === "active") return "active"
+  if (word === "completed" || word === "done") return "done"
+  if (word === "pending") return "todo"
+  if (word === "cancelled") return "cancelled"
+  return word.length <= 8 ? word : word.slice(0, 8)
 }
 
 /**
@@ -218,8 +240,7 @@ export function buildMpdView(snapshot: PanelSnapshot, caps?: DshGoCaps | null): 
       tabs([
         { label: copy.tabsWorkbench[0], children: overviewTab(snapshot, copy) },
         { label: copy.tabsWorkbench[1], children: questionsTab(snapshot, copy) },
-        { label: copy.tabsWorkbench[2], children: workmatesTab(snapshot, copy) },
-        { label: copy.tabsWorkbench[3], children: memoryTab(snapshot, copy) },
+        { label: copy.tabsWorkbench[2], children: libraryTab(snapshot, copy) },
       ]),
     ],
   })
@@ -242,18 +263,19 @@ function overviewTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
   buttons.push({ label: copy.refresh, action: "refresh", icon: "refresh" })
   /** The tab's children. */
   const children: DshGoView[] = [
-    hero(copy.workbench, caption, [
-      tiles(
-        [
-          { label: copy.metricReady, value: bind("counts.ready"), tone: "good" },
-          { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
-          { label: copy.metricDone, value: bind("counts.done") },
-          { label: copy.metricMembers, value: bind("counts.members") },
-        ],
-        2,
-      ),
-      progress(bind("counts.completion"), { label: copy.completion, tone: "good" }),
-    ]),
+    hero(copy.workbench, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    // THE TILES SIT OUTSIDE THE CARD (repair T18). The app computes a grid's column count itself:
+    //     n = min(cells, columns); while (n > 1 && (width - 8*(n-1))/n < 136 * textScale) n--
+    // Inside a padded hero the content box is ~300 px, which drops under that threshold and stacks the
+    // grid into ONE column whatever `columns` says. At the panel's own width the same two cells clear
+    // it, so the tiles are the tab's first full-width element instead of the hero's last.
+    tiles(
+      [
+        { label: copy.metricReady, value: bind("counts.ready"), tone: "good" },
+        { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
+      ],
+      2,
+    ),
   ]
   if (snapshot.alert !== null) children.push(callout(snapshot.alert, { tone: "warn" }))
   children.push(
@@ -299,45 +321,33 @@ function questionsTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
 }
 
 /**
- * The Workmates tab: the library, read-only — the panel never spawns or mutates an instance.
+ * The Library tab: the workmate list and the memory list, both read-only.
+ *
+ * THEY SHARE A TAB because four tabs cannot fit a phone-width strip (measured on the app's tab bar:
+ * `n = min(4, labels)` while `width / n >= 80`, and the content box is under 320 px), and because the
+ * two lists are the same KIND of thing — local state this panel only reads. ONE `tinted` hero opens
+ * the tab; the two lists are separate `surface` sections under it.
  * @param snapshot - the workbench snapshot.
  * @param copy - the copy record for the app's language.
  * @returns the tab's children, in reading order.
  */
-function workmatesTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
-  /** The rows, one per instance, with its base and use count as the supporting line. */
-  const rows = snapshot.workmates.map((mate) => ({ title: mate.name, subtitle: mate.base + " · " + String(mate.uses) + " " + copy.uses, trailing: mate.note }))
-  return [
-    // Literal on purpose: this tab is rebuilt when the user taps Refresh, and a `length` binding would
-    // be an array path the bridge's own resolver does not walk.
-    hero(copy.tabsWorkbench[2], copy.workmatesCaption, [tiles([{ label: copy.tabsWorkbench[2], value: snapshot.workmates.length }], 1)]),
-    section(copy.tabsWorkbench[2], rows.length === 0 ? [empty(copy.emptyWorkmates)] : [list(rows)]),
-    spacer({ size: "S" }),
-    actions([{ label: copy.refresh, action: "refresh", icon: "refresh" }]),
-  ]
-}
-
-/**
- * The Memory tab: the last entries of the workspace store and the reflection counters, read-only.
- * @param snapshot - the workbench snapshot.
- * @param copy - the copy record for the app's language.
- * @returns the tab's children, in reading order.
- */
-function memoryTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
+function libraryTab(snapshot: PanelSnapshot, copy: DshGoCopy): DshGoView[] {
+  /** The workmate rows, one per instance, with its base and use count as the supporting line. */
+  const mates = snapshot.workmates.map((mate) => ({ title: mate.name, subtitle: mate.base + " · " + String(mate.uses) + " " + copy.uses, trailing: mate.note }))
   /** The memory half of the snapshot, or null when the store could not be read. */
   const memory = snapshot.memory
-  if (memory === null) return [hero(copy.tabsWorkbench[3], copy.memoryCaption), empty(copy.emptyMemory)]
-  /** The rows: kind and age as the supporting line. */
-  const rows = memory.entries.map((entry) => ({ title: entry.description, subtitle: entry.kind + " · " + entry.age }))
+  /** The memory rows: kind and age as the supporting line. */
+  const entries = memory === null ? [] : memory.entries.map((entry) => ({ title: entry.description, subtitle: entry.kind + " · " + entry.age }))
   /** The reflection counters, read as a two-row table. */
-  const reflection = keyValue([
-    [copy.reflection, String(memory.reflections)],
-    [copy.tabsWorkbench[3], String(memory.entries.length)],
-  ])
+  const reflection = memory === null
+    ? []
+    : [keyValue([[copy.reflection, String(memory.reflections)], [copy.memoryHeading, String(memory.entries.length)]])]
   return [
-    // Literal for the same reason as the workmates tile: an array `length` is not a binding path.
-    hero(copy.tabsWorkbench[3], copy.memoryCaption, [tiles([{ label: copy.tabsWorkbench[3], value: memory.entries.length }], 1)]),
-    section(copy.tabsWorkbench[3], rows.length === 0 ? [empty(copy.emptyMemory), reflection] : [list(rows), divider(), reflection]),
+    hero(copy.tabsWorkbench[2], copy.libraryCaption),
+    section(copy.agentsHeading, mates.length === 0 ? [empty(copy.emptyWorkmates)] : [list(mates)]),
+    section(copy.memoryHeading, entries.length === 0 ? [empty(copy.emptyMemory), ...reflection] : [list(entries), divider(), ...reflection]),
+    spacer({ size: "S" }),
+    actions([{ label: copy.refresh, action: "refresh", icon: "refresh" }]),
   ]
 }
 
@@ -355,9 +365,8 @@ export function buildTeamView(snapshot: TeamPanelSnapshot, caps?: DshGoCaps | nu
     children: [
       tabs([
         { label: copy.tabsBoard[0], children: boardTab(snapshot, copy) },
-        { label: copy.tabsBoard[1], children: membersTab(snapshot, copy) },
-        { label: copy.tabsBoard[2], children: detailTab(snapshot, copy) },
-        { label: copy.tabsBoard[3], children: watchdogTab(snapshot, copy) },
+        { label: copy.tabsBoard[1], children: detailTab(snapshot, copy) },
+        { label: copy.tabsBoard[2], children: watchdogTab(snapshot, copy) },
       ]),
     ],
   })
@@ -372,54 +381,49 @@ export function buildTeamView(snapshot: TeamPanelSnapshot, caps?: DshGoCaps | nu
  */
 function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
   /** The hero's supporting line: the team's name and its derived stage. */
-  const caption = snapshot.team === null ? copy.emptyTeam[0] : snapshot.team.name + " · " + snapshot.team.status + " · " + snapshot.team.phase
+  const caption = snapshot.team === null
+    ? copy.emptyTeam[0]
+    : snapshot.team.name + " · " + String(snapshot.counts.total) + " " + copy.metricTasks + " · " + String(snapshot.counts.blocked) + " " + copy.metricBlocked
   /** The tab's children. */
   const children: DshGoView[] = [
-    hero(copy.board, caption, [
-      tiles(
-        [
-          { label: copy.metricTasks, value: bind("counts.total") },
-          { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
-          { label: copy.metricDone, value: bind("counts.done"), tone: "good" },
-          { label: copy.metricBlocked, value: bind("counts.blocked"), tone: "warn" },
-        ],
-        2,
-      ),
-      progress(bind("counts.completion"), { label: copy.completion, tone: "good" }),
-    ]),
+    hero(copy.board, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    // Outside the card for the same measured reason as the workbench tiles (see `overviewTab`): the
+    // grid keeps two columns only at the panel's own width.
+    tiles(
+      [
+        { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
+        { label: copy.metricDone, value: bind("counts.done"), tone: "good" },
+      ],
+      2,
+    ),
   ]
   if (snapshot.team === null) {
     children.push(empty(copy.emptyTeam))
     return children
   }
   children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]))
+  // THE ROSTER MOVED HERE (repair T18): three tabs cannot hold separate Board/Members/Detail/Watch
+  // surfaces, and the roster belongs beside the board it staffs.
+  children.push(section(copy.membersCaption, snapshot.members.length === 0 ? [empty(copy.emptyMembers)] : [list(snapshot.members.map(memberLine))]))
   return children
 }
 
 /**
- * The Members tab: an initials badge, the name, the mode and the handoff word per member.
- * @param snapshot - the team snapshot.
- * @param copy - the copy record for the app's language.
- * @returns the tab's children, in reading order.
+ * One member, as a SINGLE list row: `DW · Deep Worker` with the state word at the end.
+ *
+ * WHY NOT A `row` OF BADGE + NAME + BADGE (repair T19): the app's `_RowView` decides how many children
+ * share a line from each child's MINIMUM width — metric 96, progress 140, text/badge 160, nested
+ * layout/list 200 — and lays out `floor((width + gap) / (need + gap))` columns. At phone width
+ * (~300 px, gap 8) a row of badge + stack + badge has `need = 200`, so it gets ONE column and the
+ * member renders as three stacked fragments. A list row cannot wrap that way: it is one item, and with
+ * the state as `trailing` it is one visual line.
+ * @param member - the member to draw.
+ * @returns the list item the roster renders.
  */
-function membersTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
-  /** The member rows, each a row of badge + name/mode + state word. */
-  const rows = snapshot.members.map((member) =>
-    row(
-      [
-        badge({ text: initialsOf(member.name), tone: "info" }),
-        stack([text(member.name, { style: { maxLines: 1 } }), text(member.mode, { tone: "muted", style: { size: "caption", maxLines: 1 } })], { style: { gap: "S" } }),
-        badge({ text: member.handoff === "" ? member.mode : member.handoff, tone: toneOf(member.handoff === "" ? member.mode : member.handoff) }),
-      ],
-      { style: { gap: "S", align: "center" } },
-    ),
-  )
-  return [
-    // Literal, like every other rebuilt-on-refresh tile: an array `length` is not a binding path the
-    // bridge resolver walks, so a bound one would render as an em dash.
-    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: snapshot.members.length }], 1)]),
-    section(copy.membersCaption, rows.length === 0 ? [empty(copy.emptyMembers)] : rows),
-  ]
+function memberLine(member: TeamPanelMember): DshGoListItem {
+  /** The state word this member shows: its handoff state when it has one, else its mode. */
+  const word = member.handoff === "" ? member.mode : member.handoff
+  return { title: initialsOf(member.name) + " · " + member.name, trailing: word, tone: toneOf(word) }
 }
 
 /**
@@ -470,12 +474,13 @@ function watchdogTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] 
   /** The incident rows, one per recorded incident. */
   const rows = watchdog.incidents.map((incident) => ({ title: incident.kind, subtitle: incident.at, trailing: incident.detail }))
   return [
-    hero(copy.tabsBoard[3], copy.watchdogCaption, [
-      tiles([
-        { label: copy.predicate, value: watchdog.predicate },
-        { label: copy.tabsBoard[3], value: holdLine, tone: watchdog.held ? "warn" : "good" },
-      ], 2),
-    ]),
+    hero(copy.tabsBoard[2], copy.watchdogCaption),
+    // The tiles sit OUTSIDE the card here too: the predicate and the state must share a row on a
+    // phone, and only the panel's own width clears the app's grid threshold (see `overviewTab`).
+    tiles([
+      { label: copy.predicate, value: watchdog.predicate },
+      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held ? "warn" : "good" },
+    ], 2),
     section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
     // NO hold/resume button (repair T8/M3): the watchdog tools resolve their workspace from the
     // environment, not from this panel's session, so the tap could write to another store. Read-only.

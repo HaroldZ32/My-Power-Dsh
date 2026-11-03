@@ -105,12 +105,12 @@ describe("the workbench panel's v2 design", () => {
     expect(measured.bytes).toBeLessThanOrEqual(BUDGETS.panel.bytes)
   })
 
-  test("four tabs, each with exactly ONE tinted hero and its own title", () => {
+  test("THREE tabs, each with exactly ONE tinted hero and its own title", () => {
     /** The v2 tree. */
     const view = buildMpdView(snapshotWithEverything(), V2_CAPS)
     /** The panel's tabs. */
     const sections = tabSections(view)
-    expect(sections).toHaveLength(4)
+    expect(sections).toHaveLength(3)
     for (const section of sections) {
       /** Every node inside this tab. */
       const nodes = nodesOf(section.children)
@@ -137,8 +137,52 @@ describe("the workbench panel's v2 design", () => {
     const zh = tabSections(buildMpdView(snapshotWithEverything(), { ...V2_CAPS, locale: "zh-CN" })).map((section) => section.label)
     /** The tabs an `en` app sees. */
     const en = tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)).map((section) => section.label)
-    expect(zh).toEqual(["总览", "问题", "工作伙伴", "记忆"])
-    expect(en).toEqual(["Overview", "Questions", "Workmates", "Memory"])
+    expect(zh).toEqual(["总览", "问题", "资料库"])
+    expect(en).toEqual(["Overview", "Ask", "Library"])
+  })
+
+  test("every tab label fits ONE line at a 390 px viewport (repair T12)", () => {
+    /** Both panels, both languages. */
+    const strips = [
+      tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)),
+      tabSections(buildMpdView(snapshotWithEverything(), { ...V2_CAPS, locale: "zh-CN" })),
+      tabSections(buildTeamView(teamSnapshot(), V2_CAPS)),
+      tabSections(buildTeamView(teamSnapshot(), { ...V2_CAPS, locale: "zh-CN" })),
+    ]
+    for (const sections of strips) {
+      // Measured on the app's own render: a nine-character label broke mid-word and pushed the fourth
+      // tab onto a second row, so the budget is eight characters per label AND about 24 per strip.
+      expect(sections).toHaveLength(3)
+      for (const section of sections) expect(String(section.label).length).toBeLessThanOrEqual(8)
+      expect(sections.reduce((total, section) => total + String(section.label).length, 0)).toBeLessThanOrEqual(24)
+    }
+  })
+
+  test("the hero does NOT hold the metric grid, so the grid gets the panel's full width (repair T18)", () => {
+    // Measured in the app: a grid keeps two columns only while (width - 8) / 2 >= 136 * textScale. A
+    // padded hero shrinks that width below the threshold and the grid stacks, so the tiles must sit
+    // outside the card. This arm fails if a grid is nested inside a `tinted` node again.
+    /** Every tab of both panels, in v2. */
+    const tabsTotal = [...tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)), ...tabSections(buildTeamView(teamSnapshot(), V2_CAPS))]
+    expect(tabsTotal.length).toBeGreaterThan(0)
+    for (const tab of tabsTotal) {
+      for (const node of nodesOf(tab.children)) {
+        if (node.type !== "grid") continue
+        /** The tinted card this grid sits under, if any. */
+        const insideHero = nodesOf(tab.children).some((candidate) => typeof candidate.style === "object" && candidate.style !== null && (candidate.style as Record<string, unknown>).card === "tinted" && nodesOf(candidate.children).includes(node))
+        expect(insideHero).toBe(false)
+      }
+    }
+    /** Both trees, built ONCE, so the walks below share object identity. */
+    const trees = [buildMpdView(snapshotWithEverything(), V2_CAPS), buildTeamView(teamSnapshot(), V2_CAPS)]
+    /** Every metric of both trees, with the tree it belongs to. */
+    const metrics = trees.map((tree) => ({ tree, metrics: nodesOf(tree).filter((node) => node.type === "metric") }))
+    expect(metrics.reduce((total, one) => total + one.metrics.length, 0)).toBeGreaterThan(0)
+    for (const { tree, metrics: tiles } of metrics) {
+      /** Every grid of that same tree. */
+      const grids = nodesOf(tree).filter((node) => node.type === "grid")
+      for (const tile of tiles) expect(grids.some((gridNode) => nodesOf(gridNode.children).includes(tile))).toBe(true)
+    }
   })
 
   test("the empty state is designed copy, never a blank tab", () => {
@@ -164,7 +208,9 @@ describe("the workbench panel's v2 design", () => {
     expect(fitsBudget(view, "panel")).toBe(true)
     /** The fallback flattened into words, so a metric that survived can be found. */
     const flat = JSON.stringify(view)
-    for (const [label, value] of [["Ready", "counts.ready"], ["Active", "counts.active"], ["Done", "counts.done"], ["Members", "counts.members"], ["Completion", "counts.completion"]] as const) {
+    // The workbench hero carries TWO tiles after the phone-width repair; the completion bar and the
+    // caption keep the other numbers readable, so those are what the fallback must still show.
+    for (const [label, value] of [["Ready", "counts.ready"], ["Active", "counts.active"], ["Completion", "counts.completion"]] as const) {
       expect(flat).toContain(label)
       expect(flat).toContain(value)
     }
@@ -184,10 +230,10 @@ describe("the team panel's v2 design", () => {
     expect(fitsBudget(v1, "panel")).toBe(true)
   })
 
-  test("four tabs, one hero each, and a tappable board row carrying `select` + its task id", () => {
+  test("THREE tabs, one hero each, and a tappable board row carrying `select` + its task id", () => {
     /** The v2 tree. */
     const view = buildTeamView(teamSnapshot(), V2_CAPS)
-    expect(tabSections(view)).toHaveLength(4)
+    expect(tabSections(view)).toHaveLength(3)
     /** Every list row that carries an action. */
     const rows = nodesOf(view).filter((node) => node.type === "list").flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
     /** The board rows: the ones whose action selects a task. */
@@ -196,14 +242,45 @@ describe("the team panel's v2 design", () => {
     expect((tappable[0]?.action as { args?: { task?: string } }).args?.task).toBe("T1")
   })
 
-  test("members carry an initials badge and a state WORD, never colour alone", () => {
+  test("board rows are DENSE: a short trailing word and an owner-only subtitle (repair T12)", () => {
     /** The v2 tree. */
     const view = buildTeamView(teamSnapshot(), V2_CAPS)
-    /** Every badge in the tree. */
-    const badges = nodesOf(view).filter((node) => node.type === "badge")
-    expect(badges.map((node) => node.text)).toContain("DW")
-    expect(badges.map((node) => node.text)).toContain("handoff ready")
-    for (const node of badges) expect(String(node.text).length).toBeGreaterThan(0)
+    /** Every board row: the list rows whose action selects a task. */
+    const rows = nodesOf(view)
+      .filter((node) => node.type === "list")
+      .flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
+      .filter((row) => (row.action as { id?: string } | undefined)?.id === "select")
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      // The trailing column competes with the subject for the same pixels at phone width.
+      expect(String(row.trailing).length).toBeLessThanOrEqual(8)
+      // owner, plus the blocker count when there is one — never the kind, which the Detail tab carries.
+      expect(String(row.subtitle).split(" · ").length).toBeLessThanOrEqual(2)
+    }
+    // The machine status words are spelled short for the row.
+    expect(rows.map((row) => row.trailing)).toContain("active")
+  })
+
+  test("member rows are ONE line each: initials+name as the title, the state WORD as trailing (repair T19)", () => {
+    /** The v2 tree. */
+    const view = buildTeamView(teamSnapshot(), V2_CAPS)
+    /** Every roster row: a list item whose title carries the initials separator. */
+    const rows = nodesOf(view)
+      .filter((node) => node.type === "list")
+      .flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
+      .filter((row) => String(row.title).includes(" · ") && row.action === undefined)
+    expect(rows.length).toBeGreaterThan(0)
+    // ONE line: the item carries a title and a trailing word and NO subtitle (a subtitle is a second
+    // line), and it is a list item — never a `row` of badge + stack + badge, which the app lays out one
+    // child per line at phone width (minimum widths: badge/text 160, nested layout 200).
+    for (const row of rows) {
+      expect(row.subtitle).toBeUndefined()
+      expect(String(row.trailing).length).toBeGreaterThan(0)
+    }
+    expect(rows.map((row) => row.title)).toContain("DW · Deep Worker")
+    expect(rows.map((row) => row.trailing)).toContain("handoff ready")
+    // No member is drawn as a horizontal `row` any more.
+    expect(nodesOf(view).filter((node) => node.type === "row")).toHaveLength(0)
   })
 
   test("an empty team renders the designed empty state instead of an empty board", () => {

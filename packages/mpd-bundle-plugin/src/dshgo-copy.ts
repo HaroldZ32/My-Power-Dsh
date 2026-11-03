@@ -17,10 +17,10 @@ export interface DshGoCopy {
   workbench: string
   /** The `mpd-team` panel's hero title. */
   board: string
-  /** The `mpd` panel's four tab labels, in order. */
-  tabsWorkbench: [string, string, string, string]
-  /** The `mpd-team` panel's four tab labels, in order. */
-  tabsBoard: [string, string, string, string]
+  /** The `mpd` panel's THREE tab labels, in order (four cannot fit a phone-width strip). */
+  tabsWorkbench: [string, string, string]
+  /** The `mpd-team` panel's THREE tab labels, in order. */
+  tabsBoard: [string, string, string]
   /** Metric labels: ready tasks, tasks in flight, finished tasks, members, tasks, blockers. */
   metricReady: string
   /** Metric label: tasks in flight. */
@@ -53,7 +53,13 @@ export interface DshGoCopy {
   submit: string
   /** Empty copy: nothing is parked. */
   emptyQuestion: [string, string]
-  /** The workmates tab's hero caption and empty copy. */
+  /** The Library tab's hero caption (it holds the workmate list AND the memory list). */
+  libraryCaption: string
+  /** The Library tab's two section headings. */
+  agentsHeading: string
+  /** The Library tab's memory section heading. */
+  memoryHeading: string
+  /** The workmates section's caption and its empty copy. */
   workmatesCaption: string
   /** Empty copy: the library is empty. */
   emptyWorkmates: [string, string]
@@ -125,8 +131,13 @@ export interface DshGoCopy {
 const EN: DshGoCopy = {
   workbench: "MPD Workbench",
   board: "Team Board",
-  tabsWorkbench: ["Overview", "Questions", "Workmates", "Memory"],
-  tabsBoard: ["Board", "Members", "Detail", "Watchdog"],
+  // THREE tabs, MEASURED on the app's own layout rule: the strip keeps `n = min(4, labels)` while
+  // `width / n >= 80`, and at phone width the content box is under 320 px, so a fourth tab always
+  // wraps to a second row whatever its label says. The workmates library and the memory list share
+  // one "Library" tab, which is also the truthful grouping: both are read-only local lists.
+  tabsWorkbench: ["Overview", "Ask", "Library"],
+  // Three tabs for the same measured reason; the roster moved into the Board tab as a section.
+  tabsBoard: ["Board", "Detail", "Watch"],
   metricReady: "Ready",
   metricActive: "Active",
   metricDone: "Done",
@@ -143,6 +154,9 @@ const EN: DshGoCopy = {
   customAnswer: "Custom answer",
   submit: "Send",
   emptyQuestion: ["No question is waiting", "When a member needs your answer, the question and its options appear here."],
+  libraryCaption: "Workmates and memory, read-only",
+  agentsHeading: "Workmates",
+  memoryHeading: "Memory",
   workmatesCaption: "Durable instances from the workmate library",
   emptyWorkmates: ["The library is empty", "A workmate appears here once one is initialized from a roster base."],
   uses: "uses",
@@ -182,8 +196,8 @@ const EN: DshGoCopy = {
 const ZH: DshGoCopy = {
   workbench: "MPD 工作台",
   board: "团队看板",
-  tabsWorkbench: ["总览", "问题", "工作伙伴", "记忆"],
-  tabsBoard: ["看板", "成员", "详情", "看门狗"],
+  tabsWorkbench: ["总览", "问题", "资料库"],
+  tabsBoard: ["看板", "详情", "看门狗"],
   metricReady: "就绪",
   metricActive: "进行",
   metricDone: "完成",
@@ -200,6 +214,9 @@ const ZH: DshGoCopy = {
   customAnswer: "自定义回答",
   submit: "提交",
   emptyQuestion: ["还没有停下来的问题", "当有成员需要你回答时，问题和它的选项会出现在这里。"],
+  libraryCaption: "工作伙伴与记忆，只读",
+  agentsHeading: "工作伙伴",
+  memoryHeading: "记忆",
   workmatesCaption: "工作伙伴库里的持久实例",
   emptyWorkmates: ["工作伙伴库是空的", "从一个基础角色初始化后，实例会出现在这里。"],
   uses: "次使用",

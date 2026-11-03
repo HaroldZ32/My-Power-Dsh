@@ -13,18 +13,14 @@
       "items": [
         {
           "title": "Board",
-          "subtitle": "Every task of the active team with its owner and status; tap a row to open it."
-        },
-        {
-          "title": "Members",
-          "subtitle": "Who is on this team, their mode and their handoff state."
+          "subtitle": "Every task of the active team with its owner and status, plus the roster; tap a row to open it."
         },
         {
           "title": "Detail",
           "subtitle": "The selected task's owner, dependencies and verdict."
         },
         {
-          "title": "Watchdog",
+          "title": "Watch",
           "subtitle": "The predicate in force, the preserving hold and the last incidents."
         }
       ]
