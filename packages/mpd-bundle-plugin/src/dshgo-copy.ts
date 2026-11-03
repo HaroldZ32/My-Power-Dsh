@@ -73,6 +73,8 @@ export interface DshGoCopy {
   reflection: string
   /** The board tab's hero caption. */
   boardCaption: string
+  /** The section heading of the layered dependency graph. */
+  graphHeading: string
   /** The members tab's hero caption and empty copy. */
   membersCaption: string
   /** Empty copy: the team raised no member. */
@@ -164,6 +166,7 @@ const EN: DshGoCopy = {
   emptyMemory: ["No memory entry yet", "Notes, facts and reflections written by this agent show up here."],
   reflection: "Reflection",
   boardCaption: "The active team's board",
+  graphHeading: "Dependency graph",
   membersCaption: "Who is on this team",
   emptyMembers: ["No member raised", "Approving a staged plan raises its members; they are listed here."],
   detailCaption: "The selected row",
@@ -224,6 +227,7 @@ const ZH: DshGoCopy = {
   emptyMemory: ["还没有记忆条目", "这个 agent 写下的笔记、事实和反思会出现在这里。"],
   reflection: "反思",
   boardCaption: "当前团队的看板",
+  graphHeading: "依赖关系图",
   membersCaption: "团队里的成员",
   emptyMembers: ["还没有成员", "审批一份计划会拉起它的成员，名单出现在这里。"],
   detailCaption: "选中的任务",

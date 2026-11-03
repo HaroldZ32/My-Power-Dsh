@@ -21,6 +21,8 @@ import { buildTeamView, type TeamPanelSnapshot } from "../src/dshgo-views.ts"
 import type { PanelSnapshot } from "../src/dshgo-panel.ts"
 import { createSurfaceActions, replyTextOf, stripLine } from "../src/dshgo-surfaces.ts"
 import { memorySlugOf, readMemoryStore } from "../src/dshgo-panel.ts"
+import { graphLinesOf, graphStepsOf, layerGraphOf } from "../src/dshgo-graph.ts"
+import type { TeamPanelTask } from "../src/dshgo-views.ts"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -437,5 +439,51 @@ describe("the team panel offers only the controls it can address (repair T8/H1+M
     expect(ids).not.toContain("hold")
     expect(ids).not.toContain("resume")
     expect(lintDesign(view, { version: 2 })).toEqual([])
+  })
+})
+
+describe("the dependency graph (task T20)", () => {
+  /** One task with the fields the layering reads. */
+  const task = (id: string, dependencies: string, subject: string = id): TeamPanelTask => ({ id, subject, owner: "", status: "pending", kind: "work", blockedBy: dependencies === "" ? 0 : dependencies.split(",").length, description: "", dependencies, verdict: "" })
+
+  test("levels follow the longest blocker chain, and an unknown blocker is ignored", () => {
+    /** A chain T1 -> T2 -> T4 plus a row blocked by an id no longer on the board, plus a parallel root. */
+    const layers = layerGraphOf([task("T1", ""), task("T2", "T1"), task("T3", "GONE"), task("T4", "T2"), task("T5", "")])
+    expect(layers.map((layer) => layer.level)).toEqual([0, 1, 2])
+    expect(layers[0]?.tasks.map((one) => one.id)).toEqual(["T1", "T3", "T5"])
+    expect(layers[1]?.tasks.map((one) => one.id)).toEqual(["T2"])
+    expect(layers[2]?.tasks.map((one) => one.id)).toEqual(["T4"])
+  })
+
+  test("a cyclic board LAYS OUT instead of hanging", () => {
+    /** Two rows that block each other, which a hand-edited record can produce. */
+    const layers = layerGraphOf([task("A", "B"), task("B", "A")])
+    expect(layers.length).toBeGreaterThan(0)
+    expect(layers.flatMap((layer) => layer.tasks.map((one) => one.id)).sort()).toEqual(["A", "B"])
+  })
+
+  test("the code block prints one line per task with its level and its incoming edges", () => {
+    /** The rendered lines of the fixture chain. */
+    const lines = graphLinesOf(layerGraphOf([task("T1", "", "Build it"), task("T2", "T1", "Prove it")]))
+    expect(lines).toEqual(["L0 T1 Build it", "L1 T2 Prove it <-T1"])
+  })
+
+  test("the panel emits a fold + codeBlock on v2 and steps on v1", () => {
+    /** The v2 tree. */
+    const v2 = buildTeamView(teamSnapshot(), V2_CAPS)
+    /** Every collapsible node of the v2 tree. */
+    const folds = nodesOf(v2).filter((node) => node.type === "collapsible")
+    expect(folds).toHaveLength(1)
+    /** The code block inside that fold. */
+    const block = nodesOf(folds[0]?.children).find((node) => node.type === "codeBlock")
+    expect(String(block?.code)).toContain("L0 T1")
+    expect(String(block?.code)).toContain("<-T1")
+    // v1 has neither component (both are v2-only) and renders the same layout as steps instead.
+    /** The v1 fallback tree. */
+    const v1 = buildTeamView(teamSnapshot(), V1_CAPS)
+    expect(JSON.stringify(v1)).not.toContain("codeBlock")
+    expect(JSON.stringify(v1)).not.toContain("collapsible")
+    expect(nodesOf(v1).filter((node) => node.type === "steps")).toHaveLength(1)
+    expect(graphStepsOf(layerGraphOf(teamSnapshot().tasks)).length).toBeGreaterThan(0)
   })
 })

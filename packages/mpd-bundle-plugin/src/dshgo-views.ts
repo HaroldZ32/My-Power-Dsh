@@ -28,6 +28,7 @@ import {
   row,
   spacer,
   stack,
+  steps,
   tabs,
   text,
   textField,
@@ -37,6 +38,7 @@ import {
   type DshGoView,
 } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { copyFor, type DshGoCopy } from "./dshgo-copy"
+import { graphLinesOf, graphStepsOf, layerGraphOf } from "./dshgo-graph"
 import type { PanelSnapshot } from "./dshgo-panel"
 
 /** One task row of the team board, as the team panel renders it. */
@@ -109,6 +111,43 @@ export const TEAM_PANEL_MAX_INCIDENTS = 5
 
 /** One tab's worth of children, so a section list can be assembled in reading order. */
 type TabChildren = readonly DshGoView[]
+
+/**
+ * The v2 COLLAPSIBLE node: one labelled fold around the children.
+ *
+ * The kit has no builder for it (its vocabulary stops at the panel components it can validate), so the
+ * two nodes this file hand-rolls are the v2 fold and the v2 code block — both verified against the app's
+ * own parser (`dsh_ui_plugin_controls_model.dart`: `collapsible` reads `label` + `children`, `codeBlock`
+ * reads `code` + `language`). `adaptView` degrades both, so a tree built for v2 stays legal for an app
+ * that turns out not to speak it.
+ * @param label - the fold's header text.
+ * @param children - the content revealed when the fold is open.
+ * @returns the collapsible node.
+ */
+function fold(label: string, children: readonly DshGoView[]): DshGoView {
+  return { type: "collapsible", label, children }
+}
+
+/**
+ * The v2 MONOSPACE block: the graph's lines, rendered in the app's code style.
+ * @param code - the text to render, one line per row.
+ * @returns the codeBlock node.
+ */
+function codeBlock(code: string): DshGoView {
+  return { type: "codeBlock", code, language: "text" }
+}
+
+/**
+ * Whether the app on the other end speaks view v2 (the same floor `adaptView` uses).
+ * @param caps - what the app reported, or nothing when it reported nothing.
+ * @returns true only for 1.0.9 and up; an unknown version reads as older.
+ */
+function speaksV2(caps: DshGoCaps | null | undefined): boolean {
+  if (typeof caps?.app !== "string") return false
+  /** The version's numeric parts, missing ones reading as 0. */
+  const [major = 0, minor = 0, patch = 0] = caps.app.split(".").map((part) => Number.parseInt(part, 10) || 0)
+  return major > 1 || (major === 1 && (minor > 0 || patch >= 9))
+}
 
 /**
  * The hero card every tab opens with: a `tinted` material carrying the tab's title, caption and tiles.
@@ -364,7 +403,7 @@ export function buildTeamView(snapshot: TeamPanelSnapshot, caps?: DshGoCaps | nu
   const view = panelView({
     children: [
       tabs([
-        { label: copy.tabsBoard[0], children: boardTab(snapshot, copy) },
+        { label: copy.tabsBoard[0], children: boardTab(snapshot, copy, speaksV2(caps)) },
         { label: copy.tabsBoard[1], children: detailTab(snapshot, copy) },
         { label: copy.tabsBoard[2], children: watchdogTab(snapshot, copy) },
       ]),
@@ -374,12 +413,13 @@ export function buildTeamView(snapshot: TeamPanelSnapshot, caps?: DshGoCaps | nu
 }
 
 /**
- * The Board tab: the team's counters and a tappable row per task.
+ * The Board tab: the team's counters, a tappable row per task, the dependency graph and the roster.
  * @param snapshot - the team snapshot.
  * @param copy - the copy record for the app's language.
+ * @param v2 - whether the app speaks view v2, which decides the graph's shape (fold + code block vs steps).
  * @returns the tab's children, in reading order.
  */
-function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
+function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy, v2: boolean): DshGoView[] {
   /** The hero's supporting line: the team's name and its derived stage. */
   const caption = snapshot.team === null
     ? copy.emptyTeam[0]
@@ -402,6 +442,12 @@ function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
     return children
   }
   children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]))
+  // THE DEPENDENCY GRAPH (task T20): the same board, laid out in dependency layers. v2 gets a fold
+  // around a monospace block; an older app gets one `steps` entry per layer, because `codeBlock` and
+  // `collapsible` are v2-only components.
+  /** The layered layout, computed once for whichever shape is emitted. */
+  const layers = layerGraphOf(snapshot.tasks)
+  children.push(section(copy.graphHeading, v2 ? [fold(copy.graphHeading, [codeBlock(graphLinesOf(layers).join("\n"))])] : [steps(graphStepsOf(layers))]))
   // THE ROSTER MOVED HERE (repair T18): three tabs cannot hold separate Board/Members/Detail/Watch
   // surfaces, and the roster belongs beside the board it staffs.
   children.push(section(copy.membersCaption, snapshot.members.length === 0 ? [empty(copy.emptyMembers)] : [list(snapshot.members.map(memberLine))]))
@@ -454,7 +500,9 @@ function detailTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
       fields,
       // NO settle buttons (repair T8/H1): a panel tap is anonymous, so `agent_teams_task` refuses every
       // owned row from here. The control is gone and the copy says where the action does live.
-      callout(copy.settleHint, { tone: "muted" }),
+      // No tone: the app's callout accepts only info/good/warn/bad (measured: `未知 tone "muted"`), and a
+      // neutral hint should not borrow a semantic colour.
+      callout(copy.settleHint),
       actions([{ label: copy.back, action: "back", icon: "expand" }]),
     ]),
   ]
@@ -484,6 +532,6 @@ function watchdogTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] 
     section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
     // NO hold/resume button (repair T8/M3): the watchdog tools resolve their workspace from the
     // environment, not from this panel's session, so the tap could write to another store. Read-only.
-    callout(copy.watchdogReadOnly, { tone: "muted" }),
+    callout(copy.watchdogReadOnly),
   ]
 }
