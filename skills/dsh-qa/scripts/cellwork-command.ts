@@ -34,7 +34,7 @@ import {
   REPO, binaryPresent, bootSession, cleanup, createSandbox, installProfile, isolationStep,
   keepRawSession, makeStubModel, timestamp, useStubRoute, writeEvidence,
 } from "./extension-isolation.ts"
-import { userMessageTexts } from "./ulw-command.ts"
+import { userMessageTexts } from "./autoproject-command.ts"
 import type { ProbeRecord } from "./lib/cellwork-command-probe.ts"
 
 /** The case slug, used in the sandbox prefix, the evidence directory and every log line. */
@@ -224,7 +224,7 @@ function selfTest(): void {
   const check = (label: string, condition: boolean): void => { if (!condition) problems.push(label) }
   // 1. The listing arm: positive, then three negatives (absent, no hint, no description).
   check("listing positive", evaluateListing([{ name: "cellwork", description: "d", hint: "objective" }]).ok)
-  check("listing absent", !evaluateListing([{ name: "ulw", description: "d", hint: "objective" }]).ok)
+  check("listing absent", !evaluateListing([{ name: "autoproject", description: "d", hint: "objective" }]).ok)
   check("listing no hint", !evaluateListing([{ name: "cellwork", description: "d", hint: null }]).ok)
   check("listing no description", !evaluateListing([{ name: "cellwork", description: "", hint: "objective" }]).ok)
   check("listing non-list", !evaluateListing(null).ok)
@@ -253,7 +253,7 @@ function selfTest(): void {
   const runRecord = { type: "command/run", data: { name: "cellwork", args: OBJECTIVE } } as unknown as SessionRecord
   check("command record positive", evaluateCommandRecords([runRecord], "cellwork").ok)
   check("command record missing", !evaluateCommandRecords([{ type: "user/message", data: {} } as unknown as SessionRecord], "cellwork").ok)
-  check("command record other name", !evaluateCommandRecords([runRecord], "ulw").ok)
+  check("command record other name", !evaluateCommandRecords([runRecord], "autoproject").ok)
   // 6. The overlay surgery: the probe row with an absolute module path and both config keys.
   /** The overlay the case writes. */
   const overlay = probeOverlay(PROBE, "/tmp/probe.json", OBJECTIVE)

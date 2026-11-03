@@ -14,35 +14,35 @@ here for the full set.
 
 ### For users
 
-1. [README](../README.md) — the product page: what it is, the two surfaces side by side, features,
+1. [README](../README.md): the product page: what it is, the two surfaces side by side, features,
    install, quick start, status and known limitations.
-2. [`user-guide.md`](user-guide.md) — the long-form task-oriented guide.
-3. [`tui.md`](tui.md) — the DSH-TUI edition, if you work in a terminal.
-4. [`user-guide.md` §11](user-guide.md#11-troubleshooting-quick-map) — the symptom → fix quick map.
+2. [`user-guide.md`](user-guide.md): the long-form task-oriented guide.
+3. [`tui.md`](tui.md): the DSH-TUI edition, if you work in a terminal.
+4. [`user-guide.md` §11](user-guide.md#11-troubleshooting-quick-map): the symptom → fix quick map.
 
 ### For extension authors
 
-1. [`extension-authoring-guide.md`](extension-authoring-guide.md) — when an extension is the right
+1. [`extension-authoring-guide.md`](extension-authoring-guide.md): when an extension is the right
    instrument, and the template walkthrough.
-2. [`extensions.md`](extensions.md) — the frozen contract, the four contribution kinds, the CLI.
-3. [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) — the machine contract for an agent
+2. [`extensions.md`](extensions.md): the frozen contract, the four contribution kinds, the CLI.
+3. [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md): the machine contract for an agent
    writing an extension (English-only).
-4. [`../extensions/README.md`](../extensions/README.md) — the shipped discovery root.
+4. [`../extensions/README.md`](../extensions/README.md): the shipped discovery root.
 
 ### For contributors
 
-1. [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — setup, build and test commands, gates, the git model.
-2. [`development.md`](development.md) — the repository's own working detail: layout, QA lanes,
+1. [`../CONTRIBUTING.md`](../CONTRIBUTING.md): setup, build and test commands, gates, the git model.
+2. [`development.md`](development.md): the repository's own working detail: layout, QA lanes,
    packing, vendoring, release flow.
-3. [`design.md`](design.md) — how the bundle is assembled and mounts; read it before changing
+3. [`design.md`](design.md): how the bundle is assembled and mounts; read it before changing
    anything under `packages/`.
-4. [`../AGENTS.md`](../AGENTS.md) — the binding repository manual (English-only).
-5. [`../CHANGELOG.md`](../CHANGELOG.md) — what changed in each release.
+4. [`../AGENTS.md`](../AGENTS.md): the binding repository manual (English-only).
+5. [`../CHANGELOG.md`](../CHANGELOG.md): what changed in each release.
 
 ### For agents
 
-1. [`../AGENTS.md`](../AGENTS.md) — the binding manual: conventions, gates, git model.
-2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md) — the full
+1. [`../AGENTS.md`](../AGENTS.md): the binding manual: conventions, gates, git model.
+2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md): the full
    symptom → cause → fix table.
 
 The adopted agent-teams delta registry that used to be listed here was deleted WITH the vendored
@@ -57,21 +57,22 @@ bilingual band this hub documents.
 |---|---|---|
 | [`../README.md`](../README.md) | everyone | The product page: what the bundle is, the Web and TUI surfaces compared side by side, the capability inventory, the install steps, quick start, and the honest bounds. |
 | [`user-guide.md`](user-guide.md) | users | The task-oriented guide: install/uninstall, the `mpd` preset, tools by job, the specialist roster, the workmate library, team mode, the DSH-TUI edition chapter, the Web GUI, `mpd.jsonc` configuration, extensions from a user's point of view, troubleshooting. |
-| [`extensions.md`](extensions.md) | extension authors | The extension interface — the frozen descriptor contract, the four contribution kinds (skills, flows, MCP servers, roles), the discovery roots and the developer CLI. |
-| [`extension-authoring-guide.md`](extension-authoring-guide.md) | extension authors, newcomers | The task-oriented authoring guide — when an extension is the right instrument, the one plane-selection rule, the isolation posture and its accepted residuals, the lifecycle/restart matrix, the template walkthrough, distribution and troubleshooting. |
-| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | agents writing an extension | The machine contract, English-only — kind-by-kind requirements, a manifest skeleton that is validated on every docs-check run, plane legality, error signatures, the refusal list and the v1 hard limits. |
-| [`extension-adaptation-report.md`](extension-adaptation-report.md) | technical decision-makers | The current-state report on external-plugin adaptation — the two planes and who should use which, the extension-interface inventory, the runtime and isolation posture, what was live-verified on this tree, risks/gaps, and prioritized P0/P1/P2 recommendations. |
-| [`tui.md`](tui.md) | users of a TUI session | The DSH-TUI edition — the install command, the TUI-native surfaces, the admission and distribution artifacts, the per-package compatibility ledger and the explicit NOT-CLAIMED list. |
+| [`extensions.md`](extensions.md) | extension authors | The extension interface: the frozen descriptor contract, the four contribution kinds (skills, flows, MCP servers, roles), the discovery roots and the developer CLI. |
+| [`extension-authoring-guide.md`](extension-authoring-guide.md) | extension authors, newcomers | The task-oriented authoring guide: when an extension is the right instrument, the one plane-selection rule, the isolation posture and its accepted residuals, the lifecycle/restart matrix, the template walkthrough, distribution and troubleshooting. |
+| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | agents writing an extension | The machine contract, English-only: kind-by-kind requirements, a manifest skeleton that is validated on every docs-check run, plane legality, error signatures, the refusal list and the v1 hard limits. |
+| [`extension-adaptation-report.md`](extension-adaptation-report.md) | technical decision-makers | The current-state report on external-plugin adaptation: the two planes and who should use which, the extension-interface inventory, the runtime and isolation posture, what was live-verified on this tree, risks/gaps, and prioritized P0/P1/P2 recommendations. |
+| [`tui.md`](tui.md) | users of a TUI session | The DSH-TUI edition: the install command, the TUI-native surfaces, the admission and distribution artifacts, the per-package compatibility ledger and the explicit NOT-CLAIMED list. |
 | [`tui-parity.md`](tui-parity.md) | users choosing between the two surfaces | The surface-parity ledger: one row per Web surface, its TUI counterpart, the evidence level behind the claim, and the deviations that are still open. |
 | [`design.md`](design.md) | engineers, curious users | How the bundle is assembled and mounts: patch layers, boot chain, plugin inventory, interaction flows, state layout, web-client wiring, TUI edition wiring. |
-| [`drive-surface.md`](drive-surface.md) | integrators, client authors | The three seams a non-model client drives: the exec-free team actions and their two POST routes, the question relay with its attach gate, and the DSH Go native panel — with the guard order and the honest bounds. |
+| [`drive-surface.md`](drive-surface.md) | integrators, client authors | The three seams a non-model client drives: the exec-free team actions and their two POST routes, the question relay with its attach gate, and the DSH Go native surface (two panels, a composer strip, menu actions and tool cards): with the guard order and the honest bounds. |
+| [`market-listing.md`](market-listing.md) | maintainers, packagers | How the bundle is listed on the two plugin directories: the `dsh-plugin` topic dshfind indexes, the versioned catalogue the DSH Go market takes by pull request, and the submission file that is kept in step with each release. |
 | [`development.md`](development.md) | developers | Repo layout, build/test commands, the QA case catalog, gates, packing/installing, vendoring, git model, common pitfalls. |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | contributors | How to contribute: development setup, gates, the git model, documentation rules, evidence, pull requests. |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | everyone | Release notes, newest first, one section per released version. |
 | [`../AGENTS.md`](../AGENTS.md) | agents + maintainers | The binding repository manual: conventions, gates, git model, troubleshooting. |
 | [`../extensions/README.md`](../extensions/README.md) | extension authors | The bundle-shipped discovery root: the three roots, their lifecycles and the shipped reference extension. |
 
-Maintainer material — the current working spec rather than history:
+Maintainer material: the current working spec rather than history:
 
 | Doc | Audience | Contents |
 |---|---|---|
@@ -82,25 +83,25 @@ Maintainer material — the current working spec rather than history:
 
 Each package under `packages/<name>/` carries a bilingual `README.md` + `README.zh-CN.md`, with one
 stated exception: **`mpd-mcp-shared`** (the helper module shared by the MCP servers) ships source and
-tests only — its README pair is a recorded follow-up. The retired `mpd-agent-teams-plugin` tree was
+tests only; its README pair is a recorded follow-up. The retired `mpd-agent-teams-plugin` tree was
 DELETED with the rest of the adopted body (de-vendor wave, 2026-10-07), so its provenance README no
 longer exists to exempt; what survives of that body is described in *Host plugins* below.
 
-- **Host plugins** — `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls
+- **Host plugins**: `mpd-dsh-adapter-plugin` (the single harness-seam adapter every row calls
   through), `mpd-config-plugin`, `mpd-tools-plugin`, `mpd-modelchain-plugin`, `mpd-roles-plugin`,
-  `mpd-ext-plugin` (the extension interface), `mpd-ulw-plugin`, `mpd-hashline-plugin`,
-  `mpd-boulder-plugin`, `mpd-goal-plugin`, `mpd-comment-checker-plugin`, `mpd-memory-plugin`,
+  `mpd-ext-plugin` (the extension interface), `mpd-autoproject-plugin`, `mpd-hashline-plugin`,
+  `mpd-autoproject-plugin`, `mpd-goal-plugin`, `mpd-comment-checker-plugin`, `mpd-memory-plugin`,
   `mpd-codegraph-plugin`, `mpd-workmate-plugin`, `mpd-bootstrap-plugin`, `mpd-verify-plugin`,
   `mpd-team-core-plugin` (the team record), `mpd-team-compact-plugin`, `mpd-team-watchdog-plugin`,
   `mpd-roster-provider-plugin`, `mpd-tui-adapter-plugin`, `mpd-tui-plugin`,
   `mpd-better-sidebar-host`, `mpd-bundle-plugin` (bundle web-compat + combined web client),
   `mpd-qa-roles-probe` (QA-only).
-- **Shared library** — `mpd-schemastery` (the schemastery validator and the six DSH framework
+- **Shared library**: `mpd-schemastery` (the schemastery validator and the six DSH framework
   modules four shipped plugins' `Config` schemas and six test files resolve against).
-- **MCP servers** — `mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`, `mpd-mcp-codegraph`.
-- **MCP shared helper** — `mpd-mcp-shared` (binary resolution and the stdio core the four server
+- **MCP servers**: `mpd-mcp-astgrep`, `mpd-mcp-gitbash`, `mpd-mcp-lsp`, `mpd-mcp-codegraph`.
+- **MCP shared helper**: `mpd-mcp-shared` (binary resolution and the stdio core the four server
   wrappers launch).
-- **Aggregation** — `mpd-bundle` (`cordis.patch.yml`).
+- **Aggregation**: `mpd-bundle` (`cordis.patch.yml`).
 
 ## Image assets
 
@@ -110,23 +111,23 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
 | Asset | Referenced from | Shows |
 |---|---|---|
 | [`architecture.svg`](./assets/images/architecture.svg) | this hub, [design.md](design.md) | The bundle's layers: DSH host → patch layer 1 → patch layer 2 → adapter seam → surfaces → state roots. |
-| [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [user guide §13.2](user-guide.md#132-the-ulw-loop-and-its-gates) | One ultrawork run: triage, optional plan, round-by-round execution through `pin → red → green → surface → clean`, the verification gate and the quality gate. |
-| [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [user guide §6](user-guide.md#6-team-mode) | One team wave end to end, plus the guardrails (read-only tool denial, durable mailbox, compare-and-set board, unordered overlapping write scopes REFUSED at `approve` on the mpd record plane — advisory only on the OFFICIAL plane). |
+| [`autoproject-loop.svg`](./assets/images/autoproject-loop.svg) | [user guide §13.2](user-guide.md#132-the-autoproject-loop-and-its-gates) | One autoproject run: triage, optional plan, round-by-round execution through `pin → red → green → surface → clean`, the verification gate and the quality gate. |
+| [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [user guide §6](user-guide.md#6-team-mode) | One team wave end to end, plus the guardrails (read-only tool denial, durable mailbox, compare-and-set board, unordered overlapping write scopes REFUSED at `approve` on the mpd record plane: advisory only on the OFFICIAL plane). |
 | [`hero-web-tui-v2.png`](./assets/images/hero-web-tui-v2.png) | [README](../README.md) | The same bundle on both surfaces, side by side: the Web GUI's own Team view with a frosted-glass task graph and a hover card, and the DSH-TUI team scene, each cropped to the plugin's content. |
 | [`web-team-dag-groups.png`](./assets/images/web-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | A subcell drawn as a GROUP BOX in the Web Team view: the `subcell-auth` frame (`.mpd-dag-group`) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it. |
 | [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.md#one-plugin-two-surfaces) | The same nested team in the DSH-TUI's full-screen team scene (not the DAG page): the group frame in the second border-glyph family (`╔ ╗ ╚ ╝ ║ ═`) with a `╧` port where the outside dependency attaches, and the subcell's cards drawn inside it. |
 | [`web-plugins-installed.png`](./assets/images/web-plugins-installed.png) | [README](../README.md#install) | The Plugins page after the one install: `@mpd-dsh/mpd` under **Installed**, enabled. |
 | [`web-agent-presets.png`](./assets/images/web-agent-presets.png) | [README](../README.md#usage) | The Agent presets page: the `mpd` preset listed under CUSTOM, with the new-task-default badge on the host's Standard mode. |
-| [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page — the same knobs as `.mpd/mpd.jsonc`. |
+| [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page: the same knobs as `.mpd/mpd.jsonc`. |
 | [`tui-status-line.png`](./assets/images/tui-status-line.png) | [README](../README.md#quick-start) | The DSH-TUI's keyed status line: the `mpd:` row naming the team and its progress, the boulder ledger, plans and workmates. |
 | [`tui-workmates.png`](./assets/images/tui-workmates.png) | [README](../README.md#usage) | The `/mpd workmate` page in the DSH-TUI: the library's instances with their base and use count. |
-| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set: its OWN run of the same Docker lanes with the Web surfaces in the app's Chinese locale (the TUI scene bodies stay English by design, see the README) — a separate render set, not a copy of the English PNGs. |
+| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set: its OWN run of the same Docker lanes with the Web surfaces in the app's Chinese locale (the TUI scene bodies stay English by design, see the README): a separate render set, not a copy of the English PNGs. |
 
 Every capture above is produced by the Docker lanes under [`docker/ui/`](../docker/ui), not taken by
 hand and not authored in a drawing tool: the Web tiles by headless Chromium driving the real app, the
 terminal tiles by a real terminal emulator rendering the real TUI on a real PTY. The lane is
 documented in [`docker/ui/`](../docker/ui) and its raw output lands in `docker/ui/out/`, which is
-gitignored — only the curated images are committed here. **A capture is measured before it ships**:
+gitignored; only the curated images are committed here. **A capture is measured before it ships**:
 [`docker/ui/measure-shots.py`](../docker/ui/measure-shots.py) reads a Web figure's `data-mpd-box`
 values and the rect that was photographed and refuses a box outside that rect, content wider than the
 graph viewport, or a non-zero scroll origin; its `tui` mode measures the terminal figures on the PNG
@@ -136,10 +137,10 @@ this repository.
 
 ## Extension assets
 
-- [`../extensions/README.md`](../extensions/README.md) — the bundle-shipped discovery root.
-- [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example) — the disabled reference
+- [`../extensions/README.md`](../extensions/README.md): the bundle-shipped discovery root.
+- [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example): the disabled reference
   extension: a skill, a flow, a role and a working dependency-free stdio MCP server.
-- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts) — the developer CLI
+- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts): the developer CLI
   (`validate` / `scaffold` / `list` / `--self-test`).
 
 ## Process records

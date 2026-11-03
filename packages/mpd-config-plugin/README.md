@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Plan C / C7 — minimal `mpd.jsonc` runtime config layer.
+A minimal `mpd.jsonc` runtime config layer, read by the bundle's other rows.
 
 Layers (deep-merged, project wins): project `<workspace>/.mpd/mpd.jsonc` and user
 `$DSH_HOME/mpd.jsonc` (fallback `~/.dsh/mpd.jsonc`). JSONC (comments + trailing
@@ -19,7 +19,7 @@ commas) with prototype-pollution-safe merge.
   agent's single-call spawns with `AGENT_UNCONFIGURED`.
 - `team.stateDir`, `hashline.guardEditTools/maxDiffChars/registryFile`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
-  `ulw.maxRounds`.
+  `autoproject.maxRounds`.
 
 ## Agent routes (`agentRoutes`)
 
@@ -125,7 +125,7 @@ all — never only the promising half (`docs/user-guide.md` §9.1 is the per-kno
   `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
   `captain.investigation` / `delegation.gate` (each reads the row's own `configValue` per decision);
 - **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*`, `commentChecker.*`,
-  `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`;
+  `autoproject.*`, `memory.*`, `boulder.dir`, `goal.*`;
 - **ONE special case — `watchdog.*`** — its ROW CONFIG is the defaults layer captured at mount, and the
   workspace `<workspace>/.mpd/mpd.jsonc` FILE layer is re-read on every knob refresh (at mount, on a
   `settings/document-updated` for the `mpd` namespace — a legacy host — and once per tick), so a hand

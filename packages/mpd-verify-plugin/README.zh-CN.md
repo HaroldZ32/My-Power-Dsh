@@ -114,3 +114,10 @@ workspace 可以在**根目录的一个文件**里声明或**覆盖**验证者�
 7. **绑定验证员在盲态下可以读 `evidence/**` 与每个 `packages/*/README.md`（含 `.zh-CN` 对照）** —— 这两处在修好之前是被拒的，导致裁决只能依赖产物的存在/size/sha256 而不是内容。该可读带只是**约定（prose），不是栅栏**：没有任何已发布的 row 安装 `installVerifyGuard`，因此没有任何东西拒绝 `packages/*/src/**`、`packages/*/test/**` 或含 `..` 的拼写 —— 席位遵守这条带，是因为纪律如此要求，这正是边界 1 的要旨。`evidence/**` 里的产物**可能内嵌源码帧**（闸门日志尾部），所以读它是**受控黑盒证据**——这正是边界 3 已经写明的那件事。
 8. **same-agent 拒绝比较的是字符串。** 当 `writerId === verifierId` 时 `mpd_verify_record` 拒绝；`writer_id` 是调用者写下的值，而它保存的 verifier id 是**调用 session** 的 id。点名真实写作者（cell 里某个成员的 session id）让这条规则在 cell 打开的每条 loop 上真正有意义——但它从不保证不可伪造。
 9. **项目声明的 gate 有多诚实，取决于项目的 `mpd-gates.json`。** 该文件可以把某个 gate id 指向任何命令；插件承诺的是**证据点名生效命令**，而不是命令的质量。固定表为文件**没有声明**的每个 id 提供条目——这是**按 id 逐个**的回退，文件不存在时就是全部 id。冻结自身的边界：每条 loop 对一个文件的字节身份，绝不是签名，因此它约束的是**何时**允许文件改变，而不是**谁**写的。
+
+## dsh-Go 工具卡片
+
+`mpd_verify_evidence` 与 `mpd_verify_record` 还会通过 `output.presentationMeta` 发布原生 **dsh-Go 工具卡片**：
+每张卡片都是一棵 v1 视图树（`stack` 标题 → `row` 指标 → `callout`/`keyValue`/`table`），不带数据绑定、
+不带按钮，并在发布前按应用的 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。拒绝会渲染成 `callout` 而不是空卡片；
+构建失败的卡片返回 `{}`，应用于是回退到通用工具行。文本 `render` 未改动，这两个工具仍然**不声明**输出 schema。

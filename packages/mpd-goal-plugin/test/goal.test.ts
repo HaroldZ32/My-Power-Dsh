@@ -131,7 +131,7 @@ test("anchor creates a goal through the harness tools and records the anchor sid
   const service = m.provided.get("mpdGoal")
   expect(service).toBeDefined()
   /** The anchor outcome for a fresh session. */
-  const outcome = await service.anchor(m.exec, { objective: "ship the wave", source: "ulw" })
+  const outcome = await service.anchor(m.exec, { objective: "ship the wave", source: "autoproject" })
   expect(outcome.ok).toBe(true)
   expect(outcome.created).toBe(true)
   expect(outcome.goal?.id).toBe("goal-1")
@@ -144,7 +144,7 @@ test("anchor creates a goal through the harness tools and records the anchor sid
   /** The sidecar as the row wrote it. */
   const anchors = readAnchors(file)
   expect(anchors["session-1"]?.goalId).toBe("goal-1")
-  expect(anchors["session-1"]?.source).toBe("ulw")
+  expect(anchors["session-1"]?.source).toBe("autoproject")
   expect(JSON.parse(readFileSync(file, "utf8"))["session-1"].objective).toBe("ship the wave")
 })
 
@@ -153,7 +153,7 @@ test("a second anchor keeps the unfinished goal instead of replacing it", async 
   const m = mount()
   /** The service the other mpd rows consume. */
   const service = m.provided.get("mpdGoal")
-  await service.anchor(m.exec, { objective: "first", source: "ulw" })
+  await service.anchor(m.exec, { objective: "first", source: "autoproject" })
   /** The second anchor's outcome: an unfinished goal is kept, never replaced. */
   const second = await service.anchor(m.exec, { objective: "second", source: "boulder" })
   expect(second.ok).toBe(true)
@@ -169,7 +169,7 @@ test("auto-finish only completes a goal this row anchored; an explicit finish do
   /** That row's service. */
   const unanchoredService = unanchored.provided.get("mpdGoal")
   /** The refusal an ownerless auto-finish produces. */
-  const refused = await unanchoredService.finish(unanchored.exec, { outcome: "complete", source: "ulw" })
+  const refused = await unanchoredService.finish(unanchored.exec, { outcome: "complete", source: "autoproject" })
   expect(refused.ok).toBe(false)
   expect(refused.error).toContain("not anchored by mpd-goal")
 
@@ -177,7 +177,7 @@ test("auto-finish only completes a goal this row anchored; an explicit finish do
   const m = mount()
   /** That row's service. */
   const service = m.provided.get("mpdGoal")
-  await service.anchor(m.exec, { objective: "ship the wave", source: "ulw" })
+  await service.anchor(m.exec, { objective: "ship the wave", source: "autoproject" })
   // The explicit tool path (a model asking to close the goal) may finish a goal the row did not arm.
   /** The explicit finish tool's definition. */
   const explicit = m.registered.get("mpd_goal_finish")
@@ -193,9 +193,9 @@ test("auto-finish only completes a goal this row anchored; an explicit finish do
   const m2 = mount()
   /** That row's service. */
   const service2 = m2.provided.get("mpdGoal")
-  await service2.anchor(m2.exec, { objective: "one", source: "ulw" })
+  await service2.anchor(m2.exec, { objective: "one", source: "autoproject" })
   /** The auto finish's outcome. */
-  const finished = await service2.finish(m2.exec, { outcome: "complete", source: "ulw" })
+  const finished = await service2.finish(m2.exec, { outcome: "complete", source: "autoproject" })
   expect(finished.ok).toBe(true)
   expect(readAnchors(anchorsPath(m2.dir))["session-1"]).toBeUndefined()
 })
@@ -205,9 +205,9 @@ test("a blocked refusal from the harness is reported, not thrown", async () => {
   const m = mount()
   /** The service the other mpd rows consume. */
   const service = m.provided.get("mpdGoal")
-  await service.anchor(m.exec, { objective: "long haul", source: "ulw" })
+  await service.anchor(m.exec, { objective: "long haul", source: "autoproject" })
   /** The blocked attempt, which the harness refuses before its threshold. */
-  const blocked = await service.finish(m.exec, { outcome: "blocked", source: "ulw", reason: "two fruitless waves" })
+  const blocked = await service.finish(m.exec, { outcome: "blocked", source: "autoproject", reason: "two fruitless waves" })
   expect(blocked.ok).toBe(false)
   expect(String(blocked.error)).toContain("consecutive goal rounds")
   // A refusal leaves the anchor in place: the goal is still the live basis of execution.
@@ -243,7 +243,7 @@ test("mpd.jsonc wins over the row config, and disabling the row makes it inert",
   const service = m.provided.get("mpdGoal")
   expect(service.autoAnchor()).toBe(false)
   /** The anchor created under the runtime cap. */
-  const outcome = await service.anchor(m.exec, { objective: "ship", source: "ulw" })
+  const outcome = await service.anchor(m.exec, { objective: "ship", source: "autoproject" })
   expect(outcome.goal?.maxGoalRounds).toBe(7)
 
   /** A row disabled by its own config. */
@@ -252,7 +252,7 @@ test("mpd.jsonc wins over the row config, and disabling the row makes it inert",
   const offService = off.provided.get("mpdGoal")
   expect(offService.available()).toBe(false)
   /** The service-level refusal. */
-  const refused = await offService.anchor(off.exec, { objective: "ship", source: "ulw" })
+  const refused = await offService.anchor(off.exec, { objective: "ship", source: "autoproject" })
   expect(refused.ok).toBe(false)
   expect(refused.error).toContain("goal.enabled")
   /** The tool-level refusal, which the model would read. */
@@ -268,14 +268,14 @@ test("auto-finish refuses a goal another row anchored (ownership is per run, not
   const service = m.provided.get("mpdGoal")
   // A ULW run anchors first; a boulder work in the SAME session later inherits that goal (the
   // harness allows one goal per session), and must NOT be able to close it.
-  await service.anchor(m.exec, { objective: "ship the wave", source: "ulw" })
+  await service.anchor(m.exec, { objective: "ship the wave", source: "autoproject" })
   /** The boulder row's auto-finish attempt. */
   const foreign = await service.finish(m.exec, { outcome: "complete", source: "boulder" })
   expect(foreign.ok).toBe(false)
-  expect(String(foreign.error)).toContain('anchored by "ulw"')
+  expect(String(foreign.error)).toContain('anchored by "autoproject"')
   // The owner's own finish still works, which is what makes the refusal an ownership rule and not a lock.
   /** The ULW row's own auto-finish. */
-  const owner = await service.finish(m.exec, { outcome: "complete", source: "ulw" })
+  const owner = await service.finish(m.exec, { outcome: "complete", source: "autoproject" })
   expect(owner.ok).toBe(true)
 })
 
@@ -287,7 +287,7 @@ test("an unrecordable ownership sidecar is reported, never swallowed", async () 
   // Make the workspace's `.mpd` a FILE, so the sidecar's mkdir fails and the write is impossible.
   writeFileSync(join(m.dir, ".mpd"), "not a directory")
   /** The anchor outcome under a workspace that cannot hold the sidecar. */
-  const outcome = await service.anchor(m.exec, { objective: "ship the wave", source: "ulw" })
+  const outcome = await service.anchor(m.exec, { objective: "ship the wave", source: "autoproject" })
   // The goal EXISTS, so the call is not a failure — but the missing ownership is stated, not hidden.
   expect(outcome.ok).toBe(true)
   expect(outcome.created).toBe(true)
@@ -301,7 +301,7 @@ test("anchor refuses when the composition mounts no goal tools", async () => {
   /** The service the other mpd rows consume. */
   const service = m.provided.get("mpdGoal")
   /** The refusal a tool-less composition produces. */
-  const refused = await service.anchor(m.exec, { objective: "ship", source: "ulw" })
+  const refused = await service.anchor(m.exec, { objective: "ship", source: "autoproject" })
   expect(refused.ok).toBe(false)
   expect(refused.created).toBe(false)
   expect(refused.error).toContain("goal tools are not mounted")
@@ -318,7 +318,7 @@ test("the anchor sidecar survives a malformed file and drops only its own record
   const dir = mkdtempSync(join(tmpdir(), "mpd-goal-side-"))
   /** The sidecar path under that workspace. */
   const file = anchorsPath(dir)
-  writeAnchors(file, { a: { goalId: "g1", revision: 1, objective: "o", source: "ulw", at: "t" }, b: { goalId: "g2", revision: 2, objective: "o2", source: "boulder", at: "t" } })
+  writeAnchors(file, { a: { goalId: "g1", revision: 1, objective: "o", source: "autoproject", at: "t" }, b: { goalId: "g2", revision: 2, objective: "o2", source: "boulder", at: "t" } })
   expect(Object.keys(readAnchors(file))).toEqual(["a", "b"])
   dropAnchor(file, "a")
   expect(Object.keys(readAnchors(file))).toEqual(["b"])

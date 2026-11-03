@@ -1,0 +1,151 @@
+{
+  "task": "T13 — dsh-TUI admission compliance (tui-profile plugin-admission-and-development.md, Admission v0.15)",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1447743b7ec0825eec76d6ddefba04ac605f3442",
+  "timestampUtc": "2026-11-03T01-23-16Z",
+  "source_of_truth": [
+    "tui-profile/docs/plugin-admission-and-development.md (fetched, admission-guide.md)",
+    "tui-profile/conformance/requirements-v0.15.json (fetched, requirements-v0.15.json)",
+    "installed @deepseek-harness-tui/dsh-tui 0.18.0 admission library (lib/types/adapter/standard/{registry,admission,descriptor}.js)"
+  ],
+  "negotiation": {
+    "method": "REAL run of the host's own library: loadSpecData -> createContractIndex -> buildLegacyHostDescriptor(HOST_SUPPORTED_CONTRACTS) -> negotiate(manifest, host, []) with validatePlugin first (probe-negotiation.mjs)",
+    "hostVersion": "0.18.0",
+    "hostContracts": [
+      "commands.dsh/v1alpha1#Command",
+      "storage.dsh/v1alpha1#LocalStorage",
+      "messages.dsh/v1alpha1#MessageObserver",
+      "tui.dsh/v1alpha1#DecisionEvents",
+      "tui.dsh/v1alpha1#Backend"
+    ],
+    "before_root": {
+      "decision": {
+        "decision": "waiting_authorization",
+        "reasonCode": "PERMISSION_NOT_GRANTED",
+        "deniedPermissions": [
+          "session.input.intercept@tui/input",
+          "session.rewind.intercept@tui/rewind-prompt",
+          "session.switch.intercept@tui/session-switch",
+          "session.compact.intercept@tui/compact"
+        ]
+      },
+      "validation": "ok"
+    },
+    "after_root": {
+      "decision": {
+        "decision": "compatible"
+      },
+      "validation": "ok"
+    },
+    "after_package": {
+      "decision": {
+        "decision": "compatible"
+      },
+      "validation": "ok"
+    },
+    "note": "before = the four session.*.intercept declarations (the state this wave inherited); after = permissions: [] in both manifests"
+  },
+  "requirements": [
+    {
+      "id": "A",
+      "item": "permission minimalism",
+      "status": "FIXED",
+      "finding": "All four session.*.intercept permissions were declared and all four are registry default-deny, so negotiate() returned waiting_authorization and admitInternal (compatible/compatible_degraded only) never admitted the component.",
+      "usage_measurement": "src/decisions.ts DECISION_EVENTS + attemptDecisionEvents subscribe all four points with handlers that express no opinion (() => undefined): no user-visible interception existed, so none of the four was exercised.",
+      "change": "dsh-plugin.json permissions -> [] (D9's complete-manifest shape superseded by this wave's minimal-surface ruling); the manifest's x-mpd-tui-surfaces.decisionEvents note rewritten with the measured before/after.",
+      "proof": "dsh-plugin.json permissions; probe-negotiation.mjs + negotiation-{before,final-root}.json"
+    },
+    {
+      "id": "A-docs",
+      "item": "honest negotiation statement",
+      "status": "FIXED",
+      "change": "docs/tui.md 4.1/6.1/6.4/verification-table/grant-flow and docs/tui.zh-CN.md twins now state `compatible` (measured with the host's own library) instead of waiting_authorization, and name what is still unproven (live TTY, ledger attribution). Package README pair item 1 carries the same sentence.",
+      "proof": "docs/tui.md 4.1; docs/tui.zh-CN.md 4; packages/mpd-tui-plugin/README.md What is NOT claimed #1"
+    },
+    {
+      "id": "B1",
+      "item": "per-package manifest (TUI-PKG-001)",
+      "status": "FIXED",
+      "change": "NEW packages/mpd-tui-plugin/dsh-plugin.json: id com.mpd-dsh.mpd-tui (same identity as the bundle declaration), version 0.1.0 (its own package.json), facet entry dist/index.js, permissions [], contributes.commands [], the same optional DecisionEvents requirement + fallback, MIT. Host parser accepts it and negotiate() answers compatible.",
+      "proof": "packages/mpd-tui-plugin/dsh-plugin.json; packages/mpd-tui-plugin/test/manifest.test.ts (drift guard against the bundle manifest)"
+    },
+    {
+      "id": "B2",
+      "item": "package.json skeleton",
+      "status": "PARTIAL",
+      "change": "Added types (src/index.ts), exports.types, engines.node (^22.19 || >=24), and dsh-plugin.json in files. main stays dist/index.js and peerDependencies.@deepseek-ai/cordis is deliberately absent; both deviations are written down in the package manifest's x-mpd-tui-package.deviations (bun-built dist instead of lib/types; private workspace package never installed standalone, and the peer is not in this workspace's lock so declaring it would break a frozen-lockfile install).",
+      "proof": "packages/mpd-tui-plugin/package.json; packages/mpd-tui-plugin/dsh-plugin.json x-mpd-tui-package.deviations"
+    },
+    {
+      "id": "C",
+      "item": "declaration == code (commands)",
+      "status": "PRESENT (explained)",
+      "finding": "contributes.commands is [] while src/commands.ts registerCommands registers /mpd through the harness `commands` service, not through the TUI Command capability (commands.dsh/v1alpha1). Both are true at once; the explanation is in the manifests and docs 6.4, so no declaration change is honest.",
+      "proof": "dsh-plugin.json x-mpd-tui-surfaces.whyNoContribution; packages/mpd-tui-plugin/dsh-plugin.json x-mpd-tui-package.runtimeBoundSurfaces; docs/tui.md 6.4"
+    },
+    {
+      "id": "D",
+      "item": "ctx.effect ownership",
+      "status": "PRESENT/FIXED",
+      "finding": "The adapter already owns every host disposer: packages/mpd-tui-adapter-plugin/src/index.ts effectOn(scoped, cleanup, label) -> scoped.effect(...) is called for status, scenes, renderers, shortcuts, command trees, panels, decision subscriptions, commands and the panel keeper. The plugin's own new registration (theme) uses the same helper.",
+      "change": "src/theme.ts registerTheme calls effectOn for the theme disposer; no other registration lacked ownership.",
+      "proof": "packages/mpd-tui-adapter-plugin/src/index.ts effectOn + its call sites; packages/mpd-tui-plugin/src/theme.ts registerTheme; packages/mpd-tui-plugin/src/index.ts armPanelAttention uses ctx.effect"
+    },
+    {
+      "id": "E",
+      "item": "dead theme asset",
+      "status": "FIXED",
+      "change": "themes/mpd-tui.json is now also REGISTERED at runtime: src/theme.ts MPD_THEME (byte-identical to the JSON) + registerTheme through tui.whenBound('themes') and the adapter's theme seam, wired in src/index.ts (outcome id 'theme'). Reported as `requested` (the host plugin face has no read-back), never `confirmed`.",
+      "proof": "packages/mpd-tui-plugin/src/theme.ts; packages/mpd-tui-plugin/src/index.ts registerTheme call; packages/mpd-tui-plugin/test/theme.test.ts (JSON<->TS drift + registration + 3 degrade arms)"
+    },
+    {
+      "id": "F1",
+      "item": "shortcut audit (reserved set)",
+      "status": "PRESENT",
+      "finding": "SHORTCUT_BINDINGS = alt+m, alt+a, alt+t, alt+w, alt+r: every combo carries alt, none is in the guide's reserved set (ctrl+c/d/t/r/g/o/o/l/e/v/a/u/k/w, ctrl+arrows, ctrl/alt+Enter, alt+up, Esc, Tab, Shift+Tab), and modifier-subset matching cannot collide because no combo adds a modifier to a host binding. The host refuses a reserved combo at register time with an inert disposer; the plugin treats that as expected, never throws, and reads the honest list() back.",
+      "proof": "packages/mpd-tui-plugin/src/shortcuts.ts SHORTCUT_BINDINGS + registerShortcuts"
+    },
+    {
+      "id": "F2",
+      "item": "panel audit (limits)",
+      "status": "PRESENT",
+      "finding": "Three registrations (panel.ts registerPanelSurface, panel-workmate.ts registerWorkmatePanel, panel-watchdog.ts registerWatchdogPanel) — within <=4/plugin. contributes.panels is absent everywhere, as v0.15 requires. The global <=32, open() <=1 per 5 s and 3-crash disable rules are enforced by the host; this plugin opens only on a user gesture (command/shortcut/panel action) with no polling loop.",
+      "proof": "packages/mpd-tui-plugin/src/panel.ts / panel-workmate.ts / panel-watchdog.ts; both manifests carry no contributes.panels"
+    }
+  ],
+  "gates": [
+    {
+      "id": "tui_tests",
+      "command": "bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin",
+      "exit": 0,
+      "observed": "715 pass, 0 fail, 1 skip, 16429 expect() calls, 29 files (theme.test.ts + manifest.test.ts are new)"
+    },
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0
+    },
+    {
+      "id": "comments",
+      "command": "bun run verify:comments",
+      "exit": 0
+    },
+    {
+      "id": "docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=55 failed=0 violations=0 dead=0"
+    },
+    {
+      "id": "manifest",
+      "command": "node scripts/verify-plugin-manifest.ts",
+      "exit": 0
+    }
+  ],
+  "bounds": [
+    "No real TTY run: the live /plugins check pane, the host's effect-ledger attribution, the theme picker entry and the panel crash-disable behaviour were NOT observed. The guide's own verification list calls headless insufficient, so none of them is claimed.",
+    "The negotiation uses the host's LEGACY host-descriptor builder (its own warning: 'legacy compatibility descriptor … without live probe evidence'); a kernel-lifecycle descriptor could differ in feature-level DecisionEvents, but not in the permission/contract surface this lane changed.",
+    "dist was not touched (the captain rebuilds); the built plugin still needs the next dist rebuild to carry theme.ts.",
+    "peerDependencies.@deepseek-ai/cordis remains a declared deviation, not an omission: declaring it needs a lockfile change and the package is never installed standalone."
+  ]
+}

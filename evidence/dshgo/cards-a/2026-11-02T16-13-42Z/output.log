@@ -1,0 +1,71 @@
+== parse/build check (pinned toolchain) ==
+--- mpd-team-core-plugin
+Bundled 33 modules in 13ms
+
+  null  0.40 MB  (entry point)
+
+exit=0
+--- mpd-roles-plugin
+Bundled 17 modules in 8ms
+
+  null  207.0 KB  (entry point)
+
+exit=0
+
+== card suites ==
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/tool-cards.test.ts:
+[card] plan.status: bytes=620 nodes=7 depth=2
+(pass) the team tool cards > agent_teams_plan draws the staged plan, the roster and the board [1.22ms]
+[card] plan.approve: bytes=287 nodes=4 depth=2
+[card] plan.delete: bytes=217 nodes=4 depth=2
+(pass) the team tool cards > agent_teams_plan survives the archive and approval branches [0.21ms]
+[card] task.complete: bytes=291 nodes=3 depth=2
+[card] task.context: bytes=273 nodes=4 depth=2
+[card] task.handoff: bytes=143 nodes=2 depth=2
+(pass) the team tool cards > agent_teams_task draws the row, the contract and the occupancy branch [0.34ms]
+[card] dispatch.run: bytes=567 nodes=8 depth=2
+[card] dispatch.refused: bytes=161 nodes=2 depth=2
+[card] dispatch.release: bytes=188 nodes=2 depth=2
+(pass) the team tool cards > agent_teams_dispatch draws the pairs, the skips and the refusals [0.40ms]
+[card] plan.worst-case: bytes=1701 nodes=7 depth=2
+[card] task.worst-case: bytes=1034 nodes=3 depth=2
+[card] dispatch.worst-case: bytes=2696 nodes=7 depth=2
+(pass) the team tool cards > a worst-case answer still fits 8 KiB / 40 nodes / depth 6 [0.60ms]
+(pass) the team tool cards > every registered team tool carries a presentationMeta FUNCTION [1.82ms]
+(pass) the team tool cards > the registered meta answers with a dsh-go/view for a real answer [0.21ms]
+
+packages/mpd-roles-plugin/test/tool-cards.test.ts:
+[card] roles.list: bytes=388 nodes=4 depth=2
+(pass) the roster tool cards > mpd_roles_list draws the roster and any refused extension [0.27ms]
+[card] roles.spawn: bytes=627 nodes=8 depth=2
+(pass) the roster tool cards > mpd_role_spawn draws the report and its sections [0.18ms]
+[card] roles.spawn.worst-case: bytes=3094 nodes=8 depth=2
+[card] roles.list.worst-case: bytes=1259 nodes=4 depth=2
+(pass) the roster tool cards > a worst-case report still fits 8 KiB / 40 nodes / depth 6 [0.28ms]
+(pass) the roster tool cards > both registered roster tools carry a presentationMeta FUNCTION [1.17ms]
+
+ 11 pass
+ 0 fail
+ 91 expect() calls
+Ran 11 tests across 2 files. [173.00ms]
+exit=0
+
+== package suites ==
+--- bun test packages/mpd-team-core-plugin
+
+ 559 pass
+ 0 fail
+ 2668 expect() calls
+Ran 559 tests across 38 files. [2.99s]
+--- bun test packages/mpd-roles-plugin
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [65.14ms]
+
+ 265 pass
+ 1 fail
+ 2008 expect() calls
+Ran 266 tests across 16 files. [370.00ms]
+--- bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 — PASS

@@ -1,0 +1,64 @@
+{
+  "task": "T11 — narrow re-verify of the 20 CodeRabbit round-1 fixes (releases the merge)",
+  "role": "Reviewer",
+  "at": "2026-11-03T00:41:36Z",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "434bd4fc2dacca3a41d2898da8c185396b75c4d8",
+  "subject": "commit 434bd4fc — reconcile the CodeRabbit review of PR #90 (round 1); source: evidence/dshgo/coderabbit/2026-11-03T00-15-54Z/{comments.json,findings.txt,result.json}",
+  "verdict": {
+    "code": "PASS",
+    "summary": "All 20 findings are fixed as stated, by measurement on the fix commit: the eight import specifiers now carry `.ts` (and the `.js` one names an existing file), the three docs match the shipped behaviour, the six correctness fixes are present with named regression arms, and the three quality fixes are present (the depend card renders a bare blocker id; the members tile is a literal 2; callableMember binds). Merge gates are green: typecheck, all nine verify:gates members, 34/34 dist fresh, pack closure 635/635 with a stamp AFTER the fix commit, docs, and 3395 tests / 0 fail. Structure intact on four trees rebuilt from this commit."
+  },
+  "gates": [
+    { "id": "typecheck", "exit": 0 },
+    { "id": "verify:gates", "exit": 0, "observed": "nine members PASS: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance (4 self-test arms), plugin-manifest, comment-coverage, graph-model, workflows" },
+    { "id": "verify-dist-fresh", "exit": 0, "observed": "34/34 targets fresh, each rebuilt twice byte-identical; 1 NOT COVERED file listed" },
+    { "id": "verify-pack-closure", "exit": 0, "observed": "635/635 identical, 0 drift, 0 expected-after-pack, 29/29 packages, 497 assets; pack stamp 2026-11-03T00:22:29.695Z — 20 s AFTER the fix commit, so the artifact carries it" },
+    { "id": "verify-docs", "exit": 0, "observed": "pairs=54 failed=0 violations=0 dead=0" },
+    { "id": "verify-dshgo-views", "exit": 0, "observed": "self-test and live run both exit 0 after the static-view edit" },
+    { "id": "dshgo-checker-static-views", "exit": 0, "observed": "check.mjs --budget panel on both dsh-go/views/*.json exit 0" },
+    { "id": "tests-packages", "exit": 0, "observed": "3395 pass / 0 fail / 3401 tests across 222 files" }
+  ],
+  "perFinding": [
+    { "n": 1, "where": "dsh-go/views/mpd-team.json", "status": "FIXED", "evidence": "Detail subtitle now reads \"The selected task's owner, dependencies and verdict.\"; no settle wording anywhere in the view" },
+    { "n": 2, "where": "packages/mpd-bundle-plugin/README.md", "status": "FIXED", "evidence": "the dshgo-team-panel.ts entry names `select` / `back` / `refresh` and says no mutation, with the anonymous-tap reason" },
+    { "n": 3, "where": "packages/mpd-bundle-plugin/README.zh-CN.md", "status": "FIXED", "evidence": "zh twin mirrors both the team-panel paragraph and the file entry" },
+    { "n": 4, "where": "dshgo-panel.ts readMemoryStore", "status": "FIXED", "evidence": "stats every file, sorts, slices DSHGO_MAX_MEMORY_ROWS, and only then reads+parses the winners" },
+    { "n": 5, "where": "dshgo-panel.ts answerFor", "status": "FIXED", "evidence": "`custom === \"\" ? { selected: [label] } : { selected: [], custom: label }`; PanelQuestionsFace.answer widened with `custom?`; arm 'a custom answer travels in `custom`, never as an option label (repair T10 #5)' asserts the exact payload" },
+    { "n": 6, "where": "dshgo-panel.ts refreshKeyOf", "status": "FIXED", "evidence": "exported refreshKeyOf + refreshKeys map; arm '(repair T10 #6)' present" },
+    { "n": 7, "where": "dshgo-surfaces.ts", "status": "FIXED", "evidence": "deferredOr is gone; dshgo-panel exports orDeferred and surfaces import it (one owner of the timing contract)" },
+    { "n": 8, "where": "dshgo-team-panel.ts readWatchdog", "status": "FIXED", "evidence": "the result is unwrapped as the `{ ok?, value? }` envelope (ok===false → undefined), then read; arm '(repair T10 #8)' present" },
+    { "n": 9, "where": "dshgo-team-panel.ts signatureOf", "status": "FIXED", "evidence": "signature carries team id/status/phase, every task `id:status`, every member `name/mode`; arm '(repair T10 #9)' moves a row pending→in_progress and asserts exactly one refresh" },
+    { "n": 10, "where": "dshgo-views.ts members tile", "status": "FIXED", "evidence": "the fresh built team tree renders {label:'Members', value:2} — a literal number, not a binding" },
+    { "n": 11, "where": "mpd-dsh-adapter-plugin/src/index.ts callableMember", "status": "FIXED", "evidence": "`(value).bind(target)`; test/adapter-dshgo-surface.test.ts documents the arm as failing unless the seam binds; 10/10 pass" },
+    { "n": 12, "where": "mpd-memory-plugin/src/dshgo-cards.ts", "status": "FIXED", "evidence": "import audit: `../../mpd-dsh-adapter-plugin/src/dshgo-view` (extensionless) before HEAD~1 → absent at HEAD" },
+    { "n": 13, "where": "mpd-memory-plugin/src/index.ts", "status": "FIXED", "evidence": "audit: `./dshgo-cards` before → absent at HEAD" },
+    { "n": 14, "where": "mpd-team-core-plugin/src/index.ts", "status": "FIXED", "evidence": "audit: `../../…/src/dshgo-view` + `./tool-cards` before → both absent at HEAD" },
+    { "n": 15, "where": "mpd-team-core-plugin/src/tool-cards.ts relatedRow", "status": "FIXED", "evidence": "behavioural: agentTeamsTaskCard({action:'depend'},{added:['T9']}) → table row ['T9','—']; the record form still renders ['T9','Ship it']" },
+    { "n": 16, "where": "mpd-team-watchdog-plugin/src/actions.ts", "status": "FIXED", "evidence": "audit: `./dshgo-cards.js` before → absent at HEAD (and no `dshgo-cards.js` file exists)" },
+    { "n": 17, "where": "mpd-verify-plugin/src/dshgo-cards.ts", "status": "FIXED", "evidence": "audit: the kit import now carries `.ts`" },
+    { "n": 18, "where": "mpd-verify-plugin/src/tools.ts", "status": "FIXED", "evidence": "audit: `./dshgo-cards` before → absent at HEAD" },
+    { "n": 19, "where": "mpd-workmate-plugin/src/dshgo-cards.ts", "status": "FIXED", "evidence": "audit: the kit import now carries `.ts`" },
+    { "n": 20, "where": "mpd-workmate-plugin/src/index.ts", "status": "FIXED", "evidence": "audit: `./dshgo-cards` before → absent at HEAD" }
+  ],
+  "structure": {
+    "trees": "four trees rebuilt from THIS commit with the pinned bun 1.4.0 (build-trees.ts copied from the lane, unchanged)",
+    "checker": "all four piped to check.mjs - --budget panel: exit 0 each",
+    "lint": "lintDesign 0 findings on all four (v2/v1 modes)",
+    "budgets": { "mpd-v2": "3999 B/50/5", "mpd-v1": "2514 B/41/5", "mpd-team-v2": "4574 B/57/6", "mpd-team-v1": "2908 B/49/6", "budget": "32768 B/120/8 — all fit" },
+    "probe": "probe-section7.mjs OK on all four"
+  },
+  "residualBounds": [
+    "The eight import findings are fixed on their exact lines; `packages/*/src` still carries extensionless (and six `.js`) sibling specifiers BY DESIGN — AGENTS.md §6 says that band is bun-built with extensionless specifiers. Measured: the panel graph still does not import under bare Node (it fails at `./dshgo-copy`), so CodeRabbit's premise 'this package runs under Node with type stripping' is not true of the package as a whole. The targeted fix is correct and harmless; this is a declared bound, not a defect.",
+    "n=11's destructive negative control (revert `.bind(target)`) was executed by T10 and recorded in its notes; I verified the code line, the arm and 10/10 passing, but did not re-run the destructive control — that needs a source edit outside the reviewer's write scope."
+  ],
+  "declined": [
+    "the rendered look: still UNPROVEN (no Flutter app; preview.mjs needs Flutter)",
+    "re-litigating the 20 findings' merits: the task is to verify the fixes, and each finding's own text was used as the standard"
+  ],
+  "bounds": {
+    "subject": "the 20 findings of PR #90 round 1 + the merge gates; T7/T9's earlier arms stay cited from their own evidence directories",
+    "tree": "clean working tree at 434bd4fc; no source, patch, manifest, dist or pack edit from this seat",
+    "writeScope": "evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/"
+  }
+}

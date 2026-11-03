@@ -1,0 +1,62 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-autoproject-plugin/test/engine.test.ts:
+(pass) the run routes EVERY child through mpd_role_spawn and completes through the verify plane [6.53ms]
+(pass) a run can NOT report complete when the verifier claims PASS but no record was written [0.86ms]
+(pass) a quality-gate lane that FAILs blocks completion and is stamped in the ledger [0.78ms]
+(pass) a plan run drives the boulder ledger, and the emitted checklist matches the criteria count [1.50ms]
+(pass) an unconfigured roster role is journaled and the run continues, never a hard failure [1.01ms]
+(pass) a HEAVY run raises its round as a Deep Worker and its angle wave as Architect consults [1.15ms]
+(pass) escalation: the frozen predicate fires on the contract's combinations and nowhere else [0.10ms]
+(pass) escalation: mode=ask ends the run escalated, writes the artifact and LEAVES THE GOAL ARMED [0.82ms]
+(pass) escalation: mode=off records the firing and takes NO consequence [0.69ms]
+(pass) escalation: mode=auto hands off through cellwork_open when that tool exists [0.66ms]
+(pass) a plan-less run still verifies through the plane, and its result matches the DECLARED schema [1.05ms]
+(pass) a rejected plan gate keeps the run from completing, however clean its rounds are [0.66ms]
+(pass) the pure readers turn a roster report into engine state the way the contract states [0.08ms]
+(pass) (a) a 13-criteria run with NO other signal does NOT escalate at the engine boundary [2.58ms]
+(pass) (b) the SAME 13-criteria run escalates once a SECOND counter fires [2.31ms]
+(pass) (c) a DECLARED scope drives S6, and the artifact says which source answered [4.44ms]
+(pass) (d) an ABSENT scope keeps the evidence fallback, and the artifact says so [0.66ms]
+(pass) (e) the retired S5 id never appears, and every renderer consumes a list without it [0.81ms]
+(pass) (a) a child that NEVER settles is killed at the bound, its slot is released, and the run ends blocked [62.55ms]
+(pass) (b) autoproject.slots REALLY caps concurrent children (observed high-water mark) [0.75ms]
+(pass) (c) a THROWING child still releases its slot (the release is a finally, not a happy path) [0.52ms]
+(pass) (d) a run that stays UNDER the bound reports complete exactly as before [0.99ms]
+
+packages/mpd-autoproject-plugin/test/commands.test.ts:
+(pass) the ONE /autoproject command is registered through the adapter seam, with no alias [0.88ms]
+(pass) empty input returns usage naming the objective form and starts nothing [0.14ms]
+(pass) a non-empty invocation submits the activation directive as the invoking agent's next user turn [0.25ms]
+(pass) the activation directive states the bounded policy: three decision points, no blanket silence [0.14ms]
+(pass) the QA probes a weaker head retires are named with their exact replacements [0.09ms]
+(pass) the frozen head is byte-stable across objectives AND verdicts, and its sha256 is RECORDED under evidence [0.18ms]
+(pass) the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id [3.76ms]
+(pass) the gesture path runs the SAME mechanical gate with the agent the payload carries [0.76ms]
+(pass) mode advisory and mode off stage nothing and say so [0.44ms]
+(pass) an already-staged plan is never re-staged, and the directive names the existing one [0.33ms]
+(pass) a composition without the staging tool degrades honestly — no throw, no claimed team [0.35ms]
+(pass) a REFUSING staging call degrades without throwing: the run starts and the block says so [0.37ms]
+(pass) a tripping objective that carries the explicit `team:` marker has the marker CONSUMED [0.30ms]
+(pass) team.sensitivity reaches the autoproject gate: the easy row stages, the normal row stays silent [1.13ms]
+(pass) signal F reaches the autoproject gate: a large workspace stages, a tiny one stays silent [1.30ms]
+(pass) the pre-step gesture boundary injects the same directive and delegates to next() [0.30ms]
+(pass) the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression) [0.35ms]
+(pass) the gesture boundary leaves every non-gesture step untouched [0.24ms]
+(pass) the plugin reaches the seams only through the adapter (no direct command service, event bus or host import) [0.22ms]
+(pass) apply degrades safely when the composition has no command registry and no event bus [0.17ms]
+
+packages/mpd-autoproject-plugin/test/boulder.test.ts:
+(pass) session ids are dsh-prefixed by default [0.02ms]
+(pass) start, timer, complete lifecycle [0.66ms]
+(pass) plan progress parses TODOs and verification wave [0.25ms]
+(pass) mpd_boulder_status omits planProgress when null (lossless JSON contract) [0.48ms]
+(pass) mpd_boulder_plan_progress resolves a relative plan path and REPORTS an unresolvable one [0.40ms]
+(pass) mpd_boulder_start writes the ledger at the CONTRACT path <ws>/.mpd/boulder.json [0.54ms]
+(pass) the LEGACY `.mpd` knob value still lands on the contract path, and a real path still overrides [0.48ms]
+
+ 49 pass
+ 0 fail
+ 436 expect() calls
+Ran 49 tests across 3 files. [269.00ms]
+tests exit=0

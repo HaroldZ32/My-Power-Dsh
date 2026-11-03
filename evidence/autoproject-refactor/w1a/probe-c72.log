@@ -1,0 +1,5 @@
+CONTROL (owner-only pass) pairs: []
+CONTROL (owner-only pass) skip  : [{"taskId":"T1","subject":"write work","reason":"refused a WRITE-TASK-ON-READ-ONLY pairing: task T1 has write scopes (packages/x) while member \"Plan Reviewer\" is a read-only specialist"}]
+REASSIGN result: {"ok":true,"pairs":[],"skipped":[{"taskId":"T1","subject":"write work","reason":"already dispatched to Plan Reviewer"}],"forgotten":[],"reassigned":[{"taskId":"T1","owner":"Plan Reviewer","claimed":true,"delivered":true}]}
+BOARD after     : {"owner":"Plan Reviewer","status":"in_progress"}
+SENT            : ["sess-Plan Reviewer:You have been assigne"]

@@ -1,0 +1,97 @@
+{
+  "type": "stack",
+  "v": 1,
+  "children": [
+    {
+      "type": "stack",
+      "children": [
+        {
+          "type": "text",
+          "text": "Board"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Board"
+            },
+            {
+              "type": "text",
+              "text": "3 ready · 1 active"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Ready"
+                },
+                {
+                  "title": "Active"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Tasks"
+            },
+            {
+              "type": "text",
+              "text": "in progress"
+            },
+            {
+              "type": "progress",
+              "value": 60,
+              "label": "Done",
+              "caption": "3 of 5"
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "items": [
+            {
+              "label": "Refresh",
+              "action": "refresh"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Questions"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Questions"
+            },
+            {
+              "type": "text",
+              "text": "nothing parked"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Parked"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "No question parked\nA question shows up here when the team asks one.",
+          "title": "No question parked"
+        }
+      ]
+    }
+  ]
+}

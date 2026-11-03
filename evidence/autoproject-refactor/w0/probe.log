@@ -1,0 +1,15 @@
+# R-W0 reviewer probes — 2026-11-02T11:22:44Z
+
+## A. equivalence: shipped workmate dist guard vs new adapter src guard (identical root, 7 env arms)
+SAME normal-session root=/tmp/w0-eq-ZHt5WA/.mpd/workmate old={"ok":true} new={"ok":true}
+SAME sandbox-boot root=/tmp/w0-eq-ZHt5WA/.mpd/workmate old={"ok":true} new={"ok":true}
+SAME real-home-boot root=/home/haroldzhao/.mpd/workmate old={"ok":false,"msg":"mpd_workmate: refusing to rename a workmate inside the REAL library /home/haroldzhao/.mpd/workmate while DSH_HOME=/tmp/w0-eq-ZHt5WA marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 to override deliberately","code":"real-home-refused","status":403} new={"ok":false,"msg":"mpd_workmate: refusing to rename a workmate inside the REAL library /home/haroldzhao/.mpd/workmate while DSH_HOME=/tmp/w0-eq-ZHt5WA marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 to override deliberately","code":"real-home-refused","status":403}
+SAME home-unset root=/tmp/w0-eq-ZHt5WA/.mpd/workmate old={"ok":false,"msg":"mpd_workmate: refusing to rename a workmate inside the REAL library /tmp/w0-eq-ZHt5WA/.mpd/workmate while DSH_HOME=/tmp/w0-eq-ZHt5WA marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 to override deliberately","code":"real-home-refused","status":403} new={"ok":false,"msg":"mpd_workmate: refusing to rename a workmate inside the REAL library /tmp/w0-eq-ZHt5WA/.mpd/workmate while DSH_HOME=/tmp/w0-eq-ZHt5WA marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1 to override deliberately","code":"real-home-refused","status":403}
+SAME override root=/home/haroldzhao/.mpd/workmate old={"ok":true} new={"ok":true}
+SAME home-sibling-prefix root=/tmp/w0-eq-ZHt5WA-sibling/.mpd/workmate old={"ok":true} new={"ok":true}
+SAME dsh-home-empty root=/home/haroldzhao/.mpd/workmate old={"ok":true} new={"ok":true}
+EQUIVALENT (0 mismatches)
+
+## B. pin discrimination vs the faithful PRE-FIX predicate (homedir/$HOME tautology)
+arm(a) sandbox-allowed  : PRE-FIX=REFUSED:403:real-home-refused  NEW=ALLOWED  DISCRIMINATES
+arm(b) real-home-refused: PRE-FIX=REFUSED:403:real-home-refused  NEW=REFUSED:403:real-home-refused  does not discriminate

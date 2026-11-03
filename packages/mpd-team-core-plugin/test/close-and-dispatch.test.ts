@@ -16,7 +16,19 @@ import { join } from "node:path"
 
 import { addTeamTask, addTeamMember, casCloseTask, createTeam, taskVisual, updateTeamTask } from "../src/team-store.ts"
 import type { TeamRecord } from "../src/team-store.ts"
-import { assign, dispatchNameKey, planDispatch } from "../src/dispatch.ts"
+import { assign, dispatchNameKey, planDispatch, type DispatchPlan } from "../src/dispatch.ts"
+/**
+ * The EXPLICIT positional engine.
+ *
+ * These arms are the retired pairing rule's own regression suite (owner-first, then roster order), and
+ * the rule is no longer the default — `planDispatch` pairs owner-only unless a caller asks for
+ * `mode:"roster"`. Asking HERE keeps every arm testing the rule it was written for; the owner-only
+ * default has its own arms in `team-toolchain.test.ts`.
+ * @param input - the pass to decide.
+ * @returns the decision, under the explicit roster rule.
+ */
+const rosterPlan = (input: Parameters<typeof planDispatch>[0]): DispatchPlan => planDispatch({ ...input, mode: "roster" })
+
 import type { DispatchMember, DispatchTask } from "../src/dispatch.ts"
 import { normalizeTeamMemberKey } from "../../mpd-roles-plugin/src/team-guard.ts"
 
@@ -55,7 +67,7 @@ function board(
 describe("owner-first dispatch", () => {
   test("a declared owner is PREFERRED over roster order", () => {
     /** The board: a task owned by the SECOND member, whose declared owner must win. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [{ id: "T1", subject: "review the lane", status: "pending", ready: true, ownerName: "Reviewer" }],
       members: [{ id: "m1", name: "Architect", status: "inactive" }, { id: "m2", name: "Reviewer", status: "inactive" }],
       ledger: {},
@@ -66,7 +78,7 @@ describe("owner-first dispatch", () => {
   })
   test("the order is preserved when NO owner is declared (the positional rule still holds)", () => {
     /** The dispatch plan this arm asserts on. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [{ id: "T1", subject: "x", status: "pending", ready: true }, { id: "T2", subject: "y", status: "pending", ready: true }],
       members: [{ id: "m1", name: "Architect", status: "inactive" }, { id: "m2", name: "Reviewer", status: "inactive" }],
       ledger: {},
@@ -77,7 +89,7 @@ describe("owner-first dispatch", () => {
     /** The owner is already working another task, so its id is in the ledger as busy. */
     const ledger = assign({}, { teamId: "team-a", taskId: "T0", memberId: "m2", memberName: "Reviewer" }, NOW)
     /** The dispatch plan this arm asserts on. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [{ id: "T1", subject: "review the lane", status: "pending", ready: true, ownerName: "Reviewer" }],
       members: [{ id: "m1", name: "Architect", status: "inactive" }, { id: "m2", name: "Reviewer", status: "inactive" }],
       ledger,
@@ -88,7 +100,7 @@ describe("owner-first dispatch", () => {
   })
   test("an ABSENT owner falls back and says so", () => {
     /** The dispatch plan this arm asserts on. */
-    const plan = planDispatch({
+    const plan = rosterPlan({
       tasks: [{ id: "T1", subject: "review the lane", status: "pending", ready: true, ownerName: "Vision Analyst" }],
       members: [{ id: "m1", name: "Architect", status: "inactive" }],
       ledger: {},
@@ -100,7 +112,7 @@ describe("owner-first dispatch", () => {
     // The board stores a DISPLAY name while a caller may spell it any way; the two must agree.
     for (const spelling of ["Plan Reviewer", "plan reviewer", "plan-reviewer", " Plan_Reviewer "]) {
       /** The dispatch plan this arm asserts on. */
-      const plan = planDispatch({
+      const plan = rosterPlan({
         tasks: [{ id: "T1", subject: "x", status: "pending", ready: true, ownerName: "Plan Reviewer" }],
         members: [{ id: "m1", name: "Architect", status: "inactive" }, { id: "m2", name: spelling, status: "inactive" }],
         ledger: {},
@@ -190,7 +202,7 @@ describe("the terminal verbs", () => {
       expect(outcome.dependents.map((row) => [row.id, row.became])).toEqual([["T2", "ready"]])
       expect(taskVisual(outcome.record.tasks[1], outcome.record.tasks)).toBe("open")
       // AND THE DISPATCH PASS REALLY PAIRS IT, which is the whole point of the terminal verb.
-      const plan = planDispatch({
+      const plan = rosterPlan({
         tasks: outcome.record.tasks.map((task) => ({ id: task.id, subject: task.subject, status: task.status, ready: taskVisual(task, outcome.record.tasks) === "open", ...(task.owner === undefined ? {} : { ownerName: task.owner }) })) as DispatchTask[],
         members: [{ id: "m1", name: "Senior Engineer", status: "inactive" }] as DispatchMember[],
         ledger: {},

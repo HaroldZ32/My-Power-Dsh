@@ -919,8 +919,14 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   }
   // NORMAL IS THE PRE-WAVE PREDICATE, lexicon included: every verb of this message is a wave
   // addition, so the measured PRE-CHANGE verdict (zero signals) must be reproduced exactly.
-  if (JSON.stringify(gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })) !== JSON.stringify({ trigger: false, signals: [] })) {
-    problems.push(at("user-first-message") + "the same message must stay SILENT at `normal` (pre-wave lexicon) — the row reproduces the pre-change verdict")
+  // COMPARE THE FIELDS THIS ARM IS ABOUT, never the whole stringified object: the verdict gained an
+  // ADDITIVE `strength` (wave W4-A4), and a full-shape pin reddened this case for a field it never
+  // asserted. `trigger` false and `signals` empty ARE the pre-change verdict; any new sibling field is
+  // somebody else's contract, not this row's.
+  /** The verdict on the same message at the `normal` row (the pre-wave predicate). */
+  const normalVerdict = gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })
+  if (normalVerdict.trigger !== false || normalVerdict.signals.length !== 0) {
+    problems.push(at("user-first-message") + "the same message must stay SILENT at `normal` (pre-wave lexicon) — the row reproduces the pre-change verdict, got " + JSON.stringify(normalVerdict))
   }
   // STRICT stays silent on it, which proves the row really moves the bound (77 Han characters < 80).
   if (gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "strict" }).trigger !== false) {

@@ -27,6 +27,9 @@
 | `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | **抛错**转发，signal 透传 |
 | `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer 透传；接缝缺失时在调用点抛错（调用方的 usage 段落是必需的） |
 | 活跃 agent 自有的 scoped ctx | `agentScope(agent)` | 由 `agent.ctx` 构造 `{ context, tools.restrict, on, effect }`；承诺的成员缺失时返回 `undefined`，调用方按次回退 |
+| `ctx.agents.get(id)` / `ctx.agents.list` | `liveAgent(agentId)` / `liveAgents()` | 活跃会话注册表：按 id 取一个 Agent（先问注册表自己的 `get`，再扫 `list`），或 `[]`；注册表缺失、读取抛错、答复不是数组时降级为「没有条目」；从不抛错 |
+| `agent.ctx.get("compaction")`（经注册表） | `compactionEngineForAgent(agentId)` | 该 id 所指活跃 Agent 的压缩引擎，按 Agent **对象**记忆化；没有活跃 Agent 拥有该 id、或其作用域没有引擎时为 `undefined` |
+| `agent.ctx.get("compaction")`（调用方已持有的 handle） | `compactionEngineForLiveAgent(agent)` | **同一段**记忆化实现，直接从调用方自己的 Agent handle 解析，**绝不查**活跃会话注册表 —— 这是压缩屏障的**首选**，因此一个在屏障运行前就已从 `ctx.agents` 脱离的成员仍能**原地**压缩，而不是被围栏；handle 没有引擎时为 `undefined`；从不抛错 |
 | `agent.followup` | `startAgentTurn(agent, message)` | **抛错**逐字节转发（绝不吞成布尔值或 `undefined`） |
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | **抛错**逐字节转发 |
 | `agent.steer` | `steerAgentTurn(agent, message)` | **抛错**逐字节转发 —— 最近步（nearest-step）转向，区别于 `followup` 的新回合 |
@@ -47,6 +50,9 @@
 | `ctx.dshGo`（存在性） | `dshGoPresent()` | 此刻桥接服务是否已绑定 —— `capabilities().dshGo` 的按次调用形式，走同一个探针 |
 | `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` **逐字节**转发（它们是桥接层自己的契约）；仅当调用返回时为 `true`，桥接缺失或调用抛错时返回 `false` + **一行**警告 —— 绝不抛错 |
 | `ctx.dshGo.refresh` | `dshGoRefresh(id)` | 尽力而为的重渲染；桥接缺失时静默空操作，绝不抛错、绝不写日志（轮询调用方不得看到被 reject 的 tick） |
+| `ctx.dshGo.on` | `dshGoOn(id, handler)` | `service.on(id, handler)`；处理函数的返回值就是桥接层自己的效果词汇，**原样**转发；仅当调用返回时为 `true`，桥接缺失、没有暴露 `on()` 或调用抛错时返回 `false` + **一行**警告 |
+| `ctx.dshGo.strip` | `dshGoStrip(id, dataFn)` | `service.strip(id, dataFn)`；桥接层驱动 `dataFn(scope, emit, caps)` 并持有它返回的取消句柄；降级形态与 `on` 相同 |
+| 桥接层的能力 | `dshGoCaps()` | 先探测 `caps()` 方法，再探测 `caps` / `capabilities` 属性（1.0.9 桥接**没有**文档化的 `caps()` 成员），只收窄 `app` / `locale` / `components` / `surfaces` 四个字段、不虚构字段；无法回答时返回 `null` + **一行**警告 |
 | 能力探测 | `capabilities()` | 每个接缝一个布尔值，调用方据此降级而不是崩溃 |
 
 上表中从 `registerHostTool` 到 `injectAgentMessage` 这十四个接缝只有一个消费方：当时采纳的
@@ -102,7 +108,7 @@
 
 ## 驱动面——提问与 DSH Go 面板
 
-五个接缝让「不是模型回合」的客户端也能驱动 Harness：发起一个结构化提问、通过瀑布回答一个提问、
+八个接缝让「不是模型回合」的客户端也能驱动 Harness：发起一个结构化提问、通过瀑布回答一个提问、
 发布或刷新一个 DSH Go 原生面板。下面所有形状都是本 bundle **自己的纯数据** —— 没有任何 Harness
 类型越过适配器（AGENTS.md §6），因此消费方永远不需要 import 它们：
 
@@ -113,7 +119,8 @@ export interface DshQuestionAnswer { id: string; selected: string[]; custom?: st
 export interface DshQuestionAnswerEnvelope { answers: DshQuestionAnswer[] }
 export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
 export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
-export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
+export type DshGoPanelView = DshGoView | ((scope: DshGoScope, caps: DshGoCaps) => DshGoView | Promise<DshGoView>)
+export interface DshGoPanelSpec { view: DshGoPanelView; data?: unknown; actions?: Record<string, unknown> }
 ```
 
 - **`askUserQuestion(request): Promise<DshQuestionAnswer[]>`** 驱动 `userQuestions` 服务的 `ask`，
@@ -144,11 +151,46 @@ export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Recor
   两者都不会拖垮发布面板的插件行。
 - **`dshGoRefresh(id): void`** 在 `service.refresh(id)` 可调用时调用它，否则静默空操作。它绝不抛错、
   绝不写日志：调用方是轮询路径，桥接缺失或刷新失败都不能变成每个 tick 一条诊断。
+- **`dshGoOn(id, handler): boolean`** 通过 `service.on` 订阅清单里声明的某一个动作 id。处理函数收到
+  `(scope, event)`，其返回值 —— 桥接层的效果对象，含 v1.1 的延迟形态 `{ pending, result }` —— **原样**
+  转发。桥接缺失、没有暴露 `on()` 或调用抛错时返回 `false` + **一行**警告。
+- **`dshGoStrip(id, dataFn): boolean`** 发布某条输入区状态条的 `dataFn(scope, emit, caps)`；返回的取消
+  句柄归桥接层所有。降级形态与 `dshGoOn` 相同。
+- **`dshGoCaps(): DshGoCaps | null`** 读取「App 能画什么」。1.0.9 桥接把 `caps` 作为**参数**交给每个
+  view/data 函数，并没有文档化的 `caps()` 成员，因此该接缝同时探测 `caps()` 方法与 `caps`/`capabilities`
+  属性，只收窄四个已知字段、绝不虚构；已经从参数拿到 `caps` 的调用方必须使用**那个**对象。桥接无法回答时
+  返回 `null` + **一行**警告。
+- **`dshGoPanel(id, spec)`** 的 `view` 还接受函数 `(scope, caps) => view`（或其 Promise）：桥接层每次
+  渲染都会调用它，面板因此能按 App 能力自适应。
 
 **边界。** 接缝不是挂载。`dshGoPresent()` 为 true 只证明那一刻有服务被绑定；它不证明某个插件行已启动、
 不证明有 DSH Go 引擎接入、也不证明任何面板渲染过。同理，`askUserQuestion` 证明的是通往服务的调用路径，
 不是「有人、或任何界面，正在看这个提问」。这些接缝都不证明真实的挂载或启动；那需要一次真正**挂载**这些
 插件行的启动，属于另一种测量。
+
+## DSH Go 视图套件（`src/dshgo-view.ts`）
+
+`src/dshgo-view.ts` 是本 bundle 的**纯**、无 Harness 依赖的 DSH Go 视图套件 —— 面板、输入区状态条与工具卡
+共用它。它没有 ctx、没有 I/O，也不依赖私有的 `@dsh-go/plugin-kit`；插件以
+`../../mpd-dsh-adapter-plugin/src/dshgo-view` 导入它，App 的形状因此由一个文件拥有，而不是每个车道各自
+手写 JSON。
+
+| 导出 | 作用 |
+|---|---|
+| `bind(path)` | 一个 `data.…` 绑定：`data` 前缀只加一次、绝不重复 |
+| 构造器 | `stack`、`row`、`text`、`metric`、`chart`、`table`、`keyValue`、`list`、`progress`、`callout`、`steps`、`actions`、`tabs`、`grid`、`timeline`、`form`、`textField`、`select`、`toggle`、`emptyState`、`avatar`、`badge`、`tag`、`divider`、`spacer` —— 每个都产出 App 认可的节点；超过 App 自己的列表上限时**抛错**而不是截断，并拒绝 App 会静默忽略的属性（`grid` 的 style、`emptyState` 的 `text`、没有 `src` 的 `avatar`、空 tab） |
+| `style(tokens)` | 封闭的 v2 样式集合：`card` / `padding` / `gap`（仅 S / M / L）/ `align` / `columns` / `dividers` / 文字 `size` / `weight` / `color: "accent"` / `maxLines`。数字型 padding 或 gap、命名色与 `#RRGGBB` 一律**拒绝**，不转发 |
+| `panelView({ children, style? })` | 面板根：`v: 2`、`accent: "app"`，一个承载 tabs 的 stack。accent 只在这里写、别处不写，因此跟随主题的面板不可能带命名色或十六进制 accent；第二个 `style: "primary"` 动作会被拒绝 |
+| `measureView` / `countViewNodes` / `viewDepth` | App 自己的三个计量单位：UTF-8 JSON 字节数、组件节点数、组件嵌套深度（根为 1） |
+| `BUDGETS` / `fitsBudget` | toolCard 8 KiB / 40 / 6，panel 32 KiB / 120 / 8，strip 2 KiB / 8 / 3 |
+| `toolCard(build)` | 工具的 `presentationMeta`：绝不抛错，返回 `{ "dsh-go/view": … }`；构造器抛错、超预算、v2 根、v2-only 组件、绑定或 accent 都会降级为 `{}` |
+| `adaptView(view, caps)` | v1 回退：`tabs` → 带标题的 stack，`grid` → list（metric 的**数字**保留在行的 `trailing`），`timeline` → `steps`，`badge`/`tag`/`avatar` → `text`，`emptyState` → 其文案，`divider`/`spacer` 删除，所有 `style`/`accent` 移除，根 `v: 1`；幂等且绝不修改入参 |
+| `lintDesign(view, { version })` | App 检查器留空的静态设计门。版本 2（面板）报告十六进制/命名色、数字间距、保留的装饰键、第二个 primary 动作、写成 `children` 的 `tabs`、写成 `text` 的 `emptyState`、带容器 style 的 grid、没有 `src` 的 avatar、没有文字的 badge，并检查**正向**规则：每个 tab 恰好一个 `tinted` hero、每个 `metric` 都在 `grid` 内、无数据的 tab 必须带 `emptyState`、过长或绑定的 text 必须设 `maxLines`。版本 1（静态回退）断言：不残留 v2 组件、不残留 `style`/`accent`、每个 `text` 都有非空文字 |
+
+**边界。** App 侧渲染在本工作区**无法证明**：这里没有 Flutter App 去画视图树。套件能证明的是：视图树
+v2 合法、在 App 预算之内、且只用主题令牌 —— 由 `lintDesign` 与钉住的 1.0.9 `check.mjs` 证明。
+`accent: "app"` 在检查器里总会产生**一条**深色模式对比度提示（`#4B67B4 → #7B8FC8`）：那是对比度校正
+在正常工作，不得用十六进制值去「修」它。
 
 ## 官方 Agent Teams 平面
 

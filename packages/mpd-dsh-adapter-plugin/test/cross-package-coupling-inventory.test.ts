@@ -287,19 +287,20 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-tui-plugin/src/status.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/team-state.ts :: import type { TeamRecord, TeamTaskRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/watchdog.ts :: import type { IncidentRecord } from \"../../mpd-team-watchdog-plugin/src/sidecars.js\"",
-  // mpd-ulw -> mpd-roles (mechanical gate, 2026-10-06): the ULW activation gate and the
+  // mpd-autoproject -> mpd-roles (mechanical gate, 2026-10-06): the autoproject activation gate and the
   // session-start gate evaluate THE SAME frozen predicate, and the directive's own clause forbids
   // inventing a second one. Importing the pure module is what makes that a fact instead of prose —
   // a fork would let the two gates drift apart silently, which is the exact defect class this wave
   // repairs. The import pulls no adapter value (the pure module touches only node:fs/node:path), so
   // the coupling adds a source edge, not a boot-order dependency.
-  "packages/mpd-ulw-plugin/src/index.ts :: } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
-  // mpd-boulder -> mpd-roles (the SAME defect class, 2026-10-06): `boulder.dir` was read TWO ways, and
+  "packages/mpd-autoproject-plugin/src/index.ts :: } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
+  // mpd-autoproject/boulder -> mpd-roles (the SAME defect class, 2026-10-06; re-frozen with the
+  // boulder merge, which moved the file one level down): `boulder.dir` was read TWO ways, and
   // the divergence produced a doubled `<ws>/.mpd/.mpd/boulder.json` in every real boot — the gate's
   // signal D could never fire and `mpd_boulder_*` wrote to a path nobody documented. The cure is ONE
   // reading of the knob, so the boulder row imports the gate's `resolveBoulderDir` instead of keeping a
   // second copy that could drift back apart. Same shape as the ULW entry above, same file, same reason.
-  "packages/mpd-boulder-plugin/src/index.ts :: import { resolveBoulderDir } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
+  "packages/mpd-autoproject-plugin/src/boulder/index.ts :: import { resolveBoulderDir } from \"../../../mpd-roles-plugin/src/complexity-gate.ts\"",
   // mpd-roles -> mpd-verify (the CAPTAIN INVESTIGATION guard, lane L, 2026-10-08): the top-level
   // session no longer does reconnaissance, and the new rule reuses `readTargetPath` from the SAME law
   // module the captain's write rule already reads rather than forking the argument-key list
@@ -345,7 +346,12 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-cellwork-plugin/src/mail.ts :: import { acknowledge, appendRecord, fold as foldMailbox, mailboxPath, readMailbox, readRecords } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAck, MailMessage as TeamMailMessage, MailSendLine } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAnswer, MailKind, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
-  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { sendMany } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  // RE-FROZEN 2026-11-03 (VEdit P0 wave, lane A, `.mpd/plans/cellwork-vedit-p0-fix-r2.md` §2 C3): the SAME
+  // edge and the SAME module — the cellwork `cellwork_send` call site now imports the shared resolver
+  // `mailMaxUndeliveredOf` beside `sendMany`, so the undelivered bound is resolved by ONE rule instead of a
+  // private copy (captain ruling). The count is unchanged: still one cross-package import from this module
+  // in this file, so importing the resolver grew no new coupling.
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { mailMaxUndeliveredOf, sendMany } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { SendInput, SendManyResult } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import { fanOutTargets } from \"../../mpd-mail-protocol/src/index\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",

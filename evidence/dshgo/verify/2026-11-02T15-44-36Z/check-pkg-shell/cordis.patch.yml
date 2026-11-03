@@ -1,0 +1,2 @@
+# fixture shell patch: the checker only asserts the declared file exists
+[]

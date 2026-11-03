@@ -1,0 +1,419 @@
+diff --git a/packages/mpd-team-core-plugin/src/index.ts b/packages/mpd-team-core-plugin/src/index.ts
+index 6517ef44..3e4674f8 100644
+--- a/packages/mpd-team-core-plugin/src/index.ts
++++ b/packages/mpd-team-core-plugin/src/index.ts
+@@ -31,7 +31,9 @@ import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+ import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
+ import {
+   acknowledge,
++  DEFAULT_MAIL_MAX_UNDELIVERED,
+   inboxOf,
++  mailMaxUndeliveredOf,
+   markDelivered,
+   readMailbox,
+   recordWake,
+@@ -540,6 +542,28 @@ function blockerSentence(blockers: unknown): string {
+   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`
+ }
+ 
++/**
++ * The WRITE-TIME warning a `create_task` call earns when a WRITING task declares no path (contract C4).
++ *
++ * WHY NON-BREAKING, and why only three kinds: an empty `write_scopes` list is legitimate for a row that
++ * really writes nothing, so the task is still created — but a `work`/`repair`/`integration` row whose
++ * frozen contract allows NO path stops its writer on the first edit, and the captain must hear that at
++ * the moment the scope was omitted instead of from a stalled member. `requirement`/`review` rows are
++ * exempt because they do not write, so warning about them would train a reader to ignore the field.
++ * @param kind - the kind the row will actually carry; absent means the store's own `work` default.
++ * @param writeScopes - the list the call declared, or undefined when it declared none at all.
++ * @param taskId - the id the row carries (`T<n>`), so the sentence names the row it is about.
++ * @param subject - the subject as the caller wrote it.
++ * @returns the warning sentence, or undefined when the row declares a path or does not write.
++ */
++function emptyScopesWarning(kind: TaskKind | undefined, writeScopes: readonly string[] | undefined, taskId: string, subject: string): string | undefined {
++  /** The kind the store will record for this row; `work` is the tier's declared default. */
++  const effectiveKind: TaskKind = kind ?? "work"
++  if (effectiveKind !== "work" && effectiveKind !== "repair" && effectiveKind !== "integration") return undefined
++  if ((writeScopes ?? []).length > 0) return undefined
++  return `task ${taskId} "${subject}" (${effectiveKind}) was created with NO write scopes. Its frozen contract allows NO path: its writer must stop on the first edit and ask the captain. Remedy: declare the scopes now, or amend the contract before the first write — a scope added after approval needs a re-freeze and a new verify loop.`
++}
++
+ /**
+  * Describe one wire value for a refusal message, bounded so a long argument cannot bloat the sentence.
+  * @param value - the raw argument at one key, of unknown shape.
+@@ -1079,6 +1103,28 @@ function depthMaxOf(service: (id: string) => unknown): number {
+   return DEFAULT_DEPTH_MAX
+ }
+ 
++/**
++ * The undelivered-mail bound this workspace declares, read through the optional `mpdConfig` service.
++ *
++ * THE ONE KNOB BOTH SENDING TOOLS READ (contract C3): `cellwork_send` and `agent_teams_mail` pass the
++ * resolved number into the SAME `sendMany`, so the bound can never differ between the two surfaces and
++ * "use the other mail tool" is not an escape. The key is `mail.maxUndelivered`, the shipped default is
++ * 8, and an absent, unreadable or unusable value falls back to that default rather than failing a send.
++ * @param service - the row's optional-service lookup (`ctx.get(id, false)`), contained by the caller.
++ * @returns the bound to enforce; `0` means the bound is disabled.
++ */
++function mailBoundOf(service: (id: string) => unknown): number {
++  try {
++    /** The config row's published service, when this composition mounts it. */
++    const config = service("mpdConfig") as { get?: (key?: string) => unknown } | undefined
++    if (typeof config?.get !== "function") return DEFAULT_MAIL_MAX_UNDELIVERED
++    return mailMaxUndeliveredOf((key) => config.get?.(key))
++  } catch {
++    // A throwing config service is a composition fact, not a reason to fail a send: the default wins.
++    return DEFAULT_MAIL_MAX_UNDELIVERED
++  }
++}
++
+ /**
+  * Walk one team's parent chain and answer its nesting depth.
+  *
+@@ -1846,7 +1892,7 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_plan",
+     description:
+-      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces; `approve` EXECUTES through the TEAM EXECUTOR, REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
++      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
+     parameters: {
+       type: "object",
+       properties: {
+@@ -1903,15 +1949,19 @@ export function apply(ctx: any): void {
+           // The write-time blocker reading of `create_task` / `edit`: one `{ reference, form }` per
+           // reference, declared so the harness's own output validation accepts it.
+           blockers: { type: "array", items: { type: "object" } },
++          // THE EMPTY-WRITE-SCOPES WARNING (C4): a `work`/`repair`/`integration` row staged or appended
++          // with NO path carries the sentence naming that consequence and its remedy. Declared because
++          // this allowlist is explicit — an undeclared field would be dropped by output validation.
++          warning: { type: "string" },
+           // THE APPROVAL'S WORKMATE BINDINGS (W3-C): one `{ member, mode, workmate?, reason? }` per
+           // staged member, in plan order. Declared so the harness's output validation accepts the
+           // payload field the approval has carried since the workmate wave.
+           bindings: { type: "array", items: { type: "object" } },
+         },
+       },
+-      render: (_args: any, value: any) =>
+-        text(
+-          value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
++      render: (_args: any, value: any) => {
++        /** The sentence this branch paints, before any write-time warning rides below it. */
++        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
+             : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
+               // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
+               // answer the captain reads, with the board task and the exact text — because the whole
+@@ -1931,8 +1981,11 @@ export function apply(ctx: any): void {
+             // The task-writing branches answer with the blockers reading, which is the sentence that
+             // tells a captain at WRITE time whether their references can resolve (R21).
+             : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
+-            : describeStagedPlan(value?.plan),
+-        ),
++            : describeStagedPlan(value?.plan)
++        /** The empty-scopes warning (C4) rides BELOW the branch's own sentence, so it is never lost. */
++        const warning = typeof value?.warning === "string" && value.warning !== "" ? `\nWARNING: ${value.warning}` : ""
++        return text(painted + warning)
++      },
+     },
+     execute: async (args: any, exec: DshToolExec) => {
+       /** The requested action, stringified so a non-string argument can only miss, never throw. */
+@@ -2129,7 +2182,13 @@ export function apply(ctx: any): void {
+           // a captain sees immediately which forms will resolve and which name nothing this plan can
+           // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
+           // reference (`3` before task 3 exists) is legitimate and reads as `position`.
+-          return { plan: next, ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }) }
++          /** The empty-scopes warning this staged row earns, or undefined when it declares a path (C4). */
++          const scopesWarning = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject)
++          return {
++            plan: next,
++            ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }),
++            ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
++          }
+         }
+         // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
+         // The measured defect: after approval this exact call answered "no team is staged in this
+@@ -2175,6 +2234,8 @@ export function apply(ctx: any): void {
+           appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject),
+         )
+         writeTeam(workspace, withDerivedPhase(next))
++        /** The empty-scopes warning this live row earns, or undefined when it declares a path (C4). */
++        const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject)
+         return {
+           team: next,
+           task: appendedTask,
+@@ -2182,6 +2243,7 @@ export function apply(ctx: any): void {
+           ...(appendedTask.unresolvedBlockers === undefined
+             ? {}
+             : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }),
++          ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
+         }
+       }
+ 
+@@ -2255,15 +2317,15 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_task",
+     description:
+-      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your own occupancy and seat state), `handoff` (write the seven-section document, then end your turn).",
++      "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
+     parameters: {
+       type: "object",
+       properties: {
+         action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
+-        content: { type: "string", description: "handoff: the document." },
++        content: { type: "string", description: "handoff: document." },
+         task_id: { type: "string", description: "the task id." },
+-        claimant: { type: "string", description: "claim: who claims (default: caller)." },
+-        note: { type: "string", description: "complete/fail: one line on the row." },
++        claimant: { type: "string", description: "claim: who claims (default caller)." },
++        note: { type: "string", description: "complete/fail: one line." },
+         expected_revision: { type: "number", description: "the revision you decided on." },
+         blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." },
+       },
+@@ -2643,16 +2705,16 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_dispatch",
+     description:
+-      "Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:\"roster\"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled `task-reassigned`, then delivered. `release` frees a pairing and reopens the row. Lead-only: `reassign`, `mode:\"roster\".",
++      "Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:\"roster\"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled, delivered. `release` frees a pairing, reopens the row. Lead-only: `reassign`, `mode:\"roster\".",
+     parameters: {
+       type: "object",
+       properties: {
+         action: { type: "string", enum: ["run", "release"], description: "What to do." },
+-        task_id: { type: "string", description: "release: the task to free." },
++        task_id: { type: "string", description: "release: the task." },
+         dry_run: { type: "boolean", description: "run: report, send nothing." },
+         limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
+         mode: { type: "string", enum: ["owner-only", "roster"], description: "run: default owner-only." },
+-        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] applied first." },
++        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] first." },
+       },
+       required: ["action"],
+       additionalProperties: false,
+@@ -2797,28 +2859,28 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_mail",
+     description:
+-      "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept). `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`, `more`, `nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
++      "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept); a recipient past `mail.maxUndelivered` undelivered rows (default 8) is REFUSED — cellwork_send sends through this store, so the bound is SHARED. `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`/`more`/`nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
+     parameters: {
+       type: "object",
+       properties: {
+         action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
+-        to: { type: "string", description: "send: member id/name, captain/lead, or *." },
++        to: { type: "string", description: "send: id/name, captain/lead, or *." },
+         subject: { type: "string", description: "send: subject." },
+         body: { type: "string", description: "send: body." },
+         question: { type: "object", description: "send: {questionId, question, options:[{label}]}." },
+         answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels]}." },
+-        replyTo: { type: "string", description: "send: the message id this row replies to." },
++        replyTo: { type: "string", description: "send: the message id it replies to." },
+         member: { type: "string", description: "unread: whose inbox." },
+-        limit: { type: "integer", description: "Rows per page." },
++        limit: { type: "integer", description: "Page size." },
+         offset: { type: "integer", description: "Start row." },
+-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
+-        holder: { type: "string", description: "permit: member id/name the grant is for." },
+-        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
+-        ttlMs: { type: "number", description: "permit: lifetime ms (default 60000, max 600000)." },
+-        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
+-        permitId: { type: "string", description: "wait: the captain-issued permit id." },
+-        messageId: { type: "string", description: "wait: the message id being waited on." },
+-        timeoutMs: { type: "number", description: "wait: block ms (default 15000, cap 60000)." },
++        ids: { type: "array", items: { type: "string" }, description: "read: ids to acknowledge." },
++        holder: { type: "string", description: "permit: member the grant is for." },
++        scope: { type: "string", enum: ["answer", "message"], description: "permit: wait scope, default `answer`." },
++        ttlMs: { type: "number", description: "permit: lifetime ms (max 600000)." },
++        questionId: { type: "string", description: "permit: narrow to this question id." },
++        permitId: { type: "string", description: "wait: the captain's permit id." },
++        messageId: { type: "string", description: "wait: the awaited message id." },
++        timeoutMs: { type: "number", description: "wait: block ms (max 60000)." },
+       },
+       required: ["action"],
+       additionalProperties: false,
+@@ -2947,6 +3009,9 @@ export function apply(ctx: any): void {
+           // THE SENDER'S ROSTER ID: a row is addressed to `M1` while the answering session names
+           // itself by session id, so the ownership rules need both spellings recorded at send time.
+           ...(callerAddress === callerId ? {} : { fromMemberId: callerAddress }),
++          // THE BOUND (contract C3, D2): resolved per call from the workspace's `mail.maxUndelivered`,
++          // so this tool and `cellwork_send` enforce ONE number through the ONE `sendMany` path.
++          maxUndelivered: mailBoundOf(teamActionsDeps.service),
+           // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
+           // team identity is recorded HERE, at the one moment the sending team is known.
+           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
+@@ -3191,13 +3256,13 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_control",
+     description:
+-      "Halt, resume or fence. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close or reopen ONE seat, which is then never messaged (Lead only).",
++      "Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).",
+     parameters: {
+       type: "object",
+       properties: {
+         action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
+         reason: { type: "string", description: "halt/fence: why." },
+-        member: { type: "string", description: "fence/unfence: the seat." },
++        member: { type: "string", description: "fence/unfence: seat." },
+       },
+       required: ["action"],
+       additionalProperties: false,
+diff --git a/packages/mpd-team-core-plugin/src/mailbox-store.ts b/packages/mpd-team-core-plugin/src/mailbox-store.ts
+index 29c31b0c..f3bf687b 100644
+--- a/packages/mpd-team-core-plugin/src/mailbox-store.ts
++++ b/packages/mpd-team-core-plugin/src/mailbox-store.ts
+@@ -10,10 +10,13 @@
+ // WHAT IS ABSORBED from the official implementation, deliberately, because each was earned there:
+ //   • a message is TARGETED at a live member, resolved by name, and a member cannot message itself;
+ //   • a member's UNDELIVERED backlog is BOUNDED, so a stalled member cannot silently accumulate work —
+-//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one — the bound is
+-//     PER TEAM, because member ids (`M1`, `M2`, …) repeat across waves and a finished team's queue must
+-//     never refuse a new team's work — and an ACK RELEASES A SLOT, because the one release valve an
+-//     operator has cannot depend on a delivery a stalled member will never trigger;
++//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one — the bound is a
++//     WORKSPACE KNOB ({@link MAIL_MAX_UNDELIVERED_KEY}, default 8) that BOTH sending tools read through
++//     the ONE {@link sendMany} path (`cellwork_send` and `agent_teams_mail`), so neither is an escape
++//     from it — the bound is PER TEAM, because member ids (`M1`, `M2`, …) repeat across waves and a
++//     finished team's queue must never refuse a new team's work — and an ACK RELEASES A SLOT, because
++//     the one release valve an operator has cannot depend on a delivery a stalled member will never
++//     trigger;
+ //   • the queue keeps INSERTION ORDER, and unread counts are computed oldest-first.
+ //
+ // WHAT IS OURS: `sent → delivered → read`. `read` is an explicit acknowledgement by the recipient,
+@@ -443,7 +446,13 @@ export interface SendInput {
+    * Absent only for a caller that resolved no team at all.
+    */
+   teamId?: string
+-  /** The bound on a member's undelivered backlog, absorbed from the official `TEAM_MAILBOX_FULL`. */
++  /**
++   * The bound on a member's undelivered backlog, absorbed from the official `TEAM_MAILBOX_FULL`.
++   *
++   * A CALLER-resolved number: the tool that sends reads {@link MAIL_MAX_UNDELIVERED_KEY} through
++   * {@link mailMaxUndeliveredOf} and passes the result here, so both sending tools enforce the SAME
++   * workspace value. Absent means {@link DEFAULT_MAIL_MAX_UNDELIVERED}; `0` disables the bound.
++   */
+   maxUndelivered?: number
+   /** Which envelope the row carries; absent means a plain `message`, the legacy default (contract §5). */
+   kind?: MailKind
+@@ -570,6 +579,53 @@ function unauthorizedAnswer(messageId: string): string {
+   return "only a recipient of the question may answer it: " + messageId
+ }
+ 
++/**
++ * The dotted workspace-config key the undelivered bound is read from (`<ws>/.mpd/mpd.jsonc`).
++ *
++ * ONE key, ONE number: the `mpdConfig` service resolves it per call, so lowering or raising the bound
++ * takes effect on the NEXT send with no restart and no per-tool copy of the default.
++ */
++export const MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered"
++
++/**
++ * The shipped bound on one member's undelivered backlog, used when the workspace declares none.
++ *
++ * Absorbed from the official `TEAM_MAILBOX_FULL`: a stalled member must not silently accumulate work,
++ * and eight is the number the official service uses, so a workspace that declares nothing keeps the
++ * behaviour it had.
++ */
++export const DEFAULT_MAIL_MAX_UNDELIVERED = 8
++
++/** The largest accepted bound; above it a value reads as "disabled", so the ceiling is the safer rule. */
++const MAIL_MAX_UNDELIVERED_CEILING = 1000
++
++/**
++ * Resolve the undelivered bound from the workspace config layer.
++ *
++ * TOTAL, never throwing: a knob that cannot be read or does not hold a whole number in
++ * `0..{@link MAIL_MAX_UNDELIVERED_CEILING}` falls back to the shipped default, because a misconfigured
++ * file must not make the mailbox refuse every message. `0` is a legitimate answer and DISABLES the
++ * bound (the store's own documented rule), so it is honoured rather than replaced.
++ *
++ * @param readConfig - reads one dotted `mpd.jsonc` key; the caller binds the config service, so this
++ *   module never reads a file or decides which layer wins.
++ * @returns the bound to enforce, never negative.
++ */
++export function mailMaxUndeliveredOf(readConfig: (key: string) => unknown): number {
++  /** The declared value, or whatever the config layer answered for the key. */
++  let declared: unknown
++  try {
++    declared = readConfig(MAIL_MAX_UNDELIVERED_KEY)
++  } catch {
++    // An unreadable config layer is a composition fact, not a reason to fail a send.
++    return DEFAULT_MAIL_MAX_UNDELIVERED
++  }
++  if (typeof declared !== "number" || !Number.isInteger(declared) || declared < 0 || declared > MAIL_MAX_UNDELIVERED_CEILING) {
++    return DEFAULT_MAIL_MAX_UNDELIVERED
++  }
++  return declared
++}
++
+ /**
+  * Validate and append ONE ROW PER RECIPIENT — the fan-out a broadcast is built from (I6).
+  *
+@@ -577,6 +633,10 @@ function unauthorizedAnswer(messageId: string): string {
+  * the address rules, the envelope's protocol check (I1–I4), its references (I5), the two ownership
+  * rules below, and — PER RECIPIENT, not per broadcast — the undelivered bound.
+  *
++ * THE BOUND IS THE WORKSPACE KNOB, not a literal: an absent `maxUndelivered` means
++ * {@link DEFAULT_MAIL_MAX_UNDELIVERED}, and the caller passes the resolved value from
++ * {@link mailMaxUndeliveredOf}, so every sending tool applies the SAME number through this one path.
++ *
+  * The fan-out rows share the send instant, the envelope (`kind`/`question`/`answer`) and ONE thread
+  * (I6/I7): an explicit or inherited thread wins, and otherwise the batch's FIRST message id names it.
+  *
+@@ -681,12 +741,15 @@ export function sendMany(workspace: string, input: SendInput, targets: readonly
+     return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) }
+   }
+   /** Effective backlog bound; zero or less disables the bound entirely. */
+-  const cap = input.maxUndelivered ?? 8
++  const cap = input.maxUndelivered ?? DEFAULT_MAIL_MAX_UNDELIVERED
+   for (const target of targets) {
+     /** How many rows THIS TEAM sent this recipient and nobody has accepted nor acknowledged. */
+     const backlog = undeliveredOf(scoped, target.id).length
+     if (cap > 0 && backlog >= cap) {
+-      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` }
++      // THE REFUSAL IS A RECOVERY INSTRUCTION, not a bare count (D2): it names the recipient, the
++      // current count, the bound AND where the number comes from, then both ways out — an
++      // acknowledgement frees a slot without a delivery, and a reassignment moves the work itself.
++      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) and the bound (${MAIL_MAX_UNDELIVERED_KEY}) is ${cap} — it is not keeping up. Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:"read"} for a team member), or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.` }
+     }
+   }
+   /** The send instant, shared by every row and by the id sequence. */
+diff --git a/packages/mpd-team-core-plugin/test/mailbox-store.test.ts b/packages/mpd-team-core-plugin/test/mailbox-store.test.ts
+index 1a130d04..f54a151d 100644
+--- a/packages/mpd-team-core-plugin/test/mailbox-store.test.ts
++++ b/packages/mpd-team-core-plugin/test/mailbox-store.test.ts
+@@ -134,7 +134,15 @@ describe("sending", () => {
+     const refused = send(box, msg({ subject: "ninth", teamId: "team-live" }), later(9))
+     expect(refused.ok).toBe(false)
+     // The EXACT sentence an operator reads, count and bound spelled out (no `maxUndelivered` was named).
+-    expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe('"senior" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
++    // CHANGED BY VEDIT-P0 C3/D2 (R2: named here, and the reviewer checks both sides): the old sentence
++    // stopped at "— it is not keeping up", which named the recipient, the count and the bound but gave
++    // the caller NO WAY OUT. The replacement keeps those three facts, names the knob behind the number,
++    // and adds the two recovery paths the contract requires (ack the inbox, or reassign the rows).
++    expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe(
++      '"senior" already has 8 undelivered message(s) and the bound (mail.maxUndelivered) is 8 — it is not keeping up.'
++      + " Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:\"read\"} for a team member),"
++      + " or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.",
++    )
+     /** The oldest queued row, which the recipient ACKNOWLEDGES to free its slot. */
+     const first = readMailbox(box).messages[0]
+     expect(markRead(box, [first.id], ACK, later(10))).toEqual([first.id])
+diff --git a/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts b/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts
+index 0399707b..8a5ccc1e 100644
+--- a/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts
++++ b/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts
+@@ -566,7 +566,15 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
+     expect(before.summary?.find((row) => row.memberId === m1)?.undelivered).toBe(8)
+     /** The bound's refusal through the tool, with the EXACT sentence an operator reads. */
+     const refused = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "ninth", body: "b" }, LEAD) as { refused?: string }
+-    expect(refused.refused).toBe('"Senior Engineer" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
++    // CHANGED BY VEDIT-P0 C3/D2 (R2: named here and in `mailbox-store.test.ts`, and the reviewer checks
++    // both sides): the old sentence stopped at "— it is not keeping up", so a caller learned the count
++    // and nothing about how to free a slot. The replacement keeps the recipient, the count and the
++    // bound, names the knob behind the number, and carries the two recovery paths the contract requires.
++    expect(refused.refused).toBe(
++      '"Senior Engineer" already has 8 undelivered message(s) and the bound (mail.maxUndelivered) is 8 — it is not keeping up.'
++      + " Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:\"read\"} for a team member),"
++      + " or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.",
++    )
+     /** The oldest queued row, taken from the tool's OWN unread answer so the id is not a fixture guess. */
+     const queued = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ id?: string }> }
+     /** The id the operator acknowledges. */

@@ -1,0 +1,35 @@
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 591 TypeScript file(s) of 591 in the source set; inspected 51753 declaration(s); skipped 25170 inline callback(s) as out of family
+
+VERDICT: FAIL — 18 violation(s) across 2 file(s).
+
+packages/mpd-team-core-plugin/test/vedit-p0-lane-b.test.ts (15)
+  279: comment — sent
+  291: comment — afterAck
+  299: comment — h
+  303: comment — sent
+  313: comment — h
+  323: comment — h
+  334: comment — h
+  353: comment — h
+  371: comment — answer
+  381: comment — h
+  383: comment — answer
+  389: comment — h
+  … 3 more
+
+packages/mpd-dsh-adapter-plugin/src/index.ts (3)
+  4174: comment — cached
+  4176: comment — scoped
+  4178: comment — engine
+
+error: script "verify:comments" exited with code 1
+exit=1
+=== comments on my files ===
+packages/mpd-team-core-plugin/src/mailbox-store.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+packages/mpd-team-core-plugin/src/index.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+packages/mpd-team-core-plugin/test/vedit-p0-lane-b.test.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+packages/mpd-team-core-plugin/test/mailbox-store.test.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

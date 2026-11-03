@@ -1,0 +1,71 @@
+[README.md]
+BEFORE: there.
+AFTER : The bundle runs on two surfaces. Everything below exists in the **DSH Web GUI** and in the **DSH-TUI**
+
+[README.md]
+BEFORE: leaves no residue.
+AFTER : repository root *is* that package. One command installs it, and one command removes it without leaving
+
+[README.md]
+BEFORE: *The same bundle, the same run, the same state — the **Web GUI** on the left, the **DSH-TUI**
+AFTER : *The same bundle, the same run, the same state: the **Web GUI** on the left, the **DSH-TUI**
+
+[README.zh-CN.md]
+BEFORE: 仅仅因为在终端里没有像素就不存在。
+AFTER : 套件同时跑在两个端上。下面写的每一项都同时存在于 **DSH Web GUI** 和 **DSH-TUI** 终端版里：同一份安装、
+
+[README.zh-CN.md]
+BEFORE: *同一个套件、同一次运行、同一份状态——左边是 **Web GUI**，右边是 **DSH-TUI** 终端版。本页所有截图都是
+AFTER : *同一个套件、同一次运行、同一份状态：左边是 **Web GUI**，右边是 **DSH-TUI** 终端版。本页所有截图都是
+
+[README.zh-CN.md]
+BEFORE: 只有状态行和简体中文的 Web 图。*
+AFTER : 命令描述与状态行，但**不会**本地化场景正文，所以两个语言下的终端场景图看起来是一样的，真正不同的只有状态行和简体中文的 Web 图。*
+
+[docs/design.md]
+BEFORE: task-oriented [user guide](user-guide.md) — this is the document those two link to when the
+AFTER : task-oriented [user guide](user-guide.md): this is the document those two link to when the
+
+[docs/design.md]
+BEFORE: plus a second patch file that ships the bundle's own `mpd` preset ADDITIVELY there — the bundle
+AFTER : plus a second patch file that ships the bundle's own `mpd` preset ADDITIVELY there: the bundle
+
+[docs/design.md]
+BEFORE: work this bundle builds on — that provenance is credited in
+AFTER : work this bundle builds on, that provenance is credited in
+
+[docs/design.zh-CN.md]
+BEFORE: [`README.zh-CN.md`](../README.zh-CN.md) 与面向任务的[用户指南](user-guide.zh-CN.md)里——当某个
+AFTER : [`README.zh-CN.md`](../README.zh-CN.md) 与面向任务的[用户指南](user-guide.zh-CN.md)里：当某个
+
+[docs/design.zh-CN.md]
+BEFORE: bundle 自带的 `mpd` 预设**增量**交付到这些 composition —— bundle 不对任何 host 行做 id-target，
+AFTER : bundle 自带的 `mpd` 预设**增量**交付到这些 composition ： bundle 不对任何 host 行做 id-target，
+
+[docs/design.zh-CN.md]
+BEFORE: 3 个官方 Agent Teams 行，以及挂载 bundle **可选** peer 的 `mpd-better-sidebar` 宿主行——该 peer
+AFTER : 3 个官方 Agent Teams 行，以及挂载 bundle **可选** peer 的 `mpd-better-sidebar` 宿主行：该 peer
+
+[docs/user-guide.md]
+BEFORE: `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
+AFTER : `mpd` preset, the whole skill corpus and the extension root. Nothing else to run, no pack step,
+
+[docs/user-guide.md]
+BEFORE: The bundle declares **four** runtime dependencies — the four entries in `package.json`'s
+AFTER : The bundle declares **four** runtime dependencies: the four entries in `package.json`'s
+
+[docs/user-guide.md]
+BEFORE: scripts — only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
+AFTER : scripts, only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
+
+[docs/user-guide.zh-CN.md]
+BEFORE: 语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
+AFTER : 语料库以及扩展根目录。没有别的步骤：不需要打包，也不需要复制。重启 `dsh`，然后在
+
+[docs/user-guide.zh-CN.md]
+BEFORE: 本 bundle 声明了**四个**运行时依赖 —— 即 `package.json` 的 `dependencies` 里的四个条目：提供团队模式的
+AFTER : 本 bundle 声明了**四个**运行时依赖，即 `package.json` 的 `dependencies` 里的四个条目：提供团队模式的
+
+[docs/user-guide.zh-CN.md]
+BEFORE: `-client-ui-agent-team` 两个同级包），加上 `@dsh-std/sdk`（`0.1.1-rc.2`）—— DSH Standard facet 激活
+AFTER : `-client-ui-agent-team` 两个同级包），加上 `@dsh-std/sdk`（`0.1.1-rc.2`）： DSH Standard facet 激活

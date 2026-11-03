@@ -1,0 +1,16 @@
+# verify-comment-coverage
+
+scanned 534 TypeScript file(s) of 534 in the source set; inspected 48400 declaration(s); skipped 23367 inline callback(s) as out of family
+
+VERDICT: FAIL — 4 violation(s) across 3 file(s).
+
+packages/mpd-team-core-plugin/src/index.ts (2)
+  1163: comment — apply
+  2683: comment — outcome
+
+packages/mpd-team-core-plugin/src/dispatch.ts (1)
+  265: comment — fence
+
+skills/dsh-qa/scripts/tool-output-validation.ts (1)
+  75: comment — blDist
+

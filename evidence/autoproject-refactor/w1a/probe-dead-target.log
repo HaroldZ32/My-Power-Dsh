@@ -1,0 +1,4 @@
+TARGET before: {"status":"failed","executorRef":"sess-dead"}
+REASSIGN    : {"ok":true,"pairs":[],"skipped":[{"taskId":"T1","subject":"work","reason":"already dispatched to dead"}],"forgotten":[],"reassigned":[{"taskId":"T1","owner":"dead","claimed":true,"delivered":true}]}
+BOARD after : {"owner":"dead","status":"in_progress"}
+SENT        : 1

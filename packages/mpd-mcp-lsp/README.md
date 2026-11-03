@@ -12,7 +12,7 @@ language-server plane of the bundle, exposed as `mcp__lsp__*` tools. Wrapped by 
   installed profile's `node_modules`, takes this process's terminal writers away from the terminal
   (`<root>/.mpd/logs/mpd-mcp-lsp.log`), then imports cclsp's `bin` entry in-process.
 - Nothing is vendored and nothing is built from `vendor/mcp-src/**`: that snapshot, the retired
-  `scripts/build-mcp.ts` and the SUL-1.0 `lsp-daemon` build it produced are gone (de-omo wave B2).
+  `scripts/build-mcp.ts` and the `lsp-daemon` build it produced are gone (de-omo wave B2).
 - The TS/JS language server needs no user installation: cclsp depends on
   `typescript-language-server` (Apache-2.0) and the launcher's generated config points at that copy.
 - **Every other language is wired from the language→server catalog** (`src/server-catalog.ts`), so

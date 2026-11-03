@@ -1,0 +1,42 @@
+=== bun run verify:docs (final) ===
+[verify-docs-parity] links=501 checked=471 resolved=471 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=6 files=131
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=501 dead=0 — PASS
+exit=0
+
+=== changed files (git) ===
+README.md
+README.zh-CN.md
+docs/cellwork.md
+docs/cellwork.zh-CN.md
+docs/design.md
+docs/design.zh-CN.md
+docs/development.md
+docs/development.zh-CN.md
+docs/drive-surface.md
+docs/drive-surface.zh-CN.md
+docs/extension-adaptation-report.md
+docs/extension-adaptation-report.zh-CN.md
+docs/extension-authoring-guide.md
+docs/extension-authoring-guide.zh-CN.md
+docs/extensions.md
+docs/extensions.zh-CN.md
+docs/feature-audit.md
+docs/feature-audit.zh-CN.md
+docs/independence.md
+docs/independence.zh-CN.md
+docs/index.md
+docs/index.zh-CN.md
+docs/mail.md
+docs/mail.zh-CN.md
+docs/preset-default.md
+docs/preset-default.zh-CN.md
+docs/tui-dag-renderer.md
+docs/tui-dag-renderer.zh-CN.md
+docs/tui-parity.md
+docs/tui-parity.zh-CN.md
+docs/upstream-parity-ledger.md
+docs/upstream-parity-ledger.zh-CN.md
+docs/user-guide.md
+docs/user-guide.zh-CN.md
+verify:docs exit=0

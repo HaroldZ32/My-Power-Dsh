@@ -1,10 +1,10 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync5, readdirSync as readdirSync6 } from "node:fs";
-import { join as join10 } from "node:path";
+import { existsSync as existsSync7, readdirSync as readdirSync6 } from "node:fs";
+import { join as join12 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -867,17 +867,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -888,8 +885,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -966,6 +975,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1362,6 +1404,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -1630,6 +1673,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2194,6 +2286,468 @@ function createLazyDshAdapter(ctx, options) {
   });
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-team-core-plugin/src/tool-cards.ts
+var CELL_LIMIT = 60;
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordAt(source, key) {
+  const found = source[key];
+  return isRecord3(found) ? found : {};
+}
+function arrayAt(source, key) {
+  const found = source[key];
+  return Array.isArray(found) ? found : [];
+}
+function firstRows(candidates) {
+  for (const candidate of candidates)
+    if (candidate.length > 0)
+      return candidate;
+  return [];
+}
+function words(value, limit = 200) {
+  if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
+    return;
+  const flat = String(value).replace(/\s+/g, " ").trim();
+  if (flat === "")
+    return;
+  return flat.length <= limit ? flat : `${flat.slice(0, Math.max(0, limit - 1))}…`;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+function cell(value, limit = CELL_LIMIT) {
+  return words(value, limit) ?? "—";
+}
+function addFact(facts, name, value) {
+  const shown = numberOf(value) ?? words(value, 120);
+  if (shown !== undefined && facts.length < 24)
+    facts.push([name, shown]);
+}
+function taskRow(row) {
+  const task = isRecord3(row) ? row : {};
+  return [cell(task.id, 12), cell(task.subject, 48), cell(task.status, 12), cell(task.owner, 24)];
+}
+function memberRow(row) {
+  const member = isRecord3(row) ? row : {};
+  return [cell(member.name, 24), cell(member.status, 12), cell(member.role, 24)];
+}
+function relatedRow(row) {
+  const related = isRecord3(row) ? row : {};
+  return [cell(isRecord3(row) ? related.id : row, 12), cell(related.subject, 48)];
+}
+function agentTeamsPlanCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "status";
+  const plan = recordAt(answer, "plan");
+  const team = recordAt(answer, "team");
+  const created = recordAt(answer, "created");
+  const members = firstRows([arrayAt(team, "members"), arrayAt(answer, "members"), arrayAt(plan, "members"), arrayAt(created, "members")]);
+  const tasks = firstRows([arrayAt(team, "tasks"), arrayAt(answer, "tasks"), arrayAt(plan, "tasks"), arrayAt(created, "tasks")]);
+  const summary = recordAt(answer, "summary");
+  const facts = [];
+  addFact(facts, "plan", plan.planId);
+  addFact(facts, "approval", plan.approval);
+  addFact(facts, "team", team.teamId);
+  addFact(facts, "total", summary.total);
+  addFact(facts, "completed", summary.completed);
+  addFact(facts, "running", summary.running);
+  addFact(facts, "ready", summary.ready);
+  addFact(facts, "appended", answer.appended);
+  addFact(facts, "archived to", answer.archivedTo);
+  addFact(facts, "stopped at", answer.stoppedAt);
+  const children = [
+    metric({ label: "members", value: members.length }),
+    metric({ label: "tasks", value: tasks.length })
+  ];
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  const description = words(plan.description, 200);
+  if (description !== undefined)
+    children.push(text(description));
+  if (tasks.length > 0)
+    children.push(table({ columns: ["id", "subject", "status", "owner"], rows: tasks.slice(0, 12).map(taskRow) }));
+  if (members.length > 0)
+    children.push(table({ columns: ["name", "status", "role"], rows: members.slice(0, 8).map(memberRow) }));
+  return stack(children, { title: `plan · ${action}` });
+}
+function agentTeamsTaskCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "claim";
+  const task = recordAt(answer, "task");
+  const contract = recordAt(answer, "contract");
+  const occupancy = answer.provenance !== undefined;
+  const facts = [];
+  addFact(facts, "task", answer.taskId ?? task.id ?? contract.taskId);
+  addFact(facts, "status", answer.status ?? task.status);
+  addFact(facts, "closed by", answer.closedBy);
+  addFact(facts, "attempt", answer.attempt ?? contract.attempt);
+  addFact(facts, "revision", answer.revision);
+  addFact(facts, "released", answer.released);
+  addFact(facts, "note", answer.note ?? task.note);
+  addFact(facts, "file", answer.path);
+  addFact(facts, "member", answer.member);
+  addFact(facts, "mode", answer.mode);
+  addFact(facts, "provenance", answer.provenance);
+  addFact(facts, "fenced", answer.fenced);
+  addFact(facts, "refused", answer.refused);
+  const children = [];
+  if (occupancy) {
+    children.push(metric({ label: "used", value: numberOf(answer.usedTokens) ?? "?" }));
+    children.push(metric({ label: "window", value: numberOf(answer.windowTokens) ?? "no window" }));
+  }
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  const related = firstRows([arrayAt(answer, "dependents"), arrayAt(answer, "added")]);
+  if (related.length > 0)
+    children.push(table({ columns: ["task", "subject"], rows: related.slice(0, 12).map(relatedRow) }));
+  const unresolved = arrayAt(answer, "unresolved");
+  if (unresolved.length > 0)
+    children.push(table({ columns: ["reference"], rows: unresolved.slice(0, 8).map((item) => [cell(item)]) }));
+  if (children.length === 0)
+    return null;
+  return stack(children, { title: `task · ${action}` });
+}
+function agentTeamsDispatchCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "run";
+  const pairs = arrayAt(answer, "pairs");
+  const skipped = arrayAt(answer, "skipped");
+  const reassigned = arrayAt(answer, "reassigned");
+  const facts = [];
+  addFact(facts, "released", answer.released);
+  addFact(facts, "task", answer.taskId);
+  addFact(facts, "status", answer.status);
+  addFact(facts, "revision", answer.revision);
+  addFact(facts, "halted", answer.halted);
+  addFact(facts, "hold read", answer.holdRead);
+  addFact(facts, "refused", answer.refused);
+  addFact(facts, "reaped", arrayAt(answer, "reaped").length);
+  addFact(facts, "forgotten", arrayAt(answer, "forgotten").length);
+  const children = [];
+  if (pairs.length > 0 || skipped.length > 0 || reassigned.length > 0) {
+    children.push(metric({ label: "paired", value: pairs.length }));
+    children.push(metric({ label: "skipped", value: skipped.length }));
+    children.push(metric({ label: "handed over", value: reassigned.length }));
+  }
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  if (pairs.length > 0)
+    children.push(table({ columns: ["subject", "member", "note"], rows: pairs.slice(0, 12).map(pairRow) }));
+  if (skipped.length > 0)
+    children.push(table({ columns: ["subject", "reason"], rows: skipped.slice(0, 8).map(skippedRow) }));
+  if (reassigned.length > 0)
+    children.push(table({ columns: ["task", "owner", "delivered"], rows: reassigned.slice(0, 8).map(handoverRow) }));
+  if (children.length === 0)
+    return null;
+  return stack(children, { title: `dispatch · ${action}` });
+}
+function pairRow(row) {
+  const pair = isRecord3(row) ? row : {};
+  return [cell(pair.subject, 48), cell(pair.memberName, 24), cell(pair.note, 48)];
+}
+function skippedRow(row) {
+  const skip = isRecord3(row) ? row : {};
+  return [cell(skip.subject, 48), cell(skip.reason, 60)];
+}
+function handoverRow(row) {
+  const handover = isRecord3(row) ? row : {};
+  return [cell(handover.taskId, 12), cell(handover.owner, 24), handover.delivered === true ? "yes" : "NOT delivered"];
+}
+
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
 import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
@@ -2544,6 +3098,19 @@ function foldMail(records) {
   return { messages: [...state.byId.values()], problems: state.problems };
 }
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
+function pageOf(rows, limit, offset) {
+  const size = Number.isFinite(Number(limit)) ? Math.min(Math.max(Math.trunc(Number(limit)), 1), 100) : 20;
+  const start = Number.isFinite(Number(offset)) ? Math.max(Math.trunc(Number(offset)), 0) : 0;
+  const page = rows.slice(start, start + size);
+  const more = Math.max(rows.length - (start + page.length), 0);
+  return { page, more, nextOffset: more === 0 ? null : start + page.length, limit: size, offset: start };
+}
+var MAIL_BODY_MAX = 4000;
+function truncateMailBody(text2) {
+  if (text2.length <= MAIL_BODY_MAX)
+    return { body: text2, truncated: false, originalLength: text2.length };
+  return { body: text2.slice(0, MAIL_BODY_MAX), truncated: true, originalLength: text2.length };
+}
 function mailboxPath(workspace) {
   return join2(workspace, ".mpd", "team", "mailbox.jsonl");
 }
@@ -2562,12 +3129,16 @@ function fold(records) {
     const cellId = typeof line.cellId === "string" && line.cellId !== "" ? line.cellId : undefined;
     const fromCell = typeof line.fromCell === "string" && line.fromCell !== "" ? line.fromCell : undefined;
     const fromMemberId = typeof line.fromMemberId === "string" && line.fromMemberId !== "" ? line.fromMemberId : undefined;
-    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined)
+    const truncated = line.truncated === true ? true : undefined;
+    const originalLength = typeof line.originalLength === "number" ? line.originalLength : undefined;
+    if (cellId === undefined && fromCell === undefined && fromMemberId === undefined && truncated === undefined && originalLength === undefined)
       continue;
     stamps.set(line.id, {
       ...cellId === undefined ? {} : { cellId },
       ...fromCell === undefined ? {} : { fromCell },
-      ...fromMemberId === undefined ? {} : { fromMemberId }
+      ...fromMemberId === undefined ? {} : { fromMemberId },
+      ...truncated === undefined ? {} : { truncated },
+      ...originalLength === undefined ? {} : { originalLength }
     });
   }
   return {
@@ -2579,14 +3150,14 @@ function readRecords(workspace) {
   const path = mailboxPath(workspace);
   if (!existsSync(path))
     return [];
-  let text = "";
+  let text2 = "";
   try {
-    text = readFileSync(path, "utf8");
+    text2 = readFileSync(path, "utf8");
   } catch {
     return [];
   }
   const out = [];
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     if (line.trim() === "")
       continue;
@@ -2682,6 +3253,21 @@ function problemsSentence(check2) {
 function unauthorizedAnswer(messageId) {
   return "only a recipient of the question may answer it: " + messageId;
 }
+var MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered";
+var DEFAULT_MAIL_MAX_UNDELIVERED = 8;
+var MAIL_MAX_UNDELIVERED_CEILING = 1000;
+function mailMaxUndeliveredOf(readConfig) {
+  let declared;
+  try {
+    declared = readConfig(MAIL_MAX_UNDELIVERED_KEY);
+  } catch {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  if (typeof declared !== "number" || !Number.isInteger(declared) || declared < 0 || declared > MAIL_MAX_UNDELIVERED_CEILING) {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  return declared;
+}
 function sendMany(workspace, input, targets, now) {
   const replyTo = input.replyTo !== undefined && input.replyTo !== "" ? input.replyTo : input.kind === "answer" && input.answer !== undefined && input.answer.answerTo !== "" ? input.answer.answerTo : undefined;
   const envelope = {
@@ -2729,11 +3315,11 @@ function sendMany(workspace, input, targets, now) {
   if (!referenceCheck.ok) {
     return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) };
   }
-  const cap = input.maxUndelivered ?? 8;
+  const cap = input.maxUndelivered ?? DEFAULT_MAIL_MAX_UNDELIVERED;
   for (const target of targets) {
     const backlog = undeliveredOf(scoped, target.id).length;
     if (cap > 0 && backlog >= cap) {
-      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) and the bound (${MAIL_MAX_UNDELIVERED_KEY}) is ${cap} — it is not keeping up. Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:"read"} for a team member), or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.` };
     }
   }
   const at = now.toISOString();
@@ -2741,6 +3327,7 @@ function sendMany(workspace, input, targets, now) {
   const ids = targets.map((_target, index) => stem + (state.messages.length + 1 + index).toString().padStart(3, "0"));
   const threadById = envelope.kind === "answer" ? workspaceById : new Map(scoped.messages.map((message) => [message.id, message]));
   const threadId = inheritedThreadId(envelope, threadById) ?? ids[0];
+  const storedBody = truncateMailBody(input.body);
   const messages = targets.map((target, index) => ({
     id: ids[index],
     kind: envelope.kind,
@@ -2753,7 +3340,8 @@ function sendMany(workspace, input, targets, now) {
     toId: target.id,
     toName: target.name,
     subject: input.subject,
-    body: input.body,
+    body: storedBody.body,
+    ...storedBody.truncated ? { truncated: true, originalLength: storedBody.originalLength } : {},
     sentAt: at,
     ...input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId },
     ...input.cellId === undefined || input.cellId === "" ? {} : { cellId: input.cellId },
@@ -2816,14 +3404,14 @@ function readPermitRecords(workspace) {
   const path = permitsPath(workspace);
   if (!existsSync2(path))
     return [];
-  let text = "";
+  let text2 = "";
   try {
-    text = readFileSync2(path, "utf8");
+    text2 = readFileSync2(path, "utf8");
   } catch {
     return [];
   }
   const out = [];
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     if (line.trim() === "")
       continue;
@@ -3028,6 +3616,43 @@ function pairingRefusal(task, member) {
   }
   return;
 }
+function memberFenceReason(member) {
+  if (member.fenced === true) {
+    return "the compaction barrier gave up and fenced it" + (typeof member.fencedReason === "string" && member.fencedReason !== "" ? " (" + member.fencedReason + ")" : "");
+  }
+  if (member.mode === "checkpoint")
+    return "its mode is `checkpoint` — the seat is fenced to the handoff tools until the barrier compacts it";
+  return;
+}
+function ownerOnlyDecision(task, members, available, busy, paired) {
+  const ownerKey = dispatchNameKey(task.ownerName ?? "");
+  if (ownerKey === "") {
+    return { reason: 'the row declares no owner — owner-only dispatch never substitutes a member (declare `owner` on the row, or run the pass with mode:"roster")' };
+  }
+  const owner = members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey);
+  if (owner === undefined) {
+    return { reason: "declared owner " + JSON.stringify(String(task.ownerName ?? "")) + " is not on this team's roster — the row stays pending" };
+  }
+  const fence = memberFenceReason(owner);
+  if (fence !== undefined) {
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " is FENCED (" + fence + ") — a fenced member is never messaged; reassign the row: agent_teams_dispatch {reassign:[{task_id:" + JSON.stringify(task.id) + ', owner:"<another member>"}]}' };
+  }
+  if (owner.status === "failed")
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " FAILED to start" };
+  if (owner.status === "provisioning")
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " is still being raised" };
+  const refusal = pairingRefusal(task, owner);
+  if (refusal !== undefined)
+    return { reason: refusal };
+  if (!available.includes(owner)) {
+    if (paired.has(ownerKey))
+      return { reason: "declared owner " + JSON.stringify(owner.name) + " was already paired in this pass (one task per member)" };
+    if (busy.has(owner.id))
+      return { reason: "declared owner " + JSON.stringify(owner.name) + " is BUSY on another task — reported, never substituted" };
+    return { reason: "declared owner " + JSON.stringify(owner.name) + " is not idle (status " + JSON.stringify(owner.status) + ")" };
+  }
+  return { member: owner };
+}
 var DISPATCH_KEY_SEPARATOR = "::";
 function ledgerKey(teamId, taskId) {
   return teamId + DISPATCH_KEY_SEPARATOR + taskId;
@@ -3055,15 +3680,21 @@ function planDispatch(input) {
   if (input.hold !== undefined && input.hold !== "") {
     return { pairs: [], skipped: [], halted: input.hold };
   }
+  const mode = input.mode ?? "owner-only";
   const busy = new Set(Object.values(input.ledger).filter((entry) => entry.taskId !== "" && entry.memberId !== "").map((entry) => entry.memberId));
   const claimed = new Set(Object.values(input.ledger).map((entry) => entry.taskId));
-  const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id));
+  const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id) && memberFenceReason(member) === undefined);
   const plan = { pairs: [], skipped: [] };
   let available = [...candidates];
+  const paired = new Set;
   const cap = input.limit === undefined || input.limit <= 0 ? Number.POSITIVE_INFINITY : input.limit;
   for (const task of input.tasks) {
     if (plan.pairs.length >= cap) {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "the pass reached its limit" });
+      continue;
+    }
+    if (task.status === "cancelled") {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "cancelled" });
       continue;
     }
     if (task.status === "completed") {
@@ -3076,6 +3707,18 @@ function planDispatch(input) {
     }
     if (task.ready !== true) {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `not ready${Array.isArray(task.blockedBy) && task.blockedBy.length > 0 ? " (blocked by " + task.blockedBy.join(", ") + ")" : ""}` });
+      continue;
+    }
+    if (mode === "owner-only") {
+      const decision = ownerOnlyDecision(task, input.members, available, busy, paired);
+      if (decision.member === undefined) {
+        plan.skipped.push({ taskId: task.id, subject: task.subject, reason: decision.reason ?? "no eligible declared owner" });
+        continue;
+      }
+      const owner = decision.member;
+      available = available.filter((candidate) => candidate !== owner);
+      paired.add(dispatchNameKey(owner.name));
+      plan.pairs.push({ taskId: task.id, subject: task.subject, memberId: owner.id, memberName: owner.name });
       continue;
     }
     if (available.length === 0) {
@@ -3092,6 +3735,7 @@ function planDispatch(input) {
     const memberIndex = ownerIndex >= 0 ? ownerIndex : 0;
     const member = eligible[memberIndex];
     available = available.filter((candidate) => candidate !== member);
+    paired.add(dispatchNameKey(member.name));
     const declaredOwner = ownerKey === "" ? undefined : input.members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey);
     const ownerRefusal = declaredOwner === undefined ? undefined : pairingRefusal(task, declaredOwner);
     plan.pairs.push({
@@ -3105,6 +3749,31 @@ function planDispatch(input) {
     });
   }
   return plan;
+}
+function readReassign(value) {
+  const pairs = [];
+  const invalid = [];
+  if (value === undefined)
+    return { pairs, invalid };
+  if (!Array.isArray(value))
+    return { pairs, invalid: ["`reassign` must be an array of {task_id, owner} objects"] };
+  const seen = new Set;
+  for (const entry of value) {
+    const row = typeof entry === "object" && entry !== null && !Array.isArray(entry) ? entry : undefined;
+    const taskId = typeof row?.task_id === "string" ? row.task_id.trim() : typeof row?.taskId === "string" ? row.taskId.trim() : "";
+    const owner = typeof row?.owner === "string" ? row.owner.trim() : "";
+    if (taskId === "" || owner === "") {
+      invalid.push("every `reassign` entry needs a non-empty `task_id` and `owner` (got " + JSON.stringify(entry) + ")");
+      continue;
+    }
+    if (seen.has(taskId)) {
+      invalid.push("task " + JSON.stringify(taskId) + " is named twice in `reassign` — one claim per row per call");
+      continue;
+    }
+    seen.add(taskId);
+    pairs.push({ taskId, owner });
+  }
+  return { pairs, invalid };
 }
 function refusalSummary(task, members) {
   const reasons = new Set;
@@ -3171,7 +3840,7 @@ function reconcile(ledger, teamId, tasks) {
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync2, renameSync as renameSync3, rmSync as rmSync3, writeFileSync as writeFileSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, readdirSync as readdirSync2, renameSync as renameSync3, rmSync as rmSync3, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 
 // packages/mpd-team-core-plugin/src/team-store.ts
@@ -3512,6 +4181,10 @@ function recordNamesLead(record, caller) {
   const recorded = [String(record.leadSessionId ?? ""), ...record.leadHistory ?? []].filter((value) => value !== "");
   return recorded.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)));
 }
+function memberIsCheckpoint(record, key) {
+  const member = record.members.find((row) => row.id === key || row.name === key);
+  return member?.mode === "checkpoint";
+}
 function memberNamedBy(record, caller) {
   if (!Array.isArray(record.members))
     return;
@@ -3543,12 +4216,36 @@ function updateTeamMember(record, key, patch) {
     if (member.id !== key && member.name !== key)
       return member;
     touched = true;
-    return {
-      ...member,
-      ...patch.status === undefined ? {} : { status: patch.status },
-      ...patch.executorRef === undefined ? {} : { executorRef: patch.executorRef },
-      ...patch.route === undefined ? {} : { route: patch.route }
-    };
+    const next = { ...member };
+    if (patch.status !== undefined)
+      next.status = patch.status;
+    if (patch.executorRef !== undefined)
+      next.executorRef = patch.executorRef;
+    if (patch.route !== undefined)
+      next.route = patch.route;
+    if (patch.mode !== undefined)
+      next.mode = patch.mode;
+    if (patch.fenced === true)
+      next.fenced = true;
+    if (patch.fenced === false) {
+      delete next.fenced;
+      delete next.fencedReason;
+    }
+    if (patch.fencedReason !== undefined && patch.fenced !== false)
+      next.fencedReason = patch.fencedReason;
+    if (patch.handoff !== undefined)
+      next.handoff = patch.handoff;
+    if (patch.contextCheckpoint !== undefined)
+      next.contextCheckpoint = patch.contextCheckpoint;
+    if (patch.workmate !== undefined)
+      next.workmate = patch.workmate;
+    if (patch.workmateMode !== undefined)
+      next.workmateMode = patch.workmateMode;
+    if (patch.workmateReason !== undefined)
+      next.workmateReason = patch.workmateReason;
+    else if (patch.workmateMode !== undefined && patch.workmateMode !== "none")
+      delete next.workmateReason;
+    return next;
   });
   return touched ? { ...record, members } : record;
 }
@@ -3633,14 +4330,14 @@ function taskDepths(board) {
 function cycleIds(board) {
   const byId = new Map(board.map((task) => [task.id, task]));
   const done = new Set;
-  const stack = [];
+  const stack2 = [];
   const inStack = new Set;
   const cyclic = new Set;
   const visit = (id) => {
     if (done.has(id))
       return;
     if (inStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
+      for (const entry of stack2.slice(stack2.indexOf(id)))
         cyclic.add(entry);
       return;
     }
@@ -3648,11 +4345,11 @@ function cycleIds(board) {
     if (task === undefined)
       return;
     inStack.add(id);
-    stack.push(id);
+    stack2.push(id);
     for (const blocker of task.blockedBy)
       if (byId.has(blocker))
         visit(blocker);
-    stack.pop();
+    stack2.pop();
     inStack.delete(id);
     done.add(id);
   };
@@ -3703,10 +4400,11 @@ function readyTasks(record) {
 }
 function idleMembers(record) {
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
-  return record.members.filter((member) => (member.status === "running" || member.status === "inactive") && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
+  return record.members.filter((member) => (member.status === "running" || member.status === "inactive") && member.fenced !== true && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
+var STAGED_PLAN_VERSION = 2;
 function teamRoot2(workspace) {
   return join5(workspace, ".mpd", "team");
 }
@@ -3744,7 +4442,12 @@ function newPlanId(now) {
 }
 function readPlan(workspace, sessionId) {
   const plan = readJson2(stagingPath(workspace, sessionId));
-  return plan === undefined || plan.version !== 1 ? undefined : plan;
+  if (plan === undefined)
+    return;
+  const version = typeof plan.version === "number" ? plan.version : undefined;
+  if (version !== 1 && version !== STAGED_PLAN_VERSION)
+    return;
+  return { ...plan, version: STAGED_PLAN_VERSION };
 }
 function writePlan(workspace, plan) {
   writeJson2(stagingPath(workspace, plan.sessionId), plan);
@@ -3754,7 +4457,7 @@ function stagePlan(workspace, sessionId, input, now) {
   if (existing !== undefined && existing.approvedAt === undefined)
     archivePlan(workspace, existing);
   const plan = {
-    version: 1,
+    version: STAGED_PLAN_VERSION,
     planId: newPlanId(now),
     sessionId,
     name: input.name,
@@ -3799,6 +4502,32 @@ function archivePlan(workspace, plan) {
   if (existsSync4(staged))
     rmSync3(staged, { force: true });
   return target;
+}
+function listArchivedPlans(workspace) {
+  let entries = [];
+  try {
+    entries = readdirSync2(archiveDir(workspace));
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const entry of entries) {
+    const path = join5(archiveDir(workspace), entry, "plan.json");
+    try {
+      const plan = JSON.parse(readFileSync4(path, "utf8"));
+      const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : entry;
+      const archivedAt = statSync2(path).mtime.toISOString();
+      const approvedAt = typeof plan.approvedAt === "string" ? plan.approvedAt : undefined;
+      out.push({
+        planId,
+        archivedAt,
+        approved: approvedAt !== undefined,
+        ...approvedAt === undefined ? {} : { approvedAt },
+        path
+      });
+    } catch {}
+  }
+  return out.sort((left, right) => right.archivedAt.localeCompare(left.archivedAt));
 }
 function claimContract(workspace, task, claimant, now) {
   const previous = readJson2(contractPath(workspace, task.id));
@@ -4021,6 +4750,53 @@ function installTeamDoorGuard(dsh, options) {
   }
 }
 
+// packages/mpd-team-core-plugin/src/stage.ts
+var UNRESOLVED_VERDICTS = ["fail", "failed", "changes", "change-requested"];
+function isTerminal(task) {
+  return task.status === "completed" || task.status === "failed" || task.status === "cancelled";
+}
+function isInFlight(task) {
+  return task.status === "claimed" || task.status === "in_progress";
+}
+function waitingForAnswer(members) {
+  return members.find((member) => member.status !== "running" && member.status !== "provisioning" && member.handoff !== undefined);
+}
+function teamStage(record, taskId) {
+  const tasks = Array.isArray(record?.tasks) ? record.tasks : [];
+  const members = Array.isArray(record?.members) ? record.members : [];
+  const scope = taskId === undefined ? tasks : tasks.filter((task) => task.id === taskId);
+  const failed = scope.find((task) => task.status === "failed");
+  if (failed !== undefined)
+    return { kind: "person", reason: "failed", taskId: failed.id };
+  const review = scope.find((task) => task.kind === "review" && task.verdict !== undefined && !String(task.verdict).toLowerCase().startsWith("pass") && UNRESOLVED_VERDICTS.includes(String(task.verdict).toLowerCase()));
+  if (review !== undefined)
+    return { kind: "person", reason: "review", taskId: review.id };
+  const blocked = scope.find((task) => !isTerminal(task) && !isInFlight(task) && taskVisual(task, tasks) === "blocked");
+  if (blocked !== undefined)
+    return { kind: "person", reason: "blocked", taskId: blocked.id };
+  const boardFinished = tasks.length > 0 && tasks.every((task) => isTerminal(task) && task.status !== "failed");
+  if (taskId === undefined && boardFinished && derivePhase(record) !== "ended")
+    return { kind: "person", reason: "delivery" };
+  if (taskId === undefined && !tasks.some(isInFlight)) {
+    const waiting = waitingForAnswer(members);
+    if (waiting !== undefined)
+      return { kind: "person", reason: "answer" };
+  }
+  const inFlight = tasks.some(isInFlight);
+  if (inFlight) {
+    const queued = tasks.some((task) => task.status === "pending" && task.owner === undefined && !isTerminal(task) && taskVisual(task, tasks) !== "blocked");
+    return { kind: "working", queued };
+  }
+  return derivePhase(record) === "ended" ? { kind: "ended" } : { kind: "idle" };
+}
+function stageLabel(stage) {
+  if (stage.kind === "working")
+    return stage.queued ? "working:queued" : "working";
+  if (stage.kind === "person")
+    return "person:" + stage.reason;
+  return stage.kind;
+}
+
 // packages/mpd-team-core-plugin/src/team-web.ts
 var TEAM_STATE_PATH = "/plugins/mpd-team/state";
 var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
@@ -4102,6 +4878,7 @@ function buildWorkspaceTeams(teams, activeId) {
         failed: team.tasks.filter((task) => task.status === "failed").length
       },
       members: team.members.filter((member) => member.status !== "failed").length,
+      stage: stageLabel(teamStage(team)),
       active: team.teamId === activeId
     })),
     ...activeId === undefined ? {} : { activeId }
@@ -4136,8 +4913,8 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
   const idle = new Set(idleMembers(record).map((member) => member.name));
   const rankOf = new Map;
   if (model !== undefined)
-    for (const node of model.nodes)
-      rankOf.set(node.id, node.depth);
+    for (const node2 of model.nodes)
+      rankOf.set(node2.id, node2.depth);
   const tasks = record.tasks.map((task) => {
     const visual = taskVisual(task, record.tasks);
     return {
@@ -4187,11 +4964,14 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
         id: member.id,
         name: member.name,
         ...member.role === undefined ? {} : { role: member.role },
-        status: member.status === "running" && idle.has(member.name) ? "idle" : member.status,
+        status: member.fenced === true ? "fenced" : member.status === "running" && idle.has(member.name) ? "idle" : member.status,
         done: progress.done,
         total: progress.total,
         ...progress.current === undefined ? {} : { current: progress.current },
-        ...member.route === undefined ? {} : { route: member.route }
+        ...member.route === undefined ? {} : { route: member.route },
+        ...member.workmateMode === undefined ? {} : { workmateMode: member.workmateMode },
+        ...member.workmateReason === undefined ? {} : { workmateReason: member.workmateReason },
+        checkpoint: memberIsCheckpoint(record, member.name)
       };
     }),
     tasks,
@@ -4528,6 +5308,9 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   return all;
 }
 
+// packages/mpd-team-core-plugin/src/team-actions.ts
+import { existsSync as existsSync6 } from "node:fs";
+
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
 import { readFileSync as readFileSync5, readdirSync as readdirSync3 } from "node:fs";
 import { join as join6 } from "node:path";
@@ -4816,6 +5599,103 @@ function writeLedger(workspace, ledger) {
   renameSync4(temp, dispatchPath(workspace));
 }
 
+// packages/mpd-team-core-plugin/src/team-journal.ts
+import { appendFileSync as appendFileSync3, existsSync as existsSync5, mkdirSync as mkdirSync7, readFileSync as readFileSync7 } from "node:fs";
+import { join as join8 } from "node:path";
+var journalPath = (workspace) => join8(teamRoot(workspace), "journal.jsonl");
+function appendTeamJournal(workspace, entry) {
+  const path = journalPath(workspace);
+  mkdirSync7(teamRoot(workspace), { recursive: true });
+  appendFileSync3(path, JSON.stringify(entry) + `
+`);
+  return path;
+}
+
+// packages/mpd-team-core-plugin/src/team-handoff.ts
+import { mkdirSync as mkdirSync8, writeFileSync as writeFileSync4 } from "node:fs";
+import { join as join9 } from "node:path";
+var HANDOFF_SECTIONS = [
+  { key: "task", title: "Task", aliases: ["task", "current task"] },
+  { key: "state", title: "State", aliases: ["state", "current state"] },
+  { key: "decisions", title: "Decisions", aliases: ["decisions", "decision", "decisions and why"] },
+  { key: "artifacts", title: "Artifacts", aliases: ["artifacts", "artefacts", "files"] },
+  { key: "verified", title: "Verified facts", aliases: ["verified facts", "verified", "facts"] },
+  { key: "open", title: "Open questions", aliases: ["open questions", "open", "questions"] },
+  { key: "next", title: "Next step", aliases: ["next step", "next"] }
+];
+function normalizeHandoffLabel(label) {
+  return label.replace(/[*_`]/g, "").replace(/[:：]\s*$/, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+function parseHandoff(text2) {
+  const sections = new Map;
+  let current;
+  let body = [];
+  const flush = () => {
+    if (current !== undefined && !sections.has(current))
+      sections.set(current, body.join(`
+`).trim());
+    body = [];
+  };
+  for (const line of text2.split(`
+`)) {
+    const heading = /^(#{1,4})\s+(.+?)\s*$/.exec(line);
+    if (heading !== null) {
+      flush();
+      current = normalizeHandoffLabel(heading[2]);
+      continue;
+    }
+    if (current !== undefined)
+      body.push(line);
+  }
+  flush();
+  if (sections.size > 0)
+    return sections;
+  for (const line of text2.split(`
+`)) {
+    const keyed = /^\s*(?:[-*+]\s+)?([A-Za-z][A-Za-z /_-]{0,40}):\s*(.*)$/.exec(line);
+    if (keyed === null)
+      continue;
+    const label = normalizeHandoffLabel(keyed[1]);
+    if (!sections.has(label))
+      sections.set(label, keyed[2].trim());
+  }
+  return sections;
+}
+function validateHandoffText(text2) {
+  const parsed = parseHandoff(text2);
+  const readings = [];
+  const missing = [];
+  for (const section of HANDOFF_SECTIONS) {
+    let matched;
+    for (const label of parsed.keys()) {
+      if (section.aliases.includes(label) || section.aliases.some((alias) => label.startsWith(alias + " "))) {
+        matched = label;
+        break;
+      }
+    }
+    const content = matched === undefined ? "" : parsed.get(matched) ?? "";
+    const chars = content.replace(/\s+/g, "").length;
+    readings.push({ key: section.key, title: section.title, present: matched !== undefined, chars });
+    if (matched === undefined || chars === 0)
+      missing.push(section.title);
+  }
+  return { ok: missing.length === 0, missing, sections: readings };
+}
+function teamHandoffPath(workspace, teamId, member, ordinal) {
+  return join9(teamRoot(workspace), "handoff", sanitizeId(teamId), sanitizeId(member) + "-" + String(ordinal) + ".md");
+}
+function writeHandoffDocument(workspace, teamId, member, ordinal, text2) {
+  const path = teamHandoffPath(workspace, teamId, member, ordinal);
+  mkdirSync8(join9(path, ".."), { recursive: true });
+  writeFileSync4(path, text2.endsWith(`
+`) ? text2 : text2 + `
+`);
+  return path;
+}
+function handoffWrittenDirective(path) {
+  return "[mpd-team] handoff written to " + path + ". END YOUR TURN NOW — do not call another tool; the plugin compacts and promotes you from that document.";
+}
+
 // packages/mpd-team-core-plugin/src/team-actions.ts
 var TEAM_ACTIONS_SERVICE = "mpdTeamActions";
 function refusalOf(error) {
@@ -4828,6 +5708,204 @@ var approvalsInFlight = new Set;
 var dispatchesInFlight = new Set;
 function actionSlotKey(caller) {
   return `${caller.workspace}\x00${caller.sessionId}`;
+}
+var WORKMATE_MATCH_THRESHOLD = 0.35;
+var WORKMATE_NAME_FIRST_ORDINAL = 1;
+function workmateBindingConfigOf(deps) {
+  try {
+    const config = deps.service("mpdConfig");
+    if (config === undefined || config === null || typeof config.get !== "function") {
+      return { mode: "auto", autoInit: true, max: 12 };
+    }
+    const leaf = (key) => {
+      try {
+        return config.get(key);
+      } catch {
+        return;
+      }
+    };
+    const rawMode = leaf("workmates.mode");
+    const rawMax = leaf("workmates.max");
+    const rawAutoInit = leaf("workmates.autoInit");
+    return {
+      mode: rawMode === "none" ? "none" : "auto",
+      autoInit: rawAutoInit === false ? false : true,
+      max: typeof rawMax === "number" && Number.isInteger(rawMax) && rawMax > 0 ? rawMax : 12
+    };
+  } catch {
+    return { mode: "auto", autoInit: true, max: 12 };
+  }
+}
+function workmateToolSeamOf(deps) {
+  try {
+    const adapter = deps.service("mpdDsh");
+    if (adapter === undefined || adapter === null || typeof adapter.executeTool !== "function")
+      return;
+    return async (call, agent) => {
+      const result = await adapter.executeTool({
+        name: call.name,
+        arguments: call.arguments ?? {},
+        ...agent === undefined ? {} : { agent }
+      });
+      if (result === undefined || result === null)
+        throw new Error(call.name + " answered nothing");
+      if (result.isError === true || result.ok === false)
+        throw new Error(call.name + " refused: " + String(result.error ?? "unknown"));
+      return result.value;
+    };
+  } catch {
+    return;
+  }
+}
+function workmateKeyOf(raw) {
+  return String(raw ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+}
+function explicitWorkmateOf(member) {
+  const marker = /^[ \t]*\[?workmate[ \t]*:[ \t]*([A-Za-z0-9_-]+)\]?[ \t]*$/m;
+  for (const text2 of [member.prompt, member.description]) {
+    const hit = marker.exec(String(text2 ?? ""));
+    if (hit !== null) {
+      const key = workmateKeyOf(hit[1]);
+      if (key !== "")
+        return key;
+    }
+  }
+  return;
+}
+async function listWorkmates(seam, agent) {
+  try {
+    const value = await seam({ name: "mpd_workmate_list" }, agent);
+    const raw = Array.isArray(value?.workmates) ? value.workmates : [];
+    return {
+      rows: raw.map((row) => ({ name: workmateKeyOf(row?.name), baseName: String(row?.baseName ?? ""), workspaces: Array.isArray(row?.workspaces) ? row.workspaces.map(String).filter((workspace) => workspace !== "") : [] })).filter((row) => row.name !== ""),
+      ok: true
+    };
+  } catch {
+    return { rows: [], ok: false };
+  }
+}
+function workmateHeadOf(deps, key) {
+  try {
+    const library = deps.service("mpdWorkmate");
+    if (library === undefined || library === null || typeof library.read !== "function")
+      return "";
+    const record = library.read(key);
+    if (record === null || record === undefined)
+      return "";
+    const persona = String(record.persona ?? "").trim();
+    const note = String(record.note ?? "").trim();
+    const memory = String(record.memory ?? "").trim();
+    return [
+      persona,
+      note === "" ? "" : `Workmate note:
+` + note,
+      memory === "" ? "" : `Your independent memory (bounded, latest first):
+` + memory
+    ].filter((part) => part !== "").join(`
+
+`);
+  } catch {
+    return "";
+  }
+}
+async function bindStagedWorkmates(deps, plan, agent, workspace) {
+  const plain = (reason) => ({
+    members: plan.members.map((member) => ({ ...member })),
+    tasks: plan.tasks,
+    bindings: plan.members.map((member) => ({ member: member.name, mode: "none", reason }))
+  });
+  const config = workmateBindingConfigOf(deps);
+  if (config.mode === "none")
+    return plain("config");
+  const seam = workmateToolSeamOf(deps);
+  if (seam === undefined) {
+    deps.log("workmate binding skipped: no mpdDsh tool seam in this composition — every seat stays plain");
+    return plain("no-seam");
+  }
+  try {
+    const members = plan.members.map((member) => ({ ...member }));
+    const bindings = [];
+    const taken = new Set(members.map((member) => member.name));
+    let listing = await listWorkmates(seam, agent);
+    const ownedHere = () => listing.rows.filter((row) => row.workspaces.includes(workspace)).length;
+    if (!listing.ok)
+      return plain("no-library");
+    for (const [index, member] of members.entries()) {
+      const original = member.name;
+      const takenByOthers = new Set([...taken].filter((name2) => name2 !== original));
+      const explicit = explicitWorkmateOf(member);
+      if (explicit !== undefined) {
+        if (!listing.rows.some((row) => row.name === explicit)) {
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which does not exist in the library — the approval is refused rather than downgrading the seat to a plain member; initialize it with mpd_workmate_init or remove the workmate: line`, members, tasks: plan.tasks, bindings };
+        }
+        if (takenByOthers.has(explicit)) {
+          return { error: `staged member "${original}" explicitly names workmate "${explicit}", which another member of this team already takes — a member NAME is seat identity, so two seats may not share one workmate`, members, tasks: plan.tasks, bindings };
+        }
+        members[index] = { ...member, name: explicit, prompt: joinWorkmatePrompt(workmateHeadOf(deps, explicit), member.prompt) };
+        taken.delete(original);
+        taken.add(explicit);
+        bindings.push({ member: explicit, mode: "reuse", workmate: explicit });
+        continue;
+      }
+      const task = [member.description, member.role ?? ""].join(" ").trim();
+      let matched;
+      try {
+        matched = await seam({ name: "mpd_workmate_match", arguments: { task } }, agent);
+      } catch {
+        matched = undefined;
+      }
+      const threshold = typeof matched?.threshold === "number" ? matched.threshold : WORKMATE_MATCH_THRESHOLD;
+      const ranked = (Array.isArray(matched?.matches) ? matched.matches : []).map((row) => ({ name: workmateKeyOf(row?.name), score: Number(row?.score ?? 0) })).filter((row) => row.name !== "").sort((a, b) => b.score - a.score);
+      const reusable = ranked.find((row) => row.score >= threshold && !takenByOthers.has(row.name));
+      if (reusable !== undefined) {
+        members[index] = { ...member, name: reusable.name, prompt: joinWorkmatePrompt(workmateHeadOf(deps, reusable.name), member.prompt) };
+        taken.delete(original);
+        taken.add(reusable.name);
+        bindings.push({ member: reusable.name, mode: "reuse", workmate: reusable.name });
+        continue;
+      }
+      const base = String(member.role ?? "").trim();
+      if (!config.autoInit || base === "") {
+        bindings.push({ member: original, mode: "none", reason: config.autoInit ? "no-role" : "auto-init-off" });
+        continue;
+      }
+      if (ownedHere() >= config.max) {
+        bindings.push({ member: original, mode: "none", reason: "cap" });
+        continue;
+      }
+      const slug = workmateKeyOf(base) || "workmate";
+      let ordinal = WORKMATE_NAME_FIRST_ORDINAL;
+      while (listing.rows.some((row) => row.name === `${slug}-${ordinal}`) || takenByOthers.has(`${slug}-${ordinal}`))
+        ordinal += 1;
+      const name = `${slug}-${ordinal}`;
+      try {
+        await seam({ name: "mpd_workmate_init", arguments: { base, name } }, agent);
+      } catch {
+        bindings.push({ member: original, mode: "none", reason: "init-refused" });
+        continue;
+      }
+      listing = { rows: [...listing.rows, { name, baseName: base, workspaces: [workspace] }], ok: true };
+      members[index] = { ...member, name, prompt: joinWorkmatePrompt(workmateHeadOf(deps, name), member.prompt) };
+      taken.delete(original);
+      taken.add(name);
+      bindings.push({ member: name, mode: "init", workmate: name });
+    }
+    const renames = new Map;
+    plan.members.forEach((member, index) => {
+      if (members[index].name !== member.name)
+        renames.set(member.name, members[index].name);
+    });
+    const tasks = renames.size === 0 ? plan.tasks : plan.tasks.map((task) => task.owner !== undefined && renames.has(task.owner) ? { ...task, owner: renames.get(task.owner) } : task);
+    return { members, tasks, bindings };
+  } catch (error) {
+    deps.log("workmate binding failed (" + String(error?.message ?? error) + ") — every seat stays plain");
+    return plain("binding-failed");
+  }
+}
+function joinWorkmatePrompt(head, prompt) {
+  return head === "" ? prompt : head + `
+
+` + prompt;
 }
 async function approveTeam(deps, caller, input = {}) {
   const slot = actionSlotKey(caller);
@@ -4864,6 +5942,10 @@ async function approveTeamBody(deps, caller, input) {
     if (input.dryRun === true) {
       return { ok: true, plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
     }
+    const bound = await bindStagedWorkmates(deps, plan, caller.agent, workspace);
+    if (bound.error !== undefined)
+      return { ok: false, error: bound.error };
+    const buildPlan = { ...plan, members: bound.members, tasks: bound.tasks };
     let record = createTeam(workspace, {
       name: plan.name,
       description: plan.description,
@@ -4871,10 +5953,17 @@ async function approveTeamBody(deps, caller, input) {
       planId: plan.planId,
       ...parent === undefined ? {} : { parentTeamId: parent.teamId }
     }, deps.now());
-    for (const member of plan.members) {
+    for (const member of buildPlan.members) {
       record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, deps.now());
     }
-    for (const task of plan.tasks) {
+    for (const binding of bound.bindings) {
+      record = updateTeamMember(record, binding.member, {
+        workmateMode: binding.mode,
+        ...binding.workmate === undefined ? {} : { workmate: binding.workmate },
+        ...binding.reason === undefined ? {} : { workmateReason: binding.reason }
+      });
+    }
+    for (const task of buildPlan.tasks) {
       record = addTeamTask(record, {
         subject: task.subject,
         description: task.description,
@@ -4887,7 +5976,7 @@ async function approveTeamBody(deps, caller, input) {
       }, deps.now());
     }
     const planAlias = new Map;
-    plan.tasks.forEach((task, index) => {
+    buildPlan.tasks.forEach((task, index) => {
       const minted = record.tasks[index];
       if (minted === undefined)
         return;
@@ -4895,7 +5984,7 @@ async function approveTeamBody(deps, caller, input) {
       if (!planAlias.has(task.subject))
         planAlias.set(task.subject, minted.id);
     });
-    for (const [index, task] of plan.tasks.entries()) {
+    for (const [index, task] of buildPlan.tasks.entries()) {
       const minted = record.tasks[index];
       if (minted === undefined || (task.blockedBy ?? []).length === 0)
         continue;
@@ -4916,7 +6005,7 @@ async function approveTeamBody(deps, caller, input) {
           memberId: member.id,
           name: member.name,
           description: member.description === "" ? member.name : member.description,
-          prompt: withIdlePreamble(plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
+          prompt: withIdlePreamble(buildPlan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description),
           ...member.role === undefined ? {} : { role: member.role },
           ...caller.signal === undefined ? {} : { signal: caller.signal }
         });
@@ -4939,7 +6028,7 @@ async function approveTeamBody(deps, caller, input) {
     if (stoppedAt === undefined)
       archivePlan(workspace, { ...approved });
     await deps.bundleApprovalEffects(plan, caller);
-    return { ok: true, plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
+    return { ok: true, plan: approved, team: approvedRecord, created, bindings: bound.bindings, ...stoppedAt === undefined ? {} : { stoppedAt } };
   } catch (error) {
     return unexpectedRefusalOf(error);
   }
@@ -4958,6 +6047,14 @@ async function runDispatch(deps, caller, input = {}) {
 async function runDispatchBody(deps, caller, input) {
   if (caller.agent === undefined)
     return { ok: false, error: "dispatch needs a live agent" };
+  const handover = readReassign(input.reassign);
+  if (handover.invalid.length > 0)
+    return { ok: false, error: `agent_teams_dispatch: ${handover.invalid.join("; ")}` };
+  const requestedMode = input.mode;
+  if (requestedMode !== undefined && requestedMode !== "owner-only" && requestedMode !== "roster") {
+    return { ok: false, error: `agent_teams_dispatch: unknown mode "${String(requestedMode)}" (owner-only | roster)` };
+  }
+  const mode = requestedMode;
   const { workspace, sessionId, lineage } = caller;
   try {
     const hold = readHold(workspace);
@@ -4979,6 +6076,35 @@ async function runDispatchBody(deps, caller, input) {
     if (resolvedDispatch.record === undefined)
       return { ok: true, pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first", ...reaped.length === 0 ? {} : { reaped } };
     let record = resolvedDispatch.record;
+    const rosterRows = (() => {
+      try {
+        const roles = deps.service("mpdRoles");
+        return typeof roles?.list === "function" ? roles.list() : [];
+      } catch {
+        return [];
+      }
+    })();
+    if (rosterRows.length === 0)
+      deps.log("[mpd-team-core] the mpdRoles service is absent or empty — the C7-2 read-only dispatch guard has no roster to classify against and fails OPEN");
+    const readonlyKeys = readonlyMemberKeys(rosterRows);
+    const reassigned = [];
+    const reassignHalted = handover.pairs.length > 0 && holdReason !== undefined;
+    if (handover.pairs.length > 0 && !reassignHalted) {
+      const outcomes = await applyReassignments({
+        workspace,
+        team: record,
+        pairs: handover.pairs,
+        dryRun: input.dryRun === true,
+        now: deps.now(),
+        readonlyKeys,
+        send: async (handle, content) => {
+          await deps.executor().send(caller.agent, handle, content, caller.signal);
+        }
+      });
+      reassigned.push(...outcomes);
+      if (input.dryRun !== true)
+        record = readTeam(workspace, record.teamId) ?? record;
+    }
     const opened = record;
     const readyIds = new Set(readyTasks(opened).map((candidate) => candidate.id));
     const tasks = opened.tasks.map((task) => ({
@@ -4992,23 +6118,15 @@ async function runDispatchBody(deps, caller, input) {
       ...task.owner === undefined ? {} : { ownerName: task.owner }
     }));
     const idle = new Set(idleMembers(opened).map((member) => member.name));
-    const rosterRows = (() => {
-      try {
-        const roles = deps.service("mpdRoles");
-        return typeof roles?.list === "function" ? roles.list() : [];
-      } catch {
-        return [];
-      }
-    })();
-    if (rosterRows.length === 0)
-      deps.log("[mpd-team-core] the mpdRoles service is absent or empty — the C7-2 read-only dispatch guard has no roster to classify against and fails OPEN");
-    const readonlyKeys = readonlyMemberKeys(rosterRows);
     const members = opened.members.map((member) => ({
       id: member.executorRef ?? member.id,
       name: member.name,
       status: idle.has(member.name) ? "inactive" : "running",
       teamId: opened.teamId,
-      readonly: isReadonlyMemberName(member.name, readonlyKeys) || member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys)
+      readonly: isReadonlyMemberName(member.name, readonlyKeys) || member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys),
+      ...member.mode === undefined ? {} : { mode: member.mode },
+      ...member.fenced === true ? { fenced: true } : {},
+      ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason }
     }));
     const pruned = reconcile(readLedger(workspace), opened.teamId, tasks);
     const forgotten = [...new Set([...terminalForgotten, ...pruned.forgotten])];
@@ -5017,12 +6135,13 @@ async function runDispatchBody(deps, caller, input) {
       members,
       ledger: ledgerOfTeam(pruned.ledger, opened.teamId),
       ...holdReason === undefined ? {} : { hold: holdReason },
-      ...typeof input.limit === "number" ? { limit: input.limit } : {}
+      ...typeof input.limit === "number" ? { limit: input.limit } : {},
+      ...mode === undefined ? {} : { mode }
     });
     if (plan.halted !== undefined || input.dryRun === true || plan.pairs.length === 0) {
       if (pruned.forgotten.length > 0)
         writeLedger(workspace, pruned.ledger);
-      return { ok: true, ...plan, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
+      return { ok: true, ...plan, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped }, ...reassigned.length === 0 ? {} : { reassigned } };
     }
     let ledger = pruned.ledger;
     const sent = [];
@@ -5030,7 +6149,7 @@ async function runDispatchBody(deps, caller, input) {
     for (const pair of plan.pairs) {
       const endDispatchWindow = deps.beginDispatch(pair.memberId);
       try {
-        const task = tasks.find((candidate) => candidate.id === pair.taskId);
+        const task = opened.tasks.find((candidate) => candidate.id === pair.taskId);
         try {
           await deps.executor().send(caller.agent, pair.memberId, dispatchMessage({ id: pair.taskId, subject: pair.subject, status: "pending", ready: true }, task === undefined ? "" : String(task.description ?? "")), caller.signal);
           const onDisk = readTeam(workspace, opened.teamId);
@@ -5065,7 +6184,185 @@ async function runDispatchBody(deps, caller, input) {
     for (const pair of sent)
       merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)];
     writeLedger(workspace, merged);
-    return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
+    return { ok: true, pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped }, ...reassigned.length === 0 ? {} : { reassigned } };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
+async function applyReassignments(deps) {
+  const outcomes = [];
+  for (const pair of deps.pairs) {
+    const task = deps.team.tasks.find((row) => row.id === pair.taskId);
+    if (task === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: `no board row is named ${JSON.stringify(pair.taskId)} — nothing was reassigned` });
+      continue;
+    }
+    if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: `row ${pair.taskId} is already ${task.status} — a terminal row is never reopened` });
+      continue;
+    }
+    if (task.status !== "pending") {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: `row ${pair.taskId} is ${task.status}; release it first (agent_teams_task {action:"release", task_id:${JSON.stringify(pair.taskId)}}) and reassign the pending row` });
+      continue;
+    }
+    const member = deps.team.members.find((row) => row.id === pair.owner || row.name === pair.owner);
+    if (member === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: pair.owner, claimed: false, delivered: false, reason: `no member ${JSON.stringify(pair.owner)} is on the roster of team ${deps.team.teamId}` });
+      continue;
+    }
+    const target = {
+      id: member.executorRef ?? member.id,
+      name: member.name,
+      status: member.status,
+      ...member.mode === undefined ? {} : { mode: member.mode },
+      ...member.fenced === true ? { fenced: true } : {},
+      ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason },
+      readonly: isReadonlyMemberName(member.name, deps.readonlyKeys) || member.role !== undefined && isReadonlyMemberName(member.role, deps.readonlyKeys)
+    };
+    const fence = memberFenceReason(target);
+    if (fence !== undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `the target member ${JSON.stringify(member.name)} is FENCED (${fence}) — a fenced member is never messaged` });
+      continue;
+    }
+    if (member.status === "failed") {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `the target member ${JSON.stringify(member.name)} FAILED to start, so it cannot take the row — pick a live member, and raise this seat again first` });
+      continue;
+    }
+    if (member.status === "provisioning") {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `the target member ${JSON.stringify(member.name)} is still being raised, so it cannot take the row yet — wait for its handle, then reassign` });
+      continue;
+    }
+    const pairing = pairingRefusal({
+      id: task.id,
+      subject: task.subject,
+      status: task.status,
+      ready: true,
+      teamId: deps.team.teamId,
+      writeScopes: task.writeScopes
+    }, target);
+    if (pairing !== undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: pairing });
+      continue;
+    }
+    const handle = member.executorRef ?? "";
+    if (handle === "") {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `the target member ${JSON.stringify(member.name)} has no executor handle (never raised) — claiming the row for it would hide the row from the next pass` });
+      continue;
+    }
+    const fresh = readTeam(deps.workspace, deps.team.teamId);
+    const current = fresh?.tasks.find((row) => row.id === pair.taskId);
+    if (fresh === undefined || current === undefined) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `row ${pair.taskId} disappeared while the reassignment was in flight` });
+      continue;
+    }
+    const unmet = blockingDependencies(fresh.tasks, current.blockedBy).blocking;
+    if (unmet.length > 0) {
+      const named = unmet.map((id) => {
+        const row = fresh.tasks.find((candidate) => candidate.id === id);
+        return row === undefined ? id : id + " " + JSON.stringify(row.subject);
+      });
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `task ${current.id} ${JSON.stringify(current.subject)} is BLOCKED by ${named.join(", ")}: the declared ${unmet.length === 1 ? "blocker is" : "blockers are"} not satisfied — close ${unmet[0]} first (agent_teams_task {action:"complete", task_id:"${unmet[0]}"}) or fail it, which releases its dependents, then reassign ${pair.taskId}` });
+      continue;
+    }
+    if (deps.dryRun) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: "dry run — nothing was claimed, journaled or sent" });
+      continue;
+    }
+    const previous = String(current.owner ?? "");
+    const claimed = casClaimTask(fresh, pair.taskId, member.name, current.revision, deps.now);
+    if (!claimed.applied) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: false, delivered: false, reason: `the board refused the claim: ${claimed.reason}` });
+      continue;
+    }
+    writeTeam(deps.workspace, claimed.record);
+    appendTeamJournal(deps.workspace, { event: "task-reassigned", teamId: deps.team.teamId, at: deps.now.toISOString(), taskId: pair.taskId, member: member.name, ...previous === "" ? {} : { from: previous } });
+    writeLedger(deps.workspace, assign(readLedger(deps.workspace), { teamId: deps.team.teamId, taskId: pair.taskId, memberId: handle, memberName: member.name }, deps.now));
+    try {
+      await deps.send(handle, dispatchMessage({ id: pair.taskId, subject: task.subject, status: "pending", ready: true }, String(task.description ?? "")));
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: true, delivered: true });
+    } catch (error) {
+      outcomes.push({ taskId: pair.taskId, owner: member.name, claimed: true, delivered: false, reason: `the row IS claimed for ${JSON.stringify(member.name)} but the message failed: ${String(error?.message ?? error)}` });
+    }
+  }
+  return outcomes;
+}
+async function setMemberFence(deps, caller, input, fenced) {
+  try {
+    const resolved = deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage);
+    if (resolved.record === undefined)
+      return { ok: false, error: resolved.refusal ?? "no team record in this workspace — approve a plan first" };
+    if (!recordNamesLead(resolved.record, [caller.sessionId])) {
+      return { ok: false, error: `only the Lead of team ${resolved.record.teamId} may ${fenced ? "fence" : "unfence"} a seat` };
+    }
+    const target = input.member.trim();
+    const member = resolved.record.members.find((row) => row.id === target || row.name === target);
+    if (member === undefined)
+      return { ok: false, error: `no member ${JSON.stringify(input.member)} is on the roster of team ${resolved.record.teamId}` };
+    const reason = fenced ? (input.reason ?? "").trim() : "";
+    const next = updateTeamMember(resolved.record, member.name, fenced ? { fenced: true, ...reason === "" ? {} : { fencedReason: reason } } : { fenced: false, ...member.mode === "checkpoint" ? { mode: "member" } : {} });
+    writeTeam(caller.workspace, next);
+    appendTeamJournal(caller.workspace, { event: fenced ? "member-fenced" : "member-unfenced", teamId: resolved.record.teamId, at: deps.now().toISOString(), member: member.name, ...reason === "" ? {} : { reason } });
+    return { ok: true, teamId: resolved.record.teamId, member: member.name, fenced, ...reason === "" ? {} : { reason } };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
+async function fenceMember(deps, caller, input) {
+  return setMemberFence(deps, caller, input, true);
+}
+async function unfenceMember(deps, caller, input) {
+  return setMemberFence(deps, caller, input, false);
+}
+async function writeMemberHandoff(deps, caller, input) {
+  try {
+    const resolved = deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage);
+    if (resolved.record === undefined)
+      return { ok: false, error: resolved.refusal ?? "no team record in this workspace — approve a plan first" };
+    const member = memberNamedBy(resolved.record, [caller.sessionId]);
+    if (member === undefined)
+      return { ok: false, error: `session ${caller.sessionId} is on no roster of team ${resolved.record.teamId} — only a member writes its own handoff` };
+    const validation = validateHandoffText(input.content);
+    if (!validation.ok)
+      return { ok: false, error: `the handoff is missing these sections: ${validation.missing.join(", ")} — write them into the document and call again` };
+    let ordinal = (member.handoff?.ordinal ?? 0) + 1;
+    while (existsSync6(teamHandoffPath(caller.workspace, resolved.record.teamId, member.name, ordinal)))
+      ordinal += 1;
+    const path = writeHandoffDocument(caller.workspace, resolved.record.teamId, member.name, ordinal, input.content);
+    writeTeam(caller.workspace, updateTeamMember(resolved.record, member.name, { handoff: { path, ordinal }, mode: "checkpoint" }));
+    appendTeamJournal(caller.workspace, { event: "handoff-written", teamId: resolved.record.teamId, at: deps.now().toISOString(), member: member.name, path });
+    return { ok: true, teamId: resolved.record.teamId, member: member.name, path, ordinal, mode: "checkpoint", directive: handoffWrittenDirective(path) };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
+async function cancelTasks(deps, input) {
+  try {
+    const record = readTeam(input.workspace, input.teamId);
+    if (record === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId)} in this workspace` };
+    const cancelled = [];
+    const skipped = [];
+    let next = record;
+    for (const taskId of input.taskIds) {
+      const row = next.tasks.find((task) => task.id === taskId);
+      if (row === undefined) {
+        skipped.push({ taskId, reason: `no board row is named ${JSON.stringify(taskId)}` });
+        continue;
+      }
+      if (row.status === "completed" || row.status === "failed" || row.status === "cancelled") {
+        skipped.push({ taskId, reason: `row ${taskId} is already ${row.status} — a terminal row is never re-cancelled` });
+        continue;
+      }
+      next = updateTeamTask(next, taskId, { status: "cancelled", ...input.note === undefined ? {} : { note: input.note } }, deps.now());
+      cancelled.push(taskId);
+    }
+    if (cancelled.length === 0)
+      return { ok: true, teamId: record.teamId, cancelled, skipped };
+    writeTeam(input.workspace, next);
+    for (const taskId of cancelled) {
+      appendTeamJournal(input.workspace, { event: "task-cancelled", teamId: record.teamId, at: deps.now().toISOString(), taskId, ...input.note === undefined ? {} : { reason: input.note } });
+    }
+    return { ok: true, teamId: record.teamId, cancelled, skipped };
   } catch (error) {
     return unexpectedRefusalOf(error);
   }
@@ -5078,10 +6375,10 @@ function deriveRanks(tasks, byId) {
   for (const root of tasks) {
     if (settled.has(root.id))
       continue;
-    const stack = [{ id: root.id, next: 0 }];
+    const stack2 = [{ id: root.id, next: 0 }];
     walking.add(root.id);
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
+    while (stack2.length > 0) {
+      const frame = stack2[stack2.length - 1];
       const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
       if (frame.next < deps.length) {
         const dependency = deps[frame.next];
@@ -5089,7 +6386,7 @@ function deriveRanks(tasks, byId) {
         if (settled.has(dependency) || walking.has(dependency))
           continue;
         walking.add(dependency);
-        stack.push({ id: dependency, next: 0 });
+        stack2.push({ id: dependency, next: 0 });
         continue;
       }
       let deepest = 0;
@@ -5097,7 +6394,7 @@ function deriveRanks(tasks, byId) {
         deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
       settled.set(frame.id, deepest);
       walking.delete(frame.id);
-      stack.pop();
+      stack2.pop();
     }
   }
   return settled;
@@ -5149,14 +6446,14 @@ function rankPlan(tasks, served) {
 function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
-  const stack = [];
+  const stack2 = [];
   const onStack = new Set;
   const cyclic = new Set;
   const visit = (id) => {
     if (done.has(id))
       return;
     if (onStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
+      for (const entry of stack2.slice(stack2.indexOf(id)))
         cyclic.add(entry);
       return;
     }
@@ -5164,11 +6461,11 @@ function cycleIds2(tasks) {
     if (task === undefined)
       return;
     onStack.add(id);
-    stack.push(id);
+    stack2.push(id);
     for (const dependency of task.dependencies)
       if (byId.has(dependency))
         visit(dependency);
-    stack.pop();
+    stack2.pop();
     onStack.delete(id);
     done.add(id);
   };
@@ -5192,14 +6489,14 @@ function splitCells(row) {
   if (!trimmed.startsWith("|"))
     return [];
   const body = trimmed.replace(/^\|/, "").replace(/\|$/, "");
-  return body.split("|").map((cell) => cell.trim());
+  return body.split("|").map((cell2) => cell2.trim());
 }
 function isTableSeparator(row) {
   const cells = splitCells(row);
-  return cells.length > 0 && cells.every((cell) => /^:?-+:?$/.test(cell.replace(/[ \t]/g, "")));
+  return cells.length > 0 && cells.every((cell2) => /^:?-+:?$/.test(cell2.replace(/[ \t]/g, "")));
 }
-function stripEmphasis(text) {
-  let value = text.trim();
+function stripEmphasis(text2) {
+  let value = text2.trim();
   while (value.startsWith("**") || value.startsWith("*") || value.startsWith("`")) {
     value = (value.startsWith("**") ? value.slice(2) : value.slice(1)).trim();
   }
@@ -5208,13 +6505,13 @@ function stripEmphasis(text) {
   }
   return value;
 }
-function laneKeyOf(text) {
-  const value = stripEmphasis(text);
+function laneKeyOf(text2) {
+  const value = stripEmphasis(text2);
   const match = /^(?:Lane\s+)?([A-Za-z][A-Za-z0-9]{0,3})(?=[ \t]*[.:—–·(]|[ \t]*$)/.exec(value);
   return match === null ? undefined : match[1].toUpperCase();
 }
-function leadingLane(text) {
-  let value = text.trim();
+function leadingLane(text2) {
+  let value = text2.trim();
   let bold = false;
   if (value.startsWith("**")) {
     bold = true;
@@ -5234,16 +6531,16 @@ function leadingLane(text) {
   rest = rest.replace(/^[ \t]*(?:—|–|-|·|:)[ \t]*/, "").trim();
   return { key: match[1].toUpperCase(), title: rest === "" ? value.trim() : rest };
 }
-function normalizeOwner(cell) {
-  const value = stripEmphasis(cell);
+function normalizeOwner(cell2) {
+  const value = stripEmphasis(cell2);
   const cut = value.indexOf("(");
   return (cut >= 0 ? value.slice(0, cut) : value).trim();
 }
-function readableLines(text) {
+function readableLines(text2) {
   const lines = [];
   let fence;
   let number = 0;
-  for (const raw of text.split(`
+  for (const raw of text2.split(`
 `)) {
     number += 1;
     const opener = FENCE.exec(raw);
@@ -5266,7 +6563,7 @@ function collectLanes(lines, problems) {
   let index = 0;
   while (index < lines.length) {
     const header = splitCells(lines[index].text);
-    const named = header.some((cell) => stripEmphasis(cell).toLowerCase() === "lane") && header.some((cell) => stripEmphasis(cell).toLowerCase() === "owner");
+    const named = header.some((cell2) => stripEmphasis(cell2).toLowerCase() === "lane") && header.some((cell2) => stripEmphasis(cell2).toLowerCase() === "owner");
     const separator = lines[index + 1];
     if (!named || separator === undefined || !isTableSeparator(separator.text)) {
       index += 1;
@@ -5345,11 +6642,11 @@ function collectTasks(lines, lanes, problems) {
   }
   return tasks;
 }
-function declaredReferences(text) {
+function declaredReferences(text2) {
   const lists = [];
-  for (const match of text.matchAll(PARENTHESISED_BLOCKS))
+  for (const match of text2.matchAll(PARENTHESISED_BLOCKS))
     lists.push(match[1]);
-  for (const match of text.matchAll(LABELLED_BLOCKS))
+  for (const match of text2.matchAll(LABELLED_BLOCKS))
     lists.push(match[1]);
   return lists.flatMap((list) => list.split(/[ \t]*(?:,|\+|&|\band\b)[ \t]*/i).map((token) => token.trim()).filter((token) => token !== ""));
 }
@@ -5378,8 +6675,8 @@ function resolveTask(task, lanes, byLane, problems) {
   const blockedBy = [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
   return { id: task.id, title: task.title, section: task.section, line: task.line, owner, blockedBy };
 }
-function parsePlanMarkdown(text) {
-  const lines = readableLines(text);
+function parsePlanMarkdown(text2) {
+  const lines = readableLines(text2);
   const problems = [];
   const lanes = collectLanes(lines, problems);
   const raw = collectTasks(lines, lanes, problems);
@@ -5603,8 +6900,8 @@ function buildModel(input) {
   const merges = frames.map((frame) => mergeFrame(frame));
   const frameOf = new Map;
   for (const merge of merges)
-    for (const node of merge.nodes)
-      claimId(frameOf, node.id, merge.frame);
+    for (const node2 of merge.nodes)
+      claimId(frameOf, node2.id, merge.frame);
   const level = new Map;
   for (const merge of merges)
     level.set(merge.frame, [...merge.nodes].sort(byNodeId));
@@ -5665,14 +6962,14 @@ function buildModel(input) {
   const drawingNodes = new Map;
   for (const frame of frames) {
     const nodes2 = level.get(frame) ?? [];
-    const drawn = nodes2.map((node) => ({ ...node, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node.id) ?? []) }));
+    const drawn = nodes2.map((node2) => ({ ...node2, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node2.id) ?? []) }));
     drawingNodes.set(frame, drawn);
     const layout = rankPlan(drawn);
     layouts.set(frame, layout);
     if (frame === root)
       rootLayout = layout;
-    for (const node of nodes2)
-      node.depth = layout.rankOf.get(node.id) ?? node.depth;
+    for (const node2 of nodes2)
+      node2.depth = layout.rankOf.get(node2.id) ?? node2.depth;
   }
   const edges = [];
   for (const frame of frames) {
@@ -5691,8 +6988,8 @@ function buildModel(input) {
       cyclic.add(id);
   const refs = new Set;
   for (const merge of merges)
-    for (const node of merge.nodes)
-      for (const ref of node.dependencies)
+    for (const node2 of merge.nodes)
+      for (const ref of node2.dependencies)
         refs.add(ref);
   for (const frame of frames)
     if (frame.originTaskId !== undefined)
@@ -5717,7 +7014,7 @@ function groupRecords(frames, level) {
       id: frame.id,
       label: frame.label,
       parentId: frame.parent === null ? null : frame.parent.id,
-      memberIds: sortedIds((level.get(frame) ?? []).map((node) => node.id)),
+      memberIds: sortedIds((level.get(frame) ?? []).map((node2) => node2.id)),
       depth: frame.depth,
       ...frame.originTaskId === undefined ? {} : { originTaskId: frame.originTaskId }
     });
@@ -5725,12 +7022,12 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync7, readdirSync as readdirSync4, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join8, resolve as resolve3 } from "node:path";
-var LEDGER_PATH = join8(".mpd", "boulder.json");
-var PLANS_DIR = join8(".mpd", "plans");
+import { readFileSync as readFileSync8, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
+import { isAbsolute as isAbsolute2, join as join10, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join10(".mpd", "boulder.json");
+var PLANS_DIR = join10(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
-function isRecord2(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function planPathFrom(root, value) {
@@ -5740,8 +7037,8 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync7(join8(root, LEDGER_PATH), "utf8"));
-    return isRecord2(parsed) ? parsed : undefined;
+    const parsed = JSON.parse(readFileSync8(join10(root, LEDGER_PATH), "utf8"));
+    return isRecord4(parsed) ? parsed : undefined;
   } catch {
     return;
   }
@@ -5750,16 +7047,16 @@ function beaconPlan(root) {
   const state = readBoulderState(root);
   if (state === undefined)
     return;
-  const works = isRecord2(state.works) ? state.works : undefined;
+  const works = isRecord4(state.works) ? state.works : undefined;
   const activeId = typeof state.active_work_id === "string" ? state.active_work_id : undefined;
-  const record = works !== undefined && activeId !== undefined && isRecord2(works[activeId]) ? works[activeId] : undefined;
+  const record = works !== undefined && activeId !== undefined && isRecord4(works[activeId]) ? works[activeId] : undefined;
   if (record === undefined || record.status !== "active")
     return;
   const path = planPathFrom(root, record.active_plan) ?? planPathFrom(root, state.active_plan);
   if (path === undefined)
     return;
   try {
-    return statSync2(path).isFile() ? path : undefined;
+    return statSync3(path).isFile() ? path : undefined;
   } catch {
     return;
   }
@@ -5772,8 +7069,8 @@ function newestPlan(root) {
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join8(directory, entry.name);
-      const stats = statSync2(path, { throwIfNoEntry: false });
+      const path = join10(directory, entry.name);
+      const stats = statSync3(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
       candidates.push({ path, mtimeMs: stats.mtimeMs, name: entry.name });
@@ -5785,7 +7082,7 @@ function newestPlan(root) {
   return candidates[0]?.path;
 }
 function plansDirectory(workspaceRoot) {
-  return join8(workspaceRoot, PLANS_DIR);
+  return join10(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -5797,21 +7094,21 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync7(path, "utf8"));
+    return parsePlanMarkdown(readFileSync8(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }
 }
 // packages/mpd-graph-core/src/watch.ts
-import { readdirSync as readdirSync5, statSync as statSync3, watch } from "node:fs";
-import { basename, dirname, join as join9 } from "node:path";
+import { readdirSync as readdirSync5, statSync as statSync4, watch } from "node:fs";
+import { basename, dirname, join as join11 } from "node:path";
 var REARM_DELAYS_MS = [25, 100, 400];
 function defaultCreateWatch(path, listener) {
   return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
 }
 function statOrUndefined(path) {
   try {
-    return statSync3(path);
+    return statSync4(path);
   } catch {
     return;
   }
@@ -5821,7 +7118,7 @@ function nearestExistingDirectory(path) {
   for (;; ) {
     let exists = false;
     try {
-      exists = statSync3(current).isDirectory();
+      exists = statSync4(current).isDirectory();
     } catch {
       exists = false;
     }
@@ -5848,7 +7145,7 @@ function directorySignature(directory, accept) {
   for (const name of names.sort()) {
     if (!accept(name))
       continue;
-    const stats = statOrUndefined(join9(directory, name));
+    const stats = statOrUndefined(join11(directory, name));
     if (stats === undefined)
       continue;
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
@@ -6233,7 +7530,7 @@ class GraphModels {
 }
 
 // packages/mpd-team-core-plugin/src/change-feed.ts
-import { mkdirSync as mkdirSync7, watch as watch2 } from "node:fs";
+import { mkdirSync as mkdirSync9, watch as watch2 } from "node:fs";
 var watchDirectory = (dir, onEvent) => watch2(dir, { persistent: false }, onEvent);
 function detachTimer(timer) {
   const unref = timer.unref;
@@ -6356,7 +7653,7 @@ class ChangeFeed {
         if (state.armed.has(dir))
           continue;
         try {
-          mkdirSync7(dir, { recursive: true });
+          mkdirSync9(dir, { recursive: true });
         } catch {}
       }
       for (const dir of dirs) {
@@ -6404,7 +7701,7 @@ class ChangeFeed {
 var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
-var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
+var text2 = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
@@ -6465,10 +7762,10 @@ function stringList(value) {
 function parseTaskKind(value) {
   if (value === undefined || value === null || value === "")
     return;
-  const text2 = String(value);
-  if (!TASK_KINDS.includes(text2))
-    throw new Error(`unknown task kind "${text2}" (${TASK_KINDS.join(" | ")})`);
-  return text2;
+  const text3 = String(value);
+  if (!TASK_KINDS.includes(text3))
+    throw new Error(`unknown task kind "${text3}" (${TASK_KINDS.join(" | ")})`);
+  return text3;
 }
 function blockerReading(plan, references) {
   return references.map((reference) => ({ reference, form: classifyBlocker(plan, reference) }));
@@ -6481,6 +7778,14 @@ function blockerSentence(blockers) {
   if (unknown.length === 0)
     return ` — blocked_by reads as ${forms}`;
   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`;
+}
+function emptyScopesWarning(kind, writeScopes, taskId, subject) {
+  const effectiveKind = kind ?? "work";
+  if (effectiveKind !== "work" && effectiveKind !== "repair" && effectiveKind !== "integration")
+    return;
+  if ((writeScopes ?? []).length > 0)
+    return;
+  return `task ${taskId} "${subject}" (${effectiveKind}) was created with NO write scopes. Its frozen contract allows NO path: its writer must stop on the first edit and ask the captain. Remedy: declare the scopes now, or amend the contract before the first write — a scope added after approval needs a re-freeze and a new verify loop.`;
 }
 function describeWireValue(value) {
   if (value === null)
@@ -6678,6 +7983,79 @@ async function bundleApprovalEffects(ctx, dsh, exec, plan) {
   } catch (error) {
     dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(error?.message ?? error));
   }
+}
+var DEFAULT_DEPTH_MAX = 3;
+function depthMaxOf(service) {
+  try {
+    const config = service("mpdConfig");
+    const raw = typeof config?.get === "function" ? config.get("cellwork.depthMax") : undefined;
+    if (typeof raw === "number" && Number.isInteger(raw) && raw >= 1 && raw <= 8)
+      return raw;
+  } catch {}
+  return DEFAULT_DEPTH_MAX;
+}
+function mailBoundOf(service) {
+  try {
+    const config = service("mpdConfig");
+    if (typeof config?.get !== "function")
+      return DEFAULT_MAIL_MAX_UNDELIVERED;
+    return mailMaxUndeliveredOf((key) => config.get?.(key));
+  } catch {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+}
+function teamDepthOf(workspace, teamId) {
+  const seen = new Set;
+  let current = teamId;
+  let depth = 0;
+  while (current !== undefined) {
+    if (seen.has(current))
+      return { depth, reason: `the parent chain of ${JSON.stringify(teamId)} is cyclic (it revisits ${JSON.stringify(current)})` };
+    seen.add(current);
+    const record = readTeam(workspace, current);
+    if (record === undefined) {
+      return { depth, reason: depth === 0 ? `no team record is named ${JSON.stringify(teamId)}` : `the parent chain of ${JSON.stringify(teamId)} names ${JSON.stringify(current)}, which is not on disk` };
+    }
+    if (record.parentTeamId === undefined || record.parentTeamId === "")
+      return { depth };
+    current = record.parentTeamId;
+    depth += 1;
+  }
+  return { depth };
+}
+function memberContextOf(workspace, teamId, memberName, pressureOf) {
+  const record = readTeam(workspace, teamId);
+  if (record === undefined) {
+    return { member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: `no team record is named ${JSON.stringify(teamId)}` };
+  }
+  const member = record.members.find((row) => row.name === memberName || row.id === memberName);
+  if (member === undefined) {
+    return { teamId, member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: `no member ${JSON.stringify(memberName)} is on the roster of team ${teamId}` };
+  }
+  const pressure = member.executorRef === undefined ? { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" } : pressureOf(member.executorRef);
+  return {
+    teamId,
+    member: member.name,
+    ...member.mode === undefined ? {} : { mode: member.mode },
+    ...member.fenced === true ? { fenced: true } : {},
+    ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason },
+    usedTokens: pressure.usedTokens,
+    windowTokens: pressure.windowTokens,
+    ratio: pressure.ratio,
+    provenance: pressure.provenance,
+    ...member.contextCheckpoint === undefined ? {} : { contextCheckpoint: member.contextCheckpoint },
+    ...member.executorRef === undefined ? { reason: "the seat has no executor handle yet (never raised), so no session occupancy was observed" } : {}
+  };
+}
+function depthBudgetOf(workspace, teamId, depthMax) {
+  const chain = teamDepthOf(workspace, teamId);
+  return {
+    teamId,
+    depth: chain.depth,
+    depthMax,
+    remaining: Math.max(0, depthMax - chain.depth),
+    ...chain.reason === undefined ? {} : { reason: chain.reason }
+  };
 }
 function apply(ctx) {
   const dsh = adapterFor(ctx);
@@ -6884,15 +8262,36 @@ function apply(ctx) {
         return resolved;
       return approveTeam(teamActionsDeps, resolved.caller);
     },
-    dispatch: async ({ sessionId, limit, dryRun }) => {
+    dispatch: async ({ sessionId, limit, dryRun, mode, reassign }) => {
       const resolved = callerForSession(sessionId);
       if (!resolved.ok)
         return resolved;
       return runDispatch(teamActionsDeps, resolved.caller, {
         ...limit === undefined ? {} : { limit },
-        ...dryRun === undefined ? {} : { dryRun }
+        ...dryRun === undefined ? {} : { dryRun },
+        ...mode === undefined ? {} : { mode },
+        ...reassign === undefined ? {} : { reassign }
       });
-    }
+    },
+    fence: async ({ sessionId, member, reason }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return fenceMember(teamActionsDeps, resolved.caller, { member, ...reason === undefined ? {} : { reason } });
+    },
+    unfence: async ({ sessionId, member }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return unfenceMember(teamActionsDeps, resolved.caller, { member });
+    },
+    handoff: async ({ sessionId, content }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return writeMemberHandoff(teamActionsDeps, resolved.caller, { content });
+    },
+    cancelTasks: async (input) => cancelTasks(teamActionsDeps, input)
   };
   if (typeof ctx?.provide === "function") {
     try {
@@ -6919,12 +8318,46 @@ function apply(ctx) {
           }
         },
         active: (workspace, sessionId) => recordFor(workspace, sessionId ?? "workspace"),
-        summary: (record) => summariseTeam(record),
+        summary: (record) => ({ ...summariseTeam(record), stage: stageLabel(teamStage(record)) }),
         visual: (record, taskId) => {
           const task = record.tasks.find((candidate) => candidate.id === taskId);
-          return task === undefined ? "unknown" : taskVisual(task, record.tasks);
+          if (task === undefined)
+            return "unknown";
+          const own = taskVisual(task, record.tasks);
+          if (own === "running") {
+            const stage = teamStage(record);
+            if (stage.kind === "person")
+              return stage.reason;
+          }
+          return own;
         },
         progress: (record, name2) => memberProgress(record, name2),
+        memberContext: (workspace, teamId, memberName) => {
+          try {
+            return memberContextOf(workspace, teamId, memberName, (target) => dsh.contextPressure(target));
+          } catch (error) {
+            return { member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: String(error?.message ?? error) };
+          }
+        },
+        depthBudget: (workspace, teamId) => {
+          try {
+            return depthBudgetOf(workspace, teamId, depthMaxOf(teamActionsDeps.service));
+          } catch (error) {
+            return { teamId, depth: 0, depthMax: DEFAULT_DEPTH_MAX, remaining: DEFAULT_DEPTH_MAX, reason: String(error?.message ?? error) };
+          }
+        },
+        archivedPlans: (workspace) => {
+          try {
+            const plans = listArchivedPlans(workspace);
+            const records = listTeams(workspace);
+            return plans.map((plan) => {
+              const team = records.find((record) => record.planId === plan.planId);
+              return team === undefined ? plan : { ...plan, teamId: team.teamId };
+            });
+          } catch {
+            return [];
+          }
+        },
         teamIds: (workspace) => {
           try {
             return listTeams(workspace).map((record) => record.teamId);
@@ -6975,7 +8408,7 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
+    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -6983,20 +8416,21 @@ function apply(ctx) {
         name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
-        replace: { type: "boolean", description: "create: to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; prompt is the instantiation prompt." },
-        task: { type: "object", description: "create_task: {subject, description, blocked_by, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}; blocked_by or independent:true required." },
+        replace: { type: "boolean", description: "create: replace an APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}; blocked_by or independent required." },
         owner: { type: "string", description: "create_task: alias of task.owner." },
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: [] = root." },
         kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
-        dry_run: { type: "boolean", description: "approve: report what would be created; write nothing." }
+        dry_run: { type: "boolean", description: "approve: preview only." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
+      presentationMeta: toolCard(agentTeamsPlanCard),
       schema: {
         type: "object",
         properties: {
@@ -7013,10 +8447,19 @@ function apply(ctx) {
           spawned: { type: "string" },
           stoppedAt: { type: "string" },
           archivedTo: { type: "string" },
-          blockers: { type: "array", items: { type: "object" } }
+          blockers: { type: "array", items: { type: "object" } },
+          warning: { type: "string" },
+          bindings: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan))
+      render: (_args, value) => {
+        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
+` + value.bindings.map((binding) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join(`
+`) : "") + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan);
+        const warning = typeof value?.warning === "string" && value.warning !== "" ? `
+WARNING: ${value.warning}` : "";
+        return text2(painted + warning);
+      }
     },
     execute: async (args, exec) => {
       const action = String(args?.action ?? "");
@@ -7123,7 +8566,12 @@ function apply(ctx) {
           const stagedId = planTaskId(next2.tasks.length - 1);
           assertNoDependencyCycle(planDependencyEdges(next2), new Map(next2.tasks.map((task, index) => [planTaskId(index), task.subject])), stagedId, namedTask(stagedId, stagedTask.subject), blockedBy2.filter((reference) => planReferenceTarget(next2, reference) === stagedId));
           writePlan(workspace, next2);
-          return { plan: next2, ...blockedBy2.length === 0 ? {} : { blockers: blockerReading(next2, blockedBy2) } };
+          const scopesWarning2 = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject);
+          return {
+            plan: next2,
+            ...blockedBy2.length === 0 ? {} : { blockers: blockerReading(next2, blockedBy2) },
+            ...scopesWarning2 === undefined ? {} : { warning: scopesWarning2 }
+          };
         }
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
@@ -7147,11 +8595,13 @@ function apply(ctx) {
         const appendedTask = next.tasks[next.tasks.length - 1];
         assertNoDependencyCycle(boardDependencyEdges(next.tasks), new Map(next.tasks.map((task) => [task.id, task.subject])), appendedTask.id, namedTask(appendedTask.id, appendedTask.subject), appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject));
         writeTeam(workspace, withDerivedPhase(next));
+        const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject);
         return {
           team: next,
           task: appendedTask,
           appended: `task ${appendedTask.id} "${appendedTask.subject}" appended to the live team ${next.teamId}`,
-          ...appendedTask.unresolvedBlockers === undefined ? {} : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }
+          ...appendedTask.unresolvedBlockers === undefined ? {} : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) },
+          ...scopesWarning === undefined ? {} : { warning: scopesWarning }
         };
       }
       if (action === "edit") {
@@ -7213,28 +8663,63 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
-    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
+    description: "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend"], description: "What to do." },
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
+        content: { type: "string", description: "handoff: document." },
         task_id: { type: "string", description: "the task id." },
-        claimant: { type: "string", description: "claim: who claims (default: caller)." },
-        note: { type: "string", description: "complete/fail: one line on the row." },
-        expected_revision: { type: "number", description: "the revision you decided on; stale refused." },
+        claimant: { type: "string", description: "claim: who claims (default caller)." },
+        note: { type: "string", description: "complete/fail: one line." },
+        expected_revision: { type: "number", description: "the revision you decided on." },
         blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      presentationMeta: toolCard(agentTeamsTaskCard),
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.directive !== undefined ? `handoff written: ${value.path} (#${value.ordinal}) — end your turn now` : value?.provenance !== undefined ? `${value.member ?? "this session"}${value.mode === undefined ? "" : ` [${value.mode}]`} used ${value.usedTokens ?? "?"} / ${value.windowTokens ?? "no window"} (${value.provenance})${typeof value.ratio === "number" ? ` = ${Math.round(value.ratio * 100)}%` : ""}${value.fenced === true ? " · FENCED" : ""}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
       const delegated = sessionIsDelegatedChild(exec);
       const action = String(args?.action ?? "");
+      if (action === "context") {
+        const pressure = dsh.contextPressure(exec.agent);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const member = resolved.record === undefined ? undefined : memberNamedBy(resolved.record, [sessionId]);
+        return {
+          ...resolved.record === undefined || member === undefined ? {} : {
+            teamId: resolved.record.teamId,
+            member: member.name,
+            ...member.mode === undefined ? {} : { mode: member.mode },
+            ...member.fenced === true ? { fenced: true } : {},
+            ...member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason },
+            ...member.contextCheckpoint === undefined ? {} : { contextCheckpoint: member.contextCheckpoint }
+          },
+          usedTokens: pressure.usedTokens,
+          windowTokens: pressure.windowTokens,
+          ratio: pressure.ratio,
+          provenance: pressure.provenance
+        };
+      }
+      if (action === "handoff") {
+        const caller = {
+          workspace,
+          sessionId,
+          lineage,
+          ...exec.agent === undefined ? {} : { agent: exec.agent },
+          ...exec.signal === undefined ? {} : { signal: exec.signal }
+        };
+        const outcome = await writeMemberHandoff(teamActionsDeps, caller, { content: String(args?.content ?? "") });
+        if (!outcome.ok)
+          throw new Error(outcome.error);
+        const { ok: _envelope, ...reply } = outcome;
+        return reply;
+      }
       if (action === "release") {
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
@@ -7415,27 +8900,33 @@ function apply(ctx) {
           releasedFromDispatch
         };
       }
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`);
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend | context | handoff)`);
     }
   }));
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
-    description: "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member and RECORDS the pairing (no second pass can hand it to another member; the ledger is TEAM-SCOPED, so two teams in one workspace never shadow each other). Unpaired tasks are reported with their reason. `release` frees a pairing and reopens the task row to `pending`.",
+    description: 'Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:"roster"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled, delivered. `release` frees a pairing, reopens the row. Lead-only: `reassign`, `mode:"roster".',
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["run", "release"], description: "What to do." },
-        task_id: { type: "string", description: "release: the task to free." },
+        task_id: { type: "string", description: "release: the task." },
         dry_run: { type: "boolean", description: "run: report, send nothing." },
-        limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." }
+        limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
+        mode: { type: "string", enum: ["owner-only", "roster"], description: "run: default owner-only." },
+        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] first." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")") : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : "")).join(`
+      presentationMeta: toolCard(agentTeamsDispatchCard),
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, reassigned: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : [
+        ...Array.isArray(value?.reassigned) ? value.reassigned.map((row) => `reassigned ${row.taskId} -> ${row.owner}${row.delivered === true ? "" : " (NOT delivered: " + String(row.reason ?? "unknown") + ")"}`) : [],
+        ...(value?.pairs?.length ?? 0) === 0 ? ["nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")")] : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : ""))
+      ].join(`
 `))
     },
     execute: async (args, exec) => {
@@ -7461,6 +8952,28 @@ function apply(ctx) {
         const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
         return releaseDispatchedTask(workspace, resolved.record, taskId, undefined, caller, membership?.role === "lead");
       }
+      const requestedMode = args?.mode;
+      const requestedReassign = args?.reassign;
+      const requestedPairs = Array.isArray(requestedReassign) ? requestedReassign.length : requestedReassign === undefined ? 0 : 1;
+      const ownershipAsked = requestedPairs > 0 || requestedMode === "roster";
+      if (ownershipAsked) {
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        if (resolved.record === undefined)
+          throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const title = sessionTitleOf(exec);
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
+        if (!recordNamesLead(resolved.record, caller) && membership?.role !== "lead") {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may reassign a row or force mode:"roster" — a plain pass (agent_teams_dispatch {action:"run"}) is open to any member`);
+        }
+      }
       const outcome = await runDispatch(teamActionsDeps, {
         workspace,
         sessionId,
@@ -7469,7 +8982,9 @@ function apply(ctx) {
         ...exec.signal === undefined ? {} : { signal: exec.signal }
       }, {
         ...typeof args?.limit === "number" ? { limit: args.limit } : {},
-        dryRun: args?.dry_run === true
+        dryRun: args?.dry_run === true,
+        ...requestedMode === undefined ? {} : { mode: requestedMode },
+        ...requestedReassign === undefined ? {} : { reassign: requestedReassign }
       });
       if (!outcome.ok)
         throw new Error(outcome.error);
@@ -7480,35 +8995,38 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
-    description: "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it. A `question`/`answer` object makes the row that kind; answers echo LABELS verbatim, never an index. `permit` (captain-only) grants a TTL-bounded blocking wait to a member; `wait` uses it and is refused without one, naming the caller's captain. Every other action stays non-blocking.",
+    description: "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept); a recipient past `mail.maxUndelivered` undelivered rows (default 8) is REFUSED — cellwork_send sends through this store, so the bound is SHARED. `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`/`more`/`nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
-        to: { type: "string", description: "send: a member id/name, `captain`/`lead`, or `*` to broadcast." },
-        subject: { type: "string", description: "send: one line the recipient sees first." },
-        body: { type: "string", description: "send: the message." },
-        question: { type: "object", description: "send: {questionId, question, options:[{label}], multiSelect?}." },
-        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels], custom?}." },
-        replyTo: { type: "string", description: "send: the message id this row replies to." },
-        member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
-        holder: { type: "string", description: "permit: member id/name the grant is for." },
-        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
-        ttlMs: { type: "number", description: "permit: grant lifetime in ms (default 60000, max 600000)." },
-        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
-        permitId: { type: "string", description: "wait: the captain-issued permit id." },
-        messageId: { type: "string", description: "wait: the message id being waited on." },
-        timeoutMs: { type: "number", description: "wait: block in ms (default 15000; capped by the permit and 60000)." }
+        to: { type: "string", description: "send: id/name, captain/lead, or *." },
+        subject: { type: "string", description: "send: subject." },
+        body: { type: "string", description: "send: body." },
+        question: { type: "object", description: "send: {questionId, question, options:[{label}]}." },
+        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels]}." },
+        replyTo: { type: "string", description: "send: the message id it replies to." },
+        member: { type: "string", description: "unread: whose inbox." },
+        limit: { type: "integer", description: "Page size." },
+        offset: { type: "integer", description: "Start row." },
+        ids: { type: "array", items: { type: "string" }, description: "read: ids to acknowledge." },
+        holder: { type: "string", description: "permit: member the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: wait scope, default `answer`." },
+        ttlMs: { type: "number", description: "permit: lifetime ms (max 600000)." },
+        questionId: { type: "string", description: "permit: narrow to this question id." },
+        permitId: { type: "string", description: "wait: the captain's permit id." },
+        messageId: { type: "string", description: "wait: the awaited message id." },
+        timeoutMs: { type: "number", description: "wait: block ms (max 60000)." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
       schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" }, broadcast: { type: "boolean" }, ok: { type: "boolean" }, reason: { type: "string" }, permit: { type: "object" }, permitScope: { type: "string" }, answers: { type: "array", items: { type: "object" } }, polls: { type: "number" }, waitedMs: { type: "number" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}` : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))` : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}` : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))` : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` + (value.message.truncated === true ? ` (body truncated at 4000 chars of ${value.message.originalLength} — the pre-cut text is not kept)` : "") : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
 `) + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "") : (value?.messages?.length ?? 0) === 0 ? "nothing unread" : value.messages.map((mail) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join(`
-`))
+`) + (typeof value?.more === "number" && value.more > 0 ? `
+(showing ${value.messages.length} of ${value.unreadTotal}; more: ${value.more} — next page offset=${value.nextOffset})` : ""))
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
@@ -7557,6 +9075,7 @@ function apply(ctx) {
           ...args?.question === undefined ? {} : { question: args.question },
           ...args?.answer === undefined ? {} : { answer: args.answer },
           ...callerAddress === callerId ? {} : { fromMemberId: callerAddress },
+          maxUndelivered: mailBoundOf(teamActionsDeps.service),
           ...mailTeam === undefined ? {} : { teamId: mailTeam.teamId }
         }, resolved.targets, now());
         if (!result.ok)
@@ -7685,8 +9204,11 @@ ${message.body}`, exec.signal);
       }
       const memberId = wanted?.id ?? callerAddress;
       const scoped = scopeToTeam(state, mailTeam?.teamId);
+      const unreadRows = unreadOf(scoped, memberId);
+      const paged = pageOf(unreadRows, Number(args?.limit ?? 20), Number(args?.offset ?? 0));
+      const page = paged.page;
       return {
-        messages: unreadOf(scoped, memberId).map((message) => ({
+        messages: page.map((message) => ({
           id: message.id,
           fromName: message.fromName,
           subject: message.subject,
@@ -7701,33 +9223,56 @@ ${message.body}`, exec.signal);
         })),
         undelivered: undeliveredOf(scoped, memberId).length,
         total: inboxOf(scoped, memberId).length,
-        memberName: wanted?.name ?? ownMember?.name ?? memberId
+        memberName: wanted?.name ?? ownMember?.name ?? memberId,
+        offset: paged.offset,
+        more: paged.more,
+        unreadTotal: unreadRows.length,
+        nextOffset: paged.nextOffset
       };
     }
   }));
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
-    description: 'Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:"delete" to end a team). `resume` clears the hold.',
+    description: 'Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:"delete"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).',
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume"], description: "What to do." },
-        reason: { type: "string", description: "halt: why the team is halted; shown to anyone who asks for status." }
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
+        reason: { type: "string", description: "halt/fence: why." },
+        member: { type: "string", description: "fence/unfence: seat." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" } } },
-      render: (_args, value) => text(value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
     },
     execute: async (args, exec) => {
-      const { workspace } = where(exec);
-      if (String(args?.action ?? "") === "resume")
+      const { workspace, sessionId, lineage } = where(exec);
+      const action = String(args?.action ?? "");
+      if (action === "fence" || action === "unfence") {
+        const member = String(args?.member ?? "").trim();
+        if (member === "")
+          throw new Error(`agent_teams_control ${action}: member is required`);
+        const caller = {
+          workspace,
+          sessionId,
+          lineage,
+          ...exec.agent === undefined ? {} : { agent: exec.agent },
+          ...exec.signal === undefined ? {} : { signal: exec.signal }
+        };
+        const outcome = action === "fence" ? await fenceMember(teamActionsDeps, caller, { member, ...args?.reason === undefined ? {} : { reason: String(args.reason) } }) : await unfenceMember(teamActionsDeps, caller, { member });
+        if (!outcome.ok)
+          throw new Error(outcome.error);
+        const { ok: _envelope, ...reply } = outcome;
+        return reply;
+      }
+      if (action === "resume")
         return { resumed: clearHold(workspace) };
-      if (String(args?.action ?? "") !== "halt")
-        throw new Error(`agent_teams_control: unknown action "${String(args?.action ?? "")}" (halt | resume)`);
+      if (action !== "halt")
+        throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence)`);
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) };
     }
   }));
@@ -7764,8 +9309,8 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join10(root, ".mpd", "team", "staging");
-      const pending = existsSync5(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const staging = join12(root, ".mpd", "team", "staging");
+      const pending = existsSync7(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {
           try {
@@ -7862,6 +9407,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
     });
 }
 export {
+  STAGED_PLAN_VERSION,
   TEAMS_SERVICE,
   addMember,
   addTask,
@@ -7872,6 +9418,7 @@ export {
   classifyBlocker,
   clearHold,
   inject,
+  listArchivedPlans,
   listContracts,
   moveIntoArchive,
   name,

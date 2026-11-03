@@ -11,7 +11,7 @@
 //
 // Everything here is PURE filesystem + plain data, so the whole state machine is unit-testable
 // without a ctx, a harness or a model.
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
 
@@ -64,10 +64,70 @@ export interface StagedTask {
   sourceTaskId?: string
 }
 
+/**
+ * The requirements document a staged plan carries.
+ *
+ * WHY IT RIDES THE PLAN (D4). The requirements plane moved from cellwork's private record onto the team
+ * plane, and the plan is the ONE object a teammate already reads before approval — a second document
+ * beside it would be a second place to disagree about what was agreed. The revision is what a split
+ * names, so an accepted split can never silently target a stale requirements text.
+ */
+export interface StagedRequirements {
+  /** Monotonic revision of the agreed document: every update bumps it and stales the current split. */
+  revision: number
+  /** The full markdown document, exactly as it was agreed. */
+  content: string
+  /** ISO instant this revision was agreed. */
+  finalizedAt: string
+}
+
+/** One task row of a measured split, as the plan stores it. */
+export interface StagedSplitTask {
+  /** The stable task key the rest of the graph references (`T1`, `work-a`, …). */
+  key: string
+  /** The one-line title the board shows. */
+  subject: string
+  /** The RESOLVED board member the task is raised for. */
+  member: string
+  /** The paths the task may write. */
+  writeScopes: string[]
+  /** Whether this task's work must be verified by a review task. */
+  verify: boolean
+  /** Whether this task passed every measured condition. */
+  accepted: boolean
+}
+
+/**
+ * The measured split a staged plan carries: the graph verdict the splitter produced.
+ *
+ * Only the DECISIONS are kept here; the measurements that produced them stay in the splitter's own
+ * evidence, so the plan document does not grow a second copy of every estimate.
+ */
+export interface StagedSplit {
+  /** The requirements revision this split was measured against. */
+  revision: number
+  /** Whether the whole graph passed every condition. */
+  accepted: boolean
+  /** ISO instant the verdict was written. */
+  submittedAt: string
+  /** One row per measured task, in submission order. */
+  tasks: StagedSplitTask[]
+}
+
+/** The version a NEW staged plan is written with. */
+export const STAGED_PLAN_VERSION = 2
+
 /** The whole staged plan for one session. */
 export interface StagedPlan {
-  /** Format version; a reader refuses a record whose version it does not know. */
-  version: 1
+  /**
+   * Format version of THIS record.
+   *
+   * `stagePlan` writes {@link STAGED_PLAN_VERSION} (2) since the requirements/split planes moved onto the
+   * plan. `1` is admitted by the TYPE because a version-1 record still exists on disk — and in the
+   * fixtures that prove the compatibility arm — and `readPlan` LIFTS it to 2 on read. Discarding the old
+   * version instead would strand every plan staged before the upgrade, which is the R1 blocker.
+   */
+  version: 1 | typeof STAGED_PLAN_VERSION
   /** Stable, sortable plan identity (`plan-<UTC instant>`), reused as the archive directory name. */
   planId: string
   /** The staging session: exactly ONE plan may be staged per session. */
@@ -82,6 +142,10 @@ export interface StagedPlan {
   members: StagedMember[]
   /** The shared tasks the plan wants posted, in the order they were staged. */
   tasks: StagedTask[]
+  /** The agreed requirements document, when the plan carries one (absent on a hand-staged plan). */
+  requirements?: StagedRequirements
+  /** The measured split the plan was built from, when one was submitted (absent on a hand-staged plan). */
+  split?: StagedSplit
   /** ISO instant the plan was staged; the plan id is derived from it. */
   stagedAt: string
   /** ISO instant approval happened; absent means the plan is still awaiting one. */
@@ -204,11 +268,28 @@ export function newPlanId(now: Date): string {
   return "plan-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 17) + "-" + nextIdSuffix()
 }
 
-/** The plan staged for one session, or `undefined` when nothing is staged. */
+/**
+ * The plan staged for one session, or `undefined` when nothing is staged or the version is unknown.
+ *
+ * THE v1 READ-COMPAT ARM (R1). Until version 2 this reader answered `undefined` for ANY record whose
+ * version was not exactly 1, so bumping the format would have stranded every plan staged before the
+ * upgrade: `agent_teams_plan {action:"status"}` would report nothing staged, approval would refuse, and
+ * the plan file would sit on disk unreadable until a human deleted it. A version-1 record therefore
+ * reads as ITSELF with the version LIFTED to the current one — `requirements` and `split` are both
+ * optional, so nothing is invented — and the lift is in memory only; the file is rewritten by whichever
+ * call next persists the plan.
+ * @param workspace - the workspace whose staging slot is read.
+ * @param sessionId - the session whose staged plan is wanted.
+ * @returns the plan, or undefined when nothing is staged or the version is one this build cannot read.
+ */
 export function readPlan(workspace: string, sessionId: string): StagedPlan | undefined {
-  /** The parsed staging slot; an absent or unreadable file means nothing is staged. */
-  const plan = readJson<StagedPlan>(stagingPath(workspace, sessionId))
-  return plan === undefined || plan.version !== 1 ? undefined : plan
+  /** The parsed staging slot, read with an open version so an older record can be recognised. */
+  const plan = readJson<Omit<StagedPlan, "version"> & { version?: unknown }>(stagingPath(workspace, sessionId))
+  if (plan === undefined) return undefined
+  /** The format version the file declares; anything that is not a number is unknown. */
+  const version = typeof plan.version === "number" ? plan.version : undefined
+  if (version !== 1 && version !== STAGED_PLAN_VERSION) return undefined
+  return { ...plan, version: STAGED_PLAN_VERSION }
 }
 
 /** Persist a plan (the caller owns its content). */
@@ -234,7 +315,7 @@ export function stagePlan(
   if (existing !== undefined && existing.approvedAt === undefined) archivePlan(workspace, existing)
   /** The new record, assembled before it is persisted. */
   const plan: StagedPlan = {
-    version: 1,
+    version: STAGED_PLAN_VERSION,
     planId: newPlanId(now),
     sessionId,
     name: input.name,
@@ -316,6 +397,74 @@ export function archivePlan(workspace: string, plan: StagedPlan): string {
   const staged = stagingPath(workspace, plan.sessionId)
   if (existsSync(staged)) rmSync(staged, { force: true })
   return target
+}
+
+/**
+ * What one archived plan is, for a reader that needs the history rather than the content.
+ *
+ * The GLOBAL-MEMORY hook (D6) is the first consumer: on archive it asks which plan was archived, whether
+ * it was approved, and which team that plan became, so the committed memory entry can name the team
+ * instead of guessing one. That is why `teamId` is resolved by the CALLER (the record is where the
+ * plan→team link lives) and is optional here.
+ */
+export interface ArchivedPlanSummary {
+  /** The archived plan's identity, which is also its directory name. */
+  planId: string
+  /** ISO instant the archive file was written, from its own modification time. */
+  archivedAt: string
+  /** Whether the plan was approved before it was archived. */
+  approved: boolean
+  /** ISO instant approval happened, when it did. */
+  approvedAt?: string
+  /** The team this plan was approved into, when a team record still names the plan. */
+  teamId?: string
+  /** Absolute path of the archived plan document. */
+  path: string
+}
+
+/**
+ * Every archived plan this workspace holds, newest first.
+ *
+ * Reads the archive ONE entry at a time: a directory without a readable `plan.json`, a record whose
+ * `planId` is not a string, or a stat failure is skipped rather than thrown, because this is a listing
+ * for a memory hook and a broken archive entry must not take a caller down.
+ * @param workspace - the workspace whose team archive is listed.
+ * @returns the archived plans, newest first by their file's modification time.
+ */
+export function listArchivedPlans(workspace: string): ArchivedPlanSummary[] {
+  /** The archive's directory entries, or none when the archive does not exist. */
+  let entries: string[] = []
+  try {
+    entries = readdirSync(archiveDir(workspace))
+  } catch {
+    return []
+  }
+  /** The plans read, accumulated before the sort. */
+  const out: ArchivedPlanSummary[] = []
+  for (const entry of entries) {
+    /** The archived plan document for this directory entry. */
+    const path = join(archiveDir(workspace), entry, "plan.json")
+    try {
+      /** The plan's own bytes, parsed structurally: this listing needs the identity, not the schema. */
+      const plan = JSON.parse(readFileSync(path, "utf8")) as { planId?: unknown; approvedAt?: unknown }
+      /** The plan identity, which is what a team record is matched on. */
+      const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : entry
+      /** The archive file's modification time, read as the instant this plan was archived. */
+      const archivedAt = statSync(path).mtime.toISOString()
+      /** The approval stamp, when the plan carries one. */
+      const approvedAt = typeof plan.approvedAt === "string" ? plan.approvedAt : undefined
+      out.push({
+        planId,
+        archivedAt,
+        approved: approvedAt !== undefined,
+        ...(approvedAt === undefined ? {} : { approvedAt }),
+        path,
+      })
+    } catch {
+      // An entry with no readable plan.json is not an archived plan this build can describe.
+    }
+  }
+  return out.sort((left, right) => right.archivedAt.localeCompare(left.archivedAt))
 }
 
 /**

@@ -1,0 +1,92 @@
+{
+  "lane": "T12 — Visual fix round 1: tab labels, phone-width hero, board row density (both panels + static views)",
+  "at": "2026-11-03T01:27:45.239Z",
+  "source": "the app's own 390 x 900 renders of the pre-fix trees (./before), plus the design contract §7",
+  "findings": [
+    {
+      "id": "V1 — tab labels",
+      "observed": "BEFORE: the strip wrapped to two rows in BOTH panels. Workbench: `Overview | Questions | Workmate` + a lone `s` + `Memory` on row 2 (the 9-character label broke MID-WORD). Team: `Board | Members | Detail` + `Watchdog` on row 2.",
+      "why": "the app lays the tab strip out at content width and wraps a label rather than scrolling it, so four labels must fit ONE line at 390 px.",
+      "fix": "English labels shortened to <= 8 characters each and <= 24 per strip: Workbench `Overview | Ask | Agents | Memory` (23), Team `Board | Members | Detail | Watch` (23). The Chinese labels already fit (2+2+4+2 / 2+2+2+3) and are unchanged.",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-copy.ts (tabsWorkbench / tabsBoard), dsh-go/views/mpd.json, dsh-go/views/mpd-team.json",
+      "test": "“every tab label fits ONE line at a 390 px viewport (repair T12)” — 4 labels, each <= 8 chars, strip <= 24, in BOTH languages and BOTH panels"
+    },
+    {
+      "id": "V2 — phone-width hero",
+      "observed": "BEFORE: each hero laid its metric grid out ONE CELL PER ROW at 390 px (the app's own grid degradation), so four tiles plus the completion bar made the hero ~500 px tall and pushed the board entirely below the fold. `Tasks` and `Blocked` additionally rendered as `—` because the preview data lacked those paths.",
+      "why": "the grid's `columns: 2` is honoured only while every cell keeps its minimum width; at phone width the app falls back to one column, and the hero's height is then linear in the tile count.",
+      "fix": "each hero now carries TWO tiles — the actionable numbers — and the rest moved to the caption / progress bar: Workbench `Ready | Active` + completion (caption keeps `N Ready · N Active · N Members`); Team `Active | Done` + completion (caption now `name · N Tasks · N Blocked`).",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-views.ts overviewTab / boardTab",
+      "test": "“each hero carries at most TWO metric tiles (the phone grid is one cell per row)”",
+      "measured": "mpd-v2 3999 B -> 3831 B, 50 -> 48 nodes; mpd-team-v2 4600 B -> 4389 B, 57 -> 55 nodes (each tile is 2 nodes: the metric and its wrapper cell)"
+    },
+    {
+      "id": "V3 — board row density",
+      "observed": "BEFORE: a board row read `T1 Adapt the view …` with `in_progress` in the trailing column and `Deep Worker · work` under it. The 11-character machine status plus the chevron took enough width that the subject clipped after ~13 characters, and the kind line repeated what the Detail tab already shows.",
+      "why": "the trailing column and the title share one row; every character the status spends is a character the subject loses.",
+      "fix": "the status is spelled short (`in_progress` -> `active`, `completed`/`done` -> `done`, `pending` -> `todo`, anything else clipped to 8) and the subtitle is owner-only plus `blocked N` when a row is blocked — the kind moved to the Detail tab.",
+      "where": "packages/mpd-bundle-plugin/src/dshgo-views.ts taskRow + the new statusWordOf",
+      "test": "“board rows are DENSE: a short trailing word and an owner-only subtitle (repair T12)”"
+    }
+  ],
+  "measured": {
+    "trees": "measure.json (bytes / nodes / depth / lint findings, per panel per caps branch)",
+    "before": {
+      "mpdV2": "3999 B / 50 nodes / depth 5",
+      "teamV2": "4600 B / 57 / 6"
+    },
+    "after": {
+      "mpdV2": "3831 B / 48 nodes / depth 5",
+      "teamV2": "4389 B / 55 / 6"
+    },
+    "lint": "lintDesign v2 on both live trees and v1 on both fallbacks: [] findings in all four",
+    "checker": "both declared static views and all four live trees piped to check.mjs - --budget panel: exit 0 each"
+  },
+  "gates": [
+    {
+      "id": "bun test packages/mpd-bundle-plugin packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "observed": "675 pass, 0 fail"
+    },
+    {
+      "id": "bun run typecheck",
+      "exit": 0,
+      "observed": "clean"
+    },
+    {
+      "id": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "PASS"
+    },
+    {
+      "id": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=55 failed=0 violations=0 dead=0 — PASS"
+    },
+    {
+      "id": "node scripts/verify-dshgo-views.ts",
+      "exit": 0,
+      "observed": "PASS"
+    },
+    {
+      "id": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "34/34 targets fresh (the bundle target was rebuilt with the pinned toolchain)"
+    },
+    {
+      "id": "bun run verify:gates",
+      "exit": 0,
+      "observed": "9/9 members green"
+    }
+  ],
+  "docsUpdated": [
+    "docs/drive-surface.md — the tab names it lists now match the shipped labels, plus one sentence on WHY the English labels are short",
+    "docs/user-guide.md §16.1 — the same rename in the user-facing list, with the one-line-tab reason",
+    "the zh-CN halves need no change: their labels already fit and their names did not move"
+  ],
+  "bounds": [
+    "NO AFTER RENDER: this session has no Flutter SDK (`flutter` is absent from PATH and from the usual install roots) and `/usr/share/fonts/noto-cjk` — the font the app's preview test requires — is absent too, so `preview.mjs` cannot run here. The three fixes are verified STRUCTURALLY (label lengths, tile counts, row fields, node/byte deltas, lint, checker) and the before images are attached; the after PNGs must be re-taken by whoever holds the Flutter checkout. Do NOT read this lane as visually proven.",
+    "The zh-CN labels were left alone because they already fit; if the app's tab bar is narrower than 390 px (a 320 px device), the Chinese 工作伙伴 (4 Han glyphs ≈ 8 Latin characters) is the first label at risk — flagged, not measured.",
+    "The two `—` tiles in the BEFORE image came from the PREVIEW DATA (`.mpd/recon/render-data.json` lacks `counts.total` / `counts.blocked`), not from the panel: the live push model carries both. The fix removes those two tiles from the hero anyway, so the ambiguity is gone from the default view."
+  ]
+}

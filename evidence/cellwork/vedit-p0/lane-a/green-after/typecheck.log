@@ -1,0 +1,4 @@
+# GREEN-AFTER — 2026-11-03T04:00:57Z
+# command: bun run typecheck
+$ tsgo --noEmit
+# exit: 0

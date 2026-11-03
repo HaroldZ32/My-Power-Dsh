@@ -57,7 +57,7 @@ import { basename, dirname, join as join2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -915,17 +915,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -936,8 +933,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1014,6 +1023,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1410,6 +1452,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -1678,6 +1721,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2465,33 +2557,987 @@ function registerWatchdogRoutes(webServer, deps) {
 }
 
 // packages/mpd-bundle-plugin/src/dshgo-panel.ts
+import { existsSync as existsSync2, readFileSync as readFileSync2, readdirSync as readdirSync2, statSync as statSync2 } from "node:fs";
+import { basename as basename2, join as join3 } from "node:path";
+
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+var FALLBACK_COMPONENTS = V2_ONLY_COMPONENTS;
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function rejectExtra(builder, props, allowed) {
+  for (const key of Object.keys(props)) {
+    if (!allowed.includes(key))
+      refuse(builder, `does not take "${key}" (accepted: ${allowed.join(" / ")})`);
+  }
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function bind(path) {
+  const spelled = String(path);
+  return { $: spelled === "data" || spelled.startsWith("data.") || spelled.startsWith("data[") ? spelled : `data.${spelled}` };
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function panelView(input) {
+  assertList("panelView", "children", input.children, MAX_CHILDREN);
+  if (input.children.length === 0)
+    refuse("panelView", "needs at least one child");
+  const root = styleOf(input.style) ?? { gap: "M" };
+  const view = node("stack", { v: 2, accent: "app", style: root, children: input.children });
+  if (countPrimaryActions(view) > 1) {
+    refuse("panelView", 'allows at most ONE action with style "primary" per view (contract §7.2 rule 8)');
+  }
+  return view;
+}
+function countPrimaryActions(view) {
+  let primaries = 0;
+  for (const found of componentNodes(view)) {
+    const items = found.node.items;
+    if (found.node.type !== "actions" || !Array.isArray(items))
+      continue;
+    for (const item of items) {
+      if (isRecord2(item) && item.style === "primary")
+        primaries += 1;
+    }
+  }
+  return primaries;
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function chart(props) {
+  const series = assertList("chart", "series", props.series, 6);
+  for (const one of series) {
+    if (isBinding(one))
+      continue;
+    assertList("chart", "series values", one.values, 60);
+  }
+  return node("chart", { kind: props.kind, categories: props.categories, series, unit: props.unit, caption: props.caption });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function list(items, props = {}) {
+  assertList("list", "items", items, 50);
+  return node("list", { items, title: props.title, style: styleOf(props.style) });
+}
+function progress(value, props = {}) {
+  return node("progress", { value, max: props.max, label: props.label, caption: props.caption, tone: props.tone, style: styleOf(props.style) });
+}
+function callout(value, props = {}) {
+  return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function steps(items, props = {}) {
+  assertList("steps", "items", items, 12);
+  return node("steps", { items, title: props.title, style: styleOf(props.style) });
+}
+function actions(items, props = {}) {
+  assertList("actions", "items", items, 4);
+  const rendered = items.map((item) => ({
+    label: item.label,
+    action: item.action,
+    icon: item.icon,
+    ...item.primary === true ? { style: "primary" } : {}
+  }));
+  return node("actions", { items: rendered, title: props.title, style: styleOf(props.style) });
+}
+function sections(builder, items) {
+  assertList(builder, "items", items, 24);
+  if (items.length === 0)
+    refuse(builder, "needs at least one section");
+  for (const section of items) {
+    if (section.label === undefined || section.label === "")
+      refuse(builder, "needs every section to carry a label");
+    assertList(builder, "section children", section.children, MAX_CHILDREN);
+    if (section.children.length === 0)
+      refuse(builder, "refuses an empty section — use emptyState as its only child");
+  }
+}
+function tabs(items) {
+  sections("tabs", items);
+  return node("tabs", { items });
+}
+function grid(children, props = {}) {
+  assertList("grid", "children", children, MAX_CHILDREN);
+  rejectExtra("grid", props, ["columns", "label"]);
+  if (props.columns !== undefined) {
+    if (![1, 2, 3, 4].includes(props.columns))
+      refuse("grid", "needs columns to be 1–4");
+  }
+  return node("grid", { children, columns: props.columns, label: props.label });
+}
+function form(props) {
+  assertList("form", "children", props.children, 32);
+  return node("form", { children: props.children, submit: props.submit, submitLabel: props.submitLabel });
+}
+function textField(props) {
+  return node("textField", { label: props.label, value: props.value, bind: props.bind, placeholder: props.placeholder });
+}
+function emptyState(props) {
+  const fields = props;
+  if (fields.text !== undefined)
+    refuse("emptyState", 'takes "message", never "text" (the app ignores text silently)');
+  rejectExtra("emptyState", fields, ["title", "message", "icon", "action"]);
+  return node("emptyState", { title: props.title, message: props.message, icon: props.icon, action: props.action });
+}
+function divider() {
+  return node("divider", {});
+}
+function spacer(props = {}) {
+  return node("spacer", { size: props.size });
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function appAtLeast(app, minimum) {
+  if (typeof app !== "string")
+    return false;
+  const pattern = /^(\d+)\.(\d+)\.(\d+)/;
+  const have = pattern.exec(app);
+  const want = pattern.exec(minimum);
+  if (have === null || want === null)
+    return false;
+  for (let part = 1;part <= 3; part += 1) {
+    const mine = Number(have[part]);
+    const target = Number(want[part]);
+    if (mine !== target)
+      return mine > target;
+  }
+  return true;
+}
+function stripDecoration(value) {
+  if (Array.isArray(value))
+    return value.map(stripDecoration);
+  if (!isRecord2(value))
+    return value;
+  const out = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "style" || key === "accent")
+      continue;
+    out[key] = stripDecoration(child);
+  }
+  return out;
+}
+function wordsOf(value) {
+  if (typeof value === "string" || typeof value === "number")
+    return value;
+  if (!isRecord2(value))
+    return "";
+  for (const key of ["text", "label", "title", "alt", "caption", "value", "src", "type"]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" || typeof candidate === "number")
+      return candidate;
+  }
+  return "";
+}
+function valueText(value) {
+  if (isBinding(value))
+    return value;
+  return wordsOf({ text: value });
+}
+function fallbackFor(node2, visit) {
+  const type = node2.type;
+  if (type === "tabs" || type === "accordion" || type === "carousel") {
+    const entries = Array.isArray(node2.items) ? node2.items : [];
+    const children = [];
+    for (const entry of entries) {
+      if (!isRecord2(entry))
+        continue;
+      const kids = [];
+      if (Array.isArray(entry.children)) {
+        for (const child of entry.children) {
+          const adapted = visit(child);
+          if (adapted !== null)
+            kids.push(adapted);
+        }
+      }
+      const first = kids[0];
+      if (typeof entry.label === "string" && isRecord2(first)) {
+        if (first.type === "text" && first.text === entry.label)
+          kids.shift();
+        else if (first.title === entry.label) {
+          const withoutTitle = { ...first };
+          delete withoutTitle.title;
+          kids[0] = withoutTitle;
+        }
+      }
+      if (entry.label !== undefined)
+        children.push({ type: "text", text: entry.label });
+      children.push(...kids);
+    }
+    return { type: "stack", children };
+  }
+  if (type === "form" || type === "collapsible") {
+    const children = [];
+    for (const child of Array.isArray(node2.children) ? node2.children : []) {
+      const adapted = visit(child);
+      if (adapted !== null)
+        children.push(adapted);
+    }
+    return { type: "stack", children };
+  }
+  if (type === "grid") {
+    const items = [];
+    for (const child of Array.isArray(node2.children) ? node2.children : []) {
+      const adapted = visit(child);
+      if (adapted === null)
+        continue;
+      if (adapted.type === "metric") {
+        const row = { title: adapted.label, trailing: valueText(adapted.value) };
+        if (adapted.caption !== undefined)
+          row.subtitle = adapted.caption;
+        items.push(row);
+        continue;
+      }
+      const title = wordsOf(adapted);
+      const subtitle = isRecord2(adapted) && adapted.subtitle !== undefined ? adapted.subtitle : undefined;
+      items.push(subtitle === undefined ? { title } : { title, subtitle });
+    }
+    return { type: "list", items };
+  }
+  if (type === "timeline") {
+    const items = [];
+    for (const entry of Array.isArray(node2.items) ? node2.items : []) {
+      if (!isRecord2(entry))
+        continue;
+      const words = [];
+      for (const child of Array.isArray(entry.children) ? entry.children : []) {
+        const adapted = visit(child);
+        if (adapted === null)
+          continue;
+        const text2 = String(wordsOf(adapted));
+        if (text2 !== "")
+          words.push(text2);
+      }
+      items.push(words.length === 0 ? { label: String(wordsOf(entry)) } : { label: String(wordsOf(entry)), detail: words.join(" · ") });
+    }
+    return { type: "steps", items };
+  }
+  if (type === "badge" || type === "tag")
+    return { type: "text", text: node2.text };
+  if (type === "avatar")
+    return { type: "text", text: node2.alt ?? node2.caption ?? node2.src };
+  if (type === "emptyState") {
+    const parts = [node2.title, node2.message].filter((part) => part !== undefined && part !== "").map((part) => String(part));
+    return { type: "text", text: parts.join(`
+`) };
+  }
+  if (type === "codeBlock")
+    return { type: "text", text: node2.code };
+  if (type === "textField" || type === "number" || type === "stepper" || type === "toggle" || type === "slider" || type === "select" || type === "segmented" || type === "chips" || type === "date" || type === "time" || type === "rating") {
+    const label = wordsOf({ text: node2.label });
+    const value = node2.value === undefined ? "" : String(wordsOf({ text: node2.value }));
+    return { type: "text", text: value === "" ? String(label) : `${String(label)}: ${value}` };
+  }
+  if (type === "gallery") {
+    const children = [];
+    for (const entry of Array.isArray(node2.items) ? node2.items : []) {
+      if (!isRecord2(entry) || entry.src === undefined)
+        continue;
+      children.push({ type: "image", src: entry.src, alt: entry.alt, caption: entry.caption });
+    }
+    return { type: "stack", children };
+  }
+  return null;
+}
+function adaptView(view, caps) {
+  const v2 = appAtLeast(caps?.app, "1.0.9");
+  const components = Array.isArray(caps?.components) ? caps.components : undefined;
+  const draws = (type) => {
+    if (typeof type !== "string" || !FALLBACK_COMPONENTS.includes(type))
+      return true;
+    if (!v2)
+      return false;
+    return components === undefined || components.includes(type);
+  };
+  const visit = (value) => {
+    if (!isNode(value))
+      return null;
+    let current = value;
+    if (!draws(current.type)) {
+      const replaced = fallbackFor(current, visit);
+      if (replaced === null)
+        return null;
+      if (current.title !== undefined && replaced.title === undefined)
+        replaced.title = current.title;
+      current = replaced;
+    }
+    const next = { ...current };
+    if (Array.isArray(current.children)) {
+      next.children = current.children.map(visit).filter((child) => child !== null);
+    }
+    if (Array.isArray(current.items)) {
+      next.items = current.items.map((item) => {
+        if (!isRecord2(item) || !Array.isArray(item.children))
+          return item;
+        return { ...item, children: item.children.map(visit).filter((child) => child !== null) };
+      });
+    }
+    return next;
+  };
+  const adapted = visit(view);
+  if (adapted === null)
+    return v2 ? view : { type: "text", text: "" };
+  if (v2)
+    return adapted;
+  const stripped = stripDecoration(adapted);
+  return { ...stripped, v: 1 };
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-copy.ts
+var EN = {
+  workbench: "MPD Workbench",
+  board: "Team Board",
+  tabsWorkbench: ["Overview", "Ask", "Library"],
+  tabsBoard: ["Board", "Detail", "Watch"],
+  metricReady: "Ready",
+  metricActive: "Active",
+  metricDone: "Done",
+  metricMembers: "Members",
+  metricTasks: "Tasks",
+  metricBlocked: "Blocked",
+  completion: "Completion",
+  readyHeading: "Ready to dispatch",
+  refresh: "Refresh",
+  approve: "Approve plan",
+  dispatch: "Dispatch",
+  emptyReady: ["Nothing is ready", "Rows become ready when their blockers close; this list fills itself."],
+  questionsCaption: "Answer what a teammate parked",
+  customAnswer: "Custom answer",
+  submit: "Send",
+  emptyQuestion: ["No question is waiting", "When a member needs your answer, the question and its options appear here."],
+  libraryCaption: "Workmates and memory, read-only",
+  agentsHeading: "Workmates",
+  memoryHeading: "Memory",
+  workmatesCaption: "Durable instances from the workmate library",
+  emptyWorkmates: ["The library is empty", "A workmate appears here once one is initialized from a roster base."],
+  uses: "uses",
+  memoryCaption: "This agent's entries in this workspace, newest by write time",
+  emptyMemory: ["No memory entry yet", "Notes, facts and reflections written by this agent show up here."],
+  reflection: "Reflection",
+  boardCaption: "The active team's board",
+  graphHeading: "Dependency graph",
+  memberChartHeading: "Work per member",
+  memberChartSeries: "Tasks",
+  memberChartCaption: "Board rows owned, by member",
+  membersCaption: "Who is on this team",
+  emptyMembers: ["No member raised", "Approving a staged plan raises its members; they are listed here."],
+  detailCaption: "The selected row",
+  emptyDetail: ["No task selected", "Tap a row on the Board tab to read its contract here."],
+  owner: "Owner",
+  dependencies: "Dependencies",
+  verdict: "Verdict",
+  status: "Status",
+  kind: "Kind",
+  blockedBy: "Blocked by",
+  settleHint: "Settling a row is the owning member's call; run it from that agent.",
+  complete: "Complete",
+  fail: "Fail",
+  back: "Back",
+  watchdogCaption: "The preserving hold and the recorded incidents",
+  predicate: "Predicate",
+  incidents: "Incidents",
+  held: "Held",
+  notHeld: "Running",
+  watchdogReadOnly: "Pause and resume run from the captain's console, not from a tap.",
+  hold: "Hold",
+  resume: "Resume",
+  emptyIncidents: ["No incident recorded", "A silence, a fence or a hold is recorded here when it happens."],
+  emptyTeam: ["No team in this conversation", "Ask for a team, approve its plan, and its board appears here."],
+  emptyBoard: ["The board is empty", "Tasks appear here as soon as a plan is approved."],
+  moreOptions: "Only the first four options are shown; answer the rest from another client."
+};
+var ZH = {
+  workbench: "MPD 工作台",
+  board: "团队看板",
+  tabsWorkbench: ["总览", "问题", "资料库"],
+  tabsBoard: ["看板", "详情", "看门狗"],
+  metricReady: "就绪",
+  metricActive: "进行",
+  metricDone: "完成",
+  metricMembers: "成员",
+  metricTasks: "任务",
+  metricBlocked: "阻塞",
+  completion: "完成度",
+  readyHeading: "可以派出的任务",
+  refresh: "刷新",
+  approve: "审批计划",
+  dispatch: "派活",
+  emptyReady: ["暂无就绪任务", "前置任务关闭后，这一行会自动出现。"],
+  questionsCaption: "回答成员留给你的问题",
+  customAnswer: "自定义回答",
+  submit: "提交",
+  emptyQuestion: ["还没有停下来的问题", "当有成员需要你回答时，问题和它的选项会出现在这里。"],
+  libraryCaption: "工作伙伴与记忆，只读",
+  agentsHeading: "工作伙伴",
+  memoryHeading: "记忆",
+  workmatesCaption: "工作伙伴库里的持久实例",
+  emptyWorkmates: ["工作伙伴库是空的", "从一个基础角色初始化后，实例会出现在这里。"],
+  uses: "次使用",
+  memoryCaption: "本工作区中这个 agent 的条目，按写入时间排序",
+  emptyMemory: ["还没有记忆条目", "这个 agent 写下的笔记、事实和反思会出现在这里。"],
+  reflection: "反思",
+  boardCaption: "当前团队的看板",
+  graphHeading: "依赖关系图",
+  memberChartHeading: "各成员工作量",
+  memberChartSeries: "任务",
+  memberChartCaption: "按成员统计的负责任务数",
+  membersCaption: "团队里的成员",
+  emptyMembers: ["还没有成员", "审批一份计划会拉起它的成员，名单出现在这里。"],
+  detailCaption: "选中的任务",
+  emptyDetail: ["还没有选中任务", "在「看板」里点一行，它的合同会出现在这里。"],
+  owner: "负责人",
+  dependencies: "依赖",
+  verdict: "结论",
+  status: "状态",
+  kind: "类型",
+  blockedBy: "被阻塞于",
+  settleHint: "结算是持有该行的成员的决定；请从那个 agent 执行。",
+  complete: "完成",
+  fail: "失败",
+  back: "返回",
+  watchdogCaption: "保活暂停与已记录的事件",
+  predicate: "判据",
+  incidents: "事件",
+  held: "已暂停",
+  notHeld: "运行中",
+  watchdogReadOnly: "暂停与继续要从队长的控制台执行，不能靠点击。",
+  hold: "暂停",
+  resume: "继续",
+  emptyIncidents: ["暂无事件", "静默、围栏或暂停发生时，会记录在这里。"],
+  emptyTeam: ["这个会话还没有团队", "申请一个团队并审批计划后，看板会出现在这里。"],
+  emptyBoard: ["看板是空的", "计划审批通过后，任务会出现在这里。"],
+  moreOptions: "只显示前四个选项；其余的请在另一个客户端回答。"
+};
+function copyFor(caps) {
+  const tag = typeof caps?.locale === "string" ? caps.locale.toLowerCase() : "";
+  return tag === "zh" || tag.startsWith("zh-") || tag.startsWith("zh_") ? ZH : EN;
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-graph.ts
+var GRAPH_SUBJECT_CHARS = 18;
+var GRAPH_MAX_LINES = 20;
+var GRAPH_MAX_STEPS = 12;
+var GRAPH_FOLD_MIN_TASKS = 6;
+var GRAPH_FOLD_MIN_LAYERS = 3;
+function graphNeedsFold(layers) {
+  const tasks = layers.reduce((total, layer) => total + layer.tasks.length, 0);
+  return tasks > GRAPH_FOLD_MIN_TASKS || layers.length > GRAPH_FOLD_MIN_LAYERS;
+}
+function blockersOf(task, known) {
+  const declared = task.dependencies === "" ? [] : task.dependencies.split(",").map((id) => id.trim());
+  return declared.filter((id) => id !== "" && known.has(id));
+}
+function layerGraphOf(tasks) {
+  const known = new Set(tasks.map((task) => task.id));
+  const level = new Map(tasks.map((task) => [task.id, 0]));
+  for (let pass = 0;pass < tasks.length; pass += 1) {
+    let raised = false;
+    for (const task of tasks) {
+      const blocked = blockersOf(task, known);
+      if (blocked.length === 0)
+        continue;
+      const wanted = Math.max(...blocked.map((id) => level.get(id) ?? 0)) + 1;
+      if ((level.get(task.id) ?? 0) < wanted) {
+        level.set(task.id, wanted);
+        raised = true;
+      }
+    }
+    if (!raised)
+      break;
+  }
+  const deepest = tasks.reduce((max, task) => Math.max(max, level.get(task.id) ?? 0), 0);
+  const layers = [];
+  for (let depth = 0;depth <= deepest; depth += 1) {
+    const at = tasks.filter((task) => (level.get(task.id) ?? 0) === depth);
+    if (at.length > 0)
+      layers.push({ level: depth, tasks: at });
+  }
+  return layers;
+}
+function graphLinesOf(layers) {
+  const entries = layers.flatMap((layer) => layer.tasks.map((task) => ({ level: layer.level, task })));
+  if (entries.length === 0)
+    return ["(no tasks)"];
+  const lines = [];
+  for (const { level, task } of entries.slice(0, GRAPH_MAX_LINES)) {
+    const subject = task.subject.length <= GRAPH_SUBJECT_CHARS ? task.subject : task.subject.slice(0, GRAPH_SUBJECT_CHARS - 1) + "…";
+    const from = task.dependencies === "" ? "" : " <-" + task.dependencies.split(",").map((id) => id.trim()).filter((id) => id !== "").join(",");
+    lines.push("L" + String(level) + " " + task.id + " " + subject + from);
+  }
+  if (entries.length > GRAPH_MAX_LINES)
+    lines.push("+" + String(entries.length - GRAPH_MAX_LINES) + " more");
+  return lines;
+}
+function graphStepsOf(layers) {
+  return layers.slice(0, GRAPH_MAX_STEPS).map((layer) => ({
+    label: "L" + String(layer.level),
+    detail: layer.tasks.map((task) => task.id).join(" "),
+    status: layer.level === 0 ? "done" : "todo"
+  }));
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-views.ts
+function fold(label, children) {
+  return { type: "collapsible", label, children };
+}
+function codeBlock(code) {
+  return { type: "codeBlock", code };
+}
+function speaksV2(caps) {
+  if (typeof caps?.app !== "string")
+    return false;
+  const [major = 0, minor = 0, patch = 0] = caps.app.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return major > 1 || major === 1 && (minor > 0 || patch >= 9);
+}
+function hero(title, caption, extras = []) {
+  return stack([
+    text(title, { style: { size: "title", weight: "bold", maxLines: 1 } }),
+    text(caption, { tone: "muted", style: { size: "caption", maxLines: 1 } }),
+    ...extras
+  ], { style: { card: "tinted", padding: "M", gap: "S" } });
+}
+function section(title, children) {
+  return stack([text(title, { style: { size: "subtitle", weight: "semibold", maxLines: 1 } }), divider(), ...children], { style: { card: "surface", padding: "M", gap: "S" } });
+}
+function tiles(entries, columns) {
+  return grid(entries.map((entry) => metric({ label: entry.label, value: entry.value, ...entry.tone === undefined ? {} : { tone: entry.tone } })), { columns });
+}
+function empty(copy) {
+  return emptyState({ title: copy[0], message: copy[1] });
+}
+function taskRow(task) {
+  return {
+    title: task.id + " " + task.subject,
+    subtitle: [task.owner === "" ? "—" : task.owner, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
+    trailing: statusWordOf(task.status),
+    action: { id: "select", args: { task: task.id } }
+  };
+}
+function memberChartOf(snapshot, copy) {
+  if (snapshot.members.length === 0)
+    return null;
+  const values = snapshot.members.map((member) => snapshot.tasks.filter((task) => task.owner === member.name).length);
+  return chart({
+    kind: "bar",
+    categories: snapshot.members.map((member) => member.name),
+    series: [{ name: copy.memberChartSeries, values }],
+    caption: copy.memberChartCaption
+  });
+}
+function statusWordOf(status) {
+  const word = status.toLowerCase();
+  if (word === "in_progress" || word === "running" || word === "active")
+    return "active";
+  if (word === "completed" || word === "done")
+    return "done";
+  if (word === "pending")
+    return "todo";
+  if (word === "cancelled")
+    return "cancelled";
+  return word.length <= 8 ? word : word.slice(0, 8);
+}
+function initialsOf(name) {
+  const words = name.split(/[^A-Za-z0-9\u4e00-\u9fff]+/).filter((word) => word !== "");
+  if (words.length === 0)
+    return "?";
+  const letters = words.slice(0, 2).map((word) => word.slice(0, 1).toUpperCase()).join("");
+  return letters === "" ? "?" : letters;
+}
+function toneOf(status) {
+  const word = status.toLowerCase();
+  if (word === "done" || word === "completed" || word === "passed" || word === "idle")
+    return "good";
+  if (word === "failed" || word === "fence" || word === "fenced" || word === "blocked")
+    return "bad";
+  if (word === "in_progress" || word === "running" || word === "active" || word === "handoff")
+    return "info";
+  if (word === "pending" || word === "staged")
+    return "warn";
+  return "muted";
+}
+function buildMpdView(snapshot, caps) {
+  const copy = copyFor(caps);
+  const view = panelView({
+    children: [
+      tabs([
+        { label: copy.tabsWorkbench[0], children: overviewTab(snapshot, copy) },
+        { label: copy.tabsWorkbench[1], children: questionsTab(snapshot, copy) },
+        { label: copy.tabsWorkbench[2], children: libraryTab(snapshot, copy) }
+      ])
+    ]
+  });
+  return adaptView(view, caps);
+}
+function overviewTab(snapshot, copy) {
+  const caption = [String(snapshot.counts.ready) + " " + copy.metricReady, String(snapshot.counts.active) + " " + copy.metricActive, String(snapshot.team?.members ?? 0) + " " + copy.metricMembers].join(" · ");
+  const buttons = [];
+  if (snapshot.plan?.ready === true)
+    buttons.push({ label: copy.approve, action: "approve", icon: "check", primary: true });
+  if (snapshot.counts.ready > 0)
+    buttons.push({ label: copy.dispatch, action: "dispatch", icon: "send" });
+  buttons.push({ label: copy.refresh, action: "refresh", icon: "refresh" });
+  const children = [
+    hero(copy.workbench, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    tiles([
+      { label: copy.metricReady, value: bind("counts.ready"), tone: "good" },
+      { label: copy.metricActive, value: bind("counts.active"), tone: "info" }
+    ], 2)
+  ];
+  if (snapshot.alert !== null)
+    children.push(callout(snapshot.alert, { tone: "warn" }));
+  children.push(section(copy.readyHeading, snapshot.readyTasks.length === 0 ? [empty(copy.emptyReady)] : [list(snapshot.readyTasks.map((task) => ({ title: task.title, subtitle: task.subtitle })))]));
+  children.push(spacer({ size: "S" }), actions(buttons));
+  return children;
+}
+function questionsTab(snapshot, copy) {
+  const head = hero(copy.tabsWorkbench[1], copy.questionsCaption);
+  const question = snapshot.question;
+  if (question === null)
+    return [head, empty(copy.emptyQuestion)];
+  const options = question.options.slice(0, 4).map((option, index) => ({ label: option.label, action: "answer:" + String(index) }));
+  const content = [callout(bind("question.question"), { tone: "info" })];
+  if (options.length > 0)
+    content.push(actions(options));
+  content.push(form({
+    children: [textField({ label: copy.customAnswer, bind: "data.customAnswer", placeholder: copy.customAnswer })],
+    submit: "answer-custom",
+    submitLabel: copy.submit
+  }));
+  if (question.options.length > 4)
+    content.push(text(copy.moreOptions, { tone: "muted", style: { size: "caption", maxLines: 2 } }));
+  return [head, section(copy.tabsWorkbench[1], content)];
+}
+function libraryTab(snapshot, copy) {
+  const mates = snapshot.workmates.map((mate) => ({ title: mate.name, subtitle: mate.base + " · " + String(mate.uses) + " " + copy.uses, trailing: mate.note }));
+  const memory = snapshot.memory;
+  const entries = memory === null ? [] : memory.entries.map((entry) => ({ title: entry.description, subtitle: entry.kind + " · " + entry.age }));
+  const reflection = memory === null ? [] : [keyValue([[copy.reflection, String(memory.reflections)], [copy.memoryHeading, String(memory.entries.length)]])];
+  return [
+    hero(copy.tabsWorkbench[2], copy.libraryCaption),
+    section(copy.agentsHeading, mates.length === 0 ? [empty(copy.emptyWorkmates)] : [list(mates)]),
+    section(copy.memoryHeading, entries.length === 0 ? [empty(copy.emptyMemory), ...reflection] : [list(entries), divider(), ...reflection]),
+    spacer({ size: "S" }),
+    actions([{ label: copy.refresh, action: "refresh", icon: "refresh" }])
+  ];
+}
+function buildTeamView(snapshot, caps) {
+  const copy = copyFor(caps);
+  const view = panelView({
+    children: [
+      tabs([
+        { label: copy.tabsBoard[0], children: boardTab(snapshot, copy, speaksV2(caps)) },
+        { label: copy.tabsBoard[1], children: detailTab(snapshot, copy) },
+        { label: copy.tabsBoard[2], children: watchdogTab(snapshot, copy) }
+      ])
+    ]
+  });
+  return adaptView(view, caps);
+}
+function boardTab(snapshot, copy, v2) {
+  const caption = snapshot.team === null ? copy.emptyTeam[0] : snapshot.team.name + " · " + String(snapshot.counts.total) + " " + copy.metricTasks + " · " + String(snapshot.counts.blocked) + " " + copy.metricBlocked;
+  const children = [
+    hero(copy.board, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    tiles([
+      { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
+      { label: copy.metricDone, value: bind("counts.done"), tone: "good" }
+    ], 2)
+  ];
+  if (snapshot.team === null) {
+    children.push(empty(copy.emptyTeam));
+    return children;
+  }
+  children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]));
+  const chartNode = memberChartOf(snapshot, copy);
+  if (chartNode !== null)
+    children.push(section(copy.memberChartHeading, [chartNode]));
+  const layers = layerGraphOf(snapshot.tasks);
+  const block = codeBlock(graphLinesOf(layers).join(`
+`));
+  children.push(section(copy.graphHeading, v2 ? graphNeedsFold(layers) ? [fold(copy.graphHeading, [block])] : [block] : [steps(graphStepsOf(layers))]));
+  children.push(section(copy.membersCaption, snapshot.members.length === 0 ? [empty(copy.emptyMembers)] : [list(snapshot.members.map(memberLine))]));
+  return children;
+}
+function memberLine(member) {
+  const word = member.handoff === "" ? member.mode : member.handoff;
+  return { title: initialsOf(member.name) + " · " + member.name, trailing: word, tone: toneOf(word) };
+}
+function detailTab(snapshot, copy) {
+  const task = snapshot.selected;
+  const head = hero(copy.tabsBoard[2], task === null ? copy.emptyDetail[0] : task.id + " " + task.subject);
+  if (task === null)
+    return [head, empty(copy.emptyDetail)];
+  const fields = keyValue([
+    [copy.owner, task.owner === "" ? "—" : task.owner],
+    [copy.status, task.status],
+    [copy.kind, task.kind],
+    [copy.dependencies, task.dependencies === "" ? "—" : task.dependencies],
+    [copy.verdict, task.verdict === "" ? "—" : task.verdict]
+  ]);
+  return [
+    head,
+    section(copy.detailCaption, [
+      text(task.description === "" ? "—" : task.description, { tone: "muted", style: { maxLines: 4 } }),
+      divider(),
+      fields,
+      callout(copy.settleHint),
+      actions([{ label: copy.back, action: "back", icon: "expand" }])
+    ])
+  ];
+}
+function watchdogTab(snapshot, copy) {
+  const watchdog = snapshot.watchdog;
+  const holdLine = watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld;
+  const rows = watchdog.incidents.map((incident) => ({ title: incident.kind, subtitle: incident.at, trailing: incident.detail }));
+  return [
+    hero(copy.tabsBoard[2], copy.watchdogCaption),
+    tiles([
+      { label: copy.predicate, value: watchdog.predicate },
+      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held ? "warn" : "good" }
+    ], 2),
+    section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
+    callout(copy.watchdogReadOnly)
+  ];
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-panel.ts
 var DSHGO_PANEL_ID = "mpd";
 var DSHGO_POLL_MS = 2000;
 var DSHGO_MAX_SNAPSHOT_BYTES = 32768;
 var DSHGO_MAX_READY_ROWS = 10;
 var DSHGO_MAX_OPTIONS = 4;
-var DSHGO_ACTION_TIMEOUT_MS = 4000;
+var DSHGO_MAX_MEMORY_ROWS = 10;
+var DSHGO_MAX_WORKMATES = 12;
+var MEMORY_DIR = ".mpd";
+var ALERT_PLAN_WAITING = "A plan is staged and waits for approval";
+var DSHGO_ACTION_WAIT_MS = 2000;
+var DSHGO_DEFERRED_TIMEOUT_MS = 60000;
 var TOAST_NO_SESSION = "Open a conversation first";
 var TOAST_UNAVAILABLE = "Unavailable here";
 var TOAST_REFUSED = "The action was refused";
-var TOAST_STILL_RUNNING = "Still working — check the team panel";
+var PENDING_APPROVE = "Approving…";
+var PENDING_DISPATCH = "Dispatching…";
+var PENDING_ANSWER = "Answering…";
 var TOAST_APPROVED = "Approved";
 var TOAST_DISPATCHED = "Dispatched";
 var TOAST_ANSWERED = "Answered";
 var TOAST_QUESTION_GONE = "That question is gone";
 var TOAST_NO_QUESTION = "No question on screen";
-var LIMITS_TEXT = "Local engine only: these actions drive this host's MPD team and need a live conversation.";
-var TRUNCATED_TEXT = "Only the first four options are shown; answer the rest from another client.";
+var MAX_ANSWER_CHARS = 400;
 var MAX_TITLE_CHARS = 120;
 var MAX_CAPTION_CHARS = 80;
 var MAX_QUESTION_CHARS = 400;
 var MAX_LABEL_CHARS = 80;
 var MAX_TOAST_CHARS = 40;
 function emptySnapshot() {
-  return { team: null, plan: null, question: null, readyTasks: [] };
-}
-function bind(path) {
-  return { $: path };
+  return {
+    team: null,
+    plan: null,
+    question: null,
+    readyTasks: [],
+    counts: { ready: 0, active: 0, done: 0, total: 0, completion: 0, members: 0 },
+    alert: null,
+    workmates: [],
+    memory: null
+  };
 }
 function recordOf(value) {
   return typeof value === "object" && value !== null ? value : undefined;
@@ -2507,8 +3553,8 @@ function clip(value, max) {
   return flat.length <= max ? flat : flat.slice(0, max);
 }
 function clipToast(value) {
-  const text = clip(value, MAX_TOAST_CHARS);
-  return text === "" ? TOAST_UNAVAILABLE : text;
+  const text2 = clip(value, MAX_TOAST_CHARS);
+  return text2 === "" ? TOAST_UNAVAILABLE : text2;
 }
 function probe(read, fallback) {
   try {
@@ -2551,11 +3597,45 @@ function readyRowsOf(tasks) {
     if (blocked)
       continue;
     const caption = [stringOf(task.kind), stringOf(task.owner)].filter((part) => part !== "").join(" · ");
-    rows.push({ title: clip(stringOf(task.subject), MAX_TITLE_CHARS), subtitle: clip(caption === "" ? "ready" : caption, MAX_CAPTION_CHARS) });
+    rows.push({
+      id: stringOf(task.id),
+      title: clip(stringOf(task.subject), MAX_TITLE_CHARS),
+      subtitle: clip(caption === "" ? "ready" : caption, MAX_CAPTION_CHARS)
+    });
     if (rows.length >= DSHGO_MAX_READY_ROWS)
       break;
   }
   return rows;
+}
+function countsOf(tasks) {
+  const statusById = new Map;
+  for (const task of tasks)
+    statusById.set(stringOf(task.id), stringOf(task.status));
+  let active = 0;
+  let done = 0;
+  let ready = 0;
+  for (const task of tasks) {
+    const status = stringOf(task.status);
+    if (RELEASING_STATUSES.has(status)) {
+      done += 1;
+      continue;
+    }
+    if (status === "in_progress")
+      active += 1;
+    if (status === "pending" && !arrayOf(task.blockedBy).some((entry) => {
+      const blockedStatus = statusById.get(stringOf(entry));
+      return blockedStatus !== undefined && !RELEASING_STATUSES.has(blockedStatus);
+    }))
+      ready += 1;
+  }
+  return {
+    ready,
+    active,
+    done,
+    total: tasks.length,
+    completion: tasks.length === 0 ? 0 : Math.round(done / tasks.length * 100),
+    members: 0
+  };
 }
 function teamSnapshotOf(value) {
   const record = recordOf(value);
@@ -2605,7 +3685,80 @@ function questionReadOf(value) {
     }
   };
 }
-function readPanelState(read) {
+function workmatesOf(services) {
+  const face = faceOf(services, "mpdWorkmate");
+  if (face?.list === undefined)
+    return [];
+  return arrayOf(probe(() => face.list?.(), undefined)).map((entry) => recordOf(entry)).filter((entry) => entry !== undefined).slice(0, DSHGO_MAX_WORKMATES).map((entry) => ({
+    name: clip(stringOf(entry.name), MAX_TITLE_CHARS),
+    base: clip(stringOf(entry.baseName), MAX_CAPTION_CHARS),
+    uses: typeof entry.uses === "number" && Number.isFinite(entry.uses) ? entry.uses : 0,
+    note: clip(stringOf(entry.note), MAX_CAPTION_CHARS)
+  }));
+}
+function frontmatterOf(text2) {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text2);
+  if (match === null)
+    return;
+  try {
+    const parsed = JSON.parse(match[1] ?? "");
+    return recordOf(parsed);
+  } catch {
+    return;
+  }
+}
+function ageOf(at, now) {
+  if (at <= 0)
+    return "never";
+  const minutes = Math.max(0, Math.floor((now - at) / 60000));
+  if (minutes < 60)
+    return String(minutes) + "m";
+  if (minutes < 60 * 24)
+    return String(Math.floor(minutes / 60)) + "h";
+  return String(Math.floor(minutes / (60 * 24))) + "d";
+}
+function memorySlugOf(workspace, scope) {
+  if (scope?.agentSlug !== undefined && scope.agentSlug !== "")
+    return scope.agentSlug;
+  const base = basename2(workspace).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24);
+  return "agent-" + base;
+}
+function readMemoryStore(workspace, now, scope) {
+  const stateDir = scope?.dir === undefined || scope.dir === "" ? MEMORY_DIR : scope.dir;
+  const agentRoot = join3(workspace, stateDir, "memory", "agents", memorySlugOf(workspace, scope));
+  const memoryDir = join3(agentRoot, "repo", "memory");
+  if (!existsSync2(memoryDir))
+    return null;
+  const newest = probe(() => readdirSync2(memoryDir), []).filter((file) => file.endsWith(".md")).map((file) => ({ file, at: probe(() => statSync2(join3(memoryDir, file)).mtimeMs, 0) })).sort((left, right) => right.at - left.at).slice(0, DSHGO_MAX_MEMORY_ROWS);
+  const found = [];
+  for (const { file, at } of newest) {
+    const path = join3(memoryDir, file);
+    const text2 = probe(() => readFileSync2(path, "utf8"), undefined);
+    if (text2 === undefined)
+      continue;
+    const meta = frontmatterOf(text2);
+    if (meta === undefined)
+      continue;
+    found.push({ kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) });
+  }
+  const state = probe(() => JSON.parse(readFileSync2(join3(agentRoot, "runtime", "reflection.json"), "utf8")), undefined);
+  const record = recordOf(state) ?? {};
+  return {
+    entries: found,
+    reflections: typeof record.reflectionsCompleted === "number" ? record.reflectionsCompleted : typeof record.reflected_completed_steps === "number" ? record.reflected_completed_steps : 0,
+    steps: typeof record.stepsSinceReflection === "number" ? record.stepsSinceReflection : typeof record.steps_since_last_successful_reflection === "number" ? record.steps_since_last_successful_reflection : 0
+  };
+}
+function refreshKeyOf(snapshot) {
+  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|");
+  const ready = snapshot.readyTasks.map((task) => task.id).join(",");
+  const plan = snapshot.plan?.ready === true ? "plan" : "";
+  const alert = snapshot.alert ?? "";
+  const workmates = snapshot.workmates.map((mate) => mate.name).join(",");
+  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps);
+  return [question, ready, plan, alert, workmates, memory].join("#");
+}
+function readPanelState(read, options = {}) {
   const sessionId = read.sessionId;
   const workspace = read.workspace;
   if (sessionId === "" || workspace === undefined || workspace === "")
@@ -2614,52 +3767,27 @@ function readPanelState(read) {
   const questions = faceOf(read.services, "mpdQuestions");
   const record = teams?.active === undefined ? undefined : probe(() => teams.active?.(workspace, sessionId), undefined);
   const question = questions?.list === undefined ? null : questionReadOf(probe(() => questions.list?.({ sessionId }), undefined));
+  const tasks = arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task) => task !== undefined);
+  const plan = teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined));
   return {
     snapshot: {
       team: teamSnapshotOf(record),
-      plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
+      plan,
       question: question?.snapshot ?? null,
-      readyTasks: readyRowsOf(arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task) => task !== undefined))
+      readyTasks: readyRowsOf(tasks),
+      counts: { ...countsOf(tasks), members: teamSnapshotOf(record)?.members ?? 0 },
+      alert: plan?.ready === true ? ALERT_PLAN_WAITING : null,
+      workmates: options.light === true ? [] : workmatesOf(read.services),
+      memory: options.light === true ? null : probe(() => readMemoryStore(workspace, Date.now(), read.memory), null)
     },
     binding: { question: question?.binding ?? null }
   };
 }
-function buildPanelView(snapshot) {
-  const children = [
-    {
-      type: "keyValue",
-      items: [
-        { label: "Team", value: bind("data.team.name") },
-        { label: "Status", value: bind("data.team.status") },
-        { label: "Phase", value: bind("data.team.phase") },
-        { label: "Members", value: bind("data.team.members") },
-        { label: "Tasks", value: bind("data.team.tasks") },
-        { label: "Plan members", value: bind("data.plan.members") },
-        { label: "Plan tasks", value: bind("data.plan.tasks") }
-      ]
-    },
-    { type: "list", items: bind("data.readyTasks") }
-  ];
-  if (snapshot.question !== null) {
-    children.push({ type: "callout", tone: "info", text: bind("data.question.question") });
-    const buttons = snapshot.question.options.slice(0, DSHGO_MAX_OPTIONS).map((_option, index) => ({
-      label: bind("data.question.options." + index + ".label"),
-      action: "answer:" + index
-    }));
-    if (buttons.length > 0)
-      children.push({ type: "actions", items: buttons });
-    if (snapshot.question.options.length > DSHGO_MAX_OPTIONS)
-      children.push({ type: "text", tone: "muted", text: TRUNCATED_TEXT });
-  }
-  children.push({
-    type: "actions",
-    items: [
-      { label: "Approve plan", action: "approve", style: "primary" },
-      { label: "Dispatch", action: "dispatch" }
-    ]
-  });
-  children.push({ type: "text", tone: "muted", text: LIMITS_TEXT });
-  return { v: 1, type: "stack", title: "MPD", children };
+function readPanelSnapshot(read, options = {}) {
+  return readPanelState(read, options).snapshot;
+}
+function buildPanelView(snapshot, caps) {
+  return buildMpdView(snapshot, caps);
 }
 function isRefusal(value) {
   const record = recordOf(value);
@@ -2670,21 +3798,29 @@ function messageOf(value) {
     return value.message;
   const record = recordOf(value);
   if (record !== undefined) {
-    const text = stringOf(record.error);
-    if (text !== "")
-      return text;
+    const text2 = stringOf(record.error);
+    if (text2 !== "")
+      return text2;
   }
   return typeof value === "string" ? value : "";
 }
 var TIMED_OUT = Symbol("mpd-panel-timeout");
-async function settleWithin(run, timeoutMs) {
-  const guarded = Promise.resolve().then(run).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+function attemptOf(run) {
+  return Promise.resolve().then(run).then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+}
+async function orDeferred(running, label) {
   let timer;
   const deadline = new Promise((resolve3) => {
-    timer = setTimeout(() => resolve3(TIMED_OUT), timeoutMs);
+    timer = setTimeout(() => resolve3(TIMED_OUT), DSHGO_ACTION_WAIT_MS);
   });
   try {
-    return await Promise.race([guarded, deadline]);
+    const raced = await Promise.race([running, deadline]);
+    if (raced !== TIMED_OUT)
+      return raced;
+    return {
+      pending: { label, timeoutMs: DSHGO_DEFERRED_TIMEOUT_MS },
+      result: () => running
+    };
   } finally {
     if (timer !== undefined)
       clearTimeout(timer);
@@ -2699,6 +3835,21 @@ function actionIdOf(event) {
     return action;
   const value = recordOf(record.value);
   return value === undefined ? "" : stringOf(value.action);
+}
+function customAnswerOf(event) {
+  const value = recordOf(recordOf(event)?.value);
+  if (value === undefined)
+    return "";
+  const named = stringOf(value.customAnswer);
+  if (named !== "")
+    return named;
+  const generic = stringOf(value.text);
+  if (generic !== "")
+    return generic;
+  for (const entry of Object.values(value))
+    if (typeof entry === "string" && entry !== "")
+      return entry;
+  return "";
 }
 function optionIndexOf(action) {
   const match = /^answer:(\d+)$/.exec(action);
@@ -2717,6 +3868,13 @@ function createPanelActions(options, bindingOf = () => {
 }) {
   const teamActions = () => faceOf(options.ctx, "mpdTeamActions");
   const questions = () => faceOf(options.ctx, "mpdQuestions");
+  const effectOf = (outcome, success, accepted = () => true) => {
+    if (outcome.ok === false)
+      return { toast: clipToast(messageOf(outcome.error)) };
+    if (isRefusal(outcome.value))
+      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
+    return accepted(outcome.value) ? success : { toast: TOAST_UNAVAILABLE };
+  };
   const approve = async (scope) => {
     const sessionId = sessionIdOfScope(scope);
     if (sessionId === "")
@@ -2724,14 +3882,8 @@ function createPanelActions(options, bindingOf = () => {
     const face = teamActions();
     if (face?.approve === undefined)
       return { toast: TOAST_UNAVAILABLE };
-    const outcome = await settleWithin(() => face.approve?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS);
-    if (outcome === TIMED_OUT)
-      return { toast: TOAST_STILL_RUNNING };
-    if (outcome.ok === false)
-      return { toast: clipToast(messageOf(outcome.error)) };
-    if (isRefusal(outcome.value))
-      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
-    return { toast: TOAST_APPROVED };
+    const running = attemptOf(() => face.approve?.({ sessionId })).then((outcome) => effectOf(outcome, { toast: TOAST_APPROVED }));
+    return orDeferred(running, PENDING_APPROVE);
   };
   const dispatch = async (scope) => {
     const sessionId = sessionIdOfScope(scope);
@@ -2740,52 +3892,39 @@ function createPanelActions(options, bindingOf = () => {
     const face = teamActions();
     if (face?.dispatch === undefined)
       return { toast: TOAST_UNAVAILABLE };
-    const outcome = await settleWithin(() => face.dispatch?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS);
-    if (outcome === TIMED_OUT)
-      return { toast: TOAST_STILL_RUNNING };
-    if (outcome.ok === false)
-      return { toast: clipToast(messageOf(outcome.error)) };
-    if (isRefusal(outcome.value))
-      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
-    return { toast: TOAST_DISPATCHED };
+    const running = attemptOf(() => face.dispatch?.({ sessionId })).then((outcome) => effectOf(outcome, { toast: TOAST_DISPATCHED }));
+    return orDeferred(running, PENDING_DISPATCH);
   };
-  const answerWith = async (scope, event) => {
+  const answerFor = async (scope, index, custom) => {
     const sessionId = sessionIdOfScope(scope);
     if (sessionId === "")
       return { toast: TOAST_NO_SESSION };
-    const index = optionIndexOf(actionIdOf(event));
-    if (index === undefined)
-      return { toast: TOAST_UNAVAILABLE };
     const face = questions();
     if (face?.list === undefined || face.answer === undefined)
       return { toast: TOAST_UNAVAILABLE };
     const captured2 = bindingOf(scope)?.question;
     if (captured2 === undefined || captured2 === null)
       return { toast: TOAST_NO_QUESTION };
-    const label = captured2.labels[index];
+    const label = custom === "" ? captured2.labels[index ?? -1] : clip(custom, MAX_ANSWER_CHARS);
     const itemId = captured2.itemIds[0];
-    if (label === undefined || itemId === undefined)
+    if (label === undefined || itemId === undefined || label === "")
       return { toast: TOAST_UNAVAILABLE };
     const stillParked = holdsParkedId(probe(() => face.list?.({ sessionId }), undefined), captured2.parkedId);
     if (!stillParked) {
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
       return { toast: TOAST_QUESTION_GONE };
     }
-    const outcome = await settleWithin(() => face.answer?.({ id: captured2.parkedId, answers: [{ id: itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS);
-    if (outcome === TIMED_OUT)
-      return { toast: TOAST_STILL_RUNNING };
-    if (outcome.ok === false)
-      return { toast: clipToast(messageOf(outcome.error)) };
-    if (outcome.value === true)
-      return { toast: TOAST_ANSWERED };
-    if (isRefusal(outcome.value))
-      return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) };
-    return { toast: TOAST_UNAVAILABLE };
+    const answer = custom === "" ? { id: itemId, selected: [label] } : { id: itemId, selected: [], custom: label };
+    const running = attemptOf(() => face.answer?.({ id: captured2.parkedId, answers: [answer] })).then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true));
+    return orDeferred(running, PENDING_ANSWER);
   };
-  const actions = { approve, dispatch };
+  const answerWith = async (scope, event) => answerFor(scope, optionIndexOf(actionIdOf(event)), "");
+  const answerCustom = async (scope, event) => answerFor(scope, undefined, customAnswerOf(event));
+  const refresh = async () => ({ refresh: true });
+  const actions2 = { approve, dispatch, refresh, "answer-custom": answerCustom };
   for (let index = 0;index < DSHGO_MAX_OPTIONS; index += 1)
-    actions["answer:" + index] = answerWith;
-  return actions;
+    actions2["answer:" + index] = answerWith;
+  return actions2;
 }
 function registerDshGoPanel(options) {
   const log = options.log ?? ((line) => {
@@ -2797,7 +3936,7 @@ function registerDshGoPanel(options) {
   let offBound;
   const viewBindings = new Map;
   const emitted = new Map;
-  const questionKeys = new Map;
+  const refreshKeys = new Map;
   const timers = new Set;
   const announce = (state) => {
     if (announced === state)
@@ -2811,21 +3950,21 @@ function registerDshGoPanel(options) {
       return fromBridge;
     return probe(() => options.workspace?.(sessionId), undefined);
   };
-  const stateOf = (scope) => readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) });
+  const stateOf = (scope) => readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope), memory: options.memory });
   const snapshotOf = (scope) => stateOf(scope).snapshot;
   const published = new Set;
   let overBudget = false;
-  const viewFor = (scope) => {
+  const viewFor = (scope, caps) => {
     const state = stateOf(scope);
     viewBindings.set(scopeKeyOf(scope), state.binding);
-    return buildPanelView(state.snapshot);
+    return buildPanelView(state.snapshot, caps);
   };
-  const announceQuestionSet = (key, snapshot, seed) => {
-    const questionKey = snapshot.question === null ? "" : snapshot.question.id;
-    if (questionKeys.get(key) === questionKey)
+  const announceRefreshState = (key, snapshot, seed) => {
+    const signature = refreshKeyOf(snapshot);
+    if (refreshKeys.get(key) === signature)
       return;
-    const changed = !seed && questionKeys.has(key);
-    questionKeys.set(key, questionKey);
+    const changed = !seed && refreshKeys.has(key);
+    refreshKeys.set(key, signature);
     if (changed)
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
   };
@@ -2840,7 +3979,7 @@ function registerDshGoPanel(options) {
       }
       probe(() => send?.(snapshot), undefined);
     }
-    announceQuestionSet(key, snapshot, seed);
+    announceRefreshState(key, snapshot, seed);
   };
   const data = (scope, emit) => {
     const send = typeof emit === "function" ? emit : undefined;
@@ -2854,7 +3993,7 @@ function registerDshGoPanel(options) {
       clearInterval(timer);
       timers.delete(timer);
       emitted.delete(key);
-      questionKeys.delete(key);
+      refreshKeys.delete(key);
       published.delete(key);
     };
   };
@@ -2897,8 +4036,398 @@ function registerDshGoPanel(options) {
       published.clear();
       viewBindings.clear();
       emitted.clear();
-      questionKeys.clear();
+      refreshKeys.clear();
       probe(() => offBound?.(), undefined);
+      offBound = undefined;
+    }
+  };
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-team-panel.ts
+var DSHGO_TEAM_PANEL_ID = "mpd-team";
+var TEAM_MAX_ROWS = 50;
+var MAX_DESCRIPTION_CHARS = 600;
+var STATUS_TOOL = "session-watchdog-status";
+function scopeKeyOf2(scope) {
+  const record = typeof scope === "object" && scope !== null ? scope : undefined;
+  const sessionId = record === undefined ? undefined : record.sessionId;
+  return typeof sessionId === "string" ? sessionId : "";
+}
+function stringOf2(value) {
+  return typeof value === "string" ? value : "";
+}
+function arrayOf2(value) {
+  return Array.isArray(value) ? value : [];
+}
+function recordOf2(value) {
+  return typeof value === "object" && value !== null ? value : undefined;
+}
+function clip2(value, max) {
+  const flat = value.replace(/\s+/g, " ").trim();
+  return flat.length <= max ? flat : flat.slice(0, max);
+}
+function probe2(read, fallback) {
+  try {
+    return read();
+  } catch {
+    return fallback;
+  }
+}
+function taskOf(value) {
+  const task = recordOf2(value) ?? {};
+  return {
+    id: stringOf2(task.id),
+    subject: clip2(stringOf2(task.subject), 120),
+    owner: clip2(stringOf2(task.owner), 60),
+    status: clip2(stringOf2(task.status), 40),
+    kind: clip2(stringOf2(task.kind), 40),
+    blockedBy: arrayOf2(task.blockedBy).length,
+    description: clip2(stringOf2(task.description) || stringOf2(task.acceptance), MAX_DESCRIPTION_CHARS),
+    dependencies: arrayOf2(task.blockedBy).map((id) => stringOf2(id)).filter((id) => id !== "").join(", "),
+    verdict: clip2(stringOf2(recordOf2(task.verdict)?.verdict) || stringOf2(task.verdict), 40)
+  };
+}
+function memberOf(value) {
+  const member = recordOf2(value) ?? {};
+  return {
+    name: clip2(stringOf2(member.name), 60),
+    mode: clip2(stringOf2(member.mode) || stringOf2(member.status) || "idle", 40),
+    handoff: clip2(stringOf2(member.handoff) || stringOf2(member.handoffState), 40)
+  };
+}
+function countsOf2(tasks) {
+  const done = tasks.filter((task) => task.status === "completed" || task.status === "cancelled" || task.status === "failed").length;
+  const active = tasks.filter((task) => task.status === "in_progress").length;
+  const blocked = tasks.filter((task) => task.blockedBy > 0).length;
+  return { total: tasks.length, done, active, blocked, completion: tasks.length === 0 ? 0 : Math.round(done / tasks.length * 100) };
+}
+function readTeamSnapshot(services, workspace, sessionId) {
+  const empty2 = { team: null, tasks: [], counts: { total: 0, done: 0, active: 0, blocked: 0, completion: 0 }, members: [], selected: null, watchdog: { predicate: "unknown", held: false, reason: "", taskId: "", incidents: [] } };
+  if (workspace === undefined || workspace === "" || sessionId === "")
+    return empty2;
+  const face = probe2(() => services.get?.("mpdTeams", false), undefined);
+  if (face?.active === undefined)
+    return empty2;
+  const record = recordOf2(probe2(() => face.active?.(workspace, sessionId), undefined));
+  if (record === undefined)
+    return empty2;
+  const tasks = arrayOf2(record.tasks).map(taskOf).slice(0, TEAM_MAX_ROWS);
+  return {
+    team: { id: stringOf2(record.id) || stringOf2(record.teamId), name: clip2(stringOf2(record.name) || "team", 60), status: clip2(stringOf2(record.status), 40), phase: clip2(stringOf2(record.phase), 40) },
+    tasks,
+    counts: countsOf2(tasks),
+    members: arrayOf2(record.members).map(memberOf).slice(0, 6),
+    selected: null,
+    watchdog: empty2.watchdog
+  };
+}
+async function readWatchdog(services, tools, teamId, workspace) {
+  const registry = probe2(() => services.get?.("mpdWatchdog", false), undefined);
+  const hold = recordOf2(probe2(() => registry?.isHeld?.(teamId, workspace), undefined));
+  const call = tools?.executeTool === undefined ? undefined : recordOf2(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => {
+    return;
+  }));
+  const status = call?.ok === false ? undefined : call?.value;
+  const record = recordOf2(status);
+  const row2 = record === undefined ? undefined : arrayOf2(record.teams).map((entry) => recordOf2(entry)).find((entry) => entry !== undefined && (stringOf2(entry.teamId) === teamId || entry.teamId === undefined));
+  const predicate = clip2(stringOf2(recordOf2(record?.predicate)?.source) || "channel", 20);
+  const incidents = arrayOf2(record?.incidents).map((entry) => recordOf2(entry)).filter((entry) => entry !== undefined).slice(0, 5).map((entry) => ({ at: clip2(stringOf2(entry.ts) || stringOf2(entry.at), 24), kind: clip2(stringOf2(entry.kind) || "incident", 30), detail: clip2(stringOf2(entry.detail) || stringOf2(entry.reason), 80) }));
+  return {
+    predicate,
+    held: hold?.held === true || row2?.held === true,
+    reason: clip2(stringOf2(hold?.reason) || stringOf2(hold?.cause), 60),
+    taskId: clip2(stringOf2(hold?.taskId), 20),
+    incidents
+  };
+}
+async function buildTeamPanelFor(services, tools, workspaceOf, selection, scope, caps) {
+  const sessionId = scopeKeyOf2(scope);
+  const workspace = workspaceOf(sessionId);
+  const snapshot = readTeamSnapshot(services, workspace, sessionId);
+  const selectedId = selection.get(scope);
+  const selected = snapshot.tasks.find((task) => task.id === selectedId) ?? snapshot.tasks.find((task) => task.status === "in_progress") ?? snapshot.tasks[0] ?? null;
+  const watchdog = snapshot.team === null ? snapshot.watchdog : await readWatchdog(services, tools, snapshot.team.id, workspace ?? "");
+  return buildTeamView({ ...snapshot, selected, watchdog }, caps);
+}
+function createTeamPanelActions(options, selection) {
+  const argsOf = (event) => recordOf2(recordOf2(event)?.value) ?? {};
+  const select = async (scope, event) => {
+    const taskId = stringOf2(argsOf(event).task);
+    if (taskId === "")
+      return { toast: "That row is gone" };
+    selection.set(scope, taskId);
+    return { refresh: true };
+  };
+  const back = async (scope) => {
+    selection.set(scope, "");
+    return { refresh: true };
+  };
+  const refresh = async () => ({ refresh: true });
+  return { select, back, refresh };
+}
+function registerDshGoTeamPanel(options) {
+  const log = options.log ?? ((line) => {
+    rowLogLine("mpd-bundle", line);
+  });
+  const pollMs = options.pollMs ?? DSHGO_POLL_MS;
+  let registered = false;
+  let announced = "";
+  let offBound;
+  const selections = new Map;
+  const selection = {
+    get: (scope) => selections.get(scopeKeyOf2(scope)) ?? "",
+    set: (scope, taskId) => {
+      if (taskId === "")
+        selections.delete(scopeKeyOf2(scope));
+      else
+        selections.set(scopeKeyOf2(scope), taskId);
+    }
+  };
+  const timers = new Set;
+  const emitted = new Map;
+  const signatures = new Map;
+  const workspaceOf = (sessionId) => {
+    const fromBridge = probe2(() => typeof options.dsh.workspaceRootForSession === "function" ? options.dsh.workspaceRootForSession(sessionId) : undefined, undefined);
+    if (typeof fromBridge === "string" && fromBridge !== "")
+      return fromBridge;
+    return probe2(() => options.workspace?.(sessionId), undefined);
+  };
+  const snapshotOf = (scope) => {
+    const sessionId = scopeKeyOf2(scope);
+    const team = readTeamSnapshot(options.ctx, sessionId === "" ? undefined : workspaceOf(sessionId), sessionId);
+    return { team: team.team, counts: team.counts, members: team.members, tasks: team.tasks };
+  };
+  const signatureOf = (snapshot) => snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|");
+  const publishInto = (key, snapshot, send, seed) => {
+    const serialized = JSON.stringify(snapshot);
+    if (seed || emitted.get(key) !== serialized) {
+      emitted.set(key, serialized);
+      probe2(() => send?.(snapshot), undefined);
+    }
+    const signature = signatureOf(snapshot);
+    const changed = !seed && signatures.has(key) && signatures.get(key) !== signature;
+    signatures.set(key, signature);
+    if (changed)
+      probe2(() => options.dsh.dshGoRefresh(DSHGO_TEAM_PANEL_ID), undefined);
+  };
+  const data = (scope, emit) => {
+    const send = typeof emit === "function" ? emit : undefined;
+    const key = scopeKeyOf2(scope);
+    publishInto(key, snapshotOf(scope), send, true);
+    const timer = setInterval(() => {
+      publishInto(key, snapshotOf(scope), send, false);
+    }, pollMs);
+    timers.add(timer);
+    return () => {
+      clearInterval(timer);
+      timers.delete(timer);
+      emitted.delete(key);
+      signatures.delete(key);
+    };
+  };
+  const view = async (scope, caps) => buildTeamPanelFor(options.ctx, options.dsh, workspaceOf, selection, scope, caps);
+  const spec = { view, data, actions: createTeamPanelActions(options, selection) };
+  const attempt = () => {
+    if (registered)
+      return;
+    const present = probe2(() => options.dsh.dshGoPresent() === true, false);
+    if (!present) {
+      if (offBound === undefined) {
+        offBound = probe2(() => {
+          const off = options.dsh.onServiceBound(["dshGo"], () => {
+            attempt();
+          });
+          return typeof off === "function" ? off : () => {};
+        }, () => {});
+      }
+      if (announced !== "absent")
+        log("[mpd] dshGo=team-absent");
+      announced = "absent";
+      return;
+    }
+    if (probe2(() => options.dsh.dshGoPanel(DSHGO_TEAM_PANEL_ID, spec) === true, false)) {
+      registered = true;
+      if (announced !== "panel")
+        log("[mpd] dshGo=team-panel");
+      announced = "panel";
+      return;
+    }
+    if (announced !== "absent")
+      log("[mpd] dshGo=team-absent");
+    announced = "absent";
+  };
+  attempt();
+  return {
+    registered,
+    dispose: () => {
+      for (const timer of timers)
+        clearInterval(timer);
+      timers.clear();
+      emitted.clear();
+      signatures.clear();
+      selections.clear();
+      probe2(() => offBound?.(), undefined);
+      offBound = undefined;
+    }
+  };
+}
+
+// packages/mpd-bundle-plugin/src/dshgo-surfaces.ts
+var DSHGO_DISPATCH_ACTION = "mpd-dispatch";
+var DSHGO_SAVE_MEMORY_ACTION = "mpd-save-memory";
+var DSHGO_COPY_REPLY_ACTION = "mpd-copy-reply";
+var DSHGO_STRIP_ID = "mpd-status";
+var STRIP_MAX_CHARS = 24;
+var MAX_TOAST_CHARS2 = 40;
+var MAX_COPY_CHARS = 8000;
+var MAX_MEMORY_DESCRIPTION_CHARS = 120;
+var MAX_MEMORY_CONTENT_CHARS = 4000;
+var MEMORY_WRITE_TOOL = "mpd_memory_write";
+function stringOf3(value) {
+  return typeof value === "string" ? value : "";
+}
+function recordOf3(value) {
+  return typeof value === "object" && value !== null ? value : undefined;
+}
+function probe3(read, fallback) {
+  try {
+    return read();
+  } catch {
+    return fallback;
+  }
+}
+function clip3(value, max) {
+  const flat = value.replace(/\s+/g, " ").trim();
+  return flat.length <= max ? flat : flat.slice(0, max);
+}
+function speaksChinese(caps) {
+  const tag = typeof caps?.locale === "string" ? caps.locale.toLowerCase() : "";
+  return tag === "zh" || tag.startsWith("zh-") || tag.startsWith("zh_");
+}
+function stripLine(ready, active, parked, warns, chinese) {
+  const counters = chinese ? String(ready) + " 就绪 · " + String(active) + " 进行" : String(ready) + " ready · " + String(active) + " active";
+  const text2 = (parked ? "❓" : "") + counters;
+  return { text: clip3(text2, STRIP_MAX_CHARS), icon: "team", tone: warns ? "warn" : "info" };
+}
+function stripValueOf(options, scope, caps) {
+  const sessionId = sessionIdOfScope(scope);
+  const workspace = probe3(() => typeof options.dsh.workspaceRootForSession === "function" ? options.dsh.workspaceRootForSession(sessionId) : undefined, undefined) ?? probe3(() => options.workspace?.(sessionId), undefined);
+  const snapshot = readPanelSnapshot({ services: options.ctx, workspace, sessionId }, { light: true });
+  return stripLine(snapshot.counts.ready, snapshot.counts.active, snapshot.question !== null, snapshot.plan?.ready === true, speaksChinese(caps));
+}
+function replyTextOf(event) {
+  const record = recordOf3(event);
+  if (record === undefined)
+    return "";
+  const value = recordOf3(record.value);
+  return stringOf3(record.text) || stringOf3(value?.text) || stringOf3(value?.reply) || stringOf3(recordOf3(record.message)?.text) || stringOf3(record.reply);
+}
+function createSurfaceActions(options) {
+  const tools = () => options.dsh;
+  const callTool = async (name, args, success) => {
+    const runtime = tools();
+    if (runtime?.executeTool === undefined)
+      return { toast: "Unavailable here" };
+    const outcome = await Promise.resolve().then(() => runtime.executeTool?.({ name, arguments: args })).then((value) => ({ ok: true, value }), (error) => ({ ok: false, value: error }));
+    if (outcome.ok === false)
+      return { toast: clip3(outcome.value instanceof Error ? outcome.value.message : "The action was refused", MAX_TOAST_CHARS2) };
+    const record = recordOf3(outcome.value);
+    if (record !== undefined && (record.ok === false || stringOf3(record.error) !== ""))
+      return { toast: clip3(stringOf3(record.error) || "The action was refused", MAX_TOAST_CHARS2) };
+    return { toast: clip3(success, MAX_TOAST_CHARS2) };
+  };
+  const dispatch = async (scope) => {
+    const sessionId = sessionIdOfScope(scope);
+    if (sessionId === "")
+      return { toast: "Open a conversation first" };
+    const face = probe3(() => options.ctx.get?.("mpdTeamActions", false), undefined);
+    if (face?.dispatch === undefined)
+      return { toast: "Unavailable here" };
+    const running = Promise.resolve().then(() => face.dispatch?.({ sessionId })).then((value) => recordOf3(value)?.ok === false ? { toast: clip3(stringOf3(recordOf3(value)?.error) || "The action was refused", MAX_TOAST_CHARS2) } : { toast: "Dispatched" }, (error) => ({ toast: clip3(error instanceof Error ? error.message : "The action was refused", MAX_TOAST_CHARS2) }));
+    return orDeferred(running, "Dispatching…");
+  };
+  const saveMemory = async (_scope, event) => {
+    const reply = replyTextOf(event);
+    if (reply.trim() === "")
+      return { toast: "Nothing to save" };
+    const description = clip3(reply.split(`
+`).map((line) => line.trim()).find((line) => line !== "") ?? reply, MAX_MEMORY_DESCRIPTION_CHARS);
+    return callTool(MEMORY_WRITE_TOOL, { title: description, description, content: reply.slice(0, MAX_MEMORY_CONTENT_CHARS), kind: "note" }, "Saved to memory");
+  };
+  const copyReply = async (_scope, event) => {
+    const reply = replyTextOf(event);
+    if (reply === "")
+      return { toast: "Nothing to copy" };
+    return { copy: reply.slice(0, MAX_COPY_CHARS) };
+  };
+  return { [DSHGO_DISPATCH_ACTION]: dispatch, [DSHGO_SAVE_MEMORY_ACTION]: saveMemory, [DSHGO_COPY_REPLY_ACTION]: copyReply };
+}
+function registerDshGoSurfaces(options) {
+  const log = options.log ?? ((line) => {
+    rowLogLine("mpd-bundle", line);
+  });
+  const pollMs = options.pollMs ?? DSHGO_POLL_MS;
+  let registered = false;
+  let announced = false;
+  let offBound;
+  const timers = new Set;
+  const data = (scope, emit, caps) => {
+    const send = typeof emit === "function" ? emit : undefined;
+    let last = "";
+    const tick = () => {
+      const value = probe3(() => stripValueOf(options, scope, caps), null);
+      if (value === null)
+        return;
+      const serialized = JSON.stringify(value);
+      if (serialized === last)
+        return;
+      last = serialized;
+      probe3(() => send?.(value), undefined);
+    };
+    tick();
+    const timer = setInterval(tick, pollMs);
+    timers.add(timer);
+    return () => {
+      clearInterval(timer);
+      timers.delete(timer);
+    };
+  };
+  const attempt = () => {
+    if (registered)
+      return;
+    const present = probe3(() => options.dsh.dshGoPresent() === true, false);
+    if (!present) {
+      if (offBound === undefined) {
+        offBound = probe3(() => {
+          const off = options.dsh.onServiceBound(["dshGo"], () => {
+            attempt();
+          });
+          return typeof off === "function" ? off : () => {};
+        }, () => {});
+      }
+      return;
+    }
+    const strip = probe3(() => options.dsh.dshGoStrip?.(DSHGO_STRIP_ID, data) === true, false);
+    const surfaceActions = createSurfaceActions(options);
+    let accepted = 0;
+    for (const [id, handler] of Object.entries(surfaceActions)) {
+      if (probe3(() => options.dsh.dshGoOn?.(id, handler) === true, false))
+        accepted += 1;
+    }
+    registered = strip || accepted > 0;
+    if (!announced) {
+      announced = true;
+      log("[mpd] dshGo=surfaces strip=" + (strip ? "on" : "off") + " actions=" + String(accepted));
+    }
+  };
+  attempt();
+  return {
+    registered,
+    dispose: () => {
+      for (const timer of timers)
+        clearInterval(timer);
+      timers.clear();
+      probe3(() => offBound?.(), undefined);
       offBound = undefined;
     }
   };
@@ -2994,8 +4523,34 @@ function apply(ctx) {
       registerRoutes();
     });
   }
+  const memoryScopeOf = () => {
+    const config = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined;
+    if (config === null || typeof config !== "object")
+      return;
+    const read = config.get;
+    if (typeof read !== "function")
+      return;
+    const dir = read.call(config, "memory.dir");
+    const agentSlug = read.call(config, "memory.agentSlug");
+    return { dir: typeof dir === "string" ? dir : undefined, agentSlug: typeof agentSlug === "string" ? agentSlug : undefined };
+  };
   try {
     const panel = registerDshGoPanel({
+      dsh,
+      ctx,
+      memory: memoryScopeOf(),
+      log: (line) => {
+        rowLogLine("mpd-bundle", line);
+      }
+    });
+    const teamPanel = registerDshGoTeamPanel({
+      dsh,
+      ctx,
+      log: (line) => {
+        rowLogLine("mpd-bundle", line);
+      }
+    });
+    const surfaces = registerDshGoSurfaces({
       dsh,
       ctx,
       log: (line) => {
@@ -3006,6 +4561,8 @@ function apply(ctx) {
       try {
         ctx.effect(() => () => {
           panel.dispose();
+          teamPanel.dispose();
+          surfaces.dispose();
         }, "mpd-dshgo-panel");
       } catch {}
     }

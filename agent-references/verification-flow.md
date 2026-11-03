@@ -237,7 +237,7 @@ the sessions `delegation.gate` covers, so delegation goes through `mpd_role_spaw
 or Agent Teams. Steering is therefore BOTH: the persona states the rule up front (its READ DISCIPLINE
 block, so the first move is a delegation rather than a refused read), and the two guards make it
 mechanical. The roster (`mpd_role_spawn`, `mpd_role_persona`), the official Agent Teams surface, the five
-`mpd_verify_*` tools, the memory engine, the boulder ledger and the ULW commands stay SHIPPED and callable.
+`mpd_verify_*` tools, the memory engine, the boulder ledger and the autoproject command stay SHIPPED and callable.
 
 **Why the ceremony was withdrawn, so a reader does not re-invent it.** The 2026-10-10/11 wave installed
 three `guardTool` hooks from ONE `apply()` site (`packages/mpd-roles-plugin/src/index.ts`) on top of that

@@ -1,0 +1,22 @@
+# RED-FIRST on HEAD d2032bf3 — 2026-11-03T03:51:29Z
+# command: bun test packages/mpd-cellwork-plugin/test/flow.test.ts -t 'D3/C4'
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/flow.test.ts:
+1214 |     ],
+1215 |   }, splitterAgent(harness))
+1216 |   expect(submitted.ok).toBe(true)
+1217 |   // NON-FATAL: the split is ACCEPTED and the warning rides beside the verdict.
+1218 |   expect(submitted.accepted).toBe(true)
+1219 |   expect((submitted.warnings as Array<Record<string, unknown>>).length).toBe(1)
+                           ^
+TypeError: undefined is not an object (evaluating 'submitted.warnings.length')
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/flow.test.ts:1219:21)
+(fail) D3/C4: cellwork_split reports a scope-less task's warning in the RESULT and in its render [8.53ms]
+
+ 0 pass
+ 35 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [158.00ms]
+# exit: 1

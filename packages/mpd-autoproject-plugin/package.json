@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/autoproject",
+  "private": true,
+  "version": "0.2.3",
+  "type": "module",
+  "description": "autoproject discipline plugin (mpd_autoproject + /autoproject) with the merged boulder durable work-state machine (the six mpd_boulder_* tools)",
+  "scripts": {
+    "test": "bun test"
+  }
+}

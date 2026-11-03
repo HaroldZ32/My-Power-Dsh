@@ -52,6 +52,7 @@ export type {
   TuiShortcutsLike,
   TuiStatusLike,
   TuiStatusView,
+  TuiThemeDescriptorLike,
   TuiThemesLike,
   TuiToastLike,
   TuiWorkspacesLike,

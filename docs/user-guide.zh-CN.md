@@ -16,12 +16,12 @@ cd <repo> && dsh plugin --profile dsh-tui add .    # 终端界面（DSH-TUI）
 
 仓库根目录 **就是** bundle 包本身（`@mpd-dsh/mpd`）：`dsh.bundle.patch`、`dsh.client` 与
 `exports` 映射都在它的 manifest 里，因此这一条命令会安装全部插件行、`mpd` preset、整个 skill
-语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
+语料库以及扩展根目录。没有别的步骤：不需要打包，也不需要复制。重启 `dsh`，然后在
 **MPD（Main Working Agent）** preset 上开启会话。
 
-本 bundle 声明了**四个**运行时依赖 —— 即 `package.json` 的 `dependencies` 里的四个条目：提供团队模式的
+本 bundle 声明了**四个**运行时依赖，即 `package.json` 的 `dependencies` 里的四个条目：提供团队模式的
 三个官方 Agent Teams 包（`@deepseek-ai/dsh-experimental-agent-team` 及其 `-tool-agent-team`、
-`-client-ui-agent-team` 两个同级包），加上 `@dsh-std/sdk`（`0.1.1-rc.2`）—— DSH Standard facet 激活
+`-client-ui-agent-team` 两个同级包），加上 `@dsh-std/sdk`（`0.1.1-rc.2`）： DSH Standard facet 激活
 模块的 scoped 辅助库，与其他已声明依赖一样由包管理器解析，不随本仓库分发。
 **`dsh-better-sidebar`**（即承载 Workmates 标签页的社区侧边栏 bundle）**有意不在
 其中**：它是可选 peer（外加一个 `devDependency`），bundle 从不安装它，它的缺席是正常的组合状态，
@@ -33,7 +33,7 @@ cd <repo> && bun install          # 只需一次：把声明的运行时依赖�
 ```
 
 如果 `node-gyp` 不可用，可以用
-`bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本装上这个**可选 peer** —— 只有侧边栏的
+`bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本装上这个**可选 peer**：只有侧边栏的
 终端面板会降级。（当初需要这个开关的传递依赖 `node-pty` 自 `0.24.1` 起已被移除，2026-10-02 实测；
 `0.28.0` 同样不含任何安装脚本，2026-10-21 实测。）`dsh-better-sidebar@0.28.0` 要求 harness
 **DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.5`。
@@ -41,7 +41,7 @@ cd <repo> && bun install          # 只需一次：把声明的运行时依赖�
 
 **每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
 停下并提示 `error: required option '--profile <name>' not specified`。profile 名就是你实际运行的
-那个 —— Web GUI 用 `web`，终端界面用 `dsh-tui`（脚本化运行用 `headless`）。
+那个： Web GUI 用 `web`，终端界面用 `dsh-tui`（脚本化运行用 `headless`）。
 
 ### DSH-TUI profile（`dsh-tui`）
 
@@ -95,16 +95,16 @@ dsh plugin --profile dsh-tui remove @mpd-dsh/mpd
 ```
 
 本 bundle 整体安装、整体卸载，skills 也包含在内：插件行来自 bundle patch，`mpd` preset 由
-`presets/mpd.patch.yml` 里的 `preset-mpd` 行声明（**增量**交付 —— bundle 不对任何 host 行做
+`presets/mpd.patch.yml` 里的 `preset-mpd` 行声明（**增量**交付： bundle 不对任何 host 行做
 id-target，因此部署默认仍属于 host，§7），skill 语料库从 `<bundle>/skills` 提供
 （`mpd-bootstrap` 行注册了一个 `ctx.skills` provider）。`$DSH_HOME` 中不会被复制任何东西，因此
-卸载会一并带走插件行、preset 与 skills —— 内置 preset 名册恢复原状，`$DSH_HOME/skills`
+卸载会一并带走插件行、preset 与 skills：内置 preset 名册恢复原状，`$DSH_HOME/skills`
 保持原样。刻意保留下来的只有 **你自己的数据**：workmate 库
 （`~/.mpd/workmate`）与各工作区的 `.mpd/` 状态。
 
 从 `<= 0.2.6` 的 bundle（会把 presets + skills 复制进 `$DSH_HOME`）升级：`>= 0.3.0` 的首次启动
 会自行删除那些带版本戳的副本。由历史遗留的 `scripts/install-profile.ts` 流程留下的无戳副本不会
-被触碰 —— 如果你用过那个流程，请手工删除。
+被触碰：如果你用过那个流程，请手工删除。
 
 ### 历史安装器（仅开发/QA）
 
@@ -121,9 +121,9 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 唯一随包提供的 preset 是 **MPD（Main Working Agent）**。它的约定：
 
 - **项目指令文件**：会话开始时，智能体必须尝试读取 `AGENT.md`（回退到 `AGENTS.md`，再回退到
-  `CLAUDE.md`）—— preset 就是通过 `dsh-agent-instructions` 配置了这几个候选名。
+  `CLAUDE.md`）： preset 就是通过 `dsh-agent-instructions` 配置了这几个候选名。
 - **新项目引导**：在**顶层**会话中，如果项目目录里没有 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`
-  （大小写不敏感），`mpd-project-init` 宿主行会写入一份通用的英文 `AGENT.md`（带显眼的溯源注释，
+（大小写不敏感），`mpd-project-init` 宿主行会写入一份通用的英文 `AGENT.md`（带显眼的溯源注释，
   不编造事实），同时写入 `<ws>/.mpd/project-init.json` 标记和一行
   `<ws>/.mpd/logs/mpd-project-init.log` 日志。它用 `wx` 写入，绝不覆盖；在 HOME 或 `/`、非项目目录、
   以及标记已存在时保持静默。它写入的文件从**下一个**会话开始才会被注入。
@@ -135,14 +135,14 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 
 | 你想做的事 | 工具 | 说明 |
 |---|---|---|
-| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具 —— 想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
+| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具：想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
-| 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
-| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
+| 推进长任务 | `mpd_autoproject`（`light` 或 `heavy` 档：计划关卡、执行轮次、验证关卡），或其 `/autoproject <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 该命令会注入 autoproject 激活指令：运行自主执行，只在它的三个决策点停下等人类，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
+| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据： heavy 档 autoproject 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
-| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放 —— 新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
+| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放：新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
-| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`agent_teams_task`（在任务板上 claim / complete / fail）、`agent_teams_dispatch`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` + **Team** 视图 —— 本 bundle 自己的 Web 团队界面（`/plugins/mpd-team/state`）；会话头部的 **Agent Teams** 面板是 harness 自己的、独立的只读投影 | 见 §6 与 §8 |
+| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`agent_teams_task`（在任务板上 claim / complete / fail）、`agent_teams_dispatch`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` + **Team** 视图：本 bundle 自己的 Web 团队界面（`/plugins/mpd-team/state`）；会话头部的 **Agent Teams** 面板是 harness 自己的、独立的只读投影 | 见 §6 与 §8 |
 | 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
 | 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §10 |
 | 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
@@ -157,35 +157,35 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 
 | 名字 | 纪律 |
 |---|---|
-| Architect | 架构评审、深度调试、自审 —— 只读 |
-| Researcher | 基于证据的代码 / 开源检索 —— 只读 |
-| Planner | 产出计划，从不实现 —— 只读 |
+| Architect | 架构评审、深度调试、自审：只读 |
+| Researcher | 基于证据的代码 / 开源检索：只读 |
+| Planner | 产出计划，从不实现：只读 |
 | Deep Worker | 端到端执行目标 |
 | Senior Engineer | 主要实现与验证 |
 | Lead | 编排与委派 |
 | Explorer | 只读代码库检索 |
 | Reviewer | 正确性与风险发现，不做修复 |
-| Plan Reviewer | 检查计划是否可执行，只拒绝真实阻塞项 —— 只读 |
-| Vision Analyst | 读取截图与图表 —— 只读 |
+| Plan Reviewer | 检查计划是否可执行，只拒绝真实阻塞项：只读 |
+| Vision Analyst | 读取截图与图表：只读 |
 | Junior Engineer | 小而明确范围的机械化改动 |
 
 以单次咨询方式使用：
 
-- `mpd_roles_list` —— 列出名册。
-- `mpd_role_spawn { role, task, context? }` —— 一次性（ONE-SHOT）单次咨询：一次有界委派、一份报告；
+- `mpd_roles_list`：列出名册。
+- `mpd_role_spawn { role, task, context? }`：一次性（ONE-SHOT）单次咨询：一次有界委派、一份报告；
   子会话保留该角色的人设与模型路由，并以角色名称为 label；报告落定后适配器会释放 activation，因此这次
-  咨询**不会**被复用 —— 新问题请用**新的** spawn（harness 的 catalog 只追加，所以已落定的子会话仍可能
+  咨询**不会**被复用：新问题请用**新的** spawn（harness 的 catalog 只追加，所以已落定的子会话仍可能
   以 `inactive` 列出，但契约就是一次性的）。只读角色会被机制性地禁用写入类工具。
-- `mpd_role_persona { role }` —— 取出完整人设文本（例如传给只接受文本人设的 spawn 接口）。
+- `mpd_role_persona { role }`：取出完整人设文本（例如传给只接受文本人设的 spawn 接口）。
 
 按工作量大小挑选工具：小而机械的改动交给 **Junior Engineer**，边界清晰且独立的一块交给
 **Senior Engineer** 或 **Deep Worker**，证据类问题交给 **Researcher** 或 **Explorer**，需要结论时交给
-**Reviewer**。每次 spawn 只要**一个**交付物 —— 专家返回的是结果而不是推理过程 —— 值得反复复用的就
+**Reviewer**。每次 spawn 只要**一个**交付物（专家返回的是结果而不是推理过程） 值得反复复用的就
 提升为 workmate（§5）。
 
 ## 5. workmate 库（持久、会演化的专家）
 
-名册只是 **基础模板**。当你会在多个会话中反复使用某位专家时，把它实例化成一个 *workmate* ——
+名册只是 **基础模板**。当你会在多个会话中反复使用某位专家时，把它实例化成一个 *workmate*：
 `~/.mpd/workmate/` 下的一份持久副本（在你的 HOME 中，跨项目），拥有独立名字。
 
 ```text
@@ -193,7 +193,7 @@ mpd_workmate_init   { base: <功能名>, name?: <独立名字>, note? }
   → 创建 ~/.mpd/workmate/<name>/{meta.json, persona.md, memory.md, note.md}
 ```
 
-`base` 是专家的**功能名**（如 `Deep Worker`，而不是名册 id —— id 属于内部信息，会被拒绝）。
+`base` 是专家的**功能名**（如 `Deep Worker`，而不是名册 id： id 属于内部信息，会被拒绝）。
 省略 `name` 时，实例名由该功能名自动派生（`Deep Worker` → `deep-worker-1`）。`meta.json` 会把
 内部 `baseId` 记为溯源信息，但任何工具输出、路由或界面都不会暴露它。
 
@@ -202,9 +202,9 @@ mpd_workmate_init   { base: <功能名>, name?: <独立名字>, note? }
 | `mpd_workmate_list` | 列出实例（name、baseName、uses、updatedAt、note） |
 | `mpd_workmate_spawn { name, task, context? }` | 一次性（ONE-SHOT）单次咨询：workmate 以自己的模型路由执行一次有界委派，并带上其演化后的人设 + 独立记忆 + 说明卡；报告落定后 activation 即被释放（持久连续性保存在 workmate 的**记录**里，而不是子会话）；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有上限的记忆追加（最旧的被淘汰）、人设修订合并、说明卡重生成、`uses++` |
-| `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate** —— 绝不强推弱匹配 |
+| `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate**：绝不强推弱匹配 |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例（迁移它已演化的身份） |
-| `mpd_workmate_delete { name, purge?, confirm? }` | 删除实例 —— 先归档；只有 `purge: true` + `confirm: <name>` 才是真正删除 |
+| `mpd_workmate_delete { name, purge?, confirm? }` | 删除实例：先归档；只有 `purge: true` + `confirm: <name>` 才是真正删除 |
 
 容量上限让注入的上下文保持有界：人设 ≤ 8 KiB、记忆 ≤ 8 KiB、说明卡 ≤ 1.5 KiB。
 
@@ -214,7 +214,7 @@ workmate 是你智能体的 *演化记忆*：每次任务后由 workmate 自己�
 ### 重命名与删除 workmate
 
 **名字仅限 ASCII**（`[a-z0-9_-]`，小写）。`Alice`、中文名、`a/b` 或 `..` 会在最前面就被拒绝
-（`400 invalid-name`）—— 磁盘上不会被动任何东西。Unicode 名字是已知的后续项，不是缺陷。
+（`400 invalid-name`）：磁盘上不会被动任何东西。Unicode 名字是已知的后续项，不是缺陷。
 
 **重命名**（`mpd_workmate_rename { name, new_name }`）是 **迁移** workmate 而不是重建：目录键、
 `meta.json`、库索引、说明卡中的自我引用以及历史名字（`renamedFrom`）一起迁移，而人设、记忆、
@@ -229,10 +229,10 @@ mv ~/.mpd/workmate/.archive/<name>-<stamp> ~/.mpd/workmate/<name>
 ```
 
 只有显式 purge 才会销毁任何东西：`mpd_workmate_delete { name, purge: true, confirm: "<name>" }`
-—— 必须给出完全一致的名字，否则调用会被拒绝且不会删除任何内容。产品内没有"恢复"按钮：先归档在
+：必须给出完全一致的名字，否则调用会被拒绝且不会删除任何内容。产品内没有"恢复"按钮：先归档在
 UI 上是刻意的单向操作，恢复就是上面那条 `mv`。
 
-**当 workmate 正在被使用时，这两种改动都会被拒绝** —— 无论是仍有 `mpd_workmate_spawn`
+**当 workmate 正在被使用时，这两种改动都会被拒绝**：无论是仍有 `mpd_workmate_spawn`
 在运行，还是存在**旧版**团队记录（`.mpd/team/` 下未归档的记录中出现了它的名字；跑在官方插件上的
 团队不会留下这种记录）。拒绝信息为
 `409 in-use`，并列出阻塞的团队 id 与成员，因此是可行动的：结束正在运行的 spawn（或清理那些旧版
@@ -243,12 +243,12 @@ UI 上是刻意的单向操作，恢复就是上面那条 `mv`。
 
 **团队平面是 mpd 的 RECORD**，而不是官方插件：成员名册、任务板与每个任务都存放在
 `.mpd/team/teams/<id>.json`，由 `mpdTeams` 提供。本 bundle 的 `mpd-agent-team` /
-`mpd-tool-agent-team` / `mpd-ui-agent-team` 三行提供队友的**执行**与 **UI** 面 —— 官方服务及其
-九个面向模型的工具，以及 Web 端的名册/任务板面板 —— 其中两个执行行在 TUI 组合里被**禁用**：
+`mpd-tool-agent-team` / `mpd-ui-agent-team` 三行提供队友的**执行**与 **UI** 面：官方服务及其
+九个面向模型的工具，以及 Web 端的名册/任务板面板，其中两个执行行在 TUI 组合里被**禁用**：
 dsh-tui 宿主拒绝团队服务那个绑定在 root 上的投影（行清单见 [`design.md`](design.md)）。五个官方
-撰写动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、
-`team_task_update` —— 在工具边界被**拒绝**，所以下面的计划是唯一的门。这个闭合止步于**工具**
-边界：某一行直接调用团队**服务**（官方执行器回退路径）不构成工具调用，因此**不受**门禁 —— 这是
+撰写动词： `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、
+`team_task_update`：在工具边界被**拒绝**，所以下面的计划是唯一的门。这个闭合止步于**工具**
+边界：某一行直接调用团队**服务**（官方执行器回退路径）不构成工具调用，因此**不受**门禁，这是
 唯一声明的边界。你的会话智能体就是 **Lead**（captain）：它 stage 计划、spawn 具名队友、把任务
 开在 mpd 任务板上，并亲自整合结果。
 
@@ -263,13 +263,13 @@ interrupt_agent { agent_id }                                              # 仅 
 ```
 
 - **暂存的就是一份需要你批准的计划，而且它跑在「我们的」平面上。** 在 `team.gate: "mechanical"`
-  （默认）下，会话起点的复杂度门会通过 `agent_teams_plan` 工具 **stage 一个可批准的 plan shell** ——
+（默认）下，会话起点的复杂度门会通过 `agent_teams_plan` 工具 **stage 一个可批准的 plan shell**：
   0 成员、0 任务，且处于**惰性**状态：不会 spawn 任何东西。captain 扩展它
-  （`add_member` / `create_task`），再用 `agent_teams_plan {action:"approve"}` 批准 —— 这才是
+（`add_member` / `create_task`），再用 `agent_teams_plan {action:"approve"}` 批准，这才是
   spawn 成员并发布任务的动作；`action:"status"` 读回计划，`action:"delete"` 将其归档。这个 plan
   平面是**我们的**（`mpd-team-core`），而 mpd RECORD 是唯一的任务板：`agent_teams_task` 驱动它，
-  `agent_teams_plan {action:"status"}` 把它读回来。五个官方撰写动词 —— `spawn_teammate`、
-  `team_task_create`、`team_task_list`、`team_task_get`、`team_task_update` —— 在工具边界被
+  `agent_teams_plan {action:"status"}` 把它读回来。五个官方撰写动词： `spawn_teammate`、
+  `team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`：在工具边界被
   **拒绝**，所以上面的计划是唯一的门。若 `team.gate: "advisory"`，或 `agent_teams_plan`
   没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
 - **敏感度决定阈值。** `mpd.jsonc` 里的 `team.sensitivity` 取 `easy`（**默认**）| `normal` | `strict`；
@@ -283,15 +283,15 @@ interrupt_agent { agent_id }                                              # 仅 
   | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4（三取三） | ≥ 80 / ≥ 3 | 关 |
 
   信号 F 是一次**有界**的根目录 `readdir`（绝不递归）：存在一个项目清单**且**存在一个项目目录**且**
-  至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙 —— 在大工作区里，仅 F 一项就会让 `hello`
+  至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙：在大工作区里，仅 F 一项就会让 `hello`
   也触发。因此静默的负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都不会 stage）。
 - **一次批准启动三套机制。** 在 `agent_teams_plan` 批准**成功**路径上，团队真正激活之后，同一次批准还会
   anchor 一个持久化 goal（objective = 计划描述；描述为空时回退到计划名称，来源 `team`），并用 `todo_write` 按计划任务写入待办
-  （每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的 —— 失败只记一行日志，
-  绝不让批准失败 —— 且不新增任何旋钮。
+（每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的：失败只记一行日志，
+  绝不让批准失败，且不新增任何旋钮。
 - **captain 的侦察与委派守卫重新开启（2026-10-20 恢复）。** 在 `mpd` preset 的**顶层**会话里，
-  `captain.investigation`（默认 `deny`）拒绝在**源码**路径上使用 `read` / `grep` / `glob` ——
-  文档带仍然可读 —— `delegation.gate`（默认 `deny`）拒绝 harness 自带的通用 spawn 工具
+  `captain.investigation`（默认 `deny`）拒绝在**源码**路径上使用 `read` / `grep` / `glob`：
+  文档带仍然可读： `delegation.gate`（默认 `deny`）拒绝 harness 自带的通用 spawn 工具
   `subagent`、`subagent_fork` 与 `workflow`，并在拒绝里点名获准的通道（`mpd_role_spawn`、workmate
   库、Agent Teams）。委派门是**按 preset 划定范围的**：别的 preset 的顶层会话（包括部署默认的
   `cordis`）会被放行，而 `mpd` captain 与每个成员/子会话无论跑哪个 preset 都仍被覆盖。
@@ -299,36 +299,36 @@ interrupt_agent { agent_id }                                              # 仅 
   由 captain 写代码，由**另一个**智能体记录判决。两个旋钮都在 `mpd` 设置命名空间下（§9）：
   `captain.investigation` 取 `deny` | `allow`，`delegation.gate` 取 `deny` | `captain`（仅顶层会话）| `allow`。
 - **任务板的 compare-and-set 是不对称的。** `release` 与 `complete`/`fail` 会遵守
-  `expected_revision` —— 过期值会被拒绝，并同时返回两个 revision 且不写入；`claim`、`contract`
+  `expected_revision`：过期值会被拒绝，并同时返回两个 revision 且不写入；`claim`、`contract`
   与 `depend` 不读它，所以 `claim` 总是从自己读到的最新状态冻结一个新的 attempt。
 - **`write_scopes` 从不授权写入，而 mpd RECORD 平面上无序的重叠会被拒绝。**
   在 mpd RECORD 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个声明写范围重叠、且彼此
-  之间没有依赖路径的任务，并点名这一对与两条补救方式 —— 补上依赖边，或让两个范围互不重叠；在官方
-  （OFFICIAL）平面上重叠只是提示，不是锁。`claim` 从不授权写入，而 bash/格式化器/代码生成器会绕过
-  一切检查 —— 这就是那条已声明的边界 —— 由 Lead 协调归属并审阅最终 diff。
+  之间没有依赖路径的任务，并点名这一对与两条补救方式：补上依赖边，或让两个范围互不重叠；在官方
+（OFFICIAL）平面上重叠只是提示，不是锁。`claim` 从不授权写入，而 bash/格式化器/代码生成器会绕过
+  一切检查（这就是那条已声明的边界） 由 Lead 协调归属并审阅最终 diff。
 - **消息是持久的。** `send_message` 回答 `accepted`（已投递）或 `queued`（已落盘、排队中），排队
   中的消息绝不要重发。`list_agents` 报告每位成员的 `agent_id` 与可用状态（`inactive` 表示当前没有
   轮次在执行，不是工作已完成）；当没有其他成员在运行或创建中时，`wait_agent` 立刻回答
   `noProgress`。
 - **只读成员就是只读的。** Architect、Researcher、Planner、Explorer、Plan Reviewer 与
   Vision Analyst 会被拒绝那八个写入工具：`mpd_role_spawn` 通道通过 `toolFilter.deny`，团队通道通过
-  `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为团队的 spawn 接缝不接受按队友的
+  `mpd-roles-plugin` 里以团队身份为键的工具守卫，因为团队的 spawn 接缝不接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
-- **模型配置的单位是 AGENT —— 不再有持久化的槽位。** 名册的十一个成员各自拥有一条路由，
+- **模型配置的单位是 AGENT：不再有持久化的槽位。** 名册的十一个成员各自拥有一条路由，
   `agentRoutes.<Agent>`：自己的 `provider` + `model`、可选的 `reasoningEffort`，以及**自己**的可选
-  `fallbacks` 链。路由可以逐个设置、逐个清除，而且**没有默认层** —— 工作区从未配置的 agent **没有**路由。
+  `fallbacks` 链。路由可以逐个设置、逐个清除，而且**没有默认层**：工作区从未配置的 agent **没有**路由。
   四个分组只保留为**批量编辑的快捷方式**：`/mpd-model` 允许你选一个分组、一次写入组内所有成员，写入前会有
-  一个确认面板列出受影响的 agent 及其当前路由；这个便捷入口**自身不存储任何东西** —— 它只是写入各成员
+  一个确认面板列出受影响的 agent 及其当前路由；这个便捷入口**自身不存储任何东西**，它只是写入各成员
   自己的条目。未配置或格式错误的 agent 路由会用一个结构化的 `AGENT_UNCONFIGURED` 错误**拒绝单次 spawn**
-  （`mpd_role_spawn` / `mpd_workmate_spawn`），点名该 agent、缺失的叶子和两条修复路径（`/mpd-model`，或
-  `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）—— 不写入任何内容，也不启动任何子会话。扩展贡献的 role
+（`mpd_role_spawn` / `mpd_workmate_spawn`），点名该 agent、缺失的叶子和两条修复路径（`/mpd-model`，或
+  `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）：不写入任何内容，也不启动任何子会话。扩展贡献的 role
   属于 `unrouted`、**不是**拒绝：它保留自己的链并照常 spawn，只有基础名册 agent 会被拒绝。回退链在 spawn 之前
   **只消费一次**：模型目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」），胜出者再经过推理
   强度适配。这些 agent 路由同时作用于单次咨询**和团队成员**：团队执行器按身份优先级 **`role` →
   `description` 的头部 → 整个 `name`** 解析成员的路由。匹配不到的成员、或没有可用路由的成员，会**继承暂存
   它的那个会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、**绝不抛错**
-  —— 路由绝不会让团队半途而废。遗留的 `teamModels` 块只做**一次**迁移，之后被忽略、永不改写（见 §9）。
+：路由绝不会让团队半途而废。遗留的 `teamModels` 块只做**一次**迁移，之后被忽略、永不改写（见 §9）。
   `mpd-roster-provider` 只服务于官方 `spawn_teammate` 通道，而该通道被团队门禁拒绝，所以在默认组合里它
   不路由任何东西。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
@@ -358,7 +358,7 @@ wait_agent { "timeout_ms": 60000 }
 interrupt_agent { "agent_id": "senior-1" }     # 仅 Lead：停下当前轮次，保留收件箱
 ```
 
-§13.1 是可照抄的完整走法 —— 创建成员与任务、操作任务板、改派、收尾一波。
+§13.1 是可照抄的完整走法：创建成员与任务、操作任务板、改派、收尾一波。
 `session-watchdog-*` 是另一套独立的内层停滞检测实现（见 §12 与 [`tui.md`](tui.md)）。
 
 对于超大规模的工作，[`cellwork.md`](cellwork.zh-CN.md) 记录了由命令触发的 **cell-work 模式**：
@@ -374,12 +374,12 @@ dsh plugin --profile dsh-tui add /path/to/my-power-dsh
 ```
 
 这一条命令就是全部安装（插件代码、bundle 级 `dsh-plugin.json`、skills 语料、MCP 行）。没有按包执行的
-`dsh plugin add`，而且 TUI 包自身不携带 `cordis.patch.yml` —— `mpd-tui` 这一行由 bundle patch 独占，
+`dsh plugin add`，而且 TUI 包自身不携带 `cordis.patch.yml`： `mpd-tui` 这一行由 bundle patch 独占，
 因为第二次挂载会重复 loader entry id，而 loader 会直接拒绝。安装后
 `dsh.profile.bundles` 为 `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
-—— 本 bundle 是**第三层** patch 层 —— 而 `mpd` 只是**可用**的 preset，**不是**默认：部署默认仍属于
+（本 bundle 是**第三层** patch 层） 而 `mpd` 只是**可用**的 preset，**不是**默认：部署默认仍属于
 host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `selectedDefault`，或
-`node scripts/set-default-preset.ts --yes` —— 见 [`preset-default.zh-CN.md`](preset-default.zh-CN.md)）。
+`node scripts/set-default-preset.ts --yes`：见 [`preset-default.zh-CN.md`](preset-default.zh-CN.md)）。
 宿主需要真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 （`dsh-tui requires an interactive terminal (stdout must be a TTY)`），所以永远不要用管道驱动它。
 
@@ -387,13 +387,13 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 | Web 界面 | TUI 等价物 |
 |---|---|
-| **Team** 视图 —— bundle 自己的侧栏页面，由 `/plugins/mpd-team/state` 提供；会话头部的官方 **Agent Teams** 面板是另一个只读投影，没有 TUI 对应物 | `tuiPanels` 侧栏页面（`MPD`，用 `alt+a` / `/mpd panel` 打开）—— `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行仍是回退 |
+| **Team** 视图： bundle 自己的侧栏页面，由 `/plugins/mpd-team/state` 提供；会话头部的官方 **Agent Teams** 面板是另一个只读投影，没有 TUI 对应物 | `tuiPanels` 侧栏页面（`MPD`，用 `alt+a` / `/mpd panel` 打开）： `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行仍是回退 |
 | Workmates 侧边栏标签页 | `tuiPanels` 的 `workmate` 页面，外加 `/mpd` 命令树（`tuiCommandTrees`）与 `tuiDialogs` |
 | 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
 | — | `tuiShortcuts` 快捷键 |
 
 这些是**等价物，不是等价功能（parity）**：每个界面都重建在宿主自身的 TUI 接缝上，且有两个接缝被明确
-声明为未主张 —— 宿主不提供 prompt 插槽（`tuiPrompt` 宿主不可用），也不为 bundle 的 renderer 事件投射
+声明为未主张：宿主不提供 prompt 插槽（`tuiPrompt` 宿主不可用），也不为 bundle 的 renderer 事件投射
 任何 transcript 行，因此 prompt 插槽与 transcript 行都不作主张。完整清单位于
 [`tui.zh-CN.md`](tui.zh-CN.md) §10 NOT-CLAIMED。
 
@@ -401,7 +401,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 - **注意力徽标由插件侧发布，而不是由页面发布。** 面板通过 `tuiPanels.badge` 携带徽标，统计**当前
   显示的那个团队**的看门狗 hold。它从行的 apply 路径设置，因为 dsh-tui 只在某个插件面板是活动页时
-  才挂载它 —— 页面侧的徽标只能装饰你正在看的那个页面。武装后的第一次发布包含空状态，这正是清掉上一
+  才挂载它：页面侧的徽标只能装饰你正在看的那个页面。武装后的第一次发布包含空状态，这正是清掉上一
   次运行遗留的陈旧徽标的方式。
 - **`panelAutoOpen`（`mpd-tui` 行的旋钮，默认 `true`）** 每进程**最多打开一次** MPD 页面，触发点是
   团队从 NOT-LIVE → LIVE 的**边沿**：启动时工作区里已有团队不会抢走侧栏；一次性闩锁在面板接缝重绑
@@ -410,20 +410,20 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
   分别独立关闭两个页面。
 - **在 dsh-tui ≥ 0.16.1 上部署是 STATELESS 的。** 该宿主**自己掌管**侧栏启用清单：它的注册表在注册时
   启用面板、在 dispose 时移除，并在每次 apply 时把已注册 id 并回去，因此本 bundle 的启用保持器变为
-  **只读** —— 取消阶梯、不装 feed、不装腰带，连陈旧默认迁移也跳过。在 0.15.x 上保持器加入宿主自愈，
+  **只读**：取消阶梯、不装 feed、不装腰带，连陈旧默认迁移也跳过。在 0.15.x 上保持器加入宿主自愈，
   只保留唯一一次写入（陈旧默认迁移）；0.15 以下仍是 feed-first。`/mpd status` 报告部署情况：宿主分配
   的面板 id、接缝状态与保持器的结论。
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 原有 13 个、按名册 agent 各一行三片叶子
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮：原有 13 个、按名册 agent 各一行三片叶子
 （三十三个 `agentRoutes.<Agent>.{provider,model,reasoningEffort}` 叶子；每片叶子是只可选择字段，选项
 来自实时模型目录，回退到声明列表）、再加 TUI 界面自身的一个旋钮，其中包括 `hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
+`commentChecker.autoCheck`、`autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`：通过
 harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
 同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
 `<workspace>/.mpd/mpd.jsonc` 写入**：保存下来的 override 就是最顶层的配置层，并在进程内生效；而把表单
-物化出的默认值投影进你的文件会污染它。文件回写属于**已退役**的 settings 命名空间路径——
+物化出的默认值投影进你的文件会污染它。文件回写属于**已退役**的 settings 命名空间路径：
 `packages/mpd-config-plugin` 仍实现它，但该 harness 上 `settingsRegister` 会被拒绝，因此这条路径处于
 **休眠**状态。
 
@@ -433,11 +433,11 @@ harness **自带的**表单编辑这一行的 config entry（`configForms.get("m
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
   `agentRoutes.*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
   `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
-  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。
+  其余旋钮仍适用挂载时捕获的规则： §9.1 逐个旋钮说明。
 - **旧命名空间回写路径有两个具名跳过场景（在本 harness 上已休眠）。** 这条路径本身不携带工作区身份，
   所以它的写入目标是保存那一刻存活的会话工作区：没有任何存活会话时，保存只写入宿主 settings 文档并报告
   `no-live-session`；有**多于一个**存活工作区时会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种
-  情况下**不会改动任何文件**，而值**不会丢失**——它保存在 settings 文档中，配置层立即对所有工作区生效；
+  情况下**不会改动任何文件**，而值**不会丢失**，它保存在 settings 文档中，配置层立即对所有工作区生效；
   只有文件写入在等待"恰好一个"存活会话。**entry 保存永远不会走到这段代码。**
 
 `mpd.jsonc` 中重复的键会编辑其**最后**一次出现（即 `JSON.parse` 读到的那一个），诊断信息会列出每一处
@@ -448,7 +448,7 @@ harness **自带的**表单编辑这一行的 config entry（`configForms.get("m
 
 `/mpd` 是覆盖侧边栏标签页原有状态的 TUI 命令树：裸 `/mpd` 打开选择器，`/mpd <值>` 直接执行，
 `/mpd status` 打印摘要。**状态行**（`tuiStatus`）是提示框上方的一行带 key 读数，报告 bundle 的实时
-状态 —— 团队、boulder/计划与 workmate 库 —— 读自会话工作区的 `.mpd` 状态。它只用于显示；可交互的部分
+状态（团队、boulder/计划与 workmate 库） 读自会话工作区的 `.mpd` 状态。它只用于显示；可交互的部分
 在看板场景、对话框与快捷键里。
 
 准入与分发产物、逐包兼容性台账、版本字符串、状态作用域以及明确的 NOT-CLAIMED 清单，请读
@@ -461,45 +461,45 @@ harness **自带的**表单编辑这一行的 config entry（`configForms.get("m
   `<workspace>/.mpd/team/teams/<id>.json`，因此渲染的就是 mpd RECORD：团队的身份与阶段、带模型路由与
   每人任务数的名册、任务板的任务 DAG（§8.1），以及批准前的待批计划。它从不读官方服务的投影，而 TUI
   渲染的是同一份记录（§7.1）。它会注册进当前组合所提供的那个侧边栏宿主（见下文）。
-- **Agent Teams**（另一块界面，只读 —— harness 自己的，不是团队界面）：官方客户端插件
+- **Agent Teams**（另一块界面，只读： harness 自己的，不是团队界面）：官方客户端插件
   `@deepseek-ai/dsh-experimental-client-ui-agent-team`（由本 bundle 的 `mpd-ui-agent-team` 行挂载）
-  在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影 ——
-  那是**官方服务**的投影，不是 mpd RECORD —— 所以面板打开期间名册或任务变化就会刷新。它列出名册
-  （持久名字与阶段：`running`、`inactive`、`provisioning`、`failed`）与共享任务板（任务标识、归属、
-  前置、就绪状态、提示性写入范围与重叠警告 —— 那是官方（OFFICIAL）平面的读法，重叠在那里只是
+  在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影：
+  那是**官方服务**的投影，不是 mpd RECORD，所以面板打开期间名册或任务变化就会刷新。它列出名册
+（持久名字与阶段：`running`、`inactive`、`provisioning`、`failed`）与共享任务板（任务标识、归属、
+  前置、就绪状态、提示性写入范围与重叠警告，那是官方（OFFICIAL）平面的读法，重叠在那里只是
   提示，而 Team 页面所渲染的 mpd RECORD 任务板会**拒绝**无序重叠，见 §6），并能跳进某位队友的
-  会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务修改控件 —— 那些属于
+  会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务修改控件，那些属于
   §6 里的工具。它不展示点对点消息，只展示名册与任务。如果插件是在一个已经
   打开的会话里才启用的，刷新一次页面以接收投影。在 TUI 组合里官方服务那两行
-  （`mpd-agent-team`、`mpd-tool-agent-team`）被禁用，因此这块面板没有 TUI 对应物。
+（`mpd-agent-team`、`mpd-tool-agent-team`）被禁用，因此这块面板没有 TUI 对应物。
 - **Workmates 侧边栏标签页**：workmate 库作为标签页贡献给 **DSH-better-sidebar**
-  （社区侧边栏 bundle，存在时才挂载的可选 peer），因此它和该侧边栏
-  自己的页面在一起 —— 标签条、`+` 菜单，以及侧边栏自己的启用/禁用开关。页面列出
+（社区侧边栏 bundle，存在时才挂载的可选 peer），因此它和该侧边栏
+  自己的页面在一起：标签条、`+` 菜单，以及侧边栏自己的启用/禁用开关。页面列出
   `~/.mpd/workmate/` 中的实例（base、uses、updated、note），支持筛选、打开查看某人设/记忆/说明卡，
   并可以从 **基于名册的 base 选择器**（不需要手输 id）加上可选名字与说明卡来新建一个实例。它还可以
-  **重命名** 与 **删除** 选中的实例 —— 删除流程是显式的（先确认，再归档，然后还有一个需要输入
+  **重命名** 与 **删除** 选中的实例：删除流程是显式的（先确认，再归档，然后还有一个需要输入
   完整名字才能永久清除的步骤），两种操作都做了 zh/en 本地化。它读取并调用宿主路由
   `GET /plugins/mpd-workmate/{list,roster,get}` 与
   `POST /plugins/mpd-workmate/{init,rename,delete}`。侧边栏 **标签条上的文字** 仍然保持英文
   `Workmates`（这是一个已记录的推迟项：标签条文字的解析处没有本地化翻译器）；页面正文跟随你的语言。
-- **workmate 页面住在哪里**：它是一张侧边栏页面。社区宿主是**可选 peer**，bundle 从不安装它 ——
-  `mpd-better-sidebar` 行在 `dsh-better-sidebar` 可解析的位置挂载它，否则自行禁用 —— 因此也不欠你
+- **workmate 页面住在哪里**：它是一张侧边栏页面。社区宿主是**可选 peer**，bundle 从不安装它，
+  `mpd-better-sidebar` 行在 `dsh-better-sidebar` 可解析的位置挂载它，否则自行禁用，因此也不欠你
   第二次手动安装：没有该宿主时，**同一张**页面会注册进 **HARNESS 自带的**右侧边栏并保持可访问；若
   连侧边栏接缝都不存在，mpd 各面板会各自按名字报告一次。团队工作仍然可以通过 mpd record 上的
   `agent_teams_*` 任务板运行（§6），workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
-- **社区宿主存在时有两个侧边栏表面（0.28）**：每张 mpd 页面 —— Team 视图、Workmates 库与
-  AgentTeams 看门狗 —— 都会向 `dsh-better-sidebar` 注册**两次**：主标签页（`mpd-team`、
+- **社区宿主存在时有两个侧边栏表面（0.28）**：每张 mpd 页面， Team 视图、Workmates 库与
+  AgentTeams 看门狗：都会向 `dsh-better-sidebar` 注册**两次**：主标签页（`mpd-team`、
   `mpd-workmate`、`mpd-agent-teams`）以及一个**底部工作台孪生**（`mpd-team:bottom`、
   `mpd-workmate:bottom`、`mpd-agent-teams:bottom`）。孪生复用同一份正文、标题、图标与排序，并标记
   `bottomOnly`，因此只出现在插件自己的底部工作台、不会出现在别处；主标签页仍留在侧边栏标签条。孪生
-  按 id 幂等，且**仅当**社区宿主存在时才注册 —— 没有该宿主时走官方右侧边栏回退，回退标签页与主
+  按 id 幂等，且**仅当**社区宿主存在时才注册：没有该宿主时走官方右侧边栏回退，回退标签页与主
   标签页保持相同的标题、guide 与描述。以上都不会改变 `mpd_*` 工具，也不改变页面读取的路由。
 
 ### 8.1 Team 视图的任务 DAG
 
 Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列，按 rank 顺序排列，每一列的节点栈
 都以整张图的水平中线为中心对齐，因此短列与长列处在同一水平高度。跨 rank 的边不会横穿节点
-卡片 —— 它从图上方或下方的通道绕行，两条通道以中线为轴镜像，再汇入目标节点。相邻的连接线各走
+卡片，它从图上方或下方的通道绕行，两条通道以中线为轴镜像，再汇入目标节点。相邻的连接线各走
 独立车道，不会有两段直线重叠。任务或 rank 变化时图形会重新计算，节点位置随之过渡。
 
 只有 **completed → running** 的边有动画：一个小箭头沿路径移动，同时虚线段向前流动，让任务板上的
@@ -514,7 +514,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 
 卡片上的已用时间与进度各有明确的边界。已用时间来自任务的 `startedAt` 与 `finishedAt`
 时间戳（running 任务算到当前时刻）；没有起始时间戳的旧任务显示破折号，而不是猜一个时长。进度条
-是粗粒度的状态推导值 —— completed 100、running 50、claimed 10、pending/failed/cancelled 0 ——
+是粗粒度的状态推导值（completed 100、running 50、claimed 10、pending/failed/cancelled 0）
 不是实测的工作量。
 
 这一波不提供缩放、平移或小地图；图的布局由 bundle 自己计算，不引入图形布局库。
@@ -528,16 +528,16 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 |---|---|---|
 | `memory.vcs` | mpd-memory | `git` / `svn` / `both` |
 | `memory.dir`、`memory.agentSlug`、`memory.reflectionEvery` | mpd-memory | 记忆根目录、agent slug、反思节奏 |
-| `boulder.dir` | mpd-boulder | boulder 台账位置 |
+| `boulder.dir` | mpd-autoproject | boulder 台账位置 |
 | `hashline.*` | mpd-hashline | 守卫开关、diff 上限、注册表文件 |
 | `commentChecker.*` | mpd-comment-checker | autoCheck、二进制、超时 |
-| `ulw.*` | mpd-ulw | 轮数、计划/状态目录、provider/model 路由 |
+| `autoproject.*` | mpd-autoproject | 轮数、计划/状态目录、provider/model 路由 |
 | `goal.enabled`、`goal.autoAnchor`、`goal.autoRounds` | mpd-goal | 持久化 goal 桥：总开关、长任务是否自行 anchor goal、自动 anchor 的轮次上限（默认 `true` / `true` / `32`）。见 §13.10 |
 | `extensions.enable`、`extensions.disable` | mpd-ext | 按 id 的扩展启用/禁用列表（进程级：见 §10） |
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员）、mpd-roster-provider（仅官方执行器回退）（经 mpd-config） | **按 AGENT** 的模型路由 —— 模型配置的唯一单位：名册十一个成员（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）各自拥有 `{provider?, model?, reasoningEffort?, fallbacks?: [{provider, model, reasoningEffort?}, …]}`，每个叶子都可选。**没有持久化的槽位，也没有内置默认层**：工作区从未配置的 agent **没有**路由，它要路由的每一次单次 spawn 都会被**拒绝**，并给出一个结构化的 `AGENT_UNCONFIGURED` 错误，点名该 agent、缺失的叶子（`agentRoutes.<Agent>.provider`、`.model`）与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）—— 不写入任何内容，也不启动子会话。四个分组**只是** `/mpd-model` 的批量编辑快捷方式：分组写入会覆盖每个成员自己的条目，写入前有确认面板列出受影响的 agent 及其当前路由。agent **自己**的回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。团队成员的路由按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**遗留的 `teamModels` 块只迁移一次，之后被忽略、永不改写**（`<ws>/.mpd/model-config-seed.json` 必须记录 `{"version": 2}`；旧标记或无法解析的标记也会触发初始化，因此 v0.15.x 工作区只迁移一次而不会被搁浅；没有声明 `teamModels` 时，十一条条目会从已配置的提供商一次性播种 —— `deepseek-flash` 家族，slot-1 分组用 `max`、其余用 `high`），而 v2 标记意味着被删除的 `agentRoutes` 块永不重新播种。可在 **设置 → MPD** 与 TUI `/settings` 区块编辑，它们按四个分组标题显示**每个 agent 一行**（分组仅用于显示），写入 `agentRoutes.<Agent>.<leaf>` |
+| `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员）、mpd-roster-provider（仅官方执行器回退）（经 mpd-config） | **按 AGENT** 的模型路由：模型配置的唯一单位：名册十一个成员（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）各自拥有 `{provider?, model?, reasoningEffort?, fallbacks?: [{provider, model, reasoningEffort?}, …]}`，每个叶子都可选。**没有持久化的槽位，也没有内置默认层**：工作区从未配置的 agent **没有**路由，它要路由的每一次单次 spawn 都会被**拒绝**，并给出一个结构化的 `AGENT_UNCONFIGURED` 错误，点名该 agent、缺失的叶子（`agentRoutes.<Agent>.provider`、`.model`）与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `agentRoutes.<Agent>`）：不写入任何内容，也不启动子会话。四个分组**只是** `/mpd-model` 的批量编辑快捷方式：分组写入会覆盖每个成员自己的条目，写入前有确认面板列出受影响的 agent 及其当前路由。agent **自己**的回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志：绝不致命。团队成员的路由按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级：则不发送任何等级，spawn 照常运行。**遗留的 `teamModels` 块只迁移一次，之后被忽略、永不改写**（`<ws>/.mpd/model-config-seed.json` 必须记录 `{"version": 2}`；旧标记或无法解析的标记也会触发初始化，因此 v0.15.x 工作区只迁移一次而不会被搁浅；没有声明 `teamModels` 时，十一条条目会从已配置的提供商一次性播种： `deepseek-flash` 家族，slot-1 分组用 `max`、其余用 `high`），而 v2 标记意味着被删除的 `agentRoutes` 块永不重新播种。可在 **设置 → MPD** 与 TUI `/settings` 区块编辑，它们按四个分组标题显示**每个 agent 一行**（分组仅用于显示），写入 `agentRoutes.<Agent>.<leaf>` |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -547,8 +547,8 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 ### 9.1 保存的旋钮何时生效
 
 这是使用者最容易搞错的一点，所以逐个旋钮说清楚。总规则：消费方在 **挂载**（`apply()`）时通过
-`mpdConfig` 服务读取配置，因此对**大多数**旋钮而言，一个变化了的值 —— 无论是手工编辑 `.mpd/mpd.jsonc`
-或 `$DSH_HOME/mpd.jsonc`，还是通过 **设置 → MPD** / TUI 的 `/settings` 界面保存 —— 要等
+`mpdConfig` 服务读取配置，因此对**大多数**旋钮而言，一个变化了的值：无论是手工编辑 `.mpd/mpd.jsonc`
+或 `$DSH_HOME/mpd.jsonc`，还是通过 **设置 → MPD** / TUI 的 `/settings` 界面保存：要等
 **`dsh` 重启**之后才会改变插件的**行为**。模型配置旋钮是例外。
 
 有三件事不必等这次重启，而且都很有用：
@@ -559,8 +559,8 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
   spawn / workmate spawn / 队友启动都会携带新路由，无需重启。`mpd_config_reload` 仍是需要强制重读时的
   手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
-  新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的消费方仍持有它挂载时捕获的值。
-- **`watchdog.*` 从文件实时重读——表单保存到不了这些旋钮。** 看门狗在挂载时、收到**旧 `mpd` 命名空间**的
+  新的解析值，这是你确认编辑确实落地的办法，即使已挂载的消费方仍持有它挂载时捕获的值。
+- **`watchdog.*` 从文件实时重读：表单保存到不了这些旋钮。** 看门狗在挂载时、收到**旧 `mpd` 命名空间**的
   `settings/document-updated` 时（本 bundle 固定的 harness 上命名空间模型已退役，因此该事件不会触发）、以及每个
   tick 都会重新解析自己的旋钮。真正能实时到达它的是 `<workspace>/.mpd/mpd.jsonc` 的编辑：该行在每次解析时
   自己解析这个文件，并在**本进程内**应用发生移动的那一层、无需重启。经 `/settings` 或 Web 卡片的保存写入的是
@@ -572,22 +572,22 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 |---|---|---|---|
 | `hashline.*` | mpd-hashline | 挂载时 | `dsh` 重启后 |
 | `commentChecker.*` | mpd-comment-checker | 挂载时 | 重启后 |
-| `ulw.*` | mpd-ulw | 挂载时 | 重启后 |
+| `autoproject.*` | mpd-autoproject | 挂载时 | 重启后 |
 | `goal.*` | mpd-goal | 挂载时 | 重启后 |
 | `memory.*` | mpd-memory | 挂载时 | 重启后 |
-| `boulder.dir` | mpd-boulder | 挂载时 | 重启后 |
-| `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
+| `boulder.dir` | mpd-autoproject | 挂载时 | 重启后 |
+| `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效：无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
 | `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个 **AGENT** 只有一条路由、没有默认层：未配置或格式错误的 agent 路由会用 `AGENT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因路由失败；该 agent 自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的路由按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错。四个分组只是批量编辑快捷方式：分组写入会改动每个成员自己的条目，且需先确认 |
-| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick —— 该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效 —— 无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
+| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick：该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效：无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
 `cooldownMs`、`binary`），只能改行并重新安装。
 
 ## 10. 从使用者视角看扩展
 
-扩展接口让一个包 —— 或一个普通目录 —— 在不改动 bundle 的前提下，为你的 DSH 环境增加 skill、
+扩展接口让一个包（或一个普通目录） 在不改动 bundle 的前提下，为你的 DSH 环境增加 skill、
 flow、MCP 服务器与专家 role。作者的完整契约见 [extensions.zh-CN.md](extensions.zh-CN.md)；本节
 只讲 *使用者* 需要知道的部分。
 
@@ -621,7 +621,7 @@ flows 就可以放在工作区级），然后重启 `dsh`。没有 reload 工具
 错误，以及每个扩展声明的技能名里有哪些真的被 harness 目录服务；`mpd_ext_show { id }` 显示单个
 扩展的全部信息，包括这份服务校验、每个 MCP 服务器的确切状态
 （`connected`、`unavailable`、`failed`、`disabled`）以及它发布的工具。（`mpd_ext_show` 会把作者
-声明的 MCP `env` 值脱敏——键仍然可见，密钥不会进入你的会话日志。）`mpd_flow_list` /
+声明的 MCP `env` 值脱敏：键仍然可见，密钥不会进入你的会话日志。）`mpd_flow_list` /
 `mpd_flow_show` 用于查看所贡献的 flow。在信任一个目录之前先校验它：
 
 ```bash
@@ -632,20 +632,20 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 **诚实的边界。**
 
 - **会话级扩展只能增加 skills 与 flows。** 工具与 provider 的注册是进程级的，因此工作区级清单
-  若声明 `mcp` 或 `roles`，会按条目被拒绝并给出明确原因 —— 绝不会半加载。
+  若声明 `mcp` 或 `roles`，会按条目被拒绝并给出明确原因：绝不会半加载。
 - **没有 reload。** 修改扩展的 manifest 或资源后，会在下一次 `dsh` 启动时生效；`mpd_ext_list`
   刻意没有对应的重载工具。
 - **扩展 role 不是团队成员。** 它们可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
   作为 workmate 的基础模板，但队友名册是固定的：只有 captain 把它按名字加进一份已批准的计划，
   它才是队友。
-- **`extensions.*` 配置是进程级的**，在插件启动时读取 —— 它不是按会话隔离的。
+- **`extensions.*` 配置是进程级的**，在插件启动时读取，它不是按会话隔离的。
 - **第四方 MCP 服务器是一个子进程。** 它绝不会从你的宿主环境继承名字形如凭据的变量；它需要什么
   就在 manifest 的 `env` 中声明。
 
 ## 11. 故障排查速查
 
 - `mpd_role_spawn` 报未知角色 → 角色按 **名字** 应答（`Architect`、`Deep Worker`、
-  `plan reviewer` —— 大小写/空格/连字符写法都可以）；运行 `mpd_roles_list`。
+  `plan reviewer`：大小写/空格/连字符写法都可以）；运行 `mpd_roles_list`。
 - `mpd_workmate_*` 提示 "mpdRoles service unavailable" → `mpd-roles` 行没有挂载（重新安装
   bundle）。
 - workmate 的重命名/删除 **因"正在使用"被拒绝** → 仍有 `mpd_workmate_spawn` 在运行，或 `.mpd/team/`
@@ -661,11 +661,11 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **扩展的 MCP 工具缺失** → `mpd_ext_show { id }` 会报告该服务器的状态：`unavailable`/`failed`
   会带上子进程的 stderr 尾部与原因；`disabled` 表示扩展被关闭或 `extensions.mcp.enabled` 为
   false。**参数** 无法投影到 harness 子集的工具会被明确跳过（作为已记录的错误出现），而不是静默
-  消失；而外来的 `outputSchema` 只让该工具失去 `structuredContent`——工具仍然注册，并记录原因。
+  消失；而外来的 `outputSchema` 只让该工具失去 `structuredContent`：工具仍然注册，并记录原因。
   被声明却未被服务的技能会报成 `notServed`（`served` 表示 harness 目录确实把该名字解析到了这个
   扩展）。
 - **工作区级扩展的 `mcp`/`roles` 条目被拒绝** → 符合预期：只有主机级根
-  （`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
+（`~/.mpd/extensions/`、`<bundle>/extensions/`）可以贡献工具与 provider。请移动该目录，或从
   清单中去掉不支持的种类。
 - 侧边栏缺少 Workmates 标签页 → 重新构建随包客户端（`node scripts/build-mpd-client.ts`，然后
   刷新页面），并确认 profile 中存在某个侧边栏宿主。该宿主是 bundle 从不安装的**可选 peer**；
@@ -676,16 +676,16 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   的是 0.28 的 `["webServer","sessions","connection","tools"]` 注入列表，底部工作台孪生也需要
   0.28 的 `bottomOnly` 描述符字段。
 - 会话头部缺少 Agent Teams 面板 → 它的行是 `mpd-ui-agent-team`
-  （`@deepseek-ai/dsh-experimental-client-ui-agent-team`，已声明依赖）；重新安装 bundle 并刷新一次
+（`@deepseek-ai/dsh-experimental-client-ui-agent-team`，已声明依赖）；重新安装 bundle 并刷新一次
   页面。只有当会话真的有 Team 投影可展示时它才会出现。
 - GUI 中完全没有客户端界面 → `mpd-web-compat` 自引用行必须存在，并且需要重新安装 bundle
-  （`dsh plugin --profile <p> add <repo-or-package>`）。
+（`dsh plugin --profile <p> add <repo-or-package>`）。
 - `MISSING_CREDENTIAL` → 该 provider 路由需要在你的 DSH 凭据中有密钥；本 bundle 从不配置密钥。
 - AGENT.md 没有被注入 → 会话运行的不是 `mpd` preset；请切换 preset。
 - **无法创建任何 `mpd` 会话，错误为 `agent-preset/invalid … $.prefix missing required value`**
   → 已安装的 harness 改变了 `dsh-persona` 契约（它接受 `prefix`，而不是已退休的 `text`），于是
   拒绝挂载整个 preset。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）
-  —— 这是 harness 版本兼容性修复，不是你这边配置的问题。
+，这是 harness 版本兼容性修复，不是你这边配置的问题。
 - **缺少 `mcp__git__*` / `mcp__shell__*` 工具** → 这是预期行为而非故障：`mcp-git` 与 `mcp-shell`
   两行都自带 `disabled: true`。请改用 harness 自带的 `bash` 工具与 git 命令，或把想要的那行改成
   `disabled: false` 并重新安装 bundle。`mcp-git` 行还需要 `PATH` 上有 `git`。
@@ -697,43 +697,42 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   会先被读取）。
 - **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`agentRoutes.*`）是 live-refreshed 的：
   用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或用 `mpd_config_reload` 强制重读。
-  其余旋钮在挂载时捕获配置，需重启会话 —— 而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
+  其余旋钮在挂载时捕获配置，需重启会话，而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
   按它行动（§9.1 说明了哪些旋钮是实时生效的）。
 - **升级后某个文档链接 404** → 本次发布**重命名**了设计文档（它原名 `architecture.md`，
   `docs/design.zh-CN.md` 是当前名称的中文版），因此旧版文档副本指向的文件已不存在。重新安装 bundle
-  （`git pull`，然后 `dsh plugin --profile <p> add <repo>`）即可拿到重新指向后的文档对。
+（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）即可拿到重新指向后的文档对。
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的七条命令**
-（`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
+（`mpd-autoproject` 注册 `/autoproject`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
 `/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`，`mpd-cellwork` 注册
 `/cellwork`），以及本 bundle 只是
-**记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
-`/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
+**记录**的两条 **宿主命令**： `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
+`/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令：特别地，**不存在
 `/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问）。
 
 | 命令 | 作用 | 可用位置 |
 |---|---|---|
-| `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
-| `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
-| `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交 —— 模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
+| `/autoproject <objective>` | 针对该目标启动 autoproject 循环：与 `mpd_autoproject` 同一引擎，并把 autoproject 激活指令作为你的下一条用户消息提交 | Web + TUI |
+| `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交：模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | 共享命令平面：agent 注册表 + **TUI 面板已测量**；Web 未测量 |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
-| `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
+| `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI**：在 Web 下注册被拒绝，什么都不会暴露 |
 | `/mpd-model` | 打开宿主的选项列表式模型菜单：依次选择分组 → 范围（整组，或单个 agent）→ 提供商 → 模型 → 推理强度，并把 `agentRoutes.<Agent>.<leaf>` 写入 `/settings` 编辑的同一个配置条目；整组写入会先显示确认面板，点名每个受影响的 agent 及其当前路由，单个 agent 的写入会标明目标，清除分支只删除一个条目，在任一面板取消都不写入；没有对话框接缝的组合会说明这一点、不打开菜单 | **仅 TUI** |
 | `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
 | `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
 
-命令名之后是自由文本形式的目标。不带目标的裸 `/ulw` 会打印用法、不会启动任何东西；在无法裁决命令
+命令名之后是自由文本形式的目标。不带目标的裸 `/autoproject` 会打印用法、不会启动任何东西；在无法裁决命令
 的表面（headless 运行）上，同样的文本会作为指令提交。
 
 **`可用位置` 一列以什么为测量基准（0.16.2）。** 本次发布唯一的一手见证是 harness 自己的 `commands`
-注册表 —— 针对 `mpd` 会话的 agent 读取 —— 加上 **TUI** 命令面板：QA 用例对这两者断言
+注册表（针对 `mpd` 会话的 agent 读取） 加上 **TUI** 命令面板：QA 用例对这两者断言
 `userSurface.command.<name>`，它看到的每一行面板都抓取在
 `evidence/gates/user-surface/2026-10-28T09-57-41Z-codegraph-d1/`（`result.json`、`palette/`）里。本次
-发布没有启动任何 Web 客户端，所以单元格里的 `Web` 指的是两个表面共用的**共享命令平面** —— 本次**未测量、
-不等于已验证** —— 而 `TUI` 一侧才是用例真正观察到的。`/mpd-codegraph` 是本次修复并重新测量的那一行：
+发布没有启动任何 Web 客户端，所以单元格里的 `Web` 指的是两个表面共用的**共享命令平面**：本次**未测量、
+不等于已验证**，而 `TUI` 一侧才是用例真正观察到的。`/mpd-codegraph` 是本次修复并重新测量的那一行：
 修复前它在两个表面都无法到达，因为该行在 loader 第一轮并发 apply 时就执行了，此时命令注册表还不存在，
 它唯一的一次注册被无声丢弃；现在它既在注册表清单里，也画在面板上。
 
@@ -776,28 +775,43 @@ mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
 
-队友名字是永久的，且永不复用。每个 `create_task` 都要回答依赖问题 —— `blocked_by: []` 表示真正的
-根任务，`blocked_by: ["<root task>"]` 表示依赖它，另一种写法是 `independent: true` —— 并且在 mpd
+队友名字是永久的，且永不复用。每个 `create_task` 都要回答依赖问题： `blocked_by: []` 表示真正的
+根任务，`blocked_by: ["<root task>"]` 表示依赖它，另一种写法是 `independent: true`，并且在 mpd
 record 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个写范围重叠、且彼此之间没有依赖
 路径的任务。会话通过这些工具创作的每个任务都活在那份 mpd record 上，所以写范围重叠在那里会被
 **拒绝**，而不是「只是提示」。这项闭合止于**工具边界**：直接调用团队**服务**的插件行（官方执行器
-回退路径）不是工具调用，**不**受这道门约束 —— 这就是那条已声明的边界。基于过期 `revision` 的任务更新会被拒绝 ——
+回退路径）不是工具调用，**不**受这道门约束（这就是那条已声明的边界。基于过期 `revision` 的任务更新会被拒绝）
 正是这道拒绝让被改派的任务不再接受迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
 
-### 13.2 ULW 循环与它的关卡
+### 13.2 autoproject 循环与它的关卡
 
 ```text
-mpd_ulw { "objective": "Make every link in the doc pair resolve" }
-mpd_ultrawork { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
-/ulw Make every documented command resolve to a real registration
+mpd_autoproject { "objective": "Make every link in the doc pair resolve" }
+mpd_autoproject { "objective": "Rewrite the install chapter", "tier": "heavy", "strictReview": true, "maxRounds": 4 }
+/autoproject Make every documented command resolve to a real registration
 ```
 
-`mpd_ulw` 是轻量别名（档位 `light`、不写计划文件）；`mpd_ultrawork` 跑完整纪律：可选的对抗式
+`mpd_autoproject` 跑完整纪律，由 `tier` 决定形态：`light`（不写计划文件）或 `heavy`，可选的对抗式
 hyperplan 波、使用计划文件时的**计划关卡**（planner + plan review）、按标准逐项推进的执行轮次
 （PIN → RED → GREEN → SURFACE → CLEAN）、当存在计划且（`tier: "heavy"` 或 `strictReview`）时的
-**验证关卡**（momus 复审，最多 2 次再复审），最后是带逐泳道台账的**最终质量关卡**。状态与台账位于
-`.mpd/ulw/<id>`。被激活的运行不会向你提问：它先做三角定位，在工作确需团队时自行建队，然后走完
-各道关卡才收尾。
+**验证关卡**，最后是带逐泳道台账的**最终质量关卡**。状态、台账与升级产物位于
+`.mpd/autoproject/<runId>/`。
+
+**运行是自主的，但有边界。** 它只在三个明确的决策点停下来等人工：超限升级触发且
+`autoproject.escalate.mode` 为 `ask`；缺少凭证、密钥或外部能力；或下一次写入会离开已声明的 scope。
+除此之外不会停下。只有在 verification 的 PASS 通过 `mpd_verify_*` 平面被**记录**后才会报告
+`complete`（`strictReview` 仅为兼容而接受，关卡无论如何都会跑）；每轮的子智能体都是经
+`mpd_role_spawn` 的 roster 咨询；boulder 台账（`.mpd/boulder.json`，六个 `mpd_boulder_*` 工具名不变，
+已由 autoproject 包注册）是进行中的事实。
+
+**超限升级是唯一一个独立决定**，由引擎在轮次边界作出：`S2 ∨ S3 ∨ count(S1,S4,S5,S6,S7) ≥ 2`，
+其中 S1 = 成功标准数超过 `autoproject.escalate.criteriaMax`（12），S2 = 达到 `maxRounds`，
+S3 = 连续两个无果的 discovery wave，S4 = 台账字节超过 `ledgerBytesMax`，S6 = 不同 scope 树超过
+`scopePathsMax`（20），S7 = 同一标准的 verify FAIL 达到两次。**S5 已退役**（`tasksMax` 仍可解析，
+但没有信号读取它）。
+`autoproject.escalate.mode`（`off` / `ask` / `auto`）只决定接下来做什么；产物是
+`.mpd/autoproject/<runId>/escalation.json`；交给 cell 模式的入口是 `cellwork_open`（该工具存在时），
+否则运行返回 `/cellwork <objective>` 指令。
 
 ### 13.3 专家（单次咨询）
 
@@ -810,7 +824,7 @@ mpd_role_persona { "role": "Architect" }
 `role` 按功能**名字**应答（`Architect`、`deep worker`、`plan-reviewer`）。只读角色在 spawn 时会
 带上针对恰好 `write`、`edit`、`mpd_hashline_edit`、`bash`、`mcp__ast_grep__rewrite`、
 `mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` 的禁用过滤
-—— 这套纪律是机械强制的，不是口头约定。
+，这套纪律是机械强制的，不是口头约定。
 
 ### 13.4 workmate 库
 
@@ -826,7 +840,7 @@ mpd_workmate_delete { "name": "docs-reviewer", "purge": true, "confirm": "docs-r
 ```
 
 `base` 是功能名；`name` 可省（会据此自动生成）。`mpd_workmate_match` 匹配很弱就意味着新建一个
-workmate —— 绝不硬用弱匹配。workmate 正被进行中的 spawn（或旧版团队记录）使用时，这两个变更操作
+workmate：绝不硬用弱匹配。workmate 正被进行中的 spawn（或旧版团队记录）使用时，这两个变更操作
 都会被拒绝。
 
 ### 13.5 哈希锚定编辑
@@ -906,7 +920,7 @@ send_message { "agent_id": "lead", "message": "T5 完成：`bun run verify:docs`
 
 只有 `release` 与 `complete`/`fail` 需要带上调用者读到的 `expected_revision`，过期值会以带类型的错误
 被拒绝，因此被改派的任务无法悄悄接受迟到的结果；`claim`、`contract` 与 `depend` 不接收 revision。
-`approve` 会**拒绝**两个声明写范围重叠、且彼此之间没有依赖路径的暂存任务 —— 补上依赖边，或让两个
+`approve` 会**拒绝**两个声明写范围重叠、且彼此之间没有依赖路径的暂存任务：补上依赖边，或让两个
 范围互不重叠。重叠只在官方（OFFICIAL）平面上是提示。`write_scopes` 从不授权写入，而
 bash/格式化器/代码生成器会绕过该检查，所以请在任务描述（或消息）里报告你改了什么，而不是依赖那份
 范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队（`wait_agent`，然后重新读状态），
@@ -930,8 +944,8 @@ mpd_goal_anchor { "objective": "交付 cordis-dev skill 及其证据", "maxRound
 mpd_goal_finish { "outcome": "complete" }
 ```
 
-**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 ULW 运行
-（`mpd_ultrawork` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
+**你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 autoproject 运行
+（`mpd_autoproject` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
 为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。团队计划的
 **批准**也会 anchor 一个，并在同一路径写入待办（§6）：一次批准同时打包团队记录、goal 与待办清单。运行
 结束时：
@@ -943,7 +957,7 @@ mpd_goal_finish { "outcome": "complete" }
 归属按会话记录在 `<workspace>/.mpd/goal/anchors.json`，因此一次运行只会收尾它自己 anchor 的
 goal：你用 `/goal` 或 `create_goal` 建的 goal 不会被它动。
 
-两条边界值得知道：harness 自身的规则依然生效 —— create / edit / pause / resume 需要顶层 agent 上的
+两条边界值得知道：harness 自身的规则依然生效， create / edit / pause / resume 需要顶层 agent 上的
 **直接人类轮次**，所以 agent 无法替自己发明工作再无人值守地继续；而 `goal.*` 在行挂载时读取，因此
 改 `.mpd/mpd.jsonc` 需要 `dsh` 重启后生效（§9.1）。
 
@@ -980,21 +994,24 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 
 | 你使用的功能 | 来源 | 许可 / 版本 | 记录位置 |
 |---|---|---|---|
-| 团队模式 —— 队友执行平面、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
-| 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
-| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
-| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
-| `mcp__ast_grep__*` | **ast-grep** —— **不是**声明依赖；CLI 由 `resolveAstGrepBinary` 在运行时解析（调用方环境固定值 → `$MPD_AST_GREP_BIN_DIR` → 该包自身的 `bin` 入口 → `.toolchain/node_modules/.bin` → `node_modules/.bin`） | MIT；`0.45.2`；不再分发 | `packages/mpd-mcp-shared/bin-resolve.ts`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
-| `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
-| `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
-| DSH-STD 协议族 —— `@dsh-std/sdk` `0.1.1-rc.2`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）—— 声明式 npm 依赖，绝非搬运进来的代码 | MIT —— `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |
-| 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
+| 团队模式：队友执行平面、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
+| 迁移过来、由测试套件驱动的 `schemastery` 校验器、它的 `cosmokit` 依赖与 DSH 框架模块 | 上游的 `schemastery` / `cosmokit` / `cordis`，作者 Shigma；以及来自 DeepSeek Harness 的 `@deepseek-ai/dsh-*` 模块 | MIT：`Copyright (c) 2021-present Shigma` 与 `Copyright (c) 2026 DeepSeek`，全文收录在 `packages/mpd-schemastery/LICENSE` | `LICENSE-NOTICES.md` 的 *schemastery* 一节 |
+| AgentTeams 侧边栏客户端 bundle | **dsh-agent-teams** 的构建产物浏览器客户端（<https://github.com/NanmiCoder/dsh-agent-teams>），被逐字嵌入随包的 `client.js` | MIT；上游构建不携带版权行 | `LICENSE-NOTICES.md` 的 *adopted* 一节 |
+| 十一份名册 persona 文本 | 宽松许可的公开 agent 提示词（一份 Apache-2.0，其余 MIT）；Vision Analyst 与 Junior Engineer 由本仓库撰写 | MIT（本仓库自己的作品） | `LICENSE-NOTICES.md` 的 *Roster persona texts* 一节；`packages/mpd-roles-plugin/personas/ATTRIBUTION.md` |
+| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT：再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
+| `mcp__lsp__*` | **cclsp**，一个声明的 npm 依赖 | MIT；`Copyright (c) 2025 ktnyt` | `LICENSE-NOTICES.md`；`packages/mpd-mcp-lsp/` |
+| `mcp__git__*` | **@cyanheads/git-mcp-server**，一个声明的 npm 依赖 | Apache-2.0，Casey Hand | `LICENSE-NOTICES.md`；`packages/mpd-mcp-gitbash/` |
+| `mcp__shell__*` | **mcp-server-commands**，一个声明的 npm 依赖 | MIT；该包的 `LICENSE` 里没有版权行 | `LICENSE-NOTICES.md`；`packages/mpd-mcp-gitbash/` |
+| `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim：可选依赖 `@colbymchenry/codegraph`，其预构建服务器随包提供 | MIT；随包服务器的 `LICENSE` 为 `Copyright (c) 2026 Yeongyu Kim` | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`LICENSE-NOTICES.md` 的 *Vendored prebuilt server* 一节 |
+| `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；**不**随包分发：按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
+| DSH-STD 协议族： `@dsh-std/sdk`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）：声明式 npm 依赖，绝非搬运进来的代码 | MIT： `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |
+| 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness： **`@deepseek-ai/*`** 包 | MIT；`Copyright (c) 2026 DeepSeek`；仅作为依赖引用 | `LICENSE-NOTICES.md` |
 | Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
 | DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | MIT | `README.md`（鸣谢）；`LICENSE.md` |
 
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（采纳的浏览器 bundle 与迁移过来
-的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据 ——
+的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据：
 `MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。
 
 ### 14.1 可选的 DSH-STD adapter（自行安装，不属于本 bundle）
@@ -1012,8 +1029,103 @@ dsh plugin --profile web add @dsh-std/adapter-dsh
 
 本 bundle 之所以不随包提供它：adapter 的 peer 把宿主 `@deepseek-ai/dsh-*` 盯在 `0.1.2-alpha` 线上，
 而本 bundle 的基线是 dsh `0.2.1-rc.5`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
-而把它随包提供也不是中立的替代方案：插件管理器在安装时做两次兼容检查 —— 先在 `pnpm` 运行之前，
+而把它随包提供也不是中立的替代方案：插件管理器在安装时做两次兼容检查，先在 `pnpm` 运行之前，
 对显式指定的安装规格做预检；再在安装之后，对 profile 里已直接安装的依赖、以及被改动 bundle 的
-patch 行所点名的组件清单做后验 —— 从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
+patch 行所点名的组件清单做后验：从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
 后验（adapter 同时被声明为依赖并被 patch 行点名）：`dsh plugin add` 直接硬拒绝并回滚了整个
 bundle 的安装。
+
+## 15. 新增与变更的接口（autoproject 重构）
+
+本波次引入的行为速查。未在此处提到的能力保持原义。
+
+### 15.1 团队平面：owner-only 派发与新动词
+
+`agent_teams_dispatch` 把就绪任务配给它**声明的** owner。owner 忙碌、缺席、被 fence 或已失败时，
+该行会被**报告**并保持 pending：绝不会被替换。`mode: "roster"` 是显式逃生口（恢复按序回退），
+`reassign` 把指定的行交给另一位成员（先在板子上为该成员 claim，记 `task-reassigned`，再投递）。
+`reassign`、`mode: "roster"` 与 fence 仅限 Lead。
+
+`agent_teams_task {action:"context"}` 回答调用者自己的占用与席位状态（从不猜测窗口：`provenance`
+说明它是 `observed`、`no-window` 还是 `unavailable`）；`{action:"handoff"}` 校验七段式交接文档并把该成员
+标为 handoff-ready。`agent_teams_control {action:"fence"|"unfence", member}` 停止向某成员的**新**派发，
+其已持有的行保持不动，仅 Lead 可调用。**值得记住的组合语义：** `release` 会**清除** owner，所以
+"先 release 再 dispatch" 必须走 `reassign`（或 `mode:"roster"`），这是两个动词的组合性质，不是缺陷。
+
+### 15.2 cellwork 与团队平面
+
+`cellwork_open {objective, mandate?}` 是 autoproject 升级流程使用的程序化入口。它拒绝非 captain 的调用者、
+已存在的活动 cell，以及 `mandate` 指向的 `.mpd/autoproject/<runId>/escalation.json` 不在磁盘上的情况。
+`/cellwork` 是**同一条**路径上的薄处理器，因此命令与工具不会分叉。工具没有 `invocation.submit`，
+所以工具路径返回指令而不是提交它，这条边界是真实的，被明确写出而不是隐藏。
+
+cell **模式**的引擎（requirements、split、activate、recon、budget）仍留在 cellwork 包内。**团队级**的工作不在：
+`cellwork_dispatch`、`cellwork_context`、`cellwork_subteam` 与 handoff 路径现在通过
+`mpdTeams` / `mpdTeamActions` 服务读写**团队记录**（含 owner-only 派发、占用率与深度预算），且没有跨包 import。
+
+### 15.3 workmate 的自动绑定、优化与 persona 覆盖
+
+团队批准时，每个已暂存成员按**确定性**规则绑定：显式给出名字 → 绑定或**拒绝**；否则
+`mpd_workmate_match`（得分 ≥ 0.35 且该名字在团队内空闲）→ **复用**；否则在 `workmates.autoInit`
+（默认 `true`）且库小于 `workmates.max`（默认每工作区 12）时 → **初始化**；否则该成员保持普通成员，原因 `cap`。
+
+`mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` 与 `/workmate-optimize` 合并
+"同一专长、各自跑偏"的 workmate：默认 dry-run；仅当同一 base、`readonly` 相等、都不在归档、都空闲，且
+note 得分 ≥ 0.6 或 tag Jaccard ≥ 0.5 时才可合并。被合并掉的源会**归档**，绝不 purge。
+`mpd_workmate_persona_set` 写入带版本的 persona 覆盖，用 `baseRevision` 做 CAS；当 base persona 已经前进时，
+该 workmate 会报 `defaultUpdated`（并给出 `baseDriftLines`），而不是静默过期。
+
+### 15.4 全局记忆
+
+`mpd_memory_write` / `read` / `status` 接受 `scope: "workspace"`（默认：现有调用含义不变）或 `"global"`，
+后者读写 `~/.mpd/memory` 的共享存储（`memory.globalDir` 可覆盖根目录）。`mpd_memory_read` 支持分页
+（`offset`、`limit`、`next_offset`）。
+
+memory 行里**唯一**一个归档钩子监听 `mpd_boulder_complete`、`cellwork_stop` 与
+`agent_teams_plan {action:"delete"}`，生成**确定性**摘要（不调用模型），并为每个项目键写一条
+`kind:"fact"`、`scope:"global"` 条目；同一键的第二次事件会**覆盖**该条目并记 `superseded`。
+全局写入走**共享**的 HOME 守卫：当根目录不在隔离启动（`DSH_HOME` 已设置）的沙箱 `$HOME` 之内时**拒绝**写入，
+`memory.globalDir` 受同一条规则约束。
+
+### 15.5 准入强度与评审机器人轮次上限
+
+复杂度 gate 现在报告是谁**准入**了这项工作，而不只是工作是否足够大：`explicit`（已消费的
+`team:` / `!team` 标记，或在人类轮次中点名自动化）、`inferred`（命中至少一个复杂度信号的人类轮次）、
+`ignore`（模型撰写的文本，或无信号的人类轮次）。暂存判定式不变（`explicitFlag || signals ≥ 1`）
+所以这一档只描述来源；`ignore` 只对传入生产者文本的调用者可达。
+
+每个自动化评审者（目前是 CodeRabbit，未来任何机器人）对同一个 pull request 最多**三轮**评审。第四轮需要
+用户明确决定，并记录在该 PR 中。
+
+## 16. DSH Go App（原生界面）
+
+如果你用 DSH Go App（1.0.9 及以上），本 bundle 现在在那里有真正的界面，而不只是工具文本。这里不需要任何配置：
+App 的本机引擎桥接一旦绑定它就出现，没有桥接时它完全沉默。
+
+### 16.1 你会得到什么
+
+- **两个面板。** *MPD 工作台*有三个 Tab：总览（团队计数、完成度、第一条告警、就绪行）、问题（第一条暂存问题、它的
+  选项与自由文本回答）与资料库（工作伙伴库加最近记忆条目，只读）。*团队看板*另有三个：看板（点一行打开它，成员
+  各成员工作量柱状图、分层依赖图（只有看板够大时才折叠）与成员名册在其下方）、详情（选中任务的负责人、依赖与结论）与看门狗（看门狗正在跑什么判据、
+  团队是否被暂停、最近的事件）。三个是量出来的上限而不是风格选择：手机宽度下第四个大标签无论多短都会换到第二行。
+  依赖图每个任务打印一行等宽文本——`L2 T4 Ship it <-T2`——不用逐行展开就能看清谁阻塞谁。两者都出现在会话 Tab、
+  功能列表与聊天面板里。
+- **一条 Composer Strip。** 输入框上方的一行（`3 ready · 1 active`，App 说中文时是 `3 就绪 · 1 进行`）有问题在等你时
+  带 `❓`，计划等待审批时是警告色。点它打开工作台面板。
+- **Composer 与 message 动作。** *派活* 跑一次派发。*看板* 打开团队面板。*存为记忆* 把你长按的那条回复写成一条记忆
+  条目。*复制正文* 把那条回复放进剪贴板。
+- **工具卡片。** 查询看板、名册、工作伙伴库、记忆、验证记录或看门狗状态时，结果会以一张设计过的卡片返回：标题、
+  以磁贴呈现的数字、至多一张表格，而不是一大段文本。纯文本形式仍是复制或日志里看到的形状。
+- **跟随 App 主题，明暗都有。** 面板使用 App 自己的材质与强调色，因此明暗两种模式都跟随你选的配色。本 bundle 的视图里
+  没有颜色、圆角或渐变：那些属于 App，设计 lint 会拒绝其中任何一个。
+
+### 16.2 需要知道的
+
+- **仅限本机引擎。** 面板、strip 与菜单动作需要 App 的本机引擎；中继或 SSH 宿主改为显示工具卡片。工具卡片是中继安全的
+  那一半，始终可用。
+- **较老的 App 会回退。** 低于 DSH Go 1.0.9 时同一棵树会降级为 v1 组件：tabs 变成带标题的分段、磁贴变成列表、
+  badge 变成文字，因此没有样式时含义仍然完整。
+- **点击需要活跃会话。** 没有挂载会话时点击只回一句短 toast，不会排队任何东西。**面板绝不改变任务状态或团队暂停**：
+  点击不携带 agent 身份，因此结算一行仍归拥有该行的成员（`agent_teams_task`），暂停团队仍归队长的看门狗工具。
+  详情与看门狗 Tab 会说明这一点，而不是显示一个按不动的动作。
+- **三秒，然后延后。** App 只在你的点击后三秒内收到 effect 时才执行；更慢的服务会立刻被确认，结果显示稍后到达。

@@ -1,0 +1,341 @@
+{
+  "type": "stack",
+  "v": 1,
+  "children": [
+    {
+      "type": "stack",
+      "children": [
+        {
+          "type": "text",
+          "text": "Board"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Team Board"
+            },
+            {
+              "type": "text",
+              "text": "Drive surface · approved · active",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Tasks",
+                  "trailing": {
+                    "$": "data.counts.total"
+                  }
+                },
+                {
+                  "title": "Active",
+                  "trailing": {
+                    "$": "data.counts.active"
+                  }
+                },
+                {
+                  "title": "Done",
+                  "trailing": {
+                    "$": "data.counts.done"
+                  }
+                },
+                {
+                  "title": "Blocked",
+                  "trailing": {
+                    "$": "data.counts.blocked"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "progress",
+              "value": {
+                "$": "data.counts.completion"
+              },
+              "label": "Completion",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "The active team's board"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "T1 Adapt the view kit",
+                  "subtitle": "Deep Worker · work",
+                  "trailing": "in_progress",
+                  "action": {
+                    "id": "select",
+                    "args": {
+                      "task": "T1"
+                    }
+                  }
+                },
+                {
+                  "title": "T2 Migrate the panels",
+                  "subtitle": "Senior Engineer · work · blocked 1",
+                  "trailing": "pending",
+                  "action": {
+                    "id": "select",
+                    "args": {
+                      "task": "T2"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Members"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Members"
+            },
+            {
+              "type": "text",
+              "text": "Who is on this team",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Members",
+                  "trailing": {
+                    "$": "data.members.length"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Who is on this team"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "DW"
+                },
+                {
+                  "type": "stack",
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "Deep Worker"
+                    },
+                    {
+                      "type": "text",
+                      "text": "running",
+                      "tone": "muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "running"
+                }
+              ]
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "SE"
+                },
+                {
+                  "type": "stack",
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "Senior Engineer"
+                    },
+                    {
+                      "type": "text",
+                      "text": "idle",
+                      "tone": "muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": "handoff ready"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Detail"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Detail"
+            },
+            {
+              "type": "text",
+              "text": "T1 Adapt the view kit",
+              "tone": "muted"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "The selected row"
+            },
+            {
+              "type": "text",
+              "text": "Build the v2 kit and its fallback.",
+              "tone": "muted"
+            },
+            {
+              "type": "keyValue",
+              "items": [
+                [
+                  "Owner",
+                  "Deep Worker"
+                ],
+                [
+                  "Status",
+                  "in_progress"
+                ],
+                [
+                  "Kind",
+                  "work"
+                ],
+                [
+                  "Dependencies",
+                  "—"
+                ],
+                [
+                  "Verdict",
+                  "—"
+                ]
+              ]
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "Complete",
+                  "action": {
+                    "id": "complete",
+                    "args": {
+                      "task": "T1"
+                    }
+                  },
+                  "icon": "check"
+                },
+                {
+                  "label": "Fail",
+                  "action": {
+                    "id": "fail",
+                    "args": {
+                      "task": "T1"
+                    }
+                  },
+                  "icon": "error"
+                },
+                {
+                  "label": "Back",
+                  "action": "back",
+                  "icon": "expand"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Watchdog"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Watchdog"
+            },
+            {
+              "type": "text",
+              "text": "The preserving hold and the recorded incidents",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Predicate",
+                  "trailing": "channel"
+                },
+                {
+                  "title": "Watchdog",
+                  "trailing": "Held · silence"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Incidents"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "silence",
+                  "subtitle": "2026-11-02T20:00:00Z",
+                  "trailing": "T2 was silent past the bound"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "items": [
+            {
+              "label": "Resume",
+              "action": "resume",
+              "icon": "play"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

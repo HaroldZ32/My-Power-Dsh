@@ -194,7 +194,7 @@ export const SettingsSchema = z.object({
   // and the package's documented opt-in posture. A `true` default here made Settings show a DISABLED
   // hook as ON, because the schema default is what the namespace renders when the file says nothing.
   commentChecker: z.object({ autoCheck: z.boolean().default(false) }),
-  ulw: z.object({ maxRounds: z.number().default(6) }),
+  autoproject: z.object({ maxRounds: z.number().default(6) }),
   // `both` is offered because `mpd-memory` honours it (`ensureVcs`: git AND svn, each committed); the
   // union is the schema half of the same truth — a value the memory row reads must be selectable here.
   memory: z.object({ vcs: z.union([z.const("git"), z.const("svn"), z.const("both")]).default("git") }),
@@ -297,7 +297,7 @@ export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's s
  *
  * Derived from the consumers, group by group: `hashline` (`maxDiffChars` is a mount-time constant in
  * mpd-hashline's apply), `commentChecker` (the `autoCheck` post-execute hook is registered — or NOT —
- * at apply), `ulw`, `memory` (every tool closes over the `cfg` resolved at apply), `boulder.dir` and
+ * at apply), `autoproject`, `memory` (every tool closes over the `cfg` resolved at apply), `boulder.dir` and
  * `goal.*` (the goal row logs its three values at mount and gates on them). Each surface's ROW HINT
  * still names the key it writes, so a reader can match this sentence to the knob.
  *
@@ -307,7 +307,7 @@ export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's s
  * settings document still receive it at once") contradicted the sentence right before it.
  */
 export const BRIDGE_RESTART_LIMIT =
-  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
+  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, autoproject.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
 
 /**
  * The sentence that keeps a settings-only save from reading as a LOST save (captain's ruling 1):
@@ -606,7 +606,7 @@ export interface SettingsKnob {
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
-  { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
+  { path: ["autoproject", "maxRounds"], label: "Autoproject rounds", zh: "Autoproject 轮数", kind: "number" },
   // `both` is a REAL mode (`ensureVcs` in mpd-memory-plugin commits to git AND svn), so the union and
   // this knob's options must offer it: a documented value the Settings UI cannot select is a defect.
   { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },

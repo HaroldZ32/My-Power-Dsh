@@ -1,0 +1,6 @@
+# RED-FIRST — HEAD (d2032bf3) script, CURRENT manifest — 2026-11-03T04:22:14Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --self-test
+# scratch tree: mktemp -d copy of skills/dsh-qa/scripts/lib + SKILL.md + dsh-plugin.json (no repo file edited)
+[tui-admission self-test] FAIL: 1 check(s)
+  - the shipped manifest must declare the four intercept permissions the grant arms feed: []
+# exit: 1

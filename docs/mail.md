@@ -6,15 +6,14 @@ Every agent-to-agent message in this bundle travels ONE durable stream, `<worksp
 The team plane (`agent_teams_mail`) and the cellwork view (`cellwork_send` / `cellwork_inbox`) are two
 surfaces over that same log, so a member reads its mail the same way whichever plane wrote it.
 
-The structured payloads — the `question` / `answer` envelope, the validators and the tolerant fold — live
+The structured payloads (the `question` / `answer` envelope, the validators and the tolerant fold) live
 in [`mpd-mail-protocol`](../packages/mpd-mail-protocol/README.md). This page is the operator's view: what a
 row is, who may address whom, who may acknowledge what, when a wait is allowed to block, and what is
 deliberately NOT guaranteed.
 
 ## One stream, three kinds
 
-A row's `kind` says what it carries, and a row written before this protocol existed has no `kind` at all —
-the fold reads it as `message`, so old logs stay readable.
+A row's `kind` says what it carries, and a row written before this protocol existed has no `kind` at all: the fold reads it as `message`, so old logs stay readable.
 
 | `kind` | carries | folded as |
 |---|---|---|
@@ -24,18 +23,18 @@ the fold reads it as `message`, so old logs stay readable.
 
 `questionId` is stable across a broadcast's fan-out, so an answer names the question without naming a row.
 A reply may also carry `replyTo` (the row it replies to) and `threadId`; the fold resolves a thread's
-identity — explicit id first, else the `replyTo`'s thread, else the row's own id — in one pass.
+identity (explicit id first, else the `replyTo`'s thread, else the row's own id) in one pass.
 
 ## Why labels, never an index
 
 A live cell run on 2026-10-31 measured the defect this design removes: `ask_user_question`'s answer carries
-labels and no index, cellwork mail was free text, and every relayed "option number" was composed by a model
-— so the number drifted between the asker, the panel and the answer, and the wrong option was reported back
+labels and no index, cellwork mail was free text, and every relayed "option number" was composed by a model,
+so the number drifted between the asker, the panel and the answer, and the wrong option was reported back
 as chosen.
 
 **There is no index field anywhere.** Labels are unique within their question and carry their own stable
 ordinal (`A. …`, `B. …` or `1) …`), and an answer repeats the offered label STRINGS. A mismatch is a string
-mismatch, so it is refused mechanically — and the refusal carries the full valid label list, including the
+mismatch, so it is refused mechanically, and the refusal carries the full valid label list, including the
 answers given through a `wait` (see below).
 
 ## Addressing
@@ -43,16 +42,16 @@ answers given through a `wait` (see below).
 `agent_teams_mail { action: "send", to: … }` accepts four spellings, resolved against the calling team's
 record:
 
-- **a member id** (`M1`) or **a member name** (`Senior Engineer`) — the roster row it names.
-- **`captain`** or **`lead`** — the team record's `leadSessionId`, recorded as `toName: "captain"` whatever
+- **a member id** (`M1`) or **a member name** (`Senior Engineer`): the roster row it names.
+- **`captain`** or **`lead`**: the team record's `leadSessionId`, recorded as `toName: "captain"` whatever
   alias was used. A team that records no lead refuses the spelling and lists what it does offer.
-- **`"*"`** — a BROADCAST: one durable row per recipient (every member plus the lead, the sender excluded,
+- **`"*"`**: a BROADCAST: one durable row per recipient (every member plus the lead, the sender excluded,
   deduplicated), all sharing the envelope and ONE thread. There is no multi-recipient row, which is what
   keeps per-recipient acknowledgement and the per-recipient backlog bound honest. A broadcast that resolves
   to nobody is refused rather than reported as "sent 0".
 
-A member cannot message itself. "Self" is checked against BOTH spellings of the sender — its roster id
-(`fromMemberId`) and its session id (`fromId`) — because a row is addressed by roster id while a session
+A member cannot message itself. "Self" is checked against BOTH spellings of the sender: its roster id
+(`fromMemberId`) and its session id (`fromId`), because a row is addressed by roster id while a session
 names itself by session id.
 
 ## Acknowledgement ownership
@@ -64,8 +63,13 @@ Delivery and reading are separate facts, and this mailbox is the only place the 
 - **Only the row's ADDRESSEE may acknowledge it.** There is no administrative escape: an id addressed to
   somebody else is refused, with the addressee named, and the row stays unread. The acknowledgement is made
   as the caller's own member identity (its roster id, or its session id when it has no roster row).
-- A member's UNDELIVERED backlog is BOUNDED (8 per recipient, per team): a stalled member cannot silently
-  accumulate work, and an ACK — not a delivery — releases a slot.
+- A member's UNDELIVERED backlog is BOUNDED per recipient, per team: a stalled member cannot silently
+  accumulate work. The bound is the workspace key `mail.maxUndelivered` (default 8; `0` disables; an
+  absent or unusable value falls back to 8), read per call on the ONE store path that serves BOTH
+  `cellwork_send` and `agent_teams_mail` — switching tools is not an escape. **An acknowledgement frees
+  one slot, and so does a delivery.** A refusal names the recipient, the current count, the bound and the
+  TWO recovery paths — acknowledge the inbox (`agent_teams_mail {action:"read"}`, `cellwork_inbox`) or
+  reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`) — and writes nothing.
 - **Consequence, stated rather than discovered:** a captain CANNOT clear a stalled member's backlog by
   acknowledging on its behalf. It is refused like any other non-addressee. A permit (below) grants a WAIT,
   never an acknowledgement on another member's behalf.
@@ -80,10 +84,10 @@ Mail is non-blocking by default. A blocking wait is a GRANTED EXCEPTION, recorde
   scope: "answer" | "message", ttlMs, expiresAt, questionId?, at }
 ```
 
-- `agent_teams_mail { action: "permit", holder, scope?, ttlMs?, questionId? }` — **only the team's Lead**
+- `agent_teams_mail { action: "permit", holder, scope?, ttlMs?, questionId? }`: **only the team's Lead**
   (its recorded `leadSessionId` and lead history) may issue one, and only for a member of its own team.
   TTL defaults to 60 s and is clamped to 600 s; `questionId` narrows the grant to one question.
-- `agent_teams_mail { action: "wait", permitId, messageId, timeoutMs? }` — refuses without a permit, on an
+- `agent_teams_mail { action: "wait", permitId, messageId, timeoutMs? }`: refuses without a permit, on an
   expired or foreign permit, on a target the permit's scope does not cover, and on a target the HOLDER did
   not send: a wait is an ASKER waiting on its own question, so answering one addressed to you is a `send`,
   never a wait, and another member's question would leak the labels its answers carry. Every refusal names
@@ -107,13 +111,13 @@ made (the process stopped between the two appends), which a reader must treat as
 success.
 
 Each plane spells the reasons ITS attempt produced, and both write them into the same shape. The cellwork
-plane refuses a wake-up when the mail crosses a cell boundary (durable only — no Lead authority over the
+plane refuses a wake-up when the mail crosses a cell boundary (durable only, no Lead authority over the
 other cell), when the addressed recipient is the captain (the Lead has no executor handle in this
 composition), when a member sends without the captain's Lead authority, when the recipient was never raised
 (no handle), and when the composition exposes no team executor at all. The team plane refuses when the
 recipient is the lead (no member row) or has no handle, and records a transport refusal with the transport's
 own message. A row whose wake-up was refused is still unread, so `cellwork_supervise` lists it under
-`wakeFailures[]` and the team plane's `summary` counts it in the `undelivered` column — the `wake` line is
+`wakeFailures[]` and the team plane's `summary` counts it in the `undelivered` column: the `wake` line is
 what says WHY.
 
 ## The log on disk
@@ -129,8 +133,7 @@ last line and never the file.
 | `wake` | one wake-up attempt and, when refused, why |
 
 The fold tolerates a torn last line, a legacy row with no `kind`, a state row whose `send` line was lost, and
-a FOREIGN record kind (the cellwork `wake` row shares this file), and it reports every anomaly it can see —
-a duplicated send id keeps the FIRST write and says so. Those reports are exposed as `problems` on the folded
+a FOREIGN record kind (the cellwork `wake` row shares this file), and it reports every anomaly it can see; a duplicated send id keeps the FIRST write and says so. Those reports are exposed as `problems` on the folded
 state, and the team web panel renders them.
 
 ## The cellwork view over the same stream
@@ -150,14 +153,14 @@ this build, and a reader from a PREVIOUS build would not see it in the cell file
 
 - **The team tool infers `kind`.** `agent_teams_mail` takes `question` / `answer` payload OBJECTS and derives
   the kind from whichever is present (neither means `message`), so the payload and the kind cannot disagree.
-  There is no `kind` parameter, and no `threadId` parameter either — a reply joins a thread through
+  There is no `kind` parameter, and no `threadId` parameter either: a reply joins a thread through
   `replyTo`, and an answer derives it from `answerTo`. The store API still accepts an explicit `kind` and
   `threadId` for callers that build rows directly (`cellwork_send` does its own spelling).
 - **`problems` is OPTIONAL on the folded state**, deliberately, not by oversight: a caller-built VIEW over a
   message list (the permit/wait path hands `{ messages }` to a reader) is not a fold result and must not
   invent a diagnostic list. The compensating guarantees are mechanical: `fold`/`readMailbox` ALWAYS populate
   it, `scopeToTeam` carries it through, and two test arms assert `{ messages: [], problems: [] }` on a clean
-  log — so an absent list can never hide an anomaly.
+  log, so an absent list can never hide an anomaly.
 - **The acknowledgement identity is the ROSTER id** (`ownMember.id`, else the caller's session id for a lead
   that has no roster row). A caller that passes its session id where a roster id is expected is refused, not
   silently matched.
@@ -168,11 +171,11 @@ this build, and a reader from a PREVIOUS build would not see it in the cell file
 
 ## Tests and evidence
 
-- `packages/mpd-mail-protocol` — the envelope, I1–I8, the fold's tolerance, and the whole-problem-list
+- `packages/mpd-mail-protocol`: the envelope, I1–I8, the fold's tolerance, and the whole-problem-list
   refusals: `bun test packages/mpd-mail-protocol`.
-- `packages/mpd-team-core-plugin` — the store (bounds, ownership, wake records, fold problems), the tool
+- `packages/mpd-team-core-plugin`: the store (bounds, ownership, wake records, fold problems), the tool
   surface (addressing, broadcast fan-out, permit/wait) and the web projection:
   `bun test packages/mpd-team-core-plugin`.
-- `packages/mpd-cellwork-plugin` — the cell view, the legacy-log merge and ack-once semantics:
+- `packages/mpd-cellwork-plugin`: the cell view, the legacy-log merge and ack-once semantics:
   `bun test packages/mpd-cellwork-plugin`.
 - Documentation parity, including this page and its twin: `bun run verify:docs`.

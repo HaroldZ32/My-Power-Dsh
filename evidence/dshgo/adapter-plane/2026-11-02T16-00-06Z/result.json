@@ -1,0 +1,104 @@
+{
+  "task": "T1 (contract §4 D1) — the dsh-Go plane in the adapter: view kit, ctx.dshGo seams, view-budget gate",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "timestampUtc": "2026-11-02T16-00-06Z",
+  "changed": [
+    "packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts (new): builders, style(), panelView(), measureView/countViewNodes/viewDepth/BUDGETS/fitsBudget, toolCard(), adaptView(), lintDesign(v1|v2)",
+    "packages/mpd-dsh-adapter-plugin/src/index.ts: DshGoPanelView widened (static tree OR (scope,caps)=>view|Promise), DshGoScope/DshGoEvent/DshGoHandler/DshGoStripData types, dshGoOn/dshGoStrip/dshGoCaps (declaration + implementation)",
+    "packages/mpd-dsh-adapter-plugin/test/dshgo-view.test.ts (new): 39 arms",
+    "packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts (new): 9 arms",
+    "scripts/verify-dshgo-views.ts (new): manifest + static-view gate, 17 self-test arms",
+    "packages/mpd-dsh-adapter-plugin/README.md + README.zh-CN.md: seam rows, drive-surface bullets, the view-kit section"
+  ],
+  "gates": [
+    {
+      "id": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "id": "tests",
+      "command": "bun test packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "observed": "361 pass, 0 fail, 1446 expect() calls, 23 files (39 kit + 9 seam arms are new)"
+    },
+    {
+      "id": "comments",
+      "command": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration carries a precise comment and a full signature"
+    },
+    {
+      "id": "docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=54 failed=0 violations=0 links=505 dead=0 — PASS"
+    },
+    {
+      "id": "gate_selftest",
+      "command": "node scripts/verify-dshgo-views.ts --self-test",
+      "exit": 0,
+      "observed": "SELF-TEST PASS — 17 arms (1 clean control + 16 negative controls)"
+    },
+    {
+      "id": "gate_live",
+      "command": "node scripts/verify-dshgo-views.ts",
+      "exit": 0,
+      "observed": "PASS — manifest + static views are legal"
+    },
+    {
+      "id": "manifest",
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "VERDICT: PASS — install-time rules and packaging contract hold (1177 packed files)"
+    },
+    {
+      "id": "dist",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "observed": "25 of 34 targets STALE, 24 of them PRE-EXISTING on HEAD (src untouched by this lane); packages/mpd-dsh-adapter-plugin/dist/index.js is stale because src/index.ts changed (contract §4 D7 rebuilds every dist target with the pinned toolchain)"
+    }
+  ],
+  "checker": [
+    {
+      "id": "checker_root",
+      "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs <repo root> --lang zh",
+      "exit": 1,
+      "observed": "ONE error /dsh/bundle/patch: the checker requires dsh.bundle.patch to be a STRING; this repository declares the harness-0.1.7 ARRAY form. The dsh-Go half is clean: 原生界面能显示（面板 1） + the static view renders. PRE-EXISTING: the same run against HEAD:package.json exits 1 identically (see checker_head_manifest)."
+    },
+    {
+      "id": "checker_head_manifest",
+      "command": "… check.mjs <HEAD package.json + dsh-go/views> --lang zh",
+      "exit": 1,
+      "observed": "same single error, proving it predates this lane and is not a dsh-Go defect"
+    },
+    {
+      "id": "checker_static_view",
+      "command": "… check.mjs dsh-go/views/mpd.json --lang zh",
+      "exit": 0,
+      "observed": "视图 …（面板）：能显示"
+    },
+    {
+      "id": "checker_kit_panel",
+      "command": "<kit-built v2 panel via bun> | … check.mjs - --budget panel --lang zh",
+      "exit": 0,
+      "observed": "13 notes, 0 errors: expected accent/tone contrast corrections + the primary action style the app reserves. lintDesign(panel,{version:2}) reported 0 findings."
+    },
+    {
+      "id": "checker_kit_fallback",
+      "command": "<adaptView(panel,{app:'1.0.8'})> | … check.mjs - --budget panel --lang zh",
+      "exit": 0,
+      "observed": "能显示, 0 diagnostics; lintDesign(fallback,{version:1}) reported []"
+    }
+  ],
+  "bounds": [
+    "App-side render is UNPROVEN: no Flutter app in this workspace, so the accent: \"app\" dark-mode contrast note (#4B67B4 -> #7B8FC8) is expected and NOT a violation.",
+    "check.mjs on the repo ROOT cannot reach exit 0 while the root manifest carries the ARRAY dsh.bundle.patch the harness 0.1.7 requires; its dsh-Go half is clean. Contract §6.1's \"exit 0\" is therefore not achievable untouched — recorded, not worked around.",
+    "verify-dist-fresh is red until D7 rebuilds every touched dist with .toolchain/node_modules/.bin/bun.",
+    "scripts/verify-dshgo-views.ts is NOT a member of `bun run verify:gates` nor of the AGENTS.md §4 table; only contract §6.2 invokes it. Wiring it in is an integration/contract decision, not made here.",
+    "The gate lints DECLARED static views in lintDesign version 1; live v2 panel trees are covered by the kit unit tests (version 2). A green repo gate must not be read as \"the v2 panels were linted\".",
+    "DSHGO_ACTION_TIMEOUT_MS = 4000 still lives in packages/mpd-bundle-plugin/src/dshgo-panel.ts (D5 lane, out of this task scope); contract §3.5 says it must go."
+  ]
+}

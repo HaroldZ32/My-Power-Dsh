@@ -174,7 +174,10 @@ test("D2: the cold-resumed member's first pre-step inside send is NOT marked idl
   const h = fixture()
   seed(h.workspace)
   /** The dispatch pass's answer. */
-  const answer = await h.call("sess-lead", "agent_teams_dispatch", { action: "run" })
+  // THE ROSTER RULE IS ASKED FOR EXPLICITLY, and the reason is the arm's own: the seeded task is
+  // UNOWNED ON PURPOSE (see `seed`), and the owner-only default reports an ownerless row instead of
+  // pairing it. This arm is about the post-send compare-and-set window, not about the pairing rule.
+  const answer = await h.call("sess-lead", "agent_teams_dispatch", { action: "run", mode: "roster" })
   expect(answer.pairs.map((pair: { taskId: string }) => pair.taskId)).toEqual(["T1"])
   // THE ASSERTIONS THE DEFECT VIOLATED: inside `send` the child saw no directive and no denial.
   expect(h.observations.preStep).toBeUndefined()
@@ -215,7 +218,7 @@ test("D2 aftermath: once the pass has written the claim, the member's OWN next s
   /** The harness under test. */
   const h = fixture()
   seed(h.workspace)
-  await h.call("sess-lead", "agent_teams_dispatch", { action: "run" })
+  await h.call("sess-lead", "agent_teams_dispatch", { action: "run", mode: "roster" })
   // The window is closed by the pass's `finally`; the re-evaluation now sees the claimed task.
   expect(h.step(2)).toBeUndefined()
   expect(h.toolDenied()).toEqual([])

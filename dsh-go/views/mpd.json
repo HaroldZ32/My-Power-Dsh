@@ -12,16 +12,16 @@
       "type": "list",
       "items": [
         {
-          "title": "Approve the staged team plan",
-          "subtitle": "Activates the plan's members and tasks in this workspace."
+          "title": "Overview",
+          "subtitle": "Team status, ready / in-flight / done counts and the first thing that needs attention."
         },
         {
-          "title": "Run one dispatch pass",
-          "subtitle": "Pairs every ready task with its owner so the work can start."
+          "title": "Ask",
+          "subtitle": "The first parked question, its options and a free-text answer."
         },
         {
-          "title": "Answer a pending question",
-          "subtitle": "Replies to the open question so the waiting member can continue."
+          "title": "Library",
+          "subtitle": "The workmate library and this workspace's memory entries, read-only."
         }
       ]
     },

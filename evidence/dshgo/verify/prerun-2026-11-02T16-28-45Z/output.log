@@ -1,0 +1,173 @@
+at_utc=2026-11-02T16:28:45Z
+head=1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+tracked_changes=31
+
+===== MANIFEST SIZE + CONTRIBUTIONS =====
+dshGo bytes=925
+panels=[{"id":"mpd","placement":["session.tab","features","chat.panel"],"view":"./dsh-go/views/mpd.json"},{"id":"mpd-team","placement":["session.tab","features","chat.panel"],"view":"./dsh-go/views/mpd-team.json"}]
+strip=[{"id":"mpd-status","icon":"team","panel":"mpd","text":"—"}]
+composer.actions=[{"id":"mpd-dispatch","label":{"en":"Dispatch","zh":"派活"},"icon":"send"},{"id":"mpd-board","label":{"en":"Board","zh":"看板"},"icon":"panel","effect":{"type":"open","page":"panel:mpd-team"}}]
+message.actions=[{"id":"mpd-save-memory","label":{"en":"Save memory","zh":"存为记忆"},"icon":"save"},{"id":"mpd-copy-reply","label":{"en":"Copy reply","zh":"复制正文"},"icon":"copy"}]
+wants=["message"]
+
+===== GATE §6.2: verify-dshgo-views.ts --self-test =====
+$ node scripts/verify-dshgo-views.ts --self-test
+PASS  clean control: a legal manifest and a v1 view pass
+PASS  missing dshGo manifest
+PASS  protocol version not 1
+PASS  an id that breaks the protocol pattern
+PASS  the same id declared by two slots
+PASS  more panels than the protocol allows
+PASS  a declared view file that does not exist
+PASS  a view that is not JSON
+PASS  a v2 root in a static fallback
+PASS  a v2-only component in a static fallback
+PASS  a data binding in a static fallback
+PASS  a static view over the node budget
+PASS  a static view carrying a style key
+PASS  a static view whose text is empty
+PASS  a strip naming an undeclared panel
+PASS  an unknown placement
+PASS  a manifest over the 16 KiB budget
+[verify-dshgo-views] SELF-TEST PASS — 17 arms (1 clean control + 16 negative controls)
+[exit 0]
+
+===== GATE §6.2: verify-dshgo-views.ts =====
+$ node scripts/verify-dshgo-views.ts
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+[exit 0]
+
+===== GATE §6.1(a): each static view alone --budget panel =====
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs dsh-go/views/mpd.json --budget panel
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 0]
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs dsh-go/views/mpd-team.json --budget panel
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+[exit 0]
+
+===== GATE §6.1(c): the four LIVE trees piped --budget panel =====
+$ check.mjs - --budget panel < mpd-v2.json
+  视图 -（面板）：能显示，18 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[1].style.color：light：#AA7900 已校正为 #976C00，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[4].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[1].children[1].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+[exit 0]
+$ check.mjs - --budget panel < mpd-v1-fallback.json
+  视图 -（面板）：能显示
+[exit 0]
+$ check.mjs - --budget panel < mpd-team-v2.json
+  视图 -（面板）：能显示，24 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[2].children[1].children[5].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+[exit 0]
+$ check.mjs - --budget panel < mpd-team-v1-fallback.json
+  视图 -（面板）：能显示
+[exit 0]
+
+===== EXTERNAL CORROBORATION: probe-section7 on the four trees =====
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-v2.json: FINDINGS — {"Medium":1}
+  Medium   EMPTY_TAB view.children[0].items[1]: tab has no data and no `emptyState` (rule 7)
+[exit 1]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-team-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-team-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+log_at=2026-11-02T16:28:46Z
+
+[NOTE 16:29Z: an earlier re-run attempt in this same step failed because /tmp is fresh per bash call and the scratch path did not survive; this block is the corrected run]
+
+===== EXTERNAL CORROBORATION v2 (probe 6-arm self-test, empty-tab heuristic fixed) =====
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-team-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+section7 evidence/dshgo/native-surfaces/2026-11-02T16-22-21Z/mpd-team-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+
+===== COLOUR / ACCENT AUDIT of the four trees =====
+mpd-v2               root.v=2 root.accent="app" hex=[] named=[] bytes=11701
+mpd-v1-fallback      root.v=1 root.accent=null hex=[] named=[] bytes=6533
+mpd-team-v2          root.v=2 root.accent="app" hex=[] named=[] bytes=14774
+mpd-team-v1-fallback root.v=1 root.accent=null hex=[] named=[] bytes=8347
+
+===== H2 CHECK: metric label AND value in each v1 fallback =====
+mpd-v1-fallback:
+  [{"title":"Ready","trailing":{"$":"data.counts.ready"}},{"title":"Active","trailing":{"$":"data.counts.active"}},{"title":"Done","trailing":{"$":"data.counts.done"}},{"title":"Members","trailing":{"$":"data.counts.members"}}]
+  [{"title":"Ship the panel","subtitle":"work · Lead"}]
+  [{"title":"Workmates","trailing":1}]
+  [{"title":"deep-worker-1","subtitle":"Deep Worker · 4 uses","trailing":"carries the D1 lane"}]
+  [{"title":"Memory","trailing":1}]
+  [{"title":"the kit writes accent app","subtitle":"fact · 2h"}]
+mpd-team-v1-fallback:
+  [{"title":"Tasks","trailing":{"$":"data.counts.total"}},{"title":"Active","trailing":{"$":"data.counts.active"}},{"title":"Done","trailing":{"$":"data.counts.done"}},{"title":"Blocked","trailing":{"$":"data.counts.blocked"}}]
+  [{"title":"T1 Adapt the view kit","subtitle":"Deep Worker · work","trailing":"in_progress","action":{"id":"select","args":{"task":"T1"}}},{"title":"T2 Migrate the panels","subtitle":"Senior Engineer · work · blocked 1","trailing":"pending","action":{"id":"select","args":{"task":"T2"}}}]
+  [{"title":"Members","trailing":{"$":"data.members.length"}}]
+  [{"title":"Predicate","trailing":"channel"},{"title":"Watchdog","trailing":"Held · silence"}]
+  [{"title":"silence","subtitle":"2026-11-02T20:00:00Z","trailing":"T2 was silent past the bound"}]
+log_at=2026-11-02T16:29:41Z
+
+===== GATE §6.1(b) fixture shell — CURRENT manifest + both real views =====
+@mpd-dsh/mpd 0.17.0
+  原生界面能显示（胶囊 2 · 菜单 2 · 状态条 1 · 面板 2）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+[exit 0]
+{"name":"@mpd-dsh/mpd","version":"0.17.0","package":[],"manifest":{"state":"ok","issues":[],"counts":{"composer.actions":2,"message.actions":2,"composer.strip":1,"panels":2}},"views":[{"where":"dsh-go/views/mpd.json","ok":true,"issues":0},{"where":"dsh-go/views/mpd-team.json","ok":true,"issues":0}]}
+
+===== NEGATIVE CONTROL: same shell with the real ARRAY patch (must exit 1) =====
+@mpd-dsh/mpd 0.17.0
+  错误 /dsh/bundle/patch：不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上
+  原生界面能显示（胶囊 2 · 菜单 2 · 状态条 1 · 面板 2）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+[exit 1]
+
+===== PROBE v1 on the two STATIC fallbacks =====
+section7 dsh-go/views/mpd.json (v1 fallback): OK — {}
+[exit 0]
+section7 dsh-go/views/mpd-team.json (v1 fallback): OK — {}
+[exit 0]
+log_at=2026-11-02T16:29:56Z

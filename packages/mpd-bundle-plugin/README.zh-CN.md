@@ -12,7 +12,7 @@
 
 **团队 Tab 走**推送**刷新，同时保留轮询。** 共享的团队视图（`src/team-view.ts`，两个侧边栏宿主渲染的同一个主体）既按自身的 `pollMs` 间隔（2000 ms）读取 `/plugins/mpd-team/{state,plan,task}`，**也**订阅 `/plugins/mpd-team/events` —— 由 `mpd-team-core-plugin` 提供的 Server-Sent-Events 路由 —— 通过**每次挂载**为当前面板所显示会话（携带与 state 读取相同的 `?sessionId=`）打开一个 `EventSource`。每一个 `data:` 帧都调用与定时器**完全相同**的 `tick`，因此推送帧与轮询帧不可能不一致。定时器保留为**回退**：没有 `EventSource` 的宿主（`node` 与 `bun` 都未定义该全局量，离线测试夹具正走这条路径）、切断流的代理，或未提供 `eventsPath` 的组合，行为与之前完全一致。面板卸载或席位会话变更时关闭该流；传输错误后的重连由 `EventSource` 自身负责（路由发送 `retry: 1000`），我们**没有**自己的重连循环。由于两个宿主渲染同一个组件、而 effect 按挂载执行，两个已挂载面板就持有两条流。
 
-**TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd-config` ENTRY 文档的两半（`packages/mpd-tui-plugin/src/settings.ts`；卡片经 `configForms.get(CONFIG_ENTRY)` 挂载，`CONFIG_ENTRY = "mpd-config"` —— 旧 `mpd` 命名空间已退役）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——卡片上的保存由**宿主**持久化为 `mpd-config` 这个 ENTRY 文档，**不写任何工作区的 `<workspace>/.mpd/mpd.jsonc`**（该文件唯一的写入方是**已退役**的旧 `mpd` 命名空间回写，在被钉住的 harness 上处于休眠；而手工编辑该文件仍会在每次解析时被读取），且披露是**逐开关限定**的、并非笼统承诺重启与否：模型路由、团队闸门开关、`team.stateDir` 读取方与两个守卫在**运行中的进程**里生效，而 `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：看门狗那一行读的是 `settingsReader("mpd")`（在此被拒绝）并**自己**解析 `<workspace>/.mpd/mpd.jsonc`，因此手工编辑该文件即时生效，而表单保存永远到不了这些旋钮（逐开关的权威是 `docs/user-guide.md` §9.1；`settings-schema.ts` 与 `settings-card.ts` 里是同一份声明）。浏览器只通过公开的 settings 接缝抵达该桥；**持久化属于宿主**，ENTRY 文档的重新读取属于 `packages/mpd-config-plugin`（旧的回写也在那里，处于休眠）。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.ts`）。
+**TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd-config` ENTRY 文档的两半（`packages/mpd-tui-plugin/src/settings.ts`；卡片经 `configForms.get(CONFIG_ENTRY)` 挂载，`CONFIG_ENTRY = "mpd-config"` —— 旧 `mpd` 命名空间已退役）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——卡片上的保存由**宿主**持久化为 `mpd-config` 这个 ENTRY 文档，**不写任何工作区的 `<workspace>/.mpd/mpd.jsonc`**（该文件唯一的写入方是**已退役**的旧 `mpd` 命名空间回写，在被钉住的 harness 上处于休眠；而手工编辑该文件仍会在每次解析时被读取），且披露是**逐开关限定**的、并非笼统承诺重启与否：模型路由、团队闸门开关、`team.stateDir` 读取方与两个守卫在**运行中的进程**里生效，而 `hashline.*`、`commentChecker.*`、`autoproject.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：看门狗那一行读的是 `settingsReader("mpd")`（在此被拒绝）并**自己**解析 `<workspace>/.mpd/mpd.jsonc`，因此手工编辑该文件即时生效，而表单保存永远到不了这些旋钮（逐开关的权威是 `docs/user-guide.md` §9.1；`settings-schema.ts` 与 `settings-card.ts` 里是同一份声明）。浏览器只通过公开的 settings 接缝抵达该桥；**持久化属于宿主**，ENTRY 文档的重新读取属于 `packages/mpd-config-plugin`（旧的回写也在那里，处于休眠）。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.ts`）。
 
 **Web 卡片的逐 agent 路由行。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 knob 声明（原有 13 个 knob、每个名册 agent 一行三片叶子 —— `agentRoutes.<Agent>.{provider,model,reasoningEffort}` —— 再加 TUI 界面自身的一个 knob），并把每个 agent 的行渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.ts` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。任何一片叶子都不能只靠输入来设置。「当前生效」块会显示每个 agent 的**状态**：工作区未配置时渲染 `<unconfigured>`（并列出仍缺的叶子）——
 不再有任何默认层去凭空造一条路由——而**无效（invalid）**条目（叶子存在但格式不对，例如不是字符串，
@@ -62,37 +62,60 @@ locale 命名空间 `mpdWorkbench` —— 会话外壳把它渲染成 Chat/Traje
   或注册表拒绝这次注册，损失的只是那个 Tab —— **一行**诊断说明原因，客户端其余部分照常挂载。
 - **不使用 `order`。** 外壳按注册顺序投影 Tab 列表，因此该条目在插槽首次声明时注册，而不去竞争位置。
 
-## DSH Go 原生面板
+## DSH Go 原生界面（合同 `.mpd/plans/dshgo-native-parity.md` D2–D5）
 
-`src/dshgo-panel.ts` 是根 `dshGo` 清单所声明界面的**宿主半侧（live half）**：清单贡献面板 id **`mpd`**、
-`placement: ["session.tab", "features"]` 与静态回退视图 `dsh-go/views/mpd.json`，而本模块通过适配器以**同一个
-id** 发布 `panel('mpd', …)`，因此 App 是原地升级那份回退视图，而不是多出一个面板。
+根 `dshGo` 清单贡献**两个面板**、一条 composer strip、两个 composer 动作与两个 message 动作；每个面板在
+`dsh-go/views/` 下都有一份**手写的静态 v1 回退**，而本包以**同一批 id** 发布**实时半侧**，因此 App 是原地升级
+回退视图，而不是多出一个条目。
 
-- **惰性且静默地注册。** `apply` 时只尝试一次；没有 `dshGo` 桥的宿主只会得到一行日志 token（`dshGo=absent`）
-  和一个 `onServiceBound(["dshGo"], …)` 订阅——不轮询、不抛错；桥在此之后才绑定的宿主会被升级一次
-  （`dshGo=panel`）。重复绑定绝不会发布第二个面板。
-- **它显示什么。** 一行 `keyValue` 展示团队（名称、状态、阶段、成员数、任务数——本会话没有团队时显示破折号），
-  一行展示已 staged 的计划（成员数/任务数），一个最多 10 条的**就绪任务** `list`（标题 + kind/owner），一个
-  `info` callout 展示待回答的问题，每个答案选项一个按钮（最多前四个，超出时另加一句说明），两个动作按钮，以及
-  末尾一行 muted 文本说明本面板的边界。
-- **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的快照变化时发射，并返回
-  清除该定时器的 cancel 函数。`view` 则是对同一批服务的**实时读取**，而不是读这份推送缓存：App 会**先**取视图
-  **再**订阅，若首次视图取自缓存，就会既没有 callout 也没有选项按钮。快照收窄为 `{ team, plan, question,
-  readyTasks }`——id、名称、状态、计数、问题自身的文本与任务标题：绝不包含文件系统路径、token 或凭据，也绝不超过
-  桥的 32 KiB 上限。`refresh('mpd')` 只在**待答问题的集合**（停放 id）变化时触发，因为选项按钮是照它构建的；
-  仅内容变化（同一 id、新文本）走数据推送。
-- **三个动作。** `approve` 调 `mpdTeamActions.approve({sessionId})`，`dispatch` 调
-  `mpdTeamActions.dispatch({sessionId})`，`answer:<n>` 调 `mpdQuestions.answer({id, answers})` 时用的是
-  **视图渲染时**的那个问题：构建视图会捕获它的停放 id、条目 id 与**原始**选项标签，点击发送的就是这份捕获的 id 与
-  标签。实时停放队列只用来确认捕获的 id 是否还在——不在时回 "That question is gone" 并请求刷新，而**不会**去结算
-  当下停放的另一个问题；视图里没有问题时的点击回 "No question on screen"。因此固定的 `answer:0`…`answer:3`
-  指向的是**捕获的视图**，而不是实时队列。每次点击都只回一个 `toast`（≤ 40 字符）而**绝不** reject：没有会话时回
-  "Open a conversation first"，服务缺失回 "Unavailable here"，被拒绝回它自己那句，抛错回错误消息，超过四秒仍在跑回
-  "Still working — check the team panel"。
-- **声明边界。** 这类插槽**仅限本地引擎**（中继会拦掉 `/dsh-go/*`，因此远端宿主渲染的是工具卡而不是本面板）；
-  没有这个宿主半侧时渲染的是**静态**的 `dsh-go/views/mpd.json`，没有实时数值；动作需要**活着的会话**（没有
-  `sessionId` 的点击在任何服务被调用之前就被拒绝）；Flutter App 不在本工作区，因此单元测试固定的是协议形状
-  （组件目录、预算走查、action id 规则、绑定解析），真机安装仍需用户自行验证。
+| 插槽 | id | 实时半侧 |
+|---|---|---|
+| `panels` | `mpd` | `registerDshGoPanel`（`src/dshgo-panel.ts`） |
+| `panels` | `mpd-team` | `registerDshGoTeamPanel`（`src/dshgo-team-panel.ts`） |
+| `composer.strip` | `mpd-status` | `registerDshGoSurfaces`（`src/dshgo-surfaces.ts`） |
+| `composer.actions` | `mpd-dispatch` | `registerDshGoSurfaces` |
+| `composer.actions` | `mpd-board` | 清单里的静态 `open` effect，无需 handler |
+| `message.actions` | `mpd-save-memory`、`mpd-copy-reply` | `registerDshGoSurfaces` |
+
+- **惰性且静默地注册。** `apply` 时只尝试一次；没有 `dshGo` 桥的宿主只会得到一行日志 token（`dshGo=absent`、
+  `dshGo=team-absent`、`dshGo=surfaces …`）和一个 `onServiceBound(["dshGo"], …)` 订阅——不轮询、不抛错；桥在此之后
+  才绑定的宿主会被升级一次。
+- **视图是 v2，并且跟随主题（合同 §7）。** 两个根都由适配器的 `panelView()` 构建，它在**唯一一处**写入 `v: 2` 与
+  `accent: "app"`，因此命名色或十六进制 accent 根本无法表达。每个 Tab 恰好一个 `tinted` hero（App 的主题着色材质），
+  数字放在 v2 `grid` 里的 `metric`；数据区块是带标题与 `divider` 的 `surface`；空 Tab 是设计过的 `emptyState` 而不是
+  空白；每个视图至多一个 `style: "primary"` 动作。状态永远是**带文字的** `badge`/`tone`；成员首字母写成列表行标题的前缀
+  （`avatar` 是图片节点）；长文本设置 `maxLines`。视图里不出现圆角、尺寸、透明度、渐变、阴影或颜色字面量——那是 App
+  的决定，kit 的 builder 会直接拒绝。
+- **`adaptView` 是回退路径。** 低于 1.0.9（或 `caps.components` 缺少某个 v2 名字）的 App 拿到的是**同一棵树**降级后的
+  v1：tabs 变成带标题的 stack，grid 变成 list，badge 变文本，`divider`/`spacer` 消失，所有 `style`/`accent` 被剥掉。
+  一个 builder 产出两种形状，因此回退不会漂移；`grid`→`list` 重写后 metric 的标签**与数值**都保留。
+- **工作台面板显示什么。** 三个 Tab——总览（hero 计数、完成度进度条、第一条告警、就绪行与动作）、问题（只显示**第一条**
+  停放问题、它的选项与自定义回答表单）、资料库（工作伙伴库，加上最近 ≤ 10 条记忆与反思计数，按其存储的既有布局读取；
+  只读）。
+- **团队面板显示什么。** 三个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它；
+  下面是**各成员工作量柱状图**（每人负责的行数）、**分层依赖图**与成员名册）、详情（负责人、状态、类型、依赖与结论）
+  与看门狗（生效中的判据、保活暂停与最近 ≤ 5 条事件；经 `session-watchdog-status` 读取，缺失时回退到 `mpdWatchdog`
+  的持有登记）。依赖图是 `codeBlock`，每个任务一行（`L2 T4 Ship it <-T2`），只在超过六行或三层时折进 v2
+  `collapsible`，低于 1.0.9 时按层渲染为 `steps`。名册每位成员**一行**：`DW · Deep Worker` 加末尾的状态词。
+- **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的模型变化时发射，并返回清除定时器
+  的 cancel 函数。工作台模型是 `{ team, plan, question, readyTasks, counts, alert, workmates, memory }`——id、名称、
+  状态、计数、问题自身的文本与任务标题，绝不含文件系统路径、token 或凭据。`view` 是对同一批服务的**实时读取**而不是读
+  推送缓存，因为 App 会**先**取视图**再**订阅。`refresh` 只在**结构性**签名变化时触发：停放问题的身份（id 加它的选项
+  标签——按钮带的是字面标签）或就绪任务的 id 集合；仅文本变化走数据推送。
+- **点击。** 工作台面板有 `approve`、`dispatch`、`refresh`（协议自带的 `{refresh:true}` 简写）、`answer:<n>` 与
+  `answer-custom`；团队面板有 `select`、`back` 与 `refresh`。**两个面板都不通过点击改数据**：点击不携带 agent，
+  `agent_teams_task` 会拒绝每一个有主看板行，而看门狗工具解析的是环境里的工作区而不是面板会话的。结算一行归拥有它的
+  成员、暂停团队归队长的工具；详情与看门狗 Tab 会说明这一点，而不是显示一个按不动的按钮。问题类点击作用于
+  **视图渲染时捕获**的那份身份（停放 id、条目 id、原始标签），绝不作用于当下停放的内容：问题已消失时回
+  "That question is gone" 并请求刷新。每个 handler 都回一个 effect，**绝不** reject。
+- **三秒窗口。** App 只在点击后 3 秒内收到 effect 时才执行，并给 handler 同样预算，因此慢服务先用 v1.1 的**延后**形状
+  确认（`{ pending: { label, timeoutMs }, result }`，`timeoutMs` 最长到 App 的 60 s），真正的 effect 由 `result` 送达。
+  旧的 4 秒 handler 内超时已删除。
+- **Strip** 是**一行、最多 24 字符**，按 `caps.locale` 选择（`3 ready · 1 active` / `3 就绪 · 1 进行`），有问题停放时前缀
+  `❓`，计划等待审批时 tone 为 `warn`，且只在变化时发射。
+- **声明边界。** 这类插槽**仅限本地引擎**（中继会拦掉 `/dsh-go/*`，因此远端宿主渲染工具卡）；没有宿主半侧时渲染静态视图，
+  没有实时数值；动作需要**活着的会话**；结算与暂停不在面板里，它们属于拥有该行的成员与队长；Flutter App 不在本工作区，因此 checker 与单元测试固定的是协议形状，而**渲染观感仍是未证明的**
+  （没有 Flutter 就没有 PNG 预览）。
 
 ## 配置
 
@@ -108,7 +131,12 @@ node scripts/pack-mpd.ts           # restage the bundle
 ## 文件
 
 - `src/index.ts`——no-op main 插件。
-- `src/dshgo-panel.ts`——DSH Go 原生面板的宿主半侧（`panel('mpd', …)`）：上文所述的轮询快照、v1 视图树与三个点击动作。
+- `src/dshgo-panel.ts`——工作台面板的宿主半侧：读取模型、延后式的点击动作与注册（`panel('mpd', …)`）。
+- `src/dshgo-team-panel.ts`——团队面板的宿主半侧（`panel('mpd-team', …)`）：看板/成员/详情读取器、按 scope 保存的选中
+  状态与 `select` / `back` / `refresh` 动作（不改数据——匿名点击既无法拥有看板行，也无法指认会话的工作区根）。
+- `src/dshgo-views.ts`——两个面板的**纯**视图构建器（只用 kit builder；无服务、无 I/O）。
+- `src/dshgo-copy.ts`——面板文案的英文与简体中文两版，按 `caps.locale` 选择。
+- `src/dshgo-surfaces.ts`——composer strip 与三个菜单 handler。
 - `src/web-client.ts`——mpd 客户端 factory 主体（纯 JS，React.createElement）。
 - `src/team-view.ts`——两个侧边栏宿主共享的**团队视图** factory 主体（成员卡片、依赖 DAG，以及上文所述的"轮询 + 推送"刷新）。它以 `MPD_TEAM_VIEW` 拼入客户端，并把路由、间隔与翻译器作为依赖接收。
 - `src/team-page.ts`——团队**看门狗**侧边栏页面 factory 主体（模块 id `@mpd-dsh/team-page`），以同样方式构建进 `client.js`。它不 require 任何采纳客户端：只轮询本 bundle 自己的看门狗路由。

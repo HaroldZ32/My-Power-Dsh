@@ -1,0 +1,235 @@
+{
+  "task": "T14 — de-AI the human-facing docs (README pair + docs/** pairs), both languages, facts unchanged",
+  "branch": "dev",
+  "gitRevAtEvidence": "1447743b7ec0825eec76d6ddefba04ac605f3442",
+  "pairsTouched": 17,
+  "emDash": {
+    "unit": "em-dash characters (EN '—', zh '——')",
+    "before": 1727,
+    "after": 59,
+    "perPair": [
+      {
+        "pair": "README",
+        "en": {
+          "before": 58,
+          "after": 0
+        },
+        "zh": {
+          "before": 54,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/index",
+        "en": {
+          "before": 35,
+          "after": 0
+        },
+        "zh": {
+          "before": 33,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/development",
+        "en": {
+          "before": 29,
+          "after": 0
+        },
+        "zh": {
+          "before": 28,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/extensions",
+        "en": {
+          "before": 49,
+          "after": 4
+        },
+        "zh": {
+          "before": 46,
+          "after": 4
+        }
+      },
+      {
+        "pair": "docs/extension-authoring-guide",
+        "en": {
+          "before": 37,
+          "after": 8
+        },
+        "zh": {
+          "before": 36,
+          "after": 7
+        }
+      },
+      {
+        "pair": "docs/cellwork",
+        "en": {
+          "before": 87,
+          "after": 0
+        },
+        "zh": {
+          "before": 88,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/design",
+        "en": {
+          "before": 119,
+          "after": 0
+        },
+        "zh": {
+          "before": 109,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/user-guide",
+        "en": {
+          "before": 168,
+          "after": 2
+        },
+        "zh": {
+          "before": 159,
+          "after": 2
+        }
+      },
+      {
+        "pair": "docs/tui-parity",
+        "en": {
+          "before": 87,
+          "after": 2
+        },
+        "zh": {
+          "before": 56,
+          "after": 3
+        }
+      },
+      {
+        "pair": "docs/tui-dag-renderer",
+        "en": {
+          "before": 16,
+          "after": 3
+        },
+        "zh": {
+          "before": 16,
+          "after": 3
+        }
+      },
+      {
+        "pair": "docs/upstream-parity-ledger",
+        "en": {
+          "before": 35,
+          "after": 2
+        },
+        "zh": {
+          "before": 30,
+          "after": 2
+        }
+      },
+      {
+        "pair": "docs/extension-adaptation-report",
+        "en": {
+          "before": 73,
+          "after": 3
+        },
+        "zh": {
+          "before": 73,
+          "after": 3
+        }
+      },
+      {
+        "pair": "docs/preset-default",
+        "en": {
+          "before": 12,
+          "after": 4
+        },
+        "zh": {
+          "before": 13,
+          "after": 4
+        }
+      },
+      {
+        "pair": "docs/mail",
+        "en": {
+          "before": 24,
+          "after": 0
+        },
+        "zh": {
+          "before": 20,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/drive-surface",
+        "en": {
+          "before": 22,
+          "after": 0
+        },
+        "zh": {
+          "before": 24,
+          "after": 0
+        }
+      },
+      {
+        "pair": "docs/independence",
+        "en": {
+          "before": 26,
+          "after": 1
+        },
+        "zh": {
+          "before": 22,
+          "after": 1
+        }
+      },
+      {
+        "pair": "docs/feature-audit",
+        "en": {
+          "before": 22,
+          "after": 1
+        },
+        "zh": {
+          "before": 21,
+          "after": 0
+        }
+      }
+    ]
+  },
+  "remainingEmDashes": "only headings kept byte-identical to preserve anchors, code-comment lines inside fenced blocks, 'not applicable' table placeholder cells, and the tui-parity legend that explains the '—' glyph",
+  "gates": {
+    "bun run verify:docs": {
+      "exit": 0,
+      "pairs": 55,
+      "failed": 0,
+      "violations": 0,
+      "deadLinks": 0,
+      "note": "5 runs recorded in verify-docs.log, all exit 0"
+    }
+  },
+  "untouched": [
+    {
+      "path": "docs/tui.md + docs/tui.zh-CN.md",
+      "reason": "T13 boundary: another lane is rewriting their compatibility/verification section"
+    },
+    {
+      "path": "docs/market-listing*.md",
+      "reason": "another lane's new pair (appeared during this wave); not assigned to T14"
+    },
+    {
+      "path": "docs/plan-*.md and the prior-phase reports (bline-report, omo-parity-gap, review-p0-p3, track-a-report, tui-edition-report, ulw-deepseek-optimization, decisions.md, verification/*/verdict.md)",
+      "reason": "exempt process records per AGENTS.md §3; single-language, not a human-facing pair"
+    }
+  ],
+  "bounds": [
+    "prose rewritten with reviewed mechanical rules, then hand-fixed where the rule could not decide; no fact, command, path, version, table row or measurement changed",
+    "heading text left byte-identical (an em-dash survives inside a few headings) so every anchor keeps resolving",
+    "docs/tui.md + docs/tui.zh-CN.md untouched (T13 boundary); docs/market-listing*.md untouched (another lane's new pair)",
+    "verify:docs is a structural gate, not a style gate: a human proofread and the rendered look are unproven"
+  ],
+  "provenanceRuleApplied": [
+    "README pair: Acknowledgements replaced with current-source-only wording (EN + zh)",
+    "docs/user-guide §14 attribution table: the retired-body row and the roster row now name the CURRENT source only; a stray ': |' licence cell fixed to MIT"
+  ]
+}

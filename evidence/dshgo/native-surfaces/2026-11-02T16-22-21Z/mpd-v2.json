@@ -1,0 +1,426 @@
+{
+  "type": "stack",
+  "v": 2,
+  "accent": "app",
+  "style": {
+    "gap": "M"
+  },
+  "children": [
+    {
+      "type": "tabs",
+      "items": [
+        {
+          "label": "Overview",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "MPD Workbench",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "1 Ready · 1 Active · 2 Members",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Ready",
+                      "value": {
+                        "$": "data.counts.ready"
+                      },
+                      "tone": "good"
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Active",
+                      "value": {
+                        "$": "data.counts.active"
+                      },
+                      "tone": "info"
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Done",
+                      "value": {
+                        "$": "data.counts.done"
+                      }
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Members",
+                      "value": {
+                        "$": "data.counts.members"
+                      }
+                    }
+                  ],
+                  "columns": 2
+                },
+                {
+                  "type": "progress",
+                  "value": {
+                    "$": "data.counts.completion"
+                  },
+                  "label": "Completion",
+                  "tone": "good"
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "callout",
+              "text": "A plan is staged and waits for approval",
+              "tone": "warn"
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Ready to dispatch",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "Ship the panel",
+                      "subtitle": "work · Lead"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "spacer",
+              "size": "S"
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "Approve plan",
+                  "action": "approve",
+                  "icon": "check",
+                  "style": "primary"
+                },
+                {
+                  "label": "Dispatch",
+                  "action": "dispatch",
+                  "icon": "send"
+                },
+                {
+                  "label": "Refresh",
+                  "action": "refresh",
+                  "icon": "refresh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Questions",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Questions",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "Answer what a teammate parked",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Questions",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "callout",
+                  "text": {
+                    "$": "data.question.question"
+                  },
+                  "tone": "info"
+                },
+                {
+                  "type": "actions",
+                  "items": [
+                    {
+                      "label": "main",
+                      "action": "answer:0"
+                    },
+                    {
+                      "label": "dev",
+                      "action": "answer:1"
+                    },
+                    {
+                      "label": "edge",
+                      "action": "answer:2"
+                    }
+                  ]
+                },
+                {
+                  "type": "form",
+                  "children": [
+                    {
+                      "type": "textField",
+                      "label": "Custom answer",
+                      "bind": "data.customAnswer",
+                      "placeholder": "Custom answer"
+                    }
+                  ],
+                  "submit": "answer-custom",
+                  "submitLabel": "Send"
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Workmates",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Workmates",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "Durable instances from the workmate library",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Workmates",
+                      "value": 1
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Workmates",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "deep-worker-1",
+                      "subtitle": "Deep Worker · 4 uses",
+                      "trailing": "carries the D1 lane"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "spacer",
+              "size": "S"
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "Refresh",
+                  "action": "refresh",
+                  "icon": "refresh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Memory",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Memory",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "The latest entries in this workspace's store",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Memory",
+                      "value": 1
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Memory",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "the kit writes accent app",
+                      "subtitle": "fact · 2h"
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "keyValue",
+                  "items": [
+                    [
+                      "Reflection",
+                      "3"
+                    ],
+                    [
+                      "Memory",
+                      "1"
+                    ]
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

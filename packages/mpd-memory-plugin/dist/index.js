@@ -1,11 +1,12 @@
 // packages/mpd-memory-plugin/src/index.ts
-import { existsSync, mkdirSync as mkdirSync2, readFileSync, writeFileSync, appendFileSync, readdirSync } from "node:fs";
-import { spawnSync } from "node:child_process";
-import { basename, dirname, join as join2, resolve as resolve3, sep as sep2 } from "node:path";
+import { existsSync as existsSync3, readFileSync as readFileSync4, readdirSync as readdirSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { basename as basename2, join as join4 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -388,6 +389,53 @@ function workspaceRootOf(exec) {
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
   return process.cwd();
+}
+
+class HomeGuardRefusal extends Error {
+  code;
+  status;
+  constructor(code, message, status) {
+    super(message);
+    this.name = "HomeGuardRefusal";
+    this.code = code;
+    this.status = status;
+  }
+}
+function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertHomeMutationSandboxed(guard) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[guard.allowEnv] === "1")
+    return;
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
 var rowLogSinks = new Map;
 function rowLogLine(name, line) {
@@ -867,17 +915,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -888,8 +933,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -966,6 +1023,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1362,6 +1452,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -1630,6 +1721,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2159,41 +2299,449 @@ function probeMpdDsh(ctx, strict) {
   }
 }
 
-// packages/mpd-memory-plugin/src/index.ts
-var name = "mpd-memory";
-var inject = dshSeamInject(DSH_SEAM_TOOLS);
-function mergedConfig(ctx, config) {
-  const svc = ctx.get?.("mpdConfig");
-  if (!svc?.get)
-    return config;
-  const v = (k) => svc.get(k);
-  const vcs = v("memory.vcs");
-  return {
-    ...config,
-    vcs: vcs === "git" || vcs === "svn" || vcs === "both" ? vcs : config.vcs,
-    dir: typeof v("memory.dir") === "string" ? v("memory.dir") : config.dir,
-    agentSlug: typeof v("memory.agentSlug") === "string" ? v("memory.agentSlug") : config.agentSlug,
-    reflectionEvery: typeof v("memory.reflectionEvery") === "number" ? v("memory.reflectionEvery") : config.reflectionEvery
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function callout(value, props = {}) {
+  return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
   };
 }
-function slugOf(config, dsh, exec) {
-  if (config.agentSlug)
-    return config.agentSlug;
-  const base = basename(dsh.workspaceRoot(exec));
-  return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
+
+// packages/mpd-memory-plugin/src/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function bumpRoot(config, slug, dsh, exec) {
-  return join2(dsh.workspaceRoot(exec), config.dir ?? ".mpd", "memory", "agents", slug);
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
 }
-function ensureDirs(config, dsh, exec) {
-  const slug = slugOf(config, dsh, exec);
-  const root = bumpRoot(config, slug, dsh, exec);
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function tail(value, max) {
+  return value.length <= max ? value : "…" + value.slice(value.length - (max - 1));
+}
+function buildMemoryWriteCard(_args, value) {
+  const v = recordOf(value);
+  const committedTo = Array.isArray(v.committedTo) ? v.committedTo.map(String) : [];
+  const errors = Array.isArray(v.errors) ? v.errors.map(String).filter((line) => line !== "") : [];
+  const reflectionDue = v.reflectionDue === true;
+  const children = [
+    row([
+      metric({ label: "Scope", value: stringOf(v.scope, "workspace") }),
+      metric({ label: "Reflection", value: reflectionDue ? "due" : "not due", tone: reflectionDue ? "warn" : "muted" })
+    ]),
+    keyValue([
+      ["File", tail(stringOf(v.file, "(unknown)"), 80)],
+      ["VCS", stringOf(v.vcs, "git")],
+      ["Committed to", committedTo.length === 0 ? "none" : committedTo.join(", ")]
+    ])
+  ];
+  if (errors.length > 0)
+    children.push(callout(clip("commit failed: " + errors.join("; "), 400), { tone: "warn" }));
+  return stack(children, { title: "Memory written" });
+}
+function buildMemoryReadCard(_args, value) {
+  const v = recordOf(value);
+  const entries = recordsAt(v, "entries");
+  const nextOffset = v.next_offset === null || v.next_offset === undefined ? "end" : String(v.next_offset);
+  const children = [
+    row([
+      metric({ label: "Matched", value: numberOf(v.count) }),
+      metric({ label: "Returned", value: numberOf(v.returned) }),
+      metric({ label: "Next offset", value: nextOffset })
+    ])
+  ];
+  if (entries.length === 0) {
+    children.push(text("No memory entries matched."));
+  } else {
+    children.push(table({
+      columns: ["Kind", "Description"],
+      rows: entries.slice(0, 20).map((entry) => [clip(stringOf(entry.kind, "note"), 12), clip(stringOf(entry.description, "(untitled)"), 80)])
+    }));
+  }
+  return stack(children, { title: "Memory entries" });
+}
+function buildMemoryStatusCard(_args, value) {
+  const v = recordOf(value);
+  const reflection = recordOf(v.reflection);
+  const reflectionsCompleted = numberOf(reflection.reflectionsCompleted);
+  const stepsSince = numberOf(reflection.stepsSinceReflection);
+  const children = [
+    row([
+      metric({ label: "Entries", value: numberOf(v.entries) }),
+      metric({ label: "Journal lines", value: numberOf(v.journalLines) }),
+      metric({ label: "Reflections", value: reflectionsCompleted })
+    ]),
+    keyValue([
+      ["VCS", stringOf(v.vcs, "git")],
+      ["Scope", stringOf(v.scope, "workspace")],
+      ["Root", tail(stringOf(v.root, "(unknown)"), 80)],
+      ["Steps since reflection", stepsSince]
+    ])
+  ];
+  return stack(children, { title: "Memory status" });
+}
+var MEMORY_WRITE_CARD = toolCard(buildMemoryWriteCard);
+var MEMORY_READ_CARD = toolCard(buildMemoryReadCard);
+var MEMORY_STATUS_CARD = toolCard(buildMemoryStatusCard);
+
+// packages/mpd-memory-plugin/src/store.ts
+import { existsSync, mkdirSync as mkdirSync2, readFileSync as readFileSync2, appendFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, dirname, join as join2, resolve as resolve3, sep as sep3 } from "node:path";
+import { spawnSync } from "node:child_process";
+function homeDir() {
+  return process.env.HOME || homedir();
+}
+function globalRoot(config) {
+  return config.globalDir ?? join2(homeDir(), ".mpd", "memory");
+}
+function globalDirs(config) {
+  const root = globalRoot(config);
   const repo = join2(root, "repo");
   const runtime = join2(root, "runtime");
   const memoryDir = join2(repo, "memory");
-  mkdirSync2(memoryDir, { recursive: true });
-  mkdirSync2(runtime, { recursive: true });
+  return { root, repo, runtime, memoryDir };
+}
+function ensureGlobalDirs(config) {
+  const d = globalDirs(config);
+  mkdirSync2(d.memoryDir, { recursive: true });
+  mkdirSync2(d.runtime, { recursive: true });
+  return d;
+}
+var MEMORY_ALLOW_REAL_HOME_ENV = "MPD_DSH_MEMORY_ALLOW_REAL_HOME";
+function assertMemoryMutationSandboxed(root, operation) {
+  assertHomeMutationSandboxed({ root, operation, label: "mpd_memory", allowEnv: MEMORY_ALLOW_REAL_HOME_ENV });
+}
+function slugOf(config, workspace) {
+  if (config.agentSlug)
+    return config.agentSlug;
+  const base = basename(workspace);
+  return "agent-" + base.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "agent";
+}
+function agentPaths(config, workspace) {
+  const slug = slugOf(config, workspace);
+  const root = join2(workspace, config.dir ?? ".mpd", "memory", "agents", slug);
+  const repo = join2(root, "repo");
+  const runtime = join2(root, "runtime");
+  const memoryDir = join2(repo, "memory");
   return { root, repo, runtime, memoryDir, slug };
+}
+function ensureDirs(config, workspace) {
+  const d = agentPaths(config, workspace);
+  mkdirSync2(d.memoryDir, { recursive: true });
+  mkdirSync2(d.runtime, { recursive: true });
+  return d;
+}
+function scopeOf(args) {
+  const a = args !== null && typeof args === "object" ? args : undefined;
+  return a?.scope === "global" ? "global" : "workspace";
+}
+function journalPath(d) {
+  return join2(d.runtime, "journal.jsonl");
+}
+function appendJournalLine(d, kind, detail) {
+  appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
+`);
 }
 function run(cmd, args, cwdDir) {
   const r = spawnSync(cmd, args, { cwd: cwdDir, encoding: "utf8", timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: process.env });
@@ -2263,7 +2811,7 @@ function commitAll(config, d, msg) {
   return errs;
 }
 function parseFrontmatter(file) {
-  const raw = readFileSync(file, "utf8");
+  const raw = readFileSync2(file, "utf8");
   if (!raw.startsWith(`---
 `))
     return { meta: {}, body: raw };
@@ -2283,12 +2831,462 @@ function parseFrontmatter(file) {
 function normalizeLogEntry(meta, file, body) {
   return { ...meta, description: meta.description ?? "", content: body.trim(), file: basename(file) };
 }
-function safeMemoryPath(memoryDir, name2) {
+function safeMemoryPath(memoryDir, name) {
   const base = resolve3(memoryDir);
-  const target = resolve3(base, name2);
-  if (!target.startsWith(base + sep2))
-    throw new Error("mpd-memory: path escapes memory dir: " + name2);
+  const target = resolve3(base, name);
+  if (!target.startsWith(base + sep3))
+    throw new Error("mpd-memory: path escapes memory dir: " + name);
   return target;
+}
+
+// packages/mpd-memory-plugin/src/archive.ts
+import { createHash } from "node:crypto";
+import { existsSync as existsSync2, readFileSync as readFileSync3, readdirSync, writeFileSync } from "node:fs";
+import { dirname as dirname2, join as join3, resolve as resolve4 } from "node:path";
+var TODO_HEADING = /^##[ \t]+TODOs(?:[ \t]+#+)?[ \t]*$/i;
+var FINAL_WAVE_HEADING = /^##[ \t]+Final Verification Wave(?:[ \t]+#+)?[ \t]*$/i;
+var SECTION_BOUNDARY = /^#{1,2}(?:[ \t]+|$)/;
+var CHECKBOX_ITEM = /^ {0,3}[-*][ \t]*\[[ \t]*([xX]?)[ \t]*\][ \t]+(.+)$/;
+var FENCE_OPEN = /^[ \t]{0,3}(`{3,}|~{3,})/;
+function installArchiveHook(dsh, contextOf) {
+  try {
+    const dispose = dsh.onPostToolExecute((exec, result) => {
+      try {
+        const call = exec ?? {};
+        const settled = result ?? {};
+        const args = call.arguments !== null && typeof call.arguments === "object" ? call.arguments : undefined;
+        handleArchiveCall(contextOf(exec), String(call.name ?? ""), args, settled);
+      } catch (error) {
+        rowLogLine("mpd-memory", "[mpd-memory] archive hook listener failed: " + String(error?.message ?? error));
+      }
+      return;
+    });
+    return typeof dispose === "function" ? dispose : () => {};
+  } catch (error) {
+    rowLogLine("mpd-memory", "[mpd-memory] archive hook could not be installed: " + String(error?.message ?? error));
+    return () => {};
+  }
+}
+function handleArchiveCall(context, toolName, args, result, log = (line) => {
+  rowLogLine("mpd-memory", "[mpd-memory] " + line);
+}) {
+  try {
+    const event = matchArchiveEvent(context, toolName, args, result, log);
+    if (event === null)
+      return null;
+    const outcome = writeArchiveEntry(context, event);
+    if (outcome.errors.length > 0)
+      log("project memory " + outcome.key + " was written but its commit reported: " + outcome.errors.join("; "));
+    return outcome;
+  } catch (error) {
+    log("project-archive memory was not written for " + toolName + ": " + String(error?.message ?? error));
+    return null;
+  }
+}
+function matchArchiveEvent(context, toolName, args, result, log) {
+  if (result.isError === true)
+    return null;
+  const value = result.value !== null && typeof result.value === "object" ? result.value : undefined;
+  if (toolName === "mpd_boulder_complete") {
+    const workId = textOf(value?.workId) || textOf(args?.workId);
+    return workId === "" ? null : { kind: "boulder_complete", projectKey: workId };
+  }
+  if (toolName === "cellwork_stop") {
+    if (value?.ok === false)
+      return null;
+    const cellId = textOf(value?.cellId);
+    return cellId === "" ? null : { kind: "cellwork_stop", projectKey: cellId };
+  }
+  if (toolName === "agent_teams_plan") {
+    if (textOf(args?.action) !== "delete")
+      return null;
+    const archivedTo = textOf(value?.archivedTo);
+    if (archivedTo === "")
+      return null;
+    if (context.teams === undefined) {
+      log("agent_teams_plan archived a plan but the mpdTeams service is absent — no project memory was written");
+      return null;
+    }
+    const plan = findArchivedPlan(context, archivedTo, log);
+    if (plan === undefined)
+      return null;
+    if (textOf(plan.approvedAt) === "")
+      return null;
+    return { kind: "team_plan_archive", projectKey: textOf(plan.teamId) || plan.planId, plan };
+  }
+  return null;
+}
+function writeArchiveEntry(context, event) {
+  assertMemoryMutationSandboxed(globalRoot(context.config), "record a global project-archive memory");
+  const d = ensureGlobalDirs(context.config);
+  ensureVcs(context.config, d);
+  const at = new Date().toISOString();
+  const key = resolve4(context.workspace) + ":" + event.projectKey;
+  const index = readIndex(d);
+  const previous = Object.prototype.hasOwnProperty.call(index.entries, key) ? index.entries[key] : undefined;
+  const fileName = "project-" + slugForFile(event.projectKey) + "-" + shortHash(resolve4(context.workspace)) + ".md";
+  const file = safeMemoryPath(d.memoryDir, fileName);
+  const digest = digestFor(context, event);
+  writeFileSync(file, frontmatterFor(event) + renderDigest(event, context.workspace, at, digest));
+  appendJournalLine(d, "archive", { eventKind: event.kind, projectKey: event.projectKey, key, file: fileName });
+  if (previous !== undefined)
+    appendJournalLine(d, "superseded", { by: event.kind, key, file: fileName, previous: previous.eventKind });
+  index.entries[key] = { key, workspace: resolve4(context.workspace), projectKey: event.projectKey, eventKind: event.kind, file: fileName, at, superseded: (previous?.superseded ?? 0) + (previous === undefined ? 0 : 1) };
+  writeIndex(d, index);
+  const errors = commitAll(context.config, d, "memory: project archive " + event.projectKey + " (" + event.kind + ")");
+  return { key, file, superseded: previous !== undefined, errors };
+}
+function digestFor(context, event) {
+  const digest = event.kind === "boulder_complete" ? boulderDigest(context.workspace, event.projectKey) : event.kind === "cellwork_stop" ? cellDigest(context, event.projectKey) : planDigest(context, event);
+  const proof = proofLines(context.workspace);
+  digest.proof = proof.lines;
+  digest.unreadable.push(...proof.unreadable);
+  return digest;
+}
+function boulderDigest(workspace, workId) {
+  const digest = { objective: "boulder work " + workId, tasks: [], scopes: [], open: [], proof: [], unreadable: [] };
+  const ledger = readJsonFile(join3(workspace, ".mpd", "boulder.json"));
+  if (ledger.problem !== undefined) {
+    digest.unreadable.push(".mpd/boulder.json (" + ledger.problem + ")");
+    return digest;
+  }
+  const works = ledger.value?.works;
+  const work = works !== null && typeof works === "object" && Object.prototype.hasOwnProperty.call(works, workId) ? works[workId] : undefined;
+  if (work === null || typeof work !== "object") {
+    digest.unreadable.push('.mpd/boulder.json holds no work "' + workId + '"');
+    return digest;
+  }
+  const planPath = textOf(work.active_plan);
+  const planName = textOf(work.plan_name);
+  const elapsed = typeof work.elapsed_ms === "number" ? work.elapsed_ms : undefined;
+  digest.objective = "boulder work " + workId + (planName === "" ? "" : ' ("' + planName + '")') + " completed" + (elapsed === undefined ? "" : " after " + String(elapsed) + "ms");
+  const items = planPath === "" ? undefined : planItems(join3(workspace, planPath));
+  if (items === undefined) {
+    digest.unreadable.push(planPath === "" ? "the boulder work names no plan file" : planPath + " (unreadable)");
+  } else {
+    digest.tasks = capList(items.titles, 12);
+    if (items.remaining > 0)
+      digest.open.push(String(items.remaining) + " plan item(s) still unticked in " + planPath);
+  }
+  const timers = work.task_sessions !== null && typeof work.task_sessions === "object" ? work.task_sessions : undefined;
+  if (timers !== undefined) {
+    for (const [key, timer] of Object.entries(timers)) {
+      const title = textOf(timer?.task_title) || String(key);
+      if (digest.tasks.length === 0)
+        digest.tasks.push(title);
+      const status = textOf(timer?.status);
+      if (status !== "" && status !== "completed")
+        digest.open.push("task timer " + String(key) + " (" + title + ") is " + status);
+    }
+  }
+  return digest;
+}
+function cellDigest(context, cellId) {
+  const digest = { objective: "cell " + cellId, tasks: [], scopes: [], open: [], proof: [], unreadable: [] };
+  const cell = readJsonFile(join3(context.workspace, ".mpd", "cellwork", cellId, "state.json"));
+  if (cell.problem !== undefined) {
+    digest.unreadable.push(".mpd/cellwork/" + cellId + "/state.json (" + cell.problem + ")");
+    return digest;
+  }
+  const objective = textOf(cell.value?.objective);
+  const stopReason = textOf(cell.value?.stopReason);
+  digest.objective = "cell " + cellId + (objective === "" ? "" : ' ("' + objective + '")') + " stopped" + (stopReason === "" ? "" : ": " + stopReason);
+  if (stopReason !== "")
+    digest.open.push("stopReason: " + stopReason);
+  const teamId = textOf(cell.value?.teamId);
+  const splitRevision = typeof cell.value?.splitRevision === "number" ? cell.value.splitRevision : undefined;
+  if (teamId !== "") {
+    const record = context.teams?.get?.(context.workspace, teamId);
+    if (record === undefined)
+      digest.unreadable.push("the team record " + teamId + " (mpdTeams.get absent or unknown)");
+    else
+      mergeTeamRecord(digest, record);
+  } else if (splitRevision !== undefined) {
+    const split = readJsonFile(join3(context.workspace, ".mpd", "cellwork", cellId, "split", String(splitRevision) + ".json"));
+    if (split.problem !== undefined)
+      digest.unreadable.push(".mpd/cellwork/" + cellId + "/split/" + String(splitRevision) + ".json (" + split.problem + ")");
+    else
+      mergeSplit(digest, split.value);
+  } else {
+    digest.unreadable.push("cell " + cellId + " approved no team and accepted no split — no task titles exist");
+  }
+  return digest;
+}
+function planDigest(context, event) {
+  const digest = { objective: "team plan " + (event.plan?.planId ?? event.projectKey), tasks: [], scopes: [], open: [], proof: [], unreadable: [] };
+  const plan = event.plan === undefined ? { problem: "the mpdTeams service named no plan document" } : readJsonFile(event.plan.path);
+  if (plan.problem !== undefined) {
+    digest.unreadable.push((event.plan?.path ?? "the archived plan") + " (" + plan.problem + ")");
+  } else {
+    const planName = textOf(plan.value?.name);
+    const description = textOf(plan.value?.description);
+    digest.objective = "team plan " + textOf(plan.value?.planId) + (planName === "" ? "" : ' ("' + planName + '")') + " approved at " + textOf(plan.value?.approvedAt) + " and archived";
+    if (description !== "")
+      digest.objective += ": " + description;
+    const staged = Array.isArray(plan.value?.tasks) ? plan.value.tasks : [];
+    digest.tasks = capList(staged.map((task) => textOf(task?.subject)).filter((title) => title !== ""), 12);
+    digest.scopes = capList(uniqueStrings(staged.flatMap((task) => Array.isArray(task?.writeScopes) ? task.writeScopes.map(textOf) : [])), 20);
+    const unresolved = Array.isArray(plan.value?.created?.unresolved) ? plan.value.created.unresolved : [];
+    for (const row2 of unresolved) {
+      const taskId = textOf(row2?.taskId);
+      const references = Array.isArray(row2?.references) ? row2.references.map(textOf).filter((r) => r !== "") : [];
+      if (taskId !== "" && references.length > 0)
+        digest.open.push("unresolved blocker reference(s) on " + taskId + ": " + references.join(", "));
+    }
+  }
+  if (context.teams === undefined)
+    digest.unreadable.push("the team record (mpdTeams absent)");
+  else {
+    const teamId = textOf(event.plan?.teamId);
+    const record = teamId === "" ? undefined : context.teams.get?.(context.workspace, teamId);
+    if (record === undefined)
+      digest.unreadable.push("the live team record " + (teamId === "" ? "(the plan names no team)" : teamId));
+    else
+      mergeTeamRecord(digest, record);
+  }
+  return digest;
+}
+function mergeTeamRecord(digest, record) {
+  const tasks = Array.isArray(record.tasks) ? record.tasks : [];
+  const titles = digest.tasks.concat(tasks.map((task) => textOf(task.subject)).filter((title) => title !== ""));
+  digest.tasks = capList(uniqueStrings(titles), 12);
+  const scopes = digest.scopes.concat(tasks.flatMap((task) => Array.isArray(task.writeScopes) ? task.writeScopes.map(textOf) : []));
+  digest.scopes = capList(uniqueStrings(scopes), 20);
+  for (const task of tasks) {
+    const status = textOf(task.status);
+    if (status === "completed")
+      continue;
+    const blockedBy = Array.isArray(task.blockedBy) ? task.blockedBy.map(textOf).filter((id) => id !== "") : [];
+    digest.open.push(textOf(task.id) + (textOf(task.subject) === "" ? "" : " (" + textOf(task.subject) + ")") + " status=" + (status === "" ? "unknown" : status) + (blockedBy.length === 0 ? "" : ", blocked by " + blockedBy.join(", ")));
+  }
+}
+function mergeSplit(digest, split) {
+  const tasks = Array.isArray(split?.tasks) ? split.tasks : [];
+  digest.tasks = capList(tasks.map((task) => textOf(task?.subject)).filter((title) => title !== ""), 12);
+  digest.scopes = capList(uniqueStrings(tasks.flatMap((task) => Array.isArray(task?.writeScopes) ? task.writeScopes.map(textOf) : [])), 20);
+  for (const task of tasks) {
+    if (task?.accepted === true)
+      continue;
+    digest.open.push("split task " + textOf(task?.key) + " (" + textOf(task?.subject) + ") was not accepted");
+  }
+  const findings = Array.isArray(split?.findings) ? split.findings : [];
+  for (const finding of findings.slice(0, 5))
+    digest.open.push("split finding: " + textOf(finding?.message ?? finding?.kind));
+}
+function proofLines(workspace) {
+  const lines = [];
+  const unreadable = [];
+  const verify = join3(workspace, ".mpd", "verify");
+  const loops = newestJsonFiles(join3(verify, "loops")).slice(0, 5);
+  if (loops.length === 0)
+    lines.push("no verify loops recorded under .mpd/verify/loops");
+  for (const name of loops) {
+    const loop = readJsonFile(join3(verify, "loops", name));
+    if (loop.problem !== undefined) {
+      unreadable.push(".mpd/verify/loops/" + name + " (" + loop.problem + ")");
+      continue;
+    }
+    lines.push("verify loop " + textOf(loop.value?.loopId) + " status=" + (textOf(loop.value?.status) || "unknown") + (textOf(loop.value?.verifier?.id) === "" ? "" : " verifier=" + textOf(loop.value?.verifier?.id)));
+  }
+  const records = newestJsonFiles(join3(verify, "records")).slice(0, 5);
+  if (records.length === 0)
+    lines.push("no verdict records under .mpd/verify/records");
+  for (const name of records) {
+    const record = readJsonFile(join3(verify, "records", name));
+    if (record.problem !== undefined) {
+      unreadable.push(".mpd/verify/records/" + name + " (" + record.problem + ")");
+      continue;
+    }
+    lines.push("verdict " + textOf(record.value?.recordId) + " " + (textOf(record.value?.verdict) || "unknown") + (textOf(record.value?.loopId) === "" ? "" : " on " + textOf(record.value?.loopId)));
+  }
+  const evidence = newestJsonFiles(join3(verify, "evidence")).slice(0, 5);
+  if (evidence.length === 0)
+    lines.push("no evidence rows under .mpd/verify/evidence");
+  for (const name of evidence)
+    lines.push("evidence .mpd/verify/evidence/" + name);
+  const gatesPath = join3(workspace, "mpd-gates.json");
+  if (!existsSync2(gatesPath))
+    lines.push("gate table mpd-gates.json absent (the built-in gate table applies)");
+  else {
+    try {
+      const bytes = readFileSync3(gatesPath);
+      lines.push("gate table mpd-gates.json sha256=" + createHash("sha256").update(bytes).digest("hex") + " bytes=" + String(bytes.length));
+    } catch (error) {
+      unreadable.push("mpd-gates.json (" + String(error?.message ?? error) + ")");
+    }
+  }
+  return { lines, unreadable };
+}
+function planItems(planPath) {
+  let text2;
+  try {
+    text2 = readFileSync3(planPath, "utf8");
+  } catch {
+    return;
+  }
+  const titles = [];
+  let remaining = 0;
+  let section = "other";
+  let structured = false;
+  let fence = "";
+  for (const line of text2.split(`
+`)) {
+    const opener = FENCE_OPEN.exec(line);
+    if (opener !== null) {
+      if (fence === "")
+        fence = opener[1];
+      else if (line.trimStart().startsWith(fence))
+        fence = "";
+      continue;
+    }
+    if (fence !== "")
+      continue;
+    if (TODO_HEADING.test(line)) {
+      section = "todo";
+      structured = true;
+      continue;
+    }
+    if (FINAL_WAVE_HEADING.test(line)) {
+      section = "final-wave";
+      structured = true;
+      continue;
+    }
+    if (SECTION_BOUNDARY.test(line)) {
+      section = "other";
+      continue;
+    }
+    const box = CHECKBOX_ITEM.exec(line);
+    if (box === null)
+      continue;
+    if (structured && section === "other")
+      continue;
+    const label = box[2].trim();
+    if (label === "")
+      continue;
+    titles.push(label);
+    if (box[1] === "")
+      remaining += 1;
+  }
+  return { titles, remaining };
+}
+function findArchivedPlan(context, archivedTo, log) {
+  const dir = resolve4(archivedTo);
+  let plans = [];
+  try {
+    plans = context.teams?.archivedPlans(context.workspace) ?? [];
+  } catch {
+    plans = [];
+  }
+  const match = plans.find((plan) => dirname2(resolve4(plan.path)) === dir);
+  if (match === undefined)
+    log("agent_teams_plan reported archive " + dir + " but the mpdTeams listing does not contain it — no project memory was written");
+  return match;
+}
+function renderDigest(event, workspace, at, digest) {
+  const lines = [];
+  lines.push("# " + event.projectKey);
+  lines.push("");
+  lines.push("event: " + event.kind);
+  lines.push("workspace: " + resolve4(workspace));
+  lines.push("archived: " + at);
+  lines.push("");
+  lines.push("## What was built");
+  lines.push(digest.objective);
+  if (digest.tasks.length === 0)
+    lines.push("- no task titles in the readable sources above");
+  for (const task of digest.tasks)
+    lines.push("- " + task);
+  lines.push("");
+  lines.push("## Proof");
+  for (const line of digest.proof)
+    lines.push("- " + line);
+  lines.push("");
+  lines.push("## Where");
+  if (digest.scopes.length === 0)
+    lines.push("- the event's sources declare no write scopes");
+  for (const scope of digest.scopes)
+    lines.push("- " + scope);
+  lines.push("");
+  lines.push("## Open");
+  if (digest.open.length === 0)
+    lines.push("- nothing unresolved in the sources this digest could read");
+  for (const item of digest.open)
+    lines.push("- " + item);
+  if (digest.unreadable.length > 0) {
+    lines.push("");
+    lines.push("## Unreadable");
+    for (const item of digest.unreadable)
+      lines.push("- " + item);
+  }
+  return lines.join(`
+`) + `
+`;
+}
+function frontmatterFor(event) {
+  const meta = { description: "project archive: " + event.projectKey + " (" + event.kind + ")", kind: "fact", scope: "global", tags: ["project", "archive", event.kind] };
+  return `---
+` + JSON.stringify(meta) + `
+---
+`;
+}
+function readIndex(d) {
+  const reading = readJsonFile(join3(d.runtime, "index.json"));
+  if (reading.problem !== undefined || reading.value?.version !== 1 || reading.value?.entries === null || typeof reading.value?.entries !== "object") {
+    return { version: 1, entries: {} };
+  }
+  return { version: 1, entries: reading.value.entries };
+}
+function writeIndex(d, index) {
+  writeFileSync(join3(d.runtime, "index.json"), JSON.stringify(index, null, 2));
+}
+function readJsonFile(path) {
+  try {
+    return { value: JSON.parse(readFileSync3(path, "utf8")) };
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    return { problem: message.includes("ENOENT") ? "absent" : message };
+  }
+}
+function newestJsonFiles(dir) {
+  try {
+    return readdirSync(dir).filter((name) => name.endsWith(".json")).sort().reverse();
+  } catch {
+    return [];
+  }
+}
+function textOf(value) {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : "";
+}
+function uniqueStrings(items) {
+  return Array.from(new Set(items.filter((item) => item !== ""))).sort();
+}
+function capList(items, max) {
+  return items.length <= max ? items : [...items.slice(0, max), "… and " + String(items.length - max) + " more"];
+}
+function slugForFile(key) {
+  return key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "project";
+}
+function shortHash(text2) {
+  return createHash("sha1").update(text2).digest("hex").slice(0, 8);
+}
+
+// packages/mpd-memory-plugin/src/index.ts
+var name = "mpd-memory";
+var inject = dshSeamInject(DSH_SEAM_TOOLS);
+function mergedConfig(ctx, config) {
+  const svc = ctx.get?.("mpdConfig");
+  if (!svc?.get)
+    return config;
+  const v = (k) => svc.get(k);
+  const vcs = v("memory.vcs");
+  return {
+    ...config,
+    vcs: vcs === "git" || vcs === "svn" || vcs === "both" ? vcs : config.vcs,
+    dir: typeof v("memory.dir") === "string" ? v("memory.dir") : config.dir,
+    agentSlug: typeof v("memory.agentSlug") === "string" ? v("memory.agentSlug") : config.agentSlug,
+    reflectionEvery: typeof v("memory.reflectionEvery") === "number" ? v("memory.reflectionEvery") : config.reflectionEvery,
+    globalDir: typeof v("memory.globalDir") === "string" ? v("memory.globalDir") : config.globalDir
+  };
 }
 function initialState() {
   return { steps: 0, reflectionsCompleted: 0, stepsSinceReflection: 0, pendingReflection: null, triggered: false };
@@ -2308,44 +3306,69 @@ function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const cfg = mergedConfig(ctx, config);
   const reflectionEvery = cfg.reflectionEvery ?? 10;
+  const disposers = [];
   function statePath(d) {
-    return join2(d.runtime, "reflection.json");
-  }
-  function journalPath(d) {
-    return join2(d.runtime, "journal.jsonl");
+    return join4(d.runtime, "reflection.json");
   }
   function readReflection(d) {
     try {
-      return adoptLegacyState(JSON.parse(readFileSync(statePath(d), "utf8")));
+      return adoptLegacyState(JSON.parse(readFileSync4(statePath(d), "utf8")));
     } catch {
       return initialState();
     }
   }
   function writeReflection(d, s) {
-    writeFileSync(statePath(d), JSON.stringify(s, null, 2));
+    writeFileSync2(statePath(d), JSON.stringify(s, null, 2));
   }
-  function appendJournal(d, kind, detail) {
-    appendFileSync(journalPath(d), JSON.stringify({ at: new Date().toISOString(), kind, ...detail }) + `
-`);
+  function teamsService() {
+    const svc = ctx.get?.("mpdTeams");
+    return svc !== undefined && svc !== null && typeof svc.archivedPlans === "function" ? svc : undefined;
+  }
+  function archiveContext(exec) {
+    return {
+      workspace: dsh.workspaceRoot(exec),
+      config: cfg,
+      teams: teamsService()
+    };
   }
   dsh.registerTool({
     name: "mpd_memory_write",
-    description: "Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. Increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.",
-    parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" } }, required: ["title", "content"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")") },
+    description: `Persist a memory entry (markdown file with frontmatter description/kind/aliases/read_only) into the VCS-backed memory store and commit. scope:"workspace" (default, this agent's store) or "global" (the shared ~/.mpd/memory store, guarded: a global write is refused when its root is not inside the sandbox $HOME of an isolated boot, and it never advances the per-agent reflection counter). A workspace write increments the reflection step counter; when the reflection threshold is crossed the result announces a reflection is due. kind: note | fact | reflection.`,
+    parameters: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, content: { type: "string" }, kind: { type: "string", enum: ["note", "fact", "reflection"] }, tags: { type: "array", items: { type: "string" } }, readOnly: { type: "boolean" }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store this entry belongs to; workspace is the default." } }, required: ["title", "content"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { file: { type: "string" }, committedTo: { type: "array", items: { type: "string" } }, reflectionDue: { type: "boolean" }, vcs: { type: "string" }, errors: { type: "array", items: { type: "string" } }, scope: { type: "string" } }, required: ["file", "vcs"] }, render: (_a, v) => textBlock("memory written: " + v.file + " (vcs=" + v.vcs + " committed=" + v.committedTo.join(",") + " reflectionDue=" + v.reflectionDue + ")"), presentationMeta: MEMORY_WRITE_CARD },
     execute: async (args, exec) => {
-      const d = ensureDirs(cfg, dsh, exec);
-      ensureVcs(cfg, d);
+      const scope = scopeOf(args);
       const name2 = String(args?.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) + "-" + Date.now().toString(36);
-      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
       const meta = { description: String(args?.description ?? args?.title ?? name2), kind: String(args?.kind ?? "note"), tags: Array.isArray(args?.tags) ? args.tags : [] };
       if (args?.readOnly === true)
         meta.read_only = true;
+      if (scope === "global") {
+        assertMemoryMutationSandboxed(globalDirs(cfg).root, "write a global memory entry");
+        const g = ensureGlobalDirs(cfg);
+        ensureVcs(cfg, g);
+        const globalMeta = { ...meta, scope: "global" };
+        const globalFile = safeMemoryPath(g.memoryDir, name2 + ".md");
+        const globalFront = `---
+` + JSON.stringify(globalMeta) + `
+---
+`;
+        writeFileSync2(globalFile, globalFront + String(args?.content) + (String(args?.content).endsWith(`
+`) ? "" : `
+`));
+        const globalErrs = commitAll(cfg, g, "memory: " + name2 + " (" + globalMeta.kind + ")");
+        appendJournalLine(g, "write", { file: basename2(globalFile), kind: globalMeta.kind, vcs: cfg.vcs ?? "git", scope: "global" });
+        const wsDirs = agentPaths(cfg, dsh.workspaceRoot(exec));
+        const wsState = readReflection(wsDirs);
+        return { file: globalFile, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: wsState.triggered === true || wsState.pendingReflection?.due === true, vcs: cfg.vcs ?? "git", errors: globalErrs, scope };
+      }
+      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
+      ensureVcs(cfg, d);
+      const file = safeMemoryPath(d.memoryDir, name2 + ".md");
       const front = `---
 ` + JSON.stringify(meta) + `
 ---
 `;
-      writeFileSync(file, front + String(args?.content) + (String(args?.content).endsWith(`
+      writeFileSync2(file, front + String(args?.content) + (String(args?.content).endsWith(`
 `) ? "" : `
 `));
       const errs = commitAll(cfg, d, "memory: " + name2 + " (" + meta.kind + ")");
@@ -2357,25 +3380,26 @@ function apply(ctx, config = {}) {
         ref.pendingReflection = { due: true, at: new Date().toISOString() };
       }
       writeReflection(d, ref);
-      appendJournal(d, "write", { file: basename(file), kind: meta.kind, vcs: cfg.vcs ?? "git" });
-      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs };
+      appendJournalLine(d, "write", { file: basename2(file), kind: meta.kind, vcs: cfg.vcs ?? "git" });
+      return { file, committedTo: (cfg.vcs ?? "git") === "both" ? ["git", "svn"] : [cfg.vcs ?? "git"], reflectionDue: ref.triggered === true, vcs: cfg.vcs ?? "git", errors: errs, scope };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_read",
-    description: "Read memory entries by optional kind filter and/or a substring query (matched against description/content/tags/aliases), limited to `limit` entries; returns normalized entries with frontmatter metadata and body content.",
-    parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer" } }, additionalProperties: false },
-    output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["entries", "count"] }, render: (_a, v) => textBlock("memory entries: " + v.count + `
+    description: 'Read memory entries by optional kind filter and/or a substring query (matched against description/content/tags/aliases), PAGINATED: pass `offset` (default 0) and `limit` (default 20, max 50); the answer carries `count` (the TOTAL matched, not the page), `offset`, `returned` and `next_offset` (the next page\'s offset, or null at the end). Entries come back in a STABLE order: the entry FILE NAME ascending, so successive calls walk every match exactly once. scope:"workspace" (default) reads this agent\'s store, "global" the shared ~/.mpd/memory store; a global read never creates the store.',
+    parameters: { type: "object", properties: { query: { type: "string" }, kind: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 50, description: "Page size; clamped to 1..50, default 20." }, offset: { type: "integer", minimum: 0, description: "Page start in the matched set; default 0. Pass the previous answer's next_offset to continue." }, scope: { type: "string", enum: ["workspace", "global"], description: "Which store to read; workspace is the default." } }, additionalProperties: false },
+    output: { schema: { type: "object", properties: { entries: { type: "array", items: { type: "object" } }, count: { type: "integer" }, offset: { type: "integer" }, returned: { type: "integer" }, next_offset: { oneOf: [{ type: "integer" }, { type: "null" }] }, scope: { type: "string" } }, required: ["entries", "count"] }, render: (_a, v) => textBlock("memory entries: " + v.count + " total, offset=" + v.offset + " returned=" + v.returned + " next=" + (v.next_offset === null ? "end" : v.next_offset) + `
 ` + v.entries.map((e) => "- [" + (e.kind ?? "note") + "] " + e.description + ": " + e.content.slice(0, 200)).join(`
-`)) },
+`)), presentationMeta: MEMORY_READ_CARD },
     execute: async (args, exec) => {
-      const d = ensureDirs(cfg, dsh, exec);
-      const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
+      const scope = scopeOf(args);
+      const memoryDir = scope === "global" ? globalDirs(cfg).memoryDir : ensureDirs(cfg, dsh.workspaceRoot(exec)).memoryDir;
+      const files = (existsSync3(memoryDir) ? readdirSync2(memoryDir).filter((f) => f.endsWith(".md")) : []).sort();
       let entries = [];
       const kind = args?.kind ? String(args.kind) : null;
       const query = args?.query ? String(args.query).toLowerCase() : null;
       for (const f of files) {
-        const p = join2(d.memoryDir, f);
+        const p = join4(memoryDir, f);
         const { meta, body } = parseFrontmatter(p);
         const e = normalizeLogEntry(meta, f, body);
         if (kind && e.kind !== kind)
@@ -2388,7 +3412,10 @@ function apply(ctx, config = {}) {
         entries.push(e);
       }
       const limit = Math.min(Math.max(Number(args?.limit ?? 20) || 20, 1), 50);
-      return { entries: entries.slice(0, limit), count: entries.length };
+      const offset = Math.max(Math.floor(Number(args?.offset ?? 0)) || 0, 0);
+      const page = entries.slice(offset, offset + limit);
+      const nextOffset = offset + page.length < entries.length ? offset + page.length : null;
+      return { entries: page, count: entries.length, offset, returned: page.length, next_offset: nextOffset, scope };
     }
   });
   dsh.registerTool({
@@ -2398,7 +3425,7 @@ function apply(ctx, config = {}) {
     output: { schema: { type: "object", properties: { state: { type: "object" }, due: { type: "boolean" } }, required: ["state", "due"] }, render: (_a, v) => textBlock("reflection state: " + JSON.stringify(v.state, null, 1) + (v.due ? `
 REFLECTION DUE` : "")) },
     execute: async (_args, exec) => {
-      const d = ensureDirs(cfg, dsh, exec);
+      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
       const s = readReflection(d);
       return { state: s, due: s.triggered === true || s.pendingReflection?.due === true };
     }
@@ -2409,7 +3436,7 @@ REFLECTION DUE` : "")) },
     parameters: { type: "object", properties: { content: { type: "string" }, title: { type: "string" } }, required: ["content"], additionalProperties: false },
     output: { schema: { type: "object", properties: { completed: { type: "boolean" }, file: { type: "string" } }, required: ["completed", "file"] }, render: (_a, v) => textBlock("reflection completed: " + (v.completed ? "yes" : "no") + " " + v.file) },
     execute: async (args, exec) => {
-      const d = ensureDirs(cfg, dsh, exec);
+      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
       const s = readReflection(d);
       if (s.triggered !== true && s.pendingReflection?.due !== true) {
         throw new Error("mpd-memory: no reflection is due — refusing to complete (triggered=" + String(s.triggered) + ", pendingReflection=" + (s.pendingReflection?.due === false ? "settled" : "none") + ", stepsSinceReflection=" + String(s.stepsSinceReflection ?? 0) + "); call mpd_memory_reflect to inspect the state machine.");
@@ -2418,7 +3445,7 @@ REFLECTION DUE` : "")) },
       const name2 = "reflection-" + Date.now().toString(36);
       const file = safeMemoryPath(d.memoryDir, name2 + ".md");
       const meta = { description: String(args?.title ?? "reflection"), kind: "reflection" };
-      writeFileSync(file, `---
+      writeFileSync2(file, `---
 ` + JSON.stringify(meta) + `
 ---
 ` + String(args?.content) + `
@@ -2429,24 +3456,42 @@ REFLECTION DUE` : "")) },
       s.triggered = false;
       s.pendingReflection = { due: false, at: new Date().toISOString() };
       writeReflection(d, s);
-      appendJournal(d, "reflection", { file: basename(file) });
+      appendJournalLine(d, "reflection", { file: basename2(file) });
       return { completed: true, file };
     }
   });
   dsh.registerTool({
     name: "mpd_memory_status",
-    description: "Show memory engine status: vcs mode, repo paths, entry count, journal line count, reflection counters.",
-    parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a, v) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + `
-reflection: ` + JSON.stringify(v.reflection)) },
-    execute: async (_args, exec) => {
-      const d = ensureDirs(cfg, dsh, exec);
-      const files = existsSync(d.memoryDir) ? readdirSync(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
-      const journalLines = existsSync(journalPath(d)) ? readFileSync(journalPath(d), "utf8").split(`
+    description: `Show memory engine status: vcs mode, store root, entry count, journal line count, reflection counters. scope:"workspace" (default) reports this agent's store, "global" the shared ~/.mpd/memory store (whose reflection counters are still the agent's own, because reflection is workspace-scoped).`,
+    parameters: { type: "object", properties: { scope: { type: "string", enum: ["workspace", "global"], description: "Which store to report; workspace is the default." } } },
+    output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" }, scope: { type: "string" } }, required: ["vcs", "root", "entries"] }, render: (_a, v) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + `
+reflection: ` + JSON.stringify(v.reflection)), presentationMeta: MEMORY_STATUS_CARD },
+    execute: async (args, exec) => {
+      const scope = scopeOf(args);
+      if (scope === "global") {
+        const g = globalDirs(cfg);
+        const globalFiles = existsSync3(g.memoryDir) ? readdirSync2(g.memoryDir).filter((f) => f.endsWith(".md")) : [];
+        const globalJournalLines = existsSync3(journalPath(g)) ? readFileSync4(journalPath(g), "utf8").split(`
 `).filter(Boolean).length : 0;
-      return { vcs: cfg.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d) };
+        const reflection = readReflection(agentPaths(cfg, dsh.workspaceRoot(exec)));
+        return { vcs: cfg.vcs ?? "git", root: g.root, entries: globalFiles.length, journalLines: globalJournalLines, reflection, scope };
+      }
+      const d = ensureDirs(cfg, dsh.workspaceRoot(exec));
+      const files = existsSync3(d.memoryDir) ? readdirSync2(d.memoryDir).filter((f) => f.endsWith(".md")) : [];
+      const journalLines = existsSync3(journalPath(d)) ? readFileSync4(journalPath(d), "utf8").split(`
+`).filter(Boolean).length : 0;
+      return { vcs: cfg.vcs ?? "git", root: d.root, entries: files.length, journalLines, reflection: readReflection(d), scope };
     }
   });
+  disposers.push(installArchiveHook(dsh, archiveContext));
+  if (typeof ctx?.on === "function")
+    ctx.on("dispose", () => {
+      for (const dispose of disposers) {
+        try {
+          dispose();
+        } catch {}
+      }
+    });
 }
 export {
   apply,

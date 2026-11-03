@@ -1,0 +1,147 @@
+{
+  "at": "2026-11-02T16:37:35.450Z",
+  "cardCensus": {
+    "expected": 14,
+    "distinctToolsWithCard": 14,
+    "perPackage": {
+      "mpd-team-core-plugin": {
+        "agent_teams_plan": "packages/mpd-team-core-plugin/src/index.ts",
+        "agent_teams_task": "packages/mpd-team-core-plugin/src/index.ts",
+        "agent_teams_dispatch": "packages/mpd-team-core-plugin/src/index.ts"
+      },
+      "mpd-roles-plugin": {
+        "mpd_roles_list": "packages/mpd-roles-plugin/src/index.ts",
+        "mpd_role_spawn": "packages/mpd-roles-plugin/src/index.ts"
+      },
+      "mpd-workmate-plugin": {
+        "mpd_workmate_list": "packages/mpd-workmate-plugin/src/index.ts",
+        "mpd_workmate_match": "packages/mpd-workmate-plugin/src/index.ts"
+      },
+      "mpd-memory-plugin": {
+        "mpd_memory_write": "packages/mpd-memory-plugin/src/index.ts",
+        "mpd_memory_read": "packages/mpd-memory-plugin/src/index.ts",
+        "mpd_memory_status": "packages/mpd-memory-plugin/src/index.ts"
+      },
+      "mpd-verify-plugin": {
+        "mpd_verify_evidence": "packages/mpd-verify-plugin/src/tools.ts",
+        "mpd_verify_record": "packages/mpd-verify-plugin/src/tools.ts"
+      },
+      "mpd-autoproject-plugin": {
+        "mpd_boulder_status": "packages/mpd-autoproject-plugin/src/boulder/index.ts"
+      },
+      "mpd-team-watchdog-plugin": {
+        "session-watchdog-status": "packages/mpd-team-watchdog-plugin/src/actions.ts"
+      }
+    },
+    "missing": [],
+    "extra": [],
+    "names": [
+      "agent_teams_dispatch",
+      "agent_teams_plan",
+      "agent_teams_task",
+      "mpd_boulder_status",
+      "mpd_memory_read",
+      "mpd_memory_status",
+      "mpd_memory_write",
+      "mpd_role_spawn",
+      "mpd_roles_list",
+      "mpd_verify_evidence",
+      "mpd_verify_record",
+      "mpd_workmate_list",
+      "mpd_workmate_match",
+      "session-watchdog-status"
+    ]
+  },
+  "panelBudgets": {
+    "mpd-v2": {
+      "bytes": 3983,
+      "nodes": 50,
+      "depth": 5,
+      "budget": {
+        "bytes": 32768,
+        "nodes": 120,
+        "depth": 8
+      },
+      "withinBudget": true,
+      "headroom": {
+        "bytes": 28785,
+        "nodes": 70,
+        "depth": 3
+      },
+      "v2OnlyComponentsInV1": [],
+      "decorationKeysInV1": [],
+      "rootV": 2,
+      "rootAccent": "app"
+    },
+    "mpd-v1-fallback": {
+      "bytes": 2498,
+      "nodes": 41,
+      "depth": 5,
+      "budget": {
+        "bytes": 32768,
+        "nodes": 120,
+        "depth": 8
+      },
+      "withinBudget": true,
+      "headroom": {
+        "bytes": 30270,
+        "nodes": 79,
+        "depth": 3
+      },
+      "v2OnlyComponentsInV1": [],
+      "decorationKeysInV1": [],
+      "rootV": 1,
+      "rootAccent": null
+    },
+    "mpd-team-v2": {
+      "bytes": 4668,
+      "nodes": 57,
+      "depth": 6,
+      "budget": {
+        "bytes": 32768,
+        "nodes": 120,
+        "depth": 8
+      },
+      "withinBudget": true,
+      "headroom": {
+        "bytes": 28100,
+        "nodes": 63,
+        "depth": 2
+      },
+      "v2OnlyComponentsInV1": [],
+      "decorationKeysInV1": [],
+      "rootV": 2,
+      "rootAccent": "app"
+    },
+    "mpd-team-v1-fallback": {
+      "bytes": 2955,
+      "nodes": 48,
+      "depth": 6,
+      "budget": {
+        "bytes": 32768,
+        "nodes": 120,
+        "depth": 8
+      },
+      "withinBudget": true,
+      "headroom": {
+        "bytes": 29813,
+        "nodes": 72,
+        "depth": 2
+      },
+      "v2OnlyComponentsInV1": [],
+      "decorationKeysInV1": [],
+      "rootV": 1,
+      "rootAccent": null
+    }
+  },
+  "seam": {
+    "directViolations": [],
+    "adapterMediated": [
+      "packages/mpd-bundle-plugin/src/dshgo-panel.ts",
+      "packages/mpd-bundle-plugin/src/dshgo-surfaces.ts",
+      "packages/mpd-bundle-plugin/src/dshgo-team-panel.ts"
+    ],
+    "adapterFiles": [],
+    "rule": "a plugin row may not touch ctx.dshGo; handing the id to the adapter's onServiceBound watcher is the sanctioned seam and is reported separately"
+  }
+}

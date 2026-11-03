@@ -1,0 +1,44 @@
+== files touched (T15) ==
+ package.json                                        | 18 +++++++++++++++---
+ packages/mpd-autoproject-plugin/README.md           |  4 ++--
+ packages/mpd-autoproject-plugin/README.zh-CN.md     |  2 +-
+ packages/mpd-comment-checker-plugin/README.md       |  2 +-
+ packages/mpd-comment-checker-plugin/README.zh-CN.md |  2 +-
+ packages/mpd-config-plugin/README.md                |  2 +-
+ packages/mpd-config-plugin/README.zh-CN.md          |  2 +-
+ packages/mpd-goal-plugin/README.md                  |  2 +-
+ packages/mpd-goal-plugin/README.zh-CN.md            |  2 +-
+ packages/mpd-hashline-plugin/README.md              |  2 +-
+ packages/mpd-hashline-plugin/README.zh-CN.md        |  2 +-
+ packages/mpd-memory-plugin/README.md                |  2 +-
+ packages/mpd-memory-plugin/README.zh-CN.md          |  2 +-
+ 13 files changed, 28 insertions(+), 16 deletions(-)
+
+== verify:manifest ==
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+manifest_exit=0
+
+== verify:docs ==
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=507 dead=0 — PASS
+docs_exit=0
+
+== verify-dshgo-views ==
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+views_exit=0
+
+== verify-pack-closure (NOT in T15 acceptance; see bounds) ==
+  MANIFEST - the packed manifest's `dshGo` block differs from the source declaration - the packer must pass the panel declaration through verbatim, so a difference ships a package that no longer declares what the source does (CodeRabbit PR #88)
+  packer: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/pack-mpd.ts
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (497 asset files); content bytes: 635 file(s) compared, 623 identical, 0 drift, 12 expected-after-pack; completeness: 537 declared source file(s) compared, 533 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-03T00:22:29.695Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))
+pack_exit=0
+
+== verify-pack-closure TRUE exit = 1 ==
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (497 asset files); content bytes: 635 file(s) compared, 623 identical, 0 drift, 12 expected-after-pack; completeness: 537 declared source file(s) compared, 533 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-03T00:22:29.695Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time))

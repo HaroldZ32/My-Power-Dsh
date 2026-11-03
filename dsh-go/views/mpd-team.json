@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "type": "stack",
+  "title": "Team Board",
+  "children": [
+    {
+      "type": "callout",
+      "tone": "info",
+      "text": "The live team board needs the DSH Go local engine bridge. This static view is what renders without it."
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "title": "Board",
+          "subtitle": "Every task of the active team with its owner and status, plus the roster; tap a row to open it."
+        },
+        {
+          "title": "Detail",
+          "subtitle": "The selected task's owner, dependencies and verdict."
+        },
+        {
+          "title": "Watch",
+          "subtitle": "The predicate in force, the preserving hold and the last incidents."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "tone": "muted",
+      "text": "Boards are served by the local engine only, so a relay or SSH host shows tool cards instead of this panel."
+    }
+  ]
+}

@@ -1,0 +1,517 @@
+
+===== BOUND: does the panel graph run under NODE after the .ts repairs? (CodeRabbit's premise) =====
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/src/dshgo-copy' imported from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bundle-plugin/src/dshgo-views.ts
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+[exit 1]
+
+===== N=16: do the sibling .js specifiers name real files? =====
+actions.ts
+channel.ts
+config-file.ts
+dshgo-cards.ts
+engine.ts
+holds.ts
+index.ts
+lossless.ts
+machine.ts
+paths.ts
+scene.ts
+sidecars.ts
+store.ts
+team.ts
+web.ts
+-- exists holds.js? --
+holds.js=no paths.js=no sidecars.js=no store.js=no team.js=no lossless.js=no dshgo-cards.js=no 
+
+===== N=1/2/3: docs =====
+-- static view subtitle --
+
+-- bundle README (EN) mentions --
+40:     floating fallback for either page:
+45:**The team tab refreshes on a PUSH, and still polls.** The shared team view
+51:frame can never disagree. The interval stays as the **fallback**: a host without `EventSource`
+67:legacy `mpd`-namespace write-back, dormant on the pinned harness, while a hand edit of the file is
+77:`packages/mpd-config-plugin` (the legacy write-back lives there too, dormant). Rebuild the
+83:renders each agent's row as a **dependent, selection-only picker**: a model control whose options are
+-- bundle README (zh) --
+94:- **团队面板显示什么。** 四个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它）、成员
+100:  推送缓存，因为 App 会**先**取视图**再**订阅。`refresh` 只在**结构性**签名变化时触发：停放问题的身份（id 加它的选项
+102:- **点击。** 工作台面板有 `approve`、`dispatch`、`refresh`（协议自带的 `{refresh:true}` 简写）、`answer:<n>` 与
+103:  `answer-custom`；团队面板有 `select`、`back` 与 `refresh`。**两个面板都不通过点击改数据**：点击不携带 agent，
+133:  状态与 `select` / `back` / `refresh` 动作（不改数据——匿名点击既无法拥有看板行，也无法指认会话的工作区根）。
+-- any stale settle/hold promise in README? --
+24:     auto-open). It renders the hold per team, the newest WARN/ESCALATE banner and the
+57:panels hold two streams.
+124:  the cards and the nested boxes it holds. Nesting repeats: a subcell inside a subcell gets its own frame,
+149:- **What it shows.** The team header (phase, id, member count) with the hold line and the two buttons
+152:  staged, and the other teams this workspace holds.
+154:  record) plus `/plugins/mpd-team-watchdog/state` (the live holds), re-read on its own 3000 ms interval —
+
+===== N=1 static view text (no settle promise) =====
+[
+ "The live team board needs the DSH Go local engine bridge. This static view is what renders without it.",
+ "Boards are served by the local engine only, so a relay or SSH host shows tool cards instead of this panel."
+]
+
+===== N=2/3 README entries (EN + zh) =====
+-- EN lines 252-266 --
+
+- `src/index.ts` — the no-op main plugin.
+- `src/dshgo-panel.ts` — the workbench panel's live half: the read model, the deferred tap actions and
+  the registration (`panel('mpd', …)`).
+- `src/dshgo-team-panel.ts` — the team panel's live half (`panel('mpd-team', …)`): the board/member/detail
+  readers, the per-scope selection store and the `select` / `back` / `refresh` actions (no mutation — an
+  anonymous tap cannot own a board row or name the session's workspace root).
+- `src/dshgo-views.ts` — the PURE view builders for both panels (kit builders only; no services, no I/O).
+- `src/dshgo-copy.ts` — the panel copy in English and 简体中文, selected from `caps.locale`.
+- `src/dshgo-surfaces.ts` — the composer strip and the three menu handlers.
+- `src/web-client.ts` — the mpd client factory body (plain JS, React.createElement).
+- `src/team-view.ts` — the shared TEAM view factory body both sidebar hosts render (the member cards,
+  the dependency DAG and the poll-plus-push refresh described above). Spliced into the client as
+  `MPD_TEAM_VIEW`; it takes the routes, the interval and the translator as dependencies.
+- `src/team-page.ts` — the team-WATCHDOG sidebar page factory body (module id
+-- zh lines 90-104 --
+  v1：tabs 变成带标题的 stack，grid 变成 list，badge 变文本，`divider`/`spacer` 消失，所有 `style`/`accent` 被剥掉。
+  一个 builder 产出两种形状，因此回退不会漂移；`grid`→`list` 重写后 metric 的标签**与数值**都保留。
+- **工作台面板显示什么。** 四个 Tab——总览（hero 计数、完成度进度条、第一条告警、就绪行与动作）、问题（只显示**第一条**
+  停放问题、它的选项与自定义回答表单）、工作伙伴（库，只读）、记忆（最近 ≤ 10 条与反思计数，按其存储的既有布局读取）。
+- **团队面板显示什么。** 四个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它）、成员
+  （首字母 badge + 名称 + 模式 + handoff 文字）、详情（负责人、状态、类型、依赖与结论）、看门狗（生效中的判据、
+  保活暂停与最近 ≤ 5 条事件；经 `session-watchdog-status` 读取，缺失时回退到 `mpdWatchdog` 的持有登记）。
+- **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的模型变化时发射，并返回清除定时器
+  的 cancel 函数。工作台模型是 `{ team, plan, question, readyTasks, counts, alert, workmates, memory }`——id、名称、
+  状态、计数、问题自身的文本与任务标题，绝不含文件系统路径、token 或凭据。`view` 是对同一批服务的**实时读取**而不是读
+  推送缓存，因为 App 会**先**取视图**再**订阅。`refresh` 只在**结构性**签名变化时触发：停放问题的身份（id 加它的选项
+  标签——按钮带的是字面标签）或就绪任务的 id 集合；仅文本变化走数据推送。
+- **点击。** 工作台面板有 `approve`、`dispatch`、`refresh`（协议自带的 `{refresh:true}` 简写）、`answer:<n>` 与
+  `answer-custom`；团队面板有 `select`、`back` 与 `refresh`。**两个面板都不通过点击改数据**：点击不携带 agent，
+  `agent_teams_task` 会拒绝每一个有主看板行，而看门狗工具解析的是环境里的工作区而不是面板会话的。结算一行归拥有它的
+-- zh lines 128-136 --
+## 文件
+
+- `src/index.ts`——no-op main 插件。
+- `src/dshgo-panel.ts`——工作台面板的宿主半侧：读取模型、延后式的点击动作与注册（`panel('mpd', …)`）。
+- `src/dshgo-team-panel.ts`——团队面板的宿主半侧（`panel('mpd-team', …)`）：看板/成员/详情读取器、按 scope 保存的选中
+  状态与 `select` / `back` / `refresh` 动作（不改数据——匿名点击既无法拥有看板行，也无法指认会话的工作区根）。
+- `src/dshgo-views.ts`——两个面板的**纯**视图构建器（只用 kit builder；无服务、无 I/O）。
+- `src/dshgo-copy.ts`——面板文案的英文与简体中文两版，按 `caps.locale` 选择。
+- `src/dshgo-surfaces.ts`——composer strip 与三个菜单 handler。
+
+===== N=4 stat-first read =====
+export function readMemoryStore(workspace: string, now: number, scope?: PanelMemoryScope): PanelMemorySnapshot | null {
+  /** The state directory the store hangs under: the row's `memory.dir`, else `.mpd`. */
+  const stateDir = scope?.dir === undefined || scope.dir === "" ? MEMORY_DIR : scope.dir
+  /** The ONE agent's store root this panel reads. */
+  const agentRoot = join(workspace, stateDir, "memory", "agents", memorySlugOf(workspace, scope))
+  /** The agent's entry directory; absent until the memory row's first write. */
+  const memoryDir = join(agentRoot, "repo", "memory")
+  if (!existsSync(memoryDir)) return null
+  // STAT FIRST, READ ONLY THE WINNERS. The directory is unbounded while this read runs at 0.5 Hz, so
+  // parsing every entry to sort it would cost a full read of the store on every tick; the tenth-newest
+  // instant is all the tab needs.
+  /** Every entry file with its modification instant, newest first, capped at the rows the tab draws. */
+  const newest = probe(() => readdirSync(memoryDir), [] as string[])
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => ({ file, at: probe(() => statSync(join(memoryDir, file)).mtimeMs, 0) }))
+    .sort((left, right) => right.at - left.at)
+    .slice(0, DSHGO_MAX_MEMORY_ROWS)
+  /** The rows of those files, in the same newest-first order. */
+  const found: PanelMemoryEntry[] = []
+  for (const { file, at } of newest) {
+    /** The entry's absolute path. */
+    const path = join(memoryDir, file)
+    /** The entry's text, or undefined when it cannot be read. */
+    const text = probe(() => readFileSync(path, "utf8"), undefined as string | undefined)
+    if (text === undefined) continue
+    /** The frontmatter record carrying `kind` and `description`. */
+    const meta = frontmatterOf(text)
+    if (meta === undefined) continue
+    found.push({ kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) })
+  }
+  /** This agent's reflection state, when it has one. */
+  const state = probe(() => JSON.parse(readFileSync(join(agentRoot, "runtime", "reflection.json"), "utf8")) as unknown, undefined)
+
+===== N=5 answer payload =====
+122:/** How many characters a custom answer may carry, matching the relay's own question bound. */
+315:  answer?: (input: { id: string; answers: Array<{ id: string; selected: string[]; custom?: string }> }) => unknown
+1028:/** The answer text a custom-answer form submitted, or `""` when the event carries none. */
+1029:function customAnswerOf(event: unknown): string {
+1034:  const named = stringOf(value.customAnswer)
+1133:   * @param index - the option index an `answer:<n>` tap names, or undefined for a custom answer.
+1134:   * @param custom - the typed answer, used instead of an offered label when non-empty.
+1137:  const answerFor = async (scope: unknown, index: number | undefined, custom: string): Promise<PanelReply> => {
+
+===== N=6/7 refresh keys + orDeferred =====
+854:export function refreshKeyOf(snapshot: PanelSnapshot): string {
+1208:  const refreshKeys = new Map<string, string>()
+1257:  const announceRefreshState = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
+1259:    const signature = refreshKeyOf(snapshot)
+1260:    if (refreshKeys.get(key) === signature) return
+1262:    const changed = !seed && refreshKeys.has(key)
+-- deferredOr/deferred gone? --
+-- orDeferred --
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:994:export async function orDeferred(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1116:    return orDeferred(running, PENDING_APPROVE)
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1128:    return orDeferred(running, PENDING_DISPATCH)
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1167:    return orDeferred(running, PENDING_ANSWER)
+packages/mpd-bundle-plugin/src/dshgo-surfaces.ts:16:import { DSHGO_POLL_MS, orDeferred, readPanelSnapshot, sessionIdOfScope, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
+packages/mpd-bundle-plugin/src/dshgo-surfaces.ts:196:    return orDeferred(running, "Dispatching…")
+
+===== N=8 envelope / N=9 board signature =====
+-- signature --
+
+===== N=10/11/15 =====
+-- members tile (views) --
+417-  return [
+418-    // Literal, like every other rebuilt-on-refresh tile: an array `length` is not a binding path the
+419-    // bridge resolver walks, so a bound one would render as an em dash.
+420:    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: snapshot.members.length }], 1)]),
+421-    section(copy.membersCaption, rows.length === 0 ? [empty(copy.emptyMembers)] : rows),
+422-  ]
+423-}
+424-
+425-/**
+426- * The Detail tab: the selected task's identity, its contract and the buttons that settle or clear it.
+-- callableMember bind --
+4316:  function callableMember(target: unknown, member: string): ((...args: unknown[]) => unknown) | undefined {
+4317-    if (typeof target !== "object" || target === null) return undefined
+4318-    /** The member as the service exposes it: unknown until the typeof check below. */
+4319-    const value = (target as Record<string, unknown>)[member]
+4320-    // `typeof` narrows to `Function`, which carries no call signature; the cast restores the
+4321-    // "call it with the bridge's own arguments" shape without changing the value.
+4322-    // BOUND TO ITS SERVICE: every caller invokes the member DETACHED (`member(args)`), so a bridge that
+4323-    // implements it as a class method reading `this` would throw on every call — and the degrade path
+4324-    // would turn that into `false`/`null` plus a warning, i.e. a silently dead surface.
+-- team-core added --
+81-function relatedRow(row: unknown): readonly string[] {
+82-  /** The related row, read as a record for the same reason as {@link taskRow}. */
+83-  const related = isRecord(row) ? row : {}
+84:  // A `depend` answer carries `added` as bare blocker-id STRINGS, so a non-record row is an id, not an
+85:  // empty object (the old `?? related` fallback rendered every added edge as "—").
+86-  return [cell(isRecord(row) ? related.id : row, 12), cell(related.subject, 48)]
+87-}
+88-
+89-/**
+90- * The `agent_teams_plan` card: the staged plan, the live team or the archive the call just touched.
+91- * @param args - the call's arguments, read for its action only.
+92- * @param value - the tool's answer, in any of the tool's branches.
+93- * @returns a v1 card tree, or null when the answer carries nothing worth a card.
+--
+179-  }
+180-  if (facts.length > 0) children.push(keyValue(facts))
+181-  /** The rows that were appended or that wait on this one, whichever the branch reports. */
+182:  const related = firstRows([arrayAt(answer, "dependents"), arrayAt(answer, "added")])
+183-  if (related.length > 0) children.push(table({ columns: ["task", "subject"], rows: related.slice(0, 12).map(relatedRow) }))
+184-  /** The dependency references this board could not resolve, named rather than dropped. */
+185-  const unresolved = arrayAt(answer, "unresolved")
+186-  if (unresolved.length > 0) children.push(table({ columns: ["reference"], rows: unresolved.slice(0, 8).map((item: unknown) => [cell(item)]) }))
+187-  if (children.length === 0) return null
+188-  return stack(children, { title: `task · ${action}` })
+
+===== N=1 static view: any settle/hold wording? =====
+16:          "subtitle": "Every task of the active team with its owner and status; tap a row to open it."
+24:          "subtitle": "The selected task's owner, dependencies and verdict."
+28:          "subtitle": "The predicate in force, the preserving hold and the last incidents."
+-- items --
+{"v":1,"type":"stack","title":"Team Board","children":[{"type":"callout","tone":"info","text":"The live team board needs the DSH Go local engine bridge. This static view is what renders without it."},{"type":"list","items":[{"title":"Board","subtitle":"Every task of the active team with its owner and status; tap a row to open it."},{"title":"Members","subtitle":"Who is on this team, their mode and their handoff state."},{"title":"Detail","subtitle":"The selected task's owner, dependencies and verdict."},{"title":"Watchdog","subtitle":"The predicate in force, the preserving hold and the last incidents."}]},{"type":"text","tone":"muted","text":"Boards are served by the local engine only, so a relay or SSH host shows tool cards instead of this panel."}]}
+
+===== N=5 answer call site (custom + empty selected) =====
+1133-   * @param index - the option index an `answer:<n>` tap names, or undefined for a custom answer.
+1134-   * @param custom - the typed answer, used instead of an offered label when non-empty.
+1135-   * @returns the effect; a gone question asks for a refresh instead of settling its replacement.
+1136-   */
+1137:  const answerFor = async (scope: unknown, index: number | undefined, custom: string): Promise<PanelReply> => {
+1138-    /** The conversation this tap belongs to. */
+1139-    const sessionId = sessionIdOfScope(scope)
+1140-    if (sessionId === "") return { toast: TOAST_NO_SESSION }
+1141-    /** The relay this tap needs, or undefined when the composition has none. */
+1142-    const face = questions()
+1143-    if (face?.list === undefined || face.answer === undefined) return { toast: TOAST_UNAVAILABLE }
+1144-    /** The identity the view captured when it was rendered; a tap never re-derives it from the lot. */
+1145-    const captured = bindingOf(scope)?.question
+1146-    if (captured === undefined || captured === null) return { toast: TOAST_NO_QUESTION }
+1147-    /** The label the answer carries: an offered one, or the typed answer clipped to the relay's bound. */
+--
+1159-    }
+1160-    // TYPED TEXT TRAVELS IN `custom`, NEVER AS A LABEL (measured: the relay validates `selected` against
+1161-    // the labels it stored and would refuse free text as an unknown option). An offered option keeps
+1162-    // `selected`; the custom path sends an empty `selected` plus `custom`.
+1163:    const answer = custom === "" ? { id: itemId, selected: [label] } : { id: itemId, selected: [], custom: label }
+1164-    /** The settle call's effect, once it settles at all. */
+1165-    const running = attemptOf(() => face.answer?.({ id: captured.parkedId, answers: [answer] }))
+1166-      .then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true))
+1167-    return orDeferred(running, PENDING_ANSWER)
+1168-  }
+1169-  /** The handler one option button runs: answer the question the VIEW was rendered from. */
+1170-  const answerWith = async (scope: unknown, event: unknown): Promise<PanelReply> => answerFor(scope, optionIndexOf(actionIdOf(event)), "")
+1171-  /** The handler the custom-answer form runs: settle with the typed words instead of an offered label. */
+1172-  const answerCustom = async (scope: unknown, event: unknown): Promise<PanelReply> => answerFor(scope, undefined, customAnswerOf(event))
+1173-  /** The refresh handler: ask the app to re-fetch this panel's view, which is the protocol's own shorthand. */
+
+===== N=6 refresh key =====
+854:export function refreshKeyOf(snapshot: PanelSnapshot): string {
+1208:  const refreshKeys = new Map<string, string>()
+1259:    const signature = refreshKeyOf(snapshot)
+1260:    if (refreshKeys.get(key) === signature) return
+1262:    const changed = !seed && refreshKeys.has(key)
+1263:    refreshKeys.set(key, signature)
+1299:      refreshKeys.delete(key)
+1344:      refreshKeys.clear()
+
+===== N=7 orDeferred single owner =====
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:994:export async function orDeferred(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1116:    return orDeferred(running, PENDING_APPROVE)
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1128:    return orDeferred(running, PENDING_DISPATCH)
+packages/mpd-bundle-plugin/src/dshgo-panel.ts:1167:    return orDeferred(running, PENDING_ANSWER)
+packages/mpd-bundle-plugin/src/dshgo-surfaces.ts:16:import { DSHGO_POLL_MS, orDeferred, readPanelSnapshot, sessionIdOfScope, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
+packages/mpd-bundle-plugin/src/dshgo-surfaces.ts:196:    return orDeferred(running, "Dispatching…")
+-- duplicates? --
+(none)
+
+===== N=8 envelope read =====
+
+===== N=9 board signature =====
+
+===== N=10 members tile =====
+33:236-  /** The hero's supporting line, assembled from the counters the tiles show. */
+34:237:  const caption = [String(snapshot.counts.ready) + " " + copy.metricReady, String(snapshot.counts.active) + " " + copy.metricActive, String(snapshot.team?.members ?? 0) + " " + copy.metricMembers].join(" · ")
+35-238-  /** The buttons this state allows: approve only for a staged plan, dispatch only with ready rows. */
+36-239-  const buttons: Array<{ label: string; action: string; icon?: string; primary?: boolean }> = []
+37-240-  if (snapshot.plan?.ready === true) buttons.push({ label: copy.approve, action: "approve", icon: "check", primary: true })
+38-241-  if (snapshot.counts.ready > 0) buttons.push({ label: copy.dispatch, action: "dispatch", icon: "send" })
+39-242-  buttons.push({ label: copy.refresh, action: "refresh", icon: "refresh" })
+40-243-  /** The tab's children. */
+41-244-  const children: DshGoView[] = [
+42-245-    hero(copy.workbench, caption, [
+--
+44:249-          { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
+45:250-          { label: copy.metricDone, value: bind("counts.done") },
+46:251:          { label: copy.metricMembers, value: bind("counts.members") },
+47-252-        ],
+48-253-        2,
+
+===== N=8: how the tool result is unwrapped =====
+225:  // off the envelope itself silently produced the "channel" default and no incidents at all.
+231:  const status = call?.ok === false ? undefined : call?.value
+-- the read function --
+async function readWatchdog(services: PanelServices, tools: ToolFace | undefined, teamId: string, workspace: string): Promise<TeamWatchdogSnapshot> {
+  /** The hold registry, when this composition mounts the watchdog row. */
+  const registry = probe(() => services.get?.("mpdWatchdog", false), undefined) as WatchdogFace | undefined
+  /** The registry's answer for this team, read structurally. */
+  const hold = recordOf(probe(() => registry?.isHeld?.(teamId, workspace), undefined))
+  // THE TOOL RESULT IS AN ENVELOPE: `{ ok?, value?, error? }`. Reading `teams`/`predicate`/`incidents`
+  // off the envelope itself silently produced the "channel" default and no incidents at all.
+  /** The normalized tool result, or undefined when the runtime is absent or the call failed. */
+  const call = tools?.executeTool === undefined
+    ? undefined
+    : recordOf(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => undefined))
+  /** The status value itself, ignored when the runtime reported a failure. */
+  const status = call?.ok === false ? undefined : call?.value
+  /** The status value as a record. */
+  const record = recordOf(status)
+  /** The status row for THIS team, when the store knows it. */
+  const row = record === undefined ? undefined : arrayOf(record.teams).map((entry) => recordOf(entry)).find((entry) => entry !== undefined && (stringOf(entry.teamId) === teamId || entry.teamId === undefined))
+  /** The predicate the engine published, or the documented default when it published none. */
+  const predicate = clip(stringOf(recordOf(record?.predicate)?.source) || "channel", 20)
+  /** The incidents, newest first, clipped to the tab's five rows. */
+  const incidents = arrayOf(record?.incidents)
+    .map((entry) => recordOf(entry))
+    .filter((entry): entry is Record<string, unknown> => entry !== undefined)
+    .slice(0, 5)
+    .map((entry) => ({ at: clip(stringOf(entry.ts) || stringOf(entry.at), 24), kind: clip(stringOf(entry.kind) || "incident", 30), detail: clip(stringOf(entry.detail) || stringOf(entry.reason), 80) }))
+  return {
+    predicate,
+    held: hold?.held === true || row?.held === true,
+    reason: clip(stringOf(hold?.reason) || stringOf(hold?.cause), 60),
+    taskId: clip(stringOf(hold?.taskId), 20),
+    incidents,
+  }
+}
+
+===== N=9: the board signature =====
+345:  /** The board signature last seen per scope, so only a REAL change refreshes the view. */
+346:  const signatures = new Map<string, string>()
+362:  /** The board `signature` a scope currently shows: ids and statuses, never the detail text. */
+363:  // THE BOARD AND THE ROSTER ARE LITERAL VIEW CONTENT, so the signature has to carry them: a row moving
+366:  const signatureOf = (snapshot: TeamPushModel): string => (snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|"))
+375:    /** The board signature this tick shows. */
+376:    const signature = signatureOf(snapshot)
+378:    const changed = !seed && signatures.has(key) && signatures.get(key) !== signature
+379:    signatures.set(key, signature)
+396:      signatures.delete(key)
+
+===== N=10: members tile value in the built team tree (literal, not a binding) =====
+node:fs:483
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open 'evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-team-v2.json'
+    at Object.readFileSync (node:fs:483:20)
+    at [eval]:4:23
+    at runScriptInThisContext (node:internal/vm:219:10)
+    at node:internal/process/execution:451:12
+    at [eval]-wrapper:6:24
+    at runScriptInContext (node:internal/process/execution:449:60)
+    at evalFunction (node:internal/process/execution:283:30)
+    at evalTypeScript (node:internal/process/execution:295:3)
+    at node:internal/main/eval_string:71:3 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-team-v2.json'
+}
+
+Node.js v24.21.0
+
+===== N=11: bind + its regression arm (negative control present?) =====
+4325:    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : undefined
+6580:      return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(impl) : value
+-- test file --
+116:   * silently dead composer action, strip and capability read. This arm fails unless the seam binds.
+
+===== N=15: card renders a bare string in added =====
+  return [cell(task.id, 12), cell(task.subject, 48), cell(task.status, 12), cell(task.owner, 24)]
+}
+
+/** One roster row: the name, the role label and the member's own state. */
+function memberRow(row: unknown): readonly string[] {
+  /** The member, read as a record for the same reason as {@link taskRow}. */
+  const member = isRecord(row) ? row : {}
+  return [cell(member.name, 24), cell(member.status, 12), cell(member.role, 24)]
+}
+
+/** One related row: just the id and the subject, the two columns the task card has room for. */
+function relatedRow(row: unknown): readonly string[] {
+  /** The related row, read as a record for the same reason as {@link taskRow}. */
+  const related = isRecord(row) ? row : {}
+  // A `depend` answer carries `added` as bare blocker-id STRINGS, so a non-record row is an id, not an
+  // empty object (the old `?? related` fallback rendered every added edge as "—").
+  return [cell(isRecord(row) ? related.id : row, 12), cell(related.subject, 48)]
+}
+
+/**
+ * The `agent_teams_plan` card: the staged plan, the live team or the archive the call just touched.
+
+===== STRUCTURE after round-1 fixes: four fresh trees =====
+mpd-v2:   视图 -（面板）：能显示，18 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[1].style.color：light：#AA7900 已校正为 #976C00，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[4].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[1].children[1].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+[exit 0]
+mpd-v1-fallback:   视图 -（面板）：能显示
+[exit 0]
+mpd-team-v2:   视图 -（面板）：能显示，25 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[2].children[1].children[5].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[2].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+[exit 0]
+mpd-team-v1-fallback:   视图 -（面板）：能显示，2 处问题
+    提示 view.children[0].children[8].children[3].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+    提示 view.children[0].children[12].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+[exit 0]
+
+===== PROBE §7.2 on the four fresh trees =====
+section7 evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-team-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t11-narrow-2026-11-03T00-38-58Z/mpd-team-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+
+===== N=10 members tile value (literal, from the FRESH tree) =====
+members tab metrics: [{"label":"Members","value":2}]
+log_at=2026-11-03T00:40:57Z
+{
+ "bareRows": [
+  [
+   "T9",
+   "—"
+  ]
+ ],
+ "bareShowsId": true,
+ "recordRows": [
+  [
+   "T9",
+   "Ship it"
+  ]
+ ],
+ "recordShowsBoth": true
+}
+
+===== TARGETED REGRESSION ARMS (the T10 additions) =====
+packages/mpd-bundle-plugin/test/dshgo-panel.test.ts:  35 pass  0 fail Ran 35 tests across 1 file. [150.00ms] 
+packages/mpd-bundle-plugin/test/dshgo-team-panel.test.ts:  4 pass  0 fail Ran 4 tests across 1 file. [165.00ms] 
+packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts:  10 pass  0 fail Ran 10 tests across 1 file. [131.00ms] 
+
+===== VIEW GATES after the static-view edit =====
+verify-dshgo-views: exit=0
+verify-dshgo-views --self-test: exit=0
+
+===== APP CHECKER on both static views (§6.1a) =====
+dsh-go/views/mpd.json:   视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 0]
+dsh-go/views/mpd-team.json:   视图 dsh-go/views/mpd-team.json（面板）：能显示
+[exit 0]
+
+===== N=5/6 regression arms exist in the tests =====
+121:  answers: Array<{ id: string; selected: string[]; custom?: string }>
+260:    answer: (input: { id: string; answers: Array<{ id: string; selected: string[] }> }): unknown => {
+962:    expect(live.host.state.answerCalls).toEqual([{ id: "q1", answers: [{ id: "item-1", selected: ["dev"] }] }])
+1060:describe("a custom answer travels in `custom`, never as an option label (repair T10 #5)", () => {
+1061:  test("the typed words reach the relay's custom field with an empty selection", async () => {
+1073:    await actions["answer-custom"]?.({ sessionId: "s1" }, { action: "answer-custom", value: { customAnswer: "ship it" } })
+1074:    expect(live.host.state.answerCalls).toEqual([{ id: "q1", answers: [{ id: "item-1", selected: [], custom: "ship it" }] }])
+1130:    expect(state.answerCalls).toEqual([{ id: "q1", answers: [{ id: "item-1", selected: ["dev"] }] }])
+-- refresh arm --
+52:  /** The stored status; `pending` is what the ready projection reads. */
+94:  /** Whether an approval already committed. */
+164:  /** Every `refresh` the module asked for, in call order. */
+165:  refreshes: string[]
+176:/** A fresh state: one approved team with ready work, no staged plan, nothing parked. */
+226:    refreshes: [],
+275:    dshGoRefresh: (id: string): void => { record.refreshes.push(id) },
+549:  /** The host double, with the bridge already present. */
+log_at=2026-11-03T00:41:36Z

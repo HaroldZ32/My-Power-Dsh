@@ -1,0 +1,8 @@
+(skip) comment file triggers detection (exit 2) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+(skip) clean file passes (exit 0) (skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN)
+
+ 3450 pass
+ 6 skip
+ 0 fail
+ 49353 expect() calls
+Ran 3456 tests across 229 files. [33.69s]

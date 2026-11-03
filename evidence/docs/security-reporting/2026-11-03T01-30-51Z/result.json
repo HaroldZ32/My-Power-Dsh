@@ -1,0 +1,30 @@
+{
+  "lane": "T17 — CONTRIBUTING: security reports go through a normal issue (Security tab is disabled)",
+  "at": "2026-11-03T01:31:06.843Z",
+  "premise": {
+    "observed": "GET /repos/HaroldZ32/My-Power-Dsh security_and_analysis carries dependabot_security_updates, secret_scanning, secret_scanning_non_provider_patterns, secret_scanning_push_protection and secret_scanning_validity_checks — and NO private_vulnerability_reporting key. The key is present exactly when the feature is on, so its absence is the measurement that the repository shows no \"Report a vulnerability\" entry.",
+    "raw": "repo-security.json",
+    "has_issues": true
+  },
+  "finding": {
+    "before": "CONTRIBUTING.md told a reporter to use GitHub private vulnerability reporting from the Security tab, with the normal-issue path only as a fallback clause — a route that does not exist in this repository.",
+    "after": "Both halves now name the NORMAL ISSUE as the primary route: title it `Security report`, say only that you have one and how to reach you privately, and the maintainer answers with a private channel where the report continues. The bullet also states outright that the Security tab offers no private reporting and that there is no advisory form.",
+    "kept": "The rule that matters is unchanged: no vulnerability detail (stack trace, proof of concept, affected version) in the public issue or its comments."
+  },
+  "changed": [
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.zh-CN.md"
+  ],
+  "searchForOtherPointers": "grep -rn -i over AGENTS.md, README.md, README.zh-CN.md, docs/*.md and agent-references/*.md for private vulnerability / Security tab / Report a vulnerability / 漏洞报告: NO other hit. CHANGELOG.md and evidence/** mention the Security tab only as HISTORY and were left untouched.",
+  "gates": [
+    {
+      "id": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=55 failed=0 violations=0 dead=0 — PASS"
+    }
+  ],
+  "bounds": [
+    "CONTRIBUTING.md is NOT inside the bilingual band the docs gate discovers (docs/**, packages/*/README.md, extensions/**, templates/**, the root README), so the gate proves the pair still parses and its links resolve — it does not compare the two halves. Both halves were edited in the same commit and say the same thing.",
+    "The premise is a LIVE GitHub setting, not a repository file: if private vulnerability reporting is switched on later, this bullet is wrong again. It now names the disabled state explicitly so a future reader sees what was true when it was written."
+  ]
+}

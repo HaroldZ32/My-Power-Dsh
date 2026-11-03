@@ -19,7 +19,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、每个名册 agent 一行三片叶子（`agentRoutes.<Agent>.{provider,model,reasoningEffort}`）与 TUI 自己的 `tui.dashboardKey`（不存在持久化的槽位，因此没有槽位叶子），每片叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**经宿主的设置文档接入配置服务**：本区块的保存由**宿主**持久化为 `mpd-config` 这个 **ENTRY 文档**（**这条路径不写任何工作区文件** —— 唯一的 `<workspace>/.mpd/mpd.jsonc` 写入方是**已退役**的旧 `mpd` 命名空间回写，被钉住的 harness 拒绝它；而手工编辑该文件仍会在每次解析时被读取）。随后**哪些**开关无需重启即可生效是**逐开关**的：模型路由、`team.gate`/`team.sensitivity`、`team.stateDir` 读取方与两个守卫在运行中的进程里生效，而 `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：手工编辑 `<workspace>/.mpd/mpd.jsonc` 即时生效，但 `/settings` 的保存永远到不了这些旋钮。每个字段提示写出自己的 `mpd.jsonc` 键，披露只由区块陈述一次，逐开关表见 `docs/user-guide.md` §9.1（见“明确不声明”第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、每个名册 agent 一行三片叶子（`agentRoutes.<Agent>.{provider,model,reasoningEffort}`）与 TUI 自己的 `tui.dashboardKey`（不存在持久化的槽位，因此没有槽位叶子），每片叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**经宿主的设置文档接入配置服务**：本区块的保存由**宿主**持久化为 `mpd-config` 这个 **ENTRY 文档**（**这条路径不写任何工作区文件** —— 唯一的 `<workspace>/.mpd/mpd.jsonc` 写入方是**已退役**的旧 `mpd` 命名空间回写，被钉住的 harness 拒绝它；而手工编辑该文件仍会在每次解析时被读取）。随后**哪些**开关无需重启即可生效是**逐开关**的：模型路由、`team.gate`/`team.sensitivity`、`team.stateDir` 读取方与两个守卫在运行中的进程里生效，而 `hashline.*`、`commentChecker.*`、`autoproject.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：手工编辑 `<workspace>/.mpd/mpd.jsonc` 即时生效，但 `/settings` 的保存永远到不了这些旋钮。每个字段提示写出自己的 `mpd.jsonc` 键，披露只由区块陈述一次，逐开关表见 `docs/user-guide.md` §9.1（见“明确不声明”第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
@@ -524,8 +524,10 @@ TUI 原生等价物。它**只读**状态：
 
 ## 静态资产
 
-- `themes/mpd-tui.json` —— 一套深色 TUI 主题（部分配色的覆盖）。主题接缝本就是
-  静态资产：把文件复制到 `~/.dsh-tui/themes/` 即可选用。本行**不**代为安装。
+- `themes/mpd-tui.json` —— 一套深色 TUI 主题（部分配色的覆盖）。它有**两条**送达路径，且背后是同一套配色
+  （`theme.test.ts` 锁住两者不漂移）：插件在 apply 时经适配器的 `tuiThemes` 接缝**注册**它，因此无需复制即可
+  选用、并随 activation 一起消失；用户仍可把文件复制到 `~/.dsh-tui/themes/`，走指南的零代码路径。该注册被如实
+  报告为 `requested` 而不是 `confirmed`，因为宿主的插件面没有回读接口。
 - `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` —— 仅为资产，见"明确不声明"第 4 条。
 
 ## 插件契约
@@ -583,10 +585,11 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    `tui/session-switch`、`tui/compact`）尝试托管注册、把拒绝视为预期结果、**只
    告警一次**，并且不注册任何东西。它绝不调用 `admit`/`admitInternal`，绝不使用
    测试专用 token，绝不伪造身份。**不声明任何输入 / rewind / 会话切换 / 压缩
-   拦截能力。**
+   拦截能力。** 自 TUI-admission 轮起，清单也**不再申请**任何拦截权限，因此该接缝是**按设计**未激活，
+   而不只是"到达不了"；清单本身协商为 `compatible`（用宿主自己的准入库实测，见 `docs/tui.md` §4.1）。
 2. **`/settings` 区块的保存由**宿主**持久化 —— 不是写成工作区的 `.mpd/mpd.jsonc` —— 而新值的“何时”生效是**逐开关**的。** 字段声明的
    是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并把它们作为
+   `autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并把它们作为
    `mpd-config` **ENTRY 文档**的字段编辑（旧 `mpd` 命名空间在本宿主上已**退役**）。该文档**由
    `packages/mpd-config-plugin` 提供**（设计 §10.1）；本插件是**纯消费者**，仅在没有 config 插件的组合中
    把旧命名空间作为**受保护的兜底**注册。在旧宿主上，该兜底的 `base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
@@ -609,7 +612,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
      读取经已挂载的服务解析 —— 也就是 `delegation-gate.ts` 所说「`.mpd/mpd.jsonc` 的编辑会被 LIVE
      拾取」的那套机制）；
    - **`apply()` 时捕获，需等下一次 `dsh` 启动** —— `hashline.*`（`maxDiffChars`、`guardEditTools`、
-     `registryFile`）、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*`。
+     `registryFile`）、`commentChecker.*`、`autoproject.*`、`memory.*`、`boulder.dir`、`goal.*`。
      `tui.dashboardKey` 是**单向**即时的：每次按键都会读取，但接管本身要等宿主把本会话的活的输入
      kit 交来之后才就绪。
    - **两边都不属于：`watchdog.*`** —— 看门狗这一行读的是 `settingsReader("mpd")`（在被钉住的

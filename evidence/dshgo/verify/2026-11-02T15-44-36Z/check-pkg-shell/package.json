@@ -1,0 +1,37 @@
+{
+  "name": "@mpd-dsh/mpd",
+  "version": "0.17.0",
+  "engines": {
+    "dsh": "0.2.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "en": "MPD",
+      "zh": "MPD"
+    },
+    "icon": "bolt",
+    "contributes": {
+      "panels": [
+        {
+          "id": "mpd",
+          "title": {
+            "en": "MPD Workbench",
+            "zh": "MPD 工作台"
+          },
+          "icon": "bolt",
+          "placement": [
+            "session.tab",
+            "features"
+          ],
+          "view": "./dsh-go/views/mpd.json"
+        }
+      ]
+    }
+  }
+}

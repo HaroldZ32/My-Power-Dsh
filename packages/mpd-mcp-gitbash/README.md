@@ -14,7 +14,7 @@ One launcher, **two** declared npm dependencies, started by the bundle's two row
   in-process.
 - `argv[2]` selects the server: `git` (the default) starts `@cyanheads/git-mcp-server` (Apache-2.0,
   28 `git_*` tools, needs `git` on `PATH`); `shell` starts `mcp-server-commands` (`run_process`).
-- Nothing is vendored any more: the SUL-1.0 `git-bash-mcp` build, the retired `scripts/build-mcp.ts`
+- Nothing is vendored any more: the `git-bash-mcp` build, the retired `scripts/build-mcp.ts`
   and the `vendor/mcp-src/**` snapshot it read are gone (de-omo wave B2).
 
 ## Licensing evidence

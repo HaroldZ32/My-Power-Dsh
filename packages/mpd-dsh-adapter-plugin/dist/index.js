@@ -1,6 +1,8 @@
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { readFileSync } from "node:fs";
+import { userInfo } from "node:os";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -438,6 +440,53 @@ function workspaceRootOf(exec) {
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
   return process.cwd();
+}
+
+class HomeGuardRefusal extends Error {
+  code;
+  status;
+  constructor(code, message, status) {
+    super(message);
+    this.name = "HomeGuardRefusal";
+    this.code = code;
+    this.status = status;
+  }
+}
+function realUserHome() {
+  if (process.platform === "win32") {
+    const profile = process.env.USERPROFILE;
+    if (typeof profile === "string" && profile !== "")
+      return profile;
+  }
+  try {
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
+    if (uid !== undefined) {
+      const line = readFileSync("/etc/passwd", "utf8").split(`
+`).find((l) => l.split(":")[2] === String(uid));
+      const home = line === undefined ? undefined : line.split(":")[5];
+      if (home !== undefined && home !== "")
+        return home;
+    }
+  } catch {}
+  try {
+    const api = userInfo().homedir;
+    if (api !== "" && resolve2(api) !== resolve2(process.env.HOME ?? api))
+      return api;
+  } catch {}
+  return;
+}
+function assertHomeMutationSandboxed(guard) {
+  const dshHome = process.env.DSH_HOME;
+  if (dshHome === undefined || dshHome === "")
+    return;
+  if (process.env[guard.allowEnv] === "1")
+    return;
+  const home = process.env.HOME;
+  const realHome = realUserHome();
+  const inside = (h) => guard.root === h || guard.root.startsWith(h.endsWith(sep2) ? h : h + sep2);
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve2(home) !== resolve2(realHome) && inside(resolve2(home)))
+    return;
+  throw new HomeGuardRefusal("real-home-refused", guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + guard.allowEnv + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
 }
 var rowLogSinks = new Map;
 function rowLogLine(name2, line) {
@@ -973,17 +1022,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -994,8 +1040,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1072,6 +1130,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name2) => typeof name2 === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name2) => typeof name2 === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -1468,6 +1559,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -1736,6 +1828,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2339,10 +2480,12 @@ export {
   DSH_SEAM_WEB_RUNTIME,
   DSH_SEAM_WEB_SERVER,
   GOAL_TOOL_NAMES,
+  HomeGuardRefusal,
   SERVICE_NAME,
   agentUnconfiguredMessage,
   agentUnconfiguredRefusal,
   apply,
+  assertHomeMutationSandboxed,
   bundleRootOf,
   createDshAdapter,
   createLazyDshAdapter,
@@ -2355,6 +2498,7 @@ export {
   isRecord,
   modelDeclaresNoEffort,
   name,
+  realUserHome,
   resolveDshAdapter,
   resolveRunRoute,
   resolveTeamMemberRoute,

@@ -1,0 +1,10 @@
+# retired-autonomy phrases still present under skills/ (acceptance grep)
+# generated 2026-11-02T12:04:52Z
+
+  skills/dsh-qa/scripts/autoproject-command.ts:122:  "ask the user nothing",
+  skills/dsh-qa/scripts/autoproject-command.ts:123:  "no user confirmation",
+  skills/dsh-qa/scripts/autoproject-command.ts:124:  "never stop early to ask the user",
+  skills/dsh-qa/scripts/autoproject-command.ts:125:  "never ask the user for approval",
+  skills/dsh-qa/scripts/autoproject-command.ts:1229:  check(!evaluateDirective((directive ?? "") + "\n\nOBJECTIVE: self-test-objective\nThe run must ask the user nothing.", "self-test-objective").ok, "negative control: a directive carrying a RETIRED autonomy phrase must fail")
+
+# every hit above is either the negative-assertion list RETIRED_AUTONOMY_PHRASES or its self-test control.

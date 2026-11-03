@@ -1,0 +1,23 @@
+### tests (touched packages)
+ 1650 pass
+ 2 skip
+ 0 fail
+ 24625 expect() calls
+Ran 1652 tests across 116 files. [13.96s]
+### typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+### verify:comments
+
+error: script "verify:comments" exited with code 1
+exit=0
+### verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=503 dead=0 — PASS
+exit=0
+### verify-dshgo-views
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+exit=0
+### verify-dist-fresh
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 731ms
+exit=0

@@ -26,8 +26,11 @@
 // never throws at construction: a missing seam surfaces as an actionable error
 // at call time, or as a `capabilities()` flag a caller can degrade on.
 import { randomUUID } from "node:crypto"
-import { resolve } from "node:path"
+import { readFileSync } from "node:fs"
+import { userInfo } from "node:os"
+import { resolve, sep } from "node:path"
 import { errorMessage } from "./shared"
+import type { DshGoCaps, DshGoStripValue, DshGoView } from "./dshgo-view"
 // R5: the ONE log sink every row routes its diagnostics through. The adapter is the sanctioned
 // contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
 // adapter instead of importing the sink itself — which keeps the coupling inventory at ONE entry.
@@ -216,12 +219,12 @@ export interface DshCommandInvocation {
  *
  * `name` is the LOWERCASE name WITHOUT the leading slash: the host parses
  * `/^\/([a-z][a-z0-9_-]*)(?=$|[\t\n\r ])/u` and validates the registered name
- * against its own `COMMAND_NAME` pattern, so `/ulw` registers as `"ulw"`. A
- * duplicate name THROWS inside the host registry, which is why a caller
- * registers `/ulw` and `/ultrawork` as two separate definitions.
+ * against its own `COMMAND_NAME` pattern, so `/autoproject` registers as
+ * `"autoproject"` — the ONE command this bundle contributes, which runs the
+ * `mpd_autoproject` tool. A duplicate name THROWS inside the host registry.
  */
 export interface DshCommandDef {
-  /** The lowercase command name WITHOUT the leading slash: `/ulw` registers as `ulw`. */
+  /** The lowercase command name WITHOUT the leading slash: `/autoproject` registers as `autoproject`. */
   name: string
   /** Model-facing description shown by the command surface. */
   description: string
@@ -235,7 +238,7 @@ export interface DshCommandDef {
 // PRODUCER-OWNED kind and REFUSES the retired shared `plugin` member (measured on
 // 0.1.7-rc.2: `dsh: format v4 message requires a producer-owned source kind`, which
 // takes the whole boot down), so a producer names itself — `{kind:'user'}`,
-// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-ulw',…}`.
+// `{kind:'mpd-roles',reason:'session-start-advisory'}`, `{kind:'mpd-autoproject',…}`.
 export interface DshUserMessageSource {
   /** Producer-owned tag naming the injector; the format-v4 gate refuses the retired shared `plugin` member. */
   kind: string
@@ -341,13 +344,42 @@ export interface DshAskUserQuestionInput {
  * one bridge version).
  */
 export interface DshGoPanelSpec {
-  /** The view tree the bridge renders; required, passed through verbatim. */
-  view: unknown
+  /**
+   * The view tree the bridge renders, or a function it calls per render with the invocation scope
+   * and the app's capabilities; required, passed through verbatim.
+   */
+  view: DshGoPanelView
   /** Data bindings the view reads; passed through verbatim. */
   data?: unknown
   /** Tap actions keyed by action name; passed through verbatim. */
   actions?: Record<string, unknown>
 }
+
+/** The scope of one DSH Go invocation (session, turn, message, clipboard…), forwarded verbatim. */
+export type DshGoScope = Record<string, unknown>
+
+/** The event payload of one DSH Go invocation, forwarded verbatim. */
+export type DshGoEvent = Record<string, unknown>
+
+/**
+ * A tap handler registered through {@link DshAdapter.dshGoOn}.
+ *
+ * The return value is the bridge's effects object (`{ toast }`, `{ copy }`, an effect list, or the
+ * v1.1 deferred shape) — `unknown` on purpose, because the bridge owns that vocabulary and a copy
+ * here would pin this file to one bridge version.
+ */
+export type DshGoHandler = (scope: DshGoScope, event: DshGoEvent) => unknown
+
+/**
+ * The data function a composer strip registers through {@link DshAdapter.dshGoStrip}.
+ *
+ * `emit` pushes one line to the strip; the returned function is the bridge's cancel handle.
+ */
+export type DshGoStripData = (scope: DshGoScope, emit: (data: DshGoStripValue) => void, caps: DshGoCaps) => () => void
+
+/** The `view` a panel spec carries: a static tree, or a per-render function of scope and caps. */
+export type DshGoPanelView = DshGoView | ((scope: DshGoScope, caps: DshGoCaps) => DshGoView | Promise<DshGoView>)
+
 
 /** Waterfall decision handed to a post-execute listener (the downstream result). */
 export interface DshPostDecision {
@@ -1869,6 +1901,21 @@ export interface DshAdapter {
    * inherit a stale engine.
    */
   compactionEngineForAgent(agentId: string): unknown
+  /**
+   * The compaction engine of a LIVE AGENT HANDLE the caller already holds, read from `agent.ctx`
+   * WITHOUT consulting the live-session registry.
+   *
+   * WHY THIS EXISTS BESIDE {@link DshAdapter.compactionEngineForAgent}: a member at its context checkpoint
+   * is frequently already detached from `ctx.agents` by the time `agent/turn-stopping` fires, so the
+   * id-keyed seam answers nothing for a handle whose own scope still serves a working engine. The event
+   * carries that handle, and this seam resolves it directly, which is what lets a barrier compact IN
+   * PLACE instead of fencing a live member (VEdit P0, defect D1).
+   *
+   * Same memoization (keyed by the Agent OBJECT) and the same validity checks as the id-keyed seam, so
+   * the two can never disagree about which realm owns an engine. Absent handle or absent engine answers
+   * `undefined`; never throws.
+   */
+  compactionEngineForLiveAgent(agent: unknown): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
   /**
@@ -2040,7 +2087,7 @@ export interface DshAdapter {
    * programming errors and stay loud, unlike a missing optional seam.
    *
    * @param definition - `{name, description, input?, handler}`; the name carries
-   *   NO leading slash (`/ulw` registers as `"ulw"`).
+   *   NO leading slash (`/autoproject` registers as `"autoproject"`).
    * @returns the registry's disposer, or a no-op when the seam is absent.
    */
   registerCommand(definition: DshCommandDef): () => void
@@ -2239,6 +2286,45 @@ export interface DshAdapter {
    * @returns nothing; the refresh is best-effort.
    */
   dshGoRefresh(id: string): void
+  /**
+   * Subscribe to the taps of ONE declared action: `service.on(id, handler)`.
+   *
+   * `id` is the action id the DSH Go manifest declares, so an unhandled tap is a missing
+   * subscription rather than a wrong name. The handler's return value is forwarded to the bridge
+   * unchanged: it is the bridge's effects vocabulary, not this adapter's.
+   *
+   * Degrade: `false` — plus ONE warning line — when the bridge is absent, exposes no `on()`, or the
+   * call throws, so a host without DSH Go stays bootable.
+   * @param id - the action id from the manifest.
+   * @param handler - the tap handler, receiving the invocation scope and event.
+   * @returns true only when the bridge accepted the registration without throwing.
+   */
+  dshGoOn(id: string, handler: DshGoHandler): boolean
+  /**
+   * Publish the live line of ONE composer strip: `service.strip(id, dataFn)`.
+   *
+   * The bridge calls `dataFn(scope, emit, caps)` on its own schedule; `emit` carries one line. The
+   * returned cancel function is the bridge's to call.
+   *
+   * Degrade: `false` — plus ONE warning line — when the bridge is absent, exposes no `strip()`, or
+   * the call throws.
+   * @param id - the strip id from the manifest.
+   * @param dataFn - the data function the bridge drives.
+   * @returns true only when the bridge accepted the registration without throwing.
+   */
+  dshGoStrip(id: string, dataFn: DshGoStripData): boolean
+  /**
+   * Read what the app on the other end can draw.
+   *
+   * The 1.0.9 bridge hands `caps` to every view/data function as an ARGUMENT and documents no
+   * `caps()` member, so this seam feature-detects both spellings: a `caps()` function, or a `caps`
+   * / `capabilities` property. It never invents a field the bridge did not send.
+   *
+   * Degrade: `null` — plus ONE warning line — when the bridge is absent, exposes neither spelling,
+   * or the read throws. Callers that already received `caps` as an argument must use THAT object.
+   * @returns the narrowed capabilities, or null when the bridge cannot answer.
+   */
+  dshGoCaps(): DshGoCaps | null
   /** Register the pre-step listener inside ONE agent's own scope — the site delivery reliably reaches. */
   registerAgentPreStep(
     agent: unknown,
@@ -2813,6 +2899,123 @@ export function workspaceRootOf(exec?: DshToolExec): string {
   const override = process.env.DSH_WORKSPACE_ROOT
   if (typeof override === "string" && override.length > 0) return resolve(override)
   return process.cwd()
+}
+
+/**
+ * The home-scoped state root one mutation would write, plus the row's own message identity.
+ *
+ * WHY THIS EXISTS (wave W0): two rows keep state under the user's HOME — the workmate library
+ * (`~/.mpd/workmate`) and, since the global-memory decision D6, `~/.mpd/memory`. Both must refuse a
+ * mutation in an isolated QA boot (T-43), so the PREDICATE lives here ONCE and a row supplies only its
+ * own root, its message prefix and its deliberate-override variable name. Moving it here is what keeps
+ * each row's refusal text byte-identical instead of forking a second copy that drifts.
+ */
+export interface HomeMutationGuard {
+  /** The home-scoped state root the mutation would write (e.g. `<HOME>/.mpd/workmate`). */
+  root: string
+  /** The operation the refusal names, phrased by the row itself (e.g. "rename a workmate"). */
+  operation: string
+  /** The row's message prefix (e.g. `mpd_workmate`), so a row's refusal text survives the shared move. */
+  label: string
+  /** The env var that deliberately overrides the refusal for this row (e.g. `MPD_DSH_WORKMATE_ALLOW_REAL_HOME`). */
+  allowEnv: string
+}
+
+/** A refused home-scoped mutation, carrying the wire reason and HTTP status a row's transport maps verbatim. */
+export class HomeGuardRefusal extends Error {
+  /** The wire reason (`real-home-refused`) a row's HTTP layer maps onto its own protocol. */
+  code: string
+  /** The HTTP status a row's transport answers with for this refusal. */
+  status: number
+  /** Build the refusal the shared guard throws; a row may subclass it to add its own fields. */
+  constructor(code: string, message: string, status: number) {
+    super(message)
+    this.name = "HomeGuardRefusal"
+    this.code = code
+    this.status = status
+  }
+}
+
+/**
+ * T-43 — the REAL user home, determined WITHOUT reading `$HOME`.
+ *
+ * `homedir()` must not be used for the isolation comparison: on POSIX it reads `$HOME`, so comparing
+ * `$HOME` against it is a tautology — which is how the T-43 guard came to refuse the SANCTIONED
+ * sandboxed boot while being unable to tell it from the real home. The passwd entry for the effective
+ * uid is consulted first (it cannot follow `$HOME`); `userInfo()` is only the fallback.
+ *
+ * Windows first: `%USERPROFILE%` is the OS profile variable and is HOME-INDEPENDENT by construction,
+ * which is exactly what this comparison needs. It is also the only source that survives a failing
+ * libuv passwd emulation — measured on a Windows host: node's `userInfo()` throws
+ * `uv_os_get_passwd returned ENOMEM`, which collapsed the real home to `undefined` and made the guard
+ * REFUSE the sanctioned sandboxed boot (T-43).
+ *
+ * @returns the real user's home directory, or `undefined` when this host cannot report one.
+ */
+export function realUserHome(): string | undefined {
+  if (process.platform === "win32") {
+    /** %USERPROFILE% on Windows: the HOME-independent profile variable this comparison needs. */
+    const profile = process.env.USERPROFILE
+    if (typeof profile === "string" && profile !== "") return profile
+  }
+  try {
+    /** The effective uid, or undefined on a host that cannot report one. */
+    const uid = typeof process.getuid === "function" ? process.getuid() : undefined
+    if (uid !== undefined) {
+      /** The /etc/passwd entry for that uid — passwd-derived, so it cannot follow $HOME. */
+      const line = readFileSync("/etc/passwd", "utf8").split("\n").find((l) => l.split(":")[2] === String(uid))
+      /** The passwd home field, when the entry carries one. */
+      const home = line === undefined ? undefined : line.split(":")[5]
+      if (home !== undefined && home !== "") return home
+    }
+  } catch { /* fall through to the API below */ }
+  try {
+    /** The OS API's home, consulted only when passwd could not answer (and only when it differs from $HOME). */
+    const api = userInfo().homedir
+    if (api !== "" && resolve(api) !== resolve(process.env.HOME ?? api)) return api
+  } catch { /* undeterminable on this host */ }
+  return undefined
+}
+
+/**
+ * T-43 — refuse a home-scoped MUTATION that would land in the real user's home while `DSH_HOME` marks
+ * an isolated (QA/verification) boot.
+ *
+ * The rows that keep state under HOME are the ONE user-approved exception to the workspace-scoped
+ * state rule (AGENTS.md §6), so an isolated boot that forgets `HOME=<sandbox>` would write the user's
+ * REAL library. This guard refuses that and does nothing else:
+ *   · it fires ONLY when the process looks isolated (`DSH_HOME` is set) AND the row's root would land
+ *     in the real user home — i.e. `HOME` is absent/empty, or equals the real home, or does not cover
+ *     the root;
+ *   · a NORMAL session (`DSH_HOME` unset) is never refused, and reads are never guarded;
+ *   · the deliberate escape hatch is the row's own `allowEnv` variable set to `1`.
+ *
+ * The message is built from the row's `label` and `operation`, so a row that moves its guard here keeps
+ * its refusal text byte-identical; {@link HomeGuardRefusal} carries the wire reason and HTTP status.
+ *
+ * @param guard the row's root, the operation it names, its message prefix and its override variable.
+ * @returns nothing; when it fires it THROWS a {@link HomeGuardRefusal} (403 `real-home-refused`).
+ */
+export function assertHomeMutationSandboxed(guard: HomeMutationGuard): void {
+  /** The isolation marker: unset means a normal session, which is never refused. */
+  const dshHome = process.env.DSH_HOME
+  if (dshHome === undefined || dshHome === "") return                 // normal session: unaffected
+  if (process.env[guard.allowEnv] === "1") return                     // explicit, documented override
+  /** The sandbox HOME this process was booted with, if any. */
+  const home = process.env.HOME
+  /** The real user's home, determined WITHOUT reading $HOME, so the comparison is not a tautology. */
+  const realHome = realUserHome()
+  /** Whether the row's root would land inside a given home directory. */
+  const inside = (h: string): boolean => guard.root === h || guard.root.startsWith(h.endsWith(sep) ? h : h + sep)
+  if (home !== undefined && home !== "" && realHome !== undefined && resolve(home) !== resolve(realHome) && inside(resolve(home))) return
+  throw new HomeGuardRefusal(
+    "real-home-refused",
+    guard.label + ": refusing to " + guard.operation + " inside the REAL library " + guard.root
+      + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set "
+      + guard.allowEnv + "=1 to override deliberately"
+      + (realHome === undefined ? " (the real home could not be determined on this host)" : ""),
+    403,
+  )
 }
 
 /**
@@ -3952,19 +4155,28 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * realm's engine and an id the host RECYCLES can never inherit a previous incarnation's engine.
    */
   const engineCache = new WeakMap<DshLiveAgent, unknown>()
-  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
-  function compactionEngineForAgent(agentId: string): unknown {
-    /** The requested agent id, normalized before the registry is asked. */
-    const id = String(agentId ?? "")
-    if (id === "") return undefined
-    /** The live Agent whose own scope owns the engine; absent once its session ends. */
-    const agent = liveAgent(id)
-    if (agent === undefined || agent === null) return undefined
-    /** The memoized engine, returned only while THIS Agent object is still the live one. */
-    const cached = engineCache.get(agent)
+  /**
+   * The engine ONE AGENT OBJECT's own scope serves, memoized on that object.
+   *
+   * This is the shared body of both public seams: the ONLY difference between them is how the Agent is
+   * obtained (by id from the registry, or handed over directly by an event payload). Reading
+   * `agent.ctx.get("compaction")` is what makes the engine the member's own realm; the WeakMap key is the
+   * Agent OBJECT (never its id), so a recycled id cannot inherit a previous incarnation's engine.
+   *
+   * @param agent - the live Agent handle, read structurally.
+   * @returns the memoized engine, or undefined when the handle carries none.
+   */
+  function engineOfLiveHandle(agent: unknown): unknown {
+    if (agent === undefined || agent === null || typeof agent !== "object") return undefined
+    // The handle is opaque (an event payload or a host Agent); the fields read below are the two the
+    // compact-hinge experiment measured, and anything else is treated as "no engine".
+    /** The handle, narrowed to the shape the two reads below use. */
+    const handle = agent as DshLiveAgent
+    /** The memoized engine, returned only while THIS Agent object is the one asked about. */
+    const cached = engineCache.get(handle)
     if (cached !== undefined) return cached
     /** The Agent's own scoped context, the only realm whose engine is correct. */
-    const scoped = agent.ctx
+    const scoped = handle.ctx
     if (scoped === undefined || scoped === null) return undefined
     /** The engine resolved from the agent's own scope, before it is memoized. */
     let engine: unknown
@@ -3974,8 +4186,38 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return undefined
     }
     if (engine === undefined || engine === null) return undefined
-    engineCache.set(agent, engine)
+    engineCache.set(handle, engine)
     return engine
+  }
+
+  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
+  function compactionEngineForAgent(agentId: string): unknown {
+    /** The requested agent id, normalized before the registry is asked. */
+    const id = String(agentId ?? "")
+    if (id === "") return undefined
+    /** The live Agent whose own scope owns the engine; absent once its session ends. */
+    const agent = liveAgent(id)
+    if (agent === undefined || agent === null) return undefined
+    return engineOfLiveHandle(agent)
+  }
+
+  /**
+   * The engine of a LIVE HANDLE the caller already holds, read WITHOUT the registry.
+   *
+   * WHY THIS EXISTS (VEdit P0, defect D1): a member reaching its context checkpoint is often ALREADY
+   * detached from `ctx.agents` by the time the `agent/turn-stopping` barrier runs, so the id-keyed lookup
+   * above answers `no-engine` for a member whose own scope still serves a working engine. The event hands
+   * the barrier the live Agent object; this seam resolves that object's engine directly, which is what
+   * lets the barrier compact IN PLACE instead of fencing the member.
+   *
+   * It shares the memo and the validity checks of {@link compactionEngineForAgent}, so both seams can
+   * never disagree about which realm owns an engine.
+   *
+   * @param agent - the live Agent handle (an event payload's `agent`, or any held Agent object).
+   * @returns the agent's own engine, or undefined when the handle carries none.
+   */
+  function compactionEngineForLiveAgent(agent: unknown): unknown {
+    return engineOfLiveHandle(agent)
   }
 
   /**
@@ -4114,6 +4356,65 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     } catch {
       // A missing log seam must never take the row down.
     }
+  }
+
+  /**
+   * Read one callable member of a service object without trusting its shape.
+   *
+   * The bridge is a `ctx` service with no declaration this bundle owns, so the member is fetched as
+   * `unknown` and only the `typeof` check promotes it to a callable.
+   * @param target - the service object, possibly absent.
+   * @param member - the member name to read.
+   * @returns the member when it is a function, otherwise undefined.
+   */
+  function callableMember(target: unknown, member: string): ((...args: unknown[]) => unknown) | undefined {
+    if (typeof target !== "object" || target === null) return undefined
+    /** The member as the service exposes it: unknown until the typeof check below. */
+    const value = (target as Record<string, unknown>)[member]
+    // `typeof` narrows to `Function`, which carries no call signature; the cast restores the
+    // "call it with the bridge's own arguments" shape without changing the value.
+    // BOUND TO ITS SERVICE: every caller invokes the member DETACHED (`member(args)`), so a bridge that
+    // implements it as a class method reading `this` would throw on every call — and the degrade path
+    // would turn that into `false`/`null` plus a warning, i.e. a silently dead surface.
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : undefined
+  }
+
+  /**
+   * The capabilities object a bridge may carry as a property instead of a `caps()` method.
+   * @param bridge - the bridge service object.
+   * @returns the `caps` field, else the `capabilities` field, else undefined.
+   */
+  function capsPropertyOf(bridge: unknown): unknown {
+    if (typeof bridge !== "object" || bridge === null) return undefined
+    /** The bridge's own fields, read without trusting their types. */
+    const fields = bridge as Record<string, unknown>
+    return fields.caps !== undefined ? fields.caps : fields.capabilities
+  }
+
+  /**
+   * Narrow a raw capabilities answer to the four fields this bundle consumes.
+   * @param raw - whatever the bridge answered.
+   * @returns the narrowed capabilities, or null when the answer is not an object.
+   */
+  function dshGoCapsOf(raw: unknown): DshGoCaps | null {
+    if (typeof raw !== "object" || raw === null) return null
+    /** The answer's own fields, read field by field. */
+    const source = raw as Record<string, unknown>
+    /** The capabilities this read could confirm; every absent field stays absent. */
+    const caps: DshGoCaps = {}
+    if (typeof source.app === "string") caps.app = source.app
+    if (typeof source.locale === "string") caps.locale = source.locale
+    if (Array.isArray(source.components)) {
+      /** The component names that are actually strings. */
+      const components = source.components.filter((name): name is string => typeof name === "string")
+      if (components.length > 0) caps.components = components
+    }
+    if (Array.isArray(source.surfaces)) {
+      /** The surface names that are actually strings. */
+      const surfaces = source.surfaces.filter((name): name is string => typeof name === "string")
+      if (surfaces.length > 0) caps.surfaces = surfaces
+    }
+    return caps
   }
 
   // ── llm plane: the model catalog, read ONLY here (AGENTS.md §6) ───────────
@@ -4786,6 +5087,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
 
@@ -5246,6 +5548,75 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       } catch {
         // A refresh is best-effort by contract: a polling caller must never see a rejected tick.
       }
+    },
+
+    /**
+     * Subscribe one action handler; see the interface member for the contract.
+     *
+     * A bridge that cannot register degrades to ONE warning line plus `false`: an unhandled tap must
+     * never take down the row that would have served it.
+     */
+    dshGoOn(id: string, handler: DshGoHandler): boolean {
+      /** The bridge's own `on`, or undefined when this host is not DSH Go. */
+      const on = callableMember(service("dshGo"), "on")
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`)
+        return false
+      }
+      try {
+        on(id, handler)
+        return true
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`)
+        return false
+      }
+    },
+
+    /** Publish one strip's data function; see the interface member for the contract. */
+    dshGoStrip(id: string, dataFn: DshGoStripData): boolean {
+      /** The bridge's own `strip`, or undefined when this host is not DSH Go. */
+      const strip = callableMember(service("dshGo"), "strip")
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`)
+        return false
+      }
+      try {
+        strip(id, dataFn)
+        return true
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`)
+        return false
+      }
+    },
+
+    /**
+     * Read the app's capabilities; see the interface member for the contract and the honest bound
+     * (the 1.0.9 bridge documents no `caps()` member, so both spellings are feature-detected).
+     */
+    dshGoCaps(): DshGoCaps | null {
+      /** The bridge service, or undefined when this host is not DSH Go. */
+      const bridge = service("dshGo")
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent")
+        return null
+      }
+      /** The raw capabilities answer, when the bridge gave one. */
+      let raw: unknown
+      try {
+        /** The bridge's own `caps()`, when this bridge version exposes one. */
+        const read = callableMember(bridge, "caps")
+        raw = read !== undefined ? read() : capsPropertyOf(bridge)
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`)
+        return null
+      }
+      /** The narrowed capabilities, or null when the answer is not an object. */
+      const caps = dshGoCapsOf(raw)
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object")
+        return null
+      }
+      return caps
     },
 
     /**

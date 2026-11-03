@@ -566,7 +566,15 @@ describe("H1 — an acknowledged row frees a bound slot through the REAL tool su
     expect(before.summary?.find((row) => row.memberId === m1)?.undelivered).toBe(8)
     /** The bound's refusal through the tool, with the EXACT sentence an operator reads. */
     const refused = await h.call("agent_teams_mail", { action: "send", to: "Senior Engineer", subject: "ninth", body: "b" }, LEAD) as { refused?: string }
-    expect(refused.refused).toBe('"Senior Engineer" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
+    // CHANGED BY VEDIT-P0 C3/D2 (R2: named here and in `mailbox-store.test.ts`, and the reviewer checks
+    // both sides): the old sentence stopped at "— it is not keeping up", so a caller learned the count
+    // and nothing about how to free a slot. The replacement keeps the recipient, the count and the
+    // bound, names the knob behind the number, and carries the two recovery paths the contract requires.
+    expect(refused.refused).toBe(
+      '"Senior Engineer" already has 8 undelivered message(s) and the bound (mail.maxUndelivered) is 8 — it is not keeping up.'
+      + " Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:\"read\"} for a team member),"
+      + " or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.",
+    )
     /** The oldest queued row, taken from the tool's OWN unread answer so the id is not a fixture guess. */
     const queued = await h.call("agent_teams_mail", { action: "unread", member: "Senior Engineer" }, LEAD) as { messages?: Array<{ id?: string }> }
     /** The id the operator acknowledges. */

@@ -1,0 +1,769 @@
+// Clause-2 tests: `/autoproject` + `/autoproject` registered through the adapter's command
+// seam, the activation directive's autonomy clauses, the turn submission that
+// actually STARTS a run (a command handler runs without sending anything to the
+// model, so a bare {kind:'success'} return would start nothing), the plain-text
+// gesture boundary for surfaces that have no command registry (headless), and the
+// MECHANICAL team gate the activation now runs BEFORE injecting the directive
+// (predicate -> plan shell through `agent_teams_plan` -> trailing TEAM GATE block).
+import { test, expect } from "bun:test"
+import { createHash } from "node:crypto"
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
+import { apply, activationDirective, AUTOPROJECT_ACTIVATION_DIRECTIVE, type AutoprojectGateReport } from "../src/index.ts"
+import type { DshAgentPreStep, DshCommandDef, DshCommandInvocation, DshLiveAgent, DshPreStepDecision, DshToolDef, DshUserMessage, DshUserMessageSource } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+
+/** The answer one registered command handler returns: the surface kind plus the text it renders. */
+interface CommandResult {
+  /** Which surface answers the invocation: `success` acknowledges, `error` reports the refusal. */
+  kind: "error" | "success"
+  /** The text the command surface renders. */
+  text: string
+}
+
+/** One command definition the fake registry captured, with the handler's own answer type written down. */
+interface CapturedCommandDef extends Omit<DshCommandDef, "handler"> {
+  /** The handler the adapter wrapped; calling it exercises the full command seam. */
+  handler: (invocation: DshCommandInvocation) => CommandResult
+}
+
+/** One content block of a message these tests build: the model-facing `text` kind or an `attachment` reference. */
+interface MessageBlock {
+  /** The block kind; the gesture scan reads only `text` blocks. */
+  type: string
+  /** The block's model-facing text, present on a `text` block only. */
+  text?: string
+  /** The referenced artifact, present on an `attachment` block only. */
+  ref?: string
+}
+
+/** One harness message as these tests build it: identity, role, content blocks and producer tag. */
+interface HarnessMessage {
+  /** The message identity, which a rewrite must preserve. */
+  id?: string
+  /** The message role; only a `user` message can carry the gesture. */
+  role?: string
+  /** The content blocks; an attachment-only (text-less) message is deliberately representable. */
+  content?: MessageBlock[]
+  /** The producer tag, which the harness's format-v4 gate requires to be producer-owned. */
+  source?: DshUserMessageSource
+}
+
+/**
+ * One `agent/pre-step` listener: the step and the downstream `next()` it must delegate to.
+ * Generic over the decision so each call site keeps the decision type it composed itself.
+ */
+type PreStepListener = <T extends DshPreStepDecision>(step: DshAgentPreStep, next: () => Promise<T>) => Promise<T>
+
+/** The one live agent the fake registry reports: its id plus the turn seam the adapter submits through. */
+interface FakeLiveAgent extends DshLiveAgent {
+  /** The turn-submission seam, which records the user-role message the plugin injected. */
+  followup: (message: DshUserMessage) => void
+}
+
+/** One tool the fake REGISTRY holds by name, which is what `dsh.hasTool` and `dsh.executeTool` resolve. */
+interface FakeSeamTool {
+  /** The tool's own execute: receives `(arguments, exec)` and answers the raw tool value. */
+  execute: (args: unknown, exec: unknown) => unknown
+}
+
+/** What one `agent_teams_plan` call recorded, in the shape the gate arms assert on. */
+interface StagingCall {
+  /** The `arguments` object the plugin passed to the call. */
+  arguments?: Record<string, unknown>
+  /** The agent handle the call was attributed to — the LIVE agent, never a stand-in. */
+  agent?: unknown
+}
+
+/** The options a gate arm varies: what the seam tool answers and whether it is registered at all. */
+interface HarnessOptions {
+  /** The plan already staged for the session (`mpdTeams.planFor(...).plan`); omitted means none. */
+  stagedPlan?: unknown
+  /** Whether the fake `agent_teams_plan` is registered in the seam registry at all. */
+  withStagingTool?: boolean
+  /** What the fake `agent_teams_plan` answers; the default wraps a plan id the directive must name. */
+  stagingValue?: unknown
+  /** Whether the fake `agent_teams_plan` REFUSES by throwing, which is the degraded route. */
+  stagingThrows?: boolean
+}
+
+/** A minimal fake harness: command registry, one live agent turn seam, event bus, tool registry. */
+function makeHarness(options: HarnessOptions = {}): {
+  /** The fake host context handed to `apply`. */
+  ctx: Parameters<typeof apply>[0]
+  /** Command definitions the fake registry received, in registration order. */
+  commandsRegistered: CapturedCommandDef[]
+  /** The `agent/pre-step` listeners the plugin installed. */
+  preStep: PreStepListener[]
+  /** Tool definitions the fake registry received. */
+  tools: DshToolDef[]
+  /** Messages the fake live turn seam received. */
+  submitted: DshUserMessage[]
+  /** The one live agent the fake registry reports. */
+  agent: FakeLiveAgent
+  /** Every `agent_teams_plan` call the gate made, in call order. */
+  stagingCalls: StagingCall[]
+} {
+  // Command definitions the fake registry received, in registration order.
+  const commandsRegistered: CapturedCommandDef[] = []
+  // The `agent/pre-step` listeners the plugin installed.
+  const preStep: PreStepListener[] = []
+  // Tool definitions the fake registry received.
+  const tools: DshToolDef[] = []
+  // Messages the fake live turn seam received.
+  const submitted: DshUserMessage[] = []
+  // Every `agent_teams_plan` call the gate made, in call order.
+  const stagingCalls: StagingCall[] = []
+  // The tools the SEAM resolves by name: what `hasTool` probes and `executeTool` drives.
+  const seamTools = new Map<string, FakeSeamTool>()
+  if (options.withStagingTool !== false) {
+    seamTools.set("agent_teams_plan", {
+      // Record the call FIRST, so a refusing tool is still visible to the assertions.
+      execute: (args: unknown, exec: unknown): unknown => {
+        stagingCalls.push({
+          ...(typeof args === "object" && args !== null ? { arguments: args as Record<string, unknown> } : {}),
+          agent: (exec as { agent?: unknown } | undefined)?.agent,
+        })
+        if (options.stagingThrows === true) throw new Error("staging refused by the fake tool")
+        return options.stagingValue ?? { plan: { planId: STAGED_PLAN_ID } }
+      },
+    })
+  }
+  // The one live agent the fake registry reports.
+  const agent: FakeLiveAgent = { id: "captain", followup: (message: DshUserMessage): void => { submitted.push(message) } }
+  // The fake command registry, modelled on the host's own.
+  const commands = {
+    // Register one definition and return its unregister function.
+    register(definition: CapturedCommandDef): () => void {
+      commandsRegistered.push(definition)
+      return () => {
+        /** Where that definition sits, -1 once it was already removed. */
+        const at = commandsRegistered.indexOf(definition); if (at >= 0) commandsRegistered.splice(at, 1)
+      }
+    },
+  }
+  // The fake tool registry: the seam the adapter's `hasTool` / `executeTool` go through.
+  const toolsService = {
+    // Register a definition the plugin itself contributes.
+    register(def: DshToolDef): void { tools.push(def) },
+    // The registry's own VIEW of one name — exactly what `dsh.hasTool` probes for.
+    get(name: string): unknown { return seamTools.get(name) ?? tools.find((tool) => tool.name === name) },
+    // Execute one tool by name, normalized to the harness's `{value}` / `{isError}` result shape.
+    async execute(input: { name?: unknown; arguments?: unknown; agent?: unknown }): Promise<unknown> {
+      /** The tool name the caller asked for. */
+      const name = String(input?.name ?? "")
+      /** The seam tool of that name, when this composition holds one. */
+      const handler = seamTools.get(name)
+      if (handler === undefined) return { isError: true, error: { message: "unknown tool " + name } }
+      return { value: await handler.execute(input?.arguments, { agent: input?.agent }) }
+    },
+  }
+  // The fake subagent seam, unused by these cases but required for `apply` to reach the engine.
+  const subagentsService = { start: (): { result: Promise<{ structured: Record<string, unknown> }> } => ({ result: Promise.resolve({ structured: {} }) }) }
+  // The services the adapter resolves by name; `mpdTeams` is the staged-plan probe's seam.
+  const services: Record<string, unknown> = {
+    tools: toolsService,
+    subagents: subagentsService,
+    agents: { list: (): FakeLiveAgent[] => [agent] },
+    commands,
+    mpdTeams: { planFor: (): { plan: unknown } => ({ plan: options.stagedPlan ?? null }) },
+  }
+  // The fake host context, one member per seam the row reads.
+  const ctx: Parameters<typeof apply>[0] = {
+    tools: toolsService,
+    subagents: subagentsService,
+    // Run the cleanup callback immediately, as a real ctx.effect does on dispose.
+    effect(fn: () => unknown): void { fn() },
+    // Resolve one of the services the adapter asks for, from the table above.
+    get(service: string): unknown { return services[service] },
+    // Subscribe one listener; only the pre-step event is recorded.
+    on(event: string, listener: PreStepListener): () => void {
+      if (event === "agent/pre-step") preStep.push(listener)
+      return () => {
+        /** Where that listener sits, -1 once it was already removed. */
+        const at = preStep.indexOf(listener); if (at >= 0) preStep.splice(at, 1)
+      }
+    },
+  }
+  return { ctx, commandsRegistered, preStep, tools, submitted, agent, stagingCalls }
+}
+
+/** The plan id the fake `agent_teams_plan` returns, which the injected directive must name verbatim. */
+const STAGED_PLAN_ID = "plan-autoproject-e2e"
+/** The objective every gate arm uses: it trips signal C deterministically (>= 3 action clauses, >= 3 action verbs). */
+const TRIPPING_OBJECTIVE = "refactor the widget, migrate the store, audit the logs"
+/** The report the `off` mode renders: no predicate evaluated, nothing staged. */
+const OFF_REPORT: AutoprojectGateReport = { mode: "off", trigger: false, signals: [], explicit: false, staged: false, planId: "", alreadyStaged: false }
+
+/**
+ * A fresh temp workdir triple, so no run touches the repository's own state roots.
+ *
+ * `boulder.dir` points at an EMPTY temp directory on purpose: that makes signal D deterministic
+ * (`active:false`) whatever the repository's own `.mpd/boulder.json` happens to say, so a gate arm
+ * asserts on the predicate it means to exercise.
+ *
+ * REPURPOSED 2026-10-17 (`.mpd/plans/harness-021-rollback.md` R1): an omitted `gate` used to mean
+ * "the MECHANICAL default". The user's ruling made the gate OPT-IN, so `resolveGateMode(undefined)`
+ * now reads `off` — an arm whose SUBJECT is the mechanical route must therefore ASK for it
+ * (`workdirs("mechanical")`) instead of inheriting it. An omission still leaves the row config silent,
+ * which is the honest way to exercise the `off` default; the legacy arms pass `"off"` explicitly so
+ * their bytes stay deterministic.
+ *
+ * @param gate - the `team.gate` mode to configure, or undefined to leave the key unset (now `off`).
+ * @param sensitivity - the `team.sensitivity` row to configure, or undefined to leave the shipped
+ *   default (`easy`) in force.
+ * @returns the row config handed to `apply`.
+ */
+function workdirs(gate?: "mechanical" | "advisory" | "off", sensitivity?: "easy" | "normal" | "strict"): NonNullable<Parameters<typeof apply>[1]> {
+  // The temp root both directories live under.
+  const dir = mkdtempSync(join(tmpdir(), "mpd-autoproject-cmd-"))
+  return {
+    planDir: join(dir, "plans"),
+    stateDir: join(dir, "state"),
+    boulder: { dir: join(dir, "boulder") },
+    ...(gate === undefined && sensitivity === undefined
+      ? {}
+      : { team: { ...(gate === undefined ? {} : { gate }), ...(sensitivity === undefined ? {} : { sensitivity }) } }),
+  }
+}
+
+/** The model-facing text of one message. */
+function textOf(message: HarnessMessage): string {
+  return (message?.content ?? []).filter((block) => block?.type === "text").map((block) => block.text).join("\n")
+}
+
+test("the ONE /autoproject command is registered through the adapter seam, with no alias", async () => {
+  // The fake harness for this case; the gate is OFF so the assertion is about the COMMAND seam.
+  const { ctx, commandsRegistered, submitted, agent } = makeHarness()
+  apply(ctx, workdirs("off"))
+  // NO ALIAS: the discipline has exactly one spelling, so exactly one definition is registered.
+  expect(commandsRegistered.length).toBe(1)
+  expect(commandsRegistered.map((definition) => definition.name)).toEqual(["autoproject"])
+  for (const definition of commandsRegistered) {
+    // The host parses `/autoproject` itself: a leading slash in the registered name is invalid.
+    expect(String(definition.name).startsWith("/")).toBe(false)
+    expect(typeof definition.description).toBe("string")
+    expect(definition.input?.hint).toBeTruthy()
+    // The description advertises THIS spelling and no other: an alias sentence would reintroduce
+    // the second command name this task deleted.
+    expect(String(definition.description)).toContain("autoproject")
+    expect(String(definition.description)).not.toContain("alias")
+  }
+  // ONE handler, proven BEHAVIOURALLY: the invocation submits the activation directive as the
+  // invoking agent's own next user turn.
+  const viaAutoproject = await commandsRegistered[0].handler({ rawInput: "ship the widget", agent })
+  expect(viaAutoproject.kind).toBe("success")
+  expect(submitted.length).toBe(1)
+  expect(textOf(submitted[0])).toContain("OBJECTIVE: ship the widget")
+})
+
+test("empty input returns usage naming the objective form and starts nothing", async () => {
+  // The fake harness for this case.
+  const { ctx, commandsRegistered, submitted } = makeHarness()
+  apply(ctx, workdirs())
+  for (const raw of ["", "   ", "\t\n"]) {
+    // The handler's answer for empty input.
+    const result = await commandsRegistered[0].handler({ rawInput: raw, agent: undefined })
+    expect(result.kind).toBe("error")
+    expect(String(result.text)).toContain("/autoproject <objective>")
+  }
+  expect(submitted.length).toBe(0)
+})
+
+test("a non-empty invocation submits the activation directive as the invoking agent's next user turn", async () => {
+  // The fake harness for this case; the gate is OFF so the injection bytes are fixed.
+  const { ctx, commandsRegistered, submitted, agent } = makeHarness()
+  apply(ctx, workdirs("off"))
+  // The host hands a handler {rawInput, agent, …}; the adapter adds the submission
+  // surface, so calling the REGISTERED definition exercises the full seam.
+  const result = await commandsRegistered[0].handler({ rawInput: "  ship the widget  ", agent })
+  expect(result.kind).toBe("success")
+  expect(String(result.text)).toContain("ship the widget")
+  expect(submitted.length).toBe(1) // a run was actually STARTED, not merely acknowledged
+  // The message the handler submitted.
+  const message = submitted[0]
+  expect(message.role).toBe("user")
+  expect(typeof message.id).toBe("string")
+  // The harness format-v4 gate REFUSES the retired shared `plugin` member ("format v4
+  // message requires a producer-owned source kind", measured on 0.1.7-rc.2 — it took the
+  // whole boot down), so the activation directive names its own producer.
+  expect(message.source.kind).toBe("mpd-autoproject")
+  // Its model-facing text.
+  const text = textOf(message)
+  // The head names the discipline and its BOUNDED policy: autonomy everywhere except the three
+  // decision points, which is the whole point of the wording cut.
+  expect(text).toContain("AUTOPROJECT ACTIVATION (user-invoked; execute autonomously, and stop for a human ONLY at the three decision points below)")
+  expect(text).toContain("OBJECTIVE: ship the widget")
+  // The mpd plan plane replaced the retired official-tool sentence: the directive points at
+  // `agent_teams_plan`, and the official pair is NOT named any more.
+  expect(text).toContain("agent_teams_plan")
+  expect(text).not.toContain("spawn_teammate")
+  expect(text).not.toContain("team_task_create")
+  // The gate is OFF for this config, and the trailing block says exactly that.
+  expect(text).toBe(activationDirective("ship the widget", OFF_REPORT))
+  // No live turn surface: the failure is reported, not swallowed.
+  const failed = await commandsRegistered[0].handler({ rawInput: "another objective", agent: undefined })
+  expect(failed.kind).toBe("error")
+  expect(String(failed.text)).toContain("could not start")
+})
+
+test("the activation directive states the bounded policy: three decision points, no blanket silence", () => {
+  // The activation directive for a fixed objective.
+  const directive = activationDirective("make the widget ship")
+  // The clause heads, in the order the directive must state them. `WHEN YOU STOP` is the closing clause
+  // that replaced the four deleted autonomy clauses.
+  const clauses = ["AUTOPROJECT ACTIVATION", "TRIAGE FIRST", "GATE:", "TEAM WHEN WARRANTED", "LOOP TO COMPLETION", "FIX ON SIGHT", "CLOSE OUT ON PROOF", "WHEN YOU STOP"]
+  // Offset of the clause matched last, so each must come after its predecessor.
+  let previous = -1
+  for (const clause of clauses) {
+    // Where this clause starts in the directive.
+    const at = directive.indexOf(clause)
+    expect(at).toBeGreaterThan(previous)
+    previous = at
+  }
+  // THE HEAD IS BOUNDED, NOT BLANK: it names the three decision points a human owns instead of ordering
+  // the run to ask nothing (the standing defect this wave repairs).
+  expect(directive).toContain("execute autonomously, and stop for a human ONLY at the three decision points below")
+  // The four deleted autonomy clauses really are gone, in every spelling the old text used.
+  expect(directive).not.toContain("ask the user nothing")
+  expect(directive).not.toContain("no user confirmation")
+  expect(directive).not.toContain("never stop early to ask the user")
+  expect(directive).not.toContain("never ask the user for approval")
+  // THE THREE DECISION POINTS, each named once in the closing clause and nowhere else.
+  expect(directive).toContain("(a) the over-limit escalation fired and `autoproject.escalate.mode` is `ask`")
+  expect(directive).toContain("(b) a credential, a secret or an external capability is absent")
+  expect(directive).toContain("(c) the next write would leave the declared scope")
+  expect(directive).toContain("Nothing else stops the run")
+  // Clause 3 bounds the self-approval and keeps the plan plane's own vocabulary.
+  expect(directive).toContain("ONLY when the write scope is inside the declared scope AND the gate verdict is mechanical")
+  expect(directive).toContain("ONE `ask_user_question`")
+  expect(directive).toContain("agent_teams_plan {action:\"add_member\"}")
+  expect(directive).toContain("agent_teams_plan {action:\"approve\"}")
+  expect(directive).not.toContain("spawn_teammate")
+  expect(directive).not.toContain("team_task_create")
+  // R12: the plan tool REFUSES a `create_task` that states no dependency answer, so the sentence that
+  // tells a captain to extend the plan must state the answer it has to send.
+  expect(directive).toContain("must state its dependency answer")
+  expect(directive).toContain("`blocked_by: [...]` (`[]` for a genuine root) or `independent: true`")
+  expect(directive).toContain("REFUSES a task that states neither")
+  expect(directive.indexOf("must state its dependency answer")).toBeGreaterThan(directive.indexOf("TEAM WHEN WARRANTED"))
+  expect(directive.indexOf("must state its dependency answer")).toBeLessThan(directive.indexOf("LOOP TO COMPLETION"))
+  // The prefix-vs-family trap stays closed.
+  expect(directive).not.toContain("the retired `agent_teams_*` tools do not exist")
+  expect(directive).toContain("EXACTLY five `agent_teams_*` tools exist on this harness")
+  for (const live of ["agent_teams_plan", "agent_teams_task", "agent_teams_dispatch", "agent_teams_mail", "agent_teams_control"]) {
+    expect(directive).toContain(live)
+  }
+  for (const retired of ["agent_teams_create", "agent_teams_add_member", "agent_teams_create_task", "agent_teams_approve", "agent_teams_status"]) {
+    expect(directive).toContain(retired)
+  }
+  expect(directive).toContain("never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`")
+  // Clause 5 makes an out-of-scope fix a DECISION, not a fix.
+  expect(directive).toContain("a fix that would write OUTSIDE the declared scope is a decision point, not a fix")
+  // Clause 6 still closes out on proof, and now names the verify plane's recorded PASS.
+  expect(directive).toContain("verification gate and the quality-gate ledger both approve")
+  expect(directive).toContain("recorded verify PASS in the verify plane")
+  // The gate is still evaluated MECHANICALLY by the plugin, with the session gate's own thresholds.
+  expect(directive).toContain("ALREADY EVALUATED MECHANICALLY")
+  expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-F")
+  expect(directive).toContain("`team.sensitivity` (easy | normal | strict)")
+  expect(directive).toContain("Never invent a second predicate")
+  expect(directive).toContain("OBJECTIVE: make the widget ship")
+  // Stable policy head, mutable objective + verdict tail (DeepSeek V4 prefix-cache discipline).
+  expect(directive.startsWith(AUTOPROJECT_ACTIVATION_DIRECTIVE)).toBe(true)
+})
+
+test("the QA probes a weaker head retires are named with their exact replacements", () => {
+  // The activation directive for a fixed objective.
+  const directive = activationDirective("make the widget ship")
+  // C3.2 as it still ships in `skills/dsh-qa/scripts/autoproject-command.ts` (`CLAUSE_PROBES` id "gate"):
+  // the clause rewrite stayed readable to the probe that guards it.
+  const c32 = /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-F[\s\S]{0,240}team\.sensitivity/
+  expect(c32.test(directive)).toBe(true)
+  // C3.3 is the probe the SKILLS LANE changes (this package cannot edit `skills/**`): the shipped probe
+  // still demands `spawn_teammate` + `team_task_create`, which the mpd plan plane replaced.
+  const c33Replacement = /TEAM WHEN WARRANTED[\s\S]{0,400}agent_teams_plan[\s\S]{0,400}(add_member|create_task)/
+  expect(c33Replacement.test(directive)).toBe(true)
+  // C3.4 and HEAD_PROBE are the two probes this wave RETIRES, and the SKILLS LANE must re-pin them in the
+  // same commit that ships this text: the old pair demanded the deleted "ask nothing" policy.
+  const c34Replacement = /LOOP TO COMPLETION[\s\S]{0,400}round boundary/
+  expect(c34Replacement.test(directive)).toBe(true)
+  // The head probe the skills lane must ship in place of "asks the user nothing".
+  const headReplacement = /^AUTOPROJECT ACTIVATION \(user-invoked; execute autonomously, and stop for a human ONLY at the three decision points below\)/
+  expect(headReplacement.test(directive)).toBe(true)
+  // The retired policy really is absent, which is why the old probes can only fail.
+  expect(directive.includes("ask the user nothing")).toBe(false)
+  expect(directive.includes("never stop early to ask the user")).toBe(false)
+  expect(directive.includes("spawn_teammate")).toBe(false)
+  expect(directive.includes("team_task_create")).toBe(false)
+})
+
+test("the frozen head is byte-stable across objectives AND verdicts, and its sha256 is RECORDED under evidence", () => {
+  // The sha256 the SHIPPED head must hash to, read from the recorded evidence file: the former arm
+  // hashed the constant against itself, which no wording edit could ever redden. Rewording the head is
+  // now a deliberate act, because the file has to move with it.
+  const recorded = readFileSync(join(import.meta.dir, "..", "..", "..", "evidence", "autoproject-refactor", "w1b2", "activation-head.sha256"), "utf8").trim()
+  // The sha256 of the shipped head — the bytes the model's prefix cache keys on.
+  const headHash = createHash("sha256").update(AUTOPROJECT_ACTIVATION_DIRECTIVE, "utf8").digest("hex")
+  expect(headHash).toBe(recorded)
+  // Two activations that differ in BOTH mutable parts: different objective, different verdict.
+  const first = activationDirective("ship the widget", OFF_REPORT)
+  // The second activation, whose verdict FIRED and staged a plan: the head must not move.
+  const second = activationDirective(TRIPPING_OBJECTIVE, { mode: "mechanical", trigger: true, signals: ["C"], explicit: true, staged: true, planId: STAGED_PLAN_ID, alreadyStaged: false })
+  // The head slice of each is the constant byte for byte, and both hash to the same digest.
+  expect(first.slice(0, AUTOPROJECT_ACTIVATION_DIRECTIVE.length)).toBe(AUTOPROJECT_ACTIVATION_DIRECTIVE)
+  expect(second.slice(0, AUTOPROJECT_ACTIVATION_DIRECTIVE.length)).toBe(AUTOPROJECT_ACTIVATION_DIRECTIVE)
+  expect(createHash("sha256").update(first.slice(0, AUTOPROJECT_ACTIVATION_DIRECTIVE.length), "utf8").digest("hex")).toBe(headHash)
+  expect(createHash("sha256").update(second.slice(0, AUTOPROJECT_ACTIVATION_DIRECTIVE.length), "utf8").digest("hex")).toBe(headHash)
+  // The verdict lives AFTER the objective, so it can never invalidate the cached prefix.
+  expect(first.indexOf("TEAM GATE:")).toBeGreaterThan(first.indexOf("OBJECTIVE:"))
+  expect(second.indexOf("TEAM GATE:")).toBeGreaterThan(second.indexOf("OBJECTIVE:"))
+})
+
+test("the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id", async () => {
+  // The fake harness for this case; no `team` key, so `team.gate` resolves to the MECHANICAL default.
+  const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness()
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the mechanical route is this arm's subject (a tripping objective stages exactly one plan).
+  apply(ctx, workdirs("mechanical"))
+  // One activation whose objective trips signal C.
+  const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
+  expect(result.kind).toBe("success")
+  // EXACTLY ONE staging call, on the LIVE agent, carrying the gate-filled shell.
+  expect(stagingCalls.length).toBe(1)
+  expect(stagingCalls[0].agent).toBe(agent)
+  expect(stagingCalls[0].arguments?.action).toBe("create")
+  // `approval:"automatic"` is the autoproject label (the run approves the plan itself); the store records it.
+  expect(stagingCalls[0].arguments?.approval).toBe("automatic")
+  expect(String(stagingCalls[0].arguments?.name)).toBe(TRIPPING_OBJECTIVE.slice(0, 60))
+  // The expanded B lexicon now counts all THREE deliverable verbs (refactor/migrate/audit), so the
+  // shipped directive names B beside C — the predicate change, not a wording change.
+  expect(String(stagingCalls[0].arguments?.description)).toContain("complexity signals B/C")
+  // The injected directive reports the plan id the CALL returned, never a claimed one.
+  const text = textOf(submitted[0])
+  expect(text).toContain("TEAM GATE: MECHANICAL")
+  expect(text).toContain("a team PLAN was STAGED")
+  expect(text).toContain(STAGED_PLAN_ID)
+  expect(text).toContain("NOTHING has been spawned; the plan is INERT until approved")
+})
+
+test("the gesture path runs the SAME mechanical gate with the agent the payload carries", async () => {
+  // The fake harness for this case.
+  const { ctx, preStep, agent, stagingCalls } = makeHarness()
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the gesture path is this arm's subject and it runs the SAME mechanical gate.
+  apply(ctx, workdirs("mechanical"))
+  expect(preStep.length).toBe(1)
+  // A user message that opens with the `/autoproject` gesture and a tripping objective.
+  const gesture = { id: "g1", role: "user", content: [{ type: "text", text: "/autoproject " + TRIPPING_OBJECTIVE }], source: { kind: "user" } }
+  // The decision the rest of the chain composes.
+  const inner = { kind: "enter", messages: [gesture] }
+  // The rewritten decision; the agent rides the payload exactly as the harness fuses it.
+  const result = await preStep[0]({ agent, messages: [gesture] }, async () => inner)
+  expect(stagingCalls.length).toBe(1)
+  expect(stagingCalls[0].agent).toBe(agent)
+  // The injected text carries the verdict block and the objective (with the gesture consumed).
+  const text = textOf(result.messages[0])
+  expect(text).toContain("OBJECTIVE: " + TRIPPING_OBJECTIVE)
+  expect(text).toContain(STAGED_PLAN_ID)
+})
+
+test("mode advisory and mode off stage nothing and say so", async () => {
+  for (const mode of ["advisory", "off"] as const) {
+    // A fresh harness per mode, so the two arms cannot borrow each other's state.
+    const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness()
+    apply(ctx, workdirs(mode))
+    // The activation itself, which must still succeed with the gate configured this way.
+    const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
+    expect(result.kind).toBe("success")
+    // Nothing was staged, and the call was never even attempted.
+    expect(stagingCalls.length).toBe(0)
+    // The directive says so, in its own words, and never implies a team exists.
+    const text = textOf(submitted[0])
+    expect(text).toContain("NO team was staged")
+    expect(text).not.toContain("was STAGED:")
+    expect(text).toContain(mode === "off" ? "TEAM GATE: OFF" : "TEAM GATE: ADVISORY")
+  }
+})
+
+test("an already-staged plan is never re-staged, and the directive names the existing one", async () => {
+  // The fake harness whose team record already holds an in-progress plan.
+  const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ stagedPlan: { planId: "plan-existing" } })
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the idempotence arm measures what a mechanical fire does with a plan already staged.
+  apply(ctx, workdirs("mechanical"))
+  // The activation whose objective trips the predicate.
+  const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
+  expect(result.kind).toBe("success")
+  // A second `create` would ARCHIVE the in-progress plan, so the gate must not call the tool.
+  expect(stagingCalls.length).toBe(0)
+  // The directive the run received, which must name the plan already there.
+  const text = textOf(submitted[0])
+  expect(text).toContain("a team PLAN is ALREADY STAGED")
+  expect(text).toContain("plan-existing")
+  expect(text).toContain("The gate did NOT stage again")
+})
+
+test("a composition without the staging tool degrades honestly — no throw, no claimed team", async () => {
+  // The fake harness whose seam registry does NOT hold `agent_teams_plan`.
+  const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ withStagingTool: false })
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the mechanical route's honest degradation when the staging tool is absent.
+  apply(ctx, workdirs("mechanical"))
+  // The activation still STARTS: the gate degrades, it never vetoes the run.
+  const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
+  expect(result.kind).toBe("success")
+  expect(stagingCalls.length).toBe(0)
+  // The directive the run received: it must say the gate FIRED and nothing was staged.
+  const text = textOf(submitted[0])
+  expect(text).toContain("TEAM GATE: MECHANICAL")
+  expect(text).toContain("the gate FIRED, but staging did NOT happen")
+  expect(text).toContain("agent_teams_plan is not registered")
+  expect(text).toContain("NO team was staged")
+})
+
+test("a REFUSING staging call degrades without throwing: the run starts and the block says so", async () => {
+  // The fake harness whose staging tool throws, i.e. the tool refused the call.
+  const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ stagingThrows: true })
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the mechanical route's honest degradation when the staging call refuses.
+  apply(ctx, workdirs("mechanical"))
+  // The activation whose objective trips the predicate.
+  const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
+  expect(result.kind).toBe("success")
+  expect(stagingCalls.length).toBe(1) // the call really was attempted
+  // The directive the run received: a refusal is reported, never hidden.
+  const text = textOf(submitted[0])
+  expect(text).toContain("staging did NOT happen")
+  expect(text).toContain("staging refused by the fake tool")
+  expect(text).toContain("NO team was staged")
+})
+
+test("a tripping objective that carries the explicit `team:` marker has the marker CONSUMED", async () => {
+  // The fake harness for this case.
+  const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness()
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the explicit marker's consumption on the mechanical route.
+  apply(ctx, workdirs("mechanical"))
+  // The activation whose objective carries the explicit marker AND trips signal C.
+  const result = await commandsRegistered[0].handler({ rawInput: "team: " + TRIPPING_OBJECTIVE, agent })
+  expect(result.kind).toBe("success")
+  expect(stagingCalls.length).toBe(1)
+  // The marker activated signal A AND was removed, so neither the objective nor the name carries it.
+  expect(String(stagingCalls[0].arguments?.name)).toBe(TRIPPING_OBJECTIVE.slice(0, 60))
+  // Signal A from the consumed marker PLUS B (the expanded lexicon counts all three deliverable
+  // verbs) and C (the enumerated clauses) — the predicate's new verdict for this objective.
+  expect(textOf(submitted[0])).toContain("complexity signals A/B/C")
+  expect(textOf(submitted[0])).toContain("OBJECTIVE: " + TRIPPING_OBJECTIVE)
+})
+
+test("team.sensitivity reaches the autoproject gate: the easy row stages, the normal row stays silent", async () => {
+  // The two-verb CJK one-liner: signal B fires at `easy` (>= 2 distinct deliverable verbs) and does
+  // NOT fire at `normal` (>= 4). It is the exact probe the session-start suite pins in both
+  // directions, and the class of divergence this repair removes: the same objective must be judged
+  // by the same row on BOTH gates.
+  const objective = "修复并验证"
+  // THE EAGER DEFAULT: `team.gate` mechanical, no `team.sensitivity` anywhere.
+  const eager = makeHarness()
+  apply(eager.ctx, workdirs("mechanical"))
+  /** The command surface's answer, which must accept the activation. */
+  const eagerResult = await eager.commandsRegistered[0].handler({ rawInput: objective, agent: eager.agent })
+  expect(eagerResult.kind).toBe("success")
+  expect(eager.stagingCalls.length).toBe(1)
+  /** The directive the eager activation injected. */
+  const eagerText = textOf(eager.submitted[0])
+  expect(eagerText).toContain("complexity signals B")
+  expect(eagerText).toContain("a team PLAN was STAGED")
+  // THE HISTORICAL ROW: the SAME objective, the SAME `team.gate`, ONE key added — no B, no stage.
+  const normal = makeHarness()
+  apply(normal.ctx, workdirs("mechanical", "normal"))
+  /** The SAME command surface on the pinned row; the activation still starts, it just does not stage. */
+  const normalResult = await normal.commandsRegistered[0].handler({ rawInput: objective, agent: normal.agent })
+  expect(normalResult.kind).toBe("success")
+  expect(normal.stagingCalls.length).toBe(0)
+  /** The directive the pinned-row activation injected. */
+  const normalText = textOf(normal.submitted[0])
+  expect(normalText).toContain("no complexity signal fired for this objective")
+  expect(normalText).not.toContain("a team PLAN was STAGED")
+  expect(normalText).not.toContain("complexity signals B")
+  // THE DIVERGENCE IS GONE: two config layers, two different verdicts, one predicate.
+  expect(normalText).not.toBe(eagerText)
+})
+
+test("signal F reaches the autoproject gate: a large workspace stages, a tiny one stays silent", async () => {
+  // A LARGE root: one manifest, one project directory and 8 visible entries — signal F's exact shape.
+  const largeDir = mkdtempSync(join(tmpdir(), "mpd-autoproject-large-"))
+  writeFileSync(join(largeDir, "package.json"), '{ "name": "fixture", "private": true }\n')
+  for (const dir of ["packages", "src", "docs", "scripts", "skills", "tests"]) mkdirSync(join(largeDir, dir))
+  writeFileSync(join(largeDir, "AGENTS.md"), "# fixture\n")
+  // A TINY root: nothing a project-shaped probe can latch onto.
+  const tinyDir = mkdtempSync(join(tmpdir(), "mpd-autoproject-tiny-"))
+  /**
+   * The fake agent with its session workspace pointed at one root.
+   *
+   * The adapter resolves `dsh.workspaceRoot({agent})` from `session.header.cwd`, so the signal-F
+   * probe reads the TEMP root instead of this checkout (which is itself a large workspace).
+   */
+  const agentAt = (base: FakeLiveAgent, cwd: string): FakeLiveAgent => ({ ...base, session: { header: { cwd } } })
+
+  // A: the two-verb CJK ask in the LARGE root fires B AND F (the literal arm requested).
+  const large = makeHarness()
+  apply(large.ctx, workdirs("mechanical"))
+  await large.commandsRegistered[0].handler({ rawInput: "修复并验证", agent: agentAt(large.agent, largeDir) })
+  expect(large.stagingCalls.length).toBe(1)
+  /** The directive one large-workspace activation injected. */
+  const largeText = textOf(large.submitted[0])
+  expect(largeText).toContain("complexity signals B/F")
+
+  // B: a SIGNAL-FREE prompt in the SAME large root stages on F ALONE — the clean discrimination.
+  const fOnly = makeHarness()
+  apply(fOnly.ctx, workdirs("mechanical"))
+  await fOnly.commandsRegistered[0].handler({ rawInput: "Reply with exactly: hello-ok", agent: agentAt(fOnly.agent, largeDir) })
+  expect(fOnly.stagingCalls.length).toBe(1)
+  expect(textOf(fOnly.submitted[0])).toContain("complexity signals F")
+
+  // C: the SAME signal-free prompt in the TINY root stays silent — F is the only thing that moved.
+  const tiny = makeHarness()
+  apply(tiny.ctx, workdirs("mechanical"))
+  await tiny.commandsRegistered[0].handler({ rawInput: "Reply with exactly: hello-ok", agent: agentAt(tiny.agent, tinyDir) })
+  expect(tiny.stagingCalls.length).toBe(0)
+  /** The directive a tiny-workspace activation injected. */
+  const tinyText = textOf(tiny.submitted[0])
+  expect(tinyText).toContain("no complexity signal fired for this objective")
+  expect(tinyText).not.toContain("a team PLAN was STAGED")
+
+  // D: the two-verb CJK ask is NOT a usable tiny-workspace control — B fires on `easy` whatever the
+  // workspace — so it still stages here, named so the pair above cannot be misread as an F-only proof.
+  const tinyCjk = makeHarness()
+  apply(tinyCjk.ctx, workdirs("mechanical"))
+  await tinyCjk.commandsRegistered[0].handler({ rawInput: "修复并验证", agent: agentAt(tinyCjk.agent, tinyDir) })
+  expect(tinyCjk.stagingCalls.length).toBe(1)
+  expect(textOf(tinyCjk.submitted[0])).toContain("complexity signals B")
+  expect(textOf(tinyCjk.submitted[0])).not.toContain("complexity signals B/F")
+})
+
+test("the pre-step gesture boundary injects the same directive and delegates to next()", async () => {
+  // The fake harness for this case; the gate is OFF so the legacy assertions stay byte-exact.
+  const { ctx, preStep, submitted } = makeHarness()
+  apply(ctx, workdirs("off"))
+  expect(preStep.length).toBe(1)
+  // A user message that opens with the `/autoproject` gesture.
+  const gesture = { id: "m1", role: "user", content: [{ type: "text", text: "/autoproject ship the widget" }], source: { kind: "user" } }
+  // The decision the rest of the chain composes.
+  const inner = { kind: "enter", messages: [gesture] }
+  // How many times the listener delegated downstream.
+  let delegated = 0
+  // The rewritten decision the listener returned.
+  const result = await preStep[0]({ agent: undefined, messages: [gesture] }, async () => { delegated += 1; return inner })
+  // Waterfall discipline: the composed decision is awaited FIRST, then rewritten.
+  expect(delegated).toBe(1)
+  expect(result.kind).toBe("enter")
+  expect(result.messages.length).toBe(1) // the gesture is CONSUMED, not duplicated
+  // The rewritten message.
+  const message = result.messages[0]
+  expect(message.id).toBe("m1") // the message identity survives the rewrite
+  // Its model-facing text: the SAME renderer the command path uses.
+  const text = textOf(message)
+  expect(text).toBe(activationDirective("ship the widget", OFF_REPORT))
+  expect(text).toContain("agent_teams_plan")
+  expect(text).not.toContain("spawn_teammate")
+  expect(submitted.length).toBe(0) // a pre-step decision, never a turn submission
+})
+
+test("the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression)", async () => {
+  // The fake harness for this case; the gate is OFF so the head/objective bytes stay deterministic.
+  const { ctx, preStep } = makeHarness()
+  apply(ctx, workdirs("off"))
+  // The installed pre-step listener.
+  const listener = preStep[0]
+  // The user's own prompt, which carries the gesture.
+  const prompt = { id: "u1", role: "user", content: [{ type: "text", text: "/autoproject ship the widget" }], source: { kind: "user" } }
+  // The shape a real boot exposed (t7 finding F1): plugin-injected USER-ROLE notices land
+  // AFTER the user's prompt, so the LAST user-role message is a notice, not the gesture.
+  const runtimeContext = { id: "n1", role: "user", content: [{ type: "text", text: "[runtime context] workspace=/root/x, os=linux, model=deepseek-v4-flash" }], source: { kind: "plugin", plugin: "runtime-context" } }
+  // A plugin-injected notice appended after the prompt.
+  const skillCatalog = { id: "n2", role: "user", content: [{ type: "text", text: "<system-reminder>Available skills: autoproject-plan, autoproject-execute, dsh-qa</system-reminder>" }], source: { kind: "plugin", plugin: "skills" } }
+  // The composed decision: prompt first, then the notices.
+  const decision = { kind: "enter", messages: [prompt, runtimeContext, skillCatalog] }
+  // The rewritten decision.
+  const result = await listener({ agent: undefined, messages: decision.messages }, async () => decision)
+  expect(textOf(result.messages[0])).toBe(activationDirective("ship the widget", OFF_REPORT))
+  expect(result.messages[0].id).toBe("u1") // identity preserved; the notices are untouched
+  expect(result.messages[1]).toBe(runtimeContext)
+  expect(result.messages[2]).toBe(skillCatalog)
+  // LABELLED REGRESSION ARM: the retired claim was "the LAST user-role message carrying
+  // text". Reproduce it and show it selects a NOTICE — the old implementation had nothing
+  // to match and injected nothing for exactly this shape.
+  const retiredClaim = [...decision.messages].reverse().find((message) => message?.role === "user" && textOf(message) !== "")
+  expect(retiredClaim).toBe(skillCatalog)
+  // What the retired claim would have matched.
+  const retiredText = textOf(retiredClaim!).trim()
+  expect(retiredText.startsWith("/autoproject")).toBe(false)
+  expect(retiredText.startsWith("/autoproject")).toBe(false)
+  // The scan reads EVERY user-role text: a notice arriving before the prompt does not hide
+  // it, and a text-less user message (attachment-only) does not stop the scan.
+  const reordered = { kind: "enter", messages: [runtimeContext, prompt] }
+  expect(textOf((await listener({ agent: undefined, messages: reordered.messages }, async () => reordered)).messages[1])).toBe(activationDirective("ship the widget", OFF_REPORT))
+  // A user message with no text block at all.
+  const attachmentOnly = { id: "a1", role: "user", content: [{ type: "attachment", ref: "x" }], source: { kind: "user" } }
+  // A batch whose first message carries no text.
+  const skipped = { kind: "enter", messages: [attachmentOnly, prompt, skillCatalog] }
+  expect(textOf((await listener({ agent: undefined, messages: skipped.messages }, async () => skipped)).messages[1])).toBe(activationDirective("ship the widget", OFF_REPORT))
+})
+
+test("the gesture boundary leaves every non-gesture step untouched", async () => {
+  // The fake harness for this case.
+  const { ctx, preStep } = makeHarness()
+  apply(ctx, workdirs())
+  // The installed pre-step listener.
+  const listener = preStep[0]
+  // A user message with no gesture.
+  const plain = { id: "p1", role: "user", content: [{ type: "text", text: "refactor the widget" }], source: { kind: "user" } }
+  // The composed decision for that message.
+  const decision = { kind: "enter", messages: [plain] }
+  expect(await listener({ agent: undefined, messages: [plain] }, async () => decision)).toBe(decision)
+  // A bare `/autoproject` carries no objective: the command path answers usage, the gesture
+  // has no reply surface, so the step is left exactly as composed.
+  const bare = { id: "b1", role: "user", content: [{ type: "text", text: "/autoproject" }], source: { kind: "user" } }
+  // The composed decision for a bare `/autoproject`.
+  const bareDecision = { kind: "enter", messages: [bare] }
+  expect(await listener({ agent: undefined, messages: [bare] }, async () => bareDecision)).toBe(bareDecision)
+  // Mentioning /autoproject mid-text is not a gesture: the pattern is anchored at the start.
+  const mentioned = { id: "n1", role: "user", content: [{ type: "text", text: "please run /autoproject later" }], source: { kind: "user" } }
+  // The composed decision for a mid-text mention.
+  const mentionDecision = { kind: "enter", messages: [mentioned] }
+  expect(await listener({ agent: undefined, messages: [mentioned] }, async () => mentionDecision)).toBe(mentionDecision)
+  // A rejected step is returned as-is.
+  const rejected = { kind: "reject" }
+  expect(await listener({ agent: undefined, messages: [] }, async () => rejected)).toBe(rejected)
+  // A step with no user message is untouched.
+  const assistantOnly = { kind: "enter", messages: [{ role: "assistant", content: [{ type: "text", text: "x" }] }] }
+  expect(await listener({ agent: undefined, messages: [] }, async () => assistantOnly)).toBe(assistantOnly)
+})
+
+test("the plugin reaches the seams only through the adapter (no direct command service, event bus or host import)", () => {
+  // The plugin source, read as text for the seam assertions.
+  const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8")
+  expect(source).not.toMatch(/ctx\.commands/)
+  expect(source).not.toMatch(/ctx\.get\(\s*["']commands["']\s*\)/)
+  expect(source).not.toMatch(/ctx\.on\s*\(/)
+  expect(source).not.toMatch(/from\s+["']@deepseek-ai\//)
+  expect(source).toContain("dsh.registerCommand(")
+  expect(source).toContain("dsh.onEvent(")
+  expect(source).toContain("dsh.userMessage(")
+})
+
+test("apply degrades safely when the composition has no command registry and no event bus", () => {
+  // The fake harness for this case.
+  const { ctx, tools } = makeHarness()
+  // A composition with only the two seams the row needs to apply.
+  const bare: Parameters<typeof apply>[0] = { tools: ctx.tools, subagents: ctx.subagents }
+  expect(() => apply(bare, workdirs())).not.toThrow()
+  expect(tools.find((tool) => tool.name === "mpd_autoproject")).toBeTruthy()
+  // THE MERGED BOULDER HALF: the six `mpd_boulder_*` tools are registered from the SAME entry, with
+  // their historical names untouched — a caller that knew the retired mpd-boulder row sees no change.
+  const names = tools.map((tool) => String(tool.name))
+  for (const name of ["mpd_boulder_status", "mpd_boulder_start", "mpd_boulder_complete", "mpd_boulder_task_timer", "mpd_boulder_plan_progress", "mpd_boulder_plans"]) {
+    expect(names).toContain(name)
+  }
+})

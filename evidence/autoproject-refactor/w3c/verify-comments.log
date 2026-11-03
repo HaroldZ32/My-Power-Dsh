@@ -1,0 +1,9 @@
+# verify-comment-coverage
+
+scanned 543 TypeScript file(s) of 543 in the source set; inspected 49098 declaration(s); skipped 23739 inline callback(s) as out of family
+
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+
+packages/mpd-workmate-plugin/test/optimize.test.ts (1)
+  108: parameter-type — seedTeamMember
+

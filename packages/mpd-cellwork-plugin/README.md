@@ -102,6 +102,10 @@ reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
 
+The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
+absent or unusable value falls back to 8) is a `mail.*` key because BOTH mail tools read it, and it is
+enforced through the one shared store (see "Mail and reseed bounds").
+
 The model's own context WINDOW is not a knob: it is read from the catalog at split time and from the
 observed token meter at runtime, with the provenance recorded. `windowOverride` exists only so a route
 whose window cannot be read can be certified deliberately, and it is recorded as an override.
@@ -116,6 +120,13 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   operator override (`override`), or the task is `uncertified` — never guessed. A split is accepted only
   when the estimate fits `floor(window * windowFraction)` AND leaves the model's max output plus the
   compaction headroom inside the window; an over-budget task is refused WITH its bytes → tokens breakdown.
+- **Split warnings are NON-FATAL, and empty write scopes are never silent.** `cellwork_split` returns a
+  `warnings` list — a channel EXCLUDED from the `accepted` predicate — naming every
+  `work`/`repair`/`integration` task whose `writeScopes` is empty, by split key. A split that
+  legitimately writes nothing still passes; what it refuses to do is stay SILENT. The frozen contract's
+  "(none declared — this task produces no code)" line carries the recovery: ask the captain for a scope
+  extension BEFORE the first write. `agent_teams_plan {action:"create_task"}` applies the same rule at
+  staging time on the team plane.
 - **B7 owner-only dispatch.** A ready task is paired ONLY with its declared owner; a busy, absent or
   FENCED owner is reported and the task left pending — never substituted. A member is FENCED when its
   recorded `mode` is `checkpoint`, when a handoff it wrote still waits for the compaction barrier, or
@@ -153,6 +164,14 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   maps, so a task or loop created by the dead pass is created AGAIN by the retry — detectable, not
   deletable (the team plane has no cancel verb). A returned failure's residual window is one
   board/verify call plus one cell-record write; a crash's window is the whole pass.
+- **A re-split states what it kept.** When a revision keeps tasks, `cellwork_activate` returns a
+  `notice`: how many kept tasks reuse their live board rows, that their frozen contracts are NOT
+  rewritten (the bytes a verifier may already be reading stay as first frozen), that a scope expansion
+  needs a manual re-freeze plus a new verify loop and belongs in a NEW split revision, and that this
+  activation dispatched the ready rows OWNER-ONLY. The stage-4 exception is stated in the same notice: a
+  kept task whose loop was never recorded is the ONLY case where a kept contract is rebuilt, gaining its
+  verify loop id — and the notice names those keys when it happens. The notice is prose in the result ON
+  PURPOSE: a captain must not have to infer any of it from counts.
 - **C1 — `member` names the seat.** A split task may declare `member`; omitted, the member name IS the
   owner role. Several tasks may share one member, and several members may share one owner role (that is
   real parallelism for one role). The seat's IDENTITY is the shared normalisation used by activation,
@@ -203,10 +222,18 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 - **One override, one identity.** `windowOverride` is a single value: it certifies ANY route the catalog
   cannot report, recorded as `override`. The planning tasks are closed under the CALLER's own identity
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.
-- **Compaction outcomes are classified, never swallowed.** The barrier waits for the agent to be idle
-  with a bounded retry budget (`compactionRetries`, `idleBarrierDelayMs`), then compacts with a real
-  `AbortController` signal. The journaled reason is one of `compacted` | `no-safe-range` | `busy` |
-  `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a silent no-op.
+- **Compaction is classified, never swallowed — and a member that is still reachable is compacted IN
+  PLACE.** The `agent/turn-stopping` listener RETURNS the barrier promise, so the host's serial dispatch
+  AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle with a bounded
+  retry budget (`compactionRetries`, `idleBarrierDelayMs`), then resolves the engine from the LIVE member
+  handle the event carries (`compactionEngineForLiveAgent`) BEFORE any sleep and BEFORE the registry
+  lookup, so a member already detached from `ctx.agents` still compacts in place; only when that handle
+  carries no engine does the id-keyed `compactionEngineForAgent` get a chance. A retry delay may sit
+  between attempts; there is none before the FIRST one. The engine is driven with a real
+  `AbortController` signal, and the journaled reason is one of `compacted` | `no-safe-range` | `busy` |
+  `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a silent no-op. The outcome
+  union is exactly `promoted` | `reseeded` | `refused`, and a `compacted` answer takes `promoted` on the
+  SAME agent — no interrupt, no reseed.
 - **Mail and reseed bounds.** Cell mail is durable first and woken best-effort. `cellwork_send` resolves
   the recipient in the cell tree — a member name, `captain`, or the cross-cell form
   `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's
@@ -218,15 +245,23 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   `toCell:<target>`. `cellwork_send` also speaks the structured protocol — `kind` (inferred from
   `options` for a question, from `selected`/`custom` for an answer), `options` + `multiSelect`, `replyTo`,
   `selected`/`custom`, `questionId`, and `broadcast: true` for one row per seat of the target cell (the
-  sender excluded); an unknown label is refused WITH the valid label list. A cross-cell row mirrors
+  sender excluded); an unknown label is refused WITH the valid label list. A recipient with
+  `mail.maxUndelivered` undelivered rows (default 8, `0` disables) is REFUSED — the bound is shared
+  with `agent_teams_mail` through the one store, so switching tools is not an escape — and the refusal
+  names the recipient, the count, the bound and two recovery paths: acknowledge its inbox
+  (`cellwork_inbox`) or reassign the rows behind it (`cellwork_dispatch {reassign:[…]}`). A cross-cell row mirrors
   `fromCell`, is durable-only — no wake-up is attempted across cells — and appears on THAT cell's
   `cellwork_supervise`.
   The Lead has no executor handle, so a member→captain row is read by the captain's `cellwork_inbox` and
   surfaced on `cellwork_supervise`; a row whose wake-up never went out stays UNDELIVERED and is surfaced
   there too (`unreadMail` plus the `wakeFailures[]` rows, each `{id,to,subject,reason}`), not only on the
-  pending board. When the compaction barrier cannot compact, the agent is reseeded from its handoff; the
-  native backend exposes no dispose for the settled activation, so the old child is interrupted
-  best-effort and the fresh handle is recorded on the cell.
+  pending board. When the compaction barrier cannot compact, the agent is reseeded from its handoff — but
+  never from its own dead Agent: the reseed parent is, in order, the member's recorded `parentSession`
+  resolved live, then the cell's captain, and when neither is live the barrier REFUSES with the distinct
+  reason `reseed-parent-unavailable`. The parent actually used is journaled (`parentSource` +
+  `parentSessionId`), so lineage is observable rather than inferred. The native backend exposes no
+  dispose for the settled activation, so the old child is interrupted best-effort and the fresh handle
+  is recorded on the cell.
 
 **Config precedence, stated once for both languages:** project file (`<workspace>/.mpd/mpd.jsonc`,
 `cellwork.*`) > row config (the bundle patch's `config:` block) > shipped documented default.
@@ -279,3 +314,24 @@ convergence with no duplicate), `split-refused`, `requirements-subheadings`, `di
 The seam rule for this package is the repository's: every harness touch goes through
 `resolveDshAdapter(ctx)`, and the design background is in the
 [plugin authoring reference](../../agent-references/plugin-authoring.md).
+
+
+## The team plane it shares, and `cellwork_open` (wave W2)
+
+**`cellwork_open {objective, mandate?}`** is the programmatic entry the autoproject escalation uses. It
+REFUSES a caller that is not the captain, an already-active cell, and a `mandate` whose
+`<workspace>/.mpd/autoproject/<runId>/escalation.json` is not on disk. `/cellwork` is a thin handler
+over the SAME open path, so the command and the tool cannot diverge. A tool has no
+`invocation.submit`, so the tool path RETURNS the activation directive instead of submitting it — a
+stated bound, not a hidden one.
+
+**The TEAM-level logic is the team plane's**, reached as services (no cross-package import):
+`cellwork_context` reads `mpdTeams.memberContext`, `cellwork_subteam` reads `mpdTeams.depthBudget` (the
+same `cellwork.depthMax` bound, with the cell record as the documented fallback when that service is
+absent), and `cellwork_dispatch` plus the handoff path read or write the team record through
+`mpdTeams` / `mpdTeamActions`. The cell-MODE engines (requirements, split, activate, recon, budget) stay
+in this package: they are the workflow layer that WRITES the board.
+
+**State on disk is unchanged and read-compatible:** `.mpd/cellwork/**` stays version 1 (no migration),
+with the per-cell journal and mail. The FROZEN CONTRACT of a wave lives in the board task description,
+so the row an owner claims carries the acceptance text it is judged against.

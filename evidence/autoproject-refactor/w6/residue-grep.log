@@ -1,0 +1,19 @@
+# W6 acceptance grep — SUL-1.0 / SUL 1.0 / 'Sustainable Use'
+# generated 2026-11-02T12:45:15Z
+
+## 1. SHIPPED, NON-HISTORICAL PATHS — must be ZERO
+  -- end (no line above = ZERO) --
+
+## 2. DECLINED — historical records that keep their wording
+  agent-references/overview-and-provenance.md:48 — inside the VERBATIM 'former §1 body' block; its byte
+      count + sha256 are recorded in evidence/gates/agents-budget/, so editing it would falsify the pin.
+  docs/plan-c.md:84:Deliverables: `packages/mpd-hashline-plugin` — vendored `hashline-core` (upstream commit 8c57e46; VENDOR_LOCK.json updated; SUL-1.0 fork terms cover it); tool `mpd_hashline_edit({path, edits[]})` over `applyHashlineEditsWithReport`; post-execute guard (`tools/post-execute`) verifying hashline anchors after edit/str_replace_editor when `config.guardEditTools: true` (mismatch reported to the model, no silent auto-fix; autocorrect available via the tool).
+  docs/plan-c.md:121:- Licensing: LICENSE-NOTICES.md gains dsh-agent-teams (MIT) and @code-yeongyu/comment-checker (MIT) entries; vendored upstream code stays under the SUL-1.0 fork terms; npm `diff` (BSD-3-Clause) noted if bundled with hashline.
+  docs/plan-tui-edition.md:58:- **D5** — "license stays SUL-1.0"
+  docs/track-a-report.md:13:| S6 | License compliance | Achieved | LICENSE-NOTICES (SUL-1.0 internal-use statement) |
+  · docs/plan-c.md, docs/plan-tui-edition.md — the declared docs/plan-*.md class (prior-phase plans)
+  · docs/track-a-report.md — prior-phase report
+
+## 3. NOT THIS LANE
+  CHANGELOG.md — historical release log (no retired wording remains in it anyway)
+  evidence/** — immutable QA records; dist/** — the packed artifact (regenerated at integration)

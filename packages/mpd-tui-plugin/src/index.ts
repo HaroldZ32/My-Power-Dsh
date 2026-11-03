@@ -75,6 +75,7 @@ import { registerShortcuts } from "./shortcuts.js"
 import { createDialogs } from "./dialogs.js"
 import { attachWatchdogFrontDoor, composeNotices, type WatchdogFrontDoor } from "./watchdog.js"
 import { attemptDecisionEvents } from "./decisions.js"
+import { registerTheme } from "./theme.ts"
 import { appendBoardOpened, registerCommands } from "./commands.js"
 import { openModelMenu } from "./model-menu.js"
 import { BOARD_OPENED_EVENT, registerLogOnlyEventType } from "./registration.js"
@@ -1132,6 +1133,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     ? attemptDecisionEvents(ctx, tui, log)
     : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] }
 
+  // ── the runtime theme: register the shipped palette ───────────────────────
+  // Seam 4's static form is a JSON file the user copies into ~/.dsh-tui/themes/; this registration is
+  // the LIVE form, so the palette is pickable without a copy. It is owned by this activation through
+  // `effectOn`, so unloading the plugin takes the theme back out of the picker.
+  /** The theme registration's handle; reported in the aggregate line like every other surface. */
+  const theme = registerTheme(ctx, tui, log)
+
   // ── the one outcome the seam itself CANNOT disclose ───────────────────────
   // `decisions.ts` states its verdict from inside `tui.whenBound("pluginHost", …)`, which by
   // construction never runs when the mediated host is absent — so the unbound case was SILENT
@@ -1184,6 +1192,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // The decision-event ROLE is reported under its own name; the seam it rides is the mediated
   // plugin host's, which the adapter's own table reports separately.
   outcomes.push({ id: "decisionEvents", outcome: decisions.outcome() })
+  outcomes.push({ id: "theme", outcome: theme.outcome() })
 
   // ── one aggregate diagnostic, honest about what was NOT confirmed ─────────
   // "Something happened" includes a REFUSED registration: the aggregate line

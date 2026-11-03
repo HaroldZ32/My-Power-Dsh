@@ -2,7 +2,7 @@
 // mpd git-bash MCP launcher — two third-party servers behind ONE launcher (de-omo wave B2).
 //
 // WHAT REPLACED WHAT: this launcher used to start the vendored `git-bash-mcp` build that shipped beside
-// it as `./cli.js` (SUL-1.0, built offline by the now-retired `scripts/build-mcp.ts` from
+// it as `./cli.js` (built offline by the now-retired `scripts/build-mcp.ts` from
 // `vendor/mcp-src/**`). That artifact, the build script and the whole snapshot are gone. The row's
 // capability is re-sourced from two DECLARED npm dependencies:
 //

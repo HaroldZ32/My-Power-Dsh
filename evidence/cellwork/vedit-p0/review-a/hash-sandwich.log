@@ -1,0 +1,8 @@
+# hash sandwich — reviewed files, before vs after the verdict
+# start: 2026-11-03 12:08:16.565391196 +0800
+# end:   2026-11-03 12:13:31.566376390 +0800
+
+RESULT: IDENTICAL — the 12 reviewed files did not move while the review ran
+
+# HEAD: d2032bf398ab4ab7ec763fd1200c51df113a3f62
+# mpd-gates.json: 0 present

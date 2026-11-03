@@ -202,9 +202,9 @@ Evidence logs must never contain credentials, tokens or private data.
 
 - **Bugs and feature requests** — open an issue. Include the exact command, the observed result, the
   expected result, your DSH profile and the bundle version.
-- **Security reports** — do **not** open a public issue. Use GitHub's private vulnerability reporting
-  from the repository's **Security** tab; if it is unavailable, open a short issue stating that you
-  have a security report and ask for a private channel, without disclosing the details.
+- **Security reports** — open an issue like anything else, in the open. This project has no private
+  advisory inbox and does not want one: describe the problem, the affected component and how you found
+  it directly in the issue.
 - **Questions** — read [`README.md`](./README.md) and the [`docs/`](./docs/index.md) hub first; the
   README's FAQ covers the common install and configuration problems.
 

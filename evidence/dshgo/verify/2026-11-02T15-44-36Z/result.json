@@ -1,0 +1,146 @@
+{
+  "lane": "dshgo-native-parity",
+  "role": "Reviewer",
+  "reviewedAt": "2026-11-02T15:50:12Z",
+  "subject": "contract §7 (visual language, BINDING) against dsh-Go 1.0.9 docs + the wave's state on feature/mpd-dshgo-native-parity",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "dev": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "trackedChanges": 0,
+  "verdict": {
+    "code": "REQUEST_CHANGES",
+    "appliesTo": "contract §7.2 rule 6, §6.1/§7.3 checker gate wording, and the D1 kit's adaptView/avatar/divider surface",
+    "implementationReview": "BLOCKED_ON_T2",
+    "oneSentence": "The accent guarantee is structurally sound and the platform vocabulary is legal, but rule 6 cannot be built as written, the only §7 checker passes deliberately non-conforming views, and the single fallback rule that carries the hero's meaning currently loses it."
+  },
+  "gates": [
+    { "id": "dshgo-checker-root", "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs .", "exit": 1, "note": "two package diagnostics only: /dsh/bundle/patch false positive (array-form patch) + /engines/dsh warn; manifest.state ok, manifest.issues []" },
+    { "id": "dshgo-checker-json", "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs --json .", "exit": 1, "note": "panels 1, strip 0, actions 0, message 0; the one static view ok" },
+    { "id": "dshgo-checker-static-view", "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs dsh-go/views/mpd.json", "exit": 0, "note": "701 bytes, 4 components, no issues" },
+    { "id": "dshgo-checker-fixture-v2", "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v2.json", "exit": 0, "note": "kit-built §7 panel: only the accent dark-mode contrast note" },
+    { "id": "dshgo-checker-fixture-v1", "command": "node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v1.json", "exit": 0, "note": "adaptView fallback stays legal" },
+    { "id": "dshgo-checker-nonconforming", "command": "check.mjs - (named colour + numeric padding + two primaries)", "exit": 0, "note": "exit 0 proves the checker is not a §7 gate" },
+    { "id": "section7-probe-selftest", "command": "node evidence/dshgo/verify/2026-11-02T15-44-36Z/probe-section7.mjs --self-test", "exit": 0, "note": "4 arms: legal v2 accepted, planted violations reported, legal v1 accepted, v1 leftovers refused" },
+    { "id": "section7-probe-fixture-v2", "command": "node probe-section7.mjs fixture-v2.json", "exit": 0, "note": "11 §7.2 rules, 0 findings" },
+    { "id": "section7-probe-fixture-v1", "command": "node probe-section7.mjs fixture-v1.json --v1", "exit": 0, "note": "no v2 component, style or accent survives" },
+    { "id": "dshgo-views-gate", "command": "node scripts/verify-dshgo-views.ts", "exit": null, "note": "NOT RUN: the gate does not exist (D1 deliverable absent)" },
+    { "id": "typecheck-tests", "command": "bun run typecheck / bun test", "exit": null, "note": "NOT RUN: T1 was actively writing dshgo-view.ts (44,343 -> 48,490 bytes between 23:46 and 23:49); a mid-write run would be a stale signal" }
+  ],
+  "checklist": {
+    "1_accent_and_no_named_colour": {
+      "status": "NOT_APPLICABLE_ON_A_DELIVERABLE; PRODUCER_PROVEN",
+      "evidence": "no v2 panel root exists yet. The kit writes `accent: \"app\"` in exactly one place (panelView's root node) and `style()` accepts only `color: \"accent\"`; no named colour and no #RRGGBB string literal exists in dshgo-view.ts (grep). A built fixture's root is accent=app and the checker's only accent output is the dark-mode contrast note.",
+      "assertion_ready": "probe-section7 rules ACCENT + COLOUR"
+    },
+    "2_section_7_2_structure": {
+      "status": "NOT_VERIFIABLE_ON_A_DELIVERABLE; CHECKLIST_EXECUTABLE",
+      "evidence": "probe-section7.mjs implements 11 structural rules (hero count per tab, card variants, metrics-in-grid, one primary, spacing tokens, maxLines, badge word, tone word, empty tab, nested accent, root v2) with a self-test and a negative control; a kit-built conforming fixture passes, the planted-violation fixture fails."
+    },
+    "3_v1_adaptView_legibility": {
+      "status": "MEASURED; FAILS RULE 10 FOR METRICS",
+      "evidence": "styles/accent stripped and v=1 are correct, tabs/badge/emptyState/inputs become text, divider/spacer drop, actions survive. But grid->list emits [{title:\"Ready\"},{title:\"Active\"}] and [{title:\"Parked\"}]: the metric values 3, 1 and 0 are gone."
+    },
+    "4_checker_exit_and_diagnostics": {
+      "status": "MEASURED",
+      "evidence": "repo root exit 1 for two package diagnostics unrelated to views (patch-array false positive must be accepted with a reason; engines.dsh warn is closable); static view exit 0; legal v2 exit 0 with the accent dark-mode note and one 'style reserved, ignored' note per primary; deliberately non-conforming tree also exit 0, so exit 0 is not a §7 signal. No colour correction was emitted by the kit: style() refuses every non-accent colour."
+    }
+  },
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "Blocker",
+      "title": "No v2 panel exists to review",
+      "where": ".mpd/plans/dshgo-native-parity.md §4 D3/D4; package.json dshGo.contributes; dsh-go/views/",
+      "why": "§7 governs the v2 panel trees; panels:[mpd] is still the only contribution, mpd-team.json is absent, strip/actions/message are empty, and T2 is pending. A §7 verdict now would certify a fixture, not the product.",
+      "direction": "Hold T7's §7 half until T2 lands; re-run probe-section7.mjs + check.mjs on the built panels and their adaptView fallbacks."
+    },
+    {
+      "id": "B2",
+      "severity": "Blocker",
+      "title": "§6.1/§7.3 'checker exit 0' is unachievable and 'fixing' it breaks the bundle",
+      "where": ".mpd/recon/dsh-go/sdk/plugin-kit/lib/check.js packageIssues; package.json dsh.bundle.patch; AGENTS.md §8; scripts/install-profile.ts",
+      "why": "The checker requires dsh.bundle.patch to be a STRING; this bundle declares the two-layer ARRAY the harness and the installer depend on. Observed exit 1 with a clean manifest and a clean view. Making the checker green would drop the preset layer.",
+      "direction": "Amend §6.1/§7.3 to name the evidence: each static view checked alone (exit 0), --json with manifest.state ok and zero manifest issues plus the two package diagnostics accepted with reasons, and built live trees piped to check.mjs - (stdin). Optionally add engines.dsh to clear the warn; do not change dsh.bundle.patch."
+    },
+    {
+      "id": "H1",
+      "severity": "High",
+      "title": "§7.2 rule 6 'avatar (initials)' cannot be built",
+      "where": ".mpd/recon/dsh-go/docs/plugins/inputs.md (avatar row); sdk/plugin-kit/schema/view.schema.json $defs.node; contract §7.2 rule 6",
+      "why": "avatar takes src + alt only, is a 48 dp square with an icon fallback and explicitly no caption. Measured: an avatar with text:'AB' passes the checker with only a source note, silently ignores text and renders the fallback icon, so member initials disappear without a usable diagnostic. An asset avatar would need image bytes and a manifest assets entry the contract never budgets.",
+      "direction": "Amend rule 6 to badge/text initials (theme token, no asset, trivial v1 fallback), or declare avatar icon-only and budget the asset."
+    },
+    {
+      "id": "H2",
+      "severity": "High",
+      "title": "adaptView's grid->list fallback drops every metric value",
+      "where": "packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts, adaptView's grid branch and wordsOf",
+      "why": "Measured on a kit-built, checker-clean panel: grid[metric Ready 3, metric Active 1] becomes list[{title:'Ready'},{title:'Active'}]; the second hero's metric Parked 0 becomes list[{title:'Parked'}]. Rule 10 requires meaning to survive without styles; the numbers are the hero's whole point (rules 2/4).",
+      "direction": "In the grid fallback map a metric child to {title: label, trailing: String(value)} (list rows support trailing) or to subtitle; keep wordsOf for other children. D1 fix."
+    },
+    {
+      "id": "M1",
+      "severity": "Medium",
+      "title": "DshGoAvatarProps promises caption and aspect, which avatar does not execute",
+      "where": "packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts, DshGoAvatarProps",
+      "why": "caption/aspect belong to image; avatar is a fixed 48 dp square with no caption. Unknown node props are silently tolerated (schema node has no additionalProperties:false), so the kit's type leads the panel author into props the app ignores.",
+      "direction": "Drop them from the type or mark them ignored."
+    },
+    {
+      "id": "M2",
+      "severity": "Medium",
+      "title": "divider({size}) accepts a prop the app's divider does not take",
+      "where": "packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts, divider",
+      "why": "inputs.md gives divider no props; the checker is silent, so an author would expect a sized rule and get the default.",
+      "direction": "Remove the prop (spacer.size stays; note its 8/16/24 scale)."
+    },
+    {
+      "id": "M3",
+      "severity": "Medium",
+      "title": "Rule 1 (no named colour) is not enforced by the app checker",
+      "where": "lib/style-check.js (contrast correction only); contract §7.2 rule 1",
+      "why": "A named colour exits 0. The kit makes it unrepresentable, but the guarantee is only as strong as the kit being the sole author; a hand-written node could bypass it.",
+      "direction": "Assert accent==='app' at the root and no colour but 'accent' on built trees (probe rules ACCENT/COLOUR, or their equivalent in verify-dshgo-views.ts)."
+    },
+    {
+      "id": "M4",
+      "severity": "Medium",
+      "title": "The checker cannot see the LIVE panel trees in the invocation §6.1 names",
+      "where": "lib/check.js checkPlugin/loadHostHalf; package.json exports['.']",
+      "why": "checkPlugin validates the declared STATIC view files; live v2 functions are reached only by --load, which imports the bundle entry (not a single plugin) and expects a raw ctx.dshGo registration rather than the adapter seam.",
+      "direction": "Require each lane test to build its tree and pipe it to check.mjs - (stdin), for the v2 tree and for its adaptView fallback; use that as §7.3 evidence."
+    },
+    {
+      "id": "M5",
+      "severity": "Medium",
+      "title": "§7.3's 'read the diagnostics' needs an exit code of its own",
+      "where": "contract §6.1/§7.3; measured non-conforming view",
+      "why": "numeric padding, a named colour and two primaries all exit 0, so exit 0 means 'legal and inside budget', never '§7-compliant'.",
+      "direction": "Make the §7 assertions a gate (probe or verify-dshgo-views.ts), not a reading."
+    },
+    { "id": "N1", "severity": "Nit", "title": "spacer S/M/L is 8/16/24 dp while padding/gap S/M/L is 8/12/16", "where": "docs/plugins/inputs.md vs styles.md", "why": "same letters, different rhythm; a designer can land on the wrong spacing", "direction": "one sentence in the kit's spacer doc" },
+    { "id": "N2", "severity": "Nit", "title": "The tabs fallback repeats the tab label before the hero's own title", "where": "dshgo-view.ts fallbackFor (tabs) + the hero's text", "why": "the v1 tree says 'Board' twice before the first number", "direction": "skip the label text when the section's first text already carries it" },
+    { "id": "N3", "severity": "Nit", "title": "accent:'app' always yields a dark-mode contrast note", "where": "lib/style-check.js readableColor", "why": "#4B67B4 is corrected to ~#7B8FC8/#899BCE once per distinct background; expected and harmless", "direction": "report as accepted; never 'fix' by hard-coding a colour" },
+    { "id": "N4", "severity": "Nit", "title": "style:'primary' yields one 'reserved, ignored' note per action; plugViewOnePrimary never fires", "where": "lib/messages.json; lib/style-check.js", "why": "rule 8's diagnostic is per-action, not per-view; the app ignores every plugin action style", "direction": "keep the rule as intent; do not rely on that diagnostic to police it" },
+    { "id": "N5", "severity": "Nit", "title": "adaptView copies node.title onto replacements at non-root positions", "where": "dshgo-view.ts adaptView visit", "why": "the emptyState->text replacement carries title, which the app reads on the root only", "direction": "copy title only when the replacement is the root" }
+  ],
+  "declined": [
+    "the rendered visual result: no Flutter app here and preview.mjs needs Flutter — UNPROVEN, as §7.3 declares",
+    "quality and bilingual wording of the copy (rule 7 'designed copy')",
+    "whether a binding-driven tab is empty at runtime (decided on the pushed model)",
+    "whether card:'tinted' reads as 'designed' (taste; the app owns the material)"
+  ],
+  "bounds": {
+    "docs": ".mpd/recon/dsh-go pinned at 8fe1c1c (2026-11-02); the 1.0.9 target is the contract's claim, not re-derived (no app pubspec in the clone)",
+    "code": "only D1's dshgo-view.ts was read, and it was still being written (44,343 -> 48,490 bytes between 23:46 and 23:49); findings are observed-state at 2026-11-02T15:50:12Z, not a frozen-hash review",
+    "absent": "D2-D7 code, the D1 gate and every v2 panel do not exist yet",
+    "writeScope": "evidence/** only; no commit, branch, manifest or source edit",
+    "not_run": "typecheck/tests/gates on a file being actively written — deliberately deferred"
+  },
+  "artifacts": [
+    "output.log (every command, its raw output, its exit code, and the state snapshots)",
+    "section7-contract-review.md (rule-by-rule table with doc citations)",
+    "probe-section7.mjs (executable §7.2 checklist, --self-test 4 arms)",
+    "fixture-section7.mjs + fixture-v2.json + fixture-v1.json (kit-built §7 panel and its adaptView fallback)"
+  ]
+}

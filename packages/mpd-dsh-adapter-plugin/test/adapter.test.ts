@@ -925,14 +925,14 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
     const handler = async (invocation: { rawInput?: string }): Promise<{ kind: string; text: string }> => ({ kind: "success", text: "ran " + String(invocation.rawInput ?? "") })
     /** The registration's disposer, asserted by identity below. */
     const dispose = adapter.registerCommand({
-      name: "ulw",
-      description: "run one ULW loop on an objective",
+      name: "autoproject",
+      description: "run one autoproject loop on an objective",
       input: { hint: "<objective>" },
       handler,
     })
     expect(commandsRegistered).toHaveLength(1)
-    expect(commandsRegistered[0].name).toBe("ulw")
-    expect(commandsRegistered[0].description).toBe("run one ULW loop on an objective")
+    expect(commandsRegistered[0].name).toBe("autoproject")
+    expect(commandsRegistered[0].description).toBe("run one autoproject loop on an objective")
     expect(commandsRegistered[0].input).toEqual({ hint: "<objective>" })
     // The handler is wrapped for a stable call shape, so the seam still answers when a
     // harness build passes no invocation at all.
@@ -950,7 +950,7 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
     const adapter = createDshAdapter({ get: (serviceName: string) => (serviceName === "commands" ? { register: () => 42 } : undefined) })
     /** The disposer, assigned inside the assertion callback below. */
     let dispose: (() => void) | undefined
-    expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
+    expect(() => { dispose = adapter.registerCommand({ name: "autoproject", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
     expect(typeof dispose).toBe("function")
     expect(() => dispose?.()).not.toThrow()
   })
@@ -964,7 +964,7 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
     expect(caps.commandsRegister).toBe(false)
     /** The no-op disposer, assigned inside the assertion callback below. */
     let dispose: (() => void) | undefined
-    expect(() => { dispose = adapter.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
+    expect(() => { dispose = adapter.registerCommand({ name: "autoproject", description: "d", handler: () => ({ kind: "success" }) }) }).not.toThrow()
     expect(typeof dispose).toBe("function")
     expect(() => dispose?.()).not.toThrow()
   })
@@ -980,7 +980,7 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
     const mounted = provided[SERVICE_NAME] as ReturnType<typeof createDshAdapter>
     expect(mounted).toBeDefined()
     /** The mounted adapter's command seam, a no-op in this composition. */
-    const dispose = mounted.registerCommand({ name: "ulw", description: "d", handler: () => ({ kind: "success" }) })
+    const dispose = mounted.registerCommand({ name: "autoproject", description: "d", handler: () => ({ kind: "success" }) })
     expect(() => dispose()).not.toThrow()
   })
 
@@ -1001,9 +1001,9 @@ describe("command plane (AGENTS.md §6: the ONE sanctioned registration path)", 
 describe("message plane (user-role session injection)", () => {
   test("userMessage builds the host's message contract, frozen at every level", () => {
     /** The message built by this adapter's own constructor. */
-    const message = userMessage({ text: "run /ulw ship the wave" })
+    const message = userMessage({ text: "run /autoproject ship the wave" })
     expect(message.role).toBe("user")
-    expect(message.content).toEqual([{ type: "text", text: "run /ulw ship the wave" }])
+    expect(message.content).toEqual([{ type: "text", text: "run /autoproject ship the wave" }])
     expect(message.source).toEqual({ kind: "user" })
     expect(message.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u)
     expect(Object.isFrozen(message)).toBe(true)
@@ -1015,14 +1015,14 @@ describe("message plane (user-role session injection)", () => {
 
   test("a producer tag wins over the default kind, and every call mints a fresh id", () => {
     /** A message whose producer tag must win over the default kind. */
-    const injected = userMessage({ text: "directive", source: { kind: "mpd-ulw", reason: "activation-directive" } })
-    expect(injected.source).toEqual({ kind: "mpd-ulw", reason: "activation-directive" })
+    const injected = userMessage({ text: "directive", source: { kind: "mpd-autoproject", reason: "activation-directive" } })
+    expect(injected.source).toEqual({ kind: "mpd-autoproject", reason: "activation-directive" })
     expect(userMessage({ text: "a" }).id).not.toBe(userMessage({ text: "a" }).id)
   })
 
   test("the field set matches the vendored host constructor, and only the identity differs", () => {
     /** The text and producer tag shared by both constructors. */
-    const input = { text: "same text", source: { kind: "plugin", plugin: "mpd-ulw" } }
+    const input = { text: "same text", source: { kind: "plugin", plugin: "mpd-autoproject" } }
     /** This adapter's message. */
     const mine = userMessage(input)
     /** The vendored host constructor's message, compared field by field. */
@@ -1055,9 +1055,9 @@ describe("turn plane (the submission surface a command handler needs)", () => {
     /** The invoking Agent whose followup receives the submission. */
     const agent = { id: "invoking-agent", followup: (message: unknown) => { submitted.push(message) } }
     /** The user-role directive the handler submits. */
-    const directive = userMessage({ text: "run the ULW loop", source: { kind: "plugin", plugin: "mpd-ulw" } })
+    const directive = userMessage({ text: "run the ULW loop", source: { kind: "plugin", plugin: "mpd-autoproject" } })
     adapter.registerCommand({
-      name: "ulw",
+      name: "autoproject",
       description: "start one ULW run",
       handler: (invocation) => {
         /** Whether the submission reached the agent's turn seam. */

@@ -236,7 +236,7 @@
         args:
           - !!js 'process.env.MPD_DSH_ASTGREP_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-astgrep/dist/launch.js")'
         toolCallTimeoutMs: 60000
-    # ONE old row became TWO (de-omo wave B2). `mcp-gitbash` started one vendored SUL-1.0 server whose
+    # ONE old row became TWO (de-omo wave B2). `mcp-gitbash` started one vendored server whose
     # tools were a raw shell runner (`run`, `which_bash`, `diagnose`) — not a git toolbox. The capability
     # is now re-sourced from two DECLARED npm dependencies, and one MCP client row starts exactly one
     # server process, so the row split follows the packages: `mcp-git` (the git toolbox) and `mcp-shell`
@@ -264,7 +264,7 @@
           - !!js 'process.env.MPD_DSH_SHELL_CLI || ((typeof baseUrl === "string" ? decodeURIComponent(baseUrl.replace(/^file:\/\/\/(?=[A-Za-z]:)/, "").replace(/^file:\/\//, "")).replace(/\/+$/, "") : "") + "/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-gitbash/dist/launch.js")'
           - shell
         toolCallTimeoutMs: 60000
-    # The `mcp-lsp` row is unchanged in SHAPE, and its SERVER is new: the vendored lsp-daemon (SUL-1.0)
+    # The `mcp-lsp` row is unchanged in SHAPE, and its SERVER is new: the vendored lsp-daemon
     # was replaced by the declared npm dependency `cclsp` (MIT), resolved by the launcher from the
     # installed profile. cclsp takes no subcommand, so the old literal `mcp` argv entry is gone. The
     # published tool names therefore follow cclsp's own 12 tools (mcp__lsp__find_definition,
@@ -366,12 +366,13 @@
     # Persisted GOAL as the durable basis of continuous execution. The harness already ships
     # the goal domain (dsh-goal), the model tools (dsh-tool-goal) and the round driver
     # (dsh-goal-round-driver), and the `mpd` preset mounts tool-goal + command-goal — but no
-    # row INVOKED them, so a long run (a heavy ULW run, a plan-bound boulder work) ended with
+    # row INVOKED them, so a long run (a heavy autoproject run, a plan-bound boulder work) ended with
     # the turn and left nothing for the driver to continue. This row adds `mpd_goal_status` /
     # `mpd_goal_anchor` / `mpd_goal_finish`, provides the `mpdGoal` service those two rows
     # consume, and AUTO-anchors a goal around a long run (`goal.autoAnchor`, mpd.jsonc).
     # POSITION: after mpd-config (its `goal.*` keys are read through the mpdConfig service) and
-    # above its two consumers, mpd-ulw and mpd-boulder. Row order is documentation only for the
+    # above its consumer, mpd-autoproject (which owns the merged boulder machine). Row order is
+    # documentation only for the
     # consumption direction: both consumers resolve `mpdGoal` lazily per call (`ctx.get`), so a
     # composition without this row degrades to "no durable goal" instead of failing.
     # Every mutation goes through the harness GOAL TOOLS, never `ctx.goals`: the tools carry
@@ -465,16 +466,16 @@
       config:
         mode: hard
         escapeUses: 1
-    - id: mpd-ulw
-      name: '@mpd-dsh/mpd/packages/mpd-ulw-plugin/dist/index.js'
+    # The autoproject discipline AND the merged boulder work-state machine: ONE row registers
+    # `mpd_autoproject`, the single `/autoproject` command and every `mpd_boulder_*` tool.
+    - id: mpd-autoproject
+      name: '@mpd-dsh/mpd/packages/mpd-autoproject-plugin/dist/index.js'
       config:
         maxRounds: 3
     - id: mpd-hashline
       name: '@mpd-dsh/mpd/packages/mpd-hashline-plugin/dist/index.js'
       config:
         guardEditTools: true
-    - id: mpd-boulder
-      name: '@mpd-dsh/mpd/packages/mpd-boulder-plugin/dist/index.js'
     - id: mpd-comment-checker
       name: '@mpd-dsh/mpd/packages/mpd-comment-checker-plugin/dist/index.js'
       config:

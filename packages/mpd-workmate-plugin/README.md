@@ -229,3 +229,35 @@ bun test packages/mpd-workmate-plugin   # offline lifecycle tests (sandbox HOME)
 
 Every `dist/index.js` that embeds the read-only deny list must be rebuilt in the same change:
 the repo runs `dist`, not `src`.
+
+
+## Team auto-binding, optimisation and persona overrides (waves W3-C / W4)
+
+**Auto-binding at team approval.** When a staged plan is approved, each member is bound
+DETERMINISTICALLY: an explicit name binds or REFUSES; otherwise `mpd_workmate_match` (score ≥ 0.35 AND
+the name free on the team) REUSES a workmate; otherwise `workmates.autoInit` (default `true`) with the
+library under `workmates.max` (default 12 per workspace) INITIALIZES one; otherwise the member stays
+plain with reason `cap`. The member row records which branch ran (`workmateMode`) and why
+(`workmateReason`).
+
+**`mpd_workmate_optimize {dryRun?, confirm?, pairs?, mergeThreshold?}` + `/workmate-optimize`** merges
+workmates that are the same specialty grown apart: DRY-RUN by default, and mergeable only when both
+share the same base, equal `readonly`, neither archived, both idle, and the note score ≥ 0.6 or tag
+Jaccard ≥ 0.5. The merged-away source is ARCHIVED under `.archive/<name>-merged-<target>-<ts>/` and is
+never purged.
+
+**`mpd_workmate_persona_set`** writes a versioned persona override: `personaRevision` increments,
+`personaHash` records the bytes, and `baseRevision` is a compare-and-set fence against the base
+template. A workmate whose base persona moved ahead reports `defaultUpdated` with `baseDriftLines`
+instead of silently going stale.
+
+**Attribution:** `meta.workspaces` keeps the per-workspace attribution of an instance (capped), so a
+shared library shows which workspaces drove it.
+
+## dsh-Go tool cards
+
+`mpd_workmate_list` and `mpd_workmate_match` also publish native **dsh-Go tool cards** through
+`output.presentationMeta`: each card is a v1 tree (`stack` title → `row` of metrics → `table`) with no
+data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
+depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
+generic tool row. The text `render` and the output schema are unchanged.

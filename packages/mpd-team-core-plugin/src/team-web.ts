@@ -16,7 +16,8 @@
 // why it can carry `kind`, `attempt`, `round` and `verdict` at all.
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
-import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
+import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberIsCheckpoint, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
+import { stageLabel, teamStage } from "./stage"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
@@ -222,6 +223,23 @@ export interface TeamWebMember {
   current?: string
   /** `provider/model` when the roster resolved a slot for this member. */
   route?: string
+  /**
+   * How this seat's workmate was bound at approval (`reuse` | `init` | `explicit` | `none`).
+   *
+   * THE RECORD IS THE SOURCE: the value is copied straight off `TeamMemberRecord.workmateMode`, never
+   * derived here — the web payload is a projection, so a second decision would be a second authority.
+   */
+  workmateMode?: string
+  /** Why the seat was left plain, written beside `workmateMode: "none"`. */
+  workmateReason?: string
+  /**
+   * Whether the seat is in the CHECKPOINT window (handed off, closed until the barrier reopens it).
+   *
+   * DERIVED THROUGH THE PLANE'S ONE PREDICATE (`team-store.ts#memberIsCheckpoint`), which is also the
+   * place that states cellwork's `handoffReady` maps onto `mode: "checkpoint"`. It is reported so a
+   * browser drawing a roster cannot render a closed seat as live.
+   */
+  checkpoint: boolean
 }
 
 /** One task row, as the browser reads it. */
@@ -288,6 +306,13 @@ export interface TeamWebWorkspaceTeam {
   description: string
   /** `staged` | `active` | `idle` | `ended`, derived from the record. */
   phase: string
+  /**
+   * The DERIVED STAGE (A1), as ONE token: `person:<reason>`, `working`, `working:queued`, `idle`, `ended`.
+   *
+   * ADDITIVE beside `phase`, never a replacement: `phase` says whether the team is live, the stage says
+   * whether it is waiting on a HUMAN — the question the browser's status vocabulary actually asks.
+   */
+  stage: string
   /** ISO instant the plan was approved, when it was. */
   approvedAt?: string
   /** ISO instant the team was ended, when it was. */
@@ -388,6 +413,8 @@ export function buildWorkspaceTeams(teams: readonly TeamRecord[], activeId: stri
       // A `failed` member is a raise that never happened (the store removes it going forward); a legacy
       // record's leftover row must not be counted as a teammate a reader can talk to.
       members: team.members.filter((member) => member.status !== "failed").length,
+      // A1: the same classifier the service and the TUI use — never a second derivation here.
+      stage: stageLabel(teamStage(team)),
       active: team.teamId === activeId,
     })),
     ...(activeId === undefined ? {} : { activeId }),
@@ -537,12 +564,19 @@ export function buildTeamState(
         name: member.name,
         ...(member.role === undefined ? {} : { role: member.role }),
         // A member the roster has not settled reads as `idle` when it has nothing in flight, which is
-        // the word the browser's status vocabulary uses.
-        status: member.status === "running" && idle.has(member.name) ? "idle" : member.status,
+        // the word the browser's status vocabulary uses — EXCEPT for a fenced seat, which no dispatch can
+        // reach: it renders `fenced` so the panel never advertises a seat that was given up on.
+        status: member.fenced === true ? "fenced" : member.status === "running" && idle.has(member.name) ? "idle" : member.status,
         done: progress.done,
         total: progress.total,
         ...(progress.current === undefined ? {} : { current: progress.current }),
         ...(member.route === undefined ? {} : { route: member.route }),
+        // THE BINDING DECISION IS THE RECORD'S (W3-C2 could not reach this file): mode and reason are
+        // copied verbatim, so the panel shows WHY a seat is plain without re-deciding it.
+        ...(member.workmateMode === undefined ? {} : { workmateMode: member.workmateMode }),
+        ...(member.workmateReason === undefined ? {} : { workmateReason: member.workmateReason }),
+        // THE CLOSED-SEAT FLAG, through the ONE predicate (see `TeamWebMember.checkpoint`).
+        checkpoint: memberIsCheckpoint(record, member.name),
       }
     }),
     tasks,

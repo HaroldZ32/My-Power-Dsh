@@ -215,6 +215,23 @@ function readTargetPath(toolName, args) {
 // packages/mpd-roles-plugin/src/complexity-gate.ts
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
 import { join } from "node:path";
+
+// packages/mpd-roles-plugin/src/admission.ts
+var AUTOMATION_GESTURE_PATTERN = /\b(?:autoproject|auto-project|orchestrate|orchestration)\b|自动化|编排/iu;
+function admissionOf(source, text, evidence = {}) {
+  const body = typeof text === "string" ? text : "";
+  const explicit = evidence.explicitFlag ?? consumeExplicitFlag(body).flagged;
+  if (explicit)
+    return "explicit";
+  if (source !== "human")
+    return "ignore";
+  if (AUTOMATION_GESTURE_PATTERN.test(body))
+    return "explicit";
+  const signals = evidence.matchedSignals ?? evaluateComplexityGate(body).signals.length;
+  return signals >= 1 ? "inferred" : "ignore";
+}
+
+// packages/mpd-roles-plugin/src/complexity-gate.ts
 var STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule";
 var HUMAN_SOURCE_KIND = "user";
 var GATE_MODE_MECHANICAL = "mechanical";
@@ -379,7 +396,12 @@ function evaluateComplexityGate(text, input = {}) {
     signals.push("E");
   if (thresholds.workspaceScale && input.workspaceScale === true)
     signals.push("F");
-  return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
+  const strength = admissionOf(input.source ?? "human", source, { explicitFlag: input.explicitFlag === true, matchedSignals: signals.length });
+  return {
+    trigger: strength !== "ignore" && (input.explicitFlag === true || signals.length >= 1),
+    signals,
+    strength
+  };
 }
 async function readBoulderGate(workspace, opts = {}) {
   try {
@@ -499,9 +521,12 @@ Active plan artifact (signal D): ` + input.planPath),
     approval: "required"
   };
 }
-function advisoryNoticeText(signals, explicit) {
+function ADMISSION_CLAUSE_OF(strength) {
+  return strength === undefined ? "" : " (admission " + strength + ")";
+}
+function advisoryNoticeText(signals, explicit, strength) {
   const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(strength) + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
 }
@@ -512,7 +537,7 @@ function mechanicalNoticeText(input) {
   const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`), then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
 - Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
 - Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ADMISSION_CLAUSE_OF(input.strength) + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
 - The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + nextStep + `
 - ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert." + `
@@ -1392,7 +1417,7 @@ function installRosterSection(dsh, options) {
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve2 } from "node:path";
+import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 import { dirname } from "node:path";
@@ -2321,17 +2346,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -2342,8 +2364,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -2420,6 +2454,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -2816,6 +2883,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -3084,6 +3152,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -3831,7 +3948,7 @@ function installSessionGate(dsh, options) {
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity);
       const notice = dsh.userMessage({
-        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
+        text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength }) : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
       const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
@@ -3887,6 +4004,372 @@ function installSessionGate(dsh, options) {
     mode: resolveGateMode(configValue(GATE_CONFIG_KEY)),
     sensitivity: resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY))
   };
+}
+
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-roles-plugin/src/tool-cards.ts
+var CELL_LIMIT = 60;
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function arrayAt(source, key) {
+  const found = source[key];
+  return Array.isArray(found) ? found : [];
+}
+function words(value, limit = 200) {
+  if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
+    return;
+  const flat = String(value).replace(/\s+/g, " ").trim();
+  if (flat === "")
+    return;
+  return flat.length <= limit ? flat : `${flat.slice(0, Math.max(0, limit - 1))}…`;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+function cell(value, limit = CELL_LIMIT) {
+  return words(value, limit) ?? "—";
+}
+function roleRow(row) {
+  const role = isRecord3(row) ? row : {};
+  const route = words(role.provider, 24) === undefined ? cell(role.model, 40) : `${cell(role.provider, 24)}/${cell(role.model, 40)}`;
+  return [cell(role.name, 24), route, role.readonly === true ? "read-only" : "writes"];
+}
+function refusedRow(row) {
+  const refusal = isRecord3(row) ? row : {};
+  return [cell(refusal.name, 24), cell(refusal.extension, 20), cell(refusal.reason, 60)];
+}
+function rolesListCard(args, value) {
+  const answer = isRecord3(value) ? value : {};
+  const roles = arrayAt(answer, "roles");
+  const refused = arrayAt(answer, "refused");
+  const count = numberOf(answer.count) ?? roles.length;
+  const children = [metric({ label: "roles", value: count })];
+  if (roles.length > 0)
+    children.push(table({ columns: ["name", "route", "access"], rows: roles.slice(0, 12).map(roleRow) }));
+  if (refused.length > 0)
+    children.push(table({ columns: ["name", "extension", "reason"], rows: refused.slice(0, 6).map(refusedRow) }));
+  return stack(children, { title: "roster" });
+}
+function roleSpawnCard(args, value) {
+  const answer = isRecord3(value) ? value : {};
+  const role = words(answer.role, 40);
+  if (role === undefined)
+    return null;
+  const status = words(answer.status, 20) ?? "complete";
+  const evidence = arrayAt(answer, "evidence");
+  const facts = [];
+  if (words(answer.stopReason, 120) !== undefined)
+    facts.push(["stop reason", words(answer.stopReason, 120) ?? ""]);
+  if (evidence.length > 0)
+    facts.push(["evidence", evidence.length]);
+  const children = [
+    metric({ label: "role", value: role }),
+    metric({ label: "status", value: status, tone: status === "complete" ? "good" : "warn" })
+  ];
+  const summary = words(answer.summary, 700);
+  if (summary !== undefined)
+    children.push(text(summary));
+  const recommendation = words(answer.recommendation, 300);
+  if (recommendation !== undefined)
+    children.push(text(recommendation));
+  const details = words(answer.details, 900);
+  if (details !== undefined)
+    children.push(text(details));
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  if (evidence.length > 0)
+    children.push(table({ columns: ["evidence"], rows: evidence.slice(0, 8).map((item) => [cell(item, 80)]) }));
+  return stack(children, { title: `role · ${role}` });
 }
 
 // packages/mpd-roles-plugin/src/index.ts
@@ -3987,7 +4470,7 @@ function stagedPlanProbe(ctx) {
 }
 var PROJECT_ONLY_PLANE = "project";
 var PROJECT_ROLES_REASON = "project-level extensions may contribute skills and flows only: tool and provider registration is process-global and cannot be scoped to a session";
-function text(value) {
+function text2(value) {
   return typeof value === "string" ? value : "";
 }
 function errText(error) {
@@ -4034,7 +4517,7 @@ function extensionRoles(ctx, exec, warn) {
     return { roles, refused };
   }
   for (const view of views) {
-    const extensionId = text(view?.id);
+    const extensionId = text2(view?.id);
     if (extensionId === "")
       continue;
     if (view?.enabled === false)
@@ -4044,37 +4527,37 @@ function extensionRoles(ctx, exec, warn) {
       continue;
     if (view?.plane === PROJECT_ONLY_PLANE) {
       for (const item of declared) {
-        const name2 = text(item?.name).trim();
+        const name2 = text2(item?.name).trim();
         if (name2 === "")
           continue;
         refused.push({ extension: extensionId, name: name2, reason: PROJECT_ROLES_REASON });
       }
       continue;
     }
-    const root = text(view?.root);
+    const root = text2(view?.root);
     declared.forEach((item, index) => {
-      const name2 = text(item?.name).trim();
+      const name2 = text2(item?.name).trim();
       if (name2 === "")
         return;
-      const refuse = (reason) => {
+      const refuse2 = (reason) => {
         refused.push({ extension: extensionId, name: name2, reason });
       };
       const itemLabel = "contributes.roles[" + index + "]";
       const key = normalizeRoleNameKey(name2);
       const takenBy = owner.get(key);
       if (takenBy !== undefined) {
-        refuse('role name "' + name2 + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
+        refuse2('role name "' + name2 + '" (' + itemLabel + ' of extension "' + extensionId + '") is already taken by ' + takenBy + " — this extension role is not exposed");
         return;
       }
       const id = extensionRoleId(extensionId, name2);
       if (ROLE_BY_ID[id] !== undefined) {
-        refuse('role id "' + id + '" collides with the base roster — this extension role is not exposed');
+        refuse2('role id "' + id + '" collides with the base roster — this extension role is not exposed');
         return;
       }
-      const personaFile = root === "" ? text(item?.persona) : resolve3(root, text(item?.persona));
-      const persona = readExtensionPersona(root, text(item?.persona));
+      const personaFile = root === "" ? text2(item?.persona) : resolve3(root, text2(item?.persona));
+      const persona = readExtensionPersona(root, text2(item?.persona));
       if (persona === null) {
-        refuse("persona file is not readable: " + personaFile);
+        refuse2("persona file is not readable: " + personaFile);
         return;
       }
       const chain = typeof item?.provider === "string" && typeof item?.model === "string" ? [{ provider: item.provider, model: item.model }] : [];
@@ -4082,7 +4565,7 @@ function extensionRoles(ctx, exec, warn) {
       roles.push({
         id,
         name: name2,
-        description: text(item?.description),
+        description: text2(item?.description),
         readonly: item?.readonly === true,
         chain,
         persona,
@@ -4270,7 +4753,7 @@ function apply(ctx, config = {}) {
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
+    output: { presentationMeta: toolCard(rolesListCard), schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
 `) + (Array.isArray(v.refused) && v.refused.length > 0 ? `
 refused (` + v.refused.length + `):
@@ -4286,7 +4769,7 @@ refused (` + v.refused.length + `):
     name: "mpd_role_spawn",
     description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright — a depth-1 caller (the cell planner) may still raise its one consult.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
+    output: { presentationMeta: toolCard(roleSpawnCard), schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `

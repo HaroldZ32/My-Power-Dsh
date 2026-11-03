@@ -12,7 +12,7 @@ serverName `lsp`，stdio）包装。
   `node_modules` 解析 `cclsp`，把本进程的终端写入者从终端移走
   （`<root>/.mpd/logs/mpd-mcp-lsp.log`），再在进程内导入 cclsp 的 `bin` 入口。
 - 没有任何 vendored 内容，也没有任何东西再从 `vendor/mcp-src/**` 构建：该快照、已退役的
-  `scripts/build-mcp.ts`，以及它产出的 SUL-1.0 `lsp-daemon` 构建都已删除（de-omo B2 波）。
+  `scripts/build-mcp.ts`，以及它产出的 `lsp-daemon` 构建都已删除（de-omo B2 波）。
 - TS/JS 语言服务器无需用户安装：cclsp 依赖 `typescript-language-server`（Apache-2.0），
   启动器生成的配置直接指向那一份。
 - **其他每种语言都由「语言→服务器」目录表接入**（`src/server-catalog.ts`），因此用户侧只需

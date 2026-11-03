@@ -106,8 +106,22 @@ function grantRowsOf(manifest: { readonly permissions: readonly { readonly name:
 function manifestGrantRows(): GrantFileRow[] {
   /** The decoded manifest, narrowed field by field because `JSON.parse` answers `unknown`. */
   const raw: unknown = JSON.parse(readFileSync(MANIFEST, "utf8"))
+  return grantsOfManifest((raw ?? {}) as { permissions?: unknown })
+}
+
+/**
+ * Project ONE decoded manifest's `permissions` block into grant rows.
+ *
+ * Extracted so the shipped manifest and a control CLONE go through the SAME projection: a control that
+ * used a second parser could never prove that the first one still sees a declaration. The rows are
+ * declared as `unknown` fields because a decoded `permissions[]` entry carries optional keys, and the
+ * projection below is exactly the place that decides which entries are well formed.
+ * @param candidate A decoded manifest whose `permissions` block is projected (absent block ⇒ no rows).
+ * @returns One grant row per well-formed declaration, in declaration order.
+ */
+function grantsOfManifest(candidate: { permissions?: unknown }): GrantFileRow[] {
   /** The `permissions` array, `undefined` on a manifest that declares none. */
-  const permissions = (raw as { permissions?: unknown } | null)?.permissions
+  const permissions = candidate.permissions
   if (!Array.isArray(permissions)) return []
   return grantRowsOf({ permissions: permissions as readonly { name: unknown; scope: unknown }[] })
 }
@@ -681,21 +695,41 @@ function selfTest(): void {
   const skill = join(REPO, "skills", "dsh-qa", "SKILL.md")
   check(existsSync(skill) && readFileSync(skill, "utf8").includes("| tui-admission |"), "the case table does not list tui-admission")
 
-  // C3' helper arms (offline): the grant-row derivation, the grant-file writer's document shape and
-  // the tolerant ledger reader, each asserted against a fixture inside a throwaway directory.
-  /** The grant rows the shipped manifest's own declarations imply. */
+  // C3' helper arms (offline): the manifest's OWN declaration set, the grant-row derivation, the
+  // grant-file writer's document shape and the tolerant ledger reader, each asserted against a fixture
+  // inside a throwaway directory.
+  //
+  // THE MANIFEST ARM IS TWO-SIDED AND ITS EXPECTATION IS THE CURRENT DECISION (commit 776ac355, PR #91):
+  // the shipped manifest declares NO permission, because the intercept seam is INACTIVE BY DESIGN — an
+  // unused default-deny permission returns admission to `waiting_authorization` and keeps this bundle
+  // attributed as undeclared (the measurement is recorded in the manifest's own `x-mpd-tui.decisionEvents`
+  // note). The arm previously expected the four `session.*.intercept` rows the seam used to declare, so it
+  // reddened on every run after that decision landed. It now pins the EMPTY set, and its negative control
+  // proves the projection still SEES a permission, so the emptiness can never be a parser that went deaf.
+  /** The shipped manifest's own declarations, projected into the `{name, scope}` grant rows the host prints. */
   const grantRows = manifestGrantRows()
-  check(grantRows.length === 4, "the shipped manifest must declare the four intercept permissions the grant arms feed: " + JSON.stringify(grantRows))
-  check(grantRows.every((row) => row.scope.startsWith("tui/")), "every declared grant scope must be a tui/<point> scope: " + JSON.stringify(grantRows))
+  check(grantRows.length === 0, "the shipped manifest must declare NO intercept permission (the seam is inactive by design): " + JSON.stringify(grantRows))
+  /** A clone of the shipped manifest with ONE intercept permission re-declared, the negative control. */
+  const withIntercept = structuredClone(manifest)
+  withIntercept.permissions.push({ name: "session.input.intercept", scope: "tui/transcript" })
+  check(grantsOfManifest(withIntercept).length === grantRows.length + 1, "a NEGATIVE CONTROL failed: a re-declared permission must reach the projection: " + JSON.stringify(grantsOfManifest(withIntercept)))
   /** The component id the grants key and the attribution assertions use. */
   const componentId = manifestComponentId()
   check(componentId === "com.mpd-dsh.mpd-tui", "the manifest component id must stay the grants key the arms assert on: " + JSON.stringify(componentId))
+  // THE WRITER'S OWN FIXTURE, not the shipped manifest's (which is empty by decision): the document shape
+  // and the `tui/<point>` scope vocabulary are proven on rows the writer could actually be handed.
+  /** The fixture grant rows the writer's shape control writes. */
+  const writerRows: GrantFileRow[] = [
+    { name: "session.input.intercept", scope: "tui/transcript" },
+    { name: "session.rewind.intercept", scope: "tui/checkpoint" },
+  ]
+  check(writerRows.every((row) => row.scope.startsWith("tui/")), "every grant row this lane can write must be a tui/<point> scope: " + JSON.stringify(writerRows))
   /** A throwaway directory for the writer/reader controls, removed before the arm returns. */
   const scratch = mkdtempSync(join(tmpdir(), "tui-admission-selftest-"))
   try {
     /** The grant file path inside a NESTED directory, so the writer's mkdir discipline is exercised too. */
     const grantFile = join(scratch, "nested", "extension-grants.json")
-    writeExtensionGrants(grantFile, componentId, grantRows)
+    writeExtensionGrants(grantFile, componentId, writerRows)
     /** The written document, decoded and narrowed for the shape control below. */
     const written: unknown = JSON.parse(readFileSync(grantFile, "utf8"))
     /** The `grants` section of the written document, `undefined` when the writer omitted it. */

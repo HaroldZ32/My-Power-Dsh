@@ -39,7 +39,7 @@ dispatcher or a REAL harness validator rather than a double:
 `packages/mpd-team-watchdog-plugin/test/{pre-step-waterfall,tool-inflight}.test.ts`,
 `packages/mpd-tui-plugin/test/plugin.test.ts`,
 `packages/mpd-dsh-adapter-plugin/test/adapter.test.ts` and
-`packages/mpd-ulw-plugin/test/engine.test.ts`. They are self-contained: the eight relocated files
+`packages/mpd-autoproject-plugin/test/engine.test.ts`. They are self-contained: the eight relocated files
 import nothing outside this package and `node:*` builtins, so the suite needs no network and adds
 no npm dependency.
 

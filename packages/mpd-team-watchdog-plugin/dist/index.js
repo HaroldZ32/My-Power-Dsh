@@ -915,7 +915,7 @@ defineMethod("transform", [
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
-import { resolve as resolve3 } from "node:path";
+import { resolve as resolve3, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
 function errorMessage(error) {
@@ -1778,17 +1778,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -1799,8 +1796,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1877,6 +1886,39 @@ function createDshAdapter(ctx, config = {}) {
     try {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
+  }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
   }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
@@ -2273,6 +2315,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -2541,6 +2584,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -3047,6 +3139,349 @@ function createDshAdapter(ctx, config = {}) {
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { join as join4 } from "node:path";
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function callout(value, props = {}) {
+  return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-team-watchdog-plugin/src/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
+}
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function buildWatchdogStatusCard(_args, value) {
+  const v = recordOf(value);
+  const predicate = recordOf(v.predicate);
+  const knobs = recordOf(v.knobs);
+  const teams = recordsAt(v, "teams");
+  const held = teams.filter((team) => team.held === true).length;
+  const children = [
+    row([
+      metric({ label: "Teams", value: teams.length }),
+      metric({ label: "Held", value: held, tone: held > 0 ? "warn" : "muted" })
+    ]),
+    keyValue([
+      ["Predicate", stringOf(predicate.source, "unknown")],
+      ["Reason", clip(stringOf(predicate.reason, "(none)"), 100)]
+    ])
+  ];
+  if (teams.length > 0) {
+    children.push(table({
+      columns: ["Team", "Held", "Paused"],
+      rows: teams.slice(0, 20).map((team) => {
+        const pause = recordOf(team.pause);
+        return [clip(stringOf(team.teamId, "?"), 32), team.held === true ? "yes" : "no", pause.paused === true ? "yes" : "no"];
+      })
+    }));
+  }
+  if (knobs.restartRequired === true) {
+    children.push(callout("a .mpd/mpd.jsonc edit is waiting for the next dsh boot", { tone: "warn" }));
+  }
+  return stack(children, { title: "Watchdog status" });
+}
+var WATCHDOG_STATUS_CARD = toolCard(buildWatchdogStatusCard);
+
 // packages/mpd-team-watchdog-plugin/src/paths.ts
 import { createHash } from "node:crypto";
 import { join as join2 } from "node:path";
@@ -3509,7 +3944,7 @@ function teamOf(teams, agent) {
 }
 
 // packages/mpd-team-watchdog-plugin/src/lossless.ts
-function losslessJson(value, seen = new Set) {
+function losslessJson2(value, seen = new Set) {
   if (value === null)
     return null;
   switch (typeof value) {
@@ -3529,44 +3964,44 @@ function losslessJson(value, seen = new Set) {
     default:
       break;
   }
-  const node = value;
-  if (seen.has(node))
+  const node2 = value;
+  if (seen.has(node2))
     return null;
-  if (node instanceof Map) {
+  if (node2 instanceof Map) {
     const next2 = new Set(seen);
-    next2.add(node);
+    next2.add(node2);
     const out2 = {};
-    for (const [key, entry] of node.entries())
-      out2[String(key)] = losslessJson(entry, next2);
+    for (const [key, entry] of node2.entries())
+      out2[String(key)] = losslessJson2(entry, next2);
     return out2;
   }
-  if (node instanceof Set) {
+  if (node2 instanceof Set) {
     const next2 = new Set(seen);
-    next2.add(node);
-    return [...node.values()].map((entry) => losslessJson(entry, next2));
+    next2.add(node2);
+    return [...node2.values()].map((entry) => losslessJson2(entry, next2));
   }
-  if (node instanceof Date) {
-    return Number.isNaN(node.getTime()) ? null : node.toISOString();
+  if (node2 instanceof Date) {
+    return Number.isNaN(node2.getTime()) ? null : node2.toISOString();
   }
   const next = new Set(seen);
-  next.add(node);
-  if (Array.isArray(node)) {
+  next.add(node2);
+  if (Array.isArray(node2)) {
     const out2 = [];
-    for (let index = 0;index < node.length; index += 1)
-      out2.push(losslessJson(node[index], next));
+    for (let index = 0;index < node2.length; index += 1)
+      out2.push(losslessJson2(node2[index], next));
     return out2;
   }
   const out = {};
-  for (const key of Object.keys(node)) {
+  for (const key of Object.keys(node2)) {
     let raw;
     try {
-      raw = node[key];
+      raw = node2[key];
     } catch {
       raw = null;
     }
     if (raw === undefined || typeof raw === "function" || typeof raw === "symbol")
       continue;
-    out[key] = losslessJson(raw, next);
+    out[key] = losslessJson2(raw, next);
   }
   return out;
 }
@@ -3680,6 +4115,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: WATCHDOG_STATUS_CARD,
       schema: {
         type: "object",
         properties: {
@@ -3713,7 +4149,7 @@ function registerWatchdogActions(dsh, stateDir, registry, surfaces = {}) {
     execute: (args, exec) => {
       const workspace = dsh.workspaceRoot(exec);
       const ids = args?.team_id === undefined || args.team_id === "" ? listTeamIds(dsh, workspace, surfaces.mpdTeams?.()) : [args.team_id];
-      return losslessJson({
+      return losslessJson2({
         workspace,
         predicate: predicateSource?.() ?? { source: "unknown", reason: "the engine did not publish a predicate source", enrichment: false, events: 0, sessions: 0, states: {}, announced: false },
         knobs: surfaces.knobs?.() ?? { readings: [], divergent: [], restartRequired: false, file: null, fileFound: false, fileApplied: false, liveLayer: "namespace" },
@@ -3800,11 +4236,11 @@ async function readBody(request) {
     return { ok: false, status: 400 };
   }
 }
-function recordOf(body) {
+function recordOf2(body) {
   return body !== null && typeof body === "object" && !Array.isArray(body) ? body : undefined;
 }
 function parseHoldBody(body) {
-  const record = recordOf(body);
+  const record = recordOf2(body);
   if (record === undefined)
     return { ok: false, error: "the request body must be a JSON object" };
   const teamId = typeof record.teamId === "string" ? record.teamId.trim() : "";
@@ -3818,7 +4254,7 @@ function parseHoldBody(body) {
   return { ok: true, value: { teamId, reason: record.reason, ttlMs: record.ttlMs } };
 }
 function parseResumeBody(body) {
-  const record = recordOf(body);
+  const record = recordOf2(body);
   if (record === undefined)
     return { ok: false, error: "the request body must be a JSON object" };
   const teamId = typeof record.teamId === "string" ? record.teamId.trim() : "";

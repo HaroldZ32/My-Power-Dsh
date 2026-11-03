@@ -1,0 +1,47 @@
+{
+  "type": "stack",
+  "children": [
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "metric",
+          "label": "Entries",
+          "value": 0
+        },
+        {
+          "type": "metric",
+          "label": "Journal lines",
+          "value": 0
+        },
+        {
+          "type": "metric",
+          "label": "Reflections",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "keyValue",
+      "items": [
+        [
+          "VCS",
+          "git"
+        ],
+        [
+          "Scope",
+          "workspace"
+        ],
+        [
+          "Root",
+          "/tmp/mpd-t7-card-lVgosA/ws/.mpd/memory/agents/agent-ws"
+        ],
+        [
+          "Steps since reflection",
+          0
+        ]
+      ]
+    }
+  ],
+  "title": "Memory status"
+}

@@ -134,7 +134,15 @@ describe("sending", () => {
     const refused = send(box, msg({ subject: "ninth", teamId: "team-live" }), later(9))
     expect(refused.ok).toBe(false)
     // The EXACT sentence an operator reads, count and bound spelled out (no `maxUndelivered` was named).
-    expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe('"senior" already has 8 undelivered message(s) (bound 8) — it is not keeping up')
+    // CHANGED BY VEDIT-P0 C3/D2 (R2: named here, and the reviewer checks both sides): the old sentence
+    // stopped at "— it is not keeping up", which named the recipient, the count and the bound but gave
+    // the caller NO WAY OUT. The replacement keeps those three facts, names the knob behind the number,
+    // and adds the two recovery paths the contract requires (ack the inbox, or reassign the rows).
+    expect(String((refused as Extract<SendResult, { ok: false }>).detail)).toBe(
+      '"senior" already has 8 undelivered message(s) and the bound (mail.maxUndelivered) is 8 — it is not keeping up.'
+      + " Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:\"read\"} for a team member),"
+      + " or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.",
+    )
     /** The oldest queued row, which the recipient ACKNOWLEDGES to free its slot. */
     const first = readMailbox(box).messages[0]
     expect(markRead(box, [first.id], ACK, later(10))).toEqual([first.id])

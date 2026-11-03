@@ -1,7 +1,7 @@
 # mpd-goal-plugin
 **中文** | [English](./README.md)
 
-C8 —— 把持久化 GOAL 作为持续化执行的依据。
+把持久化 GOAL 作为持续执行依据的一行插件。
 
 Harness 本身已经交付了完整的 goal 域：`@deepseek-ai/dsh-goal`（每会话状态机）、
 `@deepseek-ai/dsh-tool-goal`（`get_goal` / `create_goal` / `update_goal`）与
@@ -20,7 +20,7 @@ Harness 本身已经交付了完整的 goal 域：`@deepseek-ai/dsh-goal`（每�
 | `mpd_goal_anchor` | 为长目标建立持久化 goal。若已有未完成的 goal，则**保留它**，绝不替换。 |
 | `mpd_goal_finish` | 将当前 goal 标记完成（或尝试标记阻塞）并停用自动续行。 |
 
-## `mpdGoal` 服务（由 `mpd-ulw` 与 `mpd-boulder` 消费）
+## `mpdGoal` 服务（由 `mpd-autoproject` 与 `mpd-autoproject` 消费）
 
 `available()` / `autoAnchor()` / `status(exec)` / `anchor(exec, {objective, source, maxRounds?})` /
 `finish(exec, {outcome, source, reason?})`。两个消费方都用 `ctx.get("mpdGoal")` 惰性解析，因此
@@ -30,7 +30,7 @@ Harness 本身已经交付了完整的 goal 域：`@deepseek-ai/dsh-goal`（每�
 
 | 触发 | 行为 |
 |---|---|
-| `mpd_ultrawork` 且 `tier=heavy` 或 `plan=true` | 为该次运行的目标 anchor 一个 goal；goal id 写入本次运行的 `state.json`。 |
+| `mpd_autoproject` 且 `tier=heavy` 或 `plan=true` | 为该次运行的目标 anchor 一个 goal；goal id 写入本次运行的 `state.json`。 |
 | `mpd_boulder_start`（绑定 plan 的工作） | anchor 一个以 plan 与 work id 命名的 goal。 |
 | 运行以 `complete` 结束 | 完成该 goal（anchor 记录随即删除）。 |
 | 运行以 `blocked` 结束 | **尝试** `blocked`；harness 可能因其连续轮次阈值而拒绝，拒绝只记日志、绝不致命。 |

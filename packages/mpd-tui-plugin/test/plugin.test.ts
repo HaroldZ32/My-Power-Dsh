@@ -1707,7 +1707,7 @@ describe("settings section disclosure (t21)", () => {
     expect(BRIDGE_DISCLOSURE).toContain("tui.dashboardKey is live ONE WAY")
     // THE EXCEPTION IS PINNED, group by group: at least one mount-captured name must always appear,
     // in BOTH halves (the disclosure points at it, the restart limit lists it).
-    for (const captured of ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]) expect(BRIDGE_RESTART_LIMIT).toContain(captured)
+    for (const captured of ["hashline.*", "commentChecker.*", "autoproject.*", "memory.*", "boulder.dir", "goal.*"]) expect(BRIDGE_RESTART_LIMIT).toContain(captured)
     expect(BRIDGE_RESTART_LIMIT).toContain("instead of reading the live config service per use")
     expect(BRIDGE_RESTART_LIMIT).toContain("waits for the next dsh boot")
     // T16-F1: the parenthetical names the SAME asymmetry the live half states — the document at once,

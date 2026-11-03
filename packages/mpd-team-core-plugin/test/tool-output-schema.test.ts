@@ -143,26 +143,43 @@ interface Fixture {
   /** The registered tools, by name. */
   tools: Map<string, CapturedTool>
   /** The exec payload every call carries. */
-  exec: { agent: { session: { id: string } } }
+  exec: { agent: { session: { id: string; header: { cwd: string } } } }
+  /** The services the plugin PUBLISHED, by service id (the `mpdTeamActions` plane lives here). */
+  provided: Map<string, unknown>
+  /** One entry per delivered dispatch message: `<handle>:<content>`. */
+  sent: string[]
   /** Call one tool and assert that its value satisfies its own declared contract. */
   call: (name: string, args: unknown) => Promise<any>
+  /**
+   * Call one tool AS A GIVEN AGENT, with the same two conformance checks.
+   *
+   * Needed because the new verbs are SEAT-SCOPED: `handoff` is a member's duty and the Lead gate refuses
+   * a member's `reassign`/`mode:"roster"`, so an arm that could only ever be the Lead would prove neither.
+   */
+  callAs: (name: string, args: unknown, agent: unknown) => Promise<Record<string, any>>
 }
 
-/** Build the harness: the real plugin applied against a stub adapter and a stub executor. */
-function fixture(): Fixture {
+/**
+ * Build the harness: the real plugin applied against a stub adapter and a stub executor.
+ * @param roles - the roster rows the `mpdRoles` service publishes (the C7-2 source); empty by default.
+ * @returns the fixture.
+ */
+function fixture(roles: Array<{ name: string; readonly?: boolean }> = []): Fixture {
   /** The sandbox workspace, which is what `workspaceRoot` answers. */
   const workspace = mkdtempSync(join(tmpdir(), "mpd-output-"))
   /** The tools the plugin registered. */
   const tools = new Map<string, CapturedTool>()
   /** A disposer-returning no-op for every seam this file never exercises. */
   const noop = (): (() => void) => () => {}
+  /** One entry per delivered message: `<handle>:<content>`. */
+  const sent: string[] = []
   /** The stub executor: it raises members and admits messages, and nothing else. */
   const executor = {
     kind: "native" as const,
     reason: "stub",
     providers: () => ["mpd-roster"],
     spawn: async (_caller: unknown, request: { name: string }) => ({ handle: `child-${request.name}` }),
-    send: async () => {},
+    send: async (_caller: unknown, handle: string, content: string) => { sent.push(`${handle}:${content}`) },
     interrupt: async () => {},
     membership: () => undefined,
     members: () => [],
@@ -174,6 +191,9 @@ function fixture(): Fixture {
       if (prop === "registerCommand") return () => () => {}
       if (prop === "workspaceRoot") return () => workspace
       if (prop === "teamExecutor") return () => executor
+      // THE METER SEAM answers the adapter's OWN empty reading, which is what it returns for a session it
+      // cannot resolve: a null window keeps the context verb's reply lossless JSON (no `undefined`).
+      if (prop === "contextPressure") return () => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" })
       if (prop === "teamListMembers") return () => []
       if (prop === "teamListTasks") return () => []
       if (prop === "capabilities") return () => ({})
@@ -181,20 +201,28 @@ function fixture(): Fixture {
     },
   })
   /** The minimal cordis context `apply` needs. */
-  const ctx = { get: (id: string) => (id === "mpdDsh" ? dsh : undefined), on: noop, effect: (fn: () => unknown) => { try { return fn() ?? (() => {}) } catch { return () => {} } }, provide: noop, inject: noop }
-  apply(ctx as never)
-  /** The payload a tool call carries; the workspace resolves from the agent's session header. */
+  /** The services the plugin PUBLISHED, by id — the service plane is one of this file's subjects. */
+  const provided = new Map<string, unknown>()
+  /** The exec payload every call carries; also the live agent the service plane resolves by session id. */
   const exec = { agent: { session: { id: "sess-1", header: { cwd: workspace } } } }
-  return {
-    workspace,
-    tools,
-    exec,
-    call: async (name: string, args: unknown) => {
+  /** The agent registry, which is what `mpdTeamActions` needs to resolve a SESSION into a caller. */
+  const agents = { get: (id: string): unknown => (id === "sess-1" ? exec.agent : undefined), list: (): unknown[] => [exec.agent] }
+  /** The minimal cordis context `apply` needs: the adapter lookup, the two service seams, and `provide`. */
+  const ctx = { get: (id: string) => (id === "mpdDsh" ? dsh : id === "mpdRoles" ? { list: () => roles } : id === "agents" ? agents : undefined), on: noop, effect: (fn: () => unknown) => { try { return fn() ?? (() => {}) } catch { return () => {} } }, provide: (id: string, value: unknown) => { provided.set(id, value) }, inject: noop }
+  apply(ctx as never)
+  /**
+   * Call one tool AS one agent, with the same two conformance checks `call` applies.
+   * @param name - the tool name.
+   * @param args - its arguments.
+   * @param agent - the agent handle the call carries.
+   * @returns the tool body's value.
+   */
+  const callAs = async (name: string, args: unknown, agent: unknown): Promise<Record<string, any>> => {
       /** The tool being called. */
       const tool = tools.get(name)
       if (tool === undefined) throw new Error(`no tool ${name} (have ${[...tools.keys()].join(", ")})`)
       /** The tool body's value, which the two checks below judge. */
-      const value = await tool.execute(args, exec)
+      const value = await tool.execute(args, agent) as Record<string, any>
       // EVERY call in this file is checked against the tool's OWN declaration, so a new branch that
       // returns a shape the schema does not allow fails here instead of in a live session.
       /** The lossless-first result, exactly as the harness reports it. */
@@ -204,7 +232,15 @@ function fixture(): Fixture {
       const violations = schemaViolations(tool.output.schema, value)
       expect(violations).toEqual([])
       return value
-    },
+  }
+  return {
+    workspace,
+    tools,
+    exec,
+    provided,
+    sent,
+    call: (name: string, args: unknown) => callAs(name, args, exec),
+    callAs,
   }
 }
 
@@ -437,6 +473,309 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
       const record = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
       expect(record?.tasks.map((task) => task.owner)).toEqual(["TuiAdapter Engineer", "PanelScene Worker"])
       expect(record?.tasks[1].blockedBy).toEqual(["T1"])
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+})
+
+// ── R-W1A coverage: the FOUR new verbs and the two boundary refusals, THROUGH THE TOOLS ──
+//
+// WHY HERE. The toolchain arms call the action bodies directly, so they prove the engine and never the
+// BOUNDARY: the declared parameters, the schema each reply must satisfy, and the refusals that happen
+// before anything is written. This file's own claim is that every tool answers a value its own schema
+// accepts, and until now none of `context` / `handoff` / `fence` / `unfence` was driven at all.
+describe("the new boundary verbs (R-W1A)", () => {
+  /**
+   * Stage and approve a one-member board, and answer the two handles the arms act as.
+   * @param f - the fixture to drive.
+   * @param member - the teammate name to stage (its session id is `child-<name>`).
+   * @param writeScopes - the task's write scopes (empty for a non-code task).
+   * @returns the Lead handle, the member handle and the team record.
+   */
+  async function approvedWave(f: Fixture, member: string, writeScopes: string[] = []): Promise<{ lead: unknown; seat: unknown; teamId: string }> {
+    await f.call("agent_teams_plan", { action: "create", name: "the wave", description: "repair coverage" })
+    await f.call("agent_teams_plan", { action: "add_member", member: { name: member, description: "a seat", prompt: "You work." } })
+    await f.call("agent_teams_plan", { action: "create_task", task: { subject: "the task", description: "acceptance", blocked_by: [], owner: member, ...(writeScopes.length === 0 ? {} : { write_scopes: writeScopes }) } })
+    await f.call("agent_teams_plan", { action: "approve" })
+    /** The one team this wave minted. */
+    const teamId = listTeams(f.workspace)[0].teamId
+    return {
+      lead: f.exec.agent,
+      // AN EXEC, not a bare agent: a tool handler's second argument is the dispatch payload, whose
+      // `agent` member is the live handle — passing the handle alone makes `where(exec)` resolve no
+      // session, which is the difference between "this member's team" and "no team at all".
+      seat: { agent: { session: { id: "child-" + member, header: { cwd: f.workspace } } } },
+      teamId,
+    }
+  }
+
+  test("`context` answers the caller's own occupancy in its declared shape", async () => {
+    /** A one-member wave. */
+    const f = fixture()
+    try {
+      await approvedWave(f, "Explorer")
+      // THE LEAD IS NOT ON THE ROSTER, so this is the seat-less branch: the numbers stay null and no
+      // member identity is claimed — a shape the schema must accept all the same.
+      /** The Lead's own reading. */
+      const lead = await f.call("agent_teams_task", { action: "context" })
+      expect(lead.usedTokens).toBeNull()
+      expect(lead.windowTokens).toBeNull()
+      expect(lead.ratio).toBeNull()
+      expect(typeof lead.provenance).toBe("string")
+      expect(lead.member).toBeUndefined()
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("`handoff` answers the document's path and ordinal, and puts the seat in the checkpoint window", async () => {
+    /** A one-member wave. */
+    const f = fixture()
+    try {
+      /** The wave's two handles. */
+      const wave = await approvedWave(f, "Explorer")
+      /** A complete seven-section document. */
+      const document = ["## Task", "the task", "## State", "half", "## Decisions", "one call", "## Artifacts", "packages/x", "## Verified facts", "suite green", "## Open questions", "none", "## Next step", "close it"].join("\n")
+      // THE MEMBER'S OWN CALL: the roster matches by `executorRef`, which the approval reported.
+      /** The handoff's answer. */
+      const handoff = await f.callAs("agent_teams_task", { action: "handoff", content: document }, wave.seat)
+      expect(handoff.ordinal).toBe(1)
+      expect(typeof handoff.path).toBe("string")
+      expect(String(handoff.directive)).toContain("END YOUR TURN")
+      // THE RECORD carries the seat state, so a later pass refuses to message it.
+      expect(readTeam(f.workspace, wave.teamId)?.members[0]).toMatchObject({ mode: "checkpoint", handoff: { ordinal: 1 } })
+      // A SECOND handoff advances the ordinal; it never overwrites the first document.
+      /** The second handoff. */
+      const again = await f.callAs("agent_teams_task", { action: "handoff", content: document }, wave.seat)
+      expect(again.ordinal).toBe(2)
+      expect(again.path).not.toBe(handoff.path)
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("`fence` and `unfence` answer the seat's state, and the record keeps ONE spelling of not-fenced", async () => {
+    /** A one-member wave. */
+    const f = fixture()
+    try {
+      /** The wave's team. */
+      const wave = await approvedWave(f, "Explorer")
+      /** The fence. */
+      const fenced = await f.call("agent_teams_control", { action: "fence", member: "Explorer", reason: "barrier gave up" })
+      expect(fenced).toMatchObject({ teamId: wave.teamId, member: "Explorer", fenced: true, reason: "barrier gave up" })
+      expect(readTeam(f.workspace, wave.teamId)?.members[0]?.fenced).toBe(true)
+      /** The unfence, which deletes both keys. */
+      const cleared = await f.call("agent_teams_control", { action: "unfence", member: "Explorer" })
+      expect(cleared.fenced).toBe(false)
+      /** The seat after the fence was lifted. */
+      const seat = readTeam(f.workspace, wave.teamId)?.members[0]
+      expect(seat?.fenced).toBeUndefined()
+      expect(seat?.fencedReason).toBeUndefined()
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("a malformed `reassign` entry and an unknown `mode` are REFUSED before anything is written", async () => {
+    /** A one-member wave. */
+    const f = fixture()
+    try {
+      /** The wave's team. */
+      const wave = await approvedWave(f, "Explorer")
+      /** The malformed entry's refusal. */
+      let malformed: Error | undefined
+      try {
+        await f.call("agent_teams_dispatch", { action: "run", reassign: [{ task_id: "T1" }] })
+      } catch (error) {
+        malformed = error as Error
+      }
+      expect(malformed?.message).toContain("every `reassign` entry needs a non-empty `task_id` and `owner`")
+      /** The unknown mode's refusal. */
+      let unknownMode: Error | undefined
+      try {
+        await f.call("agent_teams_dispatch", { action: "run", mode: "solo" })
+      } catch (error) {
+        unknownMode = error as Error
+      }
+      expect(unknownMode?.message).toContain('unknown mode "solo"')
+      // BOTH refusals are BEFORE any store write: the row is untouched and still pending.
+      expect(readTeam(f.workspace, wave.teamId)?.tasks[0]?.status).toBe("pending")
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("`reassign` and `mode:\"roster\"` are LEAD-ONLY, while a plain pass stays open to a member", async () => {
+    /** A one-member wave. */
+    const f = fixture()
+    try {
+      /** The wave's two handles. */
+      const wave = await approvedWave(f, "Explorer")
+      // THE MEMBER may not re-own a row, nor force the substitution rule.
+      /** The member's reassign attempt. */
+      let reassignRefusal: Error | undefined
+      try {
+        await f.callAs("agent_teams_dispatch", { action: "run", reassign: [{ task_id: "T1", owner: "Explorer" }] }, wave.seat)
+      } catch (error) {
+        reassignRefusal = error as Error
+      }
+      expect(reassignRefusal?.message).toContain("only the Lead")
+      /** The member's roster-mode attempt. */
+      let rosterRefusal: Error | undefined
+      try {
+        await f.callAs("agent_teams_dispatch", { action: "run", mode: "roster" }, wave.seat)
+      } catch (error) {
+        rosterRefusal = error as Error
+      }
+      expect(rosterRefusal?.message).toContain("only the Lead")
+      // A PLAIN PASS is NOT gated: the member may ask the engine for one, and the engine's own rules decide.
+      /** The member's plain pass. */
+      const plain = await f.callAs("agent_teams_dispatch", { action: "run", dry_run: true }, wave.seat)
+      expect(plain.halted).toBeUndefined()
+      // AND IT REALLY RAN: the member's pass decided the pairing (T1's declared owner is idle), which is the
+      // behaviour the gate must NOT take away from a plain run.
+      expect(plain.pairs.map((pair: { taskId: string }) => pair.taskId)).toEqual(["T1"])
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("a WRITE task reassigned to a READ-ONLY seat is refused by the C7-2 guard, and the board does not move", async () => {
+    // THE REVIEWER'S PROBE, now through the tool: the pairing pass refuses this pair, so the repair must too.
+    /** A wave whose roster marks Explorer read-only and whose task carries write scopes. */
+    const f = fixture([{ name: "Explorer", readonly: true }])
+    try {
+      /** The wave's team. */
+      const wave = await approvedWave(f, "Explorer", ["packages/x"])
+      /** The hand-over the guard refuses. */
+      const pass = await f.call("agent_teams_dispatch", { action: "run", reassign: [{ task_id: "T1", owner: "Explorer" }] })
+      expect(pass.reassigned).toHaveLength(1)
+      expect(pass.reassigned[0]).toMatchObject({ taskId: "T1", owner: "Explorer", claimed: false, delivered: false })
+      // THE SAME SENTENCE the pairing path answers with, verbatim.
+      expect(String(pass.reassigned[0].reason)).toContain("refused a WRITE-TASK-ON-READ-ONLY pairing")
+      expect(String(pass.reassigned[0].reason)).toContain("read-only specialist")
+      // NOTHING MOVED: the row is still pending and still owned by the member the plan declared.
+      expect(readTeam(f.workspace, wave.teamId)?.tasks[0]?.status).toBe("pending")
+      expect(readTeam(f.workspace, wave.teamId)?.tasks[0]?.owner).toBe("Explorer")
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+})
+
+// ── W2 gaps: the SERVICE validator, the cancelled row, and the description in the message ──
+//
+// WHY THESE ARMS LIVE HERE. Each subject is a BOUNDARY fact: what a service caller is refused, what the
+// dispatcher does with a row the caller abandoned, and what the member actually receives. The tool arms
+// above prove the TOOL path; these drive the published `mpdTeamActions` service, which is the surface a
+// row (cellwork next) calls.
+describe("the dispatch seam (W2)", () => {
+  /**
+   * The `mpdTeamActions` service this fixture published.
+   * @param f - the fixture.
+   * @returns the service, narrowed to the three members these arms use.
+   */
+  function actions(f: Fixture): {
+    dispatch: (input: Record<string, unknown>) => Promise<Record<string, any>>
+    cancelTasks: (input: Record<string, unknown>) => Promise<Record<string, any>>
+  } {
+    return f.provided.get("mpdTeamActions") as {
+      dispatch: (input: Record<string, unknown>) => Promise<Record<string, any>>
+      cancelTasks: (input: Record<string, unknown>) => Promise<Record<string, any>>
+    }
+  }
+
+  /**
+   * Stage and approve a TWO-task wave: a root task and one blocked by it, both owned by the same member.
+   * @param f - the fixture to drive.
+   * @param description - the ROOT task's description, which the delivery arm reads back.
+   * @returns the team id.
+   */
+  async function blockedWave(f: Fixture, description: string): Promise<string> {
+    await f.call("agent_teams_plan", { action: "create", name: "the wave", description: "W2 gaps" })
+    await f.call("agent_teams_plan", { action: "add_member", member: { name: "Explorer", description: "a seat", prompt: "You work." } })
+    await f.call("agent_teams_plan", { action: "create_task", task: { subject: "root", description, blocked_by: [], owner: "Explorer" } })
+    await f.call("agent_teams_plan", { action: "create_task", task: { subject: "follow-up", description: "runs after the root", blocked_by: ["root"], owner: "Explorer" } })
+    await f.call("agent_teams_plan", { action: "approve" })
+    return listTeams(f.workspace)[0].teamId
+  }
+
+  test("GAP 1: the SERVICE refuses a malformed `reassign` with the SAME sentence the TOOL throws", async () => {
+    /** A composition with a live session and a team. */
+    const f = fixture()
+    try {
+      await blockedWave(f, "the root work")
+      // THE SERVICE PATH, which used to accept anything: the validation now runs in the shared action.
+      /** The service's refusal for a pair with no owner. */
+      const viaService = await actions(f).dispatch({ sessionId: "sess-1", reassign: [{ task_id: "T1" }] })
+      expect(viaService.ok).toBe(false)
+      expect(String(viaService.error)).toContain("every `reassign` entry needs a non-empty `task_id` and `owner`")
+      // AN UNKNOWN MODE is refused by the same one validator.
+      /** The service's refusal for an unknown pairing rule. */
+      const badMode = await actions(f).dispatch({ sessionId: "sess-1", mode: "solo" })
+      expect(badMode.ok).toBe(false)
+      expect(String(badMode.error)).toContain('unknown mode "solo"')
+      // THE TOOL ANSWERS THE SAME STRING — that equality is the whole point of the move.
+      /** The tool's thrown refusal for the same malformed pair. */
+      let viaTool: Error | undefined
+      try {
+        await f.call("agent_teams_dispatch", { action: "run", reassign: [{ task_id: "T1" }] })
+      } catch (error) {
+        viaTool = error as Error
+      }
+      expect(viaTool?.message).toBe(String(viaService.error))
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("GAP 2: a cancelled row leaves the ready set, is REPORTED as `cancelled`, and releases its dependent", async () => {
+    /** A composition with a blocked pair. */
+    const f = fixture()
+    try {
+      /** The wave's team id. */
+      const teamId = await blockedWave(f, "the root work")
+      // THE TRANSITION a caller uses to abandon work (cellwork's activation is the first caller).
+      /** The cancellation of the root row. */
+      const cancelled = await actions(f).cancelTasks({ workspace: f.workspace, teamId, taskIds: ["T1"], note: "the accepted split no longer carries it" })
+      expect(cancelled).toEqual({ ok: true, teamId, cancelled: ["T1"], skipped: [] })
+      // THE ROW STAYS ON THE BOARD, terminal, with the note a reader needs.
+      /** The board after the cancellation. */
+      const board = readTeam(f.workspace, teamId)?.tasks ?? []
+      expect(board[0]).toMatchObject({ status: "cancelled", note: "the accepted split no longer carries it" })
+      // THE PASS SKIPS IT WITH THE CONTRACT'S ONE WORD, and the dependent it blocked is now READY.
+      /** The dispatch pass after the cancellation. */
+      const pass = await f.call("agent_teams_dispatch", { action: "run", dry_run: true })
+      expect(pass.skipped).toEqual([{ taskId: "T1", subject: "root", reason: "cancelled" }])
+      expect(pass.pairs.map((pair: { taskId: string }) => pair.taskId)).toEqual(["T2"])
+      // A SECOND cancellation reports BOTH an already-terminal row and an unknown id, cancelling neither.
+      /** The refused second pass. */
+      const again = await actions(f).cancelTasks({ workspace: f.workspace, teamId, taskIds: ["T1", "T9"] })
+      expect(again.cancelled).toEqual([])
+      expect(again.skipped.map((row: { taskId: string }) => row.taskId)).toEqual(["T1", "T9"])
+      expect(String(again.skipped[0].reason)).toContain("already cancelled")
+      expect(String(again.skipped[1].reason)).toContain("no board row is named")
+    } finally {
+      rmSync(f.workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("GAP 3: the dispatched message carries the task's DESCRIPTION verbatim", async () => {
+    // A CALLER PUTS A POINTER THERE (cellwork's frozen-contract path is the first), so the description must
+    // reach the member byte for byte — not as a truncated subject line.
+    /** The pointer the delivery must carry. */
+    const pointer = "FROZEN CONTRACT: .mpd/cellwork/cell-w2/contracts/core.md"
+    /** A composition with one owned, ready row. */
+    const f = fixture()
+    try {
+      await blockedWave(f, pointer)
+      // A REAL pass (not a preview): only delivery can prove what the member received.
+      await f.call("agent_teams_dispatch", { action: "run", limit: 1 })
+      expect(f.sent).toHaveLength(1)
+      expect(f.sent[0]).toContain(pointer)
+      // …and the subject is still there, so the message still identifies the row it is about.
+      expect(f.sent[0]).toContain("shared task T1: root")
     } finally {
       rmSync(f.workspace, { recursive: true, force: true })
     }

@@ -2,7 +2,7 @@
 // mpd LSP MCP launcher — cclsp (de-omo wave B2).
 //
 // WHAT REPLACED WHAT: this launcher used to start the vendored `lsp-daemon` build that shipped beside
-// it as `./cli.js` (SUL-1.0, built offline by the now-retired `scripts/build-mcp.ts` from
+// it as `./cli.js` (built offline by the now-retired `scripts/build-mcp.ts` from
 // `vendor/mcp-src/**`). That artifact and its whole snapshot are gone. The capability now comes from
 // the DECLARED npm dependency `cclsp` (MIT, © 2025 ktnyt), whose own `typescript-language-server`
 // dependency supplies the TS/JS language server — so the row needs no user-installed server for the

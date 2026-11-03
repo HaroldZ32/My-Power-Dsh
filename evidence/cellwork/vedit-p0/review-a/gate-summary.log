@@ -1,0 +1,38 @@
+# review-a gate evidence summary — measured 2026-11-03T04:13:08Z by rev-cellwork (seat 9db9771f-6b12-4e3f-8f57-6ea6e2f85462) on loop-20261103T034211-67e4f3
+
+===== gate tests — .mpd/verify/evidence/ev-20261103T040724-96b7de.log
+# gate tests cmd: "bun test packages" program: "/home/haroldzhao/.bun/bin/bun" argv: ["test","packages"]
+bun test v1.4.2 (744846f84)
+--- tail
+
+ 3450 pass
+ 6 skip
+ 0 fail
+ 49353 expect() calls
+Ran 3456 tests across 229 files. [33.89s]
+
+===== gate typecheck — .mpd/verify/evidence/ev-20261103T040517-ea365e.log
+# gate typecheck cmd: "bun run typecheck" program: "/home/haroldzhao/.bun/bin/bun" argv: ["run","typecheck"]
+$ tsgo --noEmit
+--- tail
+# gate typecheck cmd: "bun run typecheck" program: "/home/haroldzhao/.bun/bin/bun" argv: ["run","typecheck"]
+$ tsgo --noEmit
+
+===== gate comments — .mpd/verify/evidence/ev-20261103T040524-5948df.log
+# gate comments cmd: "bun run verify:comments" program: "/home/haroldzhao/.bun/bin/bun" argv: ["run","verify:comments"]
+# verify-comment-coverage
+--- tail
+# verify-comment-coverage
+
+scanned 591 TypeScript file(s) of 591 in the source set; inspected 51772 declaration(s); skipped 25185 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+$ node scripts/verify-comment-coverage.ts
+
+===== PRE-REBUILD TRACE (NOT scored against lane A): stale committed dist after the adapter edit
+--- .mpd/verify/evidence/ev-20261103T040348-6368dd.log
+# gate tests cmd: "bun test packages" program: "/home/haroldzhao/.bun/bin/bun" argv: ["test","packages"]
+bun test v1.4.2 (744846f84)
+--- (fail) lines: 4
+(fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [67.61ms]
+(fail) F1 shipped artifact > the committed dists are the byte-identical products of a canonical build (T-62) [79.97ms]

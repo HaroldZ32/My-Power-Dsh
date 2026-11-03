@@ -20,7 +20,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, one three-leaf row per roster agent (`agentRoutes.<Agent>.{provider,model,reasoningEffort}`) and the TUI's own `tui.dashboardKey` (there is no persisted slot, so no slot leaves), each leaf rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** into the config service through the host's settings document: a save from this section is persisted by the HOST as the `mpd-config` ENTRY document (**no workspace file is written on this path** — the only `<workspace>/.mpd/mpd.jsonc` writer is the RETIRED legacy `mpd`-namespace write-back, which the pinned harness refuses, and a hand edit of that file is still read on every resolution). WHICH knobs then act without a restart is per knob: the model routes, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER: live from a hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs. Each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, one three-leaf row per roster agent (`agentRoutes.<Agent>.{provider,model,reasoningEffort}`) and the TUI's own `tui.dashboardKey` (there is no persisted slot, so no slot leaves), each leaf rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** into the config service through the host's settings document: a save from this section is persisted by the HOST as the `mpd-config` ENTRY document (**no workspace file is written on this path** — the only `<workspace>/.mpd/mpd.jsonc` writer is the RETIRED legacy `mpd`-namespace write-back, which the pinned harness refuses, and a hand edit of that file is still read on every resolution). WHICH knobs then act without a restart is per knob: the model routes, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER: live from a hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs. Each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
@@ -656,9 +656,12 @@ string), so it follows a restart instead.
 
 ## Static assets
 
-- `themes/mpd-tui.json` — a dark TUI theme (a partial colour override). The
-  theme seam is a static asset by design: copy the file into
-  `~/.dsh-tui/themes/` to make it selectable. This row does **not** install it.
+- `themes/mpd-tui.json` — a dark TUI theme (a partial colour override). It reaches the host by TWO
+  paths, and the same palette is behind both (`theme.test.ts` asserts they never drift): the plugin
+  REGISTERS it at apply time through the adapter's `tuiThemes` seam, so it is selectable without a
+  copy and disappears with the activation; and a user may still copy the file into
+  `~/.dsh-tui/themes/` as the guide's zero-code path. The registration is reported as `requested`,
+  not `confirmed`, because the host's plugin face exposes no read-back.
 - `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` — an asset only; see "What is NOT claimed" #4.
 
 ## Plugin contract
@@ -723,10 +726,13 @@ only when no logger exists to `stderr`, with `debug` gated behind
    treats the refusal as the expected outcome, warns **once**, and registers
    nothing. It never calls `admit`/`admitInternal`, never uses the test-only
    token, and never fakes an identity. **No input, rewind, session-switch or
-   compact interception is claimed.**
+   compact interception is claimed.** Since the TUI-admission wave the manifest
+   requests **no** intercept permission either, so the seam is inactive by design
+   rather than merely unreached; the manifest itself negotiates `compatible`
+   (measured with the host's own admission library, see `docs/tui.md` §4.1).
 2. **The `/settings` section's save is persisted by the HOST — NOT as a workspace `.mpd/mpd.jsonc`
    — and WHEN the new value takes effect is PER KNOB.** The fields declare the real mpd.jsonc knobs
-   (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `ulw.maxRounds`,
+   (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `autoproject.maxRounds`,
    `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them as the fields of the `mpd-config`
    ENTRY document (the legacy `mpd` namespace is RETIRED on this host). That document is **served by
    `packages/mpd-config-plugin`** (design §10.1); this plugin is a pure consumer and only registers the
@@ -756,7 +762,7 @@ only when no logger exists to `stderr`, with `debug` gated behind
      decision, and that reader resolves through the mounted service — the mechanism
      `delegation-gate.ts` describes as picking a `.mpd/mpd.jsonc` edit up LIVE);
    - **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*` (`maxDiffChars`,
-     `guardEditTools`, `registryFile`), `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`,
+     `guardEditTools`, `registryFile`), `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir`,
      `goal.*`. `tui.dashboardKey` is live ONE-WAY: read per keypress, but the take-over itself arms
      only once the host has handed this session its live input kit.
    - **NEITHER half: `watchdog.*`** — the watchdog row reads `settingsReader("mpd")` (refused on the

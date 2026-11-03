@@ -13,35 +13,35 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 
 ### 使用者
 
-1. [README](../README.zh-CN.md) —— 产品页：它是什么、两个端并排对比、特性、安装、快速上手、
+1. [README](../README.zh-CN.md)：产品页：它是什么、两个端并排对比、特性、安装、快速上手、
    状态与已知限制。
-2. [`user-guide.zh-CN.md`](user-guide.zh-CN.md) —— 长文、面向任务的使用者指南。
-3. [`tui.zh-CN.md`](tui.zh-CN.md) —— 如果你在终端里工作，读 DSH-TUI 版本。
-4. [`user-guide.zh-CN.md` §11](user-guide.zh-CN.md#11-故障排查速查) —— 症状 → 修复速查表。
+2. [`user-guide.zh-CN.md`](user-guide.zh-CN.md)：长文、面向任务的使用者指南。
+3. [`tui.zh-CN.md`](tui.zh-CN.md)：如果你在终端里工作，读 DSH-TUI 版本。
+4. [`user-guide.zh-CN.md` §11](user-guide.zh-CN.md#11-故障排查速查)：症状 → 修复速查表。
 
 ### 扩展作者
 
-1. [`extension-authoring-guide.zh-CN.md`](extension-authoring-guide.zh-CN.md) —— 什么时候扩展才是对的
+1. [`extension-authoring-guide.zh-CN.md`](extension-authoring-guide.zh-CN.md)：什么时候扩展才是对的
    工具，以及模板实操。
-2. [`extensions.zh-CN.md`](extensions.zh-CN.md) —— 冻结的契约、四种贡献种类、CLI。
-3. [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) —— 供智能体写扩展使用的机器契约
+2. [`extensions.zh-CN.md`](extensions.zh-CN.md)：冻结的契约、四种贡献种类、CLI。
+3. [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md)：供智能体写扩展使用的机器契约
    （仅英文）。
-4. [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) —— 随包提供的发现根目录。
+4. [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md)：随包提供的发现根目录。
 
 ### 贡献者
 
-1. [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) —— 开发环境、构建与测试命令、关卡、git 模型。
-2. [`development.zh-CN.md`](development.zh-CN.md) —— 本仓库自身的工作细节：布局、QA 通道、打包、
+1. [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md)：开发环境、构建与测试命令、关卡、git 模型。
+2. [`development.zh-CN.md`](development.zh-CN.md)：本仓库自身的工作细节：布局、QA 通道、打包、
    vendor、发布流程。
-3. [`design.zh-CN.md`](design.zh-CN.md) —— bundle 如何组装与挂载；改动 `packages/` 下任何东西之前
+3. [`design.zh-CN.md`](design.zh-CN.md)： bundle 如何组装与挂载；改动 `packages/` 下任何东西之前
    先读它。
-4. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的仓库手册（仅英文）。
-5. [`../CHANGELOG.md`](../CHANGELOG.md) —— 每个版本改了什么。
+4. [`../AGENTS.md`](../AGENTS.md)：有约束力的仓库手册（仅英文）。
+5. [`../CHANGELOG.md`](../CHANGELOG.md)：每个版本改了什么。
 
 ### 智能体
 
-1. [`../AGENTS.md`](../AGENTS.md) —— 有约束力的手册：约定、关卡、git 模型。
-2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md) —— 完整的
+1. [`../AGENTS.md`](../AGENTS.md)：有约束力的手册：约定、关卡、git 模型。
+2. [`../agent-references/troubleshooting.md`](../agent-references/troubleshooting.md)：完整的
    症状 → 原因 → 修复对照表。
 
 此处原先列出的「采纳的 agent-teams 变更登记表」已随它所描述的 vendored 主体一同删除（de-vendor 波次）；
@@ -55,21 +55,22 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 |---|---|---|
 | [`../README.zh-CN.md`](../README.zh-CN.md) | 所有人 | 产品页：bundle 是什么、Web 与 TUI 两个端并排对比、能力清单、安装步骤、快速上手，以及诚实的边界。 |
 | [`user-guide.zh-CN.md`](user-guide.zh-CN.md) | 使用者 | 面向任务的指南：安装/卸载、`mpd` preset、按用途划分的工具、专家名册、workmate 库、团队模式、DSH-TUI 版本章节、Web GUI、`mpd.jsonc` 配置、从使用者视角看扩展、故障排查。 |
-| [`extensions.zh-CN.md`](extensions.zh-CN.md) | 扩展作者 | 扩展接口 —— 冻结的描述符契约、四种贡献种类（skills、flows、MCP 服务器、roles）、发现根与开发者 CLI。 |
-| [`extension-authoring-guide.zh-CN.md`](extension-authoring-guide.zh-CN.md) | 扩展作者、初次接触者 | 面向任务的编写指南 —— 什么时候扩展才是对的工具、唯一的一条平面选择规则、隔离姿态及其已接受的残余风险、生命周期/重启矩阵、模板实操、分发与故障排查。 |
-| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | 编写扩展的智能体 | 机器契约（仅有英文）—— 逐类型要求、每次文档检查都会校验的清单骨架、平面合法性、错误特征、拒绝清单与 v1 硬性边界。 |
-| [`extension-adaptation-report.zh-CN.md`](extension-adaptation-report.zh-CN.md) | 技术决策者 | 外部插件适配的现状报告 —— 两条路径及各自适合谁、扩展接口清单、运行时与隔离姿态、本棵代码树上真实验证过的内容、风险与缺口，以及按 P0/P1/P2 排序的建议。 |
-| [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | DSH-TUI 版本 —— 安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
+| [`extensions.zh-CN.md`](extensions.zh-CN.md) | 扩展作者 | 扩展接口：冻结的描述符契约、四种贡献种类（skills、flows、MCP 服务器、roles）、发现根与开发者 CLI。 |
+| [`extension-authoring-guide.zh-CN.md`](extension-authoring-guide.zh-CN.md) | 扩展作者、初次接触者 | 面向任务的编写指南：什么时候扩展才是对的工具、唯一的一条平面选择规则、隔离姿态及其已接受的残余风险、生命周期/重启矩阵、模板实操、分发与故障排查。 |
+| [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) | 编写扩展的智能体 | 机器契约（仅有英文）：逐类型要求、每次文档检查都会校验的清单骨架、平面合法性、错误特征、拒绝清单与 v1 硬性边界。 |
+| [`extension-adaptation-report.zh-CN.md`](extension-adaptation-report.zh-CN.md) | 技术决策者 | 外部插件适配的现状报告：两条路径及各自适合谁、扩展接口清单、运行时与隔离姿态、本棵代码树上真实验证过的内容、风险与缺口，以及按 P0/P1/P2 排序的建议。 |
+| [`tui.zh-CN.md`](tui.zh-CN.md) | TUI 会话使用者 | DSH-TUI 版本：安装命令、TUI 原生界面、准入与分发产物、逐包兼容性台账，以及明确的 NOT-CLAIMED 清单。 |
 | [`tui-parity.zh-CN.md`](tui-parity.zh-CN.md) | 在两个端之间做选择的用户 | 界面对齐台账：每个 Web 界面一行，列出它的 TUI 对应物、支撑该结论的证据等级，以及仍然开放的偏差。 |
 | [`design.zh-CN.md`](design.zh-CN.md) | 工程师、好奇的使用者 | bundle 如何组装与挂载：补丁层、启动链、插件清单、交互流程、状态布局、web 客户端接线、TUI 版本接线。 |
-| [`drive-surface.zh-CN.md`](drive-surface.zh-CN.md) | 集成方、客户端作者 | 非模型客户端可驱动的三组接缝：免 exec 的团队动作及其两条 POST 路由、带挂载门的提问中继，以及 DSH Go 原生面板 —— 含守卫次序与诚实边界。 |
+| [`drive-surface.zh-CN.md`](drive-surface.zh-CN.md) | 集成方、客户端作者 | 非模型客户端可驱动的三组接缝：免 exec 的团队动作及其两条 POST 路由、带挂载门的提问中继，以及 DSH Go 原生界面（两个面板、一条 composer strip、菜单动作与工具卡片）：含守卫次序与诚实边界。 |
+| [`market-listing.zh-CN.md`](market-listing.zh-CN.md) | 维护者、打包者 | bundle 如何上架两个插件目录：dshfind 索引的 `dsh-plugin` 话题、DSH Go 市场按 PR 收录的版本化目录，以及随每次发布同步的提交文件。 |
 | [`development.zh-CN.md`](development.zh-CN.md) | 开发者 | 仓库布局、构建/测试命令、QA 用例目录、关卡、打包/安装、vendor、git 模型、常见坑。 |
 | [`../CONTRIBUTING.zh-CN.md`](../CONTRIBUTING.zh-CN.md) | 贡献者 | 如何贡献：开发环境、关卡、git 模型、文档规则、证据、pull request。 |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | 所有人 | 发布说明，最新的在最前，每个已发布版本一节。 |
 | [`../AGENTS.md`](../AGENTS.md) | 智能体 + 维护者 | 有约束力的仓库手册：约定、关卡、git 模型、故障排查。 |
 | [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) | 扩展作者 | bundle 自带的发现根目录：三个根、各自的生命周期，以及随包提供的参考扩展。 |
 
-维护者材料 —— 属于当前工作规范而非历史记录：
+维护者材料：属于当前工作规范而非历史记录：
 
 | 文档 | 读者 | 内容 |
 |---|---|---|
@@ -79,25 +80,25 @@ my-power-dsh（DeepSeek Harness，DSH 的插件 bundle）的文档中心。如�
 ## 包参考
 
 `packages/<name>/` 下的每个包都带有双语 `README.md` + `README.zh-CN.md`，但有一处已明确说明的
-例外：**`mpd-mcp-shared`**（由各 MCP 服务器共享的辅助模块）只提供源码与测试 —— 它的 README 配对
+例外：**`mpd-mcp-shared`**（由各 MCP 服务器共享的辅助模块）只提供源码与测试；它的 README 配对
 是已记录的后续项。已退役的 `mpd-agent-teams-plugin` 目录随被采纳主体的其余部分一并**删除**（去
 vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在，也不再需要豁免；该主体剩下的部分见
 下面「宿主插件」。
 
-- **宿主插件** —— `mpd-dsh-adapter-plugin`（所有插件行共同调用的唯一 harness 接缝适配器）、
+- **宿主插件**： `mpd-dsh-adapter-plugin`（所有插件行共同调用的唯一 harness 接缝适配器）、
   `mpd-config-plugin`、`mpd-tools-plugin`、`mpd-modelchain-plugin`、`mpd-roles-plugin`、
-  `mpd-ext-plugin`（扩展接口）、`mpd-ulw-plugin`、`mpd-hashline-plugin`、`mpd-boulder-plugin`、
+  `mpd-ext-plugin`（扩展接口）、`mpd-autoproject-plugin`、`mpd-hashline-plugin`、`mpd-autoproject-plugin`、
   `mpd-goal-plugin`、`mpd-comment-checker-plugin`、`mpd-memory-plugin`、`mpd-codegraph-plugin`、
   `mpd-workmate-plugin`、`mpd-bootstrap-plugin`、`mpd-verify-plugin`、
   `mpd-team-core-plugin`（团队记录）、`mpd-team-compact-plugin`、`mpd-team-watchdog-plugin`、
   `mpd-roster-provider-plugin`、`mpd-tui-adapter-plugin`、`mpd-tui-plugin`、
   `mpd-better-sidebar-host`、`mpd-bundle-plugin`（bundle web 兼容 + 合并后的 web 客户端）、
   `mpd-qa-roles-probe`（仅 QA）。
-- **共享库** —— `mpd-schemastery`（schemastery 校验器与六个 DSH 框架模块，四个随包插件的
+- **共享库**： `mpd-schemastery`（schemastery 校验器与六个 DSH 框架模块，四个随包插件的
   `Config` schema 与六个测试文件都解析到它）。
-- **MCP 服务器** —— `mpd-mcp-astgrep`、`mpd-mcp-gitbash`、`mpd-mcp-lsp`、`mpd-mcp-codegraph`。
-- **MCP 共享辅助模块** —— `mpd-mcp-shared`（四个服务器包装器所启动的二进制解析与 stdio 核心）。
-- **聚合** —— `mpd-bundle`（`cordis.patch.yml`）。
+- **MCP 服务器**： `mpd-mcp-astgrep`、`mpd-mcp-gitbash`、`mpd-mcp-lsp`、`mpd-mcp-codegraph`。
+- **MCP 共享辅助模块**： `mpd-mcp-shared`（四个服务器包装器所启动的二进制解析与 stdio 核心）。
+- **聚合**： `mpd-bundle`（`cordis.patch.yml`）。
 
 ## 图片资源
 
@@ -107,14 +108,14 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | 资源 | 被谁引用 | 内容 |
 |---|---|---|
 | [`architecture.svg`](./assets/images/architecture.svg) | 本文档中心、[design.zh-CN.md](design.zh-CN.md) | bundle 的各层：DSH 宿主 → patch 层 1 → patch 层 2 → 适配器接缝 → 界面 → 状态根目录。 |
-| [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-ulw-循环与它的关卡) | 一次 ultrawork 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
-| [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝 —— 仅在 OFFICIAL 平面上才是提示）。 |
+| [`autoproject-loop.svg`](./assets/images/autoproject-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-autoproject-循环与它的关卡) | 一次 autoproject 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
+| [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、无序重叠的写入范围会被 mpd record 平面的 `approve` 拒绝：仅在 OFFICIAL 平面上才是提示）。 |
 | [`hero-web-tui-v2.png`](./assets/images/zh-CN/hero-web-tui-v2.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
 | [`web-team-dag-groups.png`](./assets/images/zh-CN/web-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端 Team 视图里把子单元画成一个**分组框**：`subcell-auth` 帧框（`.mpd-dag-group`）的边框接住外部依赖，框内是它自己的四任务 DAG，父团队的任务在它外侧流动。 |
 | [`tui-team-dag-groups.png`](./assets/images/tui-team-dag-groups.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个嵌套团队在 DSH-TUI 的**全屏团队场景**（`/mpd team` 场景，不是 DAG 页）：分组帧框使用第二套边框字形（`╔ ╗ ╚ ╝ ║ ═`），外部依赖落在 `╧` 端口上，子单元自己的任务卡片画在框内。此图与英文版**共用**同一次渲染（TUI 场景正文按设计保持英文）。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
 | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
-| [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮。 |
+| [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区：与 `.mpd/mpd.jsonc` 是同一批旋钮。 |
 | [`tui-status-line.png`](./assets/images/zh-CN/tui-status-line.png) | [README](../README.zh-CN.md#快速上手) | DSH-TUI 的按键状态行：`mpd:` 那一行列出团队与进度、boulder 台账、计划数和 workmate 数。 |
 | [`tui-workmates.png`](./assets/images/zh-CN/tui-workmates.png) | [README](../README.zh-CN.md#用法) | DSH-TUI 里的 `/mpd workmate` 页面：库里的各个实例及其 base 与使用次数。 |
 
@@ -130,10 +131,10 @@ Web 图的 `data-mpd-box` 与当时的取景矩形，只要有盒子落在矩形
 
 ## 扩展资产
 
-- [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md) —— bundle 自带的发现根目录。
-- [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example) —— 默认禁用的参考扩展：一个
+- [`../extensions/README.zh-CN.md`](../extensions/README.zh-CN.md)： bundle 自带的发现根目录。
+- [`../extensions/mpd-ext-example/`](../extensions/mpd-ext-example)：默认禁用的参考扩展：一个
   skill、一个 flow、一个 role，以及一个可用的零依赖 stdio MCP 服务器。
-- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts) —— 开发者 CLI
+- [`../scripts/mpd-ext.ts`](../scripts/mpd-ext.ts)：开发者 CLI
   （`validate` / `scaffold` / `list` / `--self-test`）。
 
 ## 过程记录

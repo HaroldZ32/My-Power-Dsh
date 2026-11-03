@@ -1,0 +1,88 @@
+{
+  "at": "2026-11-02T16:47:24.089Z",
+  "actionTable.keys": {
+    "ok": true,
+    "detail": [
+      "back",
+      "refresh",
+      "select"
+    ]
+  },
+  "actionTable.bannedAbsent": {
+    "ok": true,
+    "detail": []
+  },
+  "defaultSlug": {
+    "ok": true,
+    "detail": "agent-demo-ws"
+  },
+  "default.seesDefaultStore": {
+    "ok": true,
+    "detail": [
+      {
+        "kind": "fact",
+        "description": "default newer",
+        "age": "1m"
+      },
+      {
+        "kind": "note",
+        "description": "default older",
+        "age": "8m"
+      }
+    ]
+  },
+  "default.newestFirst": {
+    "ok": true,
+    "detail": [
+      "default newer",
+      "default older"
+    ]
+  },
+  "default.excludesOverrideDir": {
+    "ok": true,
+    "detail": [
+      "default newer",
+      "default older"
+    ]
+  },
+  "default.excludesSiblingAgent": {
+    "ok": true,
+    "detail": [
+      "default newer",
+      "default older"
+    ]
+  },
+  "default.legacyReflectionKeys": {
+    "ok": true,
+    "detail": {
+      "reflections": 2,
+      "steps": 5
+    }
+  },
+  "override.dirHonoured": {
+    "ok": true,
+    "detail": [
+      {
+        "kind": "note",
+        "description": "override dir",
+        "age": "3m"
+      }
+    ]
+  },
+  "override.agentSlugHonoured": {
+    "ok": true,
+    "detail": [
+      {
+        "kind": "note",
+        "description": "sibling agent",
+        "age": "0m"
+      }
+    ]
+  },
+  "absentStoreIsNull": {
+    "ok": true,
+    "detail": null
+  },
+  "failures": [],
+  "ok": true
+}

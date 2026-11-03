@@ -25,6 +25,12 @@
 
 **依赖守卫（mpd 记录面）。** 每次 `create_task` **必须**声明它的依赖答案——`blocked_by: [...]`（数组，可为空：显式声明为根）或 `independent: true`；两者都不给、给非数组、两个别名互相矛盾、自环或有环，一律**拒绝**并点名该任务。`approve` 会**拒绝**两个写作用域重叠（去掉尾部 `/**` 后相等，或在**段边界**上互为前缀；`**` 与 `.` 覆盖全部；空作用域列表永不重叠）、且彼此之间**没有**依赖路径的任务，并引用这一对任务与两种补救：补一条边，或让作用域互不相交。`claim` 会**拒绝**声明阻塞尚未满足的任务，用的是 `agent_teams_dispatch` **同一套**就绪判定；`complete`/`fail`/`release` 仍保持可用；按 OPT-1，**失败**的阻塞仍然释放其依赖方。**这道门在工具边界上已经关上：** 团队之门守卫按完整名称**拒绝**官方五个创作动词——`spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`——因此没有任何**工具**能在官方看板上创作任务（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 保留，用于 agent 之间的通信）。**这条边界只说一次：**直接调用团队**服务**的插件行（官方执行器回退路径）不是工具调用，**不**受这道门约束。**这道门对每一个 agent 都拒绝，且没有任何 preset 豁免——这是刻意的（R18）。** 委派门会放行一个外 preset 的顶层会话；这道门不放行，因为它的对象是**工作区作用域**的看板——每个工作区一份 `.mpd/team/teams/<id>.json` 记录——放行外 preset 会话会让官方看板与 mpd RECORD 在**同一个**工作区里分叉；而且本仓库自己的测量（T-92，`complexity-gate.ts`）表明：部署的顶层会话带有 `agentPreset: "cordis"`，按 preset 放行恰好会放行这道门必须约束的那个会话。mpd RECORD 仍然是唯一的看板，所以以上每条规则都作用于会话通过这些工具能创建的每一个任务。
 
+**空写作用域不再沉默（C4）。** 一个 `work`/`repair`/`integration` 行在暂存或追加时没有 `write_scopes`，
+**仍然会创建**，但结果里会带一条 `warning`（渲染在结果自己的句子下方，并声明在输出 schema 里）：它点名
+后果——冻结合约不允许任何路径，写作者必须在第一次编辑时停下并向队长请示——与补救——现在就声明作用域，或在
+第一次写入之前修改合约，因为批准后再加作用域需要重新冻结并开一个新的验证循环。`requirement`/`review` 行不写
+文件、因此豁免，这个字段不会变成噪音。
+
 **依赖图是可见的。** `agent_teams_plan {action:"status"}` 保留原来的一行摘要
 （`plan <id> · members N · tasks N · hold …`），并**每个成员一行**（`id`、`name`、`status`）、
 **每个任务一行**（`id`、`owner`、`status`、`kind`、`blockedBy`——没有则 `-`——以及 `subject`），
@@ -39,6 +45,18 @@
 所以将来新增工具必须对这个数字交代。
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
+
+### 原生工具卡片（dsh-Go）
+
+`agent_teams_plan`、`agent_teams_task` 与 `agent_teams_dispatch` 都带有 `output.presentationMeta`，
+因此 dsh-Go 客户端会把它们画成聊天记录里的**原生卡片**，而不是通用的工具行：计划工具给出成员数、
+任务数、名册与看板；任务工具给出该行、attempt/revision 与依赖方；派发工具给出配对、跳过与移交。
+每张卡片都是一棵 **v1** 视图树（带标题的 `stack`，随后是 metric、`keyValue`、表格与短文本），
+**没有 `$` 数据绑定、没有 `actions`，也没有 `style` 键** —— 聊天记录既没有数据模型也没有动作通道，
+而且更旧的客户端仍然必须能画出来。接缝是
+`packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` 的 `toolCard()`：构建失败、出现 v2 组件，或任一维度超过
+**8 KiB / 40 节点 / 深度 6**，都会退化成 `{}`，客户端回落到通用工具行 —— 所以卡片永远不会弄坏一次工具调用。
+构建器是 `src/tool-cards.ts` 里的纯函数，单元测试跑的是注册所包装的**同一个**包装器。
 
 ## 变更推送——不再轮询
 
@@ -226,9 +244,14 @@ caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signa
   绝不丢整个文件），投递仍走官方传输以保证成员真的收到，而 `read` 是接收方的**显式确认**。
 - 从官方实现**吸收**的精华（每一条都是在那边吃过亏换来的）：消息**定向**给按名字解析出的活成员；成员不能给自己发；
   成员的**未投递积压有上限**（官方是 `TEAM_MAILBOX_FULL`）；队列保持插入顺序。
-- **未投递上限按团队计算，而且一次确认会释放一个槽位。** 上限（默认 8）统计的是既未被投递、也未被确认的行——
-  **一个**共享的 outstanding 谓词同时供发送上限、`summary` 的 `undelivered` 列与 mail 工具的 `unread` 分支
-  使用，因此三者不可能对「哪些行仍未完成」产生分歧。该上限只统计**认领它的那个团队**的行：退休团队的积压永远
+- **未投递上限按团队计算，是 workspace 旋钮，而且确认与投递都会释放一个槽位。** 上限是
+  `mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失、读不出或不可用的值回退到 8），每次调用都经配置层在
+  `cellwork_send` 与 `agent_teams_mail` **共用**的**同一条** `sendMany` 路径上读取 —— 因此两个工具不可能给出
+  不同的上限，「改用另一个邮件工具」不是逃生门。拒绝会点名收件人、当前条数、上限与**两条**恢复路径：确认
+  收件箱（`agent_teams_mail {action:"read"}` / `cellwork_inbox`），或改派它身后的行
+  （`cellwork_dispatch {reassign:[{task_id, owner}]}`）—— 并且不写入任何内容。它统计的是既未被投递、也未被
+  确认的行——**一个**共享的 outstanding 谓词同时供发送上限、`summary` 的 `undelivered` 列与 mail 工具的
+  `unread` 分支使用，因此三者不可能对「哪些行仍未完成」产生分歧。该上限只统计**认领它的那个团队**的行：退休团队的积压永远
   不能拒绝一个新团队的邮件（成员 id 从 `M1` 重新开始），未打团队戳的历史行不算任何人的。一次传输投递释放恰好
   一个槽位；一次显式 `read`/确认按每个被确认的行释放恰好一个槽位（这是运维唯一可用的释放阀门，不能依赖一个
   卡住的成员永远不会触发的投递）。不带成员名的 `unread` 解析**调用者自己**的成员 id，因此自读不可能悄悄返回
@@ -350,3 +373,30 @@ your turn and wait for a dispatch`。由于拒绝本身就是**工具结果**，
   书面约定。
 - **没有惰性 spawn 时，spawn 回合仍要花一次模型回合。** 守卫把它变成一次只有一条指令、零工具的回合，而不是免费
   的回合；惰性 spawn 未实现。
+
+
+## owner-only 派发、fence、handoff 与占用读数（波次 W1-A）
+
+五个工具**名称**不变，增长的是 `action` 与记录字段。本节就是这些新增能力的契约。
+
+**派发默认 owner-only。** `agent_teams_dispatch` 把就绪任务配给它**声明的** owner。owner 忙碌、缺席、被
+fence 或已失败时，该行会被**报告**并保持 pending —— 绝不替换。两个逃生口都仅限 Lead：`mode: "roster"`
+恢复按序回退；`reassign: [{task_id, owner}]` 先为该成员在板子上 claim 这些行、记 `task-reassigned`，再投递。
+**被阻塞（BLOCKED）的行不可 reassign。值得记住的后果：** `release` 会**清除** owner，所以「先 release
+再 dispatch」必须走 `reassign`（或 `mode: "roster"`）—— 这是两个动词的组合语义，不是缺陷。
+
+**席位动词。** `agent_teams_task {action:"context"}` 回答调用者自己的占用与席位状态，且从不猜测窗口：
+`provenance` 报 `observed`、`no-window` 或 `unavailable`。`{action:"handoff"}` 校验七段式文档，写入
+`.mpd/team/handoff/<teamId>/<member>-<n>.md`，把该成员切到 `mode:"checkpoint"` 并记 `handoff-written`。
+`agent_teams_control {action:"fence"|"unfence", member}` 关闭或重开**一个**席位（仅 Lead）；被 fence 的席位
+永不被投递，它的行通过 `reassign` 修复。
+
+**服务面。** `mpdTeams` 新增 `memberContext`（单个席位的占用）、`depthBudget`（带环检测的有界父链遍历，
+上限取自 `cellwork.depthMax`，默认 3）、`archivedPlans` 与 `cancelTasks`。`mpdTeamActions` 承载无 exec 的
+动作 `fence`、`unfence`、`handoff`、`dispatch`，因此面板按钮、服务调用与工具走同一条序列。
+
+**workmate 绑定字段。** 已暂存成员会记录 `workmate`、`workmateMode`（由哪条分支绑定）与
+`workmateReason`（原因）；`fenced: false` 会**删除** fence 键，所以「未 fence」在磁盘上只有一种写法。
+
+**工具面预算是一个上界，不是承诺：** 五个 action 型工具加一条命令必须保持在 6,400 字符以内
+（`test/tool-surface.test.ts`；A6b 收尾时实测 6,399），且每个工具的**描述**必须低于 700。

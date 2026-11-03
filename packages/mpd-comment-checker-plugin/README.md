@@ -2,9 +2,9 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Plan C / C4 — comment/docstring detection on the DSH tool seam (opt-in binary).
+Comment and docstring detection on the DSH tool seam, shipped as an opt-in binary.
 
-No vendored parser: this plugin VENDORS NOTHING and carries no SUL-1.0 source — detection
+No vendored parser: this plugin VENDORS NOTHING and carries no upstream source — detection
 runs in the on-demand npm binary `@code-yeongyu/comment-checker` 0.8.0 (MIT,
 github.com/code-yeongyu/go-claude-code-comment-checker), which the plugin resolves and spawns
 per check. Native tree-sitter

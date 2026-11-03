@@ -6,7 +6,7 @@
 > scaffolding (review context gathering, the manual-QA channel discipline, worktree isolation, the
 > evidence-redaction rules and the report skeleton) is **upstream content re-sourced under its own
 > author's MIT grant**. Until wave A of the de-omo decoupling (`.mpd/plans/de-omo-decoupling.md`) the
-> corpus was ported from `code-yeongyu/oh-my-openagent` (SUL-1.0); it is now sourced from the same
+> corpus was ported from `code-yeongyu/oh-my-openagent`; it is now sourced from the same
 > author's MIT re-license of that corpus.
 
 ## Source
@@ -75,7 +75,7 @@ Quoted verbatim from `plugins/omo/components/rules/NOTICE` at the pinned revisio
 > If any source was ported from omo or pi-rules, that ported source is re-licensed
 > here under MIT for distribution as a Codex plugin. See LICENSE for terms.
 
-The copyright holder of the SUL-1.0 corpus and the licensor of this MIT grant are the same person, so
+The copyright holder of that corpus and the licensor of this MIT grant are the same person, so
 the grant above is the rightsholder's own re-license of the source it covers. This file records
 provenance only — it does not change this repository's own licence.
 

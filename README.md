@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.17.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.17.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#acknowledgements)
@@ -18,92 +18,92 @@ durable "workmate" agents that remember what they learned, multi-agent teams tha
 bundle's own team record, a served skill corpus, MCP servers for code intelligence, and an extension
 interface other packages can contribute to.
 
-**It is one product on two surfaces.** Everything below exists in the **DSH Web GUI** *and* in the
-**DSH-TUI** terminal edition — same install, same `.mpd/` state, same tools, same `mpd` preset.
-Nothing is forked, and a capability is not missing from the terminal merely because it has no pixels
-there.
+The bundle runs on two surfaces. Everything below exists in the **DSH Web GUI** and in the **DSH-TUI**
+terminal edition, with the same install, the same `.mpd/` state, the same tools and the same `mpd`
+preset. Nothing is forked, and a capability is not absent from the terminal just because it has no
+pixels there.
 
 The bundle is the package [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-dsh/mpd); this
-repository root *is* that package. It installs with one command and uninstalls with one command that
-leaves no residue.
+repository root *is* that package. One command installs it, and one command removes it without leaving
+residue.
 
 ![The same bundle on both surfaces, side by side: on the left the DSH Web GUI with the bundle's own Team view showing a populated roster and a frosted-glass task graph with a hover card in the sidebar; on the right the DSH-TUI running the same team as a full-screen terminal scene.](./docs/assets/images/hero-web-tui-v2.png)
 
-*The same bundle, the same run, the same state — the **Web GUI** on the left, the **DSH-TUI**
+*The same bundle, the same run, the same state: the **Web GUI** on the left, the **DSH-TUI**
 terminal edition on the right. Every screenshot here is a real capture of the shipped bundle, produced
 by the Docker lanes under [`docker/ui/`](./docker/ui/): the Web tiles by headless Chromium driving the
 real app, the terminal tiles by rasterizing the **bytes the real TUI emitted on a real PTY**
 (`tmux capture-pane -e`, carrying the TUI's own colours) at the grid tmux computed.
-The TUI localizes its command descriptions and its status line but **not** its scene bodies, so the
+The TUI localizes its command descriptions and its status line but not its scene bodies, so the
 terminal scene tiles read the same in both languages.*
 
 ## One plugin, two surfaces
 
-One install puts the bundle into either profile — or both — and the two surfaces share one state root
-(`<workspace>/.mpd/`), one set of tools and one `mpd` preset. Only the *rendering* differs.
+One install puts the bundle into either profile, or both. The two surfaces share one state root
+(`<workspace>/.mpd/`), one set of tools and one `mpd` preset. Only the rendering differs.
 
 | What you want to do | DSH Web GUI | DSH-TUI (terminal) | Parity |
 |---|---|---|---|
-| See the team: id, name, phase, status | the **Team** view in a sidebar, served by this bundle (`/plugins/mpd-team/state`) | `/mpd team` — a full-screen scene | same facts |
+| See the team: id, name, phase, status | the **Team** view in a sidebar, served by this bundle (`/plugins/mpd-team/state`) | `/mpd team`, a full-screen scene | same facts |
 | Read the roster: members, model routes, per-member task counts | the Team view's member cards | the same rows inside `/mpd team` | same facts |
-| Read the task graph — id, kind, status, owner, attempt, round, dependencies | the Team view's dependency graph; hover lights a chain, click pins a node | the same rows as boxes and box-drawing edges | same facts |
+| Read the task graph: id, kind, status, owner, attempt, round, dependencies | the Team view's dependency graph; hover lights a chain, click pins a node | the same rows as boxes and box-drawing edges | same facts |
 | Watch a wave that has gone quiet | the **Team watchdog** sidebar tab: the hold, the escalation banner and the incident replay | the `team-hold held (…)` row plus the incident replay dialog | same facts |
-| Review a staged plan before any work starts | the Team view renders the staged plan and the phrase that approves it | `/mpd plan` — read it, type `approve plan-…`, then `Ctrl+X` | the same plan; approving is an `agent_teams_plan` tool call on both |
-| Browse the workmate library | the **Workmates** sidebar tab: listing, persona / memory / note | `/mpd workmates` — the listing only | TUI is **listing-only**; mutations are Web-only |
+| Review a staged plan before any work starts | the Team view renders the staged plan and the phrase that approves it | `/mpd plan`: read it, type `approve plan-…`, then `Ctrl+X` | the same plan; approving is an `agent_teams_plan` tool call on both |
+| Browse the workmate library | the **Workmates** sidebar tab: listing, persona / memory / note | `/mpd workmates`, the listing only | TUI is **listing-only**; mutations are Web-only |
 | Tune the bundle's knobs | Settings → **MPD** section | `/settings` → the MPD section | same knobs, same restart caveat |
 | See plan / boulder / workmate progress while you type | the sidebar and the settings card | the keyed **status line** above the prompt | TUI-native surface |
-| Stay on the keyboard | — (pointer, plus the panel below) | the **status line**, the `/mpd` command tree, the `alt+a` merged panel | TUI-native surface |
-| See the roster and board the *harness* ships | the **Agent Teams** panel in the conversation header — a **different, read-only** surface (it spawns, renames and deletes nothing) | — | not this bundle's surface |
-| Look at an archived team | `?archived=1` on the Agent Teams panel | not projected — the TUI reads the newest live record | Web-only |
+| Stay on the keyboard | no equivalent (pointer, plus the panel below) | the **status line**, the `/mpd` command tree, the `alt+a` merged panel | TUI-native surface |
+| See the roster and board the *harness* ships | the **Agent Teams** panel in the conversation header, a **different, read-only** surface (it spawns, renames and deletes nothing) | none | not this bundle's surface |
+| Look at an archived team | `?archived=1` on the Agent Teams panel | not projected; the TUI reads the newest live record | Web-only |
 | Drag and resize the panel | the Agent Teams panel is a floating panel | a terminal scene has no geometry | not applicable |
 
 Two Web surfaces are easy to confuse, so the table names them apart: the **Agent Teams** panel in the
-conversation header is the harness's own client and is read-only, while the **Team** and
+conversation header belongs to the harness's own client and is read-only, while the **Team** and
 **Team watchdog** views are this bundle's own pages, served from its routes and rendered in whichever
 sidebar host the composition provides.
 
-**Parity is measured here, not asserted.** [`docs/tui-parity.md`](./docs/tui-parity.md) is the
-row-by-row ledger behind this table — every row names its evidence, and every deviation that is still
-open is recorded there. The rows above whose two columns are not the same sentence are exactly those
-recorded deviations. Read the ledger before you rely on the TUI for a Web capability.
+The table is backed by a ledger. [`docs/tui-parity.md`](./docs/tui-parity.md) lists every row with its
+evidence and records each deviation that is still open. Rows above whose two columns are not the same
+sentence are exactly those recorded deviations; read the ledger before you rely on the TUI for a Web
+capability.
 
-![The Team view in the DSH Web GUI: the team header and progress, the roster with each member's model route, and the nested task graph — a subcell drawn as the subcell-auth FRAME (a .mpd-dag-group box) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it.](./docs/assets/images/web-team-dag-groups.png)
+![The Team view in the DSH Web GUI: the team header and progress, the roster with each member's model route, and the nested task graph: a subcell drawn as the subcell-auth FRAME (a .mpd-dag-group box) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it.](./docs/assets/images/web-team-dag-groups.png)
 
-![The DSH-TUI's full-screen team SCENE for the same nested team — the `/mpd team` scene, not the DAG page — with the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═), a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the scene's legend and key hints. The window runs from the scene's own top border row to its bottom border row and stops at 102 of its 158 columns, which keeps one character cell at least 8 px wide at this page's display width.](./docs/assets/images/tui-team-dag-groups.png)
+![The DSH-TUI's full-screen team SCENE for the same nested team, the `/mpd team` scene rather than the DAG page, with the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═), a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the scene's legend and key hints. The window runs from the scene's own top border row to its bottom border row and stops at 102 of its 158 columns, which keeps one character cell at least 8 px wide at this page's display width.](./docs/assets/images/tui-team-dag-groups.png)
 
 ## Features
 
-- **A main agent that reads your rules** — the bundle's one preset, `mpd`, carries the
+- **A main agent that reads your rules.** The bundle's one preset, `mpd`, carries the
   project-instruction convention: every session attempts `AGENT.md`, then `AGENTS.md`, then
   `CLAUDE.md`, from the project root down to the working directory.
-- **Eleven specialists, consulted or delegated** — Architect, Researcher, Planner, Deep Worker,
+- **Eleven specialists, consulted or delegated.** Architect, Researcher, Planner, Deep Worker,
   Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. Each is
   a teammate template with its own model route, and the read-only ones are denied write tools
   *mechanically* rather than by convention.
-- **A workmate library that accumulates** — instantiate a specialist as a durable agent under
+- **A workmate library that accumulates.** Instantiate a specialist as a durable agent under
   `~/.mpd/workmate/`; it self-summarizes after each session, evolving its own persona and memory.
-- **Real multi-agent teams** — the team plane is the **mpd RECORD** (`.mpd/team/teams/<id>.json`,
+- **Real multi-agent teams.** The team plane is the **mpd RECORD** (`.mpd/team/teams/<id>.json`,
   served as `mpdTeams`), executed by the adapter's **native** `TeamExecutor` backend by DEFAULT; `mpd`
   rows drive it through the `agent_teams_plan` door and the `agent_teams_task` / `agent_teams_dispatch`
   board, and the official authoring verbs (`spawn_teammate`, `team_task_*`) are REFUSED at the tool
   boundary. The official `dsh.team*` service is only the contained FALLBACK for a composition that runs
   the official executor (its rows are disabled in a TUI composition). A durable mailbox, a Web panel
   and a TUI scene read the same live record.
-- **A durable plan ledger** — ULW rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
+- **A durable plan ledger.** Autoproject rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
   boulder ledger anchored to a plan file, and a persisted goal that survives across sessions.
-- **Memory and edits that hold up** — a VCS-backed memory store with a reflection state machine, plus
+- **Memory and edits that hold up.** A VCS-backed memory store with a reflection state machine, plus
   hash-anchored editing, a write guard and a declaration-comment gate.
-- **Verification with teeth** — the code one agent writes is verified by a *different* agent, from a
+- **Verification with teeth.** The code one agent writes is verified by a *different* agent, from a
   frozen contract, with a recorded verdict and gate evidence.
-- **Code intelligence and extensibility** — MCP servers for AST search (ast-grep), a code knowledge
+- **Code intelligence and extensibility.** MCP servers for AST search (ast-grep), a code knowledge
   graph, a language server and git-bash; plus an extension interface other packages contribute
   skills, flows, MCP servers and specialists through.
-- **A skill corpus that knows the project shape** — 19 skills served by reference from
-  `<bundle>/skills`, the repository's own `dsh-qa` among them; `cordis-dev` loads itself on
+- **A skill corpus that knows the project shape.** 19 skills served by reference from
+  `<bundle>/skills`, the repository's own `dsh-qa` among them. `cordis-dev` loads itself on
   detection (`cordis.patch.yml` or `presets/*.patch.yml`, a manifest carrying `dsh.bundle` /
   `dsh.client`, `dsh-plugin.json`, a `packages/*/src/index.ts` exporting `apply`, or an
   `extensions/*` manifest), so Cordis / DSH plugin work starts from this repository's own rules.
-- **Bilingual by policy** — every human-facing document ships an English file and a 简体中文 twin; a
+- **Bilingual by policy.** Every human-facing document ships an English file and a 简体中文 twin; a
   gate reddens when one falls behind.
 
 ## Install
@@ -115,7 +115,7 @@ profile. The bundle never configures model keys for you.
 # Web GUI profile
 dsh plugin --profile web add @mpd-dsh/mpd
 
-# DSH-TUI profile — the same bundle, the terminal surface
+# DSH-TUI profile: the same bundle, the terminal surface
 dsh plugin --profile dsh-tui add @mpd-dsh/mpd
 ```
 
@@ -128,7 +128,7 @@ dsh plugin --profile web remove @mpd-dsh/mpd
 The package declares no `cordis` dependency and no `preinstall`/`install`/`postinstall`/`prepare`
 script, so installing it runs no code from the package. Its rows reach the harness only through
 `cordis.patch.yml` and the profile mechanism, and it overrides **no** host row: the `mpd` preset is
-added additively and becomes your default through *your* action, never the bundle's.
+added additively, and it becomes your default through *your* action, never the bundle's.
 
 ![The Plugins page of the DSH Web GUI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on.](./docs/assets/images/web-plugins-installed.png)
 
@@ -140,23 +140,24 @@ bun install                                       # materialize the declared run
 dsh plugin --profile web add .
 ```
 
-Full install detail — the packed artifact, the `dsh-tui` launcher, the dependency closure and what
-the install mounts — is in the [user guide](./docs/user-guide.md#1-install).
+The [user guide](./docs/user-guide.md#1-install) covers the packed artifact, the `dsh-tui` launcher,
+the dependency closure and what the install mounts.
 
 ## Version compatibility
 
-Each row is the host pair a release was **built and verified against** — the Docker real-machine
-lanes run the install and the mount on exactly that pair. The harness pin lives in
+Each row is the host pair a release was **built and verified against**: the Docker real-machine lanes
+run the install and the mount on exactly that pair. The harness pin lives in
 [`package.json`](./package.json) (the three `@deepseek-ai/dsh-experimental-*` dependencies) and the
 DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `host-tui` ref in
 [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
-names it: pin both.
+names it; pin both.
 
 **The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.17.0 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.1 | 0.2.1-rc.5 | 0.18.0 | the current release |
+| 0.17.0 | 0.2.1-rc.5 | 0.18.0 | previous |
 | 0.16.4 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | previous |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | previous |
@@ -165,26 +166,26 @@ names it: pin both.
 | 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
-| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous (the harness-0.2.1 adaptation release) |
 
-The newest row **is** that pair: `0.17.0` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
-two move as a set — `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
+The newest row **is** that pair: `0.17.1` ships against harness `0.2.1-rc.5` and DSH-TUI `0.18.0`, and the
+two move as a set. `dsh-tui@0.17.0`'s peer lists stop at harness `0.2.1-rc.3`, so an rc.5 harness with a
 0.17.0 host is refused by `dsh plugin --profile dsh-tui add`. The pins live in
 [`package.json`](./package.json) and [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts`; the rows below it
-are kept as history — what earlier releases actually pinned.
+record what earlier releases actually pinned.
 
 ## Quick start
 
 1. **Install**, restart `dsh`, and start a session on the **MPD (Main Working Agent)** preset.
 2. **Ask for something real.** The agent has `bash` / `read` / `edit` plus the MCP code tools. Drop an
-   `AGENT.md` in your project to steer it — it is read automatically at session start.
+   `AGENT.md` in your project to steer it; the file is read automatically at session start.
 3. **Consult a specialist.** `mpd_roles_list` shows the roster, then
    `mpd_role_spawn { role: "Architect", task: "review the module boundaries in src/" }`.
 4. **Keep the good one.** `mpd_workmate_init { base: "Architect", name: "system-architect" }`, then
    reuse it with `mpd_workmate_spawn { name: "system-architect", task: "…" }`.
 5. **Scale to a team.** Ask for one, or describe work that warrants one: the captain stages a plan with
-   `agent_teams_plan` (`add_member` → `create_task`, each task declaring its dependency answer —
-   `blocked_by` or `independent: true` — → `approve`), then drives the board with `agent_teams_task`
+   `agent_teams_plan` (`add_member` → `create_task`, each task declaring its dependency answer,
+   `blocked_by` or `independent: true`, → `approve`), then drives the board with `agent_teams_task`
    and `agent_teams_dispatch` plus `send_message` / `wait_agent`; the official `spawn_teammate` /
    `team_task_*` verbs are REFUSED at the tool boundary. Watch the roster and the shared board in this
    bundle's **Team** sidebar view, or in the TUI's `/mpd team` scene.
@@ -194,7 +195,7 @@ are kept as history — what earlier releases actually pinned.
 Two commands worth knowing from the first minute:
 
 ```text
-/ulw  <objective>     drive a long objective to done, in rounds, with gates
+/autoproject  <objective>     drive a long objective to done, in rounds, with gates
 /mpd  team            open the team scene (DSH-TUI)
 ```
 
@@ -212,30 +213,30 @@ Settings → MPD.
 
 ## Usage
 
-The bundle's work happens through tools and commands — the same ones on both surfaces. The short
+The bundle's work happens through tools and commands, the same ones on both surfaces. The short
 version:
 
 | You want to… | Reach for | Detail |
 |---|---|---|
 | Work with an agent that knows your project rules | the **`mpd` preset** | [user guide §2](./docs/user-guide.md#2-the-mpd-preset) |
-| Get a scoped second opinion | the **specialist roster** — `mpd_role_spawn` | [user guide §4](./docs/user-guide.md#4-specialists-the-roster) |
-| Keep a specialist that accumulates knowledge | the **workmate library** — `mpd_workmate_*` | [user guide §5](./docs/user-guide.md#5-workmate-library-durable-evolving-specialists) |
-| Run a real multi-agent workflow | **team mode** — `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch` (the official `spawn_teammate` / `team_task_*` verbs are REFUSED) | [user guide §6](./docs/user-guide.md#6-team-mode) |
-| Drive a long objective to done | the **ULW loop** — `/ulw` | [user guide §13.2](./docs/user-guide.md#132-the-ulw-loop-and-its-gates) |
-| Track a multi-step plan durably | the **boulder ledger** — `mpd_boulder_*` | [user guide §13.6](./docs/user-guide.md#136-the-boulder-ledger) |
-| Remember facts across sessions | the **memory engine** — `mpd_memory_*` | [user guide §13.7](./docs/user-guide.md#137-memory) |
-| Edit files without line-drift mistakes | **hash-anchored editing** — `mpd_hashline_*` | [user guide §13.5](./docs/user-guide.md#135-hash-anchored-edits) |
-| Understand an unfamiliar codebase | the **MCP servers** — ast-grep, LSP, CodeGraph | [user guide §3](./docs/user-guide.md#3-tools-by-job) |
-| Teach the bundle a new trick | the **extension interface** — `mpd_ext_*` | [user guide §10](./docs/user-guide.md#10-extensions-from-your-side) |
+| Get a scoped second opinion | the **specialist roster**, `mpd_role_spawn` | [user guide §4](./docs/user-guide.md#4-specialists-the-roster) |
+| Keep a specialist that accumulates knowledge | the **workmate library**, `mpd_workmate_*` | [user guide §5](./docs/user-guide.md#5-workmate-library-durable-evolving-specialists) |
+| Run a real multi-agent workflow | **team mode**, `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch` (the official `spawn_teammate` / `team_task_*` verbs are REFUSED) | [user guide §6](./docs/user-guide.md#6-team-mode) |
+| Drive a long objective to done | the **autoproject loop**, `/autoproject` | [user guide §13.2](./docs/user-guide.md#132-the-autoproject-loop-and-its-gates) |
+| Track a multi-step plan durably | the **boulder ledger**, `mpd_boulder_*` | [user guide §13.6](./docs/user-guide.md#136-the-boulder-ledger) |
+| Remember facts across sessions | the **memory engine**, `mpd_memory_*` | [user guide §13.7](./docs/user-guide.md#137-memory) |
+| Edit files without line-drift mistakes | **hash-anchored editing**, `mpd_hashline_*` | [user guide §13.5](./docs/user-guide.md#135-hash-anchored-edits) |
+| Understand an unfamiliar codebase | the **MCP servers**: ast-grep, LSP, CodeGraph | [user guide §3](./docs/user-guide.md#3-tools-by-job) |
+| Teach the bundle a new trick | the **extension interface**, `mpd_ext_*` | [user guide §10](./docs/user-guide.md#10-extensions-from-your-side) |
 | Drive it all from a terminal | the **DSH-TUI edition** | [user guide §7](./docs/user-guide.md#7-dsh-tui-edition-the-terminal-ui) |
 
 ![The MPD section of the DSH settings panel, showing the bundle's knobs with a Reset to the file value button on each.](./docs/assets/images/web-settings-mpd.png)
 
-![The Agent presets settings page: the MPD (Main Working Agent) preset listed under CUSTOM, while the New task default badge sits on the host's Standard mode — the deployment default is the host's to choose, and the bundle never overrides it.](./docs/assets/images/web-agent-presets.png)
+![The Agent presets settings page: the MPD (Main Working Agent) preset listed under CUSTOM, while the New task default badge sits on the host's Standard mode: the deployment default is the host's to choose, and the bundle never overrides it.](./docs/assets/images/web-agent-presets.png)
 
-Configuration is JSONC and layered — `<workspace>/.mpd/mpd.jsonc` over `$DSH_HOME/mpd.jsonc`, per
-key, project wins. Your state lives in `<workspace>/.mpd/`; the one exception is the workmate
-library, which is HOME-scoped at `~/.mpd/workmate/`. See
+Configuration is JSONC and layered: `<workspace>/.mpd/mpd.jsonc` over `$DSH_HOME/mpd.jsonc`, per key,
+project wins. Your state lives in `<workspace>/.mpd/`. The one exception is the workmate library,
+which is HOME-scoped at `~/.mpd/workmate/`. See
 [user guide §9](./docs/user-guide.md#9-configuration-mpdjsonc) and
 [§14](./docs/user-guide.md#14-where-these-capabilities-come-from).
 
@@ -245,14 +246,13 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 - **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.5**.
   Expect breakage while upstream stabilizes, and pin the harness version you use.
-- **The TUI surface trails the Web surface in named places, not everywhere.** The rows of the table
-  above that do not read "same facts" are open deviations, each recorded with its evidence in
-  [`docs/tui-parity.md`](./docs/tui-parity.md). Nothing there is a surprise and nothing there is
-  silently missing.
-- **The bundle is a package, not a fork.** It ships no harness change and edits no DSH source; if the
+- **The TUI surface trails the Web surface in a few named places.** The rows of the table above that do
+  not read "same facts" are open deviations, each recorded with its evidence in
+  [`docs/tui-parity.md`](./docs/tui-parity.md).
+- **The bundle is a package, not a fork.** It ships no harness change and edits no DSH source. If the
   harness renames a seam, this bundle absorbs it in one adapter file.
 - **A preset default is yours to choose.** The bundle overrides no host row, so `mpd` becomes the
-  default only through your own action — [docs/preset-default.md](./docs/preset-default.md).
+  default only through your own action: [docs/preset-default.md](./docs/preset-default.md).
 - **A saved setting takes effect after a restart.** The plugins capture their configuration when they
   mount, so `mpd_config_get` proving a new value is *not* proof that the running plugin acts on it.
 - **The screenshots are headless captures.** Web tiles are Chromium at a fixed viewport, driven by
@@ -264,19 +264,19 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Documentation
 
-- **[User guide](./docs/user-guide.md)** — install, tools by job, teams, recipes, command reference.
-- **[Documentation hub](./docs/index.md)** — every document, with reading paths for users, extension
+- **[User guide](./docs/user-guide.md)**: install, tools by job, teams, recipes, command reference.
+- **[Documentation hub](./docs/index.md)**: every document, with reading paths for users, extension
   authors, contributors and agents.
-- **[DSH-TUI edition](./docs/tui.md)** — admission, distribution and per-package compatibility.
-- **[Distribution descriptor](./dsh-distribution.json)** — this environment's identity, composition and
+- **[DSH-TUI edition](./docs/tui.md)**: admission, distribution and per-package compatibility.
+- **[Distribution descriptor](./dsh-distribution.json)**: this environment's identity, composition and
   managed data locations in the [dsh-distribution](https://github.com/T-Auto/dsh-distribution)
   meta-protocol format (Draft), readable by tools that support the protocol; detail in
   [docs/tui.md](./docs/tui.md) §4.2.
-- **[TUI parity ledger](./docs/tui-parity.md)** — the Web surface against the TUI surface, row by row.
-- **[Design](./docs/design.md)** — how the bundle is assembled inside.
+- **[TUI parity ledger](./docs/tui-parity.md)**: the Web surface against the TUI surface, row by row.
+- **[Design](./docs/design.md)**: how the bundle is assembled inside.
 - **[Extensions](./docs/extensions.md)** and the
   **[extension authoring guide](./docs/extension-authoring-guide.md)**.
-- **[Contributing](./CONTRIBUTING.md)** — setup, the gates and the git model.
+- **[Contributing](./CONTRIBUTING.md)**: setup, the gates and the git model.
 
 ## Contributing
 
@@ -288,26 +288,23 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.17.0**). Annotated tags are listed under
+version (the current release is **v0.17.1**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements
 
-The specialist roster's names and stable ids and the model-chain vocabulary are adapted from
-[`code-yeongyu/oh-my-openagent`](https://github.com/code-yeongyu/oh-my-openagent) (v5.0.0-beta.20),
-recorded as historical provenance in [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — a *reference, not a
-dependency*: nothing here reads, copies, patches or audits it, and no gate fails when it is
-unreachable. The content that record once described no longer travels with it: the served skill corpus
-is MIT, re-sourced from the same author's `lazycodex`; the eleven persona texts were re-sourced from
-the permissively licensed public agent prompts listed in
-[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md); and the vendored cores, the MCP servers and the adopted
-agent-teams body were replaced or deleted outright.
+The third-party work this bundle ships, and the licence it travels under, is recorded in
+[`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md). In short:
 
-The bundle composes over the harness's own official packages rather than forking them, and mounts the
-community sidebar bundle `dsh-better-sidebar` for the Workmates tab. Attribution and third-party
-notices are in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).
+- the served skill corpus (MIT) is re-sourced from `code-yeongyu/lazycodex`;
+- the eleven roster persona texts are re-sourced from permissively licensed public agent prompts;
+- the Workmates tab mounts the community sidebar bundle `dsh-better-sidebar`;
+- the optional comment checker is `@code-yeongyu/comment-checker` (MIT);
+- everything else composes over the harness's own official packages.
+
+No entry describes something this repository does not ship.
 
 ## License
 
-**MIT** — see [`LICENSE.md`](./LICENSE.md), Copyright (c) 2026 HaroldZ32. Third-party components keep
+**MIT**: see [`LICENSE.md`](./LICENSE.md), Copyright (c) 2026 HaroldZ32. Third-party components keep
 their own licences; the complete notices are in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).

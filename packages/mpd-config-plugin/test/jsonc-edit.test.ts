@@ -12,7 +12,7 @@ const FIXTURE = `{
     // trailing member comment
     "guardEditTools": true,
   },
-  "ulw": {
+  "autoproject": {
     "maxRounds": 6
   },
   "zebra": "kept out of order on purpose",
@@ -35,16 +35,16 @@ describe("U1 byte fidelity", () => {
     expect(result.text).toContain("// the hashline knobs (human comment above the object)")
     expect(result.text).toContain("/* inline block comment */")
     expect(result.text).toContain("// trailing member comment")
-    expect(result.text.indexOf('"hashline"')).toBeLessThan(result.text.indexOf('"ulw"'))
-    expect(result.text.indexOf('"ulw"')).toBeLessThan(result.text.indexOf('"zebra"'))
+    expect(result.text.indexOf('"hashline"')).toBeLessThan(result.text.indexOf('"autoproject"'))
+    expect(result.text.indexOf('"autoproject"')).toBeLessThan(result.text.indexOf('"zebra"'))
     expect(result.text).toContain("true,\n  },")
     expect(result.text.endsWith("\n")).toBe(true)
-    expect(readJsonc(result.text)).toEqual({ ok: true, value: { hashline: { maxDiffChars: 4096, guardEditTools: true }, ulw: { maxRounds: 6 }, zebra: "kept out of order on purpose" } })
+    expect(readJsonc(result.text)).toEqual({ ok: true, value: { hashline: { maxDiffChars: 4096, guardEditTools: true }, autoproject: { maxRounds: 6 }, zebra: "kept out of order on purpose" } })
   })
 
   test("an identical edit is a byte-level no-op (idempotence, U11)", () => {
     // Re-setting the value it already has: the result must report no change and hand back the original bytes.
-    const result = surgicalEdit(FIXTURE, ["ulw", "maxRounds"], 6)
+    const result = surgicalEdit(FIXTURE, ["autoproject", "maxRounds"], 6)
     expect(result.ok).toBe(true)
     if (result.ok !== true) return
     expect(result.changed).toBe(false)
@@ -73,7 +73,7 @@ describe("U2 escapes and decoded keys (E1)", () => {
 })
 
 describe("U3/E6 nested insert", () => {
-  // Fixture with no `ulw` object at all: both insert cases (missing intermediate, missing leaf) start from it.
+  // Fixture with no `autoproject` object at all: both insert cases (missing intermediate, missing leaf) start from it.
   const partial = `{
   // keep me
   "hashline": {
@@ -83,14 +83,14 @@ describe("U3/E6 nested insert", () => {
 `
   test("a missing intermediate object is materialised and appended as the LAST member", () => {
     // Insert whose intermediate object is absent; the new subtree is appended as the LAST member.
-    const result = surgicalEdit(partial, ["ulw", "maxRounds"], 9, { insert: true })
+    const result = surgicalEdit(partial, ["autoproject", "maxRounds"], 9, { insert: true })
     expect(result.ok).toBe(true)
     if (result.ok !== true) return
     expect(result.text).toContain("// keep me")
-    expect(result.text.indexOf('"maxDiffChars"')).toBeLessThan(result.text.indexOf('"ulw"'))
-    expect(readJsonc(result.text)).toEqual({ ok: true, value: { hashline: { maxDiffChars: 20000 }, ulw: { maxRounds: 9 } } })
+    expect(result.text.indexOf('"maxDiffChars"')).toBeLessThan(result.text.indexOf('"autoproject"'))
+    expect(readJsonc(result.text)).toEqual({ ok: true, value: { hashline: { maxDiffChars: 20000 }, autoproject: { maxRounds: 9 } } })
     // the inserted subtree carries no invented comment
-    const inserted = result.text.slice(result.text.indexOf('"ulw"'))
+    const inserted = result.text.slice(result.text.indexOf('"autoproject"'))
     expect(inserted.includes("//")).toBe(false)
   })
 
@@ -105,7 +105,7 @@ describe("U3/E6 nested insert", () => {
 
   test("without the insert option a missing path refuses and returns no text", () => {
     // The same missing path WITHOUT `insert`: the rewriter must refuse rather than invent a location.
-    const result = surgicalEdit(partial, ["ulw", "maxRounds"], 9)
+    const result = surgicalEdit(partial, ["autoproject", "maxRounds"], 9)
     expect(result.ok).toBe(false)
     if (result.ok === false) expect(result.reason).toBe("span-not-proven")
   })
@@ -188,21 +188,21 @@ describe("U5 arrays (E4)", () => {
 describe("U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET removes ALL", () => {
   test("set: the LAST occurrence is updated, the first is byte-identical, and the note names every line", () => {
     // Duplicate-key fixture whose FIRST occurrence carries a comment, so updating the last must not touch it.
-    const source = `{\n  "ulw": {\n    "maxRounds": 3, // the runtime reads the LAST one\n    "maxRounds": 6,\n  },\n}\n`
+    const source = `{\n  "autoproject": {\n    "maxRounds": 3, // the runtime reads the LAST one\n    "maxRounds": 6,\n  },\n}\n`
     // Set on a duplicated path; the settled ruling makes the LAST occurrence the effective one.
-    const result = surgicalEdit(source, ["ulw", "maxRounds"], 11)
+    const result = surgicalEdit(source, ["autoproject", "maxRounds"], 11)
     expect(result.ok).toBe(true)
     if (result.ok !== true) return
-    expect(result.text).toBe(`{\n  "ulw": {\n    "maxRounds": 3, // the runtime reads the LAST one\n    "maxRounds": 11,\n  },\n}\n`)
+    expect(result.text).toBe(`{\n  "autoproject": {\n    "maxRounds": 3, // the runtime reads the LAST one\n    "maxRounds": 11,\n  },\n}\n`)
     // Re-read of the rewritten bytes: the updated last occurrence is what the runtime sees.
     const parsed = readJsonc(result.text)
     expect(parsed.ok).toBe(true)
-    if (parsed.ok === true) expect(parsed.value).toEqual({ ulw: { maxRounds: 11 } })
+    if (parsed.ok === true) expect(parsed.value).toEqual({ autoproject: { maxRounds: 11 } })
     // the diagnostic is loud: reason + every occurrence line + which one won
     expect(result.notes).toHaveLength(1)
     expect(result.notes?.[0].reason).toBe("duplicate-key")
     expect(result.notes?.[0].lines).toEqual([3, 4])
-    expect(result.notes?.[0].detail).toBe('key "ulw.maxRounds" appears 2 times at lines 3, 4; the last occurrence is the effective value and was updated')
+    expect(result.notes?.[0].detail).toBe('key "autoproject.maxRounds" appears 2 times at lines 3, 4; the last occurrence is the effective value and was updated')
   })
 
   test("set: a top-level duplicated leaf behaves the same way (the design's U6 fixture)", () => {
@@ -218,7 +218,7 @@ describe("U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET 
 
   test("set: a single occurrence carries NO note (nothing to warn about)", () => {
     // Single occurrence, so the diagnostic path must stay silent: no note is part of the contract.
-    const result = surgicalEdit(`{\n  "ulw": { "maxRounds": 6 },\n}\n`, ["ulw", "maxRounds"], 7)
+    const result = surgicalEdit(`{\n  "autoproject": { "maxRounds": 6 },\n}\n`, ["autoproject", "maxRounds"], 7)
     expect(result.ok).toBe(true)
     if (result.ok !== true) return
     expect(result.notes).toBeUndefined()
@@ -254,8 +254,8 @@ describe("U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET 
 
   test("a duplicated INTERMEDIATE still refuses as `ambiguous-intermediate`, byte-untouched, for BOTH set and unset", () => {
     // Duplicated INTERMEDIATE key, where the ambiguity sits in the path rather than in the leaf.
-    const source = `{\n  "ulw": { "maxRounds": 3 },\n  "other": 1,\n  "ulw": { "maxRounds": 6 },\n}\n`
-    for (const result of [surgicalEdit(source, ["ulw", "maxRounds"], 11), surgicalDelete(source, ["ulw", "maxRounds"])]) {
+    const source = `{\n  "autoproject": { "maxRounds": 3 },\n  "other": 1,\n  "autoproject": { "maxRounds": 6 },\n}\n`
+    for (const result of [surgicalEdit(source, ["autoproject", "maxRounds"], 11), surgicalDelete(source, ["autoproject", "maxRounds"])]) {
       expect(result.ok).toBe(false)
       if (result.ok !== false) continue
       expect(result.reason).toBe("ambiguous-intermediate")
@@ -267,10 +267,10 @@ describe("U6 duplicate keys — the settled ruling: SET updates the LAST, UNSET 
 
 describe("U7 CRLF (E7)", () => {
   // CRLF fixture: every existing ending is CRLF, so an inserted line with a bare LF would stand out.
-  const crlf = '{\r\n  "ulw": {\r\n    "maxRounds": 6\r\n  }\r\n}\r\n'
+  const crlf = '{\r\n  "autoproject": {\r\n    "maxRounds": 6\r\n  }\r\n}\r\n'
   test("existing endings are preserved and an inserted line uses CRLF", () => {
     // Value replace in a CRLF document; the endings outside the span must not be normalised.
-    const replaced = surgicalEdit(crlf, ["ulw", "maxRounds"], 7)
+    const replaced = surgicalEdit(crlf, ["autoproject", "maxRounds"], 7)
     expect(replaced.ok).toBe(true)
     if (replaced.ok === true) {
       expect(replaced.text).toBe(crlf.replace("6", "7"))
@@ -278,10 +278,10 @@ describe("U7 CRLF (E7)", () => {
       expect(detectStyle(crlf).eol).toBe("\r\n")
     }
     // Insert of a NEW member: the one case that emits fresh line endings, which must match the file style.
-    const inserted = surgicalEdit(crlf, ["ulw", "planDir"], ".mpd/plans", { insert: true })
+    const inserted = surgicalEdit(crlf, ["autoproject", "planDir"], ".mpd/plans", { insert: true })
     expect(inserted.ok).toBe(true)
     if (inserted.ok === true) {
-      expect(readJsonc(inserted.text)).toEqual({ ok: true, value: { ulw: { maxRounds: 6, planDir: ".mpd/plans" } } })
+      expect(readJsonc(inserted.text)).toEqual({ ok: true, value: { autoproject: { maxRounds: 6, planDir: ".mpd/plans" } } })
       // the NEW line uses CRLF; existing endings are untouched
       const newLines = inserted.text.slice(inserted.text.indexOf('"maxRounds"'))
       expect(newLines).toContain("\r\n")
@@ -341,18 +341,18 @@ describe("regression: the shipped reader's trailing-comma probe (found by these 
 describe("the design-named API surface (§10.2): locateValueSpan, DELETE, EditRefusal/EditResult", () => {
   test("locateValueSpan proves the exact value span and reports the comma/eol facts", () => {
     // CRLF document for the span prover, which reports the EOL and comma facts alongside the offsets.
-    const crlf = `{\r\n  "ulw": { "maxRounds": 6 },\r\n}\r\n`
+    const crlf = `{\r\n  "autoproject": { "maxRounds": 6 },\r\n}\r\n`
     // The proven span; the assertions below read its exact offsets and its two style facts.
-    const span = locateValueSpan(crlf, ["ulw", "maxRounds"])
+    const span = locateValueSpan(crlf, ["autoproject", "maxRounds"])
     expect("start" in span).toBe(true)
     if (!("start" in span)) return
     expect(crlf.slice(span.start, span.end)).toBe("6")
     expect(span.hasTrailingComma).toBe(false)
     expect(span.eol).toBe("\r\n")
     // The same value written with a trailing comma, so the comma fact has a positive case.
-    const withComma = `{\n  "ulw": { "maxRounds": 6, },\n}\n`
+    const withComma = `{\n  "autoproject": { "maxRounds": 6, },\n}\n`
     // Span of the comma-terminated value: the offsets must match the comma-less document.
-    const span2 = locateValueSpan(withComma, ["ulw", "maxRounds"])
+    const span2 = locateValueSpan(withComma, ["autoproject", "maxRounds"])
     if (!("start" in span2)) throw new Error("expected a span")
     expect(withComma.slice(span2.start, span2.end)).toBe("6")
     expect(span2.hasTrailingComma).toBe(true)
@@ -360,21 +360,21 @@ describe("the design-named API surface (§10.2): locateValueSpan, DELETE, EditRe
 
   test("locateValueSpan refuses with the named reasons instead of guessing", () => {
     expect(locateValueSpan("{ not json", ["a"])).toMatchObject({ reason: "unparsable" })
-    expect(locateValueSpan(`{\n  "ulw": { "maxRounds": 6 },\n}\n`, ["ulw", "veto"])).toMatchObject({ reason: "span-not-proven" })
-    expect(locateValueSpan("{ \"ulw\": 1 }", ["ulw", "maxRounds"])).toMatchObject({ reason: "unsupported-shape" })
+    expect(locateValueSpan(`{\n  "autoproject": { "maxRounds": 6 },\n}\n`, ["autoproject", "veto"])).toMatchObject({ reason: "span-not-proven" })
+    expect(locateValueSpan("{ \"autoproject\": 1 }", ["autoproject", "maxRounds"])).toMatchObject({ reason: "unsupported-shape" })
   })
 
   test("the DELETE sentinel is accepted by surgicalEdit and equals surgicalDelete", () => {
     // Sentinel/dedicated-delete equivalence fixture: one member to remove and one to keep.
-    const source = `{\n  "ulw": { "maxRounds": 6 },\n  "zebra": 1,\n}\n`
+    const source = `{\n  "autoproject": { "maxRounds": 6 },\n  "zebra": 1,\n}\n`
     // Unset through `surgicalEdit` with the DELETE sentinel: the sentinel is the unset signal on the edit entry point.
-    const viaSentinel = surgicalEdit(source, ["ulw"], DELETE)
+    const viaSentinel = surgicalEdit(source, ["autoproject"], DELETE)
     // The same unset through the dedicated entry point; both texts must be byte-identical.
-    const viaDelete = surgicalDelete(source, ["ulw"])
+    const viaDelete = surgicalDelete(source, ["autoproject"])
     expect(viaSentinel.ok).toBe(true)
     expect(viaDelete.ok).toBe(true)
     if (viaSentinel.ok !== true || viaDelete.ok !== true) return
     expect(viaSentinel.text).toBe(viaDelete.text)
-    expect(viaSentinel.text).not.toContain("ulw")
+    expect(viaSentinel.text).not.toContain("autoproject")
   })
 })

@@ -1,0 +1,421 @@
+{
+  "type": "stack",
+  "v": 2,
+  "accent": "app",
+  "style": {
+    "gap": "M"
+  },
+  "children": [
+    {
+      "type": "tabs",
+      "items": [
+        {
+          "label": "Board",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Team Board",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "Drive surface · 2 Tasks · 1 Blocked",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "progress",
+                  "value": {
+                    "$": "data.counts.completion"
+                  },
+                  "label": "Completion",
+                  "tone": "good"
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "grid",
+              "children": [
+                {
+                  "type": "metric",
+                  "label": "Active",
+                  "value": {
+                    "$": "data.counts.active"
+                  },
+                  "tone": "info"
+                },
+                {
+                  "type": "metric",
+                  "label": "Done",
+                  "value": {
+                    "$": "data.counts.done"
+                  },
+                  "tone": "good"
+                }
+              ],
+              "columns": 2
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "The active team's board",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "T1 Adapt the view kit",
+                      "subtitle": "Deep Worker",
+                      "trailing": "active",
+                      "action": {
+                        "id": "select",
+                        "args": {
+                          "task": "T1"
+                        }
+                      }
+                    },
+                    {
+                      "title": "T2 Migrate the panels",
+                      "subtitle": "Senior Engineer · blocked 1",
+                      "trailing": "todo",
+                      "action": {
+                        "id": "select",
+                        "args": {
+                          "task": "T2"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Work per member",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "chart",
+                  "kind": "bar",
+                  "categories": [
+                    "Deep Worker",
+                    "Senior Engineer"
+                  ],
+                  "series": [
+                    {
+                      "name": "Tasks",
+                      "values": [
+                        1,
+                        1
+                      ]
+                    }
+                  ],
+                  "caption": "Board rows owned, by member"
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Dependency graph",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "codeBlock",
+                  "code": "L0 T1 Adapt the view kit\nL1 T2 Migrate the panels <-T1"
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Who is on this team",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "DW · Deep Worker",
+                      "trailing": "running",
+                      "tone": "info"
+                    },
+                    {
+                      "title": "SE · Senior Engineer",
+                      "trailing": "handoff ready",
+                      "tone": "muted"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Detail",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Watch",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "T1 Adapt the view kit",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "The selected row",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "text",
+                  "text": "Build the v2 kit and its fallback.",
+                  "tone": "muted",
+                  "style": {
+                    "maxLines": 4
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "keyValue",
+                  "items": [
+                    [
+                      "Owner",
+                      "Deep Worker"
+                    ],
+                    [
+                      "Status",
+                      "in_progress"
+                    ],
+                    [
+                      "Kind",
+                      "work"
+                    ],
+                    [
+                      "Dependencies",
+                      "—"
+                    ],
+                    [
+                      "Verdict",
+                      "—"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "text": "Settling a row is the owning member's call; run it from that agent."
+                },
+                {
+                  "type": "actions",
+                  "items": [
+                    {
+                      "label": "Back",
+                      "action": "back",
+                      "icon": "expand"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Watch",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Watch",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "The preserving hold and the recorded incidents",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "grid",
+              "children": [
+                {
+                  "type": "metric",
+                  "label": "Predicate",
+                  "value": "channel"
+                },
+                {
+                  "type": "metric",
+                  "label": "Watch",
+                  "value": "Held · silence",
+                  "tone": "warn"
+                }
+              ],
+              "columns": 2
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Incidents",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "silence",
+                      "subtitle": "2026-11-02T20:00:00Z",
+                      "trailing": "T2 was silent past the bound"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "callout",
+              "text": "Pause and resume run from the captain's console, not from a tap."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

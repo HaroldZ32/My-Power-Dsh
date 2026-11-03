@@ -48,6 +48,14 @@ deployment's top-level session carries `agentPreset: "cordis"`: a preset-keyed r
 exactly the session the door must bind. The mpd RECORD is still the only board, so every rule above runs
 on every task a session can create through these tools.
 
+**Empty write scopes are no longer silent (C4).** A `work`/`repair`/`integration` row staged or appended
+with no `write_scopes` is still CREATED, but the result carries a `warning` (rendered below the result's
+own sentence and declared in the output schema): it names the consequence — the frozen contract allows
+NO path, so the writer must stop on the first edit and ask the captain — and the remedy — declare the
+scopes now, or amend the contract before the first write, because a scope added after approval needs a
+re-freeze and a new verify loop. `requirement`/`review` rows write nothing and are exempt, so the field
+does not become noise.
+
 **The DAG is visible.** `agent_teams_plan {action:"status"}` keeps its one-line summary
 (`plan <id> · members N · tasks N · hold …`) and prints one line per member (`id`, `name`, `status`) and
 one line per task (`id`, `owner`, `status`, `kind`, `blockedBy` — or `-` — and `subject`), so a flat
@@ -65,6 +73,20 @@ context on EVERY turn. The hand-written surface had grown to 14 tools costing 7,
 justify itself against that number.
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
+
+### Native tool cards (dsh-Go)
+
+`agent_teams_plan`, `agent_teams_task` and `agent_teams_dispatch` carry
+`output.presentationMeta`, so the dsh-Go app draws them as a **native card** in the chat log instead
+of a generic tool row: the plan's counts, roster and board for the plan tool; the row, its
+attempt/revision and its dependents for the task tool; the pairs, skips and hand-overs for the
+dispatch tool. Each card is a **v1** view tree (`stack` with a title, then metrics, `keyValue`,
+tables and short text) with **no `$` binding, no `actions` and no `style` key** — a chat-log entry has
+no data model and no action channel, and an older app must still be able to draw it. `toolCard()`
+from `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` is the seam: a failed build, a v2 component
+or a tree over **8 KiB / 40 nodes / depth 6** degrades to `{}` and the app falls back to its generic
+row, so a card can never break a tool call. The builders are pure functions in `src/tool-cards.ts`,
+and the unit test runs them through the SAME wrapper the registration uses.
 
 ## The change feed — publish, do not poll
 
@@ -287,8 +309,14 @@ that can only fail, and a read-only composition mounts the read routes alone.
 - Absorbed from the official implementation, each earned there: a message is TARGETED at a live member
   resolved by name, a member cannot message itself, a member's UNDELIVERED backlog is BOUNDED (the
   official `TEAM_MAILBOX_FULL`), and the queue keeps insertion order.
-- **The undelivered BOUND is per TEAM, and an ACKNOWLEDGEMENT releases a slot.** The bound (default 8)
-  counts the rows a member was never handed AND never acknowledged — ONE shared outstanding predicate
+- **The undelivered BOUND is per TEAM, a workspace KNOB, and BOTH an acknowledgement and a delivery
+  release a slot.** The bound is `mail.maxUndelivered` (default 8, `0` disables; an absent, unreadable
+  or unusable value falls back to 8), read PER CALL through the config layer on the ONE `sendMany` path
+  BOTH `cellwork_send` and `agent_teams_mail` traverse — so the two tools cannot disagree and "use the
+  other mail tool" is not an escape. A refusal names the recipient, the current count, the bound and TWO
+  recovery paths: acknowledge the inbox (`agent_teams_mail {action:"read"}` / `cellwork_inbox`) or
+  reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`) — and writes nothing.
+  It counts the rows a member was never handed AND never acknowledged — ONE shared outstanding predicate
   feeds the send bound, `summary`'s `undelivered` column and the mail tool's `unread` branch, so the
   three cannot disagree about which rows are outstanding. It is scoped to the claiming team's own rows:
   a retired team's backlog can never refuse a fresh team's mail whose member ids restart at `M1`, and an
@@ -453,3 +481,37 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   composed without `mpd-team-core` keeps only the spawn preamble's prose.
 - **Without a lazy spawn the spawn turn still costs one model turn.** The guard makes it a
   one-directive, zero-tool turn, not a free one; lazy spawn is not implemented.
+
+
+## Owner-only dispatch, fence, handoff and occupancy (wave W1-A)
+
+The five tool NAMES are unchanged; their ACTIONS and record fields grew. This section is the contract
+for those additions.
+
+**Dispatch is owner-only by DEFAULT.** `agent_teams_dispatch` pairs a READY task with its DECLARED
+owner. A busy, absent, FENCED or failed owner is REPORTED and the row stays pending — never
+substituted. Two escapes exist and both are Lead-gated: `mode: "roster"` restores the positional
+fallback, and `reassign: [{task_id, owner}]` claims the named rows for that member on the board,
+journals `task-reassigned`, then delivers. A BLOCKED row is not reassignable. **Consequence worth
+knowing:** `release` CLEARS the owner, so "release then dispatch" goes through `reassign` (or
+`mode: "roster"`) — a combination semantic of the two verbs, not a defect.
+
+**Seat verbs.** `agent_teams_task {action:"context"}` answers the caller's own occupancy and seat state,
+and never guesses a window: `provenance` reports `observed`, `no-window` or `unavailable`.
+`{action:"handoff"}` validates the seven-section document, writes it under
+`.mpd/team/handoff/<teamId>/<member>-<n>.md`, flips the member to `mode:"checkpoint"` and journals
+`handoff-written`. `agent_teams_control {action:"fence"|"unfence", member}` closes or reopens ONE seat
+(Lead only); a fenced seat is never messaged, and its rows are repaired with `reassign`.
+
+**Service surface.** `mpdTeams` gains `memberContext` (one seat's occupancy), `depthBudget` (a bounded
+parent-chain walk with cycle detection; the limit comes from `cellwork.depthMax`, default 3),
+`archivedPlans` and `cancelTasks`. `mpdTeamActions` carries the exec-free actions `fence`, `unfence`,
+`handoff` and `dispatch`, so a panel button, a service caller and the tool drive the same sequence.
+
+**Workmate binding fields.** A staged member records `workmate`, `workmateMode` (which branch bound it)
+and `workmateReason` (why); `fenced: false` DELETES the fence keys, so there is exactly one on-disk
+spelling of "not fenced".
+
+**The tool-surface budget is a BOUND, not a promise:** five action-based tools plus one command stay
+under 6,400 characters (`test/tool-surface.test.ts`; measured 6,399 as wave A6b closed), and each tool
+DESCRIPTION stays under 700.

@@ -14,6 +14,69 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.1 — DSH Go native parity and the cellwork checkpoint fence
+
+**Fixed — the checkpoint fence (the interruption).** A member that reached its context checkpoint was
+fenced with `no-engine; the reseed failed: subagent creation requires the exact live parent agent`.
+The `agent/turn-stopping` listener detached the barrier with `void`, the compaction engine was resolved
+by session id only after the member's Agent had left the live registry, and the reseed then asked the
+host to create a child under that dead member — which the host refuses (`agents.get(parent.id) ===
+parent`). The barrier now returns a promise the host's serial dispatch awaits, resolves the engine from
+the LIVE member handle (`compactionEngineForLiveAgent`, reading the handle's own `compaction` service)
+before any sleep, and compacts IN PLACE; the reseed remains the fallback and parents the replacement
+under a live parent (the member's `parentSession`, then the cell captain), with the distinct
+`reseed-parent-unavailable` when neither is live. `promoted | reseeded | refused` is unchanged.
+
+**Fixed — the mail bound is configurable, disclosed and recoverable.** `cellwork_send` and
+`agent_teams_mail` share `mail.maxUndelivered` (default 8, `0` disables it); the refusal names the key,
+the recipient, the count and the bound, plus the two recovery paths (acknowledge the inbox, or reassign
+the rows). Both tool descriptions disclose the bound and that the two tools share it.
+
+**Fixed — no silent empty write scopes.** `agent_teams_plan create_task` warns when a
+work/repair/integration row declares no write scope; `cellwork_split` gains a NON-FATAL warnings
+channel (the split stays accepted); and the frozen contract states the recovery — ask the captain for a
+scope extension before the first write.
+
+**Changed — the re-split activation says what it does.** `cellwork_activate` reports how many tasks
+were kept, that their frozen contracts are NOT rewritten, and that ready rows were dispatched
+owner-only; the stage-4 loop exception is named.
+
+**Tests.** New arms for the live-handle engine, the reseed parent order, the split warnings, the
+activation notice and the mail bound. No test was weakened: the superseded exact-string assertions are
+named in the wave evidence (`evidence/cellwork/vedit-p0/`).
+
+**Added — the native surface grew up (protocol 1, view v2).** The `dshGo` manifest now contributes **two
+panels** (`mpd`, the workbench; `mpd-team`, the team board — both in `session.tab`, `features` and
+`chat.panel`), one **composer strip** (`mpd-status`), two composer actions and two message actions — each PANEL
+with its own hand-written static v1 fallback under `dsh-go/views/`. Both panels are built with a new PURE
+view kit in the adapter (`packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts`): typed component builders,
+the app's three budgets, `adaptView` for older apps, `lintDesign` for the visual rules, and `toolCard()`
+for cards. The panels follow the app's theme — one `tinted` hero per tab, metric tiles inside a grid,
+statuses that always carry a word, designed empty states, at most one primary action — write no colour,
+radius, gradient or size of their own, and downgrade to v1 on an app below 1.0.9.
+
+**Added — tool cards.** The team, roster, workmate, memory, verification, boulder and watchdog tools now
+carry an `output.presentationMeta` card: a v1 view with a title, metrics and at most one table, no data
+bindings and no buttons, inside the 8 KiB / 40-node / depth-6 tool-card budget. A failed build returns
+`{}` and the app draws its generic row; each tool's `render` is untouched. Tool cards ride the ordinary
+tool result, so a **relay or SSH host renders them too** — they are the relay-safe half of this surface.
+
+**Added — three more adapter seams.** `dshGoOn`, `dshGoStrip` and `dshGoCaps` join
+`dshGoPresent` / `dshGoPanel` / `dshGoRefresh`, so an action handler, a strip data function and a
+capability read never name `ctx.dshGo` outside the adapter. `spec.view` now accepts a
+`(scope, caps)` function — async included — which is what lets a panel's tabs adapt per app.
+
+**Changed — the app's 3-second rule replaced the 4-second timeout.** The app runs an effect only if it
+reaches it within three seconds of the tap, so the panel's in-handler 4-second timeout is gone: a handler
+waits at most two seconds and then answers the protocol's **deferred** shape
+`{ pending: { label, timeoutMs }, result }`, whose result may take up to 60 s.
+
+**Added — the DSH Go gate.** `node scripts/verify-dshgo-views.ts` (with `--self-test`) validates the
+manifest and the declared static views: `v === 1`, the id pattern and uniqueness across slots, the
+per-slot counts, the 16 KiB manifest budget, and every declared view (present, parsable, ≤ 32 KiB, inside
+the panel budget, no v2-only component). It lints the DECLARED views only — the live v2 trees are covered
+by each package's unit tests.
+
 ## 0.17.0 — 2026-11-02 — a drive surface: team actions over HTTP, a question relay, and a DSH Go panel
 
 Four waves since 0.16.4 — the mailbox, the host pair, the Workbench page, and the drive surface. The

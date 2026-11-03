@@ -4,9 +4,9 @@
 
 本指南的英文原件为 `docs/extensions.md`（本文件 `docs/extensions.zh-CN.md` 是其简体中文版，内容一一对应）。
 
-`@mpd-dsh/mpd` bundle 的扩展接口：通过一份**冻结契约**，让一个插件包——或者磁盘上的一个普通目录——在不改动核心 bundle 的前提下贡献 **skill**、**flow**、**MCP server** 与 **role**。Loader row id 为 `mpd-ext`，cordis service 为 `mpdExtensions`。
+`@mpd-dsh/mpd` bundle 的扩展接口：通过一份**冻结契约**，让一个插件包（或者磁盘上的一个普通目录）在不改动核心 bundle 的前提下贡献 **skill**、**flow**、**MCP server** 与 **role**。Loader row id 为 `mpd-ext`，cordis service 为 `mpdExtensions`。
 
-本指南面向希望加入 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.ts`），每条命令都按原样运行过——见 [§12](#12-本指南中的示例如何验证)。
+本指南面向希望加入 编写流程、HarmonyOS 移植流程、skill 包或 MCP server 的插件作者。下文每个示例都取自实际发布的代码（`packages/mpd-ext-plugin`、`extensions/mpd-ext-example`、`scripts/mpd-ext.ts`），每条命令都按原样运行过：见 [§12](#12-本指南中的示例如何验证)。
 
 ---
 
@@ -19,7 +19,7 @@
 | | 安装面（自带 `dsh.bundle.patch` 的包） | 扩展接口（本指南） |
 |---|---|---|
 | 你交付什么 | 一个带 patch layer 的 npm 形态包 | 一个含 `mpd-ext.json` 的目录，或一个调用 `register()` 的 plugin row |
-| 谁来安装 | 用户执行 `dsh plugin --profile <p> add <package>` | 没人需要安装——manifest 文件从已知根目录被自动发现 |
+| 谁来安装 | 用户执行 `dsh plugin --profile <p> add <package>` | 没人需要安装：manifest 文件从已知根目录被自动发现 |
 | 可贡献什么 | patch row 能组合的一切（rows、MCP server、tool、preset） | skill、flow、MCP server（stdio）、role |
 | 校验方式 | loader 自身的 row/schema 规则 | §3 的冻结契约，逐项校验 |
 | 更新运行中的宿主 | 重装 + 重启 | 直接改 manifest；project plane 按调用重新读取 |
@@ -27,8 +27,8 @@
 本接口在安装面之上新增四件事：
 
 1. 一份**冻结契约**（`packages/mpd-ext-plugin/src/sdk.ts`），让每个贡献者以同一方式声明能力，并获得同一套校验、命名空间与失败策略；
-2. **数据面**（data plane）——一个含 `mpd-ext.json` 及其资源的目录：无需打包、无需 `dsh plugin add`、无需改动 profile；
-3. **flow**——声明式流程（JSON），被渲染成 skill 文档，因为 harness 自身没有 flow seam；
+2. **数据面**（data plane）：一个含 `mpd-ext.json` 及其资源的目录：无需打包、无需 `dsh plugin add`、无需改动 profile；
+3. **flow**：声明式流程（JSON），被渲染成 skill 文档，因为 harness 自身没有 flow seam；
 4. 一套**运行时 stdio MCP 桥**，用于那些不应成为 profile patch row 的 server（按项目或按用户目录的 server、无法重装 profile 的场景）。
 
 选择经验：要交付的是一个带自有 row、preset 或自定义 tool 的一等包，就用**安装面**；要交付的是能力内容（skill、flow、辅助 MCP server、专家 role），且希望用户能按项目或按 home 目录直接放入，就用**扩展**。
@@ -37,7 +37,7 @@
 
 两种形态产出同一条 registry 记录，唯一差别是 `origin` 元数据（`"plugin"` | `"directory"`），而 `origin`/`plane` 永远不是作者输入。
 
-**代码面（code plane）**——任何 plugin row 在自身 apply 时注册：
+**代码面（code plane）**：任何 plugin row 在自身 apply 时注册：
 
 ```ts
 import { defineExtension } from "@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/sdk.js"
@@ -58,7 +58,7 @@ ext?.register(
 
 `defineExtension()` 只是给作者用的恒等辅助函数（提供类型、零运行时行为）；真正的调用是 `register(descriptor, { root })`。请**惰性**解析服务（`ctx.get`），绝不要写进 `inject`：在本 harness 中，声明了却未注册的服务是一个致命的 `pending` loader entry，而扩展 row 完全可能不存在。
 
-**数据面（data plane）**——目录名即 root，内含一个 manifest 文件：
+**数据面（data plane）**：目录名即 root，内含一个 manifest 文件：
 
 ```text
 ~/.mpd/extensions/authoring-flows/
@@ -72,7 +72,7 @@ ext?.register(
 └── server.ts            # { "mcp": [{ "command": "node", "args": ["server.ts"] }] }
 ```
 
-manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`），且必须是严格 JSON——与 `.mpd/mpd.jsonc` 不同，manifest 不支持 JSONC 注释。
+manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`），且必须是严格 JSON：与 `.mpd/mpd.jsonc` 不同，manifest 不支持 JSONC 注释。
 
 ## 3. 描述符参考
 
@@ -88,7 +88,7 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 | `enabled` | boolean | 否 | `true` | 配置里的 `disable` 仍然优先于它（§4.3） |
 | `contributes` | object | 否 | `{}` | 只允许下面四个键；其它键一律拒绝 |
 
-**任何位置的未知键——顶层、`contributes` 内、任一条目内——都会逐项被拒绝并记录在该扩展上。** 这是刻意设计：本仓库已经实测过相反方向的失败模式（schema 静默保留未知键，于是被改名的选项被接受却毫无作用）。在这里，拼错一个键是响亮的。
+**任何位置的未知键（顶层、`contributes` 内、任一条目内）都会逐项被拒绝并记录在该扩展上。** 这是刻意设计：本仓库已经实测过相反方向的失败模式（schema 静默保留未知键，于是被改名的选项被接受却毫无作用）。在这里，拼错一个键是响亮的。
 
 ### 3.2 `contributes`
 
@@ -99,19 +99,19 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 | `mcp` | array | `serverName`、`transport`、`command` | `args`（`[]`）、`env`（`{}`）、`cwd`（`"."`）、`toolCallTimeoutMs`（`60000`）、`connectTimeoutMs`（`10000`） |
 | `roles` | array | `name`、`persona` | `description`（`""`）、`readonly`（`false`）、`provider` + `model`（必须同时提供） |
 
-`skills` 条目——一个目录，其**直接子目录**各自含一个 `SKILL.md`：
+`skills` 条目：一个目录，其**直接子目录**各自含一个 `SKILL.md`：
 
 ```json
 { "root": "skills", "rank": 300 }
 ```
 
-`flows` 条目——一个存放 `*.json` flow 文档的目录（一个文件一个 flow）：
+`flows` 条目：一个存放 `*.json` flow 文档的目录（一个文件一个 flow）：
 
 ```json
 { "dir": "flows", "rank": 300 }
 ```
 
-`mcp` 条目——一个 stdio MCP server（v1 不支持 HTTP/SSE）：
+`mcp` 条目：一个 stdio MCP server（v1 不支持 HTTP/SSE）：
 
 ```json
 {
@@ -126,7 +126,7 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 }
 ```
 
-`roles` 条目——名册中的一位专家：
+`roles` 条目：名册中的一位专家：
 
 ```json
 {
@@ -144,9 +144,9 @@ manifest 文件名固定为 `mpd-ext.json`（`MPD_EXT_CONTRACT.manifestFile`）�
 | 取值 | 规则 | 来源 |
 |---|---|---|
 | 扩展 `id` | `^[a-z0-9][a-z0-9-]{0,63}$` | `MPD_EXT_CONTRACT.idPattern` |
-| skill 名（frontmatter `name`）与 **flow id** | `^[a-z0-9]+(?:-[a-z0-9]+)*$` | `skillNamePattern`——flow id 必须满足这条**更严**的语法，因此 `a--b` 会被拒绝 |
+| skill 名（frontmatter `name`）与 **flow id** | `^[a-z0-9]+(?:-[a-z0-9]+)*$` | `skillNamePattern`：flow id 必须满足这条**更严**的语法，因此 `a--b` 会被拒绝 |
 | MCP `serverName` | `^[A-Za-z0-9_-]{1,32}$` | `serverNamePattern`（与 harness 的 `dsh-mcp-client` 常量一致） |
-| 资源引用（`skills.root`、`flows.dir`、`roles.persona`） | 只能是扩展根目录相对路径 | 绝对路径与 `..` 逃逸会被逐项拒绝——没有任何扩展能伸手到自己的 root 之外 |
+| 资源引用（`skills.root`、`flows.dir`、`roles.persona`） | 只能是扩展根目录相对路径 | 绝对路径与 `..` 逃逸会被逐项拒绝：没有任何扩展能伸手到自己的 root 之外 |
 
 `rank` 必须显式声明，只对 `skills` 与 `flows` 有意义。完整阶梯，**同层内数值越小越优先**：`100` project-dsh < `200` project-agents < `250` runtime < `300` custom（默认）< `400` user-dsh < `500` user-agents < `600` bundled。
 
@@ -168,7 +168,7 @@ flow 文件是一个 JSON 对象，键如下（校验逻辑见 `packages/mpd-ext
 | `steps[].tool` | string | 否 | 工具提示（`read`、`bash`、`mcp__server__tool` …） |
 | `steps[].output` | string | 否 | 该步骤预期产出什么 |
 
-未知键会逐文件被拒绝。flow 是**声明式**的：渲染器输出一份 `SKILL.md` 形态的文档（`name` = flow id，`content` = 渲染后的流程）进入 skills 目录。没有任何东西会替你执行 flow——模型用自己的工具按步骤推进。
+未知键会逐文件被拒绝。flow 是**声明式**的：渲染器输出一份 `SKILL.md` 形态的文档（`name` = flow id，`content` = 渲染后的流程）进入 skills 目录。没有任何东西会替你执行 flow，模型用自己的工具按步骤推进。
 
 ## 4. 发现机制：三个根目录，两种生命周期
 
@@ -176,13 +176,13 @@ flow 文件是一个 JSON 对象，键如下（校验逻辑见 `packages/mpd-ext
 
 | 根目录 | 生命周期 | 可贡献 |
 |---|---|---|
-| `<session workspace>/.mpd/extensions/*/mpd-ext.json` | **按调用**——工具侧从调用会话的 workspace 解析；skills 面走 harness 自己的 `provider.list({ cwd })` | **仅 skills + flows** |
+| `<session workspace>/.mpd/extensions/*/mpd-ext.json` | **按调用**：工具侧从调用会话的 workspace 解析；skills 面走 harness 自己的 `provider.list({ cwd })` | **仅 skills + flows** |
 | `~/.mpd/extensions/*/mpd-ext.json` | 宿主机范围，在 apply 时发现 | skills、flows、mcp、roles |
 | `<bundle>/extensions/*/mpd-ext.json` | 宿主机范围，apply 时从 bundle 路径发现 | skills、flows、mcp、roles |
 
 ### 4.2 project plane 为何受限
 
-本 harness 中 tool 与 provider 的注册是**进程级全局**的——它没有 session 作用域。因此"按会话的 MCP server 或名册 role"无法被如实表达，project 级 manifest 一旦声明它们，就会**针对该项**被响亮拒绝，理由原文为：
+本 harness 中 tool 与 provider 的注册是**进程级全局**的，它没有 session 作用域。因此"按会话的 MCP server 或名册 role"无法被如实表达，project 级 manifest 一旦声明它们，就会**针对该项**被响亮拒绝，理由原文为：
 
 > project-level extensions may contribute skills and flows only: tool and provider registration is
 > process-global and cannot be scoped to a session
@@ -191,7 +191,7 @@ flow 文件是一个 JSON 对象，键如下（校验逻辑见 `packages/mpd-ext
 
 ### 4.3 优先级、遮蔽与配置键
 
-id 相同时发现优先级为 **project → user → bundle**（先到者胜）。被遮蔽的条目会被记录并由 `mpd_ext_list`（`shadowed`）报告——永不致命，也永不静默。
+id 相同时发现优先级为 **project → user → bundle**（先到者胜）。被遮蔽的条目会被记录并由 `mpd_ext_list`（`shadowed`）报告：永不致命，也永不静默。
 
 配置位于 `.mpd/mpd.jsonc`（project 层）叠加在 `$DSH_HOME/mpd.jsonc`（user 层）之上（project 胜出）：
 
@@ -205,12 +205,12 @@ id 相同时发现优先级为 **project → user → bundle**（先到者胜）
 
 生效的启用状态判定顺序为：`disable[]` → `enable[]` → 描述符的 `enabled` 标志。在依赖这些键之前，有两个必须知道的诚实限制：
 
-- **`extensions.*` 是进程级的，不是会话级的。** `mpdConfig` 从进程层配置栈解析它，因此某个项目的 `enable`/`disable` 并不是按会话的开关。扩展接口刻意不在每次 skill 快照时调用 `reload(exec)`：那会让 skills provider 的视图与工具的视图互相矛盾，比一条写明的限制更糟。`extensions.roots[]` 这个键**不存在**——声明式根目录列表只会带来路径逃逸与优先级问题，对 v1 没有任何价值。
+- **`extensions.*` 是进程级的，不是会话级的。** `mpdConfig` 从进程层配置栈解析它，因此某个项目的 `enable`/`disable` 并不是按会话的开关。扩展接口刻意不在每次 skill 快照时调用 `reload(exec)`：那会让 skills provider 的视图与工具的视图互相矛盾，比一条写明的限制更糟。`extensions.roots[]` 这个键**不存在**，声明式根目录列表只会带来路径逃逸与优先级问题，对 v1 没有任何价值。
 - **enable/disable 只过滤被"提供"的内容**；它们从不作为注册的门禁。
 
 ## 5. 完整示例
 
-四种类型全部取自实际发布的参考扩展 `extensions/mpd-ext-example/`（默认禁用——启用它即可端到端观察本接口）。
+四种类型全部取自实际发布的参考扩展 `extensions/mpd-ext-example/`（默认禁用：启用它即可端到端观察本接口）。
 
 ### 5.1 skill（`skills`）
 
@@ -301,14 +301,14 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code
 }
 ```
 
-被贡献的 role 由 `mpd-roles-plugin` **按调用**解析：它在工具执行时惰性读取 registry（绝不是 apply 期的合并——那会静默丢掉所有扩展 row 晚于名册 apply 的 role）。此后它与基础专家完全一致：
+被贡献的 role 由 `mpd-roles-plugin` **按调用**解析：它在工具执行时惰性读取 registry（绝不是 apply 期的合并，那会静默丢掉所有扩展 row 晚于名册 apply 的 role）。此后它与基础专家完全一致：
 
 - `mpd_roles_list` 会连同其所属扩展列出它（`extension: <扩展 id>`），其稳定 id 带命名空间 `ext-<扩展 id>-<名称 slug>`；
 - `mpd_role_spawn` 可用声明的 `name` 以任意大小写/空格/连字符拼写称呼它，以该名称给 subagent 打标签，并对 `readonly: true` 的 role 施加与只读基础 role 相同的 write-deny 工具过滤；
 - `mpd_role_persona` 返回 persona 文本，`mpd_workmate_init base="<role 名>"` 可将其用作 workmate BASE 模板；
 - `provider` + `model`（必须同时提供）成为它的 route；两者都缺省则使用名册默认值。
 
-**role 不会自己变成 teammate。** 队友名册是 Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入 plan 并批准出来的；它是一个面向模型的工具调用，而不是注册面，因此扩展插件无法往里面加成员。五个官方**创作类**动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update` —— 在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板；其边界是：直接调用团队**服务**的行（官方执行器回退路径）不是工具调用，**不受**这道门约束。请以一次性 spawn 或 workmate base 的方式使用它。
+**role 不会自己变成 teammate。** 队友名册是 Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入 plan 并批准出来的；它是一个面向模型的工具调用，而不是注册面，因此扩展插件无法往里面加成员。五个官方**创作类**动词（`spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`） 在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板；其边界是：直接调用团队**服务**的行（官方执行器回退路径）不是工具调用，**不受**这道门约束。请以一次性 spawn 或 workmate base 的方式使用它。
 
 ## 6. 失败与冲突策略
 
@@ -320,7 +320,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code
 | `apiVersion` ≠ 1，或 `id` 不合法 | 整个扩展被**拒绝**（无法安全解释它的任何部分） |
 | 资源路径为绝对路径或用 `..` 逃逸 | 该项被拒绝 |
 | project manifest 声明 `mcp` 或 `roles` | 逐项拒绝，理由见 §4.2 原文 |
-| `SKILL.md` 的 `name` 或 `description` 缺失/不合法 | 该候选**被跳过并告警**——刻意比 harness 更严：harness 把 `invocation` 视为可选，却在每个会话的 pre-step 中无保护地解引用它 |
+| `SKILL.md` 的 `name` 或 `description` 缺失/不合法 | 该候选**被跳过并告警**：刻意比 harness 更严：harness 把 `invocation` 视为可选，却在每个会话的 pre-step 中无保护地解引用它 |
 | **同一个扩展内**两个 skill 同名 | 跳过 + 告警 + 记录加载错误 |
 | skill 名与更低 rank 的 provider 相撞 | 由 rank 阶梯裁定，落败的候选会被 harness 丢弃；现在两种情形都会被报告：两个**扩展**之间的相撞会标注在落败方（其错误列表里出现 `skill surface:`，写明赢家与双方的 rank），而每个被声明的名字都会由 `mpd_ext_list` / `mpd_ext_show` 与 harness 自身的目录比对（`skillServing.served` / `.notServed`） |
 | MCP 工具名与已存在的工具相撞 | 该工具被跳过并记录；一次失败的 swap 之后存活的工具数是 **零**，绝不会是半挂载的 server |
@@ -331,7 +331,7 @@ manifest 条目及其 persona 文件（`extensions/mpd-ext-example/personas/code
 
 ## 7. 面向模型的工具
 
-v1 提供**四个**工具——早期计划里数到五个，其中 `mpd_ext_reload` 已被**砍掉**：reload 是一个自带失败类别的状态机，而本仓库实测的规则是插件模块的改动本来就需要进程重启。**诚实的 reload 就是重启。**
+v1 提供**四个**工具：早期计划里数到五个，其中 `mpd_ext_reload` 已被**砍掉**：reload 是一个自带失败类别的状态机，而本仓库实测的规则是插件模块的改动本来就需要进程重启。**诚实的 reload 就是重启。**
 
 | 工具 | 它回答什么 |
 |---|---|
@@ -349,7 +349,7 @@ v1 提供**四个**工具——早期计划里数到五个，其中 `mpd_ext_rel
 ```sh
 # 1. 直接脚手架出一个最小、可加载的扩展到一个发现根目录。
 #    四种类型都贡献时，user plane 才是正确选择；project plane
-#    （<workspace>/.mpd/extensions）只接受 skills + flows。
+#（<workspace>/.mpd/extensions）只接受 skills + flows。
 bun scripts/mpd-ext.ts scaffold demo-ext --dir ~/.mpd/extensions
 # [mpd-ext] scaffolded "demo-ext" at /home/<you>/.mpd/extensions/demo-ext
 #   contributes: 1 skill(s), 1 flow(s), 1 role(s), 0 mcp server(s)
@@ -365,7 +365,7 @@ bun scripts/mpd-ext.ts validate ~/.mpd/extensions/demo-ext
 bun scripts/mpd-ext.ts list
 
 # 4. 编辑 manifest：写入你的真实内容并把 "enabled": true
-#    （脚手架出来的扩展默认是禁用的，这是刻意的）。
+#（脚手架出来的扩展默认是禁用的，这是刻意的）。
 $EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 
 # 5. 重启 dsh —— v1 没有 reload 工具；重启**就是** reload。
@@ -376,7 +376,7 @@ $EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 #    mpd_roles_list    -> <role 名称> [..., extension:demo-ext]
 ```
 
-不修改 manifest 也可启用：描述符里写 `"enabled": true`，或在 `.mpd/mpd.jsonc` 里写 `extensions.enable: ["demo-ext"]`（§4.3）。被**禁用**的扩展在任何地方都不贡献——skill、flow、MCP、role 皆无；另外 CLI 的 `list` 展示的是 manifest 自身的标志，而 `mpd_ext_list` 展示的是**生效**状态（因此当配置列表覆盖 manifest 时，两者可以不同）。
+不修改 manifest 也可启用：描述符里写 `"enabled": true`，或在 `.mpd/mpd.jsonc` 里写 `extensions.enable: ["demo-ext"]`（§4.3）。被**禁用**的扩展在任何地方都不贡献，skill、flow、MCP、role 皆无；另外 CLI 的 `list` 展示的是 manifest 自身的标志，而 `mpd_ext_list` 展示的是**生效**状态（因此当配置列表覆盖 manifest 时，两者可以不同）。
 
 CLI 也会自检：
 
@@ -384,7 +384,7 @@ CLI 也会自检：
 bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list，仅使用临时目录
 ```
 
-关于 `validate` 输出的一点说明：它会为每个已声明的 MCP server 打印一条 `pending` 记录，因为 CLI 是一个**离线检查器**——它只校验契约，从不连接任何东西。运行时则由桥在 apply 阶段连接 server，`mpd_ext_show` / `mpd_ext_list` 会用该 server 的实时状态（`connecting` / `connected` / `unavailable` / `failed` / `disabled`）取代那条记录。请把 `pending` 行理解为"已声明，状态尚未观测"。
+关于 `validate` 输出的一点说明：它会为每个已声明的 MCP server 打印一条 `pending` 记录，因为 CLI 是一个**离线检查器**，它只校验契约，从不连接任何东西。运行时则由桥在 apply 阶段连接 server，`mpd_ext_show` / `mpd_ext_list` 会用该 server 的实时状态（`connecting` / `connected` / `unavailable` / `failed` / `disabled`）取代那条记录。请把 `pending` 行理解为"已声明，状态尚未观测"。
 
 ## 9. MCP：安装面 row 与运行时桥
 
@@ -401,26 +401,26 @@ bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list，仅使用�
 
 当 server 属于"你的包**本身**是什么"的一部分（并且你想要 harness 自身的 client 语义、传输与重连行为）时，选**安装面**；当 server 是用户应当能不改 profile 就增删的内容、且 stdio 足够时，选**运行时桥**。
 
-桥复刻了 harness 的公开命名（`mcp__<server>__<tool>`，64 字符上限，有损变换时追加 `_<hash>`），因此在一条路径上写下的工具调用在另一条路径上依然可用。它对**外来 `output.schema`** 也采用 harness 的态度：满足受支持子集就保留，否则**丢弃的是 schema、保留的是工具**——该工具会在没有 `structuredContent` 的情况下注册，并记录原因：绝不重写第三方的 schema（被重写就不再描述 server 实际返回的内容），而且 harness 自带的 `supportedOutputSchema` 正是这么做的。`inputSchema` 会被投影到受支持子集，且**根会被归一化到 object**（工具调用携带的永远是一个参数对象，因此标量或数组根会把载荷移入单一的 `value` 属性，并作为一条 notice 记录）；只有连参数都无法描述的工具才会被跳过。参数净化器是对未来 harness 的纵深防御（本版本在注册时并不校验 `parameters`）。
+桥复刻了 harness 的公开命名（`mcp__<server>__<tool>`，64 字符上限，有损变换时追加 `_<hash>`），因此在一条路径上写下的工具调用在另一条路径上依然可用。它对**外来 `output.schema`** 也采用 harness 的态度：满足受支持子集就保留，否则**丢弃的是 schema、保留的是工具**，该工具会在没有 `structuredContent` 的情况下注册，并记录原因：绝不重写第三方的 schema（被重写就不再描述 server 实际返回的内容），而且 harness 自带的 `supportedOutputSchema` 正是这么做的。`inputSchema` 会被投影到受支持子集，且**根会被归一化到 object**（工具调用携带的永远是一个参数对象，因此标量或数组根会把载荷移入单一的 `value` 属性，并作为一条 notice 记录）；只有连参数都无法描述的工具才会被跳过。参数净化器是对未来 harness 的纵深防御（本版本在注册时并不校验 `parameters`）。
 
 ## 10. 信任模型
 
-- **代码面**扩展就是一个 plugin row：`register()` 由运维者已经安装的代码在宿主进程内调用。它以**进程内、完全信任**的方式运行——它拥有宿主所能做的一切。这里没有沙箱，也没有尝试去造一个。
-- **数据面**扩展是内容而非代码：skill 与 flow 是提供给模型的文本，其资源不会越出自己的 root（路径经过校验，§3.3）。它的可信度等于它所在目录的可信度——任何能写 `~/.mpd/extensions/` 的东西都能改变模型读到什么。
+- **代码面**扩展就是一个 plugin row：`register()` 由运维者已经安装的代码在宿主进程内调用。它以**进程内、完全信任**的方式运行，它拥有宿主所能做的一切。这里没有沙箱，也没有尝试去造一个。
+- **数据面**扩展是内容而非代码：skill 与 flow 是提供给模型的文本，其资源不会越出自己的 root（路径经过校验，§3.3）。它的可信度等于它所在目录的可信度，任何能写 `~/.mpd/extensions/` 的东西都能改变模型读到什么。
 - **MCP server** 是从 manifest 启动的**子进程**：你写的 command 会被执行。它的环境由一份安全继承清单构建，并剔除凭据形态的变量名（`*_TOKEN`、`*_KEY`、`*_SECRET`、`*PASSWORD*`、`*_CREDENTIAL*`），其 stderr 被截取为有界尾部供 `mpd_ext_show` 展示，插件释放时子进程会被回收。除此之外子进程不受限制：manifest 就是一次信任决策，与 patch row 完全相同。
 
 ## 11. v1 限制与后续项
 
 直说在前，免得有人从失败里才发现：
 
-- **仅 stdio MCP**——不支持 HTTP/SSE 传输，不支持 MCP resources 或 prompts（只有工具）。
-- **仅 JSON flow 文件，且这是刻意的**——这是一项已关闭的产品决定，不是待办：flow 语料用 `JSON.parse` 读取（`packages/mpd-ext-plugin/src/flows.ts`），零依赖规则禁止运行时引入 YAML 解析器，因此 YAML **不在计划内**。flow 是声明式的，没有执行状态机。
-- **不支持扩展贡献 agent preset**——preset 面被刻意排除在范围外（没有干净的运行时 seam）。
-- **扩展 role 不会自己变成 teammate**——只有 Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入并批准 plan，才存在队友（官方 `spawn_teammate` 工具在工具边界被**拒绝**，§5）。
-- **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。
+- **仅 stdio MCP**：不支持 HTTP/SSE 传输，不支持 MCP resources 或 prompts（只有工具）。
+- **仅 JSON flow 文件，且这是刻意的**，这是一项已关闭的产品决定，不是待办：flow 语料用 `JSON.parse` 读取（`packages/mpd-ext-plugin/src/flows.ts`），零依赖规则禁止运行时引入 YAML 解析器，因此 YAML **不在计划内**。flow 是声明式的，没有执行状态机。
+- **不支持扩展贡献 agent preset**：preset 面被刻意排除在范围外（没有干净的运行时 seam）。
+- **扩展 role 不会自己变成 teammate**：只有 Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入并批准 plan，才存在队友（官方 `spawn_teammate` 工具在工具边界被**拒绝**，§5）。
+- **没有 reload**：重启 dsh；失败的 MCP server 会在下次启动时重试。
 - **`extensions.*` 配置是进程级、不是按会话的**（§4.3），因为 `mpdConfig` 是 apply 期的进程级快照。
-- **跨 provider 的 skill 遮蔽需要读一次目录才可见**——我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。
-- **被名册拒绝的 role 现在两侧都会报告。** `mpd_ext_list` 会重新推导出相同的拒绝原因（扩展 `errors` 中的 `refused: …` 行，由 `src/registry.ts` 的 `annotateRoleSurfaces` 生成），并且只列出可用的 role 名，因此其视图与 `mpd_roles_list.refused` 一致——原先的后续项已经关闭。
+- **跨 provider 的 skill 遮蔽需要读一次目录才可见**：我们自己的注册表只能比较扩展之间，因此 `mpd_ext_list` / `mpd_ext_show` 会去问 harness 的目录（`ctx.skills.list`），并把每个声明报成 `served` 或 `notServed`；若这次读取失败，报告会给出 `checked: false` 与原因，而不是猜测。
+- **被名册拒绝的 role 现在两侧都会报告。** `mpd_ext_list` 会重新推导出相同的拒绝原因（扩展 `errors` 中的 `refused: …` 行，由 `src/registry.ts` 的 `annotateRoleSurfaces` 生成），并且只列出可用的 role 名，因此其视图与 `mpd_roles_list.refused` 一致：原先的后续项已经关闭。
 - **没有 GUI 面板、没有市场、没有远程下载、没有版本求解。**
 - 特定语言与领域的能力面**本身不在此构建**：本版本交付的是让它们作为独立扩展或独立包到来的接口。
 
@@ -443,7 +443,7 @@ bun scripts/mpd-ext.ts --self-test
 grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/mpd-ext-plugin/src/sdk.ts
 ```
 
-若本文档中的示例与实际代码出现分歧，以代码为准——契约常量位于 `packages/mpd-ext-plugin/src/sdk.ts`，而且 CLI 接受的 manifest 就是 loader 接受的 manifest，因为二者调用的是同一个校验器。
+若本文档中的示例与实际代码出现分歧，以代码为准：契约常量位于 `packages/mpd-ext-plugin/src/sdk.ts`，而且 CLI 接受的 manifest 就是 loader 接受的 manifest，因为二者调用的是同一个校验器。
 
 ## 13. 常见问题
 
@@ -463,4 +463,4 @@ grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/m
 
 **flow 会执行什么吗？** 不会。它是一份被渲染成 skill 文档的流程；模型用自己的工具按步骤推进。
 
-**我能不能仍然把辅助 MCP server 声明为 patch row？** 可以——那正是安装面，§9 说明了何时它是更好的选择。
+**我能不能仍然把辅助 MCP server 声明为 patch row？** 可以，那正是安装面，§9 说明了何时它是更好的选择。

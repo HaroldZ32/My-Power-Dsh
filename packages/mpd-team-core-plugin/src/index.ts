@@ -26,10 +26,14 @@
 // what makes a migration unreadable.
 import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
   acknowledge,
+  DEFAULT_MAIL_MAX_UNDELIVERED,
   inboxOf,
+  mailMaxUndeliveredOf,
   markDelivered,
   readMailbox,
   recordWake,
@@ -39,6 +43,7 @@ import {
   summarise,
   undeliveredOf,
   unreadOf as unreadMessages,
+  pageOf,
 } from "./mailbox-store"
 import { checkPermit, checkWaitTarget, issuePermit, readPermits, waitForReply } from "./mail-permit"
 import type { MailAnswer, MailQuestion } from "../../mpd-mail-protocol/src/index"
@@ -53,6 +58,7 @@ import {
   claimContract,
   classifyBlocker,
   clearHold,
+  listArchivedPlans,
   listContracts,
   newPlanId,
   placeHold,
@@ -61,6 +67,7 @@ import {
   readPlan,
   stagePlan,
   writePlan,
+  type ArchivedPlanSummary,
   type BlockerForm,
   type StagedMember,
   type StagedPlan,
@@ -75,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, runDispatch, TEAM_ACTIONS_SERVICE, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -117,10 +124,13 @@ import {
   writeTeam,
   TASK_KINDS,
   type TaskKind,
+  type TeamContextCheckpoint,
+  type TeamMemberMode,
   type TeamMemberRecord,
   type TeamRecord,
   type TeamTaskRecord,
 } from "./team-store"
+import { stageLabel, teamStage } from "./stage"
 import {
   isLiveTeam,
   readArchivedPlanIndex,
@@ -148,6 +158,57 @@ export const inject: string[] = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS)
  */
 export const TEAMS_SERVICE = "mpdTeams"
 
+/**
+ * One member's context occupancy, as {@link MpdTeamsService.memberContext} answers it.
+ *
+ * The two token numbers and the ratio are OBSERVED OR NULL. A reader that needs a budget must treat
+ * `windowTokens: null` as unmeasurable: the harness records the window the provider reported, and this
+ * bundle never substitutes a constant for one it did not see.
+ */
+export interface MemberContextReading {
+  /** The team asked about, when that id is on disk. */
+  teamId?: string
+  /** The member's board name, exactly as the roster stores it (or the spelling asked for when unknown). */
+  member: string
+  /** The seat mode the record carries; absent means the ordinary `member` seat. */
+  mode?: TeamMemberMode
+  /** True when the seat is fenced. */
+  fenced?: boolean
+  /** Why the seat was fenced, when the record names a reason. */
+  fencedReason?: string
+  /** Tokens the next request would carry; null when the meter reported none. */
+  usedTokens: number | null
+  /** The context window the model reported at runtime; null when none was recorded. */
+  windowTokens: number | null
+  /** `usedTokens / windowTokens`, or null when either side is unknown. */
+  ratio: number | null
+  /** Which of the two numbers above are real observations (`observed` | `no-window` | `unavailable`). */
+  provenance: DshContextPressure["provenance"]
+  /** The last context checkpoint the team plane recorded for this seat, for audit. */
+  contextCheckpoint?: TeamContextCheckpoint
+  /** Why the reading is incomplete — an unknown team, an unknown member, a seat never raised. */
+  reason?: string
+}
+
+/**
+ * One team's nesting depth, as {@link MpdTeamsService.depthBudget} answers it.
+ *
+ * The bound is the SAME knob cellwork reads (`cellwork.depthMax`), so a team and a cell cannot disagree
+ * about how deep the project may nest.
+ */
+export interface TeamDepthBudget {
+  /** The team asked about, when that id is on disk. */
+  teamId?: string
+  /** How many ancestors the parent chain has: 0 for a root team. */
+  depth: number
+  /** The configured nesting bound, read per call; the documented default when the knob is absent. */
+  depthMax: number
+  /** `depthMax - depth`, floored at 0: how many further levels this team may raise. */
+  remaining: number
+  /** Why the reading is incomplete — an unknown team id, or a chain that does not terminate. */
+  reason?: string
+}
+
 /** The read surface published as {@link TEAMS_SERVICE}; every member is synchronous and non-throwing. */
 export interface MpdTeamsService {
   /** Every team this workspace holds, newest first. */
@@ -156,12 +217,58 @@ export interface MpdTeamsService {
   get: (workspace: string, teamId: string) => TeamRecord | undefined
   /** The team bound to one Lead session, or undefined when that session has none. */
   active: (workspace: string, sessionId?: string) => TeamRecord | undefined
-  /** The tallies, edges, cycles and per-task rank of one team. */
-  summary: (record: TeamRecord) => ReturnType<typeof summariseTeam>
-  /** The visual state a renderer draws for one task of one team (`blocked` is derived here). */
+  /**
+   * The tallies, edges, cycles and per-task rank of one team, PLUS its derived `stage` (A1).
+   *
+   * `stage` is the first-match classification a reader acts on (`stage.ts#teamStage`), added beside the
+   * counts rather than folded into them: every existing key keeps its exact meaning, and no key that a
+   * caller already reads changes shape.
+   */
+  summary: (record: TeamRecord) => ReturnType<typeof summariseTeam> & { stage: string }
+  /**
+   * The visual state a renderer draws for one task of one team (`blocked` is derived here).
+   *
+   * STAGE-AWARE (A1): a task that is `claimed`/`in_progress` while the TEAM's stage is `person(...)`
+   * answers that stage instead of `running` — a board that cannot advance must never be drawn as working.
+   * Every other case is unchanged, so a task with its own definite state renders exactly as before.
+   */
   visual: (record: TeamRecord, taskId: string) => string
   /** The completed/total counts and the current task of one member. */
   progress: (record: TeamRecord, name: string) => ReturnType<typeof memberProgress>
+  /**
+   * One member's context occupancy, read from the harness token meter through the adapter.
+   *
+   * THE NUMBERS ARE OBSERVED OR NULL, never guessed: the window comes from whatever the provider last
+   * reported, so a reader that needs a budget must treat `windowTokens: null` as unmeasurable instead of
+   * substituting a constant. `provenance` says which of the two it is (`observed` | `no-window` |
+   * `unavailable`), and an unknown team or member answers `unavailable` with a reason rather than throwing.
+   * @param workspace - the workspace to read.
+   * @param teamId - the team whose roster is searched.
+   * @param memberName - the member, by display name or member id.
+   * @returns the occupancy, the seat state and the last recorded checkpoint.
+   */
+  memberContext: (workspace: string, teamId: string, memberName: string) => MemberContextReading
+  /**
+   * One team's nesting depth and the budget that depth leaves it.
+   *
+   * The chain is read from the record's own `parentTeamId` links (bounded, so a hand-edited cycle cannot
+   * spin), and the bound is the SAME knob cellwork reads (`cellwork.depthMax` in `mpd.jsonc`, default 3) —
+   * one depth policy for the whole bundle instead of one per engine.
+   * @param workspace - the workspace to read.
+   * @param teamId - the team whose chain is measured.
+   * @returns the depth, the configured bound and what remains.
+   */
+  depthBudget: (workspace: string, teamId: string) => TeamDepthBudget
+  /**
+   * Every archived plan this workspace holds, newest first, with the team each one became.
+   *
+   * The global-memory hook (D6) reads this on archive: it needs the plan identity, whether it was
+   * approved, and the team id, and re-deriving them from the filesystem would be a second reader of the
+   * archive layout.
+   * @param workspace - the workspace whose archive is listed.
+   * @returns the archived plans; an empty list when nothing is archived or the archive is unreadable.
+   */
+  archivedPlans: (workspace: string) => ArchivedPlanSummary[]
   /** The team ids this workspace holds, so a gate can ask "is any of these live?" without reading. */
   teamIds: (workspace: string) => string[]
   /** The member display names of one team, which is what the workmate in-use gate matches on. */
@@ -433,6 +540,28 @@ function blockerSentence(blockers: unknown): string {
   const forms = [...new Set(blockers.map((entry: { form?: string }) => String(entry?.form ?? "?")))].join("/")
   if (unknown.length === 0) return ` — blocked_by reads as ${forms}`
   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`
+}
+
+/**
+ * The WRITE-TIME warning a `create_task` call earns when a WRITING task declares no path (contract C4).
+ *
+ * WHY NON-BREAKING, and why only three kinds: an empty `write_scopes` list is legitimate for a row that
+ * really writes nothing, so the task is still created — but a `work`/`repair`/`integration` row whose
+ * frozen contract allows NO path stops its writer on the first edit, and the captain must hear that at
+ * the moment the scope was omitted instead of from a stalled member. `requirement`/`review` rows are
+ * exempt because they do not write, so warning about them would train a reader to ignore the field.
+ * @param kind - the kind the row will actually carry; absent means the store's own `work` default.
+ * @param writeScopes - the list the call declared, or undefined when it declared none at all.
+ * @param taskId - the id the row carries (`T<n>`), so the sentence names the row it is about.
+ * @param subject - the subject as the caller wrote it.
+ * @returns the warning sentence, or undefined when the row declares a path or does not write.
+ */
+function emptyScopesWarning(kind: TaskKind | undefined, writeScopes: readonly string[] | undefined, taskId: string, subject: string): string | undefined {
+  /** The kind the store will record for this row; `work` is the tier's declared default. */
+  const effectiveKind: TaskKind = kind ?? "work"
+  if (effectiveKind !== "work" && effectiveKind !== "repair" && effectiveKind !== "integration") return undefined
+  if ((writeScopes ?? []).length > 0) return undefined
+  return `task ${taskId} "${subject}" (${effectiveKind}) was created with NO write scopes. Its frozen contract allows NO path: its writer must stop on the first edit and ask the captain. Remedy: declare the scopes now, or amend the contract before the first write — a scope added after approval needs a re-freeze and a new verify loop.`
 }
 
 /**
@@ -943,6 +1072,161 @@ async function bundleApprovalEffects(ctx: { get?: (id: string) => unknown }, dsh
   }
 }
 
+/** The documented nesting bound used when `cellwork.depthMax` is absent or unusable (cellwork's own default). */
+const DEFAULT_DEPTH_MAX = 3
+
+/**
+ * The nesting bound this workspace declares, read through the optional `mpdConfig` service.
+ *
+ * THE SAME KNOB CELLWORK READS (`cellwork.depthMax`), deliberately: the refactor's whole point is that a
+ * team and a cell share ONE policy instead of each keeping its own copy. The accepted range mirrors
+ * cellwork's own knob rule (a whole number 1..8), and anything else falls back to the SAME documented
+ * default rather than failing a boot — a misconfigured knob must not make a read surface throw.
+ *
+ * ONE LAYER, DECLARED (review nit 3): this reads the `mpd.jsonc` layer only. Cellwork's own reader also
+ * accepts a ROW-config value (`cellwork.depthMax` in the patch's `config:` block); this row declares no
+ * config schema of its own, so a row-declared value would be invisible here. The shipped patch declares
+ * none, so there is no live divergence — and if one is ever added, it belongs in this reader too.
+ * @param service - the row's optional-service lookup (`ctx.get(id, false)`), contained by the caller.
+ * @returns the bound, never null and never zero.
+ */
+function depthMaxOf(service: (id: string) => unknown): number {
+  try {
+    /** The config row's published service, when this composition mounts it. */
+    const config = service("mpdConfig") as { get?: (key?: string) => unknown } | undefined
+    /** The declared value, read through the dotted key the knob lives under. */
+    const raw = typeof config?.get === "function" ? config.get("cellwork.depthMax") : undefined
+    if (typeof raw === "number" && Number.isInteger(raw) && raw >= 1 && raw <= 8) return raw
+  } catch {
+    // A throwing config service is a composition fact, not a reason to fail a reader: the default wins.
+  }
+  return DEFAULT_DEPTH_MAX
+}
+
+/**
+ * The undelivered-mail bound this workspace declares, read through the optional `mpdConfig` service.
+ *
+ * THE ONE KNOB BOTH SENDING TOOLS READ (contract C3): `cellwork_send` and `agent_teams_mail` pass the
+ * resolved number into the SAME `sendMany`, so the bound can never differ between the two surfaces and
+ * "use the other mail tool" is not an escape. The key is `mail.maxUndelivered`, the shipped default is
+ * 8, and an absent, unreadable or unusable value falls back to that default rather than failing a send.
+ * @param service - the row's optional-service lookup (`ctx.get(id, false)`), contained by the caller.
+ * @returns the bound to enforce; `0` means the bound is disabled.
+ */
+function mailBoundOf(service: (id: string) => unknown): number {
+  try {
+    /** The config row's published service, when this composition mounts it. */
+    const config = service("mpdConfig") as { get?: (key?: string) => unknown } | undefined
+    if (typeof config?.get !== "function") return DEFAULT_MAIL_MAX_UNDELIVERED
+    return mailMaxUndeliveredOf((key) => config.get?.(key))
+  } catch {
+    // A throwing config service is a composition fact, not a reason to fail a send: the default wins.
+    return DEFAULT_MAIL_MAX_UNDELIVERED
+  }
+}
+
+/**
+ * Walk one team's parent chain and answer its nesting depth.
+ *
+ * The walk is BOUNDED by a visited set, because a hand-edited record can carry a cycle and a read surface
+ * must answer rather than spin. A missing ancestor is reported, not hidden: the depth measured so far is
+ * still the honest part of the answer.
+ * @param workspace - the workspace to read.
+ * @param teamId - the team whose chain is measured.
+ * @returns the number of ancestors followed, and why the chain could not be read to its root.
+ */
+function teamDepthOf(workspace: string, teamId: string): { depth: number; reason?: string } {
+  /** The team ids already visited, so a cycle terminates instead of spinning. */
+  const seen = new Set<string>()
+  /** The team whose record is read next; `undefined` once the root is reached. */
+  let current: string | undefined = teamId
+  /** How many parent links were followed. */
+  let depth = 0
+  while (current !== undefined) {
+    if (seen.has(current)) return { depth, reason: `the parent chain of ${JSON.stringify(teamId)} is cyclic (it revisits ${JSON.stringify(current)})` }
+    seen.add(current)
+    /** The record whose parent link is followed next. */
+    const record = readTeam(workspace, current)
+    if (record === undefined) {
+      return { depth, reason: depth === 0 ? `no team record is named ${JSON.stringify(teamId)}` : `the parent chain of ${JSON.stringify(teamId)} names ${JSON.stringify(current)}, which is not on disk` }
+    }
+    if (record.parentTeamId === undefined || record.parentTeamId === "") return { depth }
+    current = record.parentTeamId
+    depth += 1
+  }
+  return { depth }
+}
+
+/**
+ * Read one member's context occupancy and seat state.
+ *
+ * The pressure read is delegated to the adapter's own seam (`contextPressure`), which answers
+ * `unavailable` for a session it cannot resolve instead of inventing numbers — so this function never
+ * guesses a window either. Total: an unknown team, an unknown member or a seat never raised all answer a
+ * `reason` beside null numbers rather than throwing.
+ * @param workspace - the workspace to read.
+ * @param teamId - the team whose roster is searched.
+ * @param memberName - the member, by display name or member id.
+ * @param pressureOf - the adapter's occupancy seam, bound by the caller.
+ * @returns the reading; `provenance` says which numbers are real observations.
+ */
+function memberContextOf(
+  workspace: string,
+  teamId: string,
+  memberName: string,
+  pressureOf: (target: string) => DshContextPressure,
+): MemberContextReading {
+  /** The record the member is looked up on. */
+  const record = readTeam(workspace, teamId)
+  if (record === undefined) {
+    return { member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: `no team record is named ${JSON.stringify(teamId)}` }
+  }
+  /** The seat this call names, by display name or by member id. */
+  const member = record.members.find((row) => row.name === memberName || row.id === memberName)
+  if (member === undefined) {
+    return { teamId, member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: `no member ${JSON.stringify(memberName)} is on the roster of team ${teamId}` }
+  }
+  // NO HANDLE MEANS NO OBSERVATION: a seat that was never raised has no session for the meter to report,
+  // and reading the empty string would be a lookup that answers "unavailable" for the wrong reason.
+  /** The occupancy the meter reports for this seat, or the honest empty reading when nothing was raised. */
+  const pressure: DshContextPressure = member.executorRef === undefined
+    ? { usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable" }
+    : pressureOf(member.executorRef)
+  return {
+    teamId,
+    member: member.name,
+    ...(member.mode === undefined ? {} : { mode: member.mode }),
+    ...(member.fenced === true ? { fenced: true } : {}),
+    ...(member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason }),
+    usedTokens: pressure.usedTokens,
+    windowTokens: pressure.windowTokens,
+    ratio: pressure.ratio,
+    provenance: pressure.provenance,
+    ...(member.contextCheckpoint === undefined ? {} : { contextCheckpoint: member.contextCheckpoint }),
+    ...(member.executorRef === undefined ? { reason: "the seat has no executor handle yet (never raised), so no session occupancy was observed" } : {}),
+  }
+}
+
+/**
+ * One team's depth budget, as {@link MpdTeamsService.depthBudget} answers it.
+ * @param workspace - the workspace to read.
+ * @param teamId - the team whose chain is measured.
+ * @param depthMax - the configured nesting bound, read by the caller.
+ * @returns the depth, the bound and the remaining levels.
+ */
+function depthBudgetOf(workspace: string, teamId: string, depthMax: number): TeamDepthBudget {
+  /** The measured chain. */
+  const chain = teamDepthOf(workspace, teamId)
+  return {
+    teamId,
+    depth: chain.depth,
+    depthMax,
+    remaining: Math.max(0, depthMax - chain.depth),
+    ...(chain.reason === undefined ? {} : { reason: chain.reason }),
+  }
+}
+
+
 /** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
 export function apply(ctx: any): void {
   /** The adapter facade — the only contact surface this row has with the harness seams. */
@@ -1431,15 +1715,41 @@ export function apply(ctx: any): void {
       if (!resolved.ok) return resolved
       return approveTeam(teamActionsDeps, resolved.caller)
     },
-    dispatch: async ({ sessionId, limit, dryRun }) => {
+    dispatch: async ({ sessionId, limit, dryRun, mode, reassign }) => {
       /** The session's caller, or the refusal this member answers instead of acting. */
       const resolved = callerForSession(sessionId)
       if (!resolved.ok) return resolved
       return runDispatch(teamActionsDeps, resolved.caller, {
         ...(limit === undefined ? {} : { limit }),
         ...(dryRun === undefined ? {} : { dryRun }),
+        ...(mode === undefined ? {} : { mode }),
+        ...(reassign === undefined ? {} : { reassign }),
       })
     },
+    // THE SEAT ACTIONS (D4). Every one is exec-free, so a panel button, a route and a tool call drive the
+    // SAME body; each answers `{ ok:false, error }` for a bad session instead of throwing into the caller.
+    fence: async ({ sessionId, member, reason }) => {
+      /** The session's caller, or the refusal this member answers instead of acting. */
+      const resolved = callerForSession(sessionId)
+      if (!resolved.ok) return resolved
+      return fenceMember(teamActionsDeps, resolved.caller, { member, ...(reason === undefined ? {} : { reason }) })
+    },
+    unfence: async ({ sessionId, member }) => {
+      /** The session's caller, or the refusal this member answers instead of acting. */
+      const resolved = callerForSession(sessionId)
+      if (!resolved.ok) return resolved
+      return unfenceMember(teamActionsDeps, resolved.caller, { member })
+    },
+    handoff: async ({ sessionId, content }) => {
+      /** The session's caller, or the refusal this member answers instead of acting. */
+      const resolved = callerForSession(sessionId)
+      if (!resolved.ok) return resolved
+      return writeMemberHandoff(teamActionsDeps, resolved.caller, { content })
+    },
+    // ADDRESSED BY WORKSPACE + TEAM, unlike its neighbours: the caller that abandons rows already holds
+    // both (cellwork's activation), and the service plane is the row-to-row one where a session binding
+    // would be a second way to name the same record.
+    cancelTasks: async (input) => cancelTasks(teamActionsDeps, input),
   }
   if (typeof (ctx as { provide?: unknown })?.provide === "function") {
     try {
@@ -1460,13 +1770,62 @@ export function apply(ctx: any): void {
         list: (workspace: string) => { try { return listTeams(workspace) } catch { return [] } },
         get: (workspace: string, teamId: string) => { try { return readTeam(workspace, teamId) } catch { return undefined } },
         active: (workspace: string, sessionId?: string) => recordFor(workspace, sessionId ?? "workspace"),
-        summary: (record: TeamRecord) => summariseTeam(record),
+        // ADDITIVE (A1): the derived stage rides beside the counts, computed by the ONE classifier so no
+        // surface re-derives it. The counts themselves are untouched.
+        summary: (record: TeamRecord) => ({ ...summariseTeam(record), stage: stageLabel(teamStage(record)) }),
         visual: (record: TeamRecord, taskId: string) => {
           /** The task asked about, or undefined when the id is not on this board. */
           const task = record.tasks.find((candidate) => candidate.id === taskId)
-          return task === undefined ? "unknown" : taskVisual(task, record.tasks)
+          if (task === undefined) return "unknown"
+          /** This task's own rendered state. */
+          const own = taskVisual(task, record.tasks)
+          // A1: the BOARD's need outranks a row's own busy state. A team waiting on a human must not be
+          // drawn as working just because one row is still marked in flight.
+          if (own === "running") {
+            /** The team's derived stage. */
+            const stage = teamStage(record)
+            if (stage.kind === "person") return stage.reason
+          }
+          return own
         },
         progress: (record: TeamRecord, name: string) => memberProgress(record, name),
+        // THE CONTEXT READING (D4). Wraps the adapter's occupancy seam, so the number is the SAME one the
+        // host's own status display shows and a null window stays unmeasurable instead of becoming a guess.
+        memberContext: (workspace: string, teamId: string, memberName: string) => {
+          try {
+            // The adapter is read through the row's lazy seam: a composition where it is not mounted yet
+            // answers `unavailable` rather than taking a render path down.
+            return memberContextOf(workspace, teamId, memberName, (target: string) => dsh.contextPressure(target))
+          } catch (error) {
+            return { member: memberName, usedTokens: null, windowTokens: null, ratio: null, provenance: "unavailable", reason: String((error as Error)?.message ?? error) }
+          }
+        },
+        // THE DEPTH BUDGET (D4): the parent-chain depth plus the SAME bound cellwork honours. A sub-cell
+        // refusal and this reading therefore cannot disagree about how deep the project may nest.
+        depthBudget: (workspace: string, teamId: string) => {
+          try {
+            return depthBudgetOf(workspace, teamId, depthMaxOf(teamActionsDeps.service))
+          } catch (error) {
+            return { teamId, depth: 0, depthMax: DEFAULT_DEPTH_MAX, remaining: DEFAULT_DEPTH_MAX, reason: String((error as Error)?.message ?? error) }
+          }
+        },
+        // THE ARCHIVE LISTING (D4/D6): the global-memory hook needs plan + approval + team, and the
+        // plan→team link lives on the TEAM record, so both stores are read here rather than by the caller.
+        archivedPlans: (workspace: string) => {
+          try {
+            /** Every archived plan this workspace holds, newest first. */
+            const plans = listArchivedPlans(workspace)
+            /** The team records, read ONCE so the listing stays one pass over the store. */
+            const records = listTeams(workspace)
+            return plans.map((plan) => {
+              /** The team this plan was approved into, when a record still names it. */
+              const team = records.find((record) => record.planId === plan.planId)
+              return team === undefined ? plan : { ...plan, teamId: team.teamId }
+            })
+          } catch {
+            return []
+          }
+        },
         teamIds: (workspace: string) => { try { return listTeams(workspace).map((record) => record.teamId) } catch { return [] } },
         memberNames: (workspace: string) => {
           try {
@@ -1533,7 +1892,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
+      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -1541,25 +1900,29 @@ export function apply(ctx: any): void {
         name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
         approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
-        replace: { type: "boolean", description: "create: to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; prompt is the instantiation prompt." },
+        replace: { type: "boolean", description: "create: replace an APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}." },
         // The canonical shape stays in the description because the context budget below is binding:
         // only the keys a caller really put somewhere else are declared as their own properties. The
         // C7-4 F1 requirement-chain fields (kind/coverageOf/sourceTaskId) ride inside `task`; `kind`
         // gained its own alias because a live call sent it BESIDE `task` and the arm read the nested
         // key only, silently storing `work` (contract amendment 2).
-        task: { type: "object", description: "create_task: {subject, description, blocked_by, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}; blocked_by or independent:true required." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}; blocked_by or independent required." },
         owner: { type: "string", description: "create_task: alias of task.owner." },
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: [] = root." },
         kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
-        dry_run: { type: "boolean", description: "approve: report what would be created; write nothing." },
+        dry_run: { type: "boolean", description: "approve: preview only." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
+      // THE dsh-Go TOOL CARD: a v1 tree the app draws in the chat log, built by the SAME pure builder
+      // the lane's unit test lints. `toolCard()` degrades to `{}` (the generic tool row) on any
+      // failure, so this never turns a working tool call into a broken card.
+      presentationMeta: toolCard(agentTeamsPlanCard),
       // THE DECLARED SHAPE OF EVERY BRANCH, stated honestly rather than loosely: `status` answers
       // `plan`/`hold`/`team`/`summary` as an OBJECT or as `null` when this session has no staged
       // plan, no hold and no team (measured 2026-10-02, defect 1: the schema said `object` only, so
@@ -1586,15 +1949,28 @@ export function apply(ctx: any): void {
           // The write-time blocker reading of `create_task` / `edit`: one `{ reference, form }` per
           // reference, declared so the harness's own output validation accepts it.
           blockers: { type: "array", items: { type: "object" } },
+          // THE EMPTY-WRITE-SCOPES WARNING (C4): a `work`/`repair`/`integration` row staged or appended
+          // with NO path carries the sentence naming that consequence and its remedy. Declared because
+          // this allowlist is explicit — an undeclared field would be dropped by output validation.
+          warning: { type: "string" },
+          // THE APPROVAL'S WORKMATE BINDINGS (W3-C): one `{ member, mode, workmate?, reason? }` per
+          // staged member, in plan order. Declared so the harness's output validation accepts the
+          // payload field the approval has carried since the workmate wave.
+          bindings: { type: "array", items: { type: "object" } },
         },
       },
-      render: (_args: any, value: any) =>
-        text(
-          value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
+      render: (_args: any, value: any) => {
+        /** The sentence this branch paints, before any write-time warning rides below it. */
+        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
             : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
               // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
               // answer the captain reads, with the board task and the exact text — because the whole
               // defect was a plan whose dangling references were accepted, stored and never mentioned.
+              // HOW each seat was bound (W3-C2): one line per staged member, so a captain reads the
+              // decision table in the approve ANSWER instead of only learning that a seat has a workmate.
+              + (Array.isArray(value.bindings) && value.bindings.length > 0
+                ? "\n" + value.bindings.map((binding: { member?: string; mode?: string; workmate?: string; reason?: string }) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join("\n")
+                : "")
               + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0
                 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry: { taskId?: string; references?: string[] }) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge`
                 : "")
@@ -1605,8 +1981,11 @@ export function apply(ctx: any): void {
             // The task-writing branches answer with the blockers reading, which is the sentence that
             // tells a captain at WRITE time whether their references can resolve (R21).
             : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
-            : describeStagedPlan(value?.plan),
-        ),
+            : describeStagedPlan(value?.plan)
+        /** The empty-scopes warning (C4) rides BELOW the branch's own sentence, so it is never lost. */
+        const warning = typeof value?.warning === "string" && value.warning !== "" ? `\nWARNING: ${value.warning}` : ""
+        return text(painted + warning)
+      },
     },
     execute: async (args: any, exec: DshToolExec) => {
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
@@ -1803,7 +2182,13 @@ export function apply(ctx: any): void {
           // a captain sees immediately which forms will resolve and which name nothing this plan can
           // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
           // reference (`3` before task 3 exists) is legitimate and reads as `position`.
-          return { plan: next, ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }) }
+          /** The empty-scopes warning this staged row earns, or undefined when it declares a path (C4). */
+          const scopesWarning = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject)
+          return {
+            plan: next,
+            ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }),
+            ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
+          }
         }
         // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
         // The measured defect: after approval this exact call answered "no team is staged in this
@@ -1849,6 +2234,8 @@ export function apply(ctx: any): void {
           appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject),
         )
         writeTeam(workspace, withDerivedPhase(next))
+        /** The empty-scopes warning this live row earns, or undefined when it declares a path (C4). */
+        const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject)
         return {
           team: next,
           task: appendedTask,
@@ -1856,6 +2243,7 @@ export function apply(ctx: any): void {
           ...(appendedTask.unresolvedBlockers === undefined
             ? {}
             : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }),
+          ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
         }
       }
 
@@ -1929,22 +2317,24 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
-      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
+      "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend"], description: "What to do." },
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
+        content: { type: "string", description: "handoff: document." },
         task_id: { type: "string", description: "the task id." },
-        claimant: { type: "string", description: "claim: who claims (default: caller)." },
-        note: { type: "string", description: "complete/fail: one line on the row." },
-        expected_revision: { type: "number", description: "the revision you decided on; stale refused." },
+        claimant: { type: "string", description: "claim: who claims (default caller)." },
+        note: { type: "string", description: "complete/fail: one line." },
+        expected_revision: { type: "number", description: "the revision you decided on." },
         blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } } } },
+      presentationMeta: toolCard(agentTeamsTaskCard),
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
       // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
       // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
       // release that closed nothing: `T1 -> pending (by undefined, attempt undefined)`. The release
@@ -1952,6 +2342,10 @@ export function apply(ctx: any): void {
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
+            // THE HANDOFF BRANCH FIRST: its answer also carries `mode`, which the context branch would read.
+            : value?.directive !== undefined ? `handoff written: ${value.path} (#${value.ordinal}) — end your turn now`
+              // THE CONTEXT BRANCH: occupancy, the seat state beside it, and the provenance of the numbers.
+              : value?.provenance !== undefined ? `${value.member ?? "this session"}${value.mode === undefined ? "" : ` [${value.mode}]`} used ${value.usedTokens ?? "?"} / ${value.windowTokens ?? "no window"} (${value.provenance})${typeof value.ratio === "number" ? ` = ${Math.round(value.ratio * 100)}%` : ""}${value.fenced === true ? " · FENCED" : ""}`
             : value?.idempotent !== undefined ? describeDepend(value)
             : value?.released !== undefined
               ? (value.released
@@ -1970,6 +2364,52 @@ export function apply(ctx: any): void {
       const delegated = sessionIsDelegatedChild(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
+
+      if (action === "context") {
+        // THE CALLER'S OWN OCCUPANCY (D4), read through the adapter's meter seam. The seat state is added
+        // from the record when this session resolves a team, so a member sees its own mode and fence
+        // beside the numbers instead of having to ask twice.
+        /** The occupancy the harness meter reports for this caller. */
+        const pressure = dsh.contextPressure(exec.agent)
+        /** The team this call resolves, when it resolves one; a seat-less caller still gets the numbers. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        /** The caller's own roster row, when the record names one. */
+        const member = resolved.record === undefined ? undefined : memberNamedBy(resolved.record, [sessionId])
+        return {
+          ...(resolved.record === undefined || member === undefined
+            ? {}
+            : {
+              teamId: resolved.record.teamId,
+              member: member.name,
+              ...(member.mode === undefined ? {} : { mode: member.mode }),
+              ...(member.fenced === true ? { fenced: true } : {}),
+              ...(member.fencedReason === undefined ? {} : { fencedReason: member.fencedReason }),
+              ...(member.contextCheckpoint === undefined ? {} : { contextCheckpoint: member.contextCheckpoint }),
+            }),
+          usedTokens: pressure.usedTokens,
+          windowTokens: pressure.windowTokens,
+          ratio: pressure.ratio,
+          provenance: pressure.provenance,
+        }
+      }
+
+      if (action === "handoff") {
+        // THE MEMBER'S CHECKPOINT DUTY (D4). The body is exec-free, so the SAME sequence backs the
+        // `mpdTeamActions.handoff` service member; this branch only binds the caller and rethrows a
+        // refusal as the tool error a caller has always observed.
+        /** The caller this action acts as, built exactly like every other team action's caller. */
+        const caller: TeamActionCaller = {
+          workspace, sessionId, lineage,
+          ...(exec.agent === undefined ? {} : { agent: exec.agent }),
+          ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+        }
+        /** The handoff's outcome, or the sentence it refused with. */
+        const outcome = await writeMemberHandoff(teamActionsDeps, caller, { content: String(args?.content ?? "") })
+        if (!outcome.ok) throw new Error(outcome.error)
+        /** The reply, without the result envelope's own flag. */
+        const { ok: _envelope, ...reply } = outcome
+        return reply
+      }
 
       if (action === "release") {
         // THE TEAM IS RESOLVED FIRST (R3). The ledger is team-scoped, so the team must be known before
@@ -2257,7 +2697,7 @@ export function apply(ctx: any): void {
         }
       }
 
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`)
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend | context | handoff)`)
     },
   }))
 
@@ -2265,25 +2705,28 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description:
-      "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member and RECORDS the pairing (no second pass can hand it to another member; the ledger is TEAM-SCOPED, so two teams in one workspace never shadow each other). Unpaired tasks are reported with their reason. `release` frees a pairing and reopens the task row to `pending`.",
+      "Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:\"roster\"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled, delivered. `release` frees a pairing, reopens the row. Lead-only: `reassign`, `mode:\"roster\".",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["run", "release"], description: "What to do." },
-        task_id: { type: "string", description: "release: the task to free." },
+        task_id: { type: "string", description: "release: the task." },
         dry_run: { type: "boolean", description: "run: report, send nothing." },
         limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
+        mode: { type: "string", enum: ["owner-only", "roster"], description: "run: default owner-only." },
+        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] first." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
+      presentationMeta: toolCard(agentTeamsDispatchCard),
       // `refused` and `holdRead` are declared because BOTH really appear: a pass with no team record
       // is refused, and a watchdog hold that could not be read is REPORTED rather than guessed at.
       // `reaped` is the C7-3 consistency pass's own report: the team ids it marked terminal on disk.
       // `forgotten` carries what the prune dropped: this team's dead rows, LEGACY bare-key rows, and
       // the rows of any team the reap just marked terminal.
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, reassigned: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
       render: (_args: any, value: any) =>
         text(
           // `refused` is checked FIRST: a release whose task half refused still carries `released`, and
@@ -2291,8 +2734,12 @@ export function apply(ctx: any): void {
           value?.refused !== undefined ? `refused: ${value.refused}`
             : value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
             : value?.halted !== undefined ? `halted: ${value.halted}`
-            : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
-            : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : "")).join("\n"),
+            // THE HAND-OVERS ARE ITS OWN SECTION: a reassignment that claimed a row but failed to deliver
+            // it is NOT a success, and dropping the sentence would make the two indistinguishable.
+            : [
+              ...(Array.isArray(value?.reassigned) ? value.reassigned.map((row: any) => `reassigned ${row.taskId} -> ${row.owner}${row.delivered === true ? "" : " (NOT delivered: " + String(row.reason ?? "unknown") + ")"}`) : []),
+              ...((value?.pairs?.length ?? 0) === 0 ? ["nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")] : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : ""))),
+            ].join("\n"),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -2340,6 +2787,51 @@ export function apply(ctx: any): void {
       // `dry_run` are forwarded with the SAME presence rules the inline code used (`0`/omitted = no
       // cap), so a tool caller's pairing decision is byte-for-byte the one it made before.
       /** The pass's outcome, or the sentence it refused with. */
+      // THE HAND-OVERS AND THE MODE ARE READ BY THE ACTION, not here (wave W2 gap 1): one validator now
+      // serves the tool AND every service caller, so both surfaces refuse a malformed request with the
+      // SAME sentence. The raw values go down and the refusal comes back on the outcome, which this branch
+      // rethrows unchanged.
+      /** Whether this call asks for an OWNERSHIP decision rather than a plain pass. */
+      const requestedMode: unknown = args?.mode
+      /** The raw `reassign` argument, forwarded untouched so the one validator sees exactly what arrived. */
+      const requestedReassign: unknown = args?.reassign
+      /** The readable hand-overs, used ONLY by the Lead gate below to know whether one was asked for. */
+      const requestedPairs = Array.isArray(requestedReassign) ? requestedReassign.length : (requestedReassign === undefined ? 0 : 1)
+      // ── WHO MAY RE-OWN WORK OR FORCE THE ROSTER RULE (PR #60 F1, CWE-862; R-W1A medium 2) ──
+      // A plain `run` stays open to any member: it only asks the ENGINE for a pass, and the engine decides.
+      // `reassign` is different — it re-owns a row for a member the caller names — and `mode:"roster"`
+      // re-enables substitution, which the owner-only default exists to remove. Both are OWNERSHIP
+      // decisions, the same class as `fence` (Lead-only in this wave) and `release` (Lead-only since
+      // PR #60 F1), so they are Lead-only ON THIS SURFACE.
+      //
+      // THE SERVICE PATH IS DELIBERATELY NOT GATED HERE: `mpdTeamActions.dispatch` is the row-to-row plane
+      // (a route or a panel resolves a live session and calls it), it documents that delegation as part of
+      // its contract, and the caller rules of a TOOL boundary are not re-implemented one layer down. The
+      // tool description states the same rule, so a model reads it before it calls.
+      /** Whether this call asks for an OWNERSHIP decision rather than a plain pass. */
+      const ownershipAsked = requestedPairs > 0 || requestedMode === "roster"
+      if (ownershipAsked) {
+        /** The team this caller acts on, or the sentence saying why none resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        // THE SAME SPELLINGS THE RELEASE BRANCH ACCEPTS, built the same way: the session id, the session
+        // TITLE, the official membership name, the caller's OWN roster row and the NARROWED ancestry — a
+        // member that merely carries the Lead as its parent may not borrow the Lead's identity here either.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller. */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage)
+        /** The caller's own spellings. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        if (!recordNamesLead(resolved.record, caller) && membership?.role !== "lead") {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may reassign a row or force mode:"roster" — a plain pass (agent_teams_dispatch {action:"run"}) is open to any member`)
+        }
+      }
+      /** The pass's outcome, or the sentence it refused with. */
       const outcome = await runDispatch(teamActionsDeps, {
         workspace, sessionId, lineage,
         ...(exec.agent === undefined ? {} : { agent: exec.agent }),
@@ -2347,6 +2839,8 @@ export function apply(ctx: any): void {
       }, {
         ...(typeof args?.limit === "number" ? { limit: args.limit } : {}),
         dryRun: args?.dry_run === true,
+        ...(requestedMode === undefined ? {} : { mode: requestedMode }),
+        ...(requestedReassign === undefined ? {} : { reassign: requestedReassign }),
       })
       if (!outcome.ok) throw new Error(outcome.error)
       /** The reply the tool has always answered: the payload without its envelope flag. */
@@ -2365,26 +2859,28 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description:
-      "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it. A `question`/`answer` object makes the row that kind; answers echo LABELS verbatim, never an index. `permit` (captain-only) grants a TTL-bounded blocking wait to a member; `wait` uses it and is refused without one, naming the caller's captain. Every other action stays non-blocking.",
+      "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept); a recipient past `mail.maxUndelivered` undelivered rows (default 8) is REFUSED — cellwork_send sends through this store, so the bound is SHARED. `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`/`more`/`nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
-        to: { type: "string", description: "send: a member id/name, `captain`/`lead`, or `*` to broadcast." },
-        subject: { type: "string", description: "send: one line the recipient sees first." },
-        body: { type: "string", description: "send: the message." },
-        question: { type: "object", description: "send: {questionId, question, options:[{label}], multiSelect?}." },
-        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels], custom?}." },
-        replyTo: { type: "string", description: "send: the message id this row replies to." },
-        member: { type: "string", description: "unread: whose inbox (defaults to the caller)." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
-        holder: { type: "string", description: "permit: member id/name the grant is for." },
-        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
-        ttlMs: { type: "number", description: "permit: grant lifetime in ms (default 60000, max 600000)." },
-        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
-        permitId: { type: "string", description: "wait: the captain-issued permit id." },
-        messageId: { type: "string", description: "wait: the message id being waited on." },
-        timeoutMs: { type: "number", description: "wait: block in ms (default 15000; capped by the permit and 60000)." },
+        to: { type: "string", description: "send: id/name, captain/lead, or *." },
+        subject: { type: "string", description: "send: subject." },
+        body: { type: "string", description: "send: body." },
+        question: { type: "object", description: "send: {questionId, question, options:[{label}]}." },
+        answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels]}." },
+        replyTo: { type: "string", description: "send: the message id it replies to." },
+        member: { type: "string", description: "unread: whose inbox." },
+        limit: { type: "integer", description: "Page size." },
+        offset: { type: "integer", description: "Start row." },
+        ids: { type: "array", items: { type: "string" }, description: "read: ids to acknowledge." },
+        holder: { type: "string", description: "permit: member the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: wait scope, default `answer`." },
+        ttlMs: { type: "number", description: "permit: lifetime ms (max 600000)." },
+        questionId: { type: "string", description: "permit: narrow to this question id." },
+        permitId: { type: "string", description: "wait: the captain's permit id." },
+        messageId: { type: "string", description: "wait: the awaited message id." },
+        timeoutMs: { type: "number", description: "wait: block ms (max 60000)." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -2400,7 +2896,7 @@ export function apply(ctx: any): void {
             // A WAIT reports its own outcome before the unread list, whose payload is also `messages`.
             : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))`
             : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms`
-            : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
+            : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` + (value.message.truncated === true ? ` (body truncated at 4000 chars of ${value.message.originalLength} — the pre-cut text is not kept)` : "")
             // A BROADCAST answers with one row per recipient, so it is checked before the unread list,
             // whose payload is also `messages` — otherwise a fan-out would render as several subjects.
             : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient`
@@ -2410,7 +2906,7 @@ export function apply(ctx: any): void {
             // the caller reads HOW MANY rather than a silently smaller total.
             : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n") + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "")
             : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
-            : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
+            : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n") + (typeof value?.more === "number" && value.more > 0 ? `\n(showing ${value.messages.length} of ${value.unreadTotal}; more: ${value.more} — next page offset=${value.nextOffset})` : ""),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -2513,6 +3009,9 @@ export function apply(ctx: any): void {
           // THE SENDER'S ROSTER ID: a row is addressed to `M1` while the answering session names
           // itself by session id, so the ownership rules need both spellings recorded at send time.
           ...(callerAddress === callerId ? {} : { fromMemberId: callerAddress }),
+          // THE BOUND (contract C3, D2): resolved per call from the workspace's `mail.maxUndelivered`,
+          // so this tool and `cellwork_send` enforce ONE number through the ONE `sendMany` path.
+          maxUndelivered: mailBoundOf(teamActionsDeps.service),
           // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
           // team identity is recorded HERE, at the one moment the sending team is known.
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
@@ -2715,8 +3214,18 @@ export function apply(ctx: any): void {
       // resolved (the caller then has no identity to scope by, exactly like `summary`).
       /** The rows this caller's team can claim; the three counts below are all measured against it. */
       const scoped = scopeToTeam(state, mailTeam?.teamId)
+      // ── W4-A6b: CAP WHAT IS RENDERED, NEVER WHAT IS STORED ──
+      // The full row set stays in the ledger; this answer renders ONE page and says how many rows are
+      // behind it. `limit` defaults to 20 and is clamped to 1..100, so one call can never dump an
+      // unbounded inbox into a model's context.
+      /** Every row this seat has NOT acknowledged, before paging. */
+      const unreadRows = unreadMessages(scoped, memberId)
+      /** The page this call returns; the store's helper clamps the bounds and reports the receipt. */
+      const paged = pageOf(unreadRows, Number(args?.limit ?? 20), Number(args?.offset ?? 0))
+      /** The page's rows. */
+      const page = paged.page
       return {
-        messages: unreadMessages(scoped, memberId).map((message) => ({
+        messages: page.map((message) => ({
           id: message.id,
           fromName: message.fromName,
           subject: message.subject,
@@ -2734,6 +3243,11 @@ export function apply(ctx: any): void {
         undelivered: undeliveredOf(scoped, memberId).length,
         total: inboxOf(scoped, memberId).length,
         memberName: wanted?.name ?? ownMember?.name ?? memberId,
+        // The paging receipt: the page bounds, how many rows remain, and the offset that fetches them.
+        offset: paged.offset,
+        more: paged.more,
+        unreadTotal: unreadRows.length,
+        nextOffset: paged.nextOffset,
       }
     },
   }))
@@ -2742,26 +3256,52 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:\"delete\" to end a team). `resume` clears the hold.",
+      "Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume"], description: "What to do." },
-        reason: { type: "string", description: "halt: why the team is halted; shown to anyone who asks for status." },
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
+        reason: { type: "string", description: "halt/fence: why." },
+        member: { type: "string", description: "fence/unfence: seat." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" } } },
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
       render: (_args: any, value: any) =>
-        text(value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
+        text(value?.refused !== undefined ? `refused: ${value.refused}`
+          : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
+            : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
     },
     execute: async (args: any, exec: DshToolExec) => {
-      /** The call's workspace, where the hold record lives. */
-      const { workspace } = where(exec)
-      if (String(args?.action ?? "") === "resume") return { resumed: clearHold(workspace) }
-      if (String(args?.action ?? "") !== "halt") throw new Error(`agent_teams_control: unknown action "${String(args?.action ?? "")}" (halt | resume)`)
+      /** The call's workspace, session and recorded ancestry. */
+      const { workspace, sessionId, lineage } = where(exec)
+      /** The requested action, stringified so a non-string argument can only miss, never throw. */
+      const action = String(args?.action ?? "")
+      if (action === "fence" || action === "unfence") {
+        // ONE SEAT, LEAD-ONLY (D4). The body is exec-free, so a panel button, the service and this tool
+        // drive the same sequence; the tool simply rethrows a refusal, which is what a tool caller sees.
+        /** The seat this call names. */
+        const member = String(args?.member ?? "").trim()
+        if (member === "") throw new Error(`agent_teams_control ${action}: member is required`)
+        /** The caller this action acts as, built exactly like every other team action's caller. */
+        const caller: TeamActionCaller = {
+          workspace, sessionId, lineage,
+          ...(exec.agent === undefined ? {} : { agent: exec.agent }),
+          ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+        }
+        /** The fence change, or the sentence it refused with. */
+        const outcome = action === "fence"
+          ? await fenceMember(teamActionsDeps, caller, { member, ...(args?.reason === undefined ? {} : { reason: String(args.reason) }) })
+          : await unfenceMember(teamActionsDeps, caller, { member })
+        if (!outcome.ok) throw new Error(outcome.error)
+        /** The reply, without the result envelope's own flag. */
+        const { ok: _envelope, ...reply } = outcome
+        return reply
+      }
+      if (action === "resume") return { resumed: clearHold(workspace) }
+      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence)`)
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
     },
   }))

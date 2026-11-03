@@ -55,7 +55,7 @@
   <text class="mono" x="470" y="242">dsh.bundle.patch[0] · ./cordis.patch.yml</text>
   <rect class="chip" x="60" y="256" width="196" height="46" rx="8"/>
   <text class="chip-h" x="72" y="275">34 host rows</text>
-  <text class="chip-s" x="72" y="291">adapter · roles · ulw · boulder</text>
+  <text class="chip-s" x="72" y="291">adapter · roles · autoproject</text>
   <rect class="chip" x="276" y="256" width="196" height="46" rx="8"/>
   <text class="chip-h" x="288" y="275">4 in-repo MCP servers</text>
   <text class="chip-s" x="288" y="291">ast_grep · lsp · codegraph</text>
@@ -108,7 +108,7 @@
   <rect class="layer" x="40" y="742" width="1100" height="72" rx="12"/>
   <text class="layer-h" x="60" y="768">State roots</text>
   <text class="mono" x="150" y="768">&lt;workspace&gt;/.mpd/**</text>
-  <text class="note" x="300" y="768">settings · memory · boulder · ulw · plans</text>
+  <text class="note" x="300" y="768">settings · memory · boulder · autoproject · plans</text>
   <text class="mono" x="590" y="768">&lt;workspace&gt;/.codegraph/</text>
   <text class="note" x="760" y="768">project graph (gitignored)</text>
   <text class="mono" x="60" y="798">~/.mpd/workmate/</text>

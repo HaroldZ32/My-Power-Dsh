@@ -13,8 +13,10 @@ here for the full body; where the two differ, the manual wins.
 
 **LICENCE STATE (current — de-omo wave E, 2026-10-08): this repository is MIT** (`LICENSE.md`,
 `Copyright (c) 2026 HaroldZ32`). The block below is a VERBATIM reproduction of `AGENTS.md` §1 as it stood
-on 2026-10-06, so it still reads `SUL-1.0` in places; those sentences are HISTORY and are superseded —
-the full statement is in "LICENCE STATE (current)" at the foot of this file. Never quote the verbatim
+on 2026-10-06, so its licence sentence still names the upstream project's FORMER licence; that sentence is
+HISTORY and is superseded — the full statement is in "LICENCE STATE (current)" at the foot of this file.
+The quoted bytes are kept exactly as recorded, which is why the retired name survives inside THAT block
+and nowhere else in this file. Never quote the verbatim
 block as the repository's present terms.
 
 **TEAM-DOOR STATE (current — 2026-10-23): the team path in the block below is HISTORY.** The roster
@@ -98,21 +100,22 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   `healProfileModuleFallback` materializes that closure into `<profile>/node_modules` before the
   loader runs. The same mechanism is how the `mpd-better-sidebar` row (the sidebar HOST the bundle's
   GUI pages need, deliberately id-named apart from the upstream row) resolves its sidebar host.
-- **ULW is user-invocable**: the C2 (Plan C) ultrawork v2 engine (`mpd-ulw-plugin`) is reachable as
-  `/ulw <objective>` and `/ultrawork <objective>` (equivalent, objective as argument) — the command
-  submits the ULW activation directive as the invoking agent's own next user turn, so the run
-  actually starts; empty input returns usage, and a plain-text `/ulw …` gesture gets the same
-  directive on surfaces without command adjudication (headless). An activated ULW run asks the user
-  nothing: it triages an unclear or investigate-first objective first, evaluates the same complexity
+- **autoproject is user-invocable**: the C2 (Plan C) autoproject v2 engine (`mpd-autoproject-plugin`) is reachable as
+  the ONE command `/autoproject <objective>` (objective as argument) — the command submits the autoproject
+  activation directive as the invoking agent's own next user turn, so the run actually starts; empty input
+  returns usage, and a plain-text `/autoproject …` gesture gets the same directive on surfaces without
+  command adjudication (headless). An activated run is autonomous but BOUNDED: it stops for a human at
+  exactly three decision points — the over-limit escalation fired while `autoproject.escalate.mode` is
+  `ask`, a credential/secret/external capability is absent, or the next write would leave the declared
+  scope. It triages an unclear or investigate-first objective first, evaluates the same complexity
   predicate as any MPD request, stages its team on the mpd plan plane when the work warrants one
   (`agent_teams_plan` create → `add_member` / `create_task` → approve, which is what spawns the
-  members), loops to
-  completion, fixes defects on sight, and closes out through the verification and quality gates
-  before reporting done.
+  members), loops to completion, fixes defects on sight (unless the fix would leave the declared scope),
+  and reports done only after a `mpd_verify_*` PASS is RECORDED and the quality-gate ledger approves.
 - **The persisted GOAL is the basis of continuous execution (C8).** The harness ships the goal domain
   (`dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`) and the `mpd` preset mounts its tool and
   command rows; `mpd-goal-plugin` is what INVOKES them: `mpd_goal_status` / `mpd_goal_anchor` /
-  `mpd_goal_finish`, the `mpdGoal` service, and the auto-anchor contract by which a heavy ULW run or a
+  `mpd_goal_finish`, the `mpdGoal` service, and the auto-anchor contract by which a heavy autoproject run or a
   plan-bound `mpd_boulder_start` anchors a persisted goal (`goal.enabled` / `goal.autoAnchor` /
   `goal.autoRounds` in `mpd.jsonc`). A run that ends `max-rounds` deliberately LEAVES ITS GOAL ARMED —
   that is the handoff from the in-turn engine to the harness's round driver. Mutations go through the
@@ -163,7 +166,7 @@ package manifests say `"license": "MIT"`, the packed manifest the packer writes 
 bilingual READMEs carry an `MIT` badge and licence section. Third-party components keep their OWN
 licences, declared per component in `LICENSE-NOTICES.md`.
 
-**The `SUL-1.0` bytes inside "The former §1 body (verbatim)" above are a HISTORICAL SNAPSHOT and are
+**The licence sentence inside "The former §1 body (verbatim)" above is a HISTORICAL SNAPSHOT and is
 SUPERSEDED.** That block is reproduced verbatim from `AGENTS.md` §1 as it stood on 2026-10-06, and its
 byte count and sha256 are recorded in `evidence/gates/agents-budget/`. Its licence sentence, and its
 account of the `agent-teams` body being "retained rather than deleted", were both overtaken by later
@@ -202,11 +205,11 @@ short form wins for the rule, and this file wins for the detail.
 - **A dependency a bundle DECLARES is mounted by a row that needs it**: the three official Agent Teams
   packages are declared in `dependencies` and materialized by `dsh-app-boot`'s `healProfileModuleFallback`
   before the loader runs.
-- **The persisted GOAL and ULW.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
+- **The persisted GOAL and autoproject.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
   `mpd_goal_anchor` / `mpd_goal_finish` plus the `goal.*` auto-anchor contract); a run that ends
   `max-rounds` deliberately LEAVES ITS GOAL ARMED — the handoff to the harness's round driver — and goal
-  mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2)
-  answers `/ulw <objective>` and `/ultrawork <objective>` by submitting the ULW activation directive as
+  mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-autoproject-plugin` (C2 autoproject v2)
+  answers `/autoproject <objective>` and `/autoproject <objective>` by submitting the autoproject activation directive as
   the invoking agent's OWN next user turn, so the run actually starts.
 - **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
   team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's

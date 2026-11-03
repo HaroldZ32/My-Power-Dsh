@@ -1,0 +1,53 @@
+{
+  "task": "T24 / W4-A5",
+  "contract": ".mpd/plans/autoproject-refactor.md \u00a710 item A5",
+  "lane": "Senior Engineer",
+  "generatedAt": "2026-11-02T12:10:29Z",
+  "filesTouched": [
+    "AGENTS.md",
+    "agent-references/git-model.md (NEW)",
+    "agent-references/index.md",
+    ".github/PULL_REQUEST_TEMPLATE.md"
+  ],
+  "rule": "Round cap under the CodeRabbit bullet in \u00a75: at most THREE automated-reviewer rounds per PR, a FOURTH needs the user's explicit decision (stated in the PR), a fixed+verified finding is resolved silently, a declined one gets one sentence, and the PR body records the round count per reviewer. Composes with (never replaces) the wait-for-completion rule.",
+  "instructionBudget": {
+    "cut": 65536,
+    "requiredMargin": 2048,
+    "before": 63478,
+    "after": 63136,
+    "marginAfter": 2400,
+    "moveFirstRequired": true,
+    "moved": "\u00a75 rule 5 shortened 2405 -> 1291 bytes (-1114) into agent-references/git-model.md",
+    "added": 772
+  },
+  "gates": [
+    {
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "PASS resolved=153 over-report=73 under-report=83 declared=2",
+      "log": "verify-manual-paths.log"
+    },
+    {
+      "command": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "observed": "PASS (agent-references/** and .github/ are out of discovery)",
+      "log": "verify-docs.log"
+    },
+    {
+      "command": "wc -c AGENTS.md",
+      "exit": 0,
+      "observed": "63478 -> 63136 (margin 2400 >= 2048)",
+      "log": "budget.log"
+    }
+  ],
+  "notAdded": [
+    "no new gate (A5 is prose only)",
+    "no zh twin for AGENTS.md / agent-references/** (agent-facing, English-only)",
+    "no CI workflow for the cap (nothing in the repo can read a PR body)",
+    "no restatement of the per-round reconciliation procedure (the existing bullet owns it)"
+  ],
+  "notProven": [
+    "no test by design \u2014 a prose rule has no mechanical subject; evidence is the byte measurement + the path gate + the read-back",
+    "the PR-template edit is not gate-covered (verify:docs does not discover .github/)"
+  ]
+}

@@ -1,0 +1,957 @@
+$ bun run typecheck
+$ tsgo --noEmit
+[typecheck exit 0]
+$ bash -lc bun test packages/mpd-dsh-adapter-plugin
+bun test v1.4.2 (744846f84)
+
+packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts:
+# no-terminal-writes
+
+band: 35 package root(s), 202 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 12 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-astgrep/src/protocol.ts (1 hit(s)) — the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal [requires "process.stdout.write"]
+  - packages/mpd-mcp-codegraph/src/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-shared/unavailable-server.ts (1 hit(s)) — the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer [requires "process.stdout.write"]
+  - packages/mpd-mcp-gitbash/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (19 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (3 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+# no-terminal-writes
+
+band: 35 package root(s), 202 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 12 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-astgrep/src/protocol.ts (1 hit(s)) — the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal [requires "process.stdout.write"]
+  - packages/mpd-mcp-codegraph/src/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-shared/unavailable-server.ts (1 hit(s)) — the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer [requires "process.stdout.write"]
+  - packages/mpd-mcp-gitbash/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (19 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (3 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+(pass) no new terminal writes in an MPD runtime path (R5) [117.59ms]
+# no-terminal-writes --self-test
+
+[ok] comment-stripped scan finds exactly the four real writes, at their ORIGINAL lines
+[ok] the ORIGINAL line text is reported, not the stripped one
+[ok] a non-`.ts` file is counted as NOT COVERED and never fails the run
+[ok] the package-ROOT launcher band is walked too
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+[ok] the ceiling rule still bites on a SEEDED table (the negative control for the shrink-only rule)
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: PASS (10/10 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.13ms]
+
+packages/mpd-dsh-adapter-plugin/test/child-persona-seam.test.ts:
+(pass) the persona section is the HOST's slot, with interpolation OFF > a roster child receives deployment:persona-prefix at order 0, interpolate false [0.24ms]
+(pass) the persona section is the HOST's slot, with interpolation OFF > the agent may arrive BARE as well as wrapped in {agent} [0.02ms]
+(pass) the read-only discipline lands on the child that needs it > a read-only member is restricted, and a normal member is not [0.03ms]
+(pass) the seam is a FILTER: every foreign child is a clean no-op > a label that names nothing registers NOTHING and does not throw [0.04ms]
+(pass) the seam is a FILTER: every foreign child is a clean no-op > a ONE-SHOT child with NO label still spawns untouched [0.02ms]
+(pass) the seam is a FILTER: every foreign child is a clean no-op > an agent with no session at all is a no-op [0.02ms]
+(pass) the seam is a FILTER: every foreign child is a clean no-op > an unreadable identity on EVERY channel is a miss, never a spawn failure [0.10ms]
+(pass) a failure is REPORTED, because a throw here fails the whole spawn > a refusing scope warns once and lets the spawn continue [0.05ms]
+(pass) identity comes from the child, so concurrent spawns cannot cross personas > two children with different labels are resolved independently [0.03ms]
+(pass) the subscription is optional and honest about it > with an event bus the seam subscribes to agent/created [0.02ms]
+(pass) the subscription is optional and honest about it > without an event bus it reports installed=false and still exposes the handler [0.01ms]
+(pass) the label is read from the CHILD'S OWN LOG — the live 0.2.1 failure mode > an own-log descriptor resolves the label with NO projection service at all [0.01ms]
+(pass) the label is read from the CHILD'S OWN LOG — the live 0.2.1 failure mode > a read-only child is DENIED on the narrow seam with no projection service [0.01ms]
+(pass) the label is read from the CHILD'S OWN LOG — the live 0.2.1 failure mode > an UNLABELLED first descriptor is a MISS, not a reason to keep scanning [0.02ms]
+(pass) the label is read from the CHILD'S OWN LOG — the live 0.2.1 failure mode > a session that exposes NO log still resolves through the projection plane [0.01ms]
+(pass) restrictAgentTools needs only tools.restrict — the member the harness itself uses > a ctx WITHOUT on/effect is still restrictable, where agentScope reports no scope [0.10ms]
+(pass) restrictAgentTools needs only tools.restrict — the member the harness itself uses > a ctx with NO tools.restrict THROWS, because a dropped deny is a read-only member that writes [0.05ms]
+(pass) ORDERING: a failing persona can never disarm the read-only discipline > a THROWING section still leaves the read-only child RESTRICTED [0.03ms]
+(pass) ORDERING: a failing persona can never disarm the read-only discipline > an EMPTY or whitespace persona registers NOTHING, so it cannot collide on the slot [0.01ms]
+(pass) RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284) > a scope that knows all eight applies all eight, in ONE call, and KEEPS the restriction [0.09ms]
+(pass) RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284) > a scope WITHOUT cclsp prunes exactly the two LSP names, retries ONCE, and still denies write/edit/bash [0.25ms]
+(pass) RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284) > a NON-unknown rejection THROWS instead of passing quietly [0.04ms]
+(pass) RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284) > a REJECTED RETRY throws — pruning gets exactly one chance [0.06ms]
+(pass) RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284) > PRUNING EVERYTHING is a failure, never a silent success [0.05ms]
+(pass) THROUGH THE SEAM: a cclsp-less child is still restricted > the seam's read-only branch prunes the dead names and the child ends up DENIED [0.08ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-plane.test.ts:
+(pass) agentPromptSection: ONE agent's own prompt registry > forwards the section VERBATIM, receiver-bound, and passes the disposer back [0.08ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > a non-callable registry answer degrades to a no-op disposer [0.03ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > THROWS an actionable error when the agent scope exposes no section seam [0.08ms]
+(pass) agentPromptSection: ONE agent's own prompt registry > the capability flag is a LIVE probe of the agent scope [0.46ms]
+(pass) onAgentPreStep: the adapter owns next() > registers on the agent/pre-step waterfall and returns the downstream decision VERBATIM [0.17ms]
+(pass) onAgentPreStep: the adapter owns next() > a listener's decision REPLACES the downstream one (that is how a notice is injected) [0.04ms]
+(pass) onAgentPreStep: the adapter owns next() > a THROWING listener is contained: the downstream decision stands [0.05ms]
+(pass) onAgentPreStep: the adapter owns next() > a listener that returns a rejected decision is forwarded (the gate may not veto) [0.02ms]
+(pass) onAgentPreStep: the adapter owns next() > a missing `next` and a missing event bus both degrade instead of throwing [0.11ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > registers on the AGENT scope, never on the row's event bus [0.10ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > owns next() exactly like the host-plane sibling: amend, pass through, contain a throw [0.09ms]
+(pass) registerAgentPreStep: the registration site that DELIVERY reaches > THROWS when the agent scope exposes no on(), and the capability flag is a live probe [0.19ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-team-surface.test.ts:
+(pass) team surface: the frozen names, arity and capability flags > every method exists under its frozen name with its declared arity [0.07ms]
+(pass) team surface: the frozen names, arity and capability flags > the four new capability flags are truthful on a full harness and false on an absent one [0.08ms]
+(pass) team surface: the frozen names, arity and capability flags > team needs identity AND roster; a half-present service reads false [0.06ms]
+(pass) team surface: the frozen names, arity and capability flags > teamTasks needs ALL FOUR task seams, teamMessages BOTH message seams [0.15ms]
+(pass) team surface: the frozen names, arity and capability flags > subagentsProviderRegister tracks registerProvider alone (the READ half keeps its own flag) [0.06ms]
+(pass) teamService / teamMembership: the contained identity reads > teamService hands back the SAME service object, receiver untouched [0.05ms]
+(pass) teamService / teamMembership: the contained identity reads > teamMembership forwards the Agent by identity and projects the three declared keys [0.07ms]
+(pass) teamService / teamMembership: the contained identity reads > a non-member answers undefined, and an unknown role is a MISS rather than a fabricated one [0.03ms]
+(pass) teamService / teamMembership: the contained identity reads > teamMembership NEVER throws — a hostile service is a miss, not a failure [0.05ms]
+(pass) the roster and board reads: caller forwarded, rows projected > teamListMembers forwards the Agent by identity and normalizes every row [0.12ms]
+(pass) the roster and board reads: caller forwarded, rows projected > a malformed row cannot leak an undeclared value [0.03ms]
+(pass) the roster and board reads: caller forwarded, rows projected > teamListTasks forwards the Agent by identity and projects the task row [0.07ms]
+(pass) the roster and board reads: caller forwarded, rows projected > an unknown task status degrades to the safe non-terminal value; a non-array answer is [] [0.03ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamCreateTask forwards both objects unchanged and projects the created row [0.09ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamGetTask forwards caller and id verbatim, and its reply is projected [0.03ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamGetTask propagates the host's OWN rejection (it never invents a view) [0.02ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamUpdateTask forwards the request by identity and returns the committed revision [0.07ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamSendMessage forwards the request by identity and normalizes the durable answer [0.07ms]
+(pass) the mutation calls: caller AND request forwarded by identity > a rejected message promise stays a rejection for the caller [0.04ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamSpawnTeammate forwards the request by identity and projects the member row [0.10ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamInterrupt forwards the caller and the target name, answering the sampled status [0.04ms]
+(pass) the mutation calls: caller AND request forwarded by identity > teamWaitForChange forwards caller, timeout AND signal verbatim [0.09ms]
+(pass) registerSubagentProvider: the disposal-returning registration seam > forwards the provider VERBATIM and passes the registry's disposer back [0.03ms]
+(pass) registerSubagentProvider: the disposal-returning registration seam > a non-callable registry answer degrades to a no-op disposer, never a leak [0.01ms]
+(pass) teamLiveTeams: the contained fold over the live registry > reports one entry per live LEAD agent, with its roster and board [0.11ms]
+(pass) teamLiveTeams: the contained fold over the live registry > non-Lead agents are skipped and a membership read that throws is contained [0.07ms]
+(pass) teamLiveTeams: the contained fold over the live registry > a failing roster read yields [] for THAT entry instead of taking the fold down [0.03ms]
+(pass) teamLiveTeams: the contained fold over the live registry > [] when the service OR the agent registry is absent [0.01ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > nothing on this surface throws at construct or probe time [0.19ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > each method degrades exactly as declared, naming what could not happen [0.29ms]
+(pass) the degrade table: an absent team service NEVER crashes and always says why > a service that is present but lacks ONE method names that method, not the service [0.10ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:
+(pass) agent-teams surface: the twelve frozen methods > every method exists under its frozen name with its declared arity [0.04ms]
+(pass) agent-teams surface: the twelve frozen methods > every new capability flag exists, is truthful, and is false on an absent harness [0.11ms]
+(pass) agent-teams surface: the twelve frozen methods > the provider flag needs BOTH catalogue halves, and each flag tracks its own seam [0.07ms]
+(pass) agent-teams surface: the twelve frozen methods > the five agent-object flags are LIVE-REGISTRY probes, not constant surfaces [0.19ms]
+(pass) agent-teams surface: the twelve frozen methods > each agent-object flag tracks its OWN method, never a sibling [0.08ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > the SAME object reference reaches tools.register — no rebuild, no spread, no wrapper [0.07ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > a non-callable registry answer degrades to a no-op disposer, never a leak [0.02ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > a missing tools service THROWS with the frozen message (parity with the injected ctx.tools) [0.04ms]
+(pass) registerHostTool: VERBATIM registration (AC2) > registerTool keeps its OWN normalizing contract for its existing consumers [0.09ms]
+(pass) subagent plane forwarders > subagentRuntime returns the service ITSELF (identity), undefined when absent [0.02ms]
+(pass) subagent plane forwarders > subagentProvider is receiver-bound and returns the provider untouched [0.03ms]
+(pass) subagent plane forwarders > subagentProvider degrades to undefined for a missing service or a half-present one [0.01ms]
+(pass) subagent plane forwarders > subagentProviders returns the names in order, drops non-strings, degrades to [] [0.05ms]
+(pass) subagent plane forwarders > startContinuableAgent forwards the spec VERBATIM and hands back the service's own promise [0.08ms]
+(pass) subagent plane forwarders > startContinuableAgent THROWS synchronously when the service or the method is absent [0.06ms]
+(pass) subagent plane forwarders > interruptAgent forwards both arguments verbatim, receiver-bound, and THROWS when absent [0.05ms]
+(pass) llm plane forwarders > llmListModels forwards the provider id and returns the service's promise [0.05ms]
+(pass) llm plane forwarders > llmResolveCallConfig forwards config AND signal by identity [0.04ms]
+(pass) llm plane forwarders > both llm seams THROW synchronously on a missing service or method [0.06ms]
+(pass) registerPromptSection > forwards the section VERBATIM and passes the registry's disposer through [0.04ms]
+(pass) registerPromptSection > THROWS at the call when the seam is missing (a mandatory usage section) [0.04ms]
+(pass) registerPromptSection > a non-callable registry answer degrades to a no-op disposer [0.02ms]
+(pass) agentScope: identity-preserving per-agent scope > context IS agent.ctx and every member forwards to that same object [0.05ms]
+(pass) agentScope: identity-preserving per-agent scope > a partial context degrades to undefined instead of a scope that throws later [0.02ms]
+(pass) agentScope: identity-preserving per-agent scope > a throwing context getter is a miss, never a crash [0.03ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn calls agent.followup with the agent as receiver and the message by identity [0.03ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn preserves the agent's OWN throw — it does NOT route through submitUserTurn [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > startAgentTurn THROWS when the agent exposes no followup [0.02ms]
+(pass) turn engine: THROWING forwarders (D9) > cancelAgentTurn forwards cause AND options verbatim, receiver-bound [0.03ms]
+(pass) turn engine: THROWING forwarders (D9) > cancelAgentTurn preserves the agent's own error and THROWS when cancel is absent [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > steerAgentTurn forwards the message to agent.steer by identity, receiver-bound [0.04ms]
+(pass) turn engine: THROWING forwarders (D9) > steerAgentTurn preserves the agent's own throw and THROWS when steer is absent [0.05ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage forwards the message to agent.inject by identity, receiver-bound [0.02ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage preserves the agent's own throw and THROWS when inject is absent [0.02ms]
+(pass) turn engine: THROWING forwarders (D9) > injectAgentMessage passes exactly ONE argument — and the adapter itself exposes no cordis ctx.inject [0.01ms]
+(pass) apply-time safety: nothing on this surface throws at construct or probe time > an empty, a property-less and a throwing ctx all build an adapter whose new flags read false [0.13ms]
+(pass) the frozen degrade table on an absent harness > each method degrades exactly as §3 declares (THROW / undefined / []) [0.05ms]
+
+packages/mpd-dsh-adapter-plugin/test/workspace-root-session.test.ts:
+(pass) workspaceRootForSessionOf > a matched session resolves its own cwd [0.09ms]
+(pass) workspaceRootForSessionOf > a matched session WITHOUT a cwd follows the host precedence, never undefined [0.02ms]
+(pass) workspaceRootForSessionOf > an UNMATCHED id answers undefined, so the caller can refuse [0.01ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-model-window.test.ts:
+(pass) the catalog carries the window the harness itself resolved > context.contextWindow and defaultMaxTokens land on the model verbatim [0.37ms]
+(pass) the catalog carries the window the harness itself resolved > an unresolved window AND cap are both present as null, never a fallback [0.03ms]
+(pass) the catalog carries the window the harness itself resolved > one resolved limit never invents the other [0.02ms]
+(pass) the catalog carries the window the harness itself resolved > a resolved output cap without a window leaves the window null [0.02ms]
+
+packages/mpd-dsh-adapter-plugin/test/team-executor.test.ts:
+(pass) which backend is chosen > NATIVE is the default, and the reason says so [0.13ms]
+(pass) which backend is chosen > OFFICIAL is chosen only when the native seams are absent [0.05ms]
+(pass) which backend is chosen > with NEITHER backend every call REFUSES with a sentence, never a TypeError [0.29ms]
+(pass) which backend is chosen > the env override picks a backend, and FALLS THROUGH when that one cannot serve [0.06ms]
+(pass) the native backend > spawn forwards the PROVIDER and the member's agentOptions — the point of the seam [0.06ms]
+(pass) the native backend > spawn DEFAULTS the provider rather than sending an empty name [0.35ms]
+(pass) the native backend > a start that reports NO child id is refused AND its activation is RELEASED, so no slot leaks [0.13ms]
+(pass) the native backend > send delivers through sendMessage, which cold-resumes an absent child [0.09ms]
+(pass) the native backend > interrupt uses the ANCESTOR authority, which is the form this seam can honestly present [0.04ms]
+(pass) the native backend > membership answers for a handle THIS adapter raised, and is a MISS for anyone else [0.07ms]
+(pass) the native backend > the provider list comes from the harness, and degrades to [] rather than leaking [0.07ms]
+(pass) the native member route (agentRoutes -> agentOptions) > a matched member's request carries its own agent route, while spec.provider stays spawn [0.49ms]
+(pass) the native member route (agentRoutes -> agentOptions) > two members get the two different routes their identities name [0.13ms]
+(pass) the native member route (agentRoutes -> agentOptions) > an unmatched member's request has NO agentOptions key at all [0.10ms]
+(pass) the native member route (agentRoutes -> agentOptions) > an unconfigured route still raises the member and writes exactly ONE log line quoting the sentence [0.17ms]
+(pass) the native member route (agentRoutes -> agentOptions) > a composition with NO config service inherits, and still writes exactly ONE line [0.09ms]
+(pass) the native member route (agentRoutes -> agentOptions) > a caller-supplied agentOptions WINS: resolution is skipped and nothing is logged [0.06ms]
+(pass) the native member route (agentRoutes -> agentOptions) > a PRE-WAVE service surface is NOT read: the member inherits, never a guessed route [0.09ms]
+(pass) the official backend > spawn, send and interrupt map onto the official service [0.24ms]
+(pass) the official backend > membership is ASKED of the host, so a member raised elsewhere is still identified [0.06ms]
+(pass) the official backend > a spawn that reports no id is refused here too [0.06ms]
+(pass) the seam is total > the executor never throws on construction, whatever the composition holds [0.06ms]
+(pass) the seam is total > the reason is a SENTENCE a boot line can carry, in every case [0.04ms]
+(pass) the depth cap (capability fact F1) > a supplied maxDepth is forwarded on the activation request [0.06ms]
+(pass) the depth cap (capability fact F1) > an absent maxDepth stays ABSENT, never `undefined` [0.03ms]
+(pass) the depth cap (capability fact F1) > the OFFICIAL backend IGNORES a supplied cap without throwing [0.03ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-drive-surface.test.ts:
+(pass) askUserQuestion > maps the harness batch and drops an absent custom [0.24ms]
+(pass) askUserQuestion > throws the exact message when the service is missing [0.07ms]
+(pass) askUserQuestion > rethrows the harness rejection with its code preserved [0.14ms]
+(pass) onUserQuestionRequest > registers on the event, narrows the request and forwards the downstream envelope by IDENTITY [0.33ms]
+(pass) onUserQuestionRequest > a handler that CLAIMS the request hands its own envelope to cordis unchanged [0.07ms]
+(pass) onUserQuestionRequest > the reply survives the harness's own consumption shape (the F1 regression, module boundary) [0.10ms]
+(pass) onUserQuestionRequest > leaves sessionId undefined when the request names no agent [0.06ms]
+(pass) onUserQuestionRequest > propagates a handler rejection unchanged [0.09ms]
+(pass) onUserQuestionRequest > degrades to a no-op disposer with one log line when the bus is absent [0.27ms]
+(pass) onUserQuestionRequest > degrades the same way when the registration itself throws [0.17ms]
+(pass) dshGoPresent > reports the bridge's presence [0.04ms]
+(pass) dshGoPanel > returns false with one log line when the bridge is absent [0.19ms]
+(pass) dshGoPanel > passes the spec through verbatim and returns true [0.16ms]
+(pass) dshGoPanel > returns false with one log line when the bridge throws [0.17ms]
+(pass) dshGoRefresh > is a no-op when the bridge is absent [0.04ms]
+(pass) dshGoRefresh > forwards the panel id and swallows a bridge failure [0.06ms]
+(pass) capabilities > flips askUser and dshGo with their services [0.07ms]
+(pass) capabilities > exposes the five frozen methods with their declared arity [0.02ms]
+
+packages/mpd-dsh-adapter-plugin/test/dshgo-view.test.ts:
+(pass) builders emit the app's legal shapes > the panel root is a v2 stack with accent app [0.28ms]
+(pass) builders emit the app's legal shapes > bind prefixes data once and never twice [0.03ms]
+(pass) builders emit the app's legal shapes > tabs are declared as items with a label per section [0.05ms]
+(pass) builders emit the app's legal shapes > an empty tab is refused instead of emitting an empty stack [0.10ms]
+(pass) builders emit the app's legal shapes > grid takes its own integer columns and refuses a container style [0.14ms]
+(pass) builders emit the app's legal shapes > emptyState takes message and rejects the silently-ignored text [0.06ms]
+(pass) builders emit the app's legal shapes > avatar is the image node and needs a real source [0.04ms]
+(pass) builders emit the app's legal shapes > status badges carry a word and a tone [0.02ms]
+(pass) builders emit the app's legal shapes > divider and spacer take no children [0.03ms]
+(pass) builders emit the app's legal shapes > inputs and the remaining builders keep the app's props [0.33ms]
+(pass) the open lists are capped at the app's own maximum > actions, list rows and stack children [0.29ms]
+(pass) the open lists are capped at the app's own maximum > table columns and rows [0.15ms]
+(pass) style() is the closed, theme-following set > the legal tokens pass through [0.10ms]
+(pass) style() is the closed, theme-following set > a named colour or hex cannot be expressed [0.04ms]
+(pass) style() is the closed, theme-following set > spacing is S/M/L and rejects numbers [0.03ms]
+(pass) style() is the closed, theme-following set > decoration the app does not execute is refused [0.15ms]
+(pass) panelView enforces the panel rules > a second primary action is refused [0.08ms]
+(pass) measurement matches the app's three units > nodes and depth count component nesting with the root at 1 [0.16ms]
+(pass) measurement matches the app's three units > bytes are the UTF-8 JSON size [0.06ms]
+(pass) measurement matches the app's three units > fitsBudget is the three-number check [0.32ms]
+(pass) toolCard never ships a card a v1 app cannot draw > a good card carries the view under the protocol key [0.17ms]
+(pass) toolCard never ships a card a v1 app cannot draw > an over-budget card degrades to an empty object [0.35ms]
+(pass) toolCard never ships a card a v1 app cannot draw > a builder error, a v2 root, a v2 component, a binding or an accent all degrade [0.12ms]
+(pass) toolCard never ships a card a v1 app cannot draw > the builder's own arguments and value reach it unchanged [0.05ms]
+(pass) adaptView produces a legible v1 fallback > a 1.0.9 app keeps the v2 tree untouched [0.32ms]
+(pass) adaptView produces a legible v1 fallback > an older app gets sections, lists and words, with no decoration [0.55ms]
+(pass) adaptView produces a legible v1 fallback > divider and spacer are dropped, not converted [0.06ms]
+(pass) adaptView produces a legible v1 fallback > grid becomes a list and timeline becomes steps [0.09ms]
+(pass) adaptView produces a legible v1 fallback > badge, tag and avatar become text, and emptyState becomes its copy [0.05ms]
+(pass) adaptView produces a legible v1 fallback > a 1.0.9 app missing one component degrades only that one, keeping styles [0.09ms]
+(pass) adaptView produces a legible v1 fallback > an unknown app version reads as older [0.05ms]
+(pass) adaptView produces a legible v1 fallback > is idempotent and never mutates its input [0.20ms]
+(pass) lintDesign is the gate the app checker cannot be > the kit-built panel and its v1 fallback are both clean [0.94ms]
+(pass) lintDesign is the gate the app checker cannot be > panelView makes a named or hex accent unrepresentable [0.07ms]
+(pass) lintDesign is the gate the app checker cannot be > the v2 bans [0.19ms]
+(pass) lintDesign is the gate the app checker cannot be > more than one primary action is a finding (the app checker passes it) [0.07ms]
+(pass) lintDesign is the gate the app checker cannot be > the positive rules: hero, tiled metrics, empty tabs, bounded text [0.22ms]
+(pass) lintDesign is the gate the app checker cannot be > version 1 asserts the static-fallback contract [0.07ms]
+(pass) H2: the v1 fallback keeps every metric's number > labels and values survive the grid downgrade [0.11ms]
+
+packages/mpd-dsh-adapter-plugin/test/restrict-tolerant.test.ts:
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a list the harness accepts is returned unchanged, and the probe restriction is released [0.06ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > the unknown names are pruned and retried ONCE, keeping the canonical order of the survivors [0.09ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a SINGLE unknown name is parsed too (the harness's singular message spelling) [0.03ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a SECOND failure is rethrown, whatever it is (the retry cap) [0.04ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > any OTHER failure is rethrown with no retry at all [0.02ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a rejection that names nothing prunable is rethrown rather than retried blindly [0.02ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > a non-Error rejection carrying the message text is parsed as well [0.02ms]
+(pass) D3 — restrictToolsTolerant: the harness's verdict is the only pruner > an attempt that applies nothing and returns no disposer is still an acceptance
+
+packages/mpd-dsh-adapter-plugin/test/settings-bridge-scope.test.ts:
+(pass) the settings bridge resolves the SCOPED service > a settings service that exists only below the root is still reachable [0.12ms]
+(pass) the settings bridge resolves the SCOPED service > NO scoped service, no root service -> the honest failure sentence is unchanged [0.03ms]
+(pass) the settings bridge resolves the SCOPED service > a PRESENT service without register() says so instead of claiming it is unavailable [0.02ms]
+(pass) the settings bridge resolves the SCOPED service > a ROOT service still works when no inject ever fires (the non-deferred path) [0.01ms]
+
+packages/mpd-dsh-adapter-plugin/test/home-guard.test.ts:
+(pass) shared HOME-scoped mutation guard (T-43) > (a) ALLOWED: an isolated boot whose HOME is the sandbox may mutate that sandbox [0.26ms]
+(pass) shared HOME-scoped mutation guard (T-43) > (a2) ALLOWED: a NORMAL session (no DSH_HOME) is never refused, even toward the real home [0.05ms]
+(pass) shared HOME-scoped mutation guard (T-43) > (b) REFUSED: a root in the REAL home while DSH_HOME marks an isolated boot [0.16ms]
+(pass) shared HOME-scoped mutation guard (T-43) > (b2) REFUSED: HOME absent/empty under an isolated boot (the root is the real library) [0.08ms]
+(pass) shared HOME-scoped mutation guard (T-43) > (b3) ALLOWED: the row's documented override (`=1`) short-circuits the refusal [0.05ms]
+(pass) shared HOME-scoped mutation guard (T-43) > (c) REACHABLE from the workmate row's import path: its guard is the shared predicate [0.17ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-subagent-seam-generations.test.ts:
+(pass) the capability probe is honest PER GENERATION > a 0.2.1 service reports available, and the reason names startActivation [0.10ms]
+(pass) the capability probe is honest PER GENERATION > subagentsSpawn agrees with spawnAgent: TRUE on a 0.2.1 service with no start() [0.02ms]
+(pass) the capability probe is honest PER GENERATION > subagentsSpawn is FALSE only when NO spawn member exists at all [0.02ms]
+(pass) the capability probe is honest PER GENERATION > a RETIRED service still reports available, and the reason names startContinuable [0.02ms]
+(pass) the capability probe is honest PER GENERATION > NEITHER member reports unavailable and names both, never a blanket true [0.06ms]
+(pass) the native team backend raises a member on the 0.2.1 seam > spawn() calls startActivation with the mandatory delivery policy and the member's route [0.06ms]
+(pass) the native team backend raises a member on the 0.2.1 seam > a backend that reports NO child id is refused rather than recorded as a member [0.11ms]
+(pass) the native team backend still raises a member on the RETIRED seam > spawn() calls startContinuable and, because that release had no such field, adds no delivery [0.07ms]
+(pass) spawnAgent follows the generation too > 0.2.1: it starts an activation and projects the child's CONTENT BLOCKS onto text [0.28ms]
+(pass) spawnAgent follows the generation too > 0.2.1: the retired persona/toolFilter fields are NOT forwarded into the released request [0.06ms]
+(pass) spawnAgent follows the generation too > 0.2.1: an absent caller signal becomes a never-aborting one, because the field is REQUIRED [0.23ms]
+(pass) spawnAgent follows the generation too > 0.2.1: the settled consult disposes its activation EXACTLY ONCE, after the result [0.03ms]
+(pass) spawnAgent follows the generation too > 0.2.1: a REJECTING dispose still returns the report — teardown failure is not the answer [0.04ms]
+(pass) spawnAgent follows the generation too > 0.2.1: a THROWING dispose still returns the report [0.03ms]
+(pass) spawnAgent follows the generation too > 0.2.1: an activation WITHOUT dispose is tolerated, because the release is optional [0.02ms]
+(pass) spawnAgent follows the generation too > RETIRED: it calls start(mode, request) and forwards the fields that release still had [0.03ms]
+(pass) spawnAgent follows the generation too > NEITHER generation refuses with a sentence naming both members [0.05ms]
+(pass) startContinuableAgent is the same seam, and keeps its SYNCHRONOUS throw > 0.2.1: it injects the mandatory delivery policy and forwards everything else [0.03ms]
+(pass) startContinuableAgent is the same seam, and keeps its SYNCHRONOUS throw > RETIRED: it forwards the caller's spec VERBATIM [0.02ms]
+(pass) startContinuableAgent is the same seam, and keeps its SYNCHRONOUS throw > a missing seam throws SYNCHRONOUSLY, not as a rejected promise [0.01ms]
+
+packages/mpd-dsh-adapter-plugin/test/team-route.test.ts:
+(pass) resolveTeamMemberRoute — identity precedence > role routes first [0.02ms]
+(pass) resolveTeamMemberRoute — identity precedence > the description HEAD routes when no role is given [0.01ms]
+(pass) resolveTeamMemberRoute — identity precedence > the whole NAME routes when the description names nobody
+(pass) resolveTeamMemberRoute — identity precedence > TWO members with DIFFERENT routes route independently — no cross-talk (§9) [0.02ms]
+(pass) resolveTeamMemberRoute — identity precedence > role=stranger loses to description=member: an UNROUTED role does not stop the walk
+(pass) resolveTeamMemberRoute — identity precedence > an identity that names no agent is UNMATCHED, not an error
+(pass) resolveTeamMemberRoute — total failure shapes (never a throw) > unconfigured -> unusable carrying the canonical AGENT_UNCONFIGURED sentence [0.02ms]
+(pass) resolveTeamMemberRoute — total failure shapes (never a throw) > invalid -> unusable with reason invalid and the offending path
+(pass) resolveTeamMemberRoute — total failure shapes (never a throw) > no resolver at all -> no-config-service
+(pass) resolveTeamMemberRoute — total failure shapes (never a throw) > a resolver that THROWS is contained as no answer, never escaping the spawn [0.07ms]
+(pass) rosterNameHead ≡ memberFromLabel — one rule, one shared table > the same table answers both functions [0.09ms]
+
+packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts:
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 31 package(s), 195 .ts file(s)
+RESULT: PASS (0 findings)
+NO-DIRECT-TEAM-ACCESS — D6 static gate (docs/plan-0.1.7-adaptation.md §4)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-dsh-adapter-plugin (the ONE sanctioned route)
+scanned: 31 package(s), 195 .ts file(s)
+RESULT: PASS (0 findings)
+(pass) no direct Agent Teams access outside the adapter (D6) [739.93ms]
+SELF-TEST — no-direct-team-access (negative control over a seeded fixture tree)
+  ok   seeded violation at packages/mpd-fixture/src/index.ts:3
+  ok   seeded violation in a NESTED file (recursion)
+  ok   a RAW ctx.on("agent/pre-step") subscription is a finding
+  ok   a cordis FRAMEWORK event (internal/service) is NOT a finding
+  ok   the STRING spelling ctx.get("agentTeams") reddens too
+  ok   a COMMENT mentioning both identifiers is NOT a finding
+  ok   the adapter package is excluded
+  ok   a non-mpd package is outside the band
+  ok   exactly the five seeded findings are reported, one per violation
+  ok   a finding turns into a NONZERO exit code, a clean scan into zero
+  ok   an out-of-band .js hit is REPORTED as NOT COVERED, never as a failure
+  ok   the fixture walker actually read the seeded band
+SELF-TEST: PASS (12/12 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.81ms]
+
+packages/mpd-dsh-adapter-plugin/test/run-route.test.ts:
+(pass) resolveRunRoute — the primary wins whenever the catalog lists it > a listed primary keeps the run, and its effort is preserved untouched [1.15ms]
+(pass) resolveRunRoute — the primary wins whenever the catalog lists it > the FIRST positively-listed fallback wins, in the user's order [0.10ms]
+(pass) resolveRunRoute — the primary wins whenever the catalog lists it > a listed PROVIDER without the model is not a positive listing [0.02ms]
+(pass) resolveRunRoute — 'not listed' is NOT 'unavailable' > when NO candidate is positively listed the PRIMARY still stands [0.01ms]
+(pass) resolveRunRoute — 'not listed' is NOT 'unavailable' > a missing seam, an empty catalog or a rejecting read keeps the primary and never throws [0.08ms]
+(pass) resolveRunRoute — malformed fallbacks are dropped, and the effort rule still applies > malformed entries are counted and never fail the run [0.03ms]
+(pass) resolveRunRoute — malformed fallbacks are dropped, and the effort rule still applies > the WINNER's effort is adapted when its model declares no reasoning efforts [0.03ms]
+(pass) routePositivelyListed — the exact predicate the chain acts on > both halves must match, and nothing else counts
+
+packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts:
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 32 package(s), 198 .ts file(s)
+frozen inventory: 58 entr(y|ies); couplings in the band: 58, sanctioned adapter imports: 89
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 89:
+  packages/mpd-autoproject-plugin/src/boulder/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-autoproject-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/dshgo-panel.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/activate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/budget.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/caller.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/dispatch.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/flow.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol-core.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/recon.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/staging.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.test.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-goal-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/archive.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/ask-user-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/captain-investigation.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/delegation-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/question-relay.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/verify-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/route.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/idle-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-door-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/observe.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdGoal, mpdQuestions, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 4 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:6590: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:1708: [harness-service-provide] -> TEAM_ACTIONS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAM_ACTIONS_SERVICE, teamActions)
+  packages/mpd-team-core-plugin/src/index.ts:1721: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+  packages/mpd-verify-plugin/src/index.ts:111: [harness-service-provide] -> VERIFY_SERVICE — ctx.provide(VERIFY_SERVICE, runtime)
+RESULT: PASS (the frozen inventory describes the band exactly)
+CROSS-PACKAGE COUPLING INVENTORY — independence gate (docs/independence.md, acceptance A1.3)
+band: packages/mpd-*/src/**/*.ts
+scanned: 32 package(s), 198 .ts file(s)
+frozen inventory: 58 entr(y|ies); couplings in the band: 58, sanctioned adapter imports: 89
+SANCTIONED (an adapter IS the contact surface — exempt from the inventory, allowed to grow) — 89:
+  packages/mpd-autoproject-plugin/src/boulder/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-autoproject-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-better-sidebar-host/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bootstrap-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/dshgo-panel.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-bundle-plugin/src/watchdog-web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/activate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/budget.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/caller.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/dispatch.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/flow.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol-core.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/protocol.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/recon.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-cellwork-plugin/src/staging.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.test.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-codegraph-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-comment-checker-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-config-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/flows.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/manifest.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/mcp.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/registry.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-ext-plugin/src/skills.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-goal-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-hashline-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/archive.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-memory-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-modelchain-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-project-init-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-qa-roles-probe/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/ask-user-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/captain-investigation.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/delegation-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/question-relay.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/roster-section.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/session-gate.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/team-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roles-plugin/src/verify-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-roster-provider-plugin/src/route.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-compact-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/idle-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-core-plugin/src/team-door-guard.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/actions.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/engine.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/store.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/team.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-team-watchdog-plugin/src/web.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tools-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/dashboard-key.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/scenes.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/settings.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/status.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/team-state.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/types.ts -> mpd-tui-adapter-plugin
+  packages/mpd-tui-plugin/src/watchdog.ts -> mpd-tui-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/observe.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-verify-plugin/src/tools.ts -> mpd-dsh-adapter-plugin
+  packages/mpd-workmate-plugin/src/index.ts -> mpd-dsh-adapter-plugin
+MPD-OWNED services a row provides (allowed by design): mpdConfig, mpdExtensions, mpdGoal, mpdQuestions, mpdRoles, mpdWorkmate
+NOT STATICALLY READABLE (declared blind spot, never a failure) — 4 .provide() call(s):
+  packages/mpd-dsh-adapter-plugin/src/index.ts:6590: [harness-service-provide] -> SERVICE_NAME — ctx.provide(SERVICE_NAME, adapter)
+  packages/mpd-team-core-plugin/src/index.ts:1708: [harness-service-provide] -> TEAM_ACTIONS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAM_ACTIONS_SERVICE, teamActions)
+  packages/mpd-team-core-plugin/src/index.ts:1721: [harness-service-provide] -> TEAMS_SERVICE — ;(ctx as { provide: (id: string, value: unknown) => unknown }).provide(TEAMS_SERVICE, {
+  packages/mpd-verify-plugin/src/index.ts:111: [harness-service-provide] -> VERIFY_SERVICE — ctx.provide(VERIFY_SERVICE, runtime)
+RESULT: PASS (the frozen inventory describes the band exactly)
+(pass) the cross-package coupling inventory is exactly the frozen set (independence gate) [116.92ms]
+SELF-TEST — cross-package-coupling-inventory (negative control over a seeded fixture tree)
+  ok   an INVENTORIED coupling is not reported (no false positive)
+  ok   a NEW cross-package import reddens
+  ok   a SANCTIONED adapter import is exempt, and is PRINTED as sanctioned
+  ok   an INTRA-package import is not a coupling
+  ok   a globalThis WRITE reddens in both spellings on one line
+  ok   ctx.provide("tools") reddens as a harness-service provide
+  ok   ctx.provide("mpdFixture") is allowed and NAMED
+  ok   a NON-LITERAL provide is named as unreadable, never failed
+  ok   a COMMENT naming every forbidden shape is not a finding
+  ok   a non-.ts file under a scanned src/ is REPORTED out of band, never failed
+  ok   a STALE inventory entry reddens (the frozen set must track reality)
+  ok   exactly the four seeded couplings are frozen, three of them un-inventoried
+  ok   the fixture walker actually read the seeded band
+  ok   a coupling turns into a NONZERO exit code, a clean scan into zero
+SELF-TEST: PASS (14/14 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.25ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-context-pressure.test.ts:
+(pass) the observed occupancy and the model's own window > observed prefers projectedTokens over pressureTokens and divides by the REPORTED window [0.15ms]
+(pass) the observed occupancy and the model's own window > the provider-reported pressure is the fallback when the view carries no projection [0.01ms]
+(pass) the observed occupancy and the model's own window > a projection with no reported window is no-window, with NO guessed constant [0.01ms]
+(pass) the observed occupancy and the model's own window > a zero projection is an observation, so the ratio refuses to divide by a zero side
+(pass) degradation is a provenance, never a throw > no projection service at all is unavailable
+(pass) degradation is a provenance, never a throw > a registry with no materialized state for this session is unavailable
+(pass) degradation is a provenance, never a throw > a throwing state read degrades instead of propagating [0.04ms]
+(pass) degradation is a provenance, never a throw > a throwing SNAPSHOT still answers from the state
+(pass) what a caller may hand the seam > a live Agent is unwrapped to the session its projection is keyed on [0.01ms]
+(pass) what a caller may hand the seam > a session id resolves through the `sessions` store [0.01ms]
+(pass) what a caller may hand the seam > a session id falls back to the live-agent registry when no store answers [0.06ms]
+(pass) what a caller may hand the seam > a target that names no session is unavailable and reads nothing [0.01ms]
+
+packages/mpd-dsh-adapter-plugin/test/effort-adaptation.test.ts:
+(pass) modelDeclaresNoEffort > true only for a listed model whose efforts array is EMPTY
+(pass) modelDeclaresNoEffort > an unlisted provider or model is NO KNOWLEDGE, never an inferred incapability
+(pass) withSupportedEffort > an absent route or an absent effort is returned BY IDENTITY, and the catalog is never read [0.09ms]
+(pass) withSupportedEffort > THE DEFECT: a model listed with NO efforts loses the keyword, so the call runs [0.05ms]
+(pass) withSupportedEffort > a model that DECLARES efforts keeps the keyword UNCHANGED, supported or not [0.01ms]
+(pass) withSupportedEffort > NO KNOWLEDGE keeps the keyword: an unknown model, no catalog seam, and a rejected read [0.04ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-dshgo-surface.test.ts:
+(pass) dshGoOn registers the tap handler with the bridge and returns true [0.09ms]
+(pass) dshGoOn degrades to false when the bridge is absent, has no on(), or throws [0.07ms]
+(pass) dshGoStrip registers the data function and returns true [0.04ms]
+(pass) dshGoStrip degrades to false when the bridge is absent, has no strip(), or throws [0.04ms]
+(pass) dshGoCaps reads a caps() method first [0.09ms]
+(pass) dshGoCaps falls back to a caps or capabilities property [0.03ms]
+(pass) dshGoCaps degrades to null when the bridge cannot answer [0.07ms]
+(pass) dshGoPanel forwards a per-render view function verbatim [0.03ms]
+(pass) dshGoPresent reports whether the bridge is bound [0.01ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter-goal-surface.test.ts:
+(pass) goalState reads the service, distinguishes null from unknown, and never throws [0.13ms]
+(pass) goalControl maps each action onto the harness tools with their exact argument names [0.46ms]
+(pass) goalControl resolves a missing ref by reading the goal first, and refuses without one [0.05ms]
+(pass) a policy refusal from the harness is reported verbatim, never thrown [0.05ms]
+(pass) the agent's OWN scoped registry answers first — that is where the goal trio lives [0.10ms]
+(pass) capabilities().goalTools is TRUE through a live agent's scope and FALSE without the row [0.15ms]
+
+packages/mpd-dsh-adapter-plugin/test/adapter.test.ts:
+(pass) capabilities > reports every seam of a full harness [1.09ms]
+(pass) capabilities > reports absent seams without throwing [0.04ms]
+(pass) llm catalog plane > projects providers, models and reasoning from the live registry [0.21ms]
+(pass) llm catalog plane > the fake full harness satisfies the seam [0.12ms]
+(pass) llm catalog plane > a missing llm service degrades and warns exactly once [0.52ms]
+(pass) llm catalog plane > a partial seam degrades, names the missing method, and reports capabilities false [0.27ms]
+(pass) llm catalog plane > a rejecting provider is skipped and the rest of the catalog survives [0.25ms]
+(pass) llm catalog plane > a model whose resolveModelInfo rejects is skipped, not fatal [0.10ms]
+(pass) llm catalog plane > a throwing listProviders degrades instead of rejecting [0.09ms]
+(pass) llm catalog plane > a non-array listProviders answer degrades instead of throwing [0.06ms]
+(pass) llm catalog plane > the lazy facade proxies the seam to the mounted adapter [0.20ms]
+(pass) tool plane > registerTool normalizes schema, render and the (args, exec) call shape [0.13ms]
+(pass) tool plane > registerTool keeps a caller-supplied schema and render [0.03ms]
+(pass) tool plane > services resolve through ctx.get OR a plain ctx property [0.04ms]
+(pass) tool plane > registerTools registers every definition and disposes them together [0.08ms]
+(pass) tool plane > registerTool without a tools service fails with an actionable error [0.03ms]
+(pass) tool plane > guardTool passes the exec through and installs on the tools service [0.06ms]
+(pass) tool plane > onPostToolExecute owns next() and passes the downstream decision through [0.15ms]
+(pass) tool plane > onPostToolExecute lets a listener replace the decision [0.06ms]
+(pass) tool plane > onPostToolExecute is a no-op when the harness has no event bus [0.02ms]
+(pass) tool plane > onPreToolExecute OWNS next(): the observer sees the gate and the gate is passed through [0.11ms]
+(pass) tool plane > onPreToolExecute cannot alter or veto a call: deny survives, a returned decision is ignored, a throw is contained [0.12ms]
+(pass) tool plane > onPreToolExecute hands the observer a FROZEN COPY: the live execution cannot be changed [0.10ms]
+(pass) tool plane > onPreToolExecute is a no-op when the harness has no event bus, and capabilities() reports the seam [0.06ms]
+(pass) tool plane > hasTool + toolRuntime expose internal tool calls without raw ctx access [0.15ms]
+(pass) tool plane > hasTool/toolRuntime().get resolve a PRESET-plane tool through the agent's OWN view, and keep the plane rule otherwise [0.15ms]
+(pass) tool plane > executeTool normalizes success, tool error, thrown error and a missing runtime [0.14ms]
+(pass) tool plane > executeTool forwards the optional calling agent VERBATIM as exec.agent, and stays absent when not given [0.08ms]
+(pass) agent plane > spawnAgent normalizes prompt, flat route and the result shape [0.13ms]
+(pass) agent plane > spawnAgent accepts pre-built prompt blocks and agentOptions [0.06ms]
+(pass) agent plane > spawnAgent tolerates a harness that returns no result [0.08ms]
+(pass) agent plane > spawnAgent without a subagent service fails with an actionable error [0.04ms]
+(pass) skill + preset plane > skill provider registration, catalog read and body load [0.15ms]
+(pass) skill + preset plane > skill calls without a skills service fail with actionable errors [0.09ms]
+(pass) skill + preset plane > resolvePreset returns a normalized preset record [0.13ms]
+(pass) skill + preset plane > resolvePreset still normalizes the OPTIONAL path/trust a host build may send [0.08ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > registerCommand passes the definition through and hands back the host's own disposer [0.15ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > a stub register returning a NON-function still yields a safe no-op disposer [0.04ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > an absent seam is a no-op disposer plus two false capability flags, never a throw [0.04ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > apply() never throws when the composition has no command registry [0.07ms]
+(pass) command plane (AGENTS.md §6: the ONE sanctioned registration path) > capabilities() reports a present registry, and distinguishes one without register() [0.07ms]
+(pass) message plane (user-role session injection) > userMessage builds the host's message contract, frozen at every level [0.12ms]
+(pass) message plane (user-role session injection) > a producer tag wins over the default kind, and every call mints a fresh id [0.03ms]
+(pass) message plane (user-role session injection) > the field set matches the vendored host constructor, and only the identity differs [0.11ms]
+(pass) message plane (user-role session injection) > the adapter surface exposes it, and the source imports no host package by bare specifier [0.66ms]
+(pass) turn plane (the submission surface a command handler needs) > a registered command handler submits through its invocation, and the host's invocation is not mutated [0.14ms]
+(pass) turn plane (the submission surface a command handler needs) > submitUserTurn reaches the agent's followup, and every absent or broken surface is a safe no-op [0.06ms]
+(pass) turn plane (the submission surface a command handler needs) > capabilities().turnSubmit is truthful for a present and an absent agent surface [0.08ms]
+(pass) row entry > apply provides the mpdDsh service [0.04ms]
+(pass) row entry > decision helpers use the harness feedback key [0.02ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > the source of the SAME change is delivered, not the previous one's [2.51ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a raw-section change whose RESOLVED value did not change reports source undefined [1.21ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > another namespace is ignored, and the disposer stops delivery [2.26ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > a throwing listener never escapes into the host's emit [1.22ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsReader describes the namespace and degrades when it is absent [0.17ms]
+(pass) settings plane (t34 §2.1 / §1.2, captain ruling 1) > settingsMutate writes through the service with the revision fence [0.23ms]
+(pass) workspaceRootsAll(): the design's stated-unverified facts (§A.1, measured here) > duplicates collapse, relative cwds resolve, a cwd-less agent is skipped, no registry is [] [0.16ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a REAL tool call returns the same result with and without the hook, and the gate is unchanged [512.87ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > a downstream DENY still denies: the observer cannot upgrade a blocked call [1.11ms]
+(pass) onPreToolExecute on the real cordis waterfall (observe-only, proven by a real call) > NEGATIVE CONTROL: a listener that returns without delegating DOES veto the gate [0.64ms]
+(pass) lazy mpdDsh resolution (T-50) > a transient miss is served temporarily, warned honestly, and is NOT cached for the session [0.16ms]
+(pass) lazy mpdDsh resolution (T-50) > a strict success is cached; a miss is retried on every use [0.09ms]
+(pass) lazy mpdDsh resolution (T-50) > a clean boot never warns and reports the mounted identity [0.04ms]
+(pass) lazy mpdDsh resolution (T-50) > a provably absent provider keeps the row-order hint — and only that case does [0.05ms]
+(pass) lazy mpdDsh resolution (T-50) > REAL vendored cordis: the sibling-apply window exists and the SAME facade crosses it [0.71ms]
+(pass) S2: the compaction-engine memo follows the LIVE agent, not the id > an agent that left the registry no longer answers with its engine [0.11ms]
+(pass) S2: the compaction-engine memo follows the LIVE agent, not the id > a recycled id gets the NEW incarnation's engine, never the previous one's [0.06ms]
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a composition without mpdDsh warns once, naming the identity, and still falls back [0.11ms]
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a registered-but-not-ACTIVE provider is diagnosed as pending, never as a missing row [0.03ms]
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a mounted adapter is used as-is, with NO fallback line at all (negative control) [0.02ms]
+
+ 361 pass
+ 0 fail
+ 1446 expect() calls
+Ran 361 tests across 23 files. [2.66s]
+[tests exit 0]
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 562 TypeScript file(s) of 562 in the source set; inspected 50545 declaration(s); skipped 24409 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[comments exit 0]
+$ bun run verify:docs
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/cellwork.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/drive-surface.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/mail.md
+ok   docs/preset-default.md
+ok   docs/tui-dag-renderer.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-autoproject-plugin/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-cellwork-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-graph-core/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mail-protocol/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-project-init-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=505 checked=473 resolved=473 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=129
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=54 failed=0 violations=0 exempt=24 derived=3 links=505 dead=0 — PASS
+[docs exit 0]
+$ node scripts/verify-dshgo-views.ts --self-test
+PASS  clean control: a legal manifest and a v1 view pass
+PASS  missing dshGo manifest
+PASS  protocol version not 1
+PASS  an id that breaks the protocol pattern
+PASS  the same id declared by two slots
+PASS  more panels than the protocol allows
+PASS  a declared view file that does not exist
+PASS  a view that is not JSON
+PASS  a v2 root in a static fallback
+PASS  a v2-only component in a static fallback
+PASS  a data binding in a static fallback
+PASS  a static view over the node budget
+PASS  a static view carrying a style key
+PASS  a static view whose text is empty
+PASS  a strip naming an undeclared panel
+PASS  an unknown placement
+PASS  a manifest over the 16 KiB budget
+[verify-dshgo-views] SELF-TEST PASS — 17 arms (1 clean control + 16 negative controls)
+[gate_selftest exit 0]
+$ node scripts/verify-dshgo-views.ts
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+[gate_live exit 0]
+$ bun run verify:manifest
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 20 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.17.0
+ok    version:dsh-distribution.json: distribution.version = 0.17.0
+ok    component-ref-version: 6 self-urn ref(s) compared against distribution.version 0.17.0, 0 stale
+ok    component-ref-dependencies: 8 declared component id(s), 0 dangling dependsOn edge(s)
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 28 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 26 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1177 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+[manifest exit 0]
+$ node scripts/verify-dist-fresh.ts
+  STALE   packages/mpd-autoproject-plugin/dist/index.js  <- packages/mpd-autoproject-plugin/src/index.ts
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 89fa97546819… 20ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  STALE   packages/mpd-bundle-plugin/dist/index.js  <- packages/mpd-bundle-plugin/src/index.ts
+  STALE   packages/mpd-cellwork-plugin/dist/index.js  <- packages/mpd-cellwork-plugin/src/index.ts
+  STALE   packages/mpd-codegraph-plugin/dist/index.js  <- packages/mpd-codegraph-plugin/src/index.ts
+  STALE   packages/mpd-comment-checker-plugin/dist/index.js  <- packages/mpd-comment-checker-plugin/src/index.ts
+  STALE   packages/mpd-config-plugin/dist/index.js  <- packages/mpd-config-plugin/src/index.ts
+  STALE   packages/mpd-dsh-adapter-plugin/dist/index.js  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  STALE   packages/mpd-ext-plugin/dist/index.js  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 13ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  STALE   packages/mpd-goal-plugin/dist/index.js  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-graph-core/dist/index.js  sha 7978afbeaf16… 13ms  <- packages/mpd-graph-core/src/index.ts
+  STALE   packages/mpd-hashline-plugin/dist/index.js  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mail-protocol/dist/index.js  sha 2fd9c52e3f40… 13ms  <- packages/mpd-mail-protocol/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha 7c37798fc14b… 15ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 88a05eb73e6c… 13ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha faca06e9c334… 14ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha f46205751274… 14ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha d536d4d6311e… 14ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  STALE   packages/mpd-modelchain-plugin/dist/index.js  <- packages/mpd-modelchain-plugin/src/index.ts
+  STALE   packages/mpd-project-init-plugin/dist/index.js  <- packages/mpd-project-init-plugin/src/index.ts
+  STALE   packages/mpd-qa-roles-probe/dist/index.js  <- packages/mpd-qa-roles-probe/src/index.ts
+  STALE   packages/mpd-roles-plugin/dist/index.js  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-roster-provider-plugin/dist/index.js  <- packages/mpd-roster-provider-plugin/src/index.ts
+  STALE   packages/mpd-team-compact-plugin/dist/index.js  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-core-plugin/dist/index.js  <- packages/mpd-team-core-plugin/src/index.ts
+  STALE   packages/mpd-team-watchdog-plugin/dist/index.js  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  STALE   packages/mpd-tools-plugin/dist/index.js  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 919e212b8d0c… 17ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-verify-plugin/dist/index.js  <- packages/mpd-verify-plugin/src/index.ts
+  STALE   packages/mpd-workmate-plugin/dist/index.js  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-autoproject-plugin/dist/index.js — committed packages/mpd-autoproject-plugin/dist/index.js (191617 B, 0aa40509a7e19c1d…) != fresh build of packages/mpd-autoproject-plugin/src/index.ts (194436 B, ff4833083df18d2b…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-autoproject-plugin/src/index.ts --target node --format esm --outfile packages/mpd-autoproject-plugin/dist/index.js
+  STALE: packages/mpd-bootstrap-plugin/dist/index.js — committed packages/mpd-bootstrap-plugin/dist/index.js (102703 B, 7e7c91f4b7162971…) != fresh build of packages/mpd-bootstrap-plugin/src/index.ts (105522 B, 4eb75b51b1344ff6…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-bootstrap-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bootstrap-plugin/dist/index.js
+  STALE: packages/mpd-bundle-plugin/dist/index.js — committed packages/mpd-bundle-plugin/dist/index.js (119831 B, 6a7823a4b982f7b9…) != fresh build of packages/mpd-bundle-plugin/src/index.ts (122650 B, 56dc3da8c830f0d5…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-bundle-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bundle-plugin/dist/index.js
+  STALE: packages/mpd-cellwork-plugin/dist/index.js — committed packages/mpd-cellwork-plugin/dist/index.js (368898 B, b22e65507e3ad8f9…) != fresh build of packages/mpd-cellwork-plugin/src/index.ts (371717 B, dd6811864555a7e7…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-cellwork-plugin/src/index.ts --target node --format esm --outfile packages/mpd-cellwork-plugin/dist/index.js
+  STALE: packages/mpd-codegraph-plugin/dist/index.js — committed packages/mpd-codegraph-plugin/dist/index.js (94053 B, 659b9352ac1370d5…) != fresh build of packages/mpd-codegraph-plugin/src/index.ts (96872 B, 2fd5ab370007e808…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-codegraph-plugin/src/index.ts --target node --format esm --outfile packages/mpd-codegraph-plugin/dist/index.js
+  STALE: packages/mpd-comment-checker-plugin/dist/index.js — committed packages/mpd-comment-checker-plugin/dist/index.js (95945 B, 3660e40f1e4f88a3…) != fresh build of packages/mpd-comment-checker-plugin/src/index.ts (98764 B, 67e485961191edd2…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-comment-checker-plugin/src/index.ts --target node --format esm --outfile packages/mpd-comment-checker-plugin/dist/index.js
+  STALE: packages/mpd-config-plugin/dist/index.js — committed packages/mpd-config-plugin/dist/index.js (195655 B, 755555f9d380e8e0…) != fresh build of packages/mpd-config-plugin/src/index.ts (198474 B, 731084eb4373fb54…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-config-plugin/src/index.ts --target node --format esm --outfile packages/mpd-config-plugin/dist/index.js
+  STALE: packages/mpd-dsh-adapter-plugin/dist/index.js — committed packages/mpd-dsh-adapter-plugin/dist/index.js (96879 B, a21a0f5afd371adb…) != fresh build of packages/mpd-dsh-adapter-plugin/src/index.ts (99702 B, 31f19430aa6ea53e…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-dsh-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-dsh-adapter-plugin/dist/index.js
+  STALE: packages/mpd-ext-plugin/dist/index.js — committed packages/mpd-ext-plugin/dist/index.js (222391 B, 5ba29cf4be82f9ee…) != fresh build of packages/mpd-ext-plugin/src/index.ts (225210 B, 6f86ab7bcb8a5bcc…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ext-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ext-plugin/dist/index.js
+  STALE: packages/mpd-goal-plugin/dist/index.js — committed packages/mpd-goal-plugin/dist/index.js (100711 B, b24e969b78615ed1…) != fresh build of packages/mpd-goal-plugin/src/index.ts (103530 B, f252c9a59b0f939a…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-goal-plugin/src/index.ts --target node --format esm --outfile packages/mpd-goal-plugin/dist/index.js
+  STALE: packages/mpd-hashline-plugin/dist/index.js — committed packages/mpd-hashline-plugin/dist/index.js (125332 B, 7e223b41ad647c4d…) != fresh build of packages/mpd-hashline-plugin/src/index.ts (128151 B, 45da6b2fc5676c3c…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-hashline-plugin/src/index.ts --target node --format esm --outfile packages/mpd-hashline-plugin/dist/index.js
+  STALE: packages/mpd-memory-plugin/dist/index.js — committed packages/mpd-memory-plugin/dist/index.js (130476 B, 64d37a3dd3f4cee3…) != fresh build of packages/mpd-memory-plugin/src/index.ts (133295 B, 63f3ee937fab31a8…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+  STALE: packages/mpd-modelchain-plugin/dist/index.js — committed packages/mpd-modelchain-plugin/dist/index.js (98664 B, 6bd2344434d7d4b0…) != fresh build of packages/mpd-modelchain-plugin/src/index.ts (101483 B, d4e42273a6008627…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-modelchain-plugin/src/index.ts --target node --format esm --outfile packages/mpd-modelchain-plugin/dist/index.js
+  STALE: packages/mpd-project-init-plugin/dist/index.js — committed packages/mpd-project-init-plugin/dist/index.js (97748 B, 238396ec926eada0…) != fresh build of packages/mpd-project-init-plugin/src/index.ts (100567 B, 8c0ca7c480a693d2…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-project-init-plugin/src/index.ts --target node --format esm --outfile packages/mpd-project-init-plugin/dist/index.js
+  STALE: packages/mpd-qa-roles-probe/dist/index.js — committed packages/mpd-qa-roles-probe/dist/index.js (96732 B, 5cee4d81a2a29ba1…) != fresh build of packages/mpd-qa-roles-probe/src/index.ts (99551 B, 56d0659fd5450a0b…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-qa-roles-probe/src/index.ts --target node --format esm --outfile packages/mpd-qa-roles-probe/dist/index.js
+  STALE: packages/mpd-roles-plugin/dist/index.js — committed packages/mpd-roles-plugin/dist/index.js (192778 B, 22191d88e0dc10c2…) != fresh build of packages/mpd-roles-plugin/src/index.ts (195597 B, 5b45c87d609e2a2c…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js
+  STALE: packages/mpd-roster-provider-plugin/dist/index.js — committed packages/mpd-roster-provider-plugin/dist/index.js (137645 B, 58846c425b14fe93…) != fresh build of packages/mpd-roster-provider-plugin/src/index.ts (140464 B, 04497f6822dc2994…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roster-provider-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roster-provider-plugin/dist/index.js
+  STALE: packages/mpd-team-compact-plugin/dist/index.js — committed packages/mpd-team-compact-plugin/dist/index.js (109943 B, 96942f6915e390ed…) != fresh build of packages/mpd-team-compact-plugin/src/index.ts (112762 B, 6f645e6ea87361a6…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-team-compact-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-compact-plugin/dist/index.js
+  STALE: packages/mpd-team-core-plugin/dist/index.js — committed packages/mpd-team-core-plugin/dist/index.js (384176 B, ca12ea132c0470e7…) != fresh build of packages/mpd-team-core-plugin/src/index.ts (386995 B, b21e2f7815054331…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js
+  STALE: packages/mpd-team-watchdog-plugin/dist/index.js — committed packages/mpd-team-watchdog-plugin/dist/index.js (228010 B, 8fc91ee6471ccd93…) != fresh build of packages/mpd-team-watchdog-plugin/src/index.ts (230829 B, b10bd4010f22e0ae…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-team-watchdog-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-watchdog-plugin/dist/index.js
+  STALE: packages/mpd-tools-plugin/dist/index.js — committed packages/mpd-tools-plugin/dist/index.js (91447 B, eacbdf35e0e352b2…) != fresh build of packages/mpd-tools-plugin/src/index.ts (94266 B, ccf2fb990fe3f453…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tools-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tools-plugin/dist/index.js
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed packages/mpd-tui-plugin/dist/index.js (503055 B, 33b78eea25da2f2e…) != fresh build of packages/mpd-tui-plugin/src/index.ts (505874 B, 74776b4274f4446a…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+  STALE: packages/mpd-verify-plugin/dist/index.js — committed packages/mpd-verify-plugin/dist/index.js (155186 B, 10938141f454bb9f…) != fresh build of packages/mpd-verify-plugin/src/index.ts (158005 B, 093ab0ea84d494db…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-verify-plugin/src/index.ts --target node --format esm --outfile packages/mpd-verify-plugin/dist/index.js
+  STALE: packages/mpd-workmate-plugin/dist/index.js — committed packages/mpd-workmate-plugin/dist/index.js (163884 B, 95327c7e8ee4d4a0…) != fresh build of packages/mpd-workmate-plugin/src/index.ts (166703 B, 6a694e83743e5b8e…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-workmate-plugin/src/index.ts --target node --format esm --outfile packages/mpd-workmate-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 24 of 34 targets not fresh (STALE: 24) — 730ms
+[dist exit 1]
+--- checker: repo root (pre-existing bundle-form error) ---
+@mpd-dsh/mpd 0.17.0
+  错误 /dsh/bundle/patch：不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上
+  提示 /engines/dsh：没写 engines.dsh：DSH 不检查版本，装到不兼容的 DSH 上会在运行时出错
+  原生界面能显示（面板 1）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[checker_root exit 1]
+--- checker: declared static view alone ---
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[checker_static_view exit 0]
+--- checker: HEAD manifest (pre-wave proof) ---
+@mpd-dsh/mpd 0.17.0
+  错误 /dsh/bundle/patch：不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上
+  提示 /engines/dsh：没写 engines.dsh：DSH 不检查版本，装到不兼容的 DSH 上会在运行时出错
+  原生界面能显示（面板 1）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[checker_head_manifest exit 1]
+--- checker: kit-built v2 panel (built by the kit, piped on stdin) ---
+[lintDesign v2] 0 findings
+  视图 -（面板）：能显示，13 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].children[0].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].children[0].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[7].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[7].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[7].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[7].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[7].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[7].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[8].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[8].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[10].items[0].style：此样式由 App 保留，已忽略
+[checker_kit_panel exit 0]
+--- checker: the same panel's v1 fallback (linted v1) ---
+[]
+  视图 -（面板）：能显示
+[checker_kit_fallback exit 0]

@@ -522,8 +522,10 @@ export function installSessionGate(
       /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
       const notice = dsh.userMessage({
         text: staged
-          ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged })
-          : advisoryNoticeText(verdict.signals, consumed.flagged),
+          ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength })
+          // THE RUNG TRAVELS WITH THE NOTICE (contract §10 A4): one short clause, no new line, so the
+          // reader learns WHO admitted the work beside the signals that fired.
+          : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
         // A PRODUCER-OWNED source kind, never the retired `{kind:"plugin"}` wrapper: the
         // 0.1.7 session format (v4) REJECTS that kind at append time —
         // `dsh-session-format-v3-to-v4` `source()` throws "format v4 message requires a

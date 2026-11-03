@@ -1,0 +1,13 @@
+# W4-A2 falsifiability — two mutations, each restored afterwards
+
+## MUTATION A — the bound removed (Promise.race replaced by a plain await)
+  arm (a) => FAIL: '(fail) (a) a child that NEVER settles is killed at the bound, its slot is released,
+             and the run ends blocked [5000.00ms]  ^ this test timed out after 5000ms.'
+  => the HARD BOUND is what makes the arm terminate; without it the hung child holds the slot forever.
+
+## MUTATION B — the blocked override removed (status left as computed)
+  arm (a) => FAIL on 'expect(res.status).toBe("blocked")' (the run answered its computed status instead).
+  => the 'a killed child forbids complete' rule is load-bearing, not decorative.
+
+## RESTORED
+  bun test packages/mpd-autoproject-plugin => 49 pass / 0 fail
