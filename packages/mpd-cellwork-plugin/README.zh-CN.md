@@ -88,6 +88,9 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null。
 
+邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）是
+`mail.*` 键，因为**两个**邮件工具都读它，并且经同一个共享存储执行（见下文「邮件与重种边界」）。
+
 模型自身的上下文**窗口不是旋钮**：切分时从模型目录读取，运行时从观测到的 token 计量读取，并记录来源。
 `windowOverride` 只用于让"窗口读不到的 route"被显式认证，并且会记录为 override。
 
@@ -100,6 +103,11 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   （来源 `override`），否则该任务为 `uncertified`——绝不猜测。仅当估算不超过
   `floor(window * windowFraction)`，且估算 + 模型最大输出 + 压缩预留仍在该窗口内时才接受；超预算任务会
   **带着**字节 → token 的明细被拒绝。
+- **切分告警不致命，空写作用域绝不沉默。** `cellwork_split` 返回 `warnings` 列表 —— 一个**被排除在 `accepted`
+  谓词之外**的通道 —— 按切分键点名每个 `writeScopes` 为空的 `work`/`repair`/`integration` 任务。确实什么都不写的
+  切分仍然通过；它拒绝的只是**沉默**。冻结合约里「(none declared — this task produces no code)」那一行带着补救：
+  **第一次写入之前**向队长申请扩展作用域。团队面的 `agent_teams_plan {action:"create_task"}` 在暂存时适用同一条
+  规则。
 - **B7 仅声明的所有者派发。** 就绪任务**只**配给它声明的所有者；所有者忙、缺席或**被围栏**时如实报告、
   任务保持待派发——绝不替换。成员在以下任一情况下**被围栏**：记录的 `mode` 是 `checkpoint`、它写下的交接
   仍在等待压缩屏障、或屏障放弃并记录了 `fenced: true` + `fencedReason`；被围栏的成员绝不被发消息。
@@ -152,6 +160,11 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   **崩溃边界：** 进程在激活中途**死亡**时完全没有部分状态。成员仍按名字与活跃名册对账，但看板任务与验证循环
   只通过已记录的表获知，因此死亡那一趟创建的任务或循环会在重试时**再创建一次**——可检出、不可删除（团队平面
   没有取消动词）。一次返回失败的残余窗口是一次看板/验证调用加一次 cell 记录写入；一次崩溃的窗口则是整趟激活。
+- **重切分会说明它保留了什么。** 一次修订保留了任务时，`cellwork_activate` 返回 `notice`：多少保留任务复用其看板
+  行、它们的冻结合约**不会**被重写（验证者可能正在读的字节保持首次冻结的样子）、扩展作用域需要**手工重新冻结**加
+  一个新的验证循环且应落在一个**新的**切分修订里，以及本次激活以**仅声明所有者**的方式派发了多少就绪行。**第 4
+  阶段例外**写在同一条 notice 里：保留任务的循环从未被记录，是保留合约被重建的**唯一**情形，重建会补上验证循环
+  id —— 发生时会点名这些键。这条 notice 刻意是结果里的散文：队长不必从计数里自行推断任何一条。
 - **无损的工具结果。** cellwork 的每个工具结果都能通过 harness 的无损 JSON 走查：任务投影绝不带 `undefined`
   自有键（可选的 `owner` 直接省略，绝不写成 `undefined`），结果里也没有非有限数、负零或环。
 - **B5 侦察边界。** `cellwork_recon` 用精确的 `Explorer`/`Researcher` 标签与绝对深度上限启动只读子代理，
@@ -168,9 +181,14 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   用同一句话拒绝。这个比较是**字符串**比较：让规则有意义，但从不保证不可伪造。
 - **一个 override、一个身份。** `windowOverride` 是单值：它认证**任何**目录读不到窗口的 route，并记录为
   `override`。规划任务由**调用者自己的身份**（规划器/切分器）关闭，关闭失败只记入 journal，绝不影响修订。
-- **压缩结果必须分类。** 屏障先等该 agent 空闲（`compactionRetries` 次有界重试，间隔 `idleBarrierDelayMs`），
-  再带真实的 `AbortController` 信号压缩。写入 journal 的原因取值是 `compacted` | `no-safe-range` | `busy` |
-  `aborted` | `failed` | `no-engine` 之一；重试预算用完绝不是一次静默的空操作。
+- **压缩结果必须分类，而且能触及的成员会原地压缩。** `agent/turn-stopping` 监听器**返回**屏障的 promise，于是
+  宿主的串行派发会 **await** 它，而不是与一个已脱离的屏障赛跑。屏障先用有界重试预算（`compactionRetries` 次，
+  间隔 `idleBarrierDelayMs`）等该 agent 空闲，然后**在**任何 sleep **之前**、在查注册表**之前**，从事件携带的
+  **活跃**成员 handle 解析引擎（`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents` 脱离的成员仍会原地
+  压缩；只有该 handle 没带引擎时，才轮到按 id 的 `compactionEngineForAgent`。重试之间可以有延迟，**第一次**尝试
+  之前没有。引擎带真实的 `AbortController` 信号驱动；写入 journal 的原因取值是 `compacted` | `no-safe-range` |
+  `busy` | `aborted` | `failed` | `no-engine` 之一，重试预算用完绝不是一次静默的空操作。结果并集恰好是
+  `promoted` | `reseeded` | `refused`，而 `compacted` 的答案走 `promoted`，且是**同一个** agent —— 不打断、不重种。
 - **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
   成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
   子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以
@@ -180,12 +198,16 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
   记录这次发送。`cellwork_send` 同时说这套结构化协议——`kind`（有问题 `options` 时推断为 question，有
   `selected`/`custom` 时推断为 answer）、`options` + `multiSelect`、`replyTo`、`selected`/`custom`、
   `questionId`，以及 `broadcast: true`（目标 cell 的每个席位一行，排除发送者）；未知标签会被拒绝，并附上
-  完整的合法标签列表。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
+  完整的合法标签列表。收件人已有 `mail.maxUndelivered` 条未投递（默认 8，`0` 表示关闭）时会被**拒绝** —— 该上限
+  经同一个存储与 `agent_teams_mail` **共享**，所以换工具不是逃生门 —— 拒绝会点名收件人、当前条数、上限与两条恢复
+  路径：确认它的收件箱（`cellwork_inbox`），或改派它身后的行（`cellwork_dispatch {reassign:[…]}`）。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
   cell 不尝试唤醒——并出现在**那个** cell 的 `cellwork_supervise` 上。Lead 没有 executor handle，成员 → 队长的
   行由队长在 `cellwork_inbox` 读取（并在 `cellwork_supervise` 上呈现）；唤醒从未发出的行保持**未投递**状态，
   同样会在那里呈现（`unreadMail` 加上 `wakeFailures[]` 行，每行 `{id,to,subject,reason}`），而不只是出现在
-  待办看板上。压缩屏障无法压缩时，代理会从交接文档重种；原生后端不暴露已落地激活的 dispose，因此旧子代理只
-  做尽力中断，新 handle 记录在 cell 上。
+  待办看板上。压缩屏障无法压缩时，代理会从交接文档重种 —— 但绝不用它自己那个已死的 Agent 当父级：重种的父级
+  依次是成员记录的 `parentSession`（解析为活跃会话）、该 cell 的队长，两者都不活跃时屏障以**独立**原因
+  `reseed-parent-unavailable` 拒绝。真正用到的父级会记入 journal（`parentSource` + `parentSessionId`），因此
+  血缘由可观测取代推断。原生后端不暴露已落地激活的 dispose，因此旧子代理只做尽力中断，新 handle 记录在 cell 上。
 
 **配置优先级（两种语言同述）：** 项目文件（`<workspace>/.mpd/mpd.jsonc` 的 `cellwork.*`）> 行配置
 （bundle patch 的 `config:` 块）> 随包发布的文档默认值。

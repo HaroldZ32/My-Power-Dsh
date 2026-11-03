@@ -48,6 +48,14 @@ deployment's top-level session carries `agentPreset: "cordis"`: a preset-keyed r
 exactly the session the door must bind. The mpd RECORD is still the only board, so every rule above runs
 on every task a session can create through these tools.
 
+**Empty write scopes are no longer silent (C4).** A `work`/`repair`/`integration` row staged or appended
+with no `write_scopes` is still CREATED, but the result carries a `warning` (rendered below the result's
+own sentence and declared in the output schema): it names the consequence — the frozen contract allows
+NO path, so the writer must stop on the first edit and ask the captain — and the remedy — declare the
+scopes now, or amend the contract before the first write, because a scope added after approval needs a
+re-freeze and a new verify loop. `requirement`/`review` rows write nothing and are exempt, so the field
+does not become noise.
+
 **The DAG is visible.** `agent_teams_plan {action:"status"}` keeps its one-line summary
 (`plan <id> · members N · tasks N · hold …`) and prints one line per member (`id`, `name`, `status`) and
 one line per task (`id`, `owner`, `status`, `kind`, `blockedBy` — or `-` — and `subject`), so a flat
@@ -301,8 +309,14 @@ that can only fail, and a read-only composition mounts the read routes alone.
 - Absorbed from the official implementation, each earned there: a message is TARGETED at a live member
   resolved by name, a member cannot message itself, a member's UNDELIVERED backlog is BOUNDED (the
   official `TEAM_MAILBOX_FULL`), and the queue keeps insertion order.
-- **The undelivered BOUND is per TEAM, and an ACKNOWLEDGEMENT releases a slot.** The bound (default 8)
-  counts the rows a member was never handed AND never acknowledged — ONE shared outstanding predicate
+- **The undelivered BOUND is per TEAM, a workspace KNOB, and BOTH an acknowledgement and a delivery
+  release a slot.** The bound is `mail.maxUndelivered` (default 8, `0` disables; an absent, unreadable
+  or unusable value falls back to 8), read PER CALL through the config layer on the ONE `sendMany` path
+  BOTH `cellwork_send` and `agent_teams_mail` traverse — so the two tools cannot disagree and "use the
+  other mail tool" is not an escape. A refusal names the recipient, the current count, the bound and TWO
+  recovery paths: acknowledge the inbox (`agent_teams_mail {action:"read"}` / `cellwork_inbox`) or
+  reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`) — and writes nothing.
+  It counts the rows a member was never handed AND never acknowledged — ONE shared outstanding predicate
   feeds the send bound, `summary`'s `undelivered` column and the mail tool's `unread` branch, so the
   three cannot disagree about which rows are outstanding. It is scoped to the claiming team's own rows:
   a retired team's backlog can never refuse a fresh team's mail whose member ids restart at `M1`, and an

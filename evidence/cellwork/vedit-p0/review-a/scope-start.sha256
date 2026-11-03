@@ -1,0 +1,13 @@
+# review-a scope hash sandwich — lane A files as judged
+0bbe31c4ebeec3f3a4f42ec79a795748db1376d57266a87f5242e0825c83bc51  packages/mpd-cellwork-plugin/src/activate.ts
+8fdfe446b1fb24eedf58756bf7b39a31a76cd59f7a362e08adc24e3317c0af05  packages/mpd-cellwork-plugin/src/flow.ts
+ce172655274188b2d0f65cea594e1ff543eddf792dfd86932581a28059498e4c  packages/mpd-cellwork-plugin/src/protocol-core.ts
+39e2eb887d86dbfcfdbc93d90a68551cfb5c5b9a3b451a7037bf5bfaaf5d3f77  packages/mpd-cellwork-plugin/src/protocol.ts
+88e359809d691b8e4f881541f9f50afd282fede3c7b5c5718ab9f560e17a7ed7  packages/mpd-cellwork-plugin/src/split.ts
+dfb0ba305cf41c487d70799753d26a057cf8dc5237186720bc8e33d98e49a31e  packages/mpd-cellwork-plugin/test/flow.test.ts
+5e77ce3bc902320b318c1468bfa6cb8ce48b6b78d5bb442c3db35db7ec9b7527  packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
+04dd69b237c18197c96abe3f9cce3debb899374f45040fa99a5c6d5fc67c7a8e  packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts
+cf5407738cbef860658c7422ed6710cb171578c8fe2317c880a80a487fc8ee53  packages/mpd-cellwork-plugin/test/mail-bound-config.test.ts
+0e6cd1d76faa9487c09f0b866f3fee0b93c722ff4fcf591f4651ca39fb1e751e  packages/mpd-dsh-adapter-plugin/src/index.ts
+4f180d09b189f351504a89a27b31ffa458058ecc55633f32d0405e20b21cf1fe  packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts
+f6aea44542f5fae921ea8b8919deefd3c4381e5ebfd9f32281d21db5b473ce11  packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts

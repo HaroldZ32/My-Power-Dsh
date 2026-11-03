@@ -1,0 +1,26 @@
+INCIDENT ADDENDUM — what was UNTRACKED under evidence/tui/lanes/ at session start
+Recorded by rev-cellwork (T11 review seat), 2026-11-03. Read-only statement; no further file operations
+were performed on evidence/tui/lanes.
+
+1. DIRECT OBSERVATION (session start, 2026-11-03T03:41Z, before any of my runs):
+   `git status --porcelain` reported 38 entries in total and the output I saw was complete for that count.
+   Exactly ONE of them was under `evidence/tui/lanes/`:
+       ?? evidence/tui/lanes/2026-11-01T06-42-03.545Z/
+
+2. ARITHMETIC CROSS-CHECK (independent of that observation):
+   - `git ls-files` -> 173 directories are TRACKED under evidence/tui/lanes (plus 2 tracked files at the
+     top level: T26-LANE-HARDENING.md, TUI-LANES-SUMMARY.md -> 175 `ls` entries after restoration).
+   - Immediately before the deletion the tree held 176 directories there: the 173 tracked ones, the one
+     untracked directory in (1), and the 2 directories my own two `--static-only` runs created.
+   - Therefore exactly ONE untracked directory existed, and it is the one named in (1).
+
+3. LIMIT OF THE CLAIM: (2) is arithmetic from the directory count, not a saved listing of the `rm` run,
+   so a second untracked directory created in the same instant and not doubled in the count cannot be
+   excluded by proof. `grep -rn "2026-11-01T06-42-03" --include=*.md .` finds no citation of the lost
+   directory anywhere in the tree.
+
+4. RECOVERY STATE at the moment of this note:
+   `git status --porcelain evidence/tui/lanes` = 0 lines; `git ls-files evidence/tui/lanes` = 1546, all
+   1546 present on disk and byte-identical to HEAD (restored with the read-only
+   `git archive HEAD -- evidence/tui/lanes | tar -x -C .`). The tracked corpus is intact; only untracked
+   content could be lost, and (1)+(2) bound that to one directory.

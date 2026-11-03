@@ -161,6 +161,16 @@ export interface ActivateOutcome {
   dispatch: DispatchReport
   /** The splitter task closed by this activation, when the board still held it open. */
   splitTaskId?: string
+  /**
+   * The statement a RE-SPLIT owes its captain (C5/D4), absent on an initial activation.
+   *
+   * WHY IT EXISTS: keeping a live board row and NOT rewriting its frozen contract is deliberate, but a
+   * result that only carries counts reads as "the whole split was materialised", so a captain plans a
+   * scope expansion against a contract that allows no such path. This field says, in words: how many were
+   * kept, that their contracts are not rewritten, what a scope expansion therefore needs, that this
+   * activation already dispatched owner-only, and the one stage-4 exception where a kept contract IS rebuilt.
+   */
+  notice?: string
 }
 
 /**
@@ -291,6 +301,25 @@ export function reviewTaskDescription(task: SplitTaskVerdict, workTask: SplitTas
 }
 
 /**
+ * The statement a re-split owes its captain (C5/D4): what was kept, what that costs, and what ran.
+ *
+ * Written as ONE sentence chain rather than a structured object because its consumer is a MODEL reading a
+ * tool result: a captain must not have to infer any of these four facts from counts.
+ *
+ * @param keptCount - how many split keys reused a live board row.
+ * @param dispatched - how many owner-only pairs this activation's dispatch pass delivered.
+ * @param rebuiltKept - the kept keys whose contract had to be rebuilt because their loop was never recorded.
+ * @returns the notice text.
+ */
+function resplitNotice(keptCount: number, dispatched: number, rebuiltKept: readonly string[]): string {
+  /** The stage-4 exception, named with its keys when any kept task hit it. */
+  const exception = rebuiltKept.length === 0
+    ? "Stage-4 exception: a kept task whose loop was never recorded is the ONLY case where a kept contract is rebuilt, gaining its verify loop id."
+    : "Stage-4 exception: " + String(rebuiltKept.length) + " kept task(s) had no recorded loop, so their frozen contracts WERE rebuilt with the loop id (" + rebuiltKept.join(", ") + ")."
+  return "RE-SPLIT on the same team: " + String(keptCount) + " kept task(s) reuse their live board rows, and their frozen contracts are NOT rewritten — the bytes a verifier may already be reading stay as first frozen. Consequence: a scope expansion needs a manual re-freeze plus a new verify loop, so land it as a NEW split revision; editing the kept contract in place is not what this activation does. " + String(dispatched) + " owner-only pair(s) were dispatched by this activation. " + exception
+}
+
+/**
  * Build one code task's frozen acceptance contract.
  *
  * @param deps - the cell, the split and the knobs.
@@ -319,7 +348,11 @@ export function buildContractDoc(deps: Pick<ActivateDeps, "cell" | "config" | "s
     task.description,
     "",
     "## Allowed write scopes",
-    ...(task.writeScopes.length === 0 ? ["(none declared — this task produces no code)"] : task.writeScopes.map((scope) => "- `" + scope + "`")),
+    // THE RECOVERY, NOT JUST THE FACT (C4/D3): a writer handed "(none declared)" used to stop at its first
+    // edit with no instruction. The line now says what to DO before that first write.
+    ...(task.writeScopes.length === 0
+      ? ["(none declared — this task produces no code)", "", "If it DOES need to write, ask the captain for a scope extension BEFORE the first write: this contract allows no path, so any edit is outside it."]
+      : task.writeScopes.map((scope) => "- `" + scope + "`")),
     "",
     "## Acceptance criteria",
     "1. The deliverable above exists, and every changed path is inside the allowed write scopes.",
@@ -779,6 +812,12 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     skipped: dispatch.skipped.length,
     ...(splitTaskId === "" ? {} : { splitTaskId }),
   }, deps.now)
+  // THE KEPT CONTRACT'S ONE REBUILD, NAMED (C5): stage 4 rewrites a kept task's contract only when its loop
+  // was never recorded, and the notice below states that this is the exception rather than the rule.
+  /** The kept keys whose frozen contract this pass rebuilt because their loop id was missing. */
+  const rebuiltKept = loopTargets.filter((task) => keptKeys.has(task.key)).map((task) => task.key)
+  /** The statement a re-split owes its captain; an initial activation keeps nothing, so it carries none. */
+  const notice = keptKeys.size === 0 ? undefined : resplitNotice(keptKeys.size, dispatch.pairs.length, rebuiltKept)
   return {
     ok: true,
     outcome: {
@@ -793,6 +832,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       loops,
       dispatch,
       ...(splitTaskId === "" ? {} : { splitTaskId }),
+      ...(notice === undefined ? {} : { notice }),
     },
   }
 }

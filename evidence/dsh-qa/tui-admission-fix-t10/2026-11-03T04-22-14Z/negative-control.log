@@ -1,0 +1,5 @@
+# NEGATIVE CONTROL — the SAME fixed script against a scratch manifest with ONE permission re-declared — 2026-11-03T04:22:15Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] FAIL: 1 check(s)
+  - the shipped manifest must declare NO intercept permission (the seam is inactive by design): [{"name":"session.input.intercept","scope":"tui/transcript"}]
+# exit: 1

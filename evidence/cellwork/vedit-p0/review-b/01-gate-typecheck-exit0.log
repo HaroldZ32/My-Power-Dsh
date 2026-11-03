@@ -1,0 +1,2 @@
+# gate typecheck cmd: "bun run typecheck" program: "/home/haroldzhao/.bun/bin/bun" argv: ["run","typecheck"]
+$ tsgo --noEmit

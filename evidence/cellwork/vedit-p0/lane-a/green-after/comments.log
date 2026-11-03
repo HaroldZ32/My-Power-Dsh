@@ -1,0 +1,8 @@
+# GREEN-AFTER — 2026-11-03T04:00:58Z
+# command: node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 591 TypeScript file(s) of 591 in the source set; inspected 51772 declaration(s); skipped 25185 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# exit: 0

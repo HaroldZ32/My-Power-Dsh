@@ -97,6 +97,11 @@ bundle 里除了 `/cellwork` 命令之外没有任何入口能启动这个模式
   都必须**大于**已记录的修订号：修订只能向前。
 - **保留下来的行会被复用，合约不会被重写。** 跨修订存活的任务保留它在看板上的行，以及验证循环打开时冻结的
   合约：验证者仍然按工作开始前冻结的验收标准裁决。
+- **激活会说明它保留了什么。** 一次修订保留了任务时，`cellwork_activate` 返回 `notice` —— 刻意写成结果里的
+  散文，因为队长不必从计数里自行推断任何一条：多少保留行被复用、它们的冻结合约**不会**被重写（验证者可能正在
+  读的字节保持首次冻结的样子）、扩展作用域需要**手工重新冻结**加一个新的验证循环且应落在**新的**切分修订里，
+  以及本次激活以**仅声明所有者**的方式派发了多少就绪行。**第 4 阶段例外**写在同一条 notice 里：保留任务的
+  循环从未被记录，是保留合约被重建的**唯一**情形——重建会补上验证循环 id，发生时会点名这些键。
 - **被去掉的行标记为 `cancelled`，绝不删除。** 它们作为历史留在 cell 记录里，派发会跳过它们。
 - **切分器只保留一行可被重新派发的活行。** 需求更新先找**活跃的**切分器行：先按记录的 id，再按
   `cell-splitter` 拥有的任意活行，并把**那一行**随新修订号重新派发；它最终用到的 id 无论如何都会写回 cell
@@ -150,8 +155,8 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_status` | 队长、成员 | 阶段、目标、队长、需求/切分修订号、成员及其模式、已注入的检查点、活跃 team 计数、已记录的切分票看板 id、cell 记录与活跃名册的成员差异（`missingFromCell` / `missingFromTeam` / `inSync`）、调用者自己的座位与磁盘路径 |
 | `cellwork_requirements` | 规划器 | `finalize` 需求文档，或 `update` 它：update 会提升修订号并把切分标记为过期；章节正文延伸到同级或更高级的下一个标题，因此 `###` 子标题留在父章节内 |
 | `cellwork_recon` | 规划器、副队长 | 一次性**只读**咨询（Explorer/Researcher）：走直接启动路径，以角色名作为标签，并给出显式的绝对深度上限，因此这次咨询是一个只读叶子；报告会返回并记入 journal |
-| `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json` |
-| `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名 |
+| `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
+| `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发） |
 | `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），这是被围栏 owner 的修复手段 |
 | `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个被围栏成员与其仍拥有的未关闭行；每个投影都是无损 JSON，没有 `undefined` 自有键 |
 | `cellwork_context` | 成员 | 调用者自己的实时占用、度量所用的窗口，以及该窗口的来源 |
@@ -257,13 +262,19 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
 3. **交接**：`cellwork_handoff` 校验必需章节（任务、状态、决策、产物、已验证事实、未决问题、下一步），写出
    `handoff/<member>-<n>.md`、记入 journal，并把检查点标记为 `handoff-ready`。指令要求该 agent 结束本回合，
    别的什么都不要做。
-4. **压缩**：在 `agent/turn-stopping` 时，插件安排一道屏障：等该 agent 空闲下来（`compactionRetries` 次有界
-   重试，间隔 `idleBarrierDelayMs`），然后带真实的 `AbortController` 信号调用它自己的压缩引擎。结果会被分类
-   并记入 journal：`null`（没有安全可用的区间）、`busy`（agent 忙碌）与 `error` 全都会被记录，因此重试预算
-   用完绝不是一次静默的空操作。
-5. **晋升或重种**：压缩成功时，该 session 的模式变为 `subcaptain`，并收到晋升指令（深度 + 1、从交接文档
-   继承剩余范围、子 team 协议）。若没有安全区间或压缩失败，则释放该激活，用交接文本作为提示词启动一个新的
-   子代理，并同样种入晋升指令。
+4. **压缩**：在 `agent/turn-stopping` 时，监听器**返回**屏障的 promise，于是宿主的串行派发会 **await** 它，
+   而不是与一个已脱离的屏障赛跑。屏障先等该 agent 空闲下来（`compactionRetries` 次有界重试，间隔
+   `idleBarrierDelayMs`），然后**在**任何 sleep **之前**、在查注册表**之前**，从事件携带的**活跃**成员 handle
+   解析引擎（`compactionEngineForLiveAgent`），因此一个已从 `ctx.agents` 脱离的成员仍会原地压缩；只有该
+   handle 没带引擎时，才轮到按 id 的 `compactionEngineForAgent`。重试之间可以有延迟，**第一次**尝试之前没有。
+   引擎带真实的 `AbortController` 信号驱动，结果会被分类并记入 journal：`null`（没有安全可用的区间）、
+   `busy`（agent 忙碌）与 `error` 全都会被记录，因此重试预算用完绝不是一次静默的空操作。
+5. **晋升或重种**：结果并集恰好是 `promoted | reseeded | refused`。压缩成功时，**同一个**成员原地晋升——不打断、
+   不重种——该 session 的模式变为 `subcaptain`，并收到晋升指令（深度 + 1、从交接文档继承剩余范围、子 team
+   协议）。若没有安全区间或压缩失败，则释放该激活，用交接文本作为提示词启动一个新的子代理，并同样种入晋升
+   指令——但绝不用成员自己那个已死的 Agent 当父级：重种的父级依次是成员记录的 `parentSession`（解析为活跃
+   会话）、该 cell 的队长，两者都不活跃时屏障以**独立**原因 `reseed-parent-unavailable` 拒绝。真正用到的
+   父级会记入 journal（`parentSource` + `parentSessionId`），因此血缘由可观测取代推断。
 6. **子 team**：被晋升的 agent 用 `cellwork_subteam` 登记自己的子 cell，并领导自己的计划。当
    `depth + 1 > depthMax`（默认 3）时 `cellwork_subteam` 会拒绝，并返回确切的边界；直接启动路径把同一个深度
    作为绝对值 `maxDepth` 传下去，因此宿主上限与 cell 上限一致。子 team 运行完全相同的阶段与规则，
@@ -312,6 +323,11 @@ cell 内的智能体可以互相通信，不经过用户界面，也不经过队
 （`cell.subcellIds` / `cell.parentCellId`），其它一律以 `"not in this cell's tree"` 拒绝。显式给出的名字既
   不是 `captain`、也不是**目标 cell** 的成员时会被**拒绝**（答复列出该 cell 的成员）绝不会悄悄投进调用者
   自己的收件箱。
+- **积压上限是一个 workspace 旋钮，两个邮件工具共用它。** `mail.maxUndelivered`（默认 8，`0` 表示关闭；
+  缺失或不可用的值回退到 8）每次调用都在 `cellwork_send` 与 `agent_teams_mail` **共用**的同一条存储路径上
+  读取，因此两个工具之间的上限不可能不同。收件人达到上限时会被拒绝，拒绝点名它的名字、当前条数、上限与两条
+  恢复路径——确认收件箱（`cellwork_inbox`、`agent_teams_mail {action:"read"}`），或改派它身后的行
+  （`cellwork_dispatch {reassign:[…]}`）——并且不写入任何内容。一次确认释放一个槽位，一次投递同样释放一个。
 - **行落在哪里。** 落在 workspace 邮箱里，并盖上该 cell 的 `teamId` 与一个附加的 `cellId`（视图按它筛选；
   跨 cell 的发送者还会盖上 `fromCell`）。写入走共享存储的原子扇出，所以所有规则都在第一次追加之前跑完。
   统一之前的 `<cell>/mail.jsonl` 仍然会被读取，并按 `at` 顺序合并进视图；对**那些**行的确认会追加回那个文件，
@@ -366,6 +382,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null。
+
+邮件上限是这张表**唯一**的例外：`mail.maxUndelivered`（默认 8，`0` 表示关闭；缺失或不可用的值回退到 8）
+放在 `mail.` 前缀下，因为**两个**邮件工具都读它（见「感知 cell 的邮件」）。
 
 模型自身的上下文窗口**不是**旋钮：切分时从模型目录读取，运行时从观测到的 token 计量读取，并记录来源。
 `windowOverride` 只用于让「窗口读不到的 route」被显式认证，并且会记录为 override。

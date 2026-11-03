@@ -10,10 +10,13 @@
 // WHAT IS ABSORBED from the official implementation, deliberately, because each was earned there:
 //   • a message is TARGETED at a live member, resolved by name, and a member cannot message itself;
 //   • a member's UNDELIVERED backlog is BOUNDED, so a stalled member cannot silently accumulate work —
-//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one — the bound is
-//     PER TEAM, because member ids (`M1`, `M2`, …) repeat across waves and a finished team's queue must
-//     never refuse a new team's work — and an ACK RELEASES A SLOT, because the one release valve an
-//     operator has cannot depend on a delivery a stalled member will never trigger;
+//     the official service refuses with `TEAM_MAILBOX_FULL` and so does this one — the bound is a
+//     WORKSPACE KNOB ({@link MAIL_MAX_UNDELIVERED_KEY}, default 8) that BOTH sending tools read through
+//     the ONE {@link sendMany} path (`cellwork_send` and `agent_teams_mail`), so neither is an escape
+//     from it — the bound is PER TEAM, because member ids (`M1`, `M2`, …) repeat across waves and a
+//     finished team's queue must never refuse a new team's work — and an ACK RELEASES A SLOT, because
+//     the one release valve an operator has cannot depend on a delivery a stalled member will never
+//     trigger;
 //   • the queue keeps INSERTION ORDER, and unread counts are computed oldest-first.
 //
 // WHAT IS OURS: `sent → delivered → read`. `read` is an explicit acknowledgement by the recipient,
@@ -443,7 +446,13 @@ export interface SendInput {
    * Absent only for a caller that resolved no team at all.
    */
   teamId?: string
-  /** The bound on a member's undelivered backlog, absorbed from the official `TEAM_MAILBOX_FULL`. */
+  /**
+   * The bound on a member's undelivered backlog, absorbed from the official `TEAM_MAILBOX_FULL`.
+   *
+   * A CALLER-resolved number: the tool that sends reads {@link MAIL_MAX_UNDELIVERED_KEY} through
+   * {@link mailMaxUndeliveredOf} and passes the result here, so both sending tools enforce the SAME
+   * workspace value. Absent means {@link DEFAULT_MAIL_MAX_UNDELIVERED}; `0` disables the bound.
+   */
   maxUndelivered?: number
   /** Which envelope the row carries; absent means a plain `message`, the legacy default (contract §5). */
   kind?: MailKind
@@ -571,11 +580,62 @@ function unauthorizedAnswer(messageId: string): string {
 }
 
 /**
+ * The dotted workspace-config key the undelivered bound is read from (`<ws>/.mpd/mpd.jsonc`).
+ *
+ * ONE key, ONE number: the `mpdConfig` service resolves it per call, so lowering or raising the bound
+ * takes effect on the NEXT send with no restart and no per-tool copy of the default.
+ */
+export const MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered"
+
+/**
+ * The shipped bound on one member's undelivered backlog, used when the workspace declares none.
+ *
+ * Absorbed from the official `TEAM_MAILBOX_FULL`: a stalled member must not silently accumulate work,
+ * and eight is the number the official service uses, so a workspace that declares nothing keeps the
+ * behaviour it had.
+ */
+export const DEFAULT_MAIL_MAX_UNDELIVERED = 8
+
+/** The largest accepted bound; above it a value reads as "disabled", so the ceiling is the safer rule. */
+const MAIL_MAX_UNDELIVERED_CEILING = 1000
+
+/**
+ * Resolve the undelivered bound from the workspace config layer.
+ *
+ * TOTAL, never throwing: a knob that cannot be read or does not hold a whole number in
+ * `0..{@link MAIL_MAX_UNDELIVERED_CEILING}` falls back to the shipped default, because a misconfigured
+ * file must not make the mailbox refuse every message. `0` is a legitimate answer and DISABLES the
+ * bound (the store's own documented rule), so it is honoured rather than replaced.
+ *
+ * @param readConfig - reads one dotted `mpd.jsonc` key; the caller binds the config service, so this
+ *   module never reads a file or decides which layer wins.
+ * @returns the bound to enforce, never negative.
+ */
+export function mailMaxUndeliveredOf(readConfig: (key: string) => unknown): number {
+  /** The declared value, or whatever the config layer answered for the key. */
+  let declared: unknown
+  try {
+    declared = readConfig(MAIL_MAX_UNDELIVERED_KEY)
+  } catch {
+    // An unreadable config layer is a composition fact, not a reason to fail a send.
+    return DEFAULT_MAIL_MAX_UNDELIVERED
+  }
+  if (typeof declared !== "number" || !Number.isInteger(declared) || declared < 0 || declared > MAIL_MAX_UNDELIVERED_CEILING) {
+    return DEFAULT_MAIL_MAX_UNDELIVERED
+  }
+  return declared
+}
+
+/**
  * Validate and append ONE ROW PER RECIPIENT — the fan-out a broadcast is built from (I6).
  *
  * Every rule runs BEFORE the first line is written, so a refused fan-out leaves the log untouched:
  * the address rules, the envelope's protocol check (I1–I4), its references (I5), the two ownership
  * rules below, and — PER RECIPIENT, not per broadcast — the undelivered bound.
+ *
+ * THE BOUND IS THE WORKSPACE KNOB, not a literal: an absent `maxUndelivered` means
+ * {@link DEFAULT_MAIL_MAX_UNDELIVERED}, and the caller passes the resolved value from
+ * {@link mailMaxUndeliveredOf}, so every sending tool applies the SAME number through this one path.
  *
  * The fan-out rows share the send instant, the envelope (`kind`/`question`/`answer`) and ONE thread
  * (I6/I7): an explicit or inherited thread wins, and otherwise the batch's FIRST message id names it.
@@ -681,12 +741,15 @@ export function sendMany(workspace: string, input: SendInput, targets: readonly 
     return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) }
   }
   /** Effective backlog bound; zero or less disables the bound entirely. */
-  const cap = input.maxUndelivered ?? 8
+  const cap = input.maxUndelivered ?? DEFAULT_MAIL_MAX_UNDELIVERED
   for (const target of targets) {
     /** How many rows THIS TEAM sent this recipient and nobody has accepted nor acknowledged. */
     const backlog = undeliveredOf(scoped, target.id).length
     if (cap > 0 && backlog >= cap) {
-      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` }
+      // THE REFUSAL IS A RECOVERY INSTRUCTION, not a bare count (D2): it names the recipient, the
+      // current count, the bound AND where the number comes from, then both ways out — an
+      // acknowledgement frees a slot without a delivery, and a reassignment moves the work itself.
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) and the bound (${MAIL_MAX_UNDELIVERED_KEY}) is ${cap} — it is not keeping up. Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:"read"} for a team member), or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.` }
     }
   }
   /** The send instant, shared by every row and by the id sequence. */

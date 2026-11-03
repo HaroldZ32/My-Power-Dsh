@@ -1,0 +1,12 @@
+# RED-FIRST reproduction on Band 2 HEAD d2032bf398ab4ab7ec763fd1200c51df113a3f62 (2026-11-03T03:48:28Z)
+D2 refusal: {"ok":false,"reason":"backlog-full","detail":"\"senior\" already has 8 undelivered message(s) (bound 8) — it is not keeping up"}
+D2 mail description mentions undelivered bound: false
+D2 plan/team mail description states the bound is shared: false
+D3 create_task result keys: ["plan"]
+D3 create_task result: {"plan":{"version":2,"planId":"plan-20261103034828358-ibs0-001","sessionId":"lead-session","name":"repro","description":"repro","approval":"required","members":[{"name":"Senior Engineer","description":"w","prompt":"You work."}],"tasks":[{"subject":"no scopes","description":"d","blockedBy":[]}],"stagedAt":"2026-11-03T03:48:28.358Z"}}
+D3 warning present: false
+D3 output-schema allowlist has `warning`: false
+D3 render mentions a warning: false
+D3 LIVE append has warning: false
+D3 stored scopes of T1: undefined
+exit=0

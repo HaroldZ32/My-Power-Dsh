@@ -979,17 +979,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -1000,8 +997,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1507,6 +1516,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {

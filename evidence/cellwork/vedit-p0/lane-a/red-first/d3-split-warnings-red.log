@@ -1,0 +1,59 @@
+# RED-FIRST on HEAD d2032bf3 — 2026-11-03T03:50:26Z
+# command: bun test packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts:
+91 |     task({ key: "review-a", kind: "review", ownerRole: "Reviewer", writeScopes: ["docs/a.md"], blockedBy: ["work-a"] }),
+92 |   ])
+93 |   // NON-FATAL (C4): the omission is a warning, never a refusal.
+94 |   expect(verdict.accepted).toBe(true)
+95 |   expect(verdict.findings).toEqual([])
+96 |   expect(verdict.warnings.length).toBe(1)
+                      ^
+TypeError: undefined is not an object (evaluating 'verdict.warnings.length')
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts:96:18)
+(fail) D3/C4: a work task with NO write scope warns by key, and the split is still ACCEPTED [1.76ms]
+110 |     task({ key: "fix-a", kind: "repair", ownerRole: "Junior Engineer", writeScopes: [], blockedBy: [] }),
+111 |     task({ key: "ship", kind: "integration", ownerRole: "Lead", writeScopes: [], blockedBy: ["fix-a"] }),
+112 |     task({ key: "plain-review", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["fix-a"] }),
+113 |   ])
+114 |   expect(verdict.accepted).toBe(true)
+115 |   expect(verdict.warnings.map((warning) => warning.taskKey).sort()).toEqual(["fix-a", "ship"])
+                       ^
+TypeError: undefined is not an object (evaluating 'verdict.warnings.map')
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts:115:18)
+(fail) D3/C4: `repair` and `integration` tasks are covered too, and a `review` task with no scope is not [0.29ms]
+121 |   const verdict = await submit([
+122 |     task({ key: "work-a", kind: "work", ownerRole: "Senior Engineer", writeScopes: ["src/a.ts"], blockedBy: [] }),
+123 |     task({ key: "review-a", kind: "review", ownerRole: "Reviewer", writeScopes: ["docs/a.md"], blockedBy: ["work-a"] }),
+124 |   ])
+125 |   expect(verdict.accepted).toBe(true)
+126 |   expect(verdict.warnings).toEqual([])
+                                 ^
+error: expect(received).toEqual(expected)
+
+Expected: []
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts:126:28)
+(fail) C4: a graph with every scope declared carries NO warning, so the channel cannot become noise [0.36ms]
+136 |   const cell = newCellState({ cellId: CELL_ID, objective: "ship the widget", captainSessionId: "session-captain", now: new Date("2026-11-03T00:00:00.000Z") })
+137 |   /** The frozen contract document for the scope-less task. */
+138 |   const doc = buildContractDoc({ cell, config: DEFAULT_CELLWORK_CONFIG, split: verdict }, verdict.tasks[0], verdict.tasks[1], "T1")
+139 |   expect(doc).toContain("(none declared")
+140 |   // THE RECOVERY: the writer must be told what to DO before its first write, not only what is missing.
+141 |   expect(doc).toContain("captain")
+                    ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "captain"
+Received: "# Acceptance contract — work-a: Do work-a\n\nCell: `cell-split-warnings` · split revision 1 · frozen 2026-11-03T00:00:00.000Z\nproducer: cellwork:cell-split-warnings\nOwner: **Senior Engineer** (member `Senior Engineer`) · Verifier: **Reviewer** · Board task: `T1`\n\n## Deliverable\nChange one small thing.\n\n## Allowed write scopes\n(none declared — this task produces no code)\n\n## Acceptance criteria\n1. The deliverable above exists, and every changed path is inside the allowed write scopes.\n2. The gate commands below pass, with their observed exit codes quoted.\n3. The BUILD's claims are re-checked from THIS contract and the documentation, never from the builder's reasoning.\n4. A DIFFERENT agent records the verdict (see the verification protocol), citing documents and gate evidence ids.\n\n## Gate commands\n- `the repository's own declared gates (read the project instruction file: AGENTS.md §4, or its equivalent)`\n\n## Verification protocol\n1. Bind the seat: `mpd_verify_seat {loop_id:<id from this contract's Loop section>}`.\n2. Read the documentation band and this contract first; only a RECORDED FAIL makes reading the implementation legitimate.\n3. Produce gate evidence and record the verdict: `mpd_verify_record {loop_id, verdict:\"PASS\"|\"FAIL\", sources:[…], evidence_ids:[…]}`.\n4. On FAIL, name each finding with the document source that proves it and leave the repair to the writer.\n\n## Loop\nThe verification loop is opened at activation; its id is appended below before dispatch."
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts:141:15)
+(fail) D3/C4: the frozen contract's no-scope line carries the recovery, not just the fact [0.38ms]
+
+ 0 pass
+ 4 fail
+ 7 expect() calls
+Ran 4 tests across 1 file. [131.00ms]
+# exit: 1

@@ -45,9 +45,11 @@
 
 ## 设计约束（每一条都经过实测）
 
-- **引擎按成员、通过该成员自己的 scoped context 解析**（`agent.ctx.get("compaction")`），并且只在
-  一处实现：适配器的 `compactionEngineForAgent`。宿主面的引擎是**另一个**对象、服务另一个 realm，
-  用它驱动成员会压缩错误的历史。
+- **引擎按成员、通过该成员自己的 scoped context 解析**（`agent.ctx.get("compaction")`），而它背后**唯一**
+  那段记忆化实现属于适配器：已经持有活跃 Agent 的调用方用 `compactionEngineForLiveAgent(agent)`（完全不查
+  活跃会话注册表，也是压缩屏障的**首选**），按 id 的 `compactionEngineForAgent(agentId)` 经注册表解析，并
+  共用同一份引擎缓存，因此两个接缝不可能对「哪个 realm 拥有引擎」产生分歧。宿主面的引擎是**另一个**对象、
+  服务另一个 realm，用它驱动成员会压缩错误的历史。
 - **`compaction` 刻意不写进 `inject`。** 该服务由 `mpd` preset 组装，未挂载该 preset 的 profile
   根本没有它；而声明了却未注册的服务会让整行停在 `pending (waiting for service: compaction)`，
   这正是契约禁止的失效模式。因此它在驱动时惰性解析，并以警告降级。

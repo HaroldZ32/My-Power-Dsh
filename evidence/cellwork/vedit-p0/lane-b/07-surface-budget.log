@@ -1,0 +1,17 @@
+# tool-surface context budget, measured AFTER the C3/C4 description changes
+# costOf = JSON length of {name, description, parameters} + 96 per command (the formula tool-surface.test.ts uses)
+agent_teams_plan         1692
+agent_teams_task         990
+agent_teams_dispatch     955
+agent_teams_mail         2044
+agent_teams_control      572
+commands 1 x 96 = 96
+TOTAL 6349 (bound 6400, headroom 51)
+BASE was 6399 on d2032bf3 (measured before the change), so the surface NET-SHRANK by 50 characters
+
+(pass) the consolidated surface > no description is a paragraph: each stays under 700 characters [0.01ms]
+
+ 6 pass
+ 0 fail
+ 37 expect() calls
+Ran 6 tests across 1 file. [155.00ms]

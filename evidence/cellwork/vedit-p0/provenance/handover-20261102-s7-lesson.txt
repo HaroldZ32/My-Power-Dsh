@@ -1,0 +1,3 @@
+7:本轮结束时：root `cmake` configure / `vedit-app` 构建绿；全量 `ctest` **36/37**（唯一红 = `vedit-workspace-search-selftest`，属 T20/A-2）；5 个写席（dw-rust、se-project、se-ui、se-shell、lead-editor）被平台 compaction barrier fenced（reseed 失败：`subagent creation requires the exact live parent agent`），cell 因此提前结束。
+63:| **T15** | pending | 未开始：编辑器右键菜单 + LSP 动作通道 + 诊断导航键（F8/Shift+F8）。owner lead-editor 已被 fenced。 |
+224:6. **fencing 会终结一个 cell**：5 个写席被 compaction barrier fenced，reseed 因“subagent creation requires the exact live parent agent”失败，只剩 3 个写席，用户决定换会话。**handoff 要在 checkpoint 前写**，且要写“当前真实状态 + 下一步 + 复现命令”，不是愿望。

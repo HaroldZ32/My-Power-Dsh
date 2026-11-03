@@ -1901,6 +1901,21 @@ export interface DshAdapter {
    * inherit a stale engine.
    */
   compactionEngineForAgent(agentId: string): unknown
+  /**
+   * The compaction engine of a LIVE AGENT HANDLE the caller already holds, read from `agent.ctx`
+   * WITHOUT consulting the live-session registry.
+   *
+   * WHY THIS EXISTS BESIDE {@link DshAdapter.compactionEngineForAgent}: a member at its context checkpoint
+   * is frequently already detached from `ctx.agents` by the time `agent/turn-stopping` fires, so the
+   * id-keyed seam answers nothing for a handle whose own scope still serves a working engine. The event
+   * carries that handle, and this seam resolves it directly, which is what lets a barrier compact IN
+   * PLACE instead of fencing a live member (VEdit P0, defect D1).
+   *
+   * Same memoization (keyed by the Agent OBJECT) and the same validity checks as the id-keyed seam, so
+   * the two can never disagree about which realm owns an engine. Absent handle or absent engine answers
+   * `undefined`; never throws.
+   */
+  compactionEngineForLiveAgent(agent: unknown): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
   onEvent(event: string, handler: (...args: unknown[]) => unknown): (() => void) | undefined
   /**
@@ -4140,19 +4155,28 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * realm's engine and an id the host RECYCLES can never inherit a previous incarnation's engine.
    */
   const engineCache = new WeakMap<DshLiveAgent, unknown>()
-  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
-  function compactionEngineForAgent(agentId: string): unknown {
-    /** The requested agent id, normalized before the registry is asked. */
-    const id = String(agentId ?? "")
-    if (id === "") return undefined
-    /** The live Agent whose own scope owns the engine; absent once its session ends. */
-    const agent = liveAgent(id)
-    if (agent === undefined || agent === null) return undefined
-    /** The memoized engine, returned only while THIS Agent object is still the live one. */
-    const cached = engineCache.get(agent)
+  /**
+   * The engine ONE AGENT OBJECT's own scope serves, memoized on that object.
+   *
+   * This is the shared body of both public seams: the ONLY difference between them is how the Agent is
+   * obtained (by id from the registry, or handed over directly by an event payload). Reading
+   * `agent.ctx.get("compaction")` is what makes the engine the member's own realm; the WeakMap key is the
+   * Agent OBJECT (never its id), so a recycled id cannot inherit a previous incarnation's engine.
+   *
+   * @param agent - the live Agent handle, read structurally.
+   * @returns the memoized engine, or undefined when the handle carries none.
+   */
+  function engineOfLiveHandle(agent: unknown): unknown {
+    if (agent === undefined || agent === null || typeof agent !== "object") return undefined
+    // The handle is opaque (an event payload or a host Agent); the fields read below are the two the
+    // compact-hinge experiment measured, and anything else is treated as "no engine".
+    /** The handle, narrowed to the shape the two reads below use. */
+    const handle = agent as DshLiveAgent
+    /** The memoized engine, returned only while THIS Agent object is the one asked about. */
+    const cached = engineCache.get(handle)
     if (cached !== undefined) return cached
     /** The Agent's own scoped context, the only realm whose engine is correct. */
-    const scoped = agent.ctx
+    const scoped = handle.ctx
     if (scoped === undefined || scoped === null) return undefined
     /** The engine resolved from the agent's own scope, before it is memoized. */
     let engine: unknown
@@ -4162,8 +4186,38 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return undefined
     }
     if (engine === undefined || engine === null) return undefined
-    engineCache.set(agent, engine)
+    engineCache.set(handle, engine)
     return engine
+  }
+
+  /** The member-scoped engine lookup described above: memoized per live Agent, re-read from the registry. */
+  function compactionEngineForAgent(agentId: string): unknown {
+    /** The requested agent id, normalized before the registry is asked. */
+    const id = String(agentId ?? "")
+    if (id === "") return undefined
+    /** The live Agent whose own scope owns the engine; absent once its session ends. */
+    const agent = liveAgent(id)
+    if (agent === undefined || agent === null) return undefined
+    return engineOfLiveHandle(agent)
+  }
+
+  /**
+   * The engine of a LIVE HANDLE the caller already holds, read WITHOUT the registry.
+   *
+   * WHY THIS EXISTS (VEdit P0, defect D1): a member reaching its context checkpoint is often ALREADY
+   * detached from `ctx.agents` by the time the `agent/turn-stopping` barrier runs, so the id-keyed lookup
+   * above answers `no-engine` for a member whose own scope still serves a working engine. The event hands
+   * the barrier the live Agent object; this seam resolves that object's engine directly, which is what
+   * lets the barrier compact IN PLACE instead of fencing the member.
+   *
+   * It shares the memo and the validity checks of {@link compactionEngineForAgent}, so both seams can
+   * never disagree about which realm owns an engine.
+   *
+   * @param agent - the live Agent handle (an event payload's `agent`, or any held Agent object).
+   * @returns the agent's own engine, or undefined when the handle carries none.
+   */
+  function compactionEngineForLiveAgent(agent: unknown): unknown {
+    return engineOfLiveHandle(agent)
   }
 
   /**
@@ -5033,6 +5087,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
 
