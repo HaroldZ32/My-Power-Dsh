@@ -2,13 +2,14 @@
 **English** | [中文](./upstream-parity-ledger.zh-CN.md)
 
 > **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
-> REFERENCE, not a conformance target. The identity checks that used to measure this repository
-> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed: the
-> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
-> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
-> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
-> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
-> nothing here as a promise to follow upstream release by release.
+> REFERENCE and a yardstick, not a conformance target. The identity checks that used to measure this
+> repository against it are DELETED, no gate reads an upstream checkout, and no synchronisation is
+> owed. **Nothing in this repository is derived from it**: the roster names, the persona texts and the
+> model-chain vocabulary are this project's own or re-sourced from permissively licensed public agent
+> prompts, as [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) records. Everything below is therefore a
+> HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is informative; read a
+> ✅ as "this shipped", never as "this is still upstream-conformant", and read nothing here as a
+> promise to follow upstream release by release.
 
 > Wave: `omo-parity-align`. Status: **VERIFIED: values frozen, implementation landed, gates green
 > (§8).**
