@@ -1,0 +1,34 @@
+{
+  "memberHandle": "child-senior-engineer-1",
+  "leadSession": "sess-lead",
+  "teamId": "team-20261103065247994-53do-002",
+  "armA": "only the Lead of team team-20261103065247994-53do-002 may end it (senior-engineer-1 is a member, not the Lead)",
+  "oldRawCheck": true,
+  "narrowedNamesMember": true,
+  "armB": "only the Lead of team team-20261103065247994-53do-002 may end it (senior-engineer-1 is a member, not the Lead)",
+  "armC": "only the Lead of team team-20261103065247994-53do-002 may end it (senior-engineer-1 is a member, not the Lead)",
+  "armD": {
+    "teamId": "team-20261103065247994-53do-002",
+    "endedAt": "2026-11-03T06:52:47.996Z",
+    "reason": "fork closed the probe wave",
+    "changed": true
+  },
+  "m1": {
+    "first": {
+      "teamId": "team-20261103065247996-53do-004",
+      "endedAt": "2026-11-03T06:52:47.997Z",
+      "reason": "probe wave landed",
+      "changed": true
+    },
+    "repeat": {
+      "teamId": "team-20261103065247996-53do-004",
+      "endedAt": "2026-11-03T06:52:47.997Z",
+      "reason": "probe wave landed",
+      "changed": false
+    }
+  },
+  "failures": [],
+  "pass": true
+}
+PROBE PASS
+EXIT:0

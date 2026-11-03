@@ -1,0 +1,23 @@
+=== N6 EN block (corrected) ===
+A RECORDED Lead is never read as a member by its title: the captain identity is checked before the title
+arm, so a Lead persona that happens to contain a roster role can never be addressed by a member id. (A
+FORKED Lead's new session id is recorded only when the churn heal runs — and the heal SKIPS any session
+the identity plane names as a member, so a fork whose title names a seat is NEVER healed on that record
+and stays identified as that seat, fail-closed, while its title keeps naming one. That is the stated
+bound.)
+
+=== N6 zh block (corrected) ===
+被记录的 Lead 绝不会因为标题而被当作成员解析：队长身份在标题分支之前判定，所以队长人设里即使出现 roster role，
+也绝不可能被用成员 id 寻址。（被 fork 的 Lead 的新 session id 只有在 churn heal 运行时才会被记录——而 heal 会跳过
+身份面认定为成员的会话，所以标题点名席位的 fork 在该记录上**永远不会**被 heal，会一直按该席位处理（fail-closed），
+只要标题还点名该席位。这是已声明的边界。）
+
+=== Bounds bullet (corrected) ===
+- **The fork bound stands (CORRECTED 2026-11-03, T28):** a FORKED Lead's new session id is recorded only
+  when `healLeadBinding` runs, and the heal is SKIPPED for any session the identity plane names as a
+  member — so a fork whose title names a seat is **NEVER healed on that record** and stays identified as
+  that seat (seat-blocked, fail-closed: it can borrow no Lead ancestry) for as long as the title keeps
+  naming one. The earlier closing phrase implied the heal would eventually run and contradicted the very
+  rule it stated; it is replaced here. The code comment carries the same deferred-heal imprecision and is
+  FLAGGED, not edited, in `../fork-bound/REPORT.md` (T28's scope is documentation of this report only).
+  That is the T12 residual, unchanged and documented at the arm.

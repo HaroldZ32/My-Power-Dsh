@@ -1,0 +1,2 @@
+boot.pane.txt                    decisions=0 state=undefined arm5d=false
+shipped-granted-check.pane.txt   decisions=1 state=compatible arm5d=true

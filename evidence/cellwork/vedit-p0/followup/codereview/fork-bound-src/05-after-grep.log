@@ -1,0 +1,5 @@
+$ grep -rn "until its heal\|still read as that seat\|until then" packages/mpd-team-core-plugin/src/ (after)
+exit=1 (1 = no matches)
+
+$ sha256sum packages/mpd-team-core-plugin/src/team-store.ts (after)
+46117455a2dd87644515da5ba2aa3a502eae019815ef4b6c42c7b0acc9167c8e  packages/mpd-team-core-plugin/src/team-store.ts

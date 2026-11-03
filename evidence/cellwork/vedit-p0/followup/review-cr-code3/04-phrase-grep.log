@@ -1,0 +1,8 @@
+# OLD phrases must be ABSENT from the shipped sources (exit 1 expected)
+packages/mpd-bundle-plugin/src/settings-card.ts:2213:    en["effective.agentInvalid"] = "<invalid> — {agent}: {problem}; fix it here and save — until then the next spawn is refused with AGENT_UNCONFIGURED"
+packages/mpd-tui-adapter-plugin/src/index.ts:3042:   * after any MPD scene or panel render in the session — and until then the contact falls back to the
+packages/mpd-tui-plugin/src/dashboard-key.ts:31:// its current behaviour until then, and `capabilities().hostInput.kit` names the source in force
+
+# the CORRECTED claim must be present exactly once
+0
+1

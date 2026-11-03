@@ -1,0 +1,7 @@
+# typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+
+# comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

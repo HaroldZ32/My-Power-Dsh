@@ -1,0 +1,11 @@
+$ sha256sum (touched sources/tests)
+3c088583e662d15fd1178ddcac43bb0952adcd464c1148fca683047a775f46b9  packages/mpd-team-core-plugin/src/team-actions.ts
+06edf44c9872a06399c9e71a008d9b3885c3e0538b949a9b2ccb793a8261386f  packages/mpd-team-core-plugin/src/team-store.ts
+25b9eb60d6832af70eefa00ee4da74989d5295a83a5df82030484eadea82a75d  packages/mpd-team-core-plugin/test/identity-plane.test.ts
+f429b1de192bd9ad133b9ba8be5b6f6e2ff7dea325b253dc83aab06f511274f3  packages/mpd-team-core-plugin/test/codereview-cr1.test.ts
+
+$ git diff --stat (package sources/tests)
+ packages/mpd-team-core-plugin/src/team-actions.ts  | 10 +++++++-
+ packages/mpd-team-core-plugin/src/team-store.ts    | 11 ++++++++
+ .../test/identity-plane.test.ts                    | 29 ++++++++++++++++++++++
+ 3 files changed, 49 insertions(+), 1 deletion(-)

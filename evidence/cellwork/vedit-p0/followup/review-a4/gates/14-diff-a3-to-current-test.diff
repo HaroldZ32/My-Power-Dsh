@@ -1,0 +1,115 @@
+--- .mpd/recon/qa/rev-a4/rebuild/a3-barrier.test.ts	2026-11-03 15:14:30.320691195 +0800
++++ packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts	2026-11-03 15:07:31.682897107 +0800
+@@ -305,72 +305,73 @@
+   expect(rows.some((row) => row.event === "checkpoint-unrecoverable")).toBe(false)
+ })
+ 
+-test("C1: the FIRST attempt is driven BEFORE any barrier delay is scheduled (ORDER, never a duration bound)", async () => {
+-  /** The harness whose configured delay is far longer than any reasonable first attempt. */
+-  const harness = makeHarness({ detached: true, answers: [{ shadowedTokenCount: 5 }], knobs: { compactionRetries: 1, idleBarrierDelayMs: 1500 } })
+-  /** The configured retry delay, and the only timer value the probe records. */
+-  const DELAY_MS = 1500
+-  /** The two events this arm discriminates, recorded in the order they really happen. */
++/**
++ * Install the ORDER probe: every timer with a POSITIVE delay scheduled inside the window is recorded into
++ * `timeline`, in the order it is scheduled; the arm records the engine's own drives into the SAME list.
++ *
++ * WHY EVERY TIMER, NOT ONLY THE CONFIGURED ONE (A3-F2): recording just `idleBarrierDelayMs` left a
++ * HARD-CODED pre-attempt sleep invisible — the reviewer's `await deps.sleep(200)` mutation stayed green —
++ * and the D1 defect this contract removes WAS a hard-coded 200 ms sleep. So ANY positive delay is
++ * recorded, with its own value in the entry: a red names what was scheduled, and a hard-coded sleep can no
++ * longer hide behind the knob. A `0 ms` tick is not a sleep and is ignored.
++ * @returns the shared timeline and the restore function the arm MUST call in `finally`.
++ */
++function orderProbe(): { timeline: string[]; restore: () => void } {
++  /** The events in the order they really happen: `drive` from the engine, `timer(<ms>)` from the clock. */
+   const timeline: string[] = []
+-  /** The runtime's own timer, restored in finally so no later arm inherits the probe. */
++  /** The runtime's own timer, put back by `restore()` so no later arm inherits the probe. */
+   const realSetTimeout = globalThis.setTimeout
+-  // ORDER, NOT DURATION (N2): the D1 defect this contract removes was a 200 ms pre-attempt sleep, which a
+-  // 500 ms bound cannot see; recording WHICH event comes first can. Only the barrier's OWN delay is
+-  // recorded, so an unrelated runtime timer can never be mistaken for the seam under test.
+   globalThis.setTimeout = ((callback: (...args: never[]) => void, ms?: number, ...rest: never[]) => {
+-    if (ms === DELAY_MS) timeline.push("delay")
++    if (typeof ms === "number" && ms > 0) timeline.push("timer(" + ms + "ms)")
+     return realSetTimeout(callback as never, ms, ...(rest as never[]))
+   }) as unknown as typeof globalThis.setTimeout
+-  /** The member's own drive, recorded into the SAME timeline the timer seam writes to. */
++  return { timeline, restore: (): void => { globalThis.setTimeout = realSetTimeout } }
++}
++
++test("C1: the FIRST attempt is driven BEFORE any delay is scheduled — ANY delay, hard-coded included (ORDER, never a duration bound)", async () => {
++  /** The harness whose configured delay is far longer than any reasonable first attempt. */
++  const harness = makeHarness({ detached: true, answers: [{ shadowedTokenCount: 5 }], knobs: { compactionRetries: 1, idleBarrierDelayMs: 1500 } })
++  /** The clock probe: every positive-delay timer scheduled in the window lands in the timeline. */
++  const probe = orderProbe()
++  /** The member's own drive, recorded into the SAME timeline the clock probe writes to. */
+   const realCompactNow = harness.engine.compactNow
+   harness.engine.compactNow = async (agent: unknown, signal: AbortSignal): Promise<unknown> => {
+-    timeline.push("drive")
++    probe.timeline.push("drive")
+     return realCompactNow(agent, signal)
+   }
+   try {
+     await stopListener(harness)({ agent: harness.member })
+   } finally {
+-    globalThis.setTimeout = realSetTimeout
++    probe.restore()
+   }
+   expect(harness.engine.calls.length).toBe(1)
+-  // THE CLAUSE: the drive is the FIRST event — a pre-attempt sleep of ANY length puts the delay first.
+-  expect(timeline[0]).toBe("drive")
+-  // and no delay was scheduled at all on the one-attempt path.
+-  expect(timeline).not.toContain("delay")
++  // THE CLAUSE: the drive is the ONLY event — so it is necessarily the first. ANY timer before it reddens,
++  // and the failure message spells exactly what was scheduled (e.g. `timer(200ms)`, the D1 defect's own
++  // value), which is the blindness the previous probe had.
++  expect(probe.timeline).toEqual(["drive"])
+ })
+ 
+-test("C1: the ORDER probe SEES the barrier delay when a retry really sleeps (two-sided control)", async () => {
++test("C1: the ORDER probe SEES a real retry sleep, whatever its length (two-sided control)", async () => {
+   /** The harness whose first attempt answers null, so the SECOND one follows a real sleep. */
+   const harness = makeHarness({ detached: true, answers: [null, { shadowedTokenCount: 5 }], knobs: { compactionRetries: 2, idleBarrierDelayMs: 40 } })
+-  /** The configured retry delay, and the only timer value the probe records. */
+-  const DELAY_MS = 40
+-  /** The two events this arm discriminates, recorded in the order they really happen. */
+-  const timeline: string[] = []
+-  /** The runtime's own timer, restored in finally so no later arm inherits the probe. */
+-  const realSetTimeout = globalThis.setTimeout
+-  // ORDER, NOT DURATION (N2): the D1 defect this contract removes was a 200 ms pre-attempt sleep, which a
+-  // 500 ms bound cannot see; recording WHICH event comes first can. Only the barrier's OWN delay is
+-  // recorded, so an unrelated runtime timer can never be mistaken for the seam under test.
+-  globalThis.setTimeout = ((callback: (...args: never[]) => void, ms?: number, ...rest: never[]) => {
+-    if (ms === DELAY_MS) timeline.push("delay")
+-    return realSetTimeout(callback as never, ms, ...(rest as never[]))
+-  }) as unknown as typeof globalThis.setTimeout
+-  /** The member's own drive, recorded into the SAME timeline the timer seam writes to. */
++  /** The same clock probe the arm above uses. */
++  const probe = orderProbe()
++  /** The member's own drive, recorded into the SAME timeline the clock probe writes to. */
+   const realCompactNow = harness.engine.compactNow
+   harness.engine.compactNow = async (agent: unknown, signal: AbortSignal): Promise<unknown> => {
+-    timeline.push("drive")
++    probe.timeline.push("drive")
+     return realCompactNow(agent, signal)
+   }
+   try {
+     await stopListener(harness)({ agent: harness.member })
+   } finally {
+-    globalThis.setTimeout = realSetTimeout
++    probe.restore()
+   }
+-  // THE CONTROL: the probe is not blind — the retry really slept, and only AFTER the first drive.
++  // THE CONTROL: the probe is NOT blind — the retry really scheduled a timer, and only AFTER the first drive.
+   expect(harness.engine.calls.length).toBe(2)
+-  expect(timeline).toContain("delay")
+-  expect(timeline[0]).toBe("drive")
+-  expect(timeline.indexOf("delay")).toBeGreaterThan(timeline.indexOf("drive"))
++  expect(probe.timeline).toContain("timer(40ms)")
++  expect(probe.timeline[0]).toBe("drive")
++  expect(probe.timeline.indexOf("timer(40ms)")).toBeGreaterThan(probe.timeline.indexOf("drive"))
+ })
+ 
+ test("C1: the registry lookup is the FALLBACK for a composition without the live-handle seam", async () => {

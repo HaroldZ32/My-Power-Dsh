@@ -1,0 +1,6 @@
+mutated: writer-emits-name-only
+# MUTATION CASE: m4-writer-name-only (mode=writer-emits-name-only) — 2026-11-03T05:49:15Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] FAIL: 1 check(s)
+  - the writer must round-trip every row's name and scope verbatim, in order, and nothing else: [{"name":"session.input.intercept"},{"name":"session.rewind.intercept"}]
+# exit: 1

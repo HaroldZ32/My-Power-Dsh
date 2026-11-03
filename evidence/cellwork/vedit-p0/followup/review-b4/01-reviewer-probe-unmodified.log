@@ -1,0 +1,29 @@
+{
+  "memberHandle": "child-senior-engineer-1",
+  "teamId": "team-20261103070736233-rqi5-002",
+  "armT1": "REFUSED: only the Lead of team team-20261103070736233-rqi5-002 may end it (senior-engineer-1 is a member, not the Lead)",
+  "t1After": {
+    "phase": "active"
+  },
+  "t1HealedHistory": [],
+  "armT2": "no team record in this workspace — approve a plan first",
+  "t2Phase": "active",
+  "armT3": "only the Lead of team team-20261103070736236-rqi5-006 may end it (senior-engineer-1 is a member, not the Lead)",
+  "t3Phase": "active",
+  "armT4": {
+    "teamId": "team-20261103070736237-rqi5-008",
+    "endedAt": "2026-11-03T07:07:36.237Z",
+    "reason": "fork closed it",
+    "changed": true
+  },
+  "t4Phase": "ended",
+  "armT5Append": "REFUSED: only the Lead of team team-20261103070736238-rqi5-00a may append to its live roster or board",
+  "t5LeadHistory": [],
+  "t5Roster": [
+    "senior-engineer-1"
+  ],
+  "failures": [],
+  "pass": true
+}
+PROBE PASS (gated arms)
+EXIT:0

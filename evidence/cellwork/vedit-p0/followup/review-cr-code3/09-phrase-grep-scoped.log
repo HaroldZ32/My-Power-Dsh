@@ -1,0 +1,14 @@
+# SCOPED phrase grep — the DEFERRED-HEAL claim's own phrases, in the file that carried them
+not recorded until its heal            in team-store.ts: 0
+until its heal writes                  in team-store.ts: 0
+still read as that seat                in team-store.ts: 0
+still read as that                     in team-store.ts: 0
+
+# the corrected claim (across the wrapped lines) is present exactly once
+1
+1
+
+# REPO-WIDE "until then" hits: NONE of them is the deferred-heal claim (each is a different sentence, different file)
+packages/mpd-bundle-plugin/src/settings-card.ts:2213:    en["effective.agentInvalid"] = "<invalid> — {agent}: {problem}; fix it here and save — until 
+packages/mpd-tui-adapter-plugin/src/index.ts:3042:   * after any MPD scene or panel render in the session — and until then the contact falls back to t
+packages/mpd-tui-plugin/src/dashboard-key.ts:31:// its current behaviour until then, and `capabilities().hostInput.kit` names the source in force

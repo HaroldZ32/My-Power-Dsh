@@ -15,43 +15,77 @@
 // no grant row — `negotiate()` → PERMISSION_NOT_GRANTED). The
 // invalid-json / schema-failed / semantic-invalid / spec-unavailable family FAILS.
 //
-// C3' GRANT ARMS (tui-015-adaptation, six arms over TWO boots; the host re-reads
-// `~/.dsh-tui/extension-grants.json` on EVERY authorize operation, so a grant is a
-// file write, not a restart):
-//   (1) GRANTED BOOT — `/plugin list` and `/plugin check` both advertise `compatible`;
+// C3' GRANT ARMS — RE-SPECIFIED TO THE PERMISSION-LESS CONTRACT (F1-live, 0.17.2). The shipped
+// manifest requests NO permission by decision (commit 776ac355), so a grant-armed assertion can only be
+// made HONESTLY on a CLONE that declares the one permission the seam used to request. The live arms
+// therefore measure BOTH postures over THREE boots — one boot per grants-file state, because the host
+// re-reads `~/.dsh-tui/extension-grants.json` on EVERY authorize decision, so a grant is a file write and
+// not a restart:
+//   (1) BOOT 1, SHIPPED POSTURE, NO GRANTS FILE — `/plugin check <shipped manifest>` AND `/plugin list`
+//       both advertise `compatible`, and the pane carries NO grants-file hint: nothing is requested, so
+//       nothing needs authorizing. A regression that re-requests a permission without a grant reddens HERE
+//       (the pane flips to `waiting_authorization` and prints the hint);
 //       (0.15.0 RENAMED THE HOST COMMAND `/plugins` -> `/plugin`: measured 2026-10-14, the old
 //        spelling is not registered any more, so the line was submitted as CHAT TEXT and the model
 //        answered it — the pane carried a thinking indicator and tool calls, never a verdict);
-//   (2) the admission-loader debug line admits the Component (`DSH_TUI_DEBUG=1`
-//       rides the boot env; the line is read from the boot's REDIRECTED stderr /
-//       `host-stderr.log`, because on 0.15.0 the same debug flag makes the host
-//       ink emit a per-frame `park target=…` trace to stderr that floods the pane
-//       and stops the chat screen from painting);
-//   (3) the effect ledger attributes records to `com.mpd-dsh.mpd-tui` (decision-
-//       handler binds `applied`), no longer only `undeclared`;
-//   (4) a REAL `tui/input` decision fires: a submitted line traverses the dispatch
-//       chain with our no-op handler live and the turn renders;
-//   (5) NEGATIVE CONTROL — no grant file: the check pane must say
-//       `waiting_authorization` AND print the host's own grants-file hint, and the
-//       ledger must carry the `PERMISSION_NOT_GRANTED` failed binds (the documented
-//       ready-but-not-activated posture);
-//   (6) REVOCATION (optional arm, observed not gated) — the grant file is deleted
-//       mid-session and a re-check records whether the pane flips back.
-// The STATIC arm carries the same three-way control on the host's own `negotiate`:
-// no grants → `waiting_authorization`; the manifest's own four rows → `compatible`;
-// the same names at an undeclared scope → STILL `waiting_authorization`.
+//   (1b) BOOT 3, SHIPPED POSTURE WITH ONE GRANT (A4-F1 / A5-F1) — this boot stages the grants file (the
+//        clone's one row, a point the manifest never declares) BEFORE the boot and drives ONE
+//        `/plugin check <shipped manifest>`: it must STAY `compatible`, so "a stray grant cannot flip a
+//        permission-less manifest" is MEASURED rather than promised. The boot is its OWN so the arm cannot
+//        be vacuous: the pane must carry EXACTLY ONE decision line, and a swallowed step leaves zero and
+//        reddens (in a shared boot the expected `compatible` would equal the neighbour's verdict);
+//   (2) BOOT 1, THE ADMISSION-LOADER LINE admits the Component (`DSH_TUI_DEBUG=1` rides the boot env; the line is
+//       read from the boot's REDIRECTED stderr / `host-stderr.log`, because on 0.15.0 the same debug flag
+//       makes the host ink emit a per-frame `park target=…` trace to stderr that floods the pane and stops
+//       the chat screen from painting);
+//   (3) BOOT 2, GRANT CLONE, THREE STATES — a clone of the shipped manifest carrying ONE
+//       `session.input.intercept@tui/input` declaration (written into THIS run's evidence dir; the SHIPPED
+//       file is never touched) goes through the host's own `/plugin check` three ways: no grant →
+//       `waiting_authorization` AND the host's own grants-file hint; that row granted → `compatible`; the
+//       same name at an undeclared scope → STILL `waiting_authorization`;
+//   (4) BOOT 1, THE DRIVE REACHED A REAL CHAT TURN — a submitted line renders in the pane after Enter, so the
+//       assertions above are read from a live session and not a splash screen. With no permission declared
+//       our decision handler is NOT live, so this arm no longer claims a decision interception;
+//   (5) BOOT 2, REVOCATION (observed, never gated) — the grant file is deleted mid-session and a re-check records
+//       whether the clone's pane flips back to `waiting_authorization`;
+//   (6) ARM 3 (ledger attribution of an `applied` decision-handler bind) is DECLARED INAPPLICABLE while the
+//       shipped manifest declares no permission: no authorize operation exists, so an `applied` bind is not
+//       a state this boot can produce. It is recorded as a loud BOUND, never a pass — the
+//       registration/attribution gap measured on 2026-10-14 (no decision-handler records even WITH the
+//       declaration) stays therefore UNMEASURED by this lane — and it re-arms automatically the moment a
+//       permission returns, because the arm is conditional on the declaration set.
+// The STATIC arm carries the same three-way control on the host's own `negotiate`, MEASURED ON A CLONE
+// (F1): the shipped manifest is permission-less by decision, so the three states are negotiated on a
+// `structuredClone` carrying ONE `session.input.intercept@tui/input` row — no grant →
+// `waiting_authorization`, that row granted → `compatible`, the same name at an undeclared scope → STILL
+// `waiting_authorization` — while the SHIPPED manifest itself must negotiate `compatible` with NO grant AND
+// with that row granted (A4-F1).
 //
 // REGISTRY FALSE POSITIVE, STATED NOT FIXED: the spec registry's `profileVersion`
 // string (`0.15`) is the dsh-ecosystem-spec number, UNRELATED to the dsh-tui 0.15.0
 // release this lane's carriers pin — it is recorded verbatim and never "adapted".
 //
-// PREREQ: absent-runtime dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.18.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.18.0"
+// PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
+// (Those three are the codes `tuiPrereqs` in `lib/tui-lane.ts` actually gates: `absent-dsh-binary` probes the
+//  `dsh-tui` binary, `absent-runtime` probes `tmux`, `absent-fixture` probes the sandbox profile. A marker
+//  always prints the probe it used and the remedy, so a SKIP names its own fix.)
+//
+// THE SANDBOX ROOT IS ITSELF A CONSTRAINT, MEASURED (A3-F7): the tmux server binds `<root>/<lane>.sock`, a
+// unix socket whose whole path must stay under ~107 bytes, so a root under the lane's DEFAULT
+// `.mpd/recon/qa/tui-lanes/<lane>` dies on a deep checkout with `File name too long` — the boot never happens
+// and every pane arm reports `undefined`. Use a SHORT root (`--sandbox-root .mpd/sb/<lane>`). The profile must
+// be WARM (a `~/.dsh/profiles/dsh-tui` that carries the host AND this bundle) because a lane that passed the
+// gate never reinstalls it, and the sandbox needs the CREDENTIALS the boot hands the model
+// (`<root>/dshhome/.credentials.yaml` copied from `~/.dsh`) or the chat-turn arm cannot render. tmux, a real
+// TTY and the launchpad gate are already handled by `runTuiSession`.
 //
 // Usage:
 //   bun skills/dsh-qa/scripts/tui-admission.ts --self-test
 //   bun skills/dsh-qa/scripts/tui-admission.ts [--sandbox-root <dir>] [--static-only]
-// Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,negctl/,grants/}
+// Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,REVISION.json,
+//             shipped/,clone/,shipped-granted/,grant-clone/}
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"
@@ -61,10 +95,24 @@ import {
   profileState, readLedgerRecords, resolveHostRoot, resolveSpecDataRoot, runTuiSession, sandboxEffectLedgerFile, sandboxGrantFile, sha256File,
   specDataRootCandidates, structuralFindings, tuiPrereqs, writeExtensionGrants, writeLaneEvidence, writeRevisionFile,
 } from "./lib/tui-lane.ts"
-import type { GrantFileRow, LedgerRecord, SpecDataRoot } from "./lib/tui-lane.ts"
+import type { AdmissionPaneVerdict, GrantFileRow, LedgerRecord, SpecDataRoot } from "./lib/tui-lane.ts"
 
 /** The case slug: names the evidence dir, the tmux socket and every marker/output line. */
 const SLUG = "tui-admission"
+/**
+ * The permission the STATIC grant arms negotiate.
+ *
+ * WHY A FIXED ROW AND NOT THE MANIFEST'S OWN: the shipped manifest requests NO permission (the intercept
+ * seam is inactive by design), so its own grant table is always EMPTY and a three-state grant assertion
+ * against it is red by construction. The arms therefore negotiate a `structuredClone` carrying this ONE
+ * declaration — the `session.input.intercept` point this bundle shipped before commit 776ac355 — while the
+ * SHIPPED manifest's own decision is asserted separately and must stay `compatible`.
+ */
+const GRANT_ARM_PERMISSION = "session.input.intercept"
+/** Its declared scope: the `tui/input` decision point that permission namespaced. */
+const GRANT_ARM_SCOPE = "tui/input"
+/** The written reason the clone's declaration carries (the v0.15 schema accepts one; a declaration needs none). */
+const GRANT_ARM_REASON = "grant-arm clone: the intercept subscription a grant authorizes; the shipped manifest requests none, because the seam is inactive by design"
 /** Absolute path of the bundle-level manifest the host's own admission algorithm is run against. */
 const MANIFEST = join(REPO, "dsh-plugin.json")
 /** The submitted line that traverses the real `tui/input` decision point (arm 4): plain text, never a slash command, distinctive in any capture. */
@@ -134,6 +182,56 @@ function manifestComponentId(): string {
   /** The decoded manifest's `id` field, `unknown` until narrowed. */
   const id = (JSON.parse(readFileSync(MANIFEST, "utf8")) as { id?: unknown } | null)?.id
   return typeof id === "string" ? id : ""
+}
+
+/**
+ * Write the GRANT CLONE the live grant arms negotiate: the shipped manifest's own bytes plus ONE
+ * `session.input.intercept@tui/input` declaration.
+ *
+ * WHY A CLONE AND NOT THE SHIPPED FILE: the shipped manifest declares `permissions: []` on purpose (the
+ * intercept seam is inactive by design), so the host's own admission answers `compatible` for it with OR
+ * without a grant — the three-state grant assertion can never hold on it. The clone declares the one point
+ * the seam used to request, so the host's OWN `/plugin check` produces the real three-way discriminator,
+ * while the shipped file stays byte-identical (`manifestDigest()` in the evidence proves it).
+ *
+ * THE HOST'S CHECK READS ONLY THE FILE IT IS GIVEN — `checkManifestLines` in
+ * `lib/types/dsh-adapter/plugins-info.js` resolves the path, reads it, then runs `parseManifest`,
+ * `projectManifest`, `validatePlugin` and `negotiate`; it never stats the facet entry — so a clone living
+ * in this run's evidence directory is admitted exactly like the file at the package root.
+ * @param dir The evidence subdirectory the clone is written into (created when absent).
+ * @returns The absolute clone path `/plugin check` receives, and the ONE grant row it declares.
+ */
+function writeGrantClone(dir: string): { file: string; row: GrantFileRow } {
+  /** The shipped manifest decoded into the shape the clone is edited in. */
+  const clone: RawManifest = structuredClone(JSON.parse(readFileSync(MANIFEST, "utf8")) as RawManifest)
+  clone.permissions.push({ name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE, reason: GRANT_ARM_REASON })
+  mkdirSync(dir, { recursive: true })
+  /** The clone's absolute path — passed to `/plugin check` as-is, never repo-relative. */
+  const file = join(dir, "dsh-plugin.grant-clone.json")
+  writeFileSync(file, JSON.stringify(clone, null, 2) + "\n")
+  return { file, row: { name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE } }
+}
+
+/**
+ * The verdict of the MOST RECENT `/plugin check` in a pane that carries SEVERAL of them.
+ *
+ * A `/plugin check` paints into the session transcript and never clears it, so a boot driven through four
+ * checks shows the earlier decisions ABOVE the newest one — and `classifyAdmissionPane` matches the FIRST
+ * decision line it finds, i.e. the OLDEST. The window starts at the LAST decision line
+ * (`Negotiation decision:` / `协商结果：`) and therefore carries exactly one decision, its `(...)` detail
+ * and the grant hint the host prints below it: the shape ONE isolated check paints.
+ * @param paneText The captured pane, possibly carrying several checks.
+ * @returns The measured window, the verdict for THAT window, and how many decision lines the pane carries.
+ */
+export function lastCheckWindow(paneText: string): { window: string; verdict: AdmissionPaneVerdict; decisions: number } {
+  /** Every decision line in the pane, in transcript order — the last one belongs to the newest check. */
+  const decisions = [...paneText.matchAll(/(?:Negotiation decision:|协商结果：)\s*[a-z_]+/g)]
+  /** The newest decision line's match; absent when the pane carries no check output at all. */
+  const last = decisions.at(-1)
+  if (last === undefined) return { window: paneText, verdict: classifyAdmissionPane(paneText), decisions: 0 }
+  /** The text from that decision line to the end of the captured pane. */
+  const window = paneText.slice(last.index ?? 0)
+  return { window, verdict: classifyAdmissionPane(window), decisions: decisions.length }
 }
 
 /** One `requires.contracts[]` entry of the manifest as the falsifiability controls mutate it in place. */
@@ -415,17 +513,21 @@ interface StaticAdmissionRecord {
   validatePlugin?: string
   /** The host's own five-state negotiation result. */
   negotiation?: unknown
-  /** The C3' grant arms on the SAME pinned `negotiate()`: the rows, the three decisions and their combined verdict. */
+  /** The C3' grant arms on the SAME pinned `negotiate()`, measured on the CLONE (F1): the rows, the decisions and their combined verdict. */
   grants?: {
-    /** The grant rows the manifest's own declarations imply. */
+    /** The ONE grant row the arms negotiate, at the scope the clone declares. */
     readonly rows: GrantFileRow[]
-    /** The decision with NO grants — the documented ready-but-not-activated posture. */
+    /** The SHIPPED manifest's own decision with no grant — `compatible`, because it requests no permission. */
+    readonly manifestDecision: string
+    /** The SHIPPED manifest's own decision WITH the clone's one row granted — still `compatible`: a stray grant cannot move a permission-less manifest (A4-F1). */
+    readonly manifestGranted: string
+    /** The CLONE's decision with NO grant — a declared, default-denied permission. */
     readonly ungranted: string
-    /** The decision with the manifest's own four rows granted. */
+    /** The CLONE's decision with its one row granted. */
     readonly granted: string
-    /** The wrong-scope control's decision — the same names at an undeclared scope must NOT authorize. */
+    /** The wrong-scope control's decision — the same name at an undeclared scope must NOT authorize. */
     readonly wrongScope: string
-    /** True only when the three decisions are exactly `waiting_authorization` / `compatible` / `waiting_authorization`. */
+    /** True only when the shipped manifest is `compatible` and the clone's states are exactly the documented three. */
     readonly ok: boolean
   }
   /** The failure thrown by the host's own implementation, on the red arm. */
@@ -445,6 +547,20 @@ interface StaticAdmissionRecord {
 
 /** The two arms `staticAdmission` can report: the absent host, or the measured record. */
 type StaticAdmission = HostAdmissionMissing | StaticAdmissionRecord
+
+/**
+ * Whether the ledger-attribution arm is a state the boot can produce AT ALL.
+ *
+ * The arm asserts that the host attributed an APPLIED `decision-handler` bind to the component, which only
+ * happens when the host actually authorizes a declared permission. The shipped manifest declares none, so
+ * the arm would be red by construction; this predicate makes that a DECLARED, tested inapplicability
+ * instead of a permanently red assertion — and it re-arms the assertion the moment a declaration returns.
+ * @param rows The grant rows the SHIPPED manifest's own declarations project to.
+ * @returns True when at least one permission is declared, i.e. when an authorize decision can happen.
+ */
+function attributionArmsApplicable(rows: readonly GrantFileRow[]): boolean {
+  return rows.length > 0
+}
 
 /**
  * The static grant arms' verdict, robust to the absent-host arm of the union.
@@ -555,25 +671,47 @@ async function staticAdmission(outDir: string, log: string[]): Promise<StaticAdm
     host.validatePlugin(index, manifest)
     result.validatePlugin = "ok"
     result.negotiation = host.negotiate(index, manifest, hostModel(host.registryEntries, data), [])
-    // C3' STATIC GRANT ARMS: the same pinned negotiate() with three grant tables must land on the
-    // three expected states — none → waiting_authorization, the manifest's own four rows →
-    // compatible, the same names at an undeclared scope → STILL waiting_authorization.
-    /** The grant rows the host-parsed manifest's own declarations imply. */
-    const grantRows: GrantFileRow[] = grantRowsOf(manifest)
-    /** The same names at a scope nothing declares — a grant that must NOT authorize. */
-    const wrongScopeRows: GrantFileRow[] = grantRows.map((row): GrantFileRow => ({ name: row.name, scope: "tui/not-a-declared-scope" }))
-    /** The negotiation with the manifest's own rows granted. */
-    const granted = host.negotiate(index, manifest, hostModel(host.registryEntries, data), grantRows)
-    /** The wrong-scope control's negotiation. */
-    const wrongScope = host.negotiate(index, manifest, hostModel(host.registryEntries, data), wrongScopeRows)
+    // C3' STATIC GRANT ARMS, MEASURED ON A CLONE (F1 / reviewer H1). The shipped manifest requests NO
+    // permission (the intercept seam is inactive by design), so its OWN grant table is always empty and a
+    // three-state assertion against it was red by construction: a permission-less manifest negotiates
+    // `compatible` with OR without a grant, never `waiting_authorization`. The grant MECHANISM is therefore
+    // measured on a `structuredClone` carrying the ONE `session.input.intercept@tui/input` declaration that
+    // used to ship — and the HOST's own parser, validator and negotiator judge the clone exactly as they
+    // judge a real manifest — while the shipped manifest's OWN decision is asserted separately and must stay
+    // `compatible` (so a regression that re-introduces a declaration on the real file still reddens here).
+    /** The clone's base: the shipped manifest decoded, then the ONE permission re-declared on it. */
+    const cloneSource: RawManifest = JSON.parse(source)
+    cloneSource.permissions.push({ name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE, reason: GRANT_ARM_REASON })
+    /** The host's OWN parse of the clone — never this lane's `JSON.parse` of it. */
+    const cloneManifest = host.parseManifest(JSON.stringify(cloneSource), { source: "grant-arm-clone" })
+    // The clone must be a manifest the host would ADMIT: a clone the validator rejects would make the
+    // granted arm prove nothing about the real admission path.
+    host.validatePlugin(index, cloneManifest)
+    /** The ONE grant row a grant author would write, at the scope the clone declares. */
+    const grantRow: GrantFileRow = { name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE }
+    /** The clone's decision with NO grant — a declared, default-denied permission. */
+    const cloneUngranted = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [])
+    /** The clone's decision with that one row granted. */
+    const cloneGranted = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [grantRow])
+    /** The same name at a scope nothing declares — a grant that must NOT authorize. */
+    const cloneWrongScope = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [{ name: grantRow.name, scope: "tui/not-a-declared-scope" }])
+    // A4-F1: the SHIPPED manifest is ALSO negotiated WITH that row granted. The claim "a stray grant cannot
+    // flip a permission-less manifest" is worth MEASURING rather than assuming: the permission-less posture
+    // must survive a grants table that names a point it never declares, and the two decisions must agree.
+    /** The shipped manifest's own decision with the clone's one row granted. */
+    const shippedGranted = host.negotiate(index, manifest, hostModel(host.registryEntries, data), [grantRow])
     result.grants = {
-      rows: grantRows,
-      ungranted: decisionOf(result.negotiation),
-      granted: decisionOf(granted),
-      wrongScope: decisionOf(wrongScope),
-      ok: decisionOf(result.negotiation) === "waiting_authorization"
-        && decisionOf(granted) === "compatible"
-        && decisionOf(wrongScope) === "waiting_authorization",
+      rows: [grantRow],
+      manifestDecision: decisionOf(result.negotiation),
+      manifestGranted: decisionOf(shippedGranted),
+      ungranted: decisionOf(cloneUngranted),
+      granted: decisionOf(cloneGranted),
+      wrongScope: decisionOf(cloneWrongScope),
+      ok: decisionOf(result.negotiation) === "compatible"
+        && decisionOf(shippedGranted) === "compatible"
+        && decisionOf(cloneUngranted) === "waiting_authorization"
+        && decisionOf(cloneGranted) === "compatible"
+        && decisionOf(cloneWrongScope) === "waiting_authorization",
     }
   } catch (error) {
     result.ok = false
@@ -709,21 +847,30 @@ function selfTest(): void {
   /** The shipped manifest's own declarations, projected into the `{name, scope}` grant rows the host prints. */
   const grantRows = manifestGrantRows()
   check(grantRows.length === 0, "the shipped manifest must declare NO intercept permission (the seam is inactive by design): " + JSON.stringify(grantRows))
-  /** A clone of the shipped manifest with ONE intercept permission re-declared, the negative control. */
+  // THE CLONE the static grant arms negotiate, carrying the declarations that used to ship: the input point
+  // the arms use, plus the rewind point so the projection's ORDER and plurality are observable too.
+  /** A clone of the shipped manifest with the historical intercept declarations re-declared. */
   const withIntercept = structuredClone(manifest)
-  withIntercept.permissions.push({ name: "session.input.intercept", scope: "tui/transcript" })
-  check(grantsOfManifest(withIntercept).length === grantRows.length + 1, "a NEGATIVE CONTROL failed: a re-declared permission must reach the projection: " + JSON.stringify(grantsOfManifest(withIntercept)))
+  withIntercept.permissions.push({ name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE })
+  withIntercept.permissions.push({ name: "session.rewind.intercept", scope: "tui/rewind-prompt" })
+  /** The clone's declarations as the SAME projection the shipped manifest goes through reads them. */
+  const cloneRows = grantsOfManifest(withIntercept)
+  check(cloneRows.length === grantRows.length + 2, "a NEGATIVE CONTROL failed: a re-declared permission must reach the projection: " + JSON.stringify(cloneRows))
+  // N1 — a REAL round-trip, never a predicate over a literal this arm just wrote: the rows come BACK OUT of
+  // the projection with EXACTLY the declared name and scope, in declaration order. A projection that
+  // dropped a row, swapped the fields or rewrote the scope reddens here instead of quietly granting a
+  // different point than the one declared.
+  check(cloneRows[0]?.name === GRANT_ARM_PERMISSION && cloneRows[0]?.scope === GRANT_ARM_SCOPE
+    && cloneRows[1]?.name === "session.rewind.intercept" && cloneRows[1]?.scope === "tui/rewind-prompt",
+    "the projection must round-trip every declaration's name and scope in order: " + JSON.stringify(cloneRows))
   /** The component id the grants key and the attribution assertions use. */
   const componentId = manifestComponentId()
   check(componentId === "com.mpd-dsh.mpd-tui", "the manifest component id must stay the grants key the arms assert on: " + JSON.stringify(componentId))
-  // THE WRITER'S OWN FIXTURE, not the shipped manifest's (which is empty by decision): the document shape
-  // and the `tui/<point>` scope vocabulary are proven on rows the writer could actually be handed.
-  /** The fixture grant rows the writer's shape control writes. */
-  const writerRows: GrantFileRow[] = [
-    { name: "session.input.intercept", scope: "tui/transcript" },
-    { name: "session.rewind.intercept", scope: "tui/checkpoint" },
-  ]
-  check(writerRows.every((row) => row.scope.startsWith("tui/")), "every grant row this lane can write must be a tui/<point> scope: " + JSON.stringify(writerRows))
+  // THE WRITER'S FIXTURE IS THE PROJECTION'S OWN OUTPUT, not a second literal list: what a grant author can
+  // write is exactly what the declaration set projects to, so the writer is proven on the rows the lane
+  // actually hands it (the shipped set is empty by decision, so the clone's rows stand in for it).
+  /** The grant rows the writer's shape control writes: the clone's own projected rows. */
+  const writerRows: GrantFileRow[] = cloneRows
   /** A throwaway directory for the writer/reader controls, removed before the arm returns. */
   const scratch = mkdtempSync(join(tmpdir(), "tui-admission-selftest-"))
   try {
@@ -737,15 +884,69 @@ function selfTest(): void {
     check(grantsBlock !== null && typeof grantsBlock === "object"
       && Array.isArray((grantsBlock as Record<string, unknown>)[componentId]),
       "the grant-file writer must produce the fail-closed object schema {grants:{<id>:[{name,scope}]}}")
+    // N2 — the ROW CONTENT, not just "it is an array": the document must carry the SAME name/scope pairs the
+    // writer was handed, in the same order, with no extra key a reader would have to interpret. A writer that
+    // emitted `[{name}]`, reordered the rows or padded them with metadata reddens here.
+    /** The rows the written document carries under this component id. */
+    const writtenRows = (grantsBlock as Record<string, Array<Record<string, unknown>>>)[componentId]
+    check(writtenRows.length === writerRows.length
+      && writtenRows.every((row, index) => row.name === writerRows[index]?.name
+        && row.scope === writerRows[index]?.scope
+        && Object.keys(row).length === 2),
+      "the writer must round-trip every row's name and scope verbatim, in order, and nothing else: " + JSON.stringify(writtenRows))
     /** The ledger fixture: one valid record, one corrupt line, one blank line. */
     const ledgerFile = join(scratch, "effect-ledger.jsonl")
     writeFileSync(ledgerFile, JSON.stringify({ pluginId: "undeclared", operation: "bind" }) + "\n{ not json\n\n")
     /** The records the tolerant reader kept. */
     const records: LedgerRecord[] = readLedgerRecords(ledgerFile)
     check(records.length === 1 && records[0]?.pluginId === "undeclared", "the ledger reader must skip corrupt and blank lines and keep the valid record: " + JSON.stringify(records))
+    // THE LIVE GRANT CLONE (F1-live) is judged HERE, offline, because what the live run has to prove is
+    // only what the HOST says about the clone: this arm proves the clone's OWN document is the one the arms
+    // intend — the shipped declarations plus EXACTLY the one input point — and that writing it leaves the
+    // shipped file byte-identical (the clone is what must declare, never the product's manifest).
+    /** The shipped manifest's digest BEFORE the clone is written. */
+    const shippedDigestBefore = sha256File(MANIFEST)
+    /** The clone the live arms write, produced by the very call they make. */
+    const liveClone = writeGrantClone(join(scratch, "grant-clone"))
+    check(sha256File(MANIFEST) === shippedDigestBefore, "a NEGATIVE CONTROL failed: writing the live grant clone must not touch the shipped manifest")
+    /** The clone's declarations, read back through the SAME projection the shipped manifest goes through. */
+    const liveCloneRows = grantsOfManifest(JSON.parse(readFileSync(liveClone.file, "utf8")))
+    check(liveCloneRows.length === manifest.permissions.length + 1
+      && liveCloneRows.filter((row) => row.name === GRANT_ARM_PERMISSION && row.scope === GRANT_ARM_SCOPE).length === 1,
+      "the live grant clone must declare the shipped set plus EXACTLY ONE " + GRANT_ARM_PERMISSION + "@" + GRANT_ARM_SCOPE + ": " + JSON.stringify(liveCloneRows))
+    check(liveClone.row.name === GRANT_ARM_PERMISSION && liveClone.row.scope === GRANT_ARM_SCOPE,
+      "the clone's grant row must be the very declaration the host is asked to authorize: " + JSON.stringify(liveClone.row))
   } finally {
     rmSync(scratch, { recursive: true, force: true })
   }
+
+  // THE NEWEST-DECISION WINDOW, two-sided. A transcript keeps older checks ABOVE the newest one, so the
+  // helper must read the LAST decision — otherwise the granted arm would re-read the ungranted one above it
+  // (MEASURED 2026-11-03: the whole-pane classifier answered waiting_authorization for a pane whose newest
+  // decision was compatible).
+  /** A pane carrying two checks, the second one compatible — the shape one clone boot captures. */
+  const twoChecks = "old: Negotiation decision: waiting_authorization (PERMISSION_NOT_GRANTED: x)\n…\nnew: Negotiation decision: compatible\n"
+  /** The windowed reading of that pane. */
+  const twoCheckWindow = lastCheckWindow(twoChecks)
+  check(twoCheckWindow.verdict.state === "compatible", "the NEWEST decision must win when a pane carries several checks: " + JSON.stringify(twoCheckWindow.verdict.state))
+  check(twoCheckWindow.window.startsWith("Negotiation decision: compatible") && !twoCheckWindow.window.includes("waiting_authorization"),
+    "the window must start at the NEWEST decision line and carry no older state: " + JSON.stringify(twoCheckWindow.window))
+  check(lastCheckWindow("旧：协商结果：waiting_authorization\n新：协商结果：compatible\n").verdict.state === "compatible",
+    "a NEGATIVE CONTROL failed: the zh decision line must be windowed exactly like the en one")
+  check(lastCheckWindow("a pane with no check output at all").verdict.state === undefined, "a NEGATIVE CONTROL failed: a pane without a decision line must not invent a state")
+  // THE FRESHNESS COUNTER (A5-F1) is what stops an arm whose expected value equals its NEIGHBOUR's from
+  // passing on a swallowed step: the count must be exact, so "the boot painted exactly one decision" is an
+  // assertion a step that painted nothing cannot satisfy.
+  check(twoCheckWindow.decisions === 2, "the window must report how MANY decisions the pane carries: " + String(twoCheckWindow.decisions))
+  check(lastCheckWindow("a pane with no check output at all").decisions === 0,
+    "a NEGATIVE CONTROL failed: a pane with no decision line must report ZERO decisions, not one")
+
+  // THE ATTRIBUTION ARM'S APPLICABILITY, two-sided. The arm gated by this predicate is the one that stayed
+  // red even WITH a declaration and is unreachable without one, so the predicate itself must be proven to
+  // change answer: inapplicable for the permission-less shipped manifest, applicable for one declaration.
+  check(!attributionArmsApplicable(manifestGrantRows()), "the attribution arm must be INAPPLICABLE for the permission-less shipped manifest")
+  check(attributionArmsApplicable(grantsOfManifest({ permissions: [{ name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE }] })),
+    "a NEGATIVE CONTROL failed: ONE declared permission must make the attribution arm applicable again")
 
   if (problems.length > 0) {
     console.error("[" + SLUG + " self-test] FAIL: " + problems.length + " check(s)")
@@ -805,148 +1006,207 @@ async function real(): Promise<void> {
   const state = profileState(root)
   gateTuiPrereqs(SLUG, tuiPrereqs({ sandboxPresent: () => state.present && state.hasHost && state.hasBundle }))
 
-  /** The host's grants file inside THIS sandbox — the host re-reads it on every authorize operation, so grants are a file write, never a restart. */
+  /** The host's grants file inside THIS sandbox — the host re-reads it on every authorize decision, so a grant is a file write, never a restart. */
   const grantFile = sandboxGrantFile(root)
-  /** The host's append-only effect ledger inside THIS sandbox, whose per-boot deltas carry the attribution arms. */
+  /** The host's append-only effect ledger inside THIS sandbox, whose per-boot deltas carry the attribution facts. */
   const ledgerFile = sandboxEffectLedgerFile(root)
   /** The component id the grants key and every attribution assertion use. */
   const componentId = manifestComponentId()
-  /** The grant rows the shipped manifest's own permission declarations imply. */
+  /** The grant rows the SHIPPED manifest declares — EMPTY by decision, which is exactly why the three grant states are measured on a clone. */
   const grantRows = manifestGrantRows()
+  /** True when the shipped manifest declares a permission at all: only then can the boot perform an authorize decision. */
+  const grantArmsApplicable = attributionArmsApplicable(grantRows)
 
-  // ── PHASE 1 — NEGATIVE CONTROL (arm 5): a boot with NO grants file ────────
+  // ── PHASE A — THE SHIPPED, PERMISSION-LESS POSTURE WITH NO GRANTS FILE (arms 1, 1b, 2 and 4) ──────
+  // NOTHING is requested, so nothing needs authorizing: the host must answer `compatible` on its own file
+  // with no grant, print NO grants hint, admit the Component at boot, and still carry a real chat turn.
   rmSync(grantFile, { force: true })
-  /** The ledger record count before the negative boot, so its delta is isolated from the granted boot's. */
-  const ledgerBeforeNegative = readLedgerRecords(ledgerFile).length
-  /** The negative-control lifecycle: one boot, one `/plugin check`, capture, kill. */
-  const negativeSession = runTuiSession({
-    lane: SLUG + "-negctl",
-    root,
-    outDir: join(outDir, "negctl"),
-    bootWaitMs: 180_000,
-    extraEnv: { DSH_TUI_DEBUG: "1" },
-    stderrFile: join(outDir, "negctl", "host-stderr.log"),
-    steps: [{ name: "plugins-check", keys: ["/plugin check " + MANIFEST, "Enter"], waitMs: 20_000 }],
-  })
-  for (const failure of negativeSession.failures) say("negctl tmux: " + failure)
-  /** The negative boot's `/plugin check` pane; empty when the step never produced a capture. */
-  const negativePane = negativeSession.panes.find((pane) => pane.name === "plugins-check")?.text ?? ""
-  /** The five-state verdict the no-grant pane advertised. */
-  const negativeVerdict = classifyAdmissionPane(negativePane)
-  say("negctl /plugin check -> state=" + String(negativeVerdict.state) + " ok=" + negativeVerdict.ok)
-  /** ARM 5 — the documented no-grant posture: `waiting_authorization` AND the host's own grants-file hint naming the flow this lane drives. */
-  const arm5 = negativeVerdict.state === "waiting_authorization" && negativePane.includes("extension-grants.json")
-  /** The ledger records the negative boot appended (the no-identity posture attributes the working surfaces as `undeclared`). */
-  const negativeLedger = readLedgerRecords(ledgerFile).slice(ledgerBeforeNegative)
-  /** How many of those records carry the `undeclared` attribution — recorded, not gated: attribution's hard half is the granted boot's flip. */
-  const negativeUndeclared = negativeLedger.filter((record) => record.pluginId === "undeclared").length
-  say("negctl ledger delta=" + negativeLedger.length + " undeclared=" + negativeUndeclared)
-
-  // ── PHASE 2 — GRANTED BOOT (arms 1-4, then the optional revocation arm 6) ─
-  writeExtensionGrants(grantFile, componentId, grantRows)
-  say("grants file written -> " + grantFile.replace(REPO + "/", "") + " component=" + componentId + " rows=" + grantRows.length)
-  /** The ledger record count before the granted boot. */
-  const ledgerBeforeGranted = readLedgerRecords(ledgerFile).length
-  /** The granted lifecycle: check, list, back to chat, a REAL input submit, interrupt, then revoke the grants mid-session and re-check. */
+  /** The ledger record count before the shipped-posture boot, so its delta is isolated from the clone boot's. */
+  const ledgerBeforeShipped = readLedgerRecords(ledgerFile).length
   // THE DRIVE SPELLS THE 0.15.0 COMMAND. The host renamed `/plugins` to `/plugin` (host
-  // `i18n.js:1297` "supported: list / check <path> / info <spec> / registries", `tips.js:408`
+  // `i18n.js` "supported: list / check <path> / info <spec> / registries", `tips.js`
   // "/plugin check <manifest>"), so the old spelling is no longer a command and the line was submitted
   // as CHAT TEXT — measured 2026-10-14: the pane carried a thinking indicator and real tool calls.
   // The descriptor step asks for the documented `list` subcommand, because the BARE `/plugin` opens the
   // host's picker and paints no state word (`classifyAdmissionPane` read `undefined` while
   // `plugin check` read `compatible`).
-  const grantedSession = runTuiSession({
-    lane: SLUG + "-grants",
+  /** The shipped-posture lifecycle: check, list, back to chat, a REAL input submit, interrupt. */
+  const shippedSession = runTuiSession({
+    lane: SLUG + "-shipped",
     root,
-    outDir: join(outDir, "grants"),
+    outDir: join(outDir, "shipped"),
     bootWaitMs: 180_000,
     extraEnv: { DSH_TUI_DEBUG: "1" },
-    stderrFile: join(outDir, "grants", "host-stderr.log"),
+    stderrFile: join(outDir, "shipped", "host-stderr.log"),
     steps: [
       { name: "plugins-check", keys: ["/plugin check " + MANIFEST, "Enter"], waitMs: 20_000 },
       { name: "plugins-descriptor", keys: ["/plugin list", "Enter"], waitMs: 15_000 },
       { name: "back-to-chat", keys: ["Escape"], waitMs: 3_000 },
       { name: "input-submit", keys: [DECISION_SUBMIT_TEXT, "Enter"], waitMs: 6_000 },
       { name: "input-interrupt", keys: ["Escape"], waitMs: 3_000 },
-      {
-        name: "plugins-check-revoked",
-        before: () => { rmSync(grantFile, { force: true }); say("grants file revoked mid-session (arm 6)") },
-        keys: ["/plugin check " + MANIFEST, "Enter"],
-        waitMs: 20_000,
-      },
     ],
   })
-  for (const failure of grantedSession.failures) say("grants tmux: " + failure)
-  /** The granted boot's `/plugin check` pane. */
-  const checkPane = grantedSession.panes.find((pane) => pane.name === "plugins-check")?.text ?? ""
-  /** The granted boot's `/plugin` list pane. */
-  const descriptorPane = grantedSession.panes.find((pane) => pane.name === "plugins-descriptor")?.text ?? ""
+  for (const failure of shippedSession.failures) say("shipped tmux: " + failure)
+  /** The shipped boot's `/plugin check` pane of the SHIPPED manifest; empty when the step produced no capture. */
+  const checkPane = shippedSession.panes.find((pane) => pane.name === "plugins-check")?.text ?? ""
+  /** The shipped boot's `/plugin list` pane. */
+  const descriptorPane = shippedSession.panes.find((pane) => pane.name === "plugins-descriptor")?.text ?? ""
   /** The pane captured right after the real input submit. */
-  const submitPane = grantedSession.panes.find((pane) => pane.name === "input-submit")?.text ?? ""
-  /** The pane of the post-revocation re-check. */
-  const revokedPane = grantedSession.panes.find((pane) => pane.name === "plugins-check-revoked")?.text ?? ""
-  /** The granted check pane's five-state verdict. */
-  const classification = classifyAdmissionPane(checkPane)
-  /** The granted list pane's five-state verdict. */
-  const descriptorClassification = classifyAdmissionPane(descriptorPane)
-  /** ARM 1 — BOTH panes advertise `compatible` with the grants in place. */
+  const submitPane = shippedSession.panes.find((pane) => pane.name === "input-submit")?.text ?? ""
+  /** The shipped check's MOST RECENT decision window — the only one in this boot, read the same way as the clone's four. */
+  const shippedWindow = lastCheckWindow(checkPane)
+  /** The shipped check window's five-state verdict. */
+  const classification = shippedWindow.verdict
+  /** The shipped list pane's five-state verdict — windowed for the same reason (one check may follow another). */
+  const descriptorClassification = lastCheckWindow(descriptorPane).verdict
+  /** ARM 1 — BOTH panes advertise `compatible` for the SHIPPED manifest with NO grants file, i.e. the permission-less posture the product ships. */
   const arm1 = classification.state === "compatible" && descriptorClassification.state === "compatible"
-  say("grants /plugin check -> state=" + String(classification.state) + "; /plugin list -> state=" + String(descriptorClassification.state))
-  /** The granted boot's STDERR sink: the host's debug stream, redirected so it cannot flood the pane. */
-  const grantedStderrFile = join(outDir, "grants", "host-stderr.log")
-  /** The granted boot's debug stream, `""` when the redirect produced no file. */
-  const grantedStderr = existsSync(grantedStderrFile) ? readFileSync(grantedStderrFile, "utf8") : ""
+  say("shipped /plugin check -> state=" + String(classification.state) + "; /plugin list -> state=" + String(descriptorClassification.state))
+  /** ARM 1b — the shipped check pane carries NO grants-file hint, because nothing is requested and therefore nothing awaits authorization. */
+  const arm1NoHint = !shippedWindow.window.includes("extension-grants.json")
+  say("shipped /plugin check grants hint absent: " + arm1NoHint)
+  /** The shipped boot's STDERR sink: the host's debug stream, redirected so it cannot flood the pane. */
+  const shippedStderrFile = join(outDir, "shipped", "host-stderr.log")
+  /** The shipped boot's debug stream, `""` when the redirect produced no file. */
+  const shippedStderr = existsSync(shippedStderrFile) ? readFileSync(shippedStderrFile, "utf8") : ""
   /** ARM 2 — the admission loader's debug line admits the Component (`DSH_TUI_DEBUG=1` rode the boot env; the line lands in the REDIRECTED stderr stream, never the pane). */
-  const arm2 = grantedStderr.includes("admission loader admitted a Component") && grantedStderr.includes(componentId)
-  say("arm2 admission-loader line admitted " + componentId + ": " + arm2 + " (stderr=" + grantedStderrFile.replace(REPO + "/", "") + " " + grantedStderr.length + "B)")
+  const arm2 = shippedStderr.includes("admission loader admitted a Component") && shippedStderr.includes(componentId)
+  say("arm2 admission-loader line admitted " + componentId + ": " + arm2 + " (stderr=" + shippedStderrFile.replace(REPO + "/", "") + " " + shippedStderr.length + "B)")
   // THE REDIRECT'S OWN READING. The host's `logForDebugging` also emits a `park target=…` line per frame
   // while `DSH_TUI_DEBUG` is set; those frames are what flooded the pane before the redirect (measured:
   // 15,566 of them in the T8 run's `grants/tui-pane.log`, the grant boot never reaching the chat screen
   // inside the 90 s ceiling). Counting them in the REDIRECTED stream is the evidence that the flood was
   // moved rather than removed.
-  /** The `park target=…` debug frames the granted boot wrote to its redirected stderr. */
-  const grantedParkLines = (grantedStderr.match(/park target=/g) ?? []).length
-  say("granted boot debug stream: " + grantedParkLines + " park frame(s), redirected off the pane (grants/host-stderr.log)")
-  /** The ledger records the granted boot appended. */
-  const grantedLedger = readLedgerRecords(ledgerFile).slice(ledgerBeforeGranted)
-  /** The granted boot's records attributed to the component id — the attribution flip arm 3 asserts. */
-  const attributed: LedgerRecord[] = grantedLedger.filter((record) => record.pluginId === componentId)
-  /** The applied decision-handler binds among them — the registration only happens with a live grant. */
+  /** The `park target=…` debug frames the shipped boot wrote to its redirected stderr. */
+  const shippedParkLines = (shippedStderr.match(/park target=/g) ?? []).length
+  say("shipped boot debug stream: " + shippedParkLines + " park frame(s), redirected off the pane (shipped/host-stderr.log)")
+  /** The ledger records the shipped boot appended. */
+  const shippedLedger = readLedgerRecords(ledgerFile).slice(ledgerBeforeShipped)
+  /** The shipped boot's records attributed to the component id. */
+  const attributed: LedgerRecord[] = shippedLedger.filter((record) => record.pluginId === componentId)
+  /** The applied decision-handler binds among them — `[]` while no permission is declared, which is the declared bound below. */
   const handlerBinds = attributed.filter((record) => record.operation === "bind" && record.resource?.kind === "decision-handler" && record.result === "applied")
-  /** ARM 3 — attribution: the ledger names the component, not only `undeclared`, and carries applied decision-handler binds. */
-  const arm3 = attributed.length > 0 && handlerBinds.length > 0
-  say("arm3 attribution: attributed=" + attributed.length + " decisionHandlerBinds(applied)=" + handlerBinds.length + " (ledger delta=" + grantedLedger.length + ")")
-  // THE HOST DOES WIRE THIS SHAPE (measured 2026-10-14 on 0.15.0): `subscribeDecision`
-  // (lib/types/dsh-adapter/plugin-host.js) records `{kind:'decision-handler', id:`<componentId>:<event>`}`
-  // on its registered path and a `permission`/PERMISSION_NOT_GRANTED record otherwise. Neither appears:
-  // 928 ledger records, kinds {command:920, status:8}, attributions {host:920, undeclared:8}. So this red
-  // is OUR registration/attribution gap, not a missing host shape — it must stay RED, never be weakened.
-  /** The granted boot's `admission loader admitted` count — the identity differential's first half. */
-  const grantedAdmissions = (grantedStderr.match(/admission loader admitted/g) ?? []).length
-  /** The granted boot's `admission loader refused` count. */
-  const grantedRefusals = (grantedStderr.match(/admission loader refused/g) ?? []).length
-  /** The negative boot's redirected stderr path; it carries the inverse identity posture. */
-  const negativeStderrFile = join(outDir, "negctl", "host-stderr.log")
-  /** The negative boot's redirected stderr, `""` when the redirect produced no file. */
-  const negativeStderr = existsSync(negativeStderrFile) ? readFileSync(negativeStderrFile, "utf8") : ""
-  /** The negative boot's `admission loader admitted` count — nominally 0, the grant being absent. */
-  const negativeAdmissions = (negativeStderr.match(/admission loader admitted/g) ?? []).length
-  /** The negative boot's `admission loader refused` count — nominally the granted boot's admitted count. */
-  const negativeRefusals = (negativeStderr.match(/admission loader refused/g) ?? []).length
-  say("arm3 host wiring: `decision-handler` binds are wired by plugin-host.js#subscribeDecision but none fired")
-  say("arm3 identity differential: admission loader admitted=" + grantedAdmissions + " refused=" + grantedRefusals
-    + " (this boot) vs admitted=" + negativeAdmissions + " refused=" + negativeRefusals + " (negctl)")
-  /** ARM 4 — a REAL `tui/input` decision fired: the submitted line traversed the dispatch chain with our no-op handler live and the turn rendered. */
+  // ARM 3 — CONDITIONAL, and the condition IS the honesty: with `permissions: []` the host performs no
+  // authorize decision at all, so an `applied` decision-handler bind is not a state this boot can produce.
+  // While the manifest declares nothing the arm is INAPPLICABLE and recorded as a BOUND (never as a pass);
+  // the moment a declaration returns `grantArmsApplicable` turns true and the historical assertion — the
+  // ledger must attribute an APPLIED decision-handler bind to the component — is gated again, so the
+  // registration/attribution gap measured on 2026-10-14 (928 records, kinds {command:920, status:8}, no
+  // decision-handler record even WITH the declaration) cannot be laundered as green.
+  /** ARM 3 — attribution of an APPLIED decision-handler bind, gated only while a permission is declared. */
+  const arm3 = !grantArmsApplicable || (attributed.length > 0 && handlerBinds.length > 0)
+  say("arm3 (ledger attribution) applicable=" + grantArmsApplicable + " attributed=" + attributed.length + " decisionHandlerBinds(applied)=" + handlerBinds.length
+    + (grantArmsApplicable ? "" : " — INAPPLICABLE while the shipped manifest declares NO permission (no authorize operation exists): recorded as a BOUND, never a pass"))
+  /** ARM 4 — the drive reached a REAL chat turn: the submitted line renders after Enter, so the panes above were read from a live session and not a splash screen. */
   const arm4 = submitPane.includes(DECISION_SUBMIT_TEXT)
   say("arm4 real input submit rendered the turn: " + arm4)
+
+  // ── PHASE B — THE GRANT CLONE: the three states the permission-less shipped file CANNOT produce ───
+  /** The clone `/plugin check` reads: the shipped bytes plus ONE `session.input.intercept@tui/input` declaration. */
+  const clone = writeGrantClone(join(outDir, "grant-clone"))
+  say("grant clone written -> " + clone.file.replace(REPO + "/", "") + " declaring " + clone.row.name + "@" + clone.row.scope + " (the shipped file is never touched)")
+  // The clone boot starts with NO grants file: the ungranted state is measured FIRST, then the SAME boot
+  // is driven through the granted state, the wrong-scope control and the revocation — one boot, four
+  // reads, because the host re-reads the grants file at every authorize decision.
+  rmSync(grantFile, { force: true })
+  /** The clone lifecycle: ungranted check, granted check, wrong-scope check, post-revocation check. */
+  const cloneSession = runTuiSession({
+    lane: SLUG + "-clone",
+    root,
+    outDir: join(outDir, "clone"),
+    bootWaitMs: 180_000,
+    extraEnv: { DSH_TUI_DEBUG: "1" },
+    stderrFile: join(outDir, "clone", "host-stderr.log"),
+    steps: [
+      { name: "clone-ungranted", keys: ["/plugin check " + clone.file, "Enter"], waitMs: 20_000 },
+      {
+        name: "clone-granted",
+        before: () => { writeExtensionGrants(grantFile, componentId, [clone.row]); say("grants file written -> " + grantFile.replace(REPO + "/", "") + " component=" + componentId + " rows=1") },
+        keys: ["/plugin check " + clone.file, "Enter"],
+        waitMs: 20_000,
+      },
+      {
+        name: "clone-wrong-scope",
+        before: () => { writeExtensionGrants(grantFile, componentId, [{ name: clone.row.name, scope: "tui/not-a-declared-scope" }]); say("grants file rewritten with the WRONG scope (tui/not-a-declared-scope)") },
+        keys: ["/plugin check " + clone.file, "Enter"],
+        waitMs: 20_000,
+      },
+      {
+        name: "clone-revoked",
+        before: () => { rmSync(grantFile, { force: true }); say("grants file revoked mid-session (arm 6, observed)") },
+        keys: ["/plugin check " + clone.file, "Enter"],
+        waitMs: 20_000,
+      },
+    ],
+  })
+  for (const failure of cloneSession.failures) say("clone tmux: " + failure)
+  /** The captured text of one clone step, `""` when that step produced no capture. */
+  const clonePane = (name: string): string => cloneSession.panes.find((pane) => pane.name === name)?.text ?? ""
+  /** The clone's NO-GRANT pane. */
+  const cloneUngrantedPane = clonePane("clone-ungranted")
+  /** The clone's THAT-ROW-GRANTED pane. */
+  const cloneGrantedPane = clonePane("clone-granted")
+  /** The clone's WRONG-SCOPE pane. */
+  const cloneWrongScopePane = clonePane("clone-wrong-scope")
+  /** The clone's post-revocation pane. */
+  const cloneRevokedPane = clonePane("clone-revoked")
+  /** The clone's NO-GRANT window and verdict — a declared, default-denied permission awaiting authorization. */
+  const cloneUngrantedWindow = lastCheckWindow(cloneUngrantedPane)
+  /** The clone's NO-GRANT verdict. */
+  const cloneUngrantedVerdict = cloneUngrantedWindow.verdict
+  /** The clone's THAT-ROW-GRANTED window and verdict (the newest decision, never the ungranted one above it). */
+  const cloneGrantedWindow = lastCheckWindow(cloneGrantedPane)
+  /** The clone's THAT-ROW-GRANTED verdict. */
+  const cloneGrantedVerdict = cloneGrantedWindow.verdict
+  /** The clone's WRONG-SCOPE window and verdict. */
+  const cloneWrongScopeWindow = lastCheckWindow(cloneWrongScopePane)
+  /** The clone's WRONG-SCOPE verdict. */
+  const cloneWrongScopeVerdict = cloneWrongScopeWindow.verdict
+  /** ARM 5 (the NEGATIVE CONTROL, measured where it can hold) — a declared, default-denied permission with NO grant: `waiting_authorization` AND the host's own grants-file hint naming the flow this lane drives. */
+  const arm5 = cloneUngrantedVerdict.state === "waiting_authorization" && cloneUngrantedWindow.window.includes("extension-grants.json")
+  say("clone ungranted /plugin check -> state=" + String(cloneUngrantedVerdict.state) + " hint=" + cloneUngrantedWindow.window.includes("extension-grants.json"))
+  /** ARM 5b — the SAME clone with its ONE row granted answers `compatible`: the GRANT flips it, not the declaration. */
+  const arm5b = cloneGrantedVerdict.state === "compatible"
+  say("clone granted /plugin check -> state=" + String(cloneGrantedVerdict.state))
+  /** ARM 5c — the same NAME at an undeclared scope still answers `waiting_authorization`: a grant cannot authorize a point nothing declares. */
+  const arm5c = cloneWrongScopeVerdict.state === "waiting_authorization"
+  say("clone wrong-scope /plugin check -> state=" + String(cloneWrongScopeVerdict.state))
   /** ARM 6 (OPTIONAL, observed not gated) — the post-revocation re-check's state, recorded whether or not it flipped back. */
-  const revokedClassification = classifyAdmissionPane(revokedPane)
+  const revokedClassification = lastCheckWindow(cloneRevokedPane).verdict
   /** True when the revocation re-check flipped back to `waiting_authorization`. */
   const revocationFlipped = revokedClassification.state === "waiting_authorization"
   say("arm6 revocation re-check -> state=" + String(revokedClassification.state) + " flipped=" + revocationFlipped)
 
-  /** The lane verdict: static admission + its three grant tables + live arms 1-5 (arm 6 observed, never gated). */
-  const ok = stat.ok === true && staticGrantsOk(stat) && arm1 && arm2 && arm3 && arm4 && arm5 && revokedClassification.state !== undefined
+  // ── PHASE C — THE SHIPPED MANIFEST *WITH* A GRANT, IN ITS OWN BOOT (A4-F1 measured, A5-F1 non-vacuous) ──
+  // WHY A SEPARATE BOOT: the decision this arm expects (`compatible`) is the SAME one the clone's granted
+  // check produces, so in a shared boot a SWALLOWED step leaves the PREVIOUS pane on screen and the arm would
+  // read that older `compatible` — a vacuous pass (A5-F1, measured). A fresh boot has no decision to inherit:
+  // THIS pane must carry exactly ONE decision line, so a step that painted nothing leaves zero and reddens.
+  writeExtensionGrants(grantFile, componentId, [clone.row])
+  say("shipped-with-grant boot: the clone's one row staged in the grants file -> " + grantFile.replace(REPO + "/", "") + " rows=1")
+  /** The shipped-with-grant lifecycle: ONE `/plugin check` of the SHIPPED manifest, with that grant in place. */
+  const shippedGrantedSession = runTuiSession({
+    lane: SLUG + "-shipped-granted",
+    root,
+    outDir: join(outDir, "shipped-granted"),
+    bootWaitMs: 180_000,
+    extraEnv: { DSH_TUI_DEBUG: "1" },
+    stderrFile: join(outDir, "shipped-granted", "host-stderr.log"),
+    steps: [{ name: "shipped-granted-check", keys: ["/plugin check " + MANIFEST, "Enter"], waitMs: 20_000 }],
+  })
+  for (const failure of shippedGrantedSession.failures) say("shipped-granted tmux: " + failure)
+  /** The fresh boot's ONLY check pane; `""` when the step produced no capture at all. */
+  const shippedGrantedPane = shippedGrantedSession.panes.find((pane) => pane.name === "shipped-granted-check")?.text ?? ""
+  /** Its window, verdict and decision count — the newest decision this boot painted, and how many it painted. */
+  const shippedGrantedWindow = lastCheckWindow(shippedGrantedPane)
+  /** ARM 5d (A4-F1 + A5-F1) — the SHIPPED, permission-less manifest stays `compatible` WITH a grant in place, and the FRESHNESS half makes that non-vacuous: the boot must have painted EXACTLY ONE decision, so a swallowed step reddens instead of re-reading a neighbour's verdict. */
+  const arm5d = shippedGrantedWindow.verdict.state === "compatible" && shippedGrantedWindow.decisions === 1
+  say("shipped-with-grant /plugin check -> state=" + String(shippedGrantedWindow.verdict.state) + " decisions=" + shippedGrantedWindow.decisions + " (fresh boot, exactly one expected)")
+  // The sandbox is left as the next run expects it: no grant file.
+  rmSync(grantFile, { force: true })
+
+  /** The lane verdict: static admission + its three grant tables + the shipped-posture arms + the three clone states (arm 6 observed, never gated; arm 3 gated only while a permission is declared). */
+  const ok = stat.ok === true && staticGrantsOk(stat) && arm1 && arm1NoHint && arm2 && arm3 && arm4 && arm5 && arm5b && arm5c && arm5d && revokedClassification.state !== undefined
   /** The dist revision at evidence-write time, compared with the start-of-run reading. */
   const revisionAfter = artifactRevision()
   /** The digest comparison the REVISION.json records; a change voids this run. */
@@ -959,37 +1219,53 @@ async function real(): Promise<void> {
     console.error("[" + SLUG + "] FAIL: " + delta.reason)
     process.exit(1)
   }
+
   writeLaneEvidence(outDir, SLUG, {
     ok,
     revision: revisionAfter,
     revisionDelta: delta,
     manifestDigest: manifestDigest(),
     steps: { static: stat },
-    grants: {
+    grantArms: {
       componentId,
-      rows: grantRows,
-      file: grantFile.replace(REPO + "/", ""),
-      arms: {
-        paneCompatible: arm1,
-        loaderAdmitted: arm2,
-        ledgerAttribution: arm3,
-        decisionFired: arm4,
-        negativeControl: arm5,
-        revocation: { state: revokedClassification.state ?? "unclassified", flipped: revocationFlipped },
-      },
-      registryProfileVersionNote: "the spec registry's profileVersion string is the dsh-ecosystem-spec number, unrelated to the dsh-tui release this lane's carriers pin — recorded verbatim, never adapted",
+      shippedRows: grantRows,
+      applicable: grantArmsApplicable,
+      inapplicable: grantArmsApplicable ? [] : ["arm3-ledger-attribution"],
+      inapplicableReason: "the shipped manifest declares `permissions: []` by decision (commit 776ac355), so the host performs no authorize operation and an APPLIED decision-handler bind is not a state this boot can produce; the registration/attribution gap measured 2026-10-14 (no decision-handler record even WITH the declaration) stays UNMEASURED here, and the arm re-arms the moment a permission returns",
     },
-    negative: { verdict: negativeVerdict, pane: "negctl/plugins-check.pane.txt", ledgerDelta: negativeLedger.length, undeclaredRecords: negativeUndeclared },
-    granted: { check: classification, list: descriptorClassification, ledgerDelta: grantedLedger.length, attributed: attributed.length, handlerBindsApplied: handlerBinds.length },
-    hostStderr: { file: grantedStderrFile.replace(REPO + "/", ""), bytes: grantedStderr.length, parkLines: grantedParkLines, why: "DSH_TUI_DEBUG=1 drives the host's per-frame `park target=…` trace; redirecting fd 2 keeps it out of the pane so the chat screen paints (see runTuiSession's stderrFile)" },
+    shipped: {
+      manifestPath: MANIFEST,
+      check: classification,
+      list: descriptorClassification,
+      grantsHintAbsent: arm1NoHint,
+      withGrant: { check: shippedGrantedWindow.verdict.state, decisions: shippedGrantedWindow.decisions, arm: arm5d, boot: "its OWN boot, with the clone's one row staged BEFORE the boot, so a swallowed step leaves ZERO decisions and reddens (A5-F1)" },
+      stderr: { file: shippedStderrFile.replace(REPO + "/", ""), bytes: shippedStderr.length, parkLines: shippedParkLines, why: "DSH_TUI_DEBUG=1 drives the host's per-frame `park target=…` trace; redirecting fd 2 keeps it out of the pane so the chat screen paints (see runTuiSession's stderrFile)" },
+      ledgerDelta: shippedLedger.length,
+      attributed: attributed.length,
+      handlerBindsApplied: handlerBinds.length,
+      // The attribution arm records the STRING "inapplicable" rather than a folded `true`, so the artifact a
+      // verifier reads can never mistake an unmeasured arm for a pass.
+      arms: { compatible: arm1, noGrantHint: arm1NoHint, loaderAdmitted: arm2, ledgerAttribution: grantArmsApplicable ? arm3 : "inapplicable", decisionTurn: arm4 },
+    },
+    clone: {
+      file: clone.file.replace(REPO + "/", ""),
+      digest: sha256File(clone.file),
+      row: clone.row,
+      ungranted: cloneUngrantedVerdict,
+      granted: cloneGrantedVerdict,
+      wrongScope: cloneWrongScopeVerdict,
+      revoked: { state: revokedClassification.state ?? "unclassified", flipped: revocationFlipped },
+      grantsFile: grantFile.replace(REPO + "/", ""),
+      arms: { ungrantedWaiting: arm5, grantedCompatible: arm5b, wrongScopeWaiting: arm5c },
+    },
+    registryProfileVersionNote: "the spec registry's profileVersion string is the dsh-ecosystem-spec number, unrelated to the dsh-tui release this lane's carriers pin — recorded verbatim, never adapted",
     sandboxRoot: root,
-    manifestPath: MANIFEST,
   }, log.join("\n"))
   if (!ok) {
-    console.error("[" + SLUG + "] FAIL: " + JSON.stringify({ static: stat.ok, staticGrants: staticGrantsOk(stat), arm1, arm2, arm3, arm4, arm5, revokedState: revokedClassification.state ?? null }).slice(0, 1500))
+    console.error("[" + SLUG + "] FAIL: " + JSON.stringify({ static: stat.ok, staticGrants: staticGrantsOk(stat), arm1, arm1NoHint, arm2, arm3, grantArmsApplicable, arm4, arm5, arm5b, arm5c, arm5d, revokedState: revokedClassification.state ?? null }).slice(0, 1500))
     process.exit(1)
   }
-  console.log("[" + SLUG + "] PASS: host-parsed, projected, validated, negotiated; grant arms 1-5 green (arm 6 observed: " + (revocationFlipped ? "flipped back" : String(revokedClassification.state)) + ")")
+  console.log("[" + SLUG + "] PASS: host-parsed, projected, validated, negotiated; the SHIPPED posture is compatible with NO grant AND with one in place, and the clone arms are ungranted=waiting / granted=compatible / wrong-scope=waiting (arm 6 observed: " + (revocationFlipped ? "flipped back" : String(revokedClassification.state)) + ")")
 }
 
 // Entry guard: importing this lane (e.g. to reuse findModelEcho or the surface table)

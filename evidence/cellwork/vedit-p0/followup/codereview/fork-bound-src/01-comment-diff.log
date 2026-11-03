@@ -1,0 +1,22 @@
+$ diff -u 00-team-store.before.ts packages/mpd-team-core-plugin/src/team-store.ts
+--- evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts	2026-11-03 16:21:00.165456816 +0800
++++ packages/mpd-team-core-plugin/src/team-store.ts	2026-11-03 16:21:04.998021937 +0800
+@@ -1294,9 +1294,11 @@
+  * a roster role or a seat's stored name — the captain's persona text is not ours to constrain — and ARM 3
+  * would then hand it that member row, making the mailbox address the captain by a MEMBER id. The recorded
+  * Lead identity is checked BEFORE ARM 3 and answers "not named": the title must never replace captaincy.
+- * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+- * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+- * not a fact this arm can decide.
++ * THE BOUND: a FORKED Lead's NEW id is recorded only when the churn heal runs, and the heal SKIPS any
++ * session this predicate names as a member — so a fork whose title names a seat is NEVER healed on that
++ * record: it stays identified as that seat (seat-blocked, fail-closed, borrowing no Lead ancestry) while
++ * its title keeps naming one. That is the T12 residual — a separate discriminator, not a fact this arm
++ * can decide.
+  *
+  * THE LONGEST MATCH WINS (T16 N1). A roster holding both `Reviewer` and `Plan Reviewer` makes the Plan
+  * Reviewer's own title contain both texts; the 13-character `plan reviewer` is more specific than the
+diff exit=1
+
+$ git diff --numstat -- packages/mpd-team-core-plugin/src/team-store.ts (T8/T12/T16/T22 deltas still present; the T30 hunk is the comment above)
+13	0	packages/mpd-team-core-plugin/src/team-store.ts

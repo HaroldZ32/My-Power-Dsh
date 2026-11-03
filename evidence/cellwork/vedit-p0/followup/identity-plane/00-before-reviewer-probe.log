@@ -1,0 +1,38 @@
+{
+  "memberHandle": "child-senior-engineer-1",
+  "teamId": "team-20261103065247960-zjmx-002",
+  "armT1": {
+    "teamId": "team-20261103065247960-zjmx-002",
+    "endedAt": "2026-11-03T06:52:47.961Z",
+    "reason": "resumed member closed the wave",
+    "changed": true
+  },
+  "t1After": {
+    "phase": "ended",
+    "endedAt": "2026-11-03T06:52:47.961Z"
+  },
+  "t1HealedHistory": [],
+  "armT2": "no team record in this workspace — approve a plan first",
+  "t2Phase": "active",
+  "armT3": "only the Lead of team team-20261103065247962-zjmx-006 may end it (senior-engineer-1 is a member, not the Lead)",
+  "t3Phase": "active",
+  "armT4": {
+    "teamId": "team-20261103065247963-zjmx-008",
+    "endedAt": "2026-11-03T06:52:47.963Z",
+    "reason": "fork closed it",
+    "changed": true
+  },
+  "t4Phase": "ended",
+  "armT5Append": "ALLOWED (appended Sneak)",
+  "t5LeadHistory": [
+    "member-resumed-77"
+  ],
+  "t5Roster": [
+    "senior-engineer-1",
+    "Sneak"
+  ],
+  "failures": [],
+  "pass": true
+}
+PROBE PASS (gated arms)
+EXIT:0

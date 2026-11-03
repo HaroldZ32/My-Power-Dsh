@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "track": "deepseek",
+  "provider": "deepseek",
+  "durationMs": 9328,
+  "exit": 0,
+  "hasToolEvidence": true,
+  "toolEvidence": {
+    "succeeded": true,
+    "called": [
+      "bash"
+    ],
+    "reason": "",
+    "resultText": "/tmp/mpd-dsh-qa-sBlXX7/ws\ntotal 4\ndrwxrwxr-x 4 haroldzhao haroldzhao  100 Nov  3 13:55 .\ndrwx------ 8 haroldzhao haroldzhao  240 Nov  3 13:55 ..\ndrwxrwxr-x 2 haroldzhao haroldzhao  100 Nov  3 13:54 .codegraph\ndrwxrwxr-x 6 haroldzhao haroldzhao  140 Nov  3 13:55 .mpd\n-rw-rw-r-- 1 haroldzhao haroldzhao 2366 Nov  3 13:55 AGENT.md\n"
+  }
+}

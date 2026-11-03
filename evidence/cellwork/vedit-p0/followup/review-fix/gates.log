@@ -1,0 +1,31 @@
+# barrier suite
+ 10 pass
+ 0 fail
+ 46 expect() calls
+Ran 10 tests across 1 file. [175.00ms]
+exit=0
+# flow suite
+ 37 pass
+ 0 fail
+ 421 expect() calls
+Ran 37 tests across 1 file. [207.00ms]
+exit=0
+# whole package
+ 198 pass
+ 0 fail
+ 2324 expect() calls
+Ran 198 tests across 24 files. [363.00ms]
+exit=0
+# typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+# comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+# tui-admission self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0
+# tui-admission static-only
+[tui-admission] static result ok=true
+[tui-admission] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-11-03T07-08-22.184Z
+exit=0

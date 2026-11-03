@@ -1,0 +1,5 @@
+# REAL REPO — 2026-11-03T05:49:34Z
+# command: bun skills/dsh-qa/scripts/tui-admission.ts --static-only
+[tui-admission] static result ok=true
+[tui-admission] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-11-03T05-49-34.661Z
+# exit: 0

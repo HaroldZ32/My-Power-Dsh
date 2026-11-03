@@ -1,0 +1,119 @@
+--- .mpd/recon/qa/rev-a5/rebuild/tui.a4.ts	2026-11-03 15:25:31.812353837 +0800
++++ skills/dsh-qa/scripts/tui-admission.ts	2026-11-03 15:19:54.865290424 +0800
+@@ -24,6 +24,10 @@
+ //       advertise `compatible`, and the pane carries NO grants-file hint: nothing is requested, so nothing
+ //       needs authorizing. A regression that re-requests a permission without a grant reddens HERE (the
+ //       pane flips to `waiting_authorization` and prints the hint);
++//   (1b) SHIPPED POSTURE, WITH ONE GRANT (A4-F1) — the SAME `/plugin check` is driven again INSIDE the
++//        granted boot, while the grants file names the intercept point the manifest never declares: it must
++//        STAY `compatible`, so "a stray grant cannot flip a permission-less manifest" is MEASURED rather
++//        than promised (the static arm negotiates the same pair);
+ //       (0.15.0 RENAMED THE HOST COMMAND `/plugins` -> `/plugin`: measured 2026-10-14, the old
+ //        spelling is not registered any more, so the line was submitted as CHAT TEXT and the model
+ //        answered it — the pane carried a thinking indicator and tool calls, never a verdict);
+@@ -51,7 +55,8 @@
+ // (F1): the shipped manifest is permission-less by decision, so the three states are negotiated on a
+ // `structuredClone` carrying ONE `session.input.intercept@tui/input` row — no grant →
+ // `waiting_authorization`, that row granted → `compatible`, the same name at an undeclared scope → STILL
+-// `waiting_authorization` — while the SHIPPED manifest itself must negotiate `compatible` with no grant.
++// `waiting_authorization` — while the SHIPPED manifest itself must negotiate `compatible` with NO grant AND
++// with that row granted (A4-F1).
+ //
+ // REGISTRY FALSE POSITIVE, STATED NOT FIXED: the spec registry's `profileVersion`
+ // string (`0.15`) is the dsh-ecosystem-spec number, UNRELATED to the dsh-tui 0.15.0
+@@ -511,6 +516,8 @@
+     readonly rows: GrantFileRow[]
+     /** The SHIPPED manifest's own decision with no grant — `compatible`, because it requests no permission. */
+     readonly manifestDecision: string
++    /** The SHIPPED manifest's own decision WITH the clone's one row granted — still `compatible`: a stray grant cannot move a permission-less manifest (A4-F1). */
++    readonly manifestGranted: string
+     /** The CLONE's decision with NO grant — a declared, default-denied permission. */
+     readonly ungranted: string
+     /** The CLONE's decision with its one row granted. */
+@@ -685,13 +692,20 @@
+     const cloneGranted = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [grantRow])
+     /** The same name at a scope nothing declares — a grant that must NOT authorize. */
+     const cloneWrongScope = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [{ name: grantRow.name, scope: "tui/not-a-declared-scope" }])
++    // A4-F1: the SHIPPED manifest is ALSO negotiated WITH that row granted. The claim "a stray grant cannot
++    // flip a permission-less manifest" is worth MEASURING rather than assuming: the permission-less posture
++    // must survive a grants table that names a point it never declares, and the two decisions must agree.
++    /** The shipped manifest's own decision with the clone's one row granted. */
++    const shippedGranted = host.negotiate(index, manifest, hostModel(host.registryEntries, data), [grantRow])
+     result.grants = {
+       rows: [grantRow],
+       manifestDecision: decisionOf(result.negotiation),
++      manifestGranted: decisionOf(shippedGranted),
+       ungranted: decisionOf(cloneUngranted),
+       granted: decisionOf(cloneGranted),
+       wrongScope: decisionOf(cloneWrongScope),
+       ok: decisionOf(result.negotiation) === "compatible"
++        && decisionOf(shippedGranted) === "compatible"
+         && decisionOf(cloneUngranted) === "waiting_authorization"
+         && decisionOf(cloneGranted) === "compatible"
+         && decisionOf(cloneWrongScope) === "waiting_authorization",
+@@ -1103,6 +1117,14 @@
+         waitMs: 20_000,
+       },
+       {
++        // A4-F1 ON THE LIVE PLANE: the SHIPPED manifest is re-checked WHILE that grant is in place, so the
++        // claim "a stray grant cannot flip a permission-less manifest" is measured by the host's own
++        // `/plugin check`, not only negotiated statically.
++        name: "shipped-granted",
++        keys: ["/plugin check " + MANIFEST, "Enter"],
++        waitMs: 20_000,
++      },
++      {
+         name: "clone-wrong-scope",
+         before: () => { writeExtensionGrants(grantFile, componentId, [{ name: clone.row.name, scope: "tui/not-a-declared-scope" }]); say("grants file rewritten with the WRONG scope (tui/not-a-declared-scope)") },
+         keys: ["/plugin check " + clone.file, "Enter"],
+@@ -1135,6 +1157,10 @@
+   const cloneGrantedWindow = lastCheckWindow(cloneGrantedPane)
+   /** The clone's THAT-ROW-GRANTED verdict. */
+   const cloneGrantedVerdict = cloneGrantedWindow.verdict
++  /** The SHIPPED manifest's pane captured WHILE the clone's one row was granted (A4-F1, live plane). */
++  const shippedGrantedPane = clonePane("shipped-granted")
++  /** The SHIPPED manifest's window and verdict inside that granted boot. */
++  const shippedGrantedWindow = lastCheckWindow(shippedGrantedPane)
+   /** The clone's WRONG-SCOPE window and verdict. */
+   const cloneWrongScopeWindow = lastCheckWindow(cloneWrongScopePane)
+   /** The clone's WRONG-SCOPE verdict. */
+@@ -1145,6 +1171,9 @@
+   /** ARM 5b — the SAME clone with its ONE row granted answers `compatible`: the GRANT flips it, not the declaration. */
+   const arm5b = cloneGrantedVerdict.state === "compatible"
+   say("clone granted /plugin check -> state=" + String(cloneGrantedVerdict.state))
++  /** ARM 5d (A4-F1) — the SHIPPED, permission-less manifest stays `compatible` EVEN WITH a grant in place: the grant cannot flip what it does not declare. */
++  const arm5d = shippedGrantedWindow.verdict.state === "compatible"
++  say("shipped-with-grant /plugin check -> state=" + String(shippedGrantedWindow.verdict.state))
+   /** ARM 5c — the same NAME at an undeclared scope still answers `waiting_authorization`: a grant cannot authorize a point nothing declares. */
+   const arm5c = cloneWrongScopeVerdict.state === "waiting_authorization"
+   say("clone wrong-scope /plugin check -> state=" + String(cloneWrongScopeVerdict.state))
+@@ -1155,7 +1184,7 @@
+   say("arm6 revocation re-check -> state=" + String(revokedClassification.state) + " flipped=" + revocationFlipped)
+ 
+   /** The lane verdict: static admission + its three grant tables + the shipped-posture arms + the three clone states (arm 6 observed, never gated; arm 3 gated only while a permission is declared). */
+-  const ok = stat.ok === true && staticGrantsOk(stat) && arm1 && arm1NoHint && arm2 && arm3 && arm4 && arm5 && arm5b && arm5c && revokedClassification.state !== undefined
++  const ok = stat.ok === true && staticGrantsOk(stat) && arm1 && arm1NoHint && arm2 && arm3 && arm4 && arm5 && arm5b && arm5c && arm5d && revokedClassification.state !== undefined
+   /** The dist revision at evidence-write time, compared with the start-of-run reading. */
+   const revisionAfter = artifactRevision()
+   /** The digest comparison the REVISION.json records; a change voids this run. */
+@@ -1187,6 +1216,7 @@
+       check: classification,
+       list: descriptorClassification,
+       grantsHintAbsent: arm1NoHint,
++      withGrant: { check: shippedGrantedWindow.verdict.state, arm: arm5d, why: "A4-F1: the shipped manifest is re-checked inside the granted boot, so the claim is measured live and not only negotiated statically" },
+       stderr: { file: shippedStderrFile.replace(REPO + "/", ""), bytes: shippedStderr.length, parkLines: shippedParkLines, why: "DSH_TUI_DEBUG=1 drives the host's per-frame `park target=…` trace; redirecting fd 2 keeps it out of the pane so the chat screen paints (see runTuiSession's stderrFile)" },
+       ledgerDelta: shippedLedger.length,
+       attributed: attributed.length,
+@@ -1210,10 +1240,10 @@
+     sandboxRoot: root,
+   }, log.join("\n"))
+   if (!ok) {
+-    console.error("[" + SLUG + "] FAIL: " + JSON.stringify({ static: stat.ok, staticGrants: staticGrantsOk(stat), arm1, arm1NoHint, arm2, arm3, grantArmsApplicable, arm4, arm5, arm5b, arm5c, revokedState: revokedClassification.state ?? null }).slice(0, 1500))
++    console.error("[" + SLUG + "] FAIL: " + JSON.stringify({ static: stat.ok, staticGrants: staticGrantsOk(stat), arm1, arm1NoHint, arm2, arm3, grantArmsApplicable, arm4, arm5, arm5b, arm5c, arm5d, revokedState: revokedClassification.state ?? null }).slice(0, 1500))
+     process.exit(1)
+   }
+-  console.log("[" + SLUG + "] PASS: host-parsed, projected, validated, negotiated; the SHIPPED posture is compatible with no grant, and the clone arms are ungranted=waiting / granted=compatible / wrong-scope=waiting (arm 6 observed: " + (revocationFlipped ? "flipped back" : String(revokedClassification.state)) + ")")
++  console.log("[" + SLUG + "] PASS: host-parsed, projected, validated, negotiated; the SHIPPED posture is compatible with NO grant AND with one in place, and the clone arms are ungranted=waiting / granted=compatible / wrong-scope=waiting (arm 6 observed: " + (revocationFlipped ? "flipped back" : String(revokedClassification.state)) + ")")
+ }
+ 
+ // Entry guard: importing this lane (e.g. to reuse findModelEcho or the surface table)

@@ -1,0 +1,11 @@
+$ sha256sum packages/mpd-team-core-plugin/src/team-store.ts (before)
+06edf44c9872a06399c9e71a008d9b3885c3e0538b949a9b2ccb793a8261386f  packages/mpd-team-core-plugin/src/team-store.ts
+
+$ sed -n "1294,1300p" (before)
+ * a roster role or a seat's stored name — the captain's persona text is not ours to constrain — and ARM 3
+ * would then hand it that member row, making the mailbox address the captain by a MEMBER id. The recorded
+ * Lead identity is checked BEFORE ARM 3 and answers "not named": the title must never replace captaincy.
+ * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+ * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+ * not a fact this arm can decide.
+ *

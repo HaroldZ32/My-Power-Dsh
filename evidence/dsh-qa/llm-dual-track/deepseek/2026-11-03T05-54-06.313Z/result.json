@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "track": "deepseek",
+  "provider": "deepseek",
+  "durationMs": 9443,
+  "exit": 0,
+  "hasToolEvidence": true,
+  "toolEvidence": {
+    "succeeded": true,
+    "called": [
+      "bash"
+    ],
+    "reason": ""
+  }
+}

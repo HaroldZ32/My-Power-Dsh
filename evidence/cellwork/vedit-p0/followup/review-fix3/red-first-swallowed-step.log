@@ -1,0 +1,19 @@
+[tui-admission] static result ok=true
+[tui-admission] shipped /plugin check -> state=compatible; /plugin list -> state=compatible
+[tui-admission] shipped /plugin check grants hint absent: true
+[tui-admission] arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true (stderr=evidence/tui/lanes/2026-11-03T07-33-22.188Z/shipped/host-stderr.log 629557B)
+[tui-admission] shipped boot debug stream: 5596 park frame(s), redirected off the pane (shipped/host-stderr.log)
+[tui-admission] arm3 (ledger attribution) applicable=false attributed=0 decisionHandlerBinds(applied)=0 — INAPPLICABLE while the shipped manifest declares NO permission (no authorize operation exists): recorded as a BOUND, never a pass
+[tui-admission] arm4 real input submit rendered the turn: true
+[tui-admission] grant clone written -> evidence/tui/lanes/2026-11-03T07-33-22.188Z/grant-clone/dsh-plugin.grant-clone.json declaring session.input.intercept@tui/input (the shipped file is never touched)
+[tui-admission] grants file written -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/mut/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=1
+[tui-admission] grants file rewritten with the WRONG scope (tui/not-a-declared-scope)
+[tui-admission] grants file revoked mid-session (arm 6, observed)
+[tui-admission] clone ungranted /plugin check -> state=waiting_authorization hint=true
+[tui-admission] clone granted /plugin check -> state=compatible
+[tui-admission] clone wrong-scope /plugin check -> state=waiting_authorization
+[tui-admission] arm6 revocation re-check -> state=waiting_authorization flipped=true
+[tui-admission] shipped-with-grant boot: the clone's one row staged in the grants file -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/mut/home/.dsh-tui/extension-grants.json rows=1
+[tui-admission] shipped-with-grant /plugin check -> state=undefined decisions=0 (fresh boot, exactly one expected)
+[tui-admission] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/mut-live/evidence/tui/lanes/2026-11-03T07-33-22.188Z
+[tui-admission] FAIL: {"static":true,"staticGrants":true,"arm1":true,"arm1NoHint":true,"arm2":true,"arm3":true,"grantArmsApplicable":false,"arm4":true,"arm5":true,"arm5b":true,"arm5c":true,"arm5d":false,"revokedState":"waiting_authorization"}

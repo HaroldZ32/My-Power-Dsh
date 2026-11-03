@@ -1,0 +1,2 @@
+$ grep -n "until the heal\|until its heal\|until then\|still read as that seat" evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md
+exit=1 (1 = no matches: the old phrase is gone)

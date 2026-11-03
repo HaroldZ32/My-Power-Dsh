@@ -1,0 +1,17 @@
+# T21 proof: the seven root files ARE byte-checked now (same delta method as 09-f4-byte-check-gap.log)
+# artifact copy of the 2026-11-03T05:53:44.970Z pack; stamp pinned AHEAD of every writer so a byte rule is a HARD finding.
+
+## arm 1 control: unmodified copy
+exit=0
+root files 9/9
+
+## arm 2: PLAN.md mutated in the ARTIFACT
+exit=1
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  ROOT-FILE - PLAN.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/PLAN.md (source fb3faa3aa05c… / 25066 B, artifact 19601869ca13… / 25067 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:32:12.369Z) - the artifact ships bytes no reading was taken on (T-70)
+
+## arm 3: icon.svg mutated in the ARTIFACT
+exit=1
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  ROOT-FILE - PLAN.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/PLAN.md (source fb3faa3aa05c… / 25066 B, artifact 19601869ca13… / 25067 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:32:12.369Z) - the artifact ships bytes no reading was taken on (T-70)
+  ROOT-FILE - icon.svg differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/icon.svg (source 3ed80f1bc3de… / 747 B, artifact 2da9c2dd644e… / 748 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-10-02T12:34:41.666Z) - the artifact ships bytes no reading was taken on (T-70)

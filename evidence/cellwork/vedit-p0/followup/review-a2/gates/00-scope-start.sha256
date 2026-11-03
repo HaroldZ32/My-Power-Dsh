@@ -1,0 +1,7 @@
+# review-a2 scope start — 2026-11-03T06:39:17Z
+f44f19001f2ab035843c49b378440a541ba1979b1a25578c74089fde30b4277c  skills/dsh-qa/scripts/tui-admission.ts
+805b2dba17df674146c6bec47a916d3a0448a471a70d84d8ea0c56ba46169bf3  skills/dsh-qa/scripts/surface-pin.ts
+deea1f1a1640fb3c22d69bb24734e667391d07b0287dbc260332e91e12977472  packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
+ea6ff95795209f703193f828e89f403e899f1029a2698a3ef3bc14f25d102350  packages/mpd-cellwork-plugin/test/flow.test.ts
+04dd69b237c18197c96abe3f9cce3debb899374f45040fa99a5c6d5fc67c7a8e  packages/mpd-cellwork-plugin/test/split-scope-warnings.test.ts
+8af8b7e84842d1cc59b98703af1d382f3f41c3bf9ee03cae4d78cf9892d4775d  evidence/cellwork/vedit-p0/lane-a/red-first/d1-barrier-red.log

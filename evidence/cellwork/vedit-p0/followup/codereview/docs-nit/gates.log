@@ -1,0 +1,22 @@
+# the row (as committed text)
+while the SHIPPED manifest's own decision must stay `compatible` with NO grant AND with that row granted (the with-grant half is re-checked on the THIRD LIVE BOOT — see LIVE (3)). LIVE, over THREE boots — one per grants-file state: (1) the SHIPPED POSTURE with NO grants file — both `/plugin` panes (`check` and `list`) advertise `compatible`, the check pane prints NO `extension-grants.json` hint, the admission-loader debug line admits the Component (`DSH_TUI_DEBUG=1` rides the boot env), and a submitted line renders a REAL chat turn (it no longer claims a decision interception: with nothing declared the handler is not live); (2) the GRANT CLONE — the shipped bytes plus that ONE declaration written into the run's own evidence dir, the shipped file never touched — driven through the host's own `/plugin check` four ways: no grant → `waiting_authorization` AND the host's own grants-file hint, that row granted → `compatible`, the same name at an undeclared scope → STILL `waiting_authorization`, and a mid-session grant revocation → re-checked and OBSERVED (never gated); (3) the SHIPPED POSTURE WITH ONE GRANT in a THIRD, fresh boot — the clone's row staged in the grants file BEFORE the boot, ONE `/plugin check` of the shipped manifest must answer `compatible` with EXACTLY ONE decision line in the pane, so a swallowed step leaves zero and reddens instead of re-reading the neighbouring verdict — a stray grant cannot flip a permission-less manifest. The ledger-attribution arm (an APPLIED decision-handler bind attributed to the component) is CONDITIONAL: while no permission is declared there is no authorize operation at all, so it is recorded as the string `inapplicable` with its reason and re-arms automatically if a permission returns — the lane never reports that arm as a pass 
+
+# pipes in the row
+5
+
+$ bun run test:qa
+[mpd-ext] ok
+[test:qa] all self-tests passed
+exit=0
+
+$ node scripts/verify-comment-coverage.ts
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun skills/dsh-qa/scripts/surface-pin.ts
+[surface-pin] PASS — every surface the autoproject refactor introduced is declared as the contract fixes it (12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads)
+exit=0
+
+$ bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0

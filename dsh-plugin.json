@@ -3,7 +3,7 @@
   "manifestVersion": "0.15",
   "id": "com.mpd-dsh.mpd-tui",
   "name": "@mpd-dsh/mpd",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "facets": {
     "host": {
       "entry": "packages/mpd-tui-plugin/dist/index.js",
@@ -35,7 +35,7 @@
     ]
   },
   "x-mpd-tui-surfaces": {
-    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.17.0) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). Since the TUI-admission wave the implementing package ALSO carries its own dsh-plugin.json at packages/mpd-tui-plugin/dsh-plugin.json (same id, that package's own name/version/facet entry), so the two files are one identity declared for two packaging shapes: the root file is what a profile install reads, the package file is what TUI-PKG-001 asks of the package itself. A unit test asserts the two never diverge on id, licence, facet apiVersion, permissions and requires.contracts.",
+    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.17.1) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). Since the TUI-admission wave the implementing package ALSO carries its own dsh-plugin.json at packages/mpd-tui-plugin/dsh-plugin.json (same id, that package's own name/version/facet entry), so the two files are one identity declared for two packaging shapes: the root file is what a profile install reads, the package file is what TUI-PKG-001 asks of the package itself. A unit test asserts the two never diverge on id, licence, facet apiVersion, permissions and requires.contracts.",
     "runtimeBoundSurfaces": [
       "tuiStatus",
       "tuiRenderers",

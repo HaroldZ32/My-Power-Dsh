@@ -1,0 +1,28 @@
+# T21/F4 discriminator — MY OWN fresh pack (not lane-b's copy)
+# scratch pack: 2026-11-03T06:25:13Z
+pack exit=0
+pack NOTE lines=0
+[pack-mpd] modes normalized: 662 files (644: 646, 755: 16)
+[pack-mpd] staged package -> /tmp/review-b2-3CArR3/artifact  (out-dir source: command line (--out /tmp/review-b2-3CArR3/artifact))
+
+# arm 1 control: unmodified copy
+exit=0
+root files 9/9
+content bytes: 649 file(s) compared, 649 identical, 0 drift, 0 expected-after-pack
+pack stamp 2026-11-03T06:25:13.860Z
+
+# arm 2: PLAN.md mutated in the ARTIFACT (one of the seven)
+exit=1
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  ROOT-FILE - PLAN.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/PLAN.md (source fb3faa3aa05c… / 25066 B, artifact 78d6828ad584… / 25067 B) and the source was NOT written after the artifact stamp 2026-11-03T06:25:14.070Z (source mtime 2026-11-03T05:32:12.369Z) - the artifact ships bytes no reading was taken on (T-70)
+
+# arm 3: PLAN.md AND icon.svg mutated (two named findings)
+exit=1
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  ROOT-FILE - PLAN.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/PLAN.md (source fb3faa3aa05c… / 25066 B, artifact 78d6828ad584… / 25067 B) and the source was NOT written after the artifact stamp 2026-11-03T06:25:14.225Z (source mtime 2026-11-03T05:32:12.369Z) - the artifact ships bytes no reading was taken on (T-70)
+  ROOT-FILE - icon.svg differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/icon.svg (source 3ed80f1bc3de… / 747 B, artifact 0f7e23c13148… / 748 B) and the source was NOT written after the artifact stamp 2026-11-03T06:25:14.225Z (source mtime 2026-10-02T12:34:41.666Z) - the artifact ships bytes no reading was taken on (T-70)
+
+# arm 4: dsh-plugin.json REMOVED (presence rule 5b)
+exit=1
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  ROOT-FILE - the packed tree does not carry dsh-plugin.json - the artifact's own README/docs link to it by relative path, so those links break for an author who holds only the artifact (T-70)

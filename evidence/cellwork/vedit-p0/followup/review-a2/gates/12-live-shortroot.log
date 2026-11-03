@@ -1,0 +1,20 @@
+# REAL REPO — 2026-11-03T06:41:37Z
+# command: bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root .mpd/sb/tui-admission
+[tui-admission] static result ok=true
+[tui-admission] shipped /plugin check -> state=compatible; /plugin list -> state=compatible
+[tui-admission] shipped /plugin check grants hint absent: true
+[tui-admission] arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true (stderr=evidence/tui/lanes/2026-11-03T06-41-38.012Z/shipped/host-stderr.log 565064B)
+[tui-admission] shipped boot debug stream: 5727 park frame(s), redirected off the pane (shipped/host-stderr.log)
+[tui-admission] arm3 (ledger attribution) applicable=false attributed=0 decisionHandlerBinds(applied)=0 — INAPPLICABLE while the shipped manifest declares NO permission (no authorize operation exists): recorded as a BOUND, never a pass
+[tui-admission] arm4 real input submit rendered the turn: true
+[tui-admission] grant clone written -> evidence/tui/lanes/2026-11-03T06-41-38.012Z/grant-clone/dsh-plugin.grant-clone.json declaring session.input.intercept@tui/input (the shipped file is never touched)
+[tui-admission] grants file written -> .mpd/sb/tui-admission/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=1
+[tui-admission] grants file rewritten with the WRONG scope (tui/not-a-declared-scope)
+[tui-admission] grants file revoked mid-session (arm 6, observed)
+[tui-admission] clone ungranted /plugin check -> state=waiting_authorization hint=true
+[tui-admission] clone granted /plugin check -> state=compatible
+[tui-admission] clone wrong-scope /plugin check -> state=waiting_authorization
+[tui-admission] arm6 revocation re-check -> state=waiting_authorization flipped=true
+[tui-admission] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-11-03T06-41-38.012Z
+[tui-admission] PASS: host-parsed, projected, validated, negotiated; the SHIPPED posture is compatible with no grant, and the clone arms are ungranted=waiting / granted=compatible / wrong-scope=waiting (arm 6 observed: flipped back)
+# exit: 0

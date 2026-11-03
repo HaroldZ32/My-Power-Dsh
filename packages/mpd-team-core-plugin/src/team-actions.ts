@@ -33,13 +33,15 @@ import type { TeamResolution } from "./team-lifecycle"
 import { reapReapedTeams } from "./team-lifecycle"
 import type { TeamRecord } from "./team-store"
 import {
+  activeTeamId,
   addTeamMember,
   addTeamTask,
   blockingDependencies,
   casClaimTask,
   createTeam,
+  endTeamRecord,
   idleMembers,
-  memberNamedBy,
+  memberIdentityOf,
   readTeam,
   readyTasks,
   recordNamesLead,
@@ -48,6 +50,7 @@ import {
   updateTeamTask,
   withDerivedPhase,
   writeTeam,
+  type MemberIdentity,
   type TeamMemberMode,
 } from "./team-store"
 import { readHold, readPlan, writePlan, archivePlan, type StagedMember, type StagedPlan } from "./plan-store"
@@ -100,6 +103,16 @@ export interface TeamActionCaller {
   sessionId: string
   /** The recorded ancestors a forked/resumed session may resolve its team through; empty when none. */
   lineage: string[]
+  /**
+   * The session TITLE the harness stamped (the persona prompt prefix), or absent when it stamped none.
+   *
+   * WHY THE ACTIONS READ IT. The identity plane's member arm is the record's own narrowing
+   * (`team-store.ts#memberIdentityOf`): a session the roster cannot name by id or by a recorded ancestor
+   * may still be identified by the title its seat's ROLE (then its stored name) appears in — which is how a
+   * RESUMED member stops being read as a forked Lead. The tool boundary and the service both pass it; a
+   * caller that omits it degrades to the id/ancestor arms, never to a guess.
+   */
+  title?: string
   /** The live agent that owns the action; absent (a route) is a refusal, never a guess. */
   agent?: unknown
   /** Cancellation for the action, forwarded to every spawn and send exactly as a tool call's is. */
@@ -327,6 +340,26 @@ export interface TeamFenceInput {
   /** The member to fence or unfence, by board name or member id. */
   member: string
   /** Why the seat is being fenced; recorded on the row and in the journal. */
+  reason?: string
+}
+
+/** What one team end produced, in the shape the tool reply and a service caller read. */
+export interface TeamEndPayload {
+  /** The team that was ended, or was already ended. */
+  teamId: string
+  /** ISO instant the team ended: this call's stamp, or the FIRST ending's for a repeat. */
+  endedAt: string
+  /** The stored audit sentence: this call's reason, or the FIRST ending's for a repeat. */
+  reason: string
+  /** Whether THIS call performed the ending; false for the idempotent repeat. */
+  changed: boolean
+}
+
+/** The input of one team end. */
+export interface TeamEndInput {
+  /** The team to end; absent names the team the calling session resolves. */
+  teamId?: string
+  /** Why it ended; stored as the record's `archivedReason`. */
   reason?: string
 }
 
@@ -1642,6 +1675,154 @@ export async function unfenceMember(deps: TeamActionDeps, caller: TeamActionCall
 }
 
 /**
+ * The Lead authority one caller may claim on ONE record, narrowed by the repository's F-B rule.
+ *
+ * WHY THE NARROWING (PR #42 review F-B/CWE-863; plane-level since T12). `lineage` exists so a forked or
+ * resumed Lead keeps captaincy after its session id changes (C7-4 F5). But a SPAWNED MEMBER's session
+ * also names the Lead as its `parentSession`, and a RESUMED member's id is neither its `executorRef` nor
+ * any Lead id — so an id-only guard read the seat as a forked Lead and this irreversible verb ended the
+ * team. The decision is the record's: {@link memberIdentityOf} in `team-store.ts` (own id → recorded
+ * ancestor → persona title over the seat's ROLE, then its stored name) is the SAME narrowing `index.ts#callerIdentity`
+ * calls, so the two surfaces cannot disagree.
+ *
+ * A caller the roster NAMES — even only ambiguously — is matched by its OWN id alone and borrows no
+ * ancestry; only a caller the roster does not name (the ordinary Lead, the genuine fork) keeps C7-4.
+ * @param record - the record the authority is claimed on.
+ * @param caller - who is acting, with its session id, title and recorded ancestry.
+ * @returns the shared identity (the row when unambiguous) and whether it holds Lead authority.
+ */
+function leadAuthorityOf(record: TeamRecord, caller: TeamActionCaller): { identity: MemberIdentity; lead: boolean } {
+  /** The roster identity the plane's ONE narrowing grants this session. */
+  const identity = memberIdentityOf(record, caller.sessionId, caller.title ?? "", caller.lineage)
+  /** A roster-named caller borrows no ancestry; only a session the record cannot name keeps the lineage. */
+  const spellings = identity.named ? [caller.sessionId] : [caller.sessionId, ...caller.lineage].filter((id) => id !== "")
+  return { identity, lead: recordNamesLead(record, spellings) }
+}
+
+/**
+ * The ENDED team this session's index binding still names — the default-target repeat's target (T8 M1).
+ *
+ * An ended record is filtered out of every LIVE resolution arm, so a second
+ * `agent_teams_control {action:"end"}` with no `team_id` would otherwise answer "no team record in this
+ * workspace" — misleading (the team WAS ended) and not the reported no-op the contract promises. The
+ * index entry is read DIRECTLY here, and only an already-ended record is returned; the Lead check then
+ * runs on it exactly as it does for a live target, so this path can report a no-op but never end or
+ * reveal a team the caller does not lead.
+ * @param caller - who is acting.
+ * @returns the ended record bound to the caller (own id first, then recorded ancestry), or undefined.
+ */
+function boundEndedTeamOf(caller: TeamActionCaller): TeamRecord | undefined {
+  /** Every session spelling the index may have bound this caller under, own id first. */
+  const spellings = [caller.sessionId, ...caller.lineage].filter((id) => id !== "")
+  for (const spelling of spellings) {
+    /** The team the index still names for this spelling. */
+    const teamId = activeTeamId(caller.workspace, spelling)
+    if (teamId === undefined) continue
+    /** The record read directly: an ended team never resolves through the live arms. */
+    const record = readTeam(caller.workspace, teamId)
+    if (record !== undefined && record.endedAt !== undefined) return record
+  }
+  return undefined
+}
+
+/**
+ * End one team: the terminal transition that closes a whole wave.
+ *
+ * WHY IT IS A VERB OF ITS OWN. Before it existed no supported call could close a live team: the plan
+ * `delete` action archives a STAGED plan, `halt` writes a workspace-wide hold (a pause, explicitly not
+ * an ending), the reaper only touches records that are already non-live, and the store's `deleteTeam`
+ * has no caller — so the only real close was a hand edit of `phase` + `endedAt`. This body performs
+ * that edit through the store ({@link endTeamRecord}), which is what makes the record, the change feed
+ * and every resolver agree afterwards.
+ *
+ * ONLY THE LEAD MAY END, and it ends ONE team. A declared `team_id` is read directly so an explicit
+ * repair target works from any session; the Lead check is then what refuses a stranger, and the
+ * sentence distinguishes "not on the roster" from "a member, not the Lead". The Lead check itself is
+ * {@link leadAuthorityOf}'s F-B narrowing: a session the RECORD NAMES — by its own id, by a recorded
+ * ancestor, or by the persona title matching a seat's ROLE, then its stored name — cannot borrow captaincy. A
+ * session the record cannot name at all is still read as a Lead fork (the plane's stated bound).
+ *
+ * AN ALREADY-ENDED TEAM IS A REPORTED NO-OP (`changed: false`) that returns the FIRST ending's instant
+ * and reason — for a declared id AND for the default target, where {@link boundEndedTeamOf} recovers
+ * the ended team the session's index still names. A retry is therefore safe, and the audit trail is
+ * never restamped.
+ *
+ * IT DOES NOT LIFT A WORKSPACE HALT. The hold `halt` writes is WORKSPACE-WIDE, not team-scoped: it
+ * pauses every team of the workspace, so clearing it from one team's ending would silently resume a
+ * sibling's dispatch. `resume` stays the only verb that lifts it, and a halt placed before an end
+ * therefore survives the end (pinned by `test/team-end.test.ts`, "N2").
+ * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
+ * @param caller - who is acting, in which workspace and with which recorded ancestry.
+ * @param input - the team to end (absent: the caller's own) and why.
+ * @returns what the ending stamped, or one refusal sentence.
+ */
+export async function endTeam(deps: TeamActionDeps, caller: TeamActionCaller, input: TeamEndInput): Promise<TeamActionResult<TeamEndPayload>> {
+  try {
+    /** The team the call names, trimmed; empty means "the team this session works on". */
+    const declared = String(input.teamId ?? "").trim()
+    /** The caller's own resolution, read only when the call names no team. */
+    const resolved = declared === "" ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage) : undefined
+    /** The record to end: a declared id read directly, otherwise the session's own live team. */
+    const live = declared === "" ? resolved?.record : readTeam(caller.workspace, declared)
+    // THE DEFAULT-TARGET REPEAT: an ended record never resolves through the live arms, so the bound
+    // index entry is the only remaining way to find it — and only a caller who LEADS it gets a no-op.
+    /** The ended team this session is still bound to, used only when the live resolution found none. */
+    const endedRepeat = declared === "" && live === undefined ? boundEndedTeamOf(caller) : undefined
+    /** The ending target, or the already-ended team a repeated default call reports. */
+    const record = live ?? endedRepeat
+    if (record === undefined) {
+      return {
+        ok: false,
+        error: declared === ""
+          ? (resolved?.refusal ?? "no team record in this workspace — approve a plan first")
+          : `no team record is named ${JSON.stringify(declared)} in this workspace`,
+      }
+    }
+    /** The caller's Lead authority on THIS record, narrowed by the F-B rule. */
+    const authority = leadAuthorityOf(record, caller)
+    if (!authority.lead) {
+      /** The identified roster row, when the plane could pick exactly one. */
+      const member = authority.identity.member
+      return {
+        ok: false,
+        error: `only the Lead of team ${record.teamId} may end it (${member !== undefined
+          ? `${member.name} is a member, not the Lead`
+          : authority.identity.named ? "this session is on the team's roster, not its Lead" : "this session is not on the team's roster"})`,
+      }
+    }
+    /** The ONE clock reading this call stamps: the record's `endedAt` and the journal row share it. */
+    const now = deps.now()
+    /** The store's idempotent stamp: the FIRST ending owns the instant and the reason. */
+    const outcome = endTeamRecord(caller.workspace, record.teamId, String(input.reason ?? ""), now)
+    // A record that vanished between the read above and the write is a real race, not a validation
+    // failure — report it as the same "no such team" sentence rather than claiming an ending.
+    if (outcome === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(record.teamId)} in this workspace` }
+    // ONE JOURNAL ROW PER ACTUAL ENDING (T8 N1): the terminal transition is history the same way a
+    // fence or a handoff is, and the idempotent repeat is a no-op that must not append a second row.
+    if (outcome.changed) {
+      // THE ENDING ALREADY LANDED, so a JOURNAL failure must never fail it (CodeRabbit CR1): the record
+      // is terminal on disk before this line runs, and a thrown refusal would report a failed end whose
+      // retry answers `changed:false` — the missing `team-ended` row could then never be written. The
+      // failure is reported on the row's diagnostic sink instead, and the reply still says what happened.
+      try {
+        appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") })
+      } catch (error) {
+        deps.log(`team ${outcome.record.teamId} ended but its journal row was not written: ${refusalOf(error)}`)
+      }
+    }
+    return {
+      ok: true,
+      teamId: outcome.record.teamId,
+      endedAt: String(outcome.record.endedAt),
+      reason: String(outcome.record.archivedReason ?? ""),
+      changed: outcome.changed,
+    }
+  } catch (error) {
+    return unexpectedRefusalOf(error)
+  }
+}
+
+/**
  * Write the CALLING member's handoff document and move its seat into the handoff window.
  *
  * WHY THE CALLER MUST BE ON THE ROSTER. A handoff is the member's own checkpoint duty — the document it
@@ -1662,8 +1843,8 @@ export async function writeMemberHandoff(deps: TeamActionDeps, caller: TeamActio
     /** The team this call works on, or the sentence saying why none resolved. */
     const resolved = deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage)
     if (resolved.record === undefined) return { ok: false, error: resolved.refusal ?? "no team record in this workspace — approve a plan first" }
-    /** The roster row this session IS; a seat-less caller writes no handoff. */
-    const member = memberNamedBy(resolved.record, [caller.sessionId])
+    /** The roster row this session IS (the SHARED narrowing, so a resumed member still writes its own handoff); a seat-less caller writes none. */
+    const member = memberIdentityOf(resolved.record, caller.sessionId, caller.title ?? "", caller.lineage).member
     if (member === undefined) return { ok: false, error: `session ${caller.sessionId} is on no roster of team ${resolved.record.teamId} — only a member writes its own handoff` }
     /** The section contract this document is judged against. */
     const validation = validateHandoffText(input.content)

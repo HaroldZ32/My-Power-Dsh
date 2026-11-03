@@ -1,0 +1,20 @@
+# THE DIST QUESTION, answered three ways with ONE pinned toolchain
+toolchain: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/bun/bin/bun
+
+## (a) build the CURRENT src (new comment) -> temp file
+
+f26fdb3477d45fd695b8a3a19f58dc04a9fe37358e7a3090d5e5b482918726e9  /tmp/after.js
+
+## (b) build the SNAPSHOT src (old comment, same tree elsewhere) -> temp file
+
+89b0b274c1e52f0a63892f9e0c6702ce76b8974594c1e43ef33407a611ef239d  /tmp/before.js
+
+## (c) compare all three with the COMMITTED dist
+5edab1584e8762df060210cccb25ca82738d453556e9ede5f9c64f38a7fc378e  packages/mpd-team-core-plugin/dist/index.js
+before!=after: the comment reached the output
+after!=dist: the committed dist differs from a fresh build (PRE-EXISTING staleness, see below)
+
+## (b2) build the SNAPSHOT src FROM ITS OWN ROOT (identical marker paths) and the CURRENT src from the repo root
+f26fdb3477d45fd695b8a3a19f58dc04a9fe37358e7a3090d5e5b482918726e9  /tmp/before2.js
+f26fdb3477d45fd695b8a3a19f58dc04a9fe37358e7a3090d5e5b482918726e9  /tmp/after2.js
+before==after: the COMMENT-ONLY edit does NOT change the emitted bytes

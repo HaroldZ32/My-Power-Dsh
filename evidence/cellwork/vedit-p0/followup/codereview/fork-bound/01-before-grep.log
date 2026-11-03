@@ -1,0 +1,5 @@
+evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:110:FORKED Lead's new session id is not recorded until its heal writes `leadHistory`, so a fork whose title
+evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:111:names a seat is still read as that seat — the stated bound.)
+evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:133:  names a seat is read as that seat until the heal records it. That is the T12 residual, unchanged and
+packages/mpd-team-core-plugin/src/team-store.ts:1297: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+packages/mpd-team-core-plugin/src/team-store.ts:1298: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,

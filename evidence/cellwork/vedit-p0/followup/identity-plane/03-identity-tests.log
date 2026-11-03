@@ -1,0 +1,18 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/identity-plane.test.ts:
+(pass) memberIdentityOf — the ONE narrowing > the own id and the recorded executorRef name the member [0.19ms]
+(pass) memberIdentityOf — the ONE narrowing > a recorded ANCESTOR that is the member's handle names it (a resumed member's own header) [0.02ms]
+(pass) memberIdentityOf — the ONE narrowing > a persona title names the seat by its ROLE, and the workmate slug alone never does [0.08ms]
+(pass) memberIdentityOf — the ONE narrowing > an AMBIGUOUS title names a member but picks no row, and a foreign title names none [0.05ms]
+(pass) a RESUMED member is a member on every Lead-gated path > T1: it cannot end the team (the reviewer's shape) [3.47ms]
+(pass) a RESUMED member is a member on every Lead-gated path > T1 (ambiguous): the title names a member, so it still cannot end the team [1.33ms]
+(pass) a RESUMED member is a member on every Lead-gated path > T5: it cannot append to the live roster, and the churn heal does not promote it [1.01ms]
+(pass) a RESUMED member is a member on every Lead-gated path > the resumed session still resolves to its MEMBER ROW (context, title arm) [1.06ms]
+(pass) a RESUMED member is a member on every Lead-gated path > the resumed session can write its OWN handoff (ancestor arm) [1.33ms]
+(pass) a RESUMED member is a member on every Lead-gated path > a GENUINE fork (no roster text) still ends the team [1.32ms]
+
+ 10 pass
+ 0 fail
+ 30 expect() calls
+Ran 10 tests across 1 file. [154.00ms]

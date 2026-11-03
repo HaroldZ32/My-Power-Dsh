@@ -184,6 +184,21 @@ describe("C3 — the mail bound is a declared workspace knob", () => {
     expect(mailMaxUndeliveredOf((key) => (key === MAIL_MAX_UNDELIVERED_KEY ? 0 : undefined))).toBe(0)
   })
 
+  test("the resolver's declared ceiling is INCLUSIVE: 1000 is honoured and 1001 falls back to 8", () => {
+    /** The largest bound the resolver accepts, asserted against the shipped rule rather than assumed. */
+    const CEILING = 1000
+    // THE `0..1000` CLAIM THE SOURCE DOC STATES IS PINNED HERE (follow-up F3): an accepted ceiling
+    // nobody asserts is a comment, not a rule. 1000 itself IS honoured…
+    expect(mailMaxUndeliveredOf((key) => (key === MAIL_MAX_UNDELIVERED_KEY ? CEILING : undefined))).toBe(CEILING)
+    // …one past it is NOT: a bound that high would effectively disable the safety valve, so the
+    // documented DEFAULT comes back instead of a silently-unbounded mailbox.
+    expect(mailMaxUndeliveredOf((key) => (key === MAIL_MAX_UNDELIVERED_KEY ? CEILING + 1 : undefined))).toBe(DEFAULT_MAIL_MAX_UNDELIVERED)
+    // …and the fallback holds however far past the ceiling the value sits.
+    expect(mailMaxUndeliveredOf((key) => (key === MAIL_MAX_UNDELIVERED_KEY ? 10_000 : undefined))).toBe(DEFAULT_MAIL_MAX_UNDELIVERED)
+    // The neighbour INSIDE the range still passes, so this is a boundary and not an off-by-one.
+    expect(mailMaxUndeliveredOf((key) => (key === MAIL_MAX_UNDELIVERED_KEY ? CEILING - 1 : undefined))).toBe(CEILING - 1)
+  })
+
   test("the refusal NAMES the recipient, the count, the bound and BOTH recovery paths", () => {
     /** A sandbox whose mailbox is driven directly, so the refusal sentence is the store's own. */
     const box = mkdtempSync(join(tmpdir(), "mpd-vedit-bound-"))

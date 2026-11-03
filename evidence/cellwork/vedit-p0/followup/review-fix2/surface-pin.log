@@ -1,0 +1,7 @@
+$ bun skills/dsh-qa/scripts/surface-pin.ts
+[surface-pin] PASS — every surface the autoproject refactor introduced is declared as the contract fixes it (12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads)
+exit=0
+
+$ bun skills/dsh-qa/scripts/surface-pin.ts --self-test
+[surface-pin self-test] ok: the extractors, the SHIPPED-tree pin, EIGHT negative controls (parameter, action verb, alias tool, alias command, cellwork name, producer output key, consumer read, command name) and the SKILL.md case-table row
+exit=0

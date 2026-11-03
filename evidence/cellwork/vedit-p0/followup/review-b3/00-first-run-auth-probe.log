@@ -1,0 +1,27 @@
+{
+  "executorRef": "child-senior-engineer-1",
+  "titleMemberRosterAppend": "ALLOWED (unexpected)",
+  "titleMemberEnd": {
+    "teamId": "team-20261103064926712-2k3r-002",
+    "endedAt": "2026-11-03T06:49:26.714Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  },
+  "afterEndRecord": {
+    "phase": "ended",
+    "endedAt": "2026-11-03T06:49:26.714Z",
+    "reason": "ended by the team Lead"
+  },
+  "ctlSubagentError": "no team record in this workspace — approve a plan first",
+  "ctlSubagentPhase": "active",
+  "ctlHandleError": "only the Lead of team team-20261103064926715-2k3r-006 may end it (senior-engineer-1 is a member, not the Lead)",
+  "ctlHandlePhase": "active",
+  "ctlFork": {
+    "teamId": "team-20261103064926716-2k3r-008",
+    "endedAt": "2026-11-03T06:49:26.716Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  },
+  "ctlMemberRepeatError": "only the Lead of team team-20261103064926717-2k3r-00a may end it (senior-engineer-1 is a member, not the Lead)"
+}
+EXIT:0

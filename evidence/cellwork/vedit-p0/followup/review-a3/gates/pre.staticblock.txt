@@ -1,0 +1,186 @@
+function staticGrantsOk(stat: StaticAdmission): boolean {
+  if (!("grants" in stat)) return false
+  return stat.grants?.ok === true
+}
+
+/**
+ * Load the host's own pinned admission implementation (never a re-implementation).
+ * @returns The loaded entry points plus the resolved host/spec roots, or the named reason it could not load.
+ */
+async function loadHostAdmission(): Promise<HostAdmission> {
+  /** The installed payload root, `undefined` when no `dsh-tui` host resolves on this machine. */
+  const hostRoot = resolveHostRoot()
+  if (hostRoot === undefined) return { ok: false, reason: "the installed @deepseek-harness-tui/dsh-tui payload was not found (set DSH_TUI_ROOT)" }
+  /** The spec-data root the running host itself resolves, `undefined` when this host carries none. */
+  const spec = resolveSpecDataRoot(hostRoot)
+  if (spec === undefined) return { ok: false, reason: "no spec-data root with registry/registry-0.15.json (installed payload or the d248c267 checkout)" }
+  /** Spell one host-relative module path as a file URL the dynamic import can resolve. */
+  // A FILE URL built by `pathToFileURL`, never by concatenation (win32 defect, MEASURED 2026-10-12):
+  // `"file://" + join(root, …)` is right only on POSIX, where the joined path starts with `/` and the
+  // result is `file:///…`; on win32 it is `file://C:\…` — the host becomes `C:\…` and the path is empty,
+  // so every `await import(url(...))` below could never resolve a module there.
+  const url = (relative: string): string => pathToFileURL(join(hostRoot, relative)).href
+  /** Absolute path of the vendored `@dsh-std/manifest` parser the host itself loads. */
+  const manifestLibPath = join(hostRoot, "node_modules", "@dsh-std", "manifest", "lib", "index.js")
+  if (!existsSync(manifestLibPath)) return { ok: false, reason: "the vendored @dsh-std/manifest parser is missing at " + manifestLibPath }
+  /** The host's own pinned manifest parser and projection. */
+  // The PAYLOAD's built `.js` (the file the existence check above already names), never a `.ts`:
+  // the historical runs imported the operator CHECKOUT's TypeScript sources, but a payload-only
+  // machine has just the built copy — measured 2026-10-14, the 0.15.0 payload ships
+  // `lib/index.js` + `lib/index.d.ts` and no `.ts` at this path.
+  const { parseManifest, projectManifest } = await import(url("node_modules/@dsh-std/manifest/lib/index.js"))
+  /** The host's own spec-data loader and registry driver set. */
+  const { loadSpecData, registryEntries } = await import(url("lib/types/adapter/standard/registry.js"))
+  /** The host's own contract index, validator and five-state negotiation. */
+  const { createContractIndex, validatePlugin, negotiate } = await import(url("lib/types/adapter/standard/admission.js"))
+  return { ok: true, hostRoot, spec, parseManifest, projectManifest, loadSpecData, registryEntries, createContractIndex, validatePlugin, negotiate }
+}
+
+/**
+ * Host model derived from the vendored registry through the host's own driver set.
+ * @param registryEntries The host's own registry driver set; only names in `driverSet` are selected.
+ * @param data The host's loaded spec-data bundle the entries are read from.
+ * @param driverSet The contract names this lane negotiates for; defaults to the four seams the TUI plugin declares.
+ * @returns The host model `negotiate()` consumes, in the host's own shape.
+ */
+export function hostModel(registryEntries: (registry: unknown) => RegistryEntry[], data: SpecData, driverSet: readonly string[] = ["commands", "storage.local", "messages.observe", "tui.decision-events"]): HostModel {
+  /** The driver names selected for this negotiation, as a set for the O(1) filter below. */
+  const set = new Set(driverSet)
+  return {
+    hostId: "dsh-tui",
+    facetApiVersions: [...data.registry.facetApiVersions],
+    contracts: registryEntries(data.registry)
+      .filter((entry) => set.has(entry.name))
+      .map((entry) => ({ apiVersion: entry.coordinates.apiVersion, kind: entry.coordinates.kind, permissions: [...entry.permissions] })),
+  }
+}
+
+/**
+ * Run the host's own parser, projection, validator and negotiation against the shipped manifest,
+ * then run three controls on the SAME implementation to prove the checks are falsifiable.
+ * @param outDir Evidence directory the `admission-static.json` record is written into.
+ * @param log Line sink the caller prints; one summary line is appended.
+ * @returns The measured record, or the named reason the host implementation could not be loaded.
+ */
+async function staticAdmission(outDir: string, log: string[]): Promise<StaticAdmission> {
+  /** The host's own pinned implementation, or the named reason it is absent on this machine. */
+  const host = await loadHostAdmission()
+  if (!host.ok) return { ok: false, reason: host.reason }
+  /** The host's spec-data bundle; `undefined` when the registry does not resolve on this host. */
+  const data = host.loadSpecData()
+  if (data === undefined) return { ok: false, reason: "loadSpecData() returned undefined (the spec registry did not resolve)" }
+  /** The contract index the host's own validator and negotiator run against. */
+  const index = host.createContractIndex(data.registry, data.permissions)
+  /** The shipped manifest's bytes, digested below and parsed by the host's own parser. */
+  const source = readFileSync(MANIFEST, "utf8")
+  /** The record under construction; every field is filled in place so a mid-way throw still records what ran. */
+  const result: StaticAdmissionRecord = { ok: true, specRoot: host.spec.kind, specDir: host.spec.dir, profileVersion: data.registry.profileVersion }
+  try {
+    /** The host's own parse of the shipped manifest — never this lane's JSON.parse. */
+    const manifest = host.parseManifest(source, { source: MANIFEST })
+    result.parse = "ok"
+    result.projected = host.projectManifest(manifest)
+    result.manifest = {
+      id: manifest.id,
+      manifestVersion: manifest.manifestVersion,
+      entry: manifest.facets.host.entry,
+      apiVersion: manifest.facets.host.apiVersion,
+      requiredContracts: manifest.requires.contracts.filter((c) => c.optional !== true).map((c) => `${c.apiVersion}#${c.kind}`),
+      optionalContracts: manifest.requires.contracts.filter((c) => c.optional === true).map((c) => `${c.apiVersion}#${c.kind}`),
+      permissions: manifest.permissions.map((p) => `${p.name}@${p.scope}`),
+      subscriptions: manifest.subscriptions,
+    }
+    result.structural = {
+      ...Object.fromEntries(["provides", "requires.services"].map((key): [string, boolean] => [key, false])),
+      findings: structuralFindings(JSON.parse(source)),
+      entryExists: existsSync(join(REPO, manifest.facets.host.entry)),
+      entrySha256: existsSync(join(REPO, manifest.facets.host.entry)) ? sha256File(join(REPO, manifest.facets.host.entry)) : undefined,
+    }
+    host.validatePlugin(index, manifest)
+    result.validatePlugin = "ok"
+    result.negotiation = host.negotiate(index, manifest, hostModel(host.registryEntries, data), [])
+    // C3' STATIC GRANT ARMS, MEASURED ON A CLONE (F1 / reviewer H1). The shipped manifest requests NO
+    // permission (the intercept seam is inactive by design), so its OWN grant table is always empty and a
+    // three-state assertion against it was red by construction: a permission-less manifest negotiates
+    // `compatible` with OR without a grant, never `waiting_authorization`. The grant MECHANISM is therefore
+    // measured on a `structuredClone` carrying the ONE `session.input.intercept@tui/input` declaration that
+    // used to ship — and the HOST's own parser, validator and negotiator judge the clone exactly as they
+    // judge a real manifest — while the shipped manifest's OWN decision is asserted separately and must stay
+    // `compatible` (so a regression that re-introduces a declaration on the real file still reddens here).
+    /** The clone's base: the shipped manifest decoded, then the ONE permission re-declared on it. */
+    const cloneSource: RawManifest = JSON.parse(source)
+    cloneSource.permissions.push({ name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE, reason: GRANT_ARM_REASON })
+    /** The host's OWN parse of the clone — never this lane's `JSON.parse` of it. */
+    const cloneManifest = host.parseManifest(JSON.stringify(cloneSource), { source: "grant-arm-clone" })
+    // The clone must be a manifest the host would ADMIT: a clone the validator rejects would make the
+    // granted arm prove nothing about the real admission path.
+    host.validatePlugin(index, cloneManifest)
+    /** The ONE grant row a grant author would write, at the scope the clone declares. */
+    const grantRow: GrantFileRow = { name: GRANT_ARM_PERMISSION, scope: GRANT_ARM_SCOPE }
+    /** The clone's decision with NO grant — a declared, default-denied permission. */
+    const cloneUngranted = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [])
+    /** The clone's decision with that one row granted. */
+    const cloneGranted = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [grantRow])
+    /** The same name at a scope nothing declares — a grant that must NOT authorize. */
+    const cloneWrongScope = host.negotiate(index, cloneManifest, hostModel(host.registryEntries, data), [{ name: grantRow.name, scope: "tui/not-a-declared-scope" }])
+    result.grants = {
+      rows: [grantRow],
+      manifestDecision: decisionOf(result.negotiation),
+      ungranted: decisionOf(cloneUngranted),
+      granted: decisionOf(cloneGranted),
+      wrongScope: decisionOf(cloneWrongScope),
+      ok: decisionOf(result.negotiation) === "compatible"
+        && decisionOf(cloneUngranted) === "waiting_authorization"
+        && decisionOf(cloneGranted) === "compatible"
+        && decisionOf(cloneWrongScope) === "waiting_authorization",
+    }
+  } catch (error) {
+    result.ok = false
+    // The thrown value is `unknown`: the cast states the Error-ish shape the original JS read off it,
+    // so `name`/`message` stay reachable without changing what is stringified.
+    result.error = { name: (error as { name?: unknown })?.name, message: String((error as { message?: unknown })?.message ?? error) }
+  }
+
+  // Controls: the checks above must be falsifiable on the SAME pinned implementation.
+  /** The shipped manifest as raw data, the base every control clones before it mutates one rule. */
+  const raw: RawManifest = JSON.parse(source)
+  /** One entry per control, holding either the thrown failure's name/message or `UNEXPECTED PASS`. */
+  const controls: Record<string, string> = {}
+  try { host.parseManifest("{ not json", { source: "control-syntax" }); controls.brokenSyntax = "UNEXPECTED PASS" }
+  // The thrown value is `unknown`: the cast states the shape whose `name` the control records.
+  catch (error) { controls.brokenSyntax = String((error as { name?: unknown })?.name ?? "Error") }
+  try {
+    /** A clone with the optional contract's written fallback removed, which the host must reject. */
+    const noFallback = structuredClone(raw)
+    /** The first optional contract of the clone; the shipped manifest declares exactly one. */
+    const optional = noFallback.requires.contracts.find((entry) => entry.optional === true)
+    // The shipped manifest guarantees an optional contract; `!` states that invariant to the checker
+    // without adding a runtime branch the original code did not have.
+    delete optional!.fallback
+    host.validatePlugin(index, host.parseManifest(JSON.stringify(noFallback)))
+    controls.optionalWithoutFallback = "UNEXPECTED PASS"
+  } catch (error) { controls.optionalWithoutFallback = String((error as { message?: unknown })?.message ?? error) }
+  try {
+    /** A clone whose first permission name is unregistered, which the host must reject. */
+    const badPermission = structuredClone(raw)
+    badPermission.permissions[0].name = "mpd-dsh.not-a-registered-permission"
+    host.validatePlugin(index, host.parseManifest(JSON.stringify(badPermission)))
+    controls.unknownPermission = "UNEXPECTED PASS"
+  } catch (error) { controls.unknownPermission = String((error as { message?: unknown })?.message ?? error) }
+  result.controls = controls
+  result.inputDigests = {
+    manifest: sha256File(MANIFEST),
+    manifestLib: sha256File(join(host.hostRoot, "node_modules", "@dsh-std", "manifest", "lib", "index.js")),
+    manifestSchema: sha256File(join(host.hostRoot, "node_modules", "@dsh-std", "manifest", "schema", "dsh-plugin-0.15.schema.json")),
+    registry: sha256File(join(data.dir, "registry", "registry-0.15.json")),
+    permissions: sha256File(join(data.dir, "registry", "permissions-0.1.json")),
+    schemas: ["conformance-claim.schema.json", "effect-ledger-record.schema.json", "host-descriptor.schema.json"]
+      .map((name) => ({ name, sha256: existsSync(join(data.dir, "schemas", name)) ? sha256File(join(data.dir, "schemas", name)) : undefined })),
+    specProfileVersion: data.registry.profileVersion,
+  }
+  writeFileSync(join(outDir, "admission-static.json"), JSON.stringify(result, null, 2) + "\n")
+  log.push("static admission: ok=" + result.ok + " parse=" + String(result.parse) + " validatePlugin=" + String(result.validatePlugin) + " controls=" + JSON.stringify(Object.keys(controls)))
+  return result
+}
+
+/** The offline arm: the structural rules, the pane classifier and the spec-root resolution, each with its negative control. */

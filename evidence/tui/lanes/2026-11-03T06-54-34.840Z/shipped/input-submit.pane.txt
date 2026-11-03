@@ -1,0 +1,50 @@
+
+    你装的额外插件（1）：                                                                                                                           │ ◀     ?    ♥    ❖    ⬢    ⚠   待办   ▸    ◆    ⓘ    ∿    ⌗      ▶
+      @mpd-dsh/mpd 0.17.1 · 已启用 · TUI 贡献：compatible                                                                                           ├─────────────────────────────────────────────────────────────────────
+                                                                                                                                                    │
+    DSH 自带实验性功能（EXP，4 项）：                                                                                                               │
+      智能体团队 0.2.1-rc.5 · 未启用                                                                                                                │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-agent-team-profile                                                                       │
+        用途：Agent 分工合作，/team status 看状态                                                                                                   │
+      自动授权审查 0.2.1-rc.5 · 未启用                                                                                                              │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-auto-review                                                                              │
+        用途：/permission auto，模型自主审批                                                                                                        │
+      会话搜索 0.2.1-rc.5 · 未启用                                                                                                                  │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-session-search                                                                           │
+        用途：Agent 能翻本工作区的历史会话                                                                                                          │
+      Git 工作树 0.2.1-rc.5 · 未启用                                                                                                                │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-tool-worktree                                                                            │
+        用途：Agent 新开 Git 分支与工作树，转到里面干活                                                                                             │
+                                                                                                                                                    │
+  ❯ mpd admission lane decision arm                                                                                                                 │
+                                                                                                                                                    │
+  ⚓ 思考 · 3s （ctrl+o 展开）                                                                                                                      │
+                                                                                                                                                    │
+  ● ⏵ 先看一下这个沙箱里有什么                                                                                                                      │
+                                                                                                                                                    │
+  ✗ Glob **/* · 0s                                                                                                                                  │
+   ⎿ Error: captain investigation rule: `glob` on (no path argument — a bare call searches the whole workspace) is refused — the `mpd` preset's     │
+     TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with   │
+     the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume   │
+     the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth —      │
+     inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**`  │
+     and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README│
+     spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc        │
+     restores full acces … 已折叠 2 字符（点击或 ctrl+o 展开）                                                                                      │
+                                                                                                                                                    │
+  • Bash(pwd; ls -la; echo '---'; git status --short --branch 2>&1 | head -30; echo '---'; git log --oneline -5 2>&1) · 0s                          │
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/tui-admission/ws                                                                          │
+     total 20                                                                                                                                       │
+     drwxrwxr-x 4 haroldzhao haroldzhao 4096 Nov  3 14:22 .                                                                                         │
+     … +41 行（ctrl+o 展开）                                                                                                                        │
+                                                                                                                                                    │
+  🌑 ✓ 跑个命令 pwd; ls -la; echo '---'; git status --s… · 366ms · ↑ 35.1k · ↓ 4 tokens                                                             │
+  mpd: 团队 - · 计划 0 · workmate 0                                                                                                                 │
+                                                                                                                                                    │
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  ⌸ ❯                                                                                                                                              ⛶│
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+                                                                                                                                      37k/1.0M 3.5% │
+   deepseek-flash · max · 缓存 99.5% · ≈¥0.01 峰 · ws                                                                           ctx 3.5% (37k/1.0m) ├─────────────────────────────────────────────────────────────────────
+   esc 中断                                                                                                                                         │ Ctrl+B 聚焦侧栏
+

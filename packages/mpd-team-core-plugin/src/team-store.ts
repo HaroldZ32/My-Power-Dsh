@@ -280,9 +280,9 @@ export interface TeamRecord {
   /** ISO instant the team was explicitly ended; absent while it is live. */
   endedAt?: string
   /**
-   * Why the record was marked terminal, written by the C7-3 consistency pass
-   * (`reapReapedTeams` in `team-lifecycle.ts`) when it reaped a ghost. Absent on a team that never
-   * needed reaping; informational only, never read by a gate.
+   * Why the record was marked terminal: the sentence an explicit end recorded, or the rule the C7-3
+   * consistency pass (`reapReapedTeams` in `team-lifecycle.ts`) caught when it reaped a ghost. Absent
+   * only on a team that never ended; informational, never read by a gate.
    */
   archivedReason?: string
   /** The roster. */
@@ -532,6 +532,37 @@ export function deleteTeam(workspace: string, teamId: string): boolean {
   // why the feed is told here rather than being left to infer it from the record it can no longer read.
   teamStateChanged(workspace)
   return true
+}
+
+/**
+ * End one team for good: stamp the terminal phase, the instant and the audit reason, then persist the
+ * record through {@link writeTeam} — never a raw file write, so the change feed and the store's own
+ * observers see exactly the write every other mutation produces.
+ *
+ * IDEMPOTENT BY THE RECORD ITSELF. A team that already carries `endedAt` answers unchanged with
+ * `changed: false`: the FIRST ending owns the instant and the reason, and a repeated call (or a late
+ * retry from another surface) must never rewrite that history. The stamp is also what
+ * `team-lifecycle.ts#isLiveTeam` reads, so once this write lands the record can no longer resolve for
+ * any seat and no longer wins the bound-index arm — the binding needs no separate edit.
+ * @param workspace - the workspace holding the team.
+ * @param teamId - the team to end.
+ * @param reason - why it ended; an empty sentence is replaced by the default below, never stored empty.
+ * @param now - the instant stamped as `endedAt`.
+ * @returns the record as stored and whether THIS call changed it; undefined when no such team exists.
+ */
+export function endTeamRecord(workspace: string, teamId: string, reason: string, now: Date): { record: TeamRecord; changed: boolean } | undefined {
+  /** The record as it stands, or undefined for an unknown team. */
+  const record = readTeam(workspace, teamId)
+  if (record === undefined) return undefined
+  // A REPEAT IS A REPORTED NO-OP, not a second ending: `endedAt` and `archivedReason` keep the values
+  // the first call wrote, so a retry cannot quietly restamp the audit trail with a later clock.
+  if (record.endedAt !== undefined) return { record, changed: false }
+  /** The audit sentence: the caller's own, or the default that says the Lead ended it without one. */
+  const archivedReason = reason.trim() === "" ? "ended by the team Lead" : reason.trim()
+  /** The terminal record, assembled immutably so the stored one is only ever replaced whole. */
+  const ended: TeamRecord = { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason }
+  writeTeam(workspace, ended)
+  return { record: ended, changed: true }
 }
 
 /** What {@link createTeam} needs to mint a record. */
@@ -1204,6 +1235,111 @@ export function memberNamedBy(record: TeamRecord, caller: readonly string[]): Te
     const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "")
     return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
   })
+}
+
+/** The roster identity ONE session presents, as the plane's single narrowing (T12 / review B3 A1). */
+export interface MemberIdentity {
+  /**
+   * The unique roster row this session identifies as; absent when the record names it only AMBIGUOUSLY
+   * (two seats matched at the SAME specificity, e.g. two seats sharing one role) or not at all.
+   */
+  member?: TeamMemberRecord
+  /**
+   * Whether this record's roster NAMES the session at all — by its own id, by a recorded ancestor, or by
+   * the session TITLE matching a seat. Only a session the roster does NOT name may present a Lead's
+   * recorded ancestry.
+   */
+  named: boolean
+}
+
+/**
+ * How specifically a session TITLE names one roster seat: the length of the best text it matched, or 0.
+ *
+ * THE RULE, STATED ONCE (T12; corrected by T16 N2): **role first, then the seat's STORED name**. The
+ * member's `role` text is tried first; only when it does not occur does the seat's stored `name` count.
+ * For a W3-C-bound seat that stored name IS the workmate slug (`senior-engineer-1`), and a title that
+ * literally contains it DOES name the seat — the rule is "the stored name", NOT "never the slug".
+ *
+ * WHY THE COMPARISON IS CASE-INSENSITIVE TEXT: a RESUMED member session gets a NEW id while the record's
+ * durable handle (`executorRef`) is the OLD one, and the harness may record the LEAD as the resumed
+ * session's parent — so the persona title is the one remaining fact that says which seat this is. The
+ * LENGTH is returned because a shorter role can be a strict substring of a longer one (`Reviewer` inside
+ * `Plan Reviewer`): the caller keeps the LONGEST match as the most specific one.
+ * @param member - the roster row to ask about.
+ * @param title - the session title the harness gave the caller (the persona prompt prefix).
+ * @returns the length of the matched role, else of the matched stored name, else 0.
+ */
+function titleMatchLength(member: TeamMemberRecord, title: string): number {
+  /** The title folded once: the comparison is case-insensitive. */
+  const haystack = title.toLowerCase()
+  /** The seat's ROLE text, folded — the primary signal. */
+  const role = String(member.role ?? "").trim().toLowerCase()
+  if (role !== "" && haystack.includes(role)) return role.length
+  /** The seat's STORED name (the workmate slug for a W3-C-bound seat) — the fallback signal. */
+  const name = String(member.name ?? "").trim().toLowerCase()
+  return name !== "" && haystack.includes(name) ? name.length : 0
+}
+
+/**
+ * The roster identity ONE session presents — the ONE narrowing every Lead check and seat lookup consults.
+ *
+ * ARMS, IN PRECEDENCE ORDER (each is a DURABLE fact, never a guess):
+ *   1. the session's OWN id, matched by {@link memberNamedBy} against `name`/`executorRef`;
+ *   2. a RECORDED ANCESTOR — a resumed session whose parent is the member's old session (its
+ *      `executorRef`) is that member, because the harness recorded the link itself;
+ *   3. the session TITLE naming a seat — ROLE first, then the seat's stored name ({@link titleMatchLength}).
+ * An id match outranks the others; a title match is only used when neither id nor ancestry names a row.
+ *
+ * A RECORDED LEAD IS NEVER A MEMBER BY TITLE (CodeRabbit CR1). The Lead's own session title may contain
+ * a roster role or a seat's stored name — the captain's persona text is not ours to constrain — and ARM 3
+ * would then hand it that member row, making the mailbox address the captain by a MEMBER id. The recorded
+ * Lead identity is checked BEFORE ARM 3 and answers "not named": the title must never replace captaincy.
+ * THE BOUND: a FORKED Lead's NEW id is recorded only when the churn heal runs, and the heal SKIPS any
+ * session this predicate names as a member — so a fork whose title names a seat is NEVER healed on that
+ * record: it stays identified as that seat (seat-blocked, fail-closed, borrowing no Lead ancestry) while
+ * its title keeps naming one. That is the T12 residual — a separate discriminator, not a fact this arm
+ * can decide.
+ *
+ * THE LONGEST MATCH WINS (T16 N1). A roster holding both `Reviewer` and `Plan Reviewer` makes the Plan
+ * Reviewer's own title contain both texts; the 13-character `plan reviewer` is more specific than the
+ * 8-character `reviewer`, so the seat is named uniquely instead of being declared ambiguous. Only a
+ * genuine tie at the SAME specificity stays fail-closed: when two seats match equally long (two seats
+ * sharing one role — the measured T12 shape), `named` is true — the session IS a member, so it must not
+ * borrow captaincy — but `member` is absent, so no caller may act as one particular seat.
+ *
+ * WHY `named` AND `member` ARE SEPARATE. Narrowing authority only needs "is this a member at all"; the
+ * owner/seat rules need "which row". A caller the roster names must never present the Lead's ancestry,
+ * even when the plane cannot pick its row — that is exactly the shape that let a resumed member end a
+ * team.
+ * @param record - the record whose roster is searched.
+ * @param sessionId - the caller's own session id.
+ * @param title - the session title the harness gave the caller; empty when it gave none.
+ * @param lineage - the ancestors the harness recorded for the caller.
+ * @returns the identity: the row (when unambiguous) and whether the roster names the session at all.
+ */
+export function memberIdentityOf(record: TeamRecord, sessionId: string = "", title: string = "", lineage: readonly string[] = []): MemberIdentity {
+  /** ARM 1: the session's own durable handle. */
+  const direct = memberNamedBy(record, [sessionId])
+  if (direct !== undefined) return { member: direct, named: true }
+  /** ARM 2: a recorded ancestor that IS a member's handle — how a resumed member's own header names it. */
+  const ancestral = memberNamedBy(record, lineage)
+  if (ancestral !== undefined) return { member: ancestral, named: true }
+  // A RECORDED LEAD ANSWERS "NOT NAMED" BEFORE THE TITLE ARM (CodeRabbit CR1): its captain identity must
+  // never be replaced by a member row its persona text happens to name.
+  if (sessionId !== "" && recordNamesLead(record, [sessionId])) return { named: false }
+  if (String(title ?? "") === "") return { named: false }
+  /** ARM 3: every seat the title names, scored by the length of its most specific match. */
+  const scored = (Array.isArray(record.members) ? record.members : [])
+    .map((member) => ({ member, strength: titleMatchLength(member, String(title)) }))
+    .filter((entry) => entry.strength > 0)
+  if (scored.length === 0) return { named: false }
+  /** The longest (most specific) match length this title achieves on the roster. */
+  const strongest = Math.max(...scored.map((entry) => entry.strength))
+  /** Every seat matched at that specificity: ONE names a seat, several are a genuine tie. */
+  const winners = scored.filter((entry) => entry.strength === strongest)
+  /** The only seat at the strongest specificity. */
+  const [only] = winners
+  return winners.length === 1 && only !== undefined ? { member: only.member, named: true } : { named: true }
 }
 
 /**
