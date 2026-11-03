@@ -15,7 +15,7 @@ export const SAMPLED_SELECTOR = "figure, .fig, img, svg, table, h1, h2, h3, p, p
 export const EXCLUDED_ANCESTORS = Object.freeze(["svg", "nav", "header", "footer"])
 
 /** In-page path rule. idCount(id) returns how many elements carry that id. */
-export const PATH_FUNCTION_SOURCE = `function ulwSelectorPath(el, idCount) {
+export const PATH_FUNCTION_SOURCE = `function autoprojectSelectorPath(el, idCount) {
 	const SAFE_ID = /^[A-Za-z_][\\w-]*$/;
 	const segments = [];
 	for (let cur = el; cur && cur.parentElement; cur = cur.parentElement) {
@@ -53,7 +53,7 @@ export function buildProbeSource({ cap = 400, root = "main, article" } = {}) {
 	await Promise.race([settle, new Promise((resolve) => setTimeout(resolve, IMAGE_WAIT_MS))]);
 	${PATH_FUNCTION_SOURCE}
 	const idCount = (id) => document.querySelectorAll("#" + CSS.escape(id)).length;
-	const path = (el) => ulwSelectorPath(el, idCount);
+	const path = (el) => autoprojectSelectorPath(el, idCount);
 	const r1 = (n) => Math.round(n * 10) / 10;
 	const rect = (el) => { const b = el.getBoundingClientRect(); return { x: r1(b.left + scrollX), y: r1(b.top + scrollY), w: r1(b.width), h: r1(b.height) }; };
 	const excluded = (el) => { for (let p = el.parentElement; p; p = p.parentElement) if (EXCLUDED.includes(p.tagName.toLowerCase())) return true; return false; };

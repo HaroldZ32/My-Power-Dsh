@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scaffold-plan.ts - generate the ulw-plan draft + plan skeleton deterministically.
+// scaffold-plan.ts - generate the autoproject-plan draft + plan skeleton deterministically.
 //
 // Zero external dependencies (node:fs/path/process/url builtins only) so it runs
 // byte-identically under `node` and `bun` on macOS, Linux, and Windows with no uv
@@ -9,7 +9,7 @@
 // Usage:  node "<skill-root>/scripts/scaffold-plan.ts" <slug> [--clear|--unclear] [--draft-only] [--review-required] [--reset [--force]]
 //
 // RESUME-SAFE: run it ONCE at plan generation. A plain re-run on an existing
-// ulw-plan artifact is a NO-OP success (it never overwrites your appended todos),
+// autoproject-plan artifact is a NO-OP success (it never overwrites your appended todos),
 // so a model resuming after compaction cannot crash the turn or clobber the plan.
 // Destructive overwrite is reserved behind --reset, and --reset refuses to discard
 // a hand-edited file unless --force is also passed.
@@ -152,10 +152,10 @@ export function resolveSafePath(cwd: string, relPath: string): string {
 		throw new Error(`refused: path escapes the workspace root: ${relPath}`);
 	}
 	if (!/(^|[/\\])\.mpd([/\\]|$)/i.test(rel)) {
-		throw new Error(`refused: ulw-plan may only write under .mpd/: ${relPath}`);
+		throw new Error(`refused: autoproject-plan may only write under .mpd/: ${relPath}`);
 	}
 	if (!resolved.toLowerCase().endsWith(".md")) {
-		throw new Error(`refused: ulw-plan may only write .md files: ${relPath}`);
+		throw new Error(`refused: autoproject-plan may only write .md files: ${relPath}`);
 	}
 	return resolved;
 }
@@ -225,14 +225,14 @@ async function assertSafeWriteParent(cwd: string, target: string): Promise<void>
 	// The directory that must already exist (and be safe) before the artifact is written.
 	const parent = dirname(target);
 	assertContainedPath(workspaceRoot, parent, `refused: path escapes the workspace root: ${target}`);
-	assertContainedPath(mpdRoot, parent, `refused: ulw-plan may only write under .mpd/: ${target}`);
+	assertContainedPath(mpdRoot, parent, `refused: autoproject-plan may only write under .mpd/: ${target}`);
 	await mkdirWithoutSymlinks(parent, workspaceRoot);
 	// The same boundaries after resolution, which is what catches a symlinked component.
 	const mpdReal = await realpath(mpdRoot);
 	// The target's parent, with symlinks resolved, for the real-path checks below.
 	const parentReal = await realpath(parent);
 	assertContainedPath(workspaceReal, parentReal, `refused: path escapes the workspace root through symlinks: ${target}`);
-	assertContainedPath(mpdReal, parentReal, `refused: ulw-plan may only write under .mpd/ through real paths: ${target}`);
+	assertContainedPath(mpdReal, parentReal, `refused: autoproject-plan may only write under .mpd/ through real paths: ${target}`);
 }
 
 /**
@@ -260,7 +260,7 @@ async function assertSafeWriteTarget(target: string): Promise<void> {
  * @param content - The file's current text.
  * @returns True when the content carries the emitted artifact's own markers.
  */
-export function isUlwArtifact(content: string): boolean {
+export function isAutoprojectArtifact(content: string): boolean {
 	// The plan skeleton's two defining markers (top and bottom sections).
 	const isPlan = content.includes("## TL;DR (For humans)") && content.includes("## Final verification wave");
 	// The draft's two defining markers (its title and its approval gate).
@@ -392,7 +392,7 @@ Your next move: <fill - e.g. approve, or run a high-accuracy review>. Full execu
 ## Verification strategy
 > Zero human intervention - all verification is agent-executed.
 - Test decision: <TDD | tests-after | none> + framework
-- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd_boulder_status', .mpd/evidence/ulw/<session>/<goalId>/a<attempt>; outside ulw-execute use .mpd/evidence/)
+- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd_boulder_status', .mpd/evidence/autoproject/<session>/<goalId>/a<attempt>; outside autoproject-execute use .mpd/evidence/)
 
 ## Execution strategy
 ### Parallel execution waves
@@ -423,7 +423,7 @@ ${FINAL_VERIFICATION_ITEMS.map((item) => `- [ ] ${item}`).join("\n")}
 `;
 }
 
-// Resume-safe write: plain re-run on an existing ulw-plan artifact is a no-op
+// Resume-safe write: plain re-run on an existing autoproject-plan artifact is a no-op
 // success; --reset overwrites but refuses to discard a hand-edited file unless
 // --force is also passed.
 /**
@@ -435,7 +435,7 @@ ${FINAL_VERIFICATION_ITEMS.map((item) => `- [ ] ${item}`).join("\n")}
  * @param content - The content to write when the guards allow it.
  * @param options - `reset` overwrites an existing artifact; `force` additionally discards hand edits.
  * @returns The artifact's relative path and what happened to it.
- * @throws When the path is unsafe, or the existing file is neither a ulw-plan artifact nor (with
+ * @throws When the path is unsafe, or the existing file is neither an autoproject-plan artifact nor (with
  *   `--reset --force`) an acceptable loss.
  */
 export async function writeGuarded(cwd: string, relPath: string, content: string, { reset = false, force = false }: { reset?: boolean; force?: boolean } = {}): Promise<WriteResult> {
@@ -447,8 +447,8 @@ export async function writeGuarded(cwd: string, relPath: string, content: string
 	const existing = await readFile(target, "utf8").catch(() => null);
 	if (existing && existing.trim() !== "") {
 		if (!reset) {
-			if (isUlwArtifact(existing)) return { relPath, status: "exists" };
-			throw new Error(`refused: ${relPath} exists and is not a ulw-plan artifact (pass --reset to overwrite)`);
+			if (isAutoprojectArtifact(existing)) return { relPath, status: "exists" };
+			throw new Error(`refused: ${relPath} exists and is not an autoproject-plan artifact (pass --reset to overwrite)`);
 		}
 		if (existing.trim() !== content.trim() && !force) {
 			throw new Error(`refused: ${relPath} has edits that differ from a fresh skeleton; pass --reset --force to discard them`);

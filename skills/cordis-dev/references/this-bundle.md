@@ -100,7 +100,7 @@ node scripts/verify-dist-fresh.ts
 `packages/mpd-goal-plugin` is the bundle's goal authority:
 
 - Tools `mpd_goal_status` / `mpd_goal_anchor` / `mpd_goal_finish`; service `mpdGoal`
-  (`available` / `autoAnchor` / `status` / `anchor` / `finish`), consumed lazily by `mpd-ulw` and
+  (`available` / `autoAnchor` / `status` / `anchor` / `finish`), consumed lazily by `mpd-autoproject` and
   `mpd-boulder` with `ctx.get("mpdGoal")`.
 - Adapter seam: `capabilities().goals` (durable read via `ctx.goals`) and `capabilities().goalTools`
   (the write path), `goalState(agent)`, `goalControl({agent, action, …})`. **Mutations go through the

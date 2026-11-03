@@ -1,11 +1,11 @@
 ---
-name: ulw-plan
-description: ulw-plan CLEAR-intent path - the user knows the outcome; ask only the genuine forks, with WHY.
+name: autoproject-plan
+description: autoproject-plan CLEAR-intent path - the user knows the outcome; ask only the genuine forks, with WHY.
 metadata:
-  short-description: ulw-plan clear-intent interview path
+  short-description: autoproject-plan clear-intent interview path
 ---
 
-# ulw-plan - CLEAR intent
+# autoproject-plan - CLEAR intent
 
 Read this when INTENT ROUTING resolved to CLEAR: the user knows the desired outcome and the only open items are preferences/tradeoffs the repo cannot answer. Also entered from the on-the-fence tie-break (ask exactly one question).
 

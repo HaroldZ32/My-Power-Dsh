@@ -1,4 +1,4 @@
-# ATTRIBUTION / NOTICE — `ulw-execute`
+# ATTRIBUTION / NOTICE — `autoproject-execute`
 
 > **Honest provenance statement.** The body of this skill is **upstream content re-sourced under its
 > own author's MIT grant**. It was **not** written in this repository. Until wave A of the de-omo
@@ -19,7 +19,7 @@
 
 ### Local adaptations in this repository (NOT upstream)
 
-our frontmatter `description`; the `## DSH Harness Tool Compatibility` block, the DeepSeek model-tiering and subagent-reliability sections, and `.mpd/` state paths (`boulder.json`, `.mpd/plans/`, `.mpd/ulw-execute/ledger.jsonl`).
+our frontmatter `description`; the `## DSH Harness Tool Compatibility` block, the DeepSeek model-tiering and subagent-reliability sections, and `.mpd/` state paths (`boulder.json`, `.mpd/plans/`, `.mpd/autoproject-execute/ledger.jsonl`).
 
 ### MIT License (verbatim from the source repository's LICENSE)
 

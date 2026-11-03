@@ -1,6 +1,6 @@
 ---
-name: ulw-execute
-description: "Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, serial roster consults, the mpd team plane, and Boulder-ledger resumption across turns (`.mpd/boulder.json` says this `dsh:<session_id>` still has unchecked plan work, so execute plan / resume plan re-enters it). Use after planning when the user says ulw-execute, execute plan, continue plan, resume plan, or asks to run a .mpd/plans plan."
+name: autoproject-execute
+description: "Execute a Prometheus work plan with Boulder state, evidence ledger updates, worktree discipline, serial roster consults, the mpd team plane, and Boulder-ledger resumption across turns (`.mpd/boulder.json` says this `dsh:<session_id>` still has unchecked plan work, so execute plan / resume plan re-enters it). Use after planning when the user says autoproject-execute, execute plan, continue plan, resume plan, or asks to run a .mpd/plans plan."
 ---
 
 ## DSH Harness Tool Compatibility
@@ -31,14 +31,14 @@ Every consult task is a self-contained executable assignment (`TASK / DELIVERABL
 
 **YOU DO NOT WRITE CODE. YOU DO NOT EDIT PRODUCT FILES. YOU DO NOT RUN QA YOURSELF. EVERY unit of implementation, test, QA, and review work MUST be delegated to a spawned roster worker (`mpd_role_spawn`) or a team member. NO EXCEPTIONS.** Your hands touch only plan selection, `.mpd/` state (Boulder, ledger, plan checkboxes), decomposition, dispatch, verdicts, and evidence records. About to edit a product file or run an implementation command yourself? **STOP. SPAWN A WORKER INSTEAD.** Orchestrate at **MAXIMUM SAFE CONCURRENCY**: independent units run as serial one-shot consults, and only genuinely concurrent lanes go on the team plane, where named dependencies serialize.
 
-# ulw-execute
+# autoproject-execute
 
-Execute a work plan until every top-level checkbox is complete. This skill pairs with the harness's ulw-execute continuation hook, which re-injects the next turn while `.mpd/boulder.json` says this `codex:<session_id>` still has unchecked plan work.
+Execute a work plan until every top-level checkbox is complete. This skill pairs with the harness's autoproject-execute continuation hook, which re-injects the next turn while `.mpd/boulder.json` says this `codex:<session_id>` still has unchecked plan work.
 
 ## Usage
 
 ```text
-$ulw-execute [plan-name] [--worktree <absolute-path>] [--make-pr] [--ship]
+$autoproject-execute [plan-name] [--worktree <absolute-path>] [--make-pr] [--ship]
 ```
 
 - `plan-name` (optional): a full or partial file stem under `.mpd/plans/`.
@@ -66,9 +66,9 @@ Do ALL of this immediately after the plan is selected, BEFORE the first implemen
 
 ### No-plan bootstrap
 
-When the user explicitly said `start work` / `execute plan` and no selectable plan exists, treat that phrase as approval: bootstrap `ulw-plan` to create the approved plan before execution and implementation, instead of stalling or asking for generic approval again. A brief or notes file without waves, checkboxes, and acceptance criteria is NOT decision-complete — enter this bootstrap too.
+When the user explicitly said `start work` / `execute plan` and no selectable plan exists, treat that phrase as approval: bootstrap `autoproject-plan` to create the approved plan before execution and implementation, instead of stalling or asking for generic approval again. A brief or notes file without waves, checkboxes, and acceptance criteria is NOT decision-complete — enter this bootstrap too.
 
-1. Invoke the `ulw-plan` skill from the current request and require its dynamic adversarial workflow: collect, verify, design, adversarial plan-review, synthesize.
+1. Invoke the `autoproject-plan` skill from the current request and require its dynamic adversarial workflow: collect, verify, design, adversarial plan-review, synthesize.
 2. The generated Prometheus plan must be saved under `.mpd/plans/<slug>.md` before implementation or Boulder state writes that point at plan work.
 3. Use maximum safe parallelism in the generated plan: independent files/tasks fan out; same-file writes, shared state, and named dependencies serialize.
 4. Preserve safety boundaries. Ask one focused question only when the objective is missing, destructive, or has a safety/product ambiguity that repository exploration cannot resolve.
@@ -178,7 +178,7 @@ For each checkbox, complete all five gates before marking it done:
 4. Adversarial QA: exercise every class the Phase 3 trigger map marks applicable and capture the observable result for each.
 5. Cleanup: register every QA resource teardown as its own todo when spawned (QA scripts, tmux assets, browser sessions, PIDs, ports, containers, temp dirs), execute each, and capture the receipt. No QA asset is left running.
 
-Append evidence to `.mpd/ulw-execute/ledger.jsonl`, one JSON object per line. Include at least `event`, `plan`, `task`, `session_id`, `commands`, `artifact`, `adversarial_classes`, and `cleanup` fields. `adversarial_classes` lists each probed class with its observable result and each ruled-out class with a one-line reason.
+Append evidence to `.mpd/autoproject-execute/ledger.jsonl`, one JSON object per line. Include at least `event`, `plan`, `task`, `session_id`, `commands`, `artifact`, `adversarial_classes`, and `cleanup` fields. `adversarial_classes` lists each probed class with its observable result and each ruled-out class with a one-line reason.
 
 ### Sisyphus-style completion contract
 

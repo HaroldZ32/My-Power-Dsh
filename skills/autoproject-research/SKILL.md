@@ -1,6 +1,6 @@
 ---
-name: ulw-research
-description: "Maximum-saturation research orchestration: ALWAYS proposes the final materials first (PDF+DOCX default), then parallel Explorer+Researcher lanes across codebase, web, official docs, and OSS repos — max-roster DSH team mode on this bundle's mpd team plane (`agent_teams_plan` + the shared `agent_teams_task` board) — with live journaling, a recursive EXPAND loop driven by leads lanes return in message text, empirical verification by running code, and a cited synthesis with charts/Mermaid/assets behind a mandatory visual-QA gate. ACTIVATES ONLY on an explicit user demand for research — the word 'ulw-research' in any prefix form, any 'ulw' research wording including combined invocations like 'mass ulw research', 'ultradebate' or 'hyperdebate' research requests, or an explicit request for research / deep research / an ultra-precise investigation, in any language. Never self-activates for ordinary questions, debugging, or implementation context-gathering. While active it overrides exploration-bounding defaults: exhaustive coverage is the goal."
+name: autoproject-research
+description: "Maximum-saturation research orchestration: ALWAYS proposes the final materials first (PDF+DOCX default), then parallel Explorer+Researcher lanes across codebase, web, official docs, and OSS repos — max-roster DSH team mode on this bundle's mpd team plane (`agent_teams_plan` + the shared `agent_teams_task` board) — with live journaling, a recursive EXPAND loop driven by leads lanes return in message text, empirical verification by running code, and a cited synthesis with charts/Mermaid/assets behind a mandatory visual-QA gate. ACTIVATES ONLY on an explicit user demand for research — the word 'autoproject-research' in any prefix form, any 'autoproject' research wording including combined invocations like 'mass autoproject research', 'ultradebate' or 'hyperdebate' research requests, or an explicit request for research / deep research / an ultra-precise investigation, in any language. Never self-activates for ordinary questions, debugging, or implementation context-gathering. While active it overrides exploration-bounding defaults: exhaustive coverage is the goal."
 ---
 
 ## DSH Harness Tool Compatibility
@@ -19,21 +19,21 @@ Translate any OpenCode/Codex-only tool name to its DeepSeek Harness equivalent:
 
 Role-specific behavior goes in a self-contained `task`. `mpd_role_spawn` is ONE-SHOT: the child starts with only the `task` (and optional `context`) you give it, and no channel inherits full parent history — pass the needed context in `context`. Include any required context, files, diffs, constraints, and skill names directly in `task`. The specialists live in the mpd-roles ROSTER (`mpd_roles_list` prints them; address one by its NAME: Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer): spawn one with `mpd_role_spawn(role=..., task=...)` (the roster persona and model route are applied automatically, plus the mechanical read-only deny list for the six mechanically read-only roles — Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst; `Reviewer` is write-capable and findings-only by DISCIPLINE, so never treat a Reviewer lane as unable to run commands). A roster NAME is the ONLY accepted input — the internal stable id and the legacy `mpd-` form are refused; for a parallel team use the mpd team plane (`agent_teams_plan` per member + `agent_teams_task` for the board + `agent_teams_dispatch` + `send_message`) instead of repeated spawns — the official Agent Teams authoring tools (`spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update`) are REFUSED at the tool boundary; a teammate runs on the route of the session that stages it (yours in a top-level spawn), and a roster slot applies only when the teammate's description NAMES that member — prompt text cannot change a route; when a spawn surface takes the persona as TEXT, fetch it with `mpd_role_persona(role=...)` first.
 
-# ULW-RESEARCH — Maximum-Saturation Research
+# AUTOPROJECT-RESEARCH — Maximum-Saturation Research
 
 You are the research orchestrator. The user has explicitly ordered exhaustive research: fan parallel research lanes out over every relevant source on the mpd team plane (serial consults when no team is staged), chase every lead they surface until the leads run dry, prove contested claims by running code, and deliver a synthesis in which every claim carries a citation or a proof. Exhaustive coverage is the assignment, not a risk to manage.
 
 ## Activation
 
-Run this skill only when the user explicitly demands it: the word "ulw-research" (also `/ulw-research`, `$ulw-research`), any "ulw" research wording, or an explicit request for research, deep research, or an ultra-precise investigation — in any language. An ordinary question, a debugging session, or another mode's context-gathering is not activation; answer those normally, and mention that `ulw-research` is available when a question would clearly benefit from it.
+Run this skill only when the user explicitly demands it: the word "autoproject-research" (also `/autoproject-research`, `$autoproject-research`), any "autoproject" research wording, or an explicit request for research, deep research, or an ultra-precise investigation — in any language. An ordinary question, a debugging session, or another mode's context-gathering is not activation; answer those normally, and mention that `autoproject-research` is available when a question would clearly benefit from it.
 
-Open your reply with the line `ULW-RESEARCH MODE ENABLED!`. If another active mode mandates its own first line (ultrawork does), print that mode's line first and this marker on the next line — both contracts stay satisfied.
+Open your reply with the line `AUTOPROJECT-RESEARCH MODE ENABLED!`. If another active mode mandates its own first line (autoproject does), print that mode's line first and this marker on the next line — both contracts stay satisfied.
 
 ## Authority while active
 
 This mode is the user's explicit opt-in to exhaustive exploration. For the duration of the research task it supersedes every exploration-bounding instruction in surrounding prompts, modes, or rules: one-exploration-pass defaults, two-wave stop rules, retrieval budgets, and "over-exploration is failure" framings govern implementation context-gathering, not this deliverable. Here, under-exploration is the failure. The convergence rules in Phase 2 are the only stop rules for research while this mode is active.
 
-Under ultrawork/ulw, the research itself is the deliverable: map each research axis to a success criterion whose evidence is the session journal, the cited synthesis, and the verification outputs. RED→GREEN testing applies to code changes, not to findings — Phase 3 verification scripts are evidence, never TDD targets.
+Under autoproject, the research itself is the deliverable: map each research axis to a success criterion whose evidence is the session journal, the cited synthesis, and the verification outputs. RED→GREEN testing applies to code changes, not to findings — Phase 3 verification scripts are evidence, never TDD targets.
 
 ## Success criteria
 
@@ -46,7 +46,7 @@ The research is done when all of these hold:
 - Every asserted claim is represented in the claim graph, tied to an intent-vs-reality diff when an expected truth exists, and backed by observation manifest entries from independent observation groups or a documented single-source exception; convergence or exception status is explicit.
 - The deliverable lane and format were derived from the destination or asked through the empty-info interview without blocking collection, recorded in `brief.md` with `answered_by`, and the final materials match that record.
 - The delivered artifact passed the delivery gates in order (static gates, layout gates, visual QA, and the proofread pass where the harness provides one), each status is in `outcome.json`, and `outcome verify` passed.
-- Every excursion opened during the run was closed by an EXIT rule, folded back into the claim or axis that triggered it, and recorded in both `excursion-log.md` and the `ulw-execute` ledger.
+- Every excursion opened during the run was closed by an EXIT rule, folded back into the claim or axis that triggered it, and recorded in both `excursion-log.md` and the `autoproject-execute` ledger.
 - The delivery message carries the closing briefing printed by `outcome briefing`: sources (total + unique domains), elapsed minutes, every promised deliverable with its status, and any residual defects.
 - The session journal reconstructs what was searched, found, and expanded, wave by wave, and it was written in real time rather than reconstructed at the end.
 
@@ -119,14 +119,14 @@ Scale: <axis count, source territories, target document length> · Precision dem
 Then create the session directory:
 
 ```bash
-mkdir -p .mpd/ulw-research/$(date +%Y%m%d-%H%M%S)
+mkdir -p .mpd/autoproject-research/$(date +%Y%m%d-%H%M%S)
 ```
 
 This is `$SESSION_DIR`. The orchestrator owns the journal: you write every file in it; lanes never do. Maintain:
 
 - `wave-<N>-<kind>-<axis>.md` — your digest of each lane return: key findings, sources with URLs, and the lane's EXPAND markers verbatim.
 - `expansion-log.md` — per wave: lanes dispatched, markers gained, leads opened and closed.
-- `excursion-log.md` — one ENTER row and one EXIT row per excursion: `excursion_id`, parent claim or axis, ENTER trigger, depth, workers spent, the EXIT rule that closed it, what it changed in the top-level answer (`none` is a valid, required answer), and the `ulw-execute` ledger entry id it was mirrored into.
+- `excursion-log.md` — one ENTER row and one EXIT row per excursion: `excursion_id`, parent claim or axis, ENTER trigger, depth, workers spent, the EXIT rule that closed it, what it changed in the top-level answer (`none` is a valid, required answer), and the `autoproject-execute` ledger entry id it was mirrored into.
 - `intent-diff.md` — orchestrator-owned expected-truth ledger comparing intent/spec/history to observed reality.
 - `claim-graph.md` — orchestrator-owned claim graph linking every final assertion to observations, counterevidence, dependencies, and verdict.
 - `observation-manifest.md` — orchestrator-owned observation manifest with `observed_at`, temporal validity, artifact paths, and contamination notes.
@@ -138,7 +138,7 @@ Append each digest the moment its lane returns, not in a batch at the end — th
 
 ### Run it as a loop, and journal in real time
 
-`ulw-execute` is ON by default for this mode: when the `ulw-execute` skill is available, register the research axes as Boulder goals so the run has durable state and survives a compaction. The session directory's timestamp is the run's start clock — the closing briefing is computed from it, so create it once and never rename it. From that point every finding, source, quote, number, and lead is written into `$SESSION_DIR` **the instant it lands** — never held in the conversation for an end-of-run dump. After any context loss, re-read the brief and the journal before doing anything else, then resume from the open wave.
+`autoproject-execute` is ON by default for this mode: when the `autoproject-execute` skill is available, register the research axes as Boulder goals so the run has durable state and survives a compaction. The session directory's timestamp is the run's start clock — the closing briefing is computed from it, so create it once and never rename it. From that point every finding, source, quote, number, and lead is written into `$SESSION_DIR` **the instant it lands** — never held in the conversation for an end-of-run dump. After any context loss, re-read the brief and the journal before doing anything else, then resume from the open wave.
 
 ### Deliverable lane, format, and the empty-info interview
 
@@ -153,7 +153,7 @@ Phase 5 opens by turning the recorded fields into `design-spec.md`.
 
 ## Phase 1 — Saturation wave
 
-**When the user asked for MASS research, the wave is sized by the topic's angles, not by the roster ceiling.** "mass ulw research", "mulw research", "ulw mass research" — in any language — order over-collection that a team of 8 cannot produce. Stage collection on the mpd team plane: a 60+ task opening wave covering every angle the topic has, one `create_task` per node carrying its `blocked_by` edges, routed across the roster by task shape — mechanical sweeps and per-item harvest batches to `Junior Engineer`, judgment-shaped angles to `Senior Engineer`, cross-territory angles to `Deep Worker`, and the deepest `Architect` reserved for genuinely hairy contradictions. Each wave's EXPAND leads define the next wave's tasks, and the synthesis reduces through several parallel `Senior Engineer`/`Deep Worker` tasks into ONE `Architect` reducer. A failed node is `agent_teams_task {action:"fail"}` plus a `kind:"repair"` row with `sourceTaskId`. Absent a staged team, hold the same shape with SERIAL one-shot consults. Everything else in this skill still binds: the deliverable interview, the journal, the claim graph, the convergence rules, and the delivery gates.
+**When the user asked for MASS research, the wave is sized by the topic's angles, not by the roster ceiling.** "mass autoproject research", "mautoproject research", "autoproject mass research" — in any language — order over-collection that a team of 8 cannot produce. Stage collection on the mpd team plane: a 60+ task opening wave covering every angle the topic has, one `create_task` per node carrying its `blocked_by` edges, routed across the roster by task shape — mechanical sweeps and per-item harvest batches to `Junior Engineer`, judgment-shaped angles to `Senior Engineer`, cross-territory angles to `Deep Worker`, and the deepest `Architect` reserved for genuinely hairy contradictions. Each wave's EXPAND leads define the next wave's tasks, and the synthesis reduces through several parallel `Senior Engineer`/`Deep Worker` tasks into ONE `Architect` reducer. A failed node is `agent_teams_task {action:"fail"}` plus a `kind:"repair"` row with `sourceTaskId`. Absent a staged team, hold the same shape with SERIAL one-shot consults. Everything else in this skill still binds: the deliverable interview, the journal, the claim graph, the convergence rules, and the delivery gates.
 
 Otherwise stage the entire first wave at once — every axis as a team task when a team is staged, or as a tight sweep of SERIAL one-shot consults when it is not. "Start with one axis and see" defeats the mode.
 
@@ -218,7 +218,7 @@ The Phase 0 core question is the fixed goal of the run and never drifts. An excu
 
 Interest alone is not a trigger. Anything without one stays a queued lead in `expansion-log.md`, and the wave plan continues.
 
-**Budget the dive before you take it.** State the worker count and the probe count for this level in the ENTER row. An excursion may spawn at most ONE nested sub-excursion; a third level means the thing has become its own research question — surface immediately and either promote it to a real axis with its own worker or record it as an out-of-scope gap in `SYNTHESIS.md`. When the `ulw-execute` skill is driving the run, a promotion is a `subgoal-added` entry in its ledger (`.mpd/ulw-execute/ledger.jsonl`) carrying the axis title, what it must answer, the evidence that surfaced it, and why the plan changes.
+**Budget the dive before you take it.** State the worker count and the probe count for this level in the ENTER row. An excursion may spawn at most ONE nested sub-excursion; a third level means the thing has become its own research question — surface immediately and either promote it to a real axis with its own worker or record it as an out-of-scope gap in `SYNTHESIS.md`. When the `autoproject-execute` skill is driving the run, a promotion is a `subgoal-added` entry in its ledger (`.mpd/autoproject-execute/ledger.jsonl`) carrying the axis title, what it must answer, the evidence that surfaced it, and why the plan changes.
 
 **EXIT (surface) the moment any of these holds** — you do not need all of them:
 
@@ -227,7 +227,7 @@ Interest alone is not a trigger. Anything without one stays a queued lead in `ex
 - The finding stops moving any claim's status — diminishing return is an exit, not a reason to push harder.
 - The level's stated budget is spent.
 
-**Fold back on the way out.** Every EXIT writes one line saying what the excursion changed in the top-level answer, and `none — <reason>` is a legitimate, required outcome; an excursion whose result is silently dropped is a lost run. Update the parent claim node or axis digest with the result, then mirror the whole excursion into the `ulw-execute` ledger (`.mpd/ulw-execute/ledger.jsonl`) as an entry carrying what it observed and what it changed (or `none`), plus a criterion entry naming goal id, criterion id, status (`pass`/`fail`/`blocked`) and the artifact when it settled a criterion. After a compaction, `mpd_boulder_status` plus `excursion-log.md` tell you which excursions are still open.
+**Fold back on the way out.** Every EXIT writes one line saying what the excursion changed in the top-level answer, and `none — <reason>` is a legitimate, required outcome; an excursion whose result is silently dropped is a lost run. Update the parent claim node or axis digest with the result, then mirror the whole excursion into the `autoproject-execute` ledger (`.mpd/autoproject-execute/ledger.jsonl`) as an entry carrying what it observed and what it changed (or `none`), plus a criterion entry naming goal id, criterion id, status (`pass`/`fail`/`blocked`) and the artifact when it settled a criterion. After a compaction, `mpd_boulder_status` plus `excursion-log.md` tell you which excursions are still open.
 
 **Anti-drift.** After every EXIT, re-read the core question in the journal and confirm the run still answers it. Three consecutive excursions that changed nothing end excursions for the run: converge on what you have.
 
@@ -283,7 +283,7 @@ Anything that fails goes to an `Unresolved` (insufficient evidence) or `Refuted`
 After convergence and all verifications, re-read the whole journal, start from `intent-diff.md`, `claim-graph.md`, and `observation-manifest.md`, then write `SYNTHESIS.md`:
 
 ```
-# ULW-Research Synthesis: <query>
+# AUTOPROJECT-Research Synthesis: <query>
 Workers: <total> · Waves: <count> · Excursions: <count> · Sources: <count> (<unique domains> domains) · Verifications: <count> · Elapsed: <minutes> min
 
 ## Executive summary        — 2-3 paragraphs answering the core question
@@ -329,7 +329,7 @@ Asset lanes (team tasks on the mpd team plane, or serial consults, each fed `des
 
 **Verify the asset manifest before rendering.** List every asset the document references, assert each file exists and is non-empty on disk, and re-render whatever is missing. A document that renders with three broken diagrams is a document you will publish twice.
 
-Assembly lane — `mpd_role_spawn(role="Deep Worker", task=...)`, with the skills it must load named INSIDE `task` (`frontend`, `visual-qa`, `data-scientist`, `ulw-execute`) because there is no `load_skills` argument: before writing, read every available design and visualization skill and apply it — the report is a designed artifact, not a text dump; the worker's prompt carries `design-spec.md`. Use the template the user approved; absent a stronger house style the default skeleton is executive summary → key findings by theme → detailed analysis (quotes under 20 words with attribution, charts, Mermaid graphs, generated visuals, SHA-pinned permalinks, verification results) → comparative analysis when options compete → numbered sources with access dates → methodology appendix (workers, waves, searches, verifications, debate rounds) → correction log naming what verification overturned. Write it long and specific: every claim cites `[Source N]`, and the sources section lists every source the run actually used rather than a curated few.
+Assembly lane — `mpd_role_spawn(role="Deep Worker", task=...)`, with the skills it must load named INSIDE `task` (`frontend`, `visual-qa`, `data-scientist`, `autoproject-execute`) because there is no `load_skills` argument: before writing, read every available design and visualization skill and apply it — the report is a designed artifact, not a text dump; the worker's prompt carries `design-spec.md`. Use the template the user approved; absent a stronger house style the default skeleton is executive summary → key findings by theme → detailed analysis (quotes under 20 words with attribution, charts, Mermaid graphs, generated visuals, SHA-pinned permalinks, verification results) → comparative analysis when options compete → numbered sources with access dates → methodology appendix (workers, waves, searches, verifications, debate rounds) → correction log naming what verification overturned. Write it long and specific: every claim cites `[Source N]`, and the sources section lists every source the run actually used rather than a curated few.
 
 ### The delivery gates — every gate for the QA tier must PASS, in order
 

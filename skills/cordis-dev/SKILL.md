@@ -119,7 +119,7 @@ Scale the proof to the change, and state any limit explicitly:
 
 A long-running objective is anchored on the harness's persisted GOAL, not on one turn. This bundle
 wires that: `mpd_goal_status` / `mpd_goal_anchor` / `mpd_goal_finish` (row `mpd-goal`), the
-`mpdGoal` service the ULW and boulder rows consume, and the auto-anchor contract (`goal.autoAnchor`).
+`mpdGoal` service the `mpd-autoproject` and boulder rows consume, and the auto-anchor contract (`goal.autoAnchor`).
 Mutations go through the HARNESS GOAL TOOLS, never `ctx.goals`, because the tools carry the
 authorisation (a direct human turn for create/edit/pause/resume; the consecutive-round count for
 `blocked`). Details: `references/this-bundle.md` §Goal plane.

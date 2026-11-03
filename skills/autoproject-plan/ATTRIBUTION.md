@@ -1,4 +1,4 @@
-# ATTRIBUTION / NOTICE — `ulw-research`
+# ATTRIBUTION / NOTICE — `autoproject-plan`
 
 > **Honest provenance statement.** The body of this skill is **upstream content re-sourced under its
 > own author's MIT grant**. It was **not** written in this repository. Until wave A of the de-omo
@@ -10,7 +10,7 @@
 
 - Repository: <https://github.com/code-yeongyu/lazycodex>
 - Pinned revision: `6f08c77347a68eaa87f4e7656147e8d793c9a069`
-- Source path: `plugins/omo/skills/ulw-research/`
+- Source path: `plugins/omo/skills/ulw-plan/`
 - Source licence: **MIT**, `Copyright (c) 2026 Yeongyu Kim` (LICENSE at the pinned revision)
 - Re-sourced: 2026-10-08 — every file the two trees share was rebuilt from the pinned bytes, with
   this repository's local adaptations re-applied and Codex-harness-only material removed
@@ -19,9 +19,7 @@
 
 ### Local adaptations in this repository (NOT upstream)
 
-our frontmatter `description`; the `## DSH Harness Tool Compatibility` block and the DeepSeek model routing.
-
-The third-party section BELOW (§1 insane-research, MIT © 2026 fivetaku) is untouched by this re-source and remains in force.
+our frontmatter `description`; `scripts/scaffold-plan.ts` — a TypeScript rewrite of upstream's `scaffold-plan.mjs` that writes only under `.mpd/` and carries this repository's declaration-comment discipline; the `## Delegation (DeepSeek Harness)` section; `.mpd/drafts` and `.mpd/plans` paths.
 
 ### MIT License (verbatim from the source repository's LICENSE)
 
@@ -64,44 +62,3 @@ the grant above is the rightsholder's own re-license of the source it covers. Th
 provenance only — it does not change this repository's own licence.
 
 ---
-
-## 1. insane-research (fivetaku) — inspiration for the claim-graph verification gate
-
-The non-code claim-graph verification gate (Phase 3b: a data-flow-lock where the
-synthesis may assert a high-risk non-code claim only after it clears `>= 2 independent
-source domains + 1 counter-search + a primary source`, otherwise it is abstained to an
-unresolved/refuted annex) is inspired by the data-flow-lock verification design in
-**insane-research** by fivetaku.
-
-- Source: https://github.com/fivetaku/insane-research
-- License: MIT (declared in the project's `README.md`).
-- **What is adapted:** the IDEA only — a verification gate whose output is the sole
-  allowlist the synthesis draws from, so skipping verification leaves nothing to
-  synthesize. No insane-research code is copied or redistributed. The upstream gate is
-  a Python checker (`validate_ledger.py`); this skill translates the concept into a
-  runtime-agnostic prompt + message-text contract, because the Codex Light edition has
-  no guaranteed Python.
-
-```
-MIT License
-
-Copyright (c) 2026 fivetaku
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```

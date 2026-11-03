@@ -1,4 +1,4 @@
-# ulw-research - deliverable phase contract
+# autoproject-research - deliverable phase contract
 
 Read this before the brief is written and again before Phase 6. It replaces the old blocking format question with a contract that never stalls collection: the deliverable is derived from the request and its destination, the requester is asked only what is genuinely missing, and every promise made about the output is tracked in a manifest until it is delivered, skipped, or blocked with a reason.
 

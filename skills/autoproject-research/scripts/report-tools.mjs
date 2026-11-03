@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// report-tools.mjs - the ulw-research deliverable CLI. Invoked as
+// report-tools.mjs - the autoproject-research deliverable CLI. Invoked as
 //   node "$SKILL_DIR/scripts/report-tools.mjs" <command> ...
 // Exit codes: 0 pass, 1 semantic failure (blockers, a failed verify, a blocked repair), 2 usage or IO.
 

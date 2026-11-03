@@ -11,8 +11,8 @@ Third-party components keep their own licences, reproduced in the files named be
 Sixteen skills under `skills/` are the `omo` corpus, sourced from the same author's MIT re-license:
 
 `ast-grep`, `data-scientist`, `debugging`, `frontend`, `git-master`, `init-deep`, `lsp-setup`,
-`programming`, `refactor`, `remove-ai-slops`, `review-work`, `ultimate-browsing`, `ulw-execute`,
-`ulw-plan`, `ulw-research`, `visual-qa`.
+`programming`, `refactor`, `remove-ai-slops`, `review-work`, `ultimate-browsing`,
+`autoproject-execute`, `autoproject-plan`, `autoproject-research`, `visual-qa`.
 
 - Repository: <https://github.com/code-yeongyu/lazycodex>
 - Source path: `plugins/omo/skills/<name>/`
