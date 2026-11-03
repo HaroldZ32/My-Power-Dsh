@@ -14,7 +14,36 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased — DSH Go native parity: two panels, a strip, menu actions and tool cards
+## 0.17.1 — DSH Go native parity and the cellwork checkpoint fence
+
+**Fixed — the checkpoint fence (the interruption).** A member that reached its context checkpoint was
+fenced with `no-engine; the reseed failed: subagent creation requires the exact live parent agent`.
+The `agent/turn-stopping` listener detached the barrier with `void`, the compaction engine was resolved
+by session id only after the member's Agent had left the live registry, and the reseed then asked the
+host to create a child under that dead member — which the host refuses (`agents.get(parent.id) ===
+parent`). The barrier now returns a promise the host's serial dispatch awaits, resolves the engine from
+the LIVE member handle (`compactionEngineForLiveAgent`, reading the handle's own `compaction` service)
+before any sleep, and compacts IN PLACE; the reseed remains the fallback and parents the replacement
+under a live parent (the member's `parentSession`, then the cell captain), with the distinct
+`reseed-parent-unavailable` when neither is live. `promoted | reseeded | refused` is unchanged.
+
+**Fixed — the mail bound is configurable, disclosed and recoverable.** `cellwork_send` and
+`agent_teams_mail` share `mail.maxUndelivered` (default 8, `0` disables it); the refusal names the key,
+the recipient, the count and the bound, plus the two recovery paths (acknowledge the inbox, or reassign
+the rows). Both tool descriptions disclose the bound and that the two tools share it.
+
+**Fixed — no silent empty write scopes.** `agent_teams_plan create_task` warns when a
+work/repair/integration row declares no write scope; `cellwork_split` gains a NON-FATAL warnings
+channel (the split stays accepted); and the frozen contract states the recovery — ask the captain for a
+scope extension before the first write.
+
+**Changed — the re-split activation says what it does.** `cellwork_activate` reports how many tasks
+were kept, that their frozen contracts are NOT rewritten, and that ready rows were dispatched
+owner-only; the stage-4 loop exception is named.
+
+**Tests.** New arms for the live-handle engine, the reseed parent order, the split warnings, the
+activation notice and the mail bound. No test was weakened: the superseded exact-string assertions are
+named in the wave evidence (`evidence/cellwork/vedit-p0/`).
 
 **Added — the native surface grew up (protocol 1, view v2).** The `dshGo` manifest now contributes **two
 panels** (`mpd`, the workbench; `mpd-team`, the team board — both in `session.tab`, `features` and

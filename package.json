@@ -3,7 +3,7 @@
   "private": false,
   "type": "module",
   "buildToolchain": "bun@1.4.0",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "A DeepSeek Harness plugin bundle: an eleven-role specialist roster, a durable workmate library, team staging with a shared board, and native dsh-Go panels and tool cards.",
   "keywords": [
     "dsh",
