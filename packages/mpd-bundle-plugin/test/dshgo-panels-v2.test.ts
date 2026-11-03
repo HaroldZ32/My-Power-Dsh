@@ -468,16 +468,27 @@ describe("the dependency graph (task T20)", () => {
     expect(lines).toEqual(["L0 T1 Build it", "L1 T2 Prove it <-T1"])
   })
 
-  test("the panel emits a fold + codeBlock on v2 and steps on v1", () => {
+  test("a TINY team gets a bare codeBlock and a big one gets a fold (repair T21)", () => {
+    /** The v2 tree of the two-task fixture. */
+    const small = buildTeamView(teamSnapshot(), V2_CAPS)
+    // Two tasks is under the fold threshold: a fold around two lines is noise, so the block shows.
+    expect(nodesOf(small).filter((node) => node.type === "collapsible")).toHaveLength(0)
+    expect(nodesOf(small).filter((node) => node.type === "codeBlock")).toHaveLength(1)
+    /** A seven-task board, above the threshold. */
+    const big = { ...teamSnapshot(), tasks: Array.from({ length: 7 }, (_, index) => ({ id: "T" + String(index + 1), subject: "Task " + String(index + 1), owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" })) }
+    expect(nodesOf(buildTeamView(big, V2_CAPS)).filter((node) => node.type === "collapsible")).toHaveLength(1)
+  })
+
+  test("the panel emits a codeBlock on v2 and steps on v1", () => {
     /** The v2 tree. */
     const v2 = buildTeamView(teamSnapshot(), V2_CAPS)
-    /** Every collapsible node of the v2 tree. */
-    const folds = nodesOf(v2).filter((node) => node.type === "collapsible")
-    expect(folds).toHaveLength(1)
-    /** The code block inside that fold. */
-    const block = nodesOf(folds[0]?.children).find((node) => node.type === "codeBlock")
+    /** The code block of the v2 tree. */
+    const block = nodesOf(v2).find((node) => node.type === "codeBlock")
     expect(String(block?.code)).toContain("L0 T1")
     expect(String(block?.code)).toContain("<-T1")
+    // NO language chip (repair T22): the app draws the block's header strip regardless, and a language
+    // value would print "text" at its content edge next to the Copy control.
+    expect(block?.language).toBeUndefined()
     // v1 has neither component (both are v2-only) and renders the same layout as steps instead.
     /** The v1 fallback tree. */
     const v1 = buildTeamView(teamSnapshot(), V1_CAPS)
@@ -485,5 +496,24 @@ describe("the dependency graph (task T20)", () => {
     expect(JSON.stringify(v1)).not.toContain("collapsible")
     expect(nodesOf(v1).filter((node) => node.type === "steps")).toHaveLength(1)
     expect(graphStepsOf(layerGraphOf(teamSnapshot().tasks)).length).toBeGreaterThan(0)
+  })
+
+  test("the per-member bar chart counts the rows each member owns (repair T21)", () => {
+    /** A board where one member owns two rows and the other owns one. */
+    const snapshot = { ...teamSnapshot(), tasks: [
+      { id: "T1", subject: "a", owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+      { id: "T2", subject: "b", owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+      { id: "T3", subject: "c", owner: "Senior Engineer", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+    ] }
+    /** Every chart node in the tree. */
+    const charts = nodesOf(buildTeamView(snapshot, V2_CAPS)).filter((node) => node.type === "chart")
+    expect(charts).toHaveLength(1)
+    // The examples' discipline: a bar chart with a caption that says what it counts.
+    expect(charts[0]?.kind).toBe("bar")
+    expect(charts[0]?.categories).toEqual(["Deep Worker", "Senior Engineer"])
+    expect((charts[0]?.series as Array<{ name: string; values: number[] }>)[0]).toEqual({ name: "Tasks", values: [2, 1] })
+    expect(String(charts[0]?.caption).length).toBeGreaterThan(0)
+    // No roster, no chart: an empty board must not draw an empty axis.
+    expect(nodesOf(buildTeamView({ ...teamSnapshot(), members: [], tasks: [] }, V2_CAPS)).filter((node) => node.type === "chart")).toHaveLength(0)
   })
 })

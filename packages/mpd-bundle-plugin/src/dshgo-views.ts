@@ -16,6 +16,7 @@ import {
   badge,
   bind,
   callout,
+  chart,
   divider,
   emptyState,
   form,
@@ -38,7 +39,7 @@ import {
   type DshGoView,
 } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { copyFor, type DshGoCopy } from "./dshgo-copy"
-import { graphLinesOf, graphStepsOf, layerGraphOf } from "./dshgo-graph"
+import { graphLinesOf, graphNeedsFold, graphStepsOf, layerGraphOf } from "./dshgo-graph"
 import type { PanelSnapshot } from "./dshgo-panel"
 
 /** One task row of the team board, as the team panel renders it. */
@@ -130,11 +131,15 @@ function fold(label: string, children: readonly DshGoView[]): DshGoView {
 
 /**
  * The v2 MONOSPACE block: the graph's lines, rendered in the app's code style.
+ *
+ * NO `language`, deliberately: the app always draws the block's header strip, and the language text sits
+ * at its content edge — so `language: "text"` rendered a pointless "text" chip beside the Copy control.
+ * The field is optional, and omitting it leaves the strip with just the copy affordance.
  * @param code - the text to render, one line per row.
  * @returns the codeBlock node.
  */
 function codeBlock(code: string): DshGoView {
-  return { type: "codeBlock", code, language: "text" }
+  return { type: "codeBlock", code }
 }
 
 /**
@@ -213,6 +218,28 @@ function taskRow(task: TeamPanelTask): { title: string; subtitle: string; traili
     trailing: statusWordOf(task.status),
     action: { id: "select", args: { task: task.id } },
   }
+}
+
+/**
+ * The per-member work chart: one bar per member, the board rows they own.
+ *
+ * BORROWED FROM THE APP'S OWN EXAMPLES (`examples/plugins/<name>/lib/view.js`): a `chart` sits right after the
+ * hero numbers, carries a `caption` saying what it counts, and keeps to a couple of series. Here it is one
+ * bar series over the roster, which is what makes a lopsided board visible at a glance.
+ * @param snapshot - the team snapshot (its roster and its tasks).
+ * @param copy - the copy record for the app's language.
+ * @returns the chart node, or null when the team has no members to chart.
+ */
+function memberChartOf(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView | null {
+  if (snapshot.members.length === 0) return null
+  /** How many board rows each member owns, in roster order. */
+  const values = snapshot.members.map((member) => snapshot.tasks.filter((task) => task.owner === member.name).length)
+  return chart({
+    kind: "bar",
+    categories: snapshot.members.map((member) => member.name),
+    series: [{ name: copy.memberChartSeries, values }],
+    caption: copy.memberChartCaption,
+  })
 }
 
 /**
@@ -445,9 +472,18 @@ function boardTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy, v2: boolean): Ds
   // THE DEPENDENCY GRAPH (task T20): the same board, laid out in dependency layers. v2 gets a fold
   // around a monospace block; an older app gets one `steps` entry per layer, because `codeBlock` and
   // `collapsible` are v2-only components.
+  // THE PER-MEMBER CHART (task T21): the examples' discipline — a bar chart right after the numbers,
+  // with a caption that says what it counts.
+  /** The chart node, or null when there is no roster to chart. */
+  const chartNode = memberChartOf(snapshot, copy)
+  if (chartNode !== null) children.push(section(copy.memberChartHeading, [chartNode]))
   /** The layered layout, computed once for whichever shape is emitted. */
   const layers = layerGraphOf(snapshot.tasks)
-  children.push(section(copy.graphHeading, v2 ? [fold(copy.graphHeading, [codeBlock(graphLinesOf(layers).join("\n"))])] : [steps(graphStepsOf(layers))]))
+  /** The monospace block the v2 branch renders. */
+  const block = codeBlock(graphLinesOf(layers).join("\n"))
+  // A fold around two lines is noise: only a block that would push the board off the first phone screen
+  // is hidden behind one (see `graphNeedsFold`).
+  children.push(section(copy.graphHeading, v2 ? (graphNeedsFold(layers) ? [fold(copy.graphHeading, [block])] : [block]) : [steps(graphStepsOf(layers))]))
   // THE ROSTER MOVED HERE (repair T18): three tabs cannot hold separate Board/Members/Detail/Watch
   // surfaces, and the roster belongs beside the board it staffs.
   children.push(section(copy.membersCaption, snapshot.members.length === 0 ? [empty(copy.emptyMembers)] : [list(snapshot.members.map(memberLine))]))

@@ -32,6 +32,28 @@ export const GRAPH_MAX_LINES = 20
 /** How many layers the v1 `steps` fallback may carry (the component's own limit is 12). */
 export const GRAPH_MAX_STEPS = 12
 
+/** Above this many tasks the graph is folded away; a tiny board shows it directly. */
+export const GRAPH_FOLD_MIN_TASKS = 6
+
+/** Above this many layers the graph is folded away, because the block is taller than the fold saves. */
+export const GRAPH_FOLD_MIN_LAYERS = 3
+
+/**
+ * Whether the graph is worth folding away.
+ *
+ * A FOLD AROUND TWO LINES IS NOISE: it costs a tap to reveal what was already readable, and it hides the
+ * one thing a small team opens the tab for. The fold appears only when the block would push the board off
+ * the phone's first screen — more than {@link GRAPH_FOLD_MIN_TASKS} rows or more than
+ * {@link GRAPH_FOLD_MIN_LAYERS} layers.
+ * @param layers - the layout {@link layerGraphOf} produced.
+ * @returns true when the caller should wrap the block in a `collapsible`.
+ */
+export function graphNeedsFold(layers: readonly GraphLayer[]): boolean {
+  /** How many task lines the graph prints. */
+  const tasks = layers.reduce((total, layer) => total + layer.tasks.length, 0)
+  return tasks > GRAPH_FOLD_MIN_TASKS || layers.length > GRAPH_FOLD_MIN_LAYERS
+}
+
 /**
  * The on-board blockers of one task: ids that name a row of this board.
  * @param task - the task whose blockers are resolved.

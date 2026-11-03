@@ -75,6 +75,12 @@ export interface DshGoCopy {
   boardCaption: string
   /** The section heading of the layered dependency graph. */
   graphHeading: string
+  /** The per-member work chart: heading, series name and caption. */
+  memberChartHeading: string
+  /** The chart's series name. */
+  memberChartSeries: string
+  /** The chart's caption, one line. */
+  memberChartCaption: string
   /** The members tab's hero caption and empty copy. */
   membersCaption: string
   /** Empty copy: the team raised no member. */
@@ -167,6 +173,9 @@ const EN: DshGoCopy = {
   reflection: "Reflection",
   boardCaption: "The active team's board",
   graphHeading: "Dependency graph",
+  memberChartHeading: "Work per member",
+  memberChartSeries: "Tasks",
+  memberChartCaption: "Board rows owned, by member",
   membersCaption: "Who is on this team",
   emptyMembers: ["No member raised", "Approving a staged plan raises its members; they are listed here."],
   detailCaption: "The selected row",
@@ -228,6 +237,9 @@ const ZH: DshGoCopy = {
   reflection: "反思",
   boardCaption: "当前团队的看板",
   graphHeading: "依赖关系图",
+  memberChartHeading: "各成员工作量",
+  memberChartSeries: "任务",
+  memberChartCaption: "按成员统计的负责任务数",
   membersCaption: "团队里的成员",
   emptyMembers: ["还没有成员", "审批一份计划会拉起它的成员，名单出现在这里。"],
   detailCaption: "选中的任务",
