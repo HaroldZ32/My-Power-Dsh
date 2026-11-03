@@ -27,8 +27,8 @@
 import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
-import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards"
+import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
   acknowledge,
   inboxOf,

@@ -971,7 +971,7 @@ function createDshAdapter(ctx, config = {}) {
     if (typeof target !== "object" || target === null)
       return;
     const value = target[member];
-    return typeof value === "function" ? value : undefined;
+    return typeof value === "function" ? value.bind(target) : undefined;
   }
   function capsPropertyOf(bridge) {
     if (typeof bridge !== "object" || bridge === null)
@@ -2614,7 +2614,7 @@ function memberRow(row) {
 }
 function relatedRow(row) {
   const related = isRecord3(row) ? row : {};
-  return [cell(related.id ?? related, 12), cell(related.subject, 48)];
+  return [cell(isRecord3(row) ? related.id : row, 12), cell(related.subject, 48)];
 }
 function agentTeamsPlanCard(args, value) {
   const call = isRecord3(args) ? args : {};

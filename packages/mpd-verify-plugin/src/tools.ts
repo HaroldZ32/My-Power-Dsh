@@ -16,7 +16,7 @@
 // the wrong thing. Only a genuinely broken precondition (no team, no task) throws.
 import type { DshAdapter, DshToolDef, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { textBlock } from "../../mpd-dsh-adapter-plugin/src/index"
-import { VERIFY_EVIDENCE_CARD, VERIFY_RECORD_CARD } from "./dshgo-cards"
+import { VERIFY_EVIDENCE_CARD, VERIFY_RECORD_CARD } from "./dshgo-cards.ts"
 import { DEFAULT_CONTRACT_PATH, loopContractPath, normalizeContractPath, resolvePositiveInt, sessionKeyOf } from "./law.ts"
 import {
   appendEscape, ensureDir, evidenceDir, hashDoc, loopsDir, mintId, readEvidence, readJson, readLoops, readRecords,

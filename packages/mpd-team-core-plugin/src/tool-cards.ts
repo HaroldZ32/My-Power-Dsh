@@ -81,7 +81,9 @@ function memberRow(row: unknown): readonly string[] {
 function relatedRow(row: unknown): readonly string[] {
   /** The related row, read as a record for the same reason as {@link taskRow}. */
   const related = isRecord(row) ? row : {}
-  return [cell(related.id ?? related, 12), cell(related.subject, 48)]
+  // A `depend` answer carries `added` as bare blocker-id STRINGS, so a non-record row is an id, not an
+  // empty object (the old `?? related` fallback rendered every added edge as "—").
+  return [cell(isRecord(row) ? related.id : row, 12), cell(related.subject, 48)]
 }
 
 /**

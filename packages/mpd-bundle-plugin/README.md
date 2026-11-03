@@ -254,7 +254,8 @@ node scripts/pack-mpd.ts           # restage the bundle
 - `src/dshgo-panel.ts` — the workbench panel's live half: the read model, the deferred tap actions and
   the registration (`panel('mpd', …)`).
 - `src/dshgo-team-panel.ts` — the team panel's live half (`panel('mpd-team', …)`): the board/member/detail
-  readers, the per-scope selection store and the settle/hold actions.
+  readers, the per-scope selection store and the `select` / `back` / `refresh` actions (no mutation — an
+  anonymous tap cannot own a board row or name the session's workspace root).
 - `src/dshgo-views.ts` — the PURE view builders for both panels (kit builders only; no services, no I/O).
 - `src/dshgo-copy.ts` — the panel copy in English and 简体中文, selected from `caps.locale`.
 - `src/dshgo-surfaces.ts` — the composer strip and the three menu handlers.

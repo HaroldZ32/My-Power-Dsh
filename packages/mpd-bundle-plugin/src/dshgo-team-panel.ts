@@ -14,7 +14,7 @@
 // runtime (the SAME tools a person would call), so their own refusal sentence reaches the toast verbatim
 // instead of being guessed at here.
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
-import type { DshGoCaps, DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
+import type { DshGoCaps, DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { DSHGO_POLL_MS, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices } from "./dshgo-panel"
 import { buildTeamView, type TeamPanelMember, type TeamPanelSnapshot, type TeamPanelTask, type TeamWatchdogSnapshot } from "./dshgo-views"
 
@@ -221,8 +221,14 @@ async function readWatchdog(services: PanelServices, tools: ToolFace | undefined
   const registry = probe(() => services.get?.("mpdWatchdog", false), undefined) as WatchdogFace | undefined
   /** The registry's answer for this team, read structurally. */
   const hold = recordOf(probe(() => registry?.isHeld?.(teamId, workspace), undefined))
-  /** The status value, when the tool runtime answered it. */
-  const status = tools?.executeTool === undefined ? undefined : await probe(() => tools.executeTool?.({ name: STATUS_TOOL, arguments: {} }) as Promise<unknown>, undefined)
+  // THE TOOL RESULT IS AN ENVELOPE: `{ ok?, value?, error? }`. Reading `teams`/`predicate`/`incidents`
+  // off the envelope itself silently produced the "channel" default and no incidents at all.
+  /** The normalized tool result, or undefined when the runtime is absent or the call failed. */
+  const call = tools?.executeTool === undefined
+    ? undefined
+    : recordOf(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => undefined))
+  /** The status value itself, ignored when the runtime reported a failure. */
+  const status = call?.ok === false ? undefined : call?.value
   /** The status value as a record. */
   const record = recordOf(status)
   /** The status row for THIS team, when the store knows it. */
@@ -354,7 +360,10 @@ export function registerDshGoTeamPanel(options: TeamPanelOptions): { registered:
     return { team: team.team, counts: team.counts, members: team.members, tasks: team.tasks }
   }
   /** The board `signature` a scope currently shows: ids and statuses, never the detail text. */
-  const signatureOf = (snapshot: TeamPushModel): string => (snapshot.team === null ? "" : snapshot.team.id + "|" + String(snapshot.counts.done) + "/" + String(snapshot.counts.total))
+  // THE BOARD AND THE ROSTER ARE LITERAL VIEW CONTENT, so the signature has to carry them: a row moving
+  // `pending -> in_progress`, a subject changing or a member joining must rebuild the tree, and a
+  // done/total pair cannot see any of that.
+  const signatureOf = (snapshot: TeamPushModel): string => (snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|"))
   /** Push one snapshot when it differs from the last emitted one, and refresh the view on a board change. */
   const publishInto = (key: string, snapshot: TeamPushModel, send: ((value: TeamPushModel) => void) | undefined, seed: boolean): void => {
     /** The snapshot's serialized form, which is what "unchanged" is measured on. */

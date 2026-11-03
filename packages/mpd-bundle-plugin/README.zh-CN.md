@@ -92,7 +92,7 @@ locale 命名空间 `mpdWorkbench` —— 会话外壳把它渲染成 Chat/Traje
 - **工作台面板显示什么。** 四个 Tab——总览（hero 计数、完成度进度条、第一条告警、就绪行与动作）、问题（只显示**第一条**
   停放问题、它的选项与自定义回答表单）、工作伙伴（库，只读）、记忆（最近 ≤ 10 条与反思计数，按其存储的既有布局读取）。
 - **团队面板显示什么。** 四个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它）、成员
-  （首字母 badge + 名称 + 模式 + handoff 文字）、详情（负责人、状态、类型、依赖、结论与结算按钮）、看门狗（生效中的判据、
+  （首字母 badge + 名称 + 模式 + handoff 文字）、详情（负责人、状态、类型、依赖与结论）、看门狗（生效中的判据、
   保活暂停与最近 ≤ 5 条事件；经 `session-watchdog-status` 读取，缺失时回退到 `mpdWatchdog` 的持有登记）。
 - **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的模型变化时发射，并返回清除定时器
   的 cancel 函数。工作台模型是 `{ team, plan, question, readyTasks, counts, alert, workmates, memory }`——id、名称、
@@ -130,7 +130,7 @@ node scripts/pack-mpd.ts           # restage the bundle
 - `src/index.ts`——no-op main 插件。
 - `src/dshgo-panel.ts`——工作台面板的宿主半侧：读取模型、延后式的点击动作与注册（`panel('mpd', …)`）。
 - `src/dshgo-team-panel.ts`——团队面板的宿主半侧（`panel('mpd-team', …)`）：看板/成员/详情读取器、按 scope 保存的选中
-  状态与结算/暂停动作。
+  状态与 `select` / `back` / `refresh` 动作（不改数据——匿名点击既无法拥有看板行，也无法指认会话的工作区根）。
 - `src/dshgo-views.ts`——两个面板的**纯**视图构建器（只用 kit builder；无服务、无 I/O）。
 - `src/dshgo-copy.ts`——面板文案的英文与简体中文两版，按 `caps.locale` 选择。
 - `src/dshgo-surfaces.ts`——composer strip 与三个菜单 handler。

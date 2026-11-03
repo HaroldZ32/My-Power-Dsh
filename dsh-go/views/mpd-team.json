@@ -21,7 +21,7 @@
         },
         {
           "title": "Detail",
-          "subtitle": "The selected task's owner, dependencies, verdict and its settle buttons."
+          "subtitle": "The selected task's owner, dependencies and verdict."
         },
         {
           "title": "Watchdog",

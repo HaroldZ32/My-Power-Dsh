@@ -1,0 +1,7 @@
+### verify:comments (direct)
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+### verify:gates
+[verify-gates] member workflows: exit=0 PASS - 42ms
+[verify-gates] PASS - 9/9 member gate(s) green

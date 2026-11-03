@@ -34,7 +34,7 @@ import {
   type DshGoCaps,
   type DshGoTone,
   type DshGoView,
-} from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
+} from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { copyFor, type DshGoCopy } from "./dshgo-copy"
 import type { PanelSnapshot } from "./dshgo-panel"
 
@@ -415,7 +415,9 @@ function membersTab(snapshot: TeamPanelSnapshot, copy: DshGoCopy): DshGoView[] {
     ),
   )
   return [
-    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: bind("members.length") }], 1)]),
+    // Literal, like every other rebuilt-on-refresh tile: an array `length` is not a binding path the
+    // bridge resolver walks, so a bound one would render as an em dash.
+    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: snapshot.members.length }], 1)]),
     section(copy.membersCaption, rows.length === 0 ? [empty(copy.emptyMembers)] : rows),
   ]
 }

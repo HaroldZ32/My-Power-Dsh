@@ -17,7 +17,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { createHash } from "node:crypto"
 import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, HomeGuardRefusal, assertHomeMutationSandboxed, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { WORKMATE_LIST_CARD, WORKMATE_MATCH_CARD } from "./dshgo-cards"
+import { WORKMATE_LIST_CARD, WORKMATE_MATCH_CARD } from "./dshgo-cards.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"

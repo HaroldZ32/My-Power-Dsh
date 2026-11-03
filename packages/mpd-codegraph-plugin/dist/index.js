@@ -978,7 +978,7 @@ function createDshAdapter(ctx, config = {}) {
     if (typeof target !== "object" || target === null)
       return;
     const value = target[member];
-    return typeof value === "function" ? value : undefined;
+    return typeof value === "function" ? value.bind(target) : undefined;
   }
   function capsPropertyOf(bridge) {
     if (typeof bridge !== "object" || bridge === null)

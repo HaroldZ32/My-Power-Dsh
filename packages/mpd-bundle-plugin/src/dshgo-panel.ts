@@ -45,7 +45,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { basename, join } from "node:path"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
-import { type DshGoCaps, type DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
+import { type DshGoCaps, type DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { buildMpdView } from "./dshgo-views"
 
 /** The panel id the bundle's `dshGo` manifest declares; the live registration MUST use the same id. */
@@ -312,7 +312,7 @@ export interface PanelQuestionsFace {
   /** Every parked question a client may answer, newest last; a session filter narrows it. */
   list?: (input: { sessionId?: string }) => unknown
   /** Settle one parked question by id and by option LABEL; false when it could not. */
-  answer?: (input: { id: string; answers: Array<{ id: string; selected: string[] }> }) => unknown
+  answer?: (input: { id: string; answers: Array<{ id: string; selected: string[]; custom?: string }> }) => unknown
 }
 
 /** The one service-registry member this module reads: a tolerant, per-call probe. */
@@ -805,10 +805,18 @@ export function readMemoryStore(workspace: string, now: number, scope?: PanelMem
   /** The agent's entry directory; absent until the memory row's first write. */
   const memoryDir = join(agentRoot, "repo", "memory")
   if (!existsSync(memoryDir)) return null
-  /** Every entry of THIS agent, newest first once sorted below. */
-  const found: Array<{ entry: PanelMemoryEntry; at: number }> = []
-  for (const file of probe(() => readdirSync(memoryDir), [] as string[])) {
-    if (!file.endsWith(".md")) continue
+  // STAT FIRST, READ ONLY THE WINNERS. The directory is unbounded while this read runs at 0.5 Hz, so
+  // parsing every entry to sort it would cost a full read of the store on every tick; the tenth-newest
+  // instant is all the tab needs.
+  /** Every entry file with its modification instant, newest first, capped at the rows the tab draws. */
+  const newest = probe(() => readdirSync(memoryDir), [] as string[])
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => ({ file, at: probe(() => statSync(join(memoryDir, file)).mtimeMs, 0) }))
+    .sort((left, right) => right.at - left.at)
+    .slice(0, DSHGO_MAX_MEMORY_ROWS)
+  /** The rows of those files, in the same newest-first order. */
+  const found: PanelMemoryEntry[] = []
+  for (const { file, at } of newest) {
     /** The entry's absolute path. */
     const path = join(memoryDir, file)
     /** The entry's text, or undefined when it cannot be read. */
@@ -817,17 +825,14 @@ export function readMemoryStore(workspace: string, now: number, scope?: PanelMem
     /** The frontmatter record carrying `kind` and `description`. */
     const meta = frontmatterOf(text)
     if (meta === undefined) continue
-    /** The entry's modification instant. */
-    const at = probe(() => statSync(path).mtimeMs, 0)
-    found.push({ entry: { kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) }, at })
+    found.push({ kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) })
   }
-  found.sort((left, right) => right.at - left.at)
   /** This agent's reflection state, when it has one. */
   const state = probe(() => JSON.parse(readFileSync(join(agentRoot, "runtime", "reflection.json"), "utf8")) as unknown, undefined)
   /** The state read as a record, so the counters are typed reads. */
   const record = recordOf(state) ?? {}
   return {
-    entries: found.slice(0, DSHGO_MAX_MEMORY_ROWS).map((one) => one.entry),
+    entries: found,
     // The LEGACY names are read and never written (the memory row's own compatibility bound: real
     // `reflection.json` files predating the current vocabulary carry them).
     reflections: typeof record.reflectionsCompleted === "number" ? record.reflectionsCompleted : typeof record.reflected_completed_steps === "number" ? record.reflected_completed_steps : 0,
@@ -835,6 +840,32 @@ export function readMemoryStore(workspace: string, now: number, scope?: PanelMem
   }
 }
 
+
+/**
+ * The STRUCTURAL signature of one snapshot: every part of the view the data push cannot update.
+ *
+ * `buildMpdView` writes these as LITERALS, so a change among them is invisible until the app re-fetches
+ * the view: the parked question and the option labels its buttons show, the ready-task id set, whether a
+ * plan/ready action exists, the alert, the workmate list and the memory list. Bound values are
+ * deliberately absent — the emit already carries them.
+ * @param snapshot - the snapshot the signature describes.
+ * @returns one string that changes exactly when the view's structure must be rebuilt.
+ */
+export function refreshKeyOf(snapshot: PanelSnapshot): string {
+  /** The parked question's identity: its id and the labels the buttons render. */
+  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|")
+  /** The ready rows, by id: the list is literal, so a new row means a new tree. */
+  const ready = snapshot.readyTasks.map((task) => task.id).join(",")
+  /** Whether the approve button exists (a staged plan) and whether dispatch does (a ready row). */
+  const plan = snapshot.plan?.ready === true ? "plan" : ""
+  /** The alert callout, which is literal text. */
+  const alert = snapshot.alert ?? ""
+  /** The workmate rows, by name: a rename or a new instance rebuilds the list. */
+  const workmates = snapshot.workmates.map((mate) => mate.name).join(",")
+  /** The memory rows and the reflection counters, which the tab renders as literals. */
+  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps)
+  return [question, ready, plan, alert, workmates, memory].join("#")
+}
 
 /**
  * Read one panel's whole state: the snapshot the data push emits AND the binding a view captures.
@@ -960,7 +991,7 @@ function attemptOf(run: () => unknown): Promise<{ ok: true; value: unknown } | {
  * @param label - the waiting-state word, at most 16 characters as the app requires.
  * @returns the effect, or the `{ pending, result }` shape.
  */
-async function orDeferred(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
+export async function orDeferred(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
   /** The deadline's own resolution, cleared on the fast path. */
   let timer: ReturnType<typeof setTimeout> | undefined
   /** The deadline promise; it never rejects and carries only the marker. */
@@ -1126,8 +1157,12 @@ export function createPanelActions(
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
       return { toast: TOAST_QUESTION_GONE }
     }
+    // TYPED TEXT TRAVELS IN `custom`, NEVER AS A LABEL (measured: the relay validates `selected` against
+    // the labels it stored and would refuse free text as an unknown option). An offered option keeps
+    // `selected`; the custom path sends an empty `selected` plus `custom`.
+    const answer = custom === "" ? { id: itemId, selected: [label] } : { id: itemId, selected: [], custom: label }
     /** The settle call's effect, once it settles at all. */
-    const running = attemptOf(() => face.answer?.({ id: captured.parkedId, answers: [{ id: itemId, selected: [label] }] }))
+    const running = attemptOf(() => face.answer?.({ id: captured.parkedId, answers: [answer] }))
       .then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true))
     return orDeferred(running, PENDING_ANSWER)
   }
@@ -1169,8 +1204,8 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
   const viewBindings = new Map<string, PanelViewBinding>()
   /** The serialized snapshot last emitted per scope, so an unchanged tick emits nothing. */
   const emitted = new Map<string, string>()
-  /** The pending-question id set last seen per scope, so only a SET change refreshes the view. */
-  const questionKeys = new Map<string, string>()
+  /** The STRUCTURAL signature last seen per scope, so only a structural change refreshes the view. */
+  const refreshKeys = new Map<string, string>()
   /** Every interval this registration owns, so the release can clear all of them. */
   const timers = new Set<ReturnType<typeof setInterval>>()
   /** Announce one state exactly once, so a repeated attempt cannot spam the log. */
@@ -1210,19 +1245,22 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
     return buildPanelView(state.snapshot, caps)
   }
   /**
-   * Ask the app to re-fetch the view when — and only when — the pending-question ID SET changed.
+   * Ask the app to re-fetch the view when — and only when — its STRUCTURAL signature changed.
    *
-   * A question's TEXT or an option's label changing under the same parked id is a data change: the
-   * emit carries it and the bound nodes re-render, so no re-fetch is spent on it. The subscription's
-   * own seed is not a change either: the app has just fetched the view before subscribing.
+   * The signature covers everything `buildMpdView` writes as a LITERAL, because the data push cannot
+   * update a literal: the parked question (its id and the option labels its buttons show), the ready
+   * rows, whether the plan/ready buttons exist, the alert, the workmate list and the memory list. A
+   * value that is BOUND (the counters, the completion bar, the question's own text) travels on the emit
+   * instead, so no re-fetch is spent on it. The subscription's own seed is not a change: the app has
+   * just fetched the view before subscribing.
    */
-  const announceQuestionSet = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
-    /** The pending-question identity this snapshot shows: its id AND the labels it offers. */
-    const questionKey = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|")
-    if (questionKeys.get(key) === questionKey) return
+  const announceRefreshState = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
+    /** The structural signature this snapshot shows. */
+    const signature = refreshKeyOf(snapshot)
+    if (refreshKeys.get(key) === signature) return
     /** Whether this is a real change rather than the subscription's first reading. */
-    const changed = !seed && questionKeys.has(key)
-    questionKeys.set(key, questionKey)
+    const changed = !seed && refreshKeys.has(key)
+    refreshKeys.set(key, signature)
     if (changed) probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
   }
   /** Push one snapshot when it differs from the last one emitted for its scope, then track the question set. */
@@ -1240,7 +1278,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       }
       probe(() => send?.(snapshot), undefined)
     }
-    announceQuestionSet(key, snapshot, seed)
+    announceRefreshState(key, snapshot, seed)
   }
   /** The `data` function: seed, poll, emit on change, refresh on a question-set change, cancel cleanly. */
   const data = (scope: unknown, emit: unknown): (() => void) => {
@@ -1258,7 +1296,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       clearInterval(timer)
       timers.delete(timer)
       emitted.delete(key)
-      questionKeys.delete(key)
+      refreshKeys.delete(key)
       published.delete(key)
     }
   }
@@ -1303,7 +1341,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       published.clear()
       viewBindings.clear()
       emitted.clear()
-      questionKeys.clear()
+      refreshKeys.clear()
       probe(() => offBound?.(), undefined)
       offBound = undefined
     },

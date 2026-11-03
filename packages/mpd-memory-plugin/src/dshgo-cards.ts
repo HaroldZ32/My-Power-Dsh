@@ -9,7 +9,7 @@
 // newer), no `$` data bindings (a card has no data model) and no `actions` (a card cannot call back).
 // `toolCard()` enforces those plus the 8 KiB / 40 nodes / depth 6 budget, degrading to `{}` on any
 // failure so the app falls back to its generic tool row.
-import { callout, keyValue, metric, row, stack, table, text, toolCard, type DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
+import { callout, keyValue, metric, row, stack, table, text, toolCard, type DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 
 /** Whether a value is a plain JSON object (not null, not an array). */
 function isRecord(value: unknown): value is Record<string, unknown> {

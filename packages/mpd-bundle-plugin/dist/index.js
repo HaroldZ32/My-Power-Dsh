@@ -1019,7 +1019,7 @@ function createDshAdapter(ctx, config = {}) {
     if (typeof target !== "object" || target === null)
       return;
     const value = target[member];
-    return typeof value === "function" ? value : undefined;
+    return typeof value === "function" ? value.bind(target) : undefined;
   }
   function capsPropertyOf(bridge) {
     if (typeof bridge !== "object" || bridge === null)
@@ -3347,7 +3347,7 @@ function membersTab(snapshot, copy) {
     badge({ text: member.handoff === "" ? member.mode : member.handoff, tone: toneOf(member.handoff === "" ? member.mode : member.handoff) })
   ], { style: { gap: "S", align: "center" } }));
   return [
-    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: bind("members.length") }], 1)]),
+    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: snapshot.members.length }], 1)]),
     section(copy.membersCaption, rows.length === 0 ? [empty(copy.emptyMembers)] : rows)
   ];
 }
@@ -3621,10 +3621,9 @@ function readMemoryStore(workspace, now, scope) {
   const memoryDir = join3(agentRoot, "repo", "memory");
   if (!existsSync2(memoryDir))
     return null;
+  const newest = probe(() => readdirSync2(memoryDir), []).filter((file) => file.endsWith(".md")).map((file) => ({ file, at: probe(() => statSync2(join3(memoryDir, file)).mtimeMs, 0) })).sort((left, right) => right.at - left.at).slice(0, DSHGO_MAX_MEMORY_ROWS);
   const found = [];
-  for (const file of probe(() => readdirSync2(memoryDir), [])) {
-    if (!file.endsWith(".md"))
-      continue;
+  for (const { file, at } of newest) {
     const path = join3(memoryDir, file);
     const text2 = probe(() => readFileSync2(path, "utf8"), undefined);
     if (text2 === undefined)
@@ -3632,17 +3631,24 @@ function readMemoryStore(workspace, now, scope) {
     const meta = frontmatterOf(text2);
     if (meta === undefined)
       continue;
-    const at = probe(() => statSync2(path).mtimeMs, 0);
-    found.push({ entry: { kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) }, at });
+    found.push({ kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) });
   }
-  found.sort((left, right) => right.at - left.at);
   const state = probe(() => JSON.parse(readFileSync2(join3(agentRoot, "runtime", "reflection.json"), "utf8")), undefined);
   const record = recordOf(state) ?? {};
   return {
-    entries: found.slice(0, DSHGO_MAX_MEMORY_ROWS).map((one) => one.entry),
+    entries: found,
     reflections: typeof record.reflectionsCompleted === "number" ? record.reflectionsCompleted : typeof record.reflected_completed_steps === "number" ? record.reflected_completed_steps : 0,
     steps: typeof record.stepsSinceReflection === "number" ? record.stepsSinceReflection : typeof record.steps_since_last_successful_reflection === "number" ? record.steps_since_last_successful_reflection : 0
   };
+}
+function refreshKeyOf(snapshot) {
+  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|");
+  const ready = snapshot.readyTasks.map((task) => task.id).join(",");
+  const plan = snapshot.plan?.ready === true ? "plan" : "";
+  const alert = snapshot.alert ?? "";
+  const workmates = snapshot.workmates.map((mate) => mate.name).join(",");
+  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps);
+  return [question, ready, plan, alert, workmates, memory].join("#");
 }
 function readPanelState(read, options = {}) {
   const sessionId = read.sessionId;
@@ -3800,7 +3806,8 @@ function createPanelActions(options, bindingOf = () => {
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
       return { toast: TOAST_QUESTION_GONE };
     }
-    const running = attemptOf(() => face.answer?.({ id: captured2.parkedId, answers: [{ id: itemId, selected: [label] }] })).then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true));
+    const answer = custom === "" ? { id: itemId, selected: [label] } : { id: itemId, selected: [], custom: label };
+    const running = attemptOf(() => face.answer?.({ id: captured2.parkedId, answers: [answer] })).then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true));
     return orDeferred(running, PENDING_ANSWER);
   };
   const answerWith = async (scope, event) => answerFor(scope, optionIndexOf(actionIdOf(event)), "");
@@ -3821,7 +3828,7 @@ function registerDshGoPanel(options) {
   let offBound;
   const viewBindings = new Map;
   const emitted = new Map;
-  const questionKeys = new Map;
+  const refreshKeys = new Map;
   const timers = new Set;
   const announce = (state) => {
     if (announced === state)
@@ -3844,12 +3851,12 @@ function registerDshGoPanel(options) {
     viewBindings.set(scopeKeyOf(scope), state.binding);
     return buildPanelView(state.snapshot, caps);
   };
-  const announceQuestionSet = (key, snapshot, seed) => {
-    const questionKey = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|");
-    if (questionKeys.get(key) === questionKey)
+  const announceRefreshState = (key, snapshot, seed) => {
+    const signature = refreshKeyOf(snapshot);
+    if (refreshKeys.get(key) === signature)
       return;
-    const changed = !seed && questionKeys.has(key);
-    questionKeys.set(key, questionKey);
+    const changed = !seed && refreshKeys.has(key);
+    refreshKeys.set(key, signature);
     if (changed)
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined);
   };
@@ -3864,7 +3871,7 @@ function registerDshGoPanel(options) {
       }
       probe(() => send?.(snapshot), undefined);
     }
-    announceQuestionSet(key, snapshot, seed);
+    announceRefreshState(key, snapshot, seed);
   };
   const data = (scope, emit) => {
     const send = typeof emit === "function" ? emit : undefined;
@@ -3878,7 +3885,7 @@ function registerDshGoPanel(options) {
       clearInterval(timer);
       timers.delete(timer);
       emitted.delete(key);
-      questionKeys.delete(key);
+      refreshKeys.delete(key);
       published.delete(key);
     };
   };
@@ -3921,7 +3928,7 @@ function registerDshGoPanel(options) {
       published.clear();
       viewBindings.clear();
       emitted.clear();
-      questionKeys.clear();
+      refreshKeys.clear();
       probe(() => offBound?.(), undefined);
       offBound = undefined;
     }
@@ -4009,7 +4016,10 @@ function readTeamSnapshot(services, workspace, sessionId) {
 async function readWatchdog(services, tools, teamId, workspace) {
   const registry = probe2(() => services.get?.("mpdWatchdog", false), undefined);
   const hold = recordOf2(probe2(() => registry?.isHeld?.(teamId, workspace), undefined));
-  const status = tools?.executeTool === undefined ? undefined : await probe2(() => tools.executeTool?.({ name: STATUS_TOOL, arguments: {} }), undefined);
+  const call = tools?.executeTool === undefined ? undefined : recordOf2(await Promise.resolve().then(() => tools?.executeTool?.({ name: STATUS_TOOL, arguments: {} })).then((value) => value, () => {
+    return;
+  }));
+  const status = call?.ok === false ? undefined : call?.value;
   const record = recordOf2(status);
   const row2 = record === undefined ? undefined : arrayOf2(record.teams).map((entry) => recordOf2(entry)).find((entry) => entry !== undefined && (stringOf2(entry.teamId) === teamId || entry.teamId === undefined));
   const predicate = clip2(stringOf2(recordOf2(record?.predicate)?.source) || "channel", 20);
@@ -4079,7 +4089,7 @@ function registerDshGoTeamPanel(options) {
     const team = readTeamSnapshot(options.ctx, sessionId === "" ? undefined : workspaceOf(sessionId), sessionId);
     return { team: team.team, counts: team.counts, members: team.members, tasks: team.tasks };
   };
-  const signatureOf = (snapshot) => snapshot.team === null ? "" : snapshot.team.id + "|" + String(snapshot.counts.done) + "/" + String(snapshot.counts.total);
+  const signatureOf = (snapshot) => snapshot.team === null ? "" : [snapshot.team.id, snapshot.team.status, snapshot.team.phase, snapshot.tasks.map((task) => task.id + ":" + task.status).join(","), snapshot.members.map((member) => member.name + "/" + member.mode).join(",")].join("|");
   const publishInto = (key, snapshot, send, seed) => {
     const serialized = JSON.stringify(snapshot);
     if (seed || emitted.get(key) !== serialized) {
@@ -4226,7 +4236,7 @@ function createSurfaceActions(options) {
     if (face?.dispatch === undefined)
       return { toast: "Unavailable here" };
     const running = Promise.resolve().then(() => face.dispatch?.({ sessionId })).then((value) => recordOf3(value)?.ok === false ? { toast: clip3(stringOf3(recordOf3(value)?.error) || "The action was refused", MAX_TOAST_CHARS2) } : { toast: "Dispatched" }, (error) => ({ toast: clip3(error instanceof Error ? error.message : "The action was refused", MAX_TOAST_CHARS2) }));
-    return deferredOr(running, "Dispatching…");
+    return orDeferred(running, "Dispatching…");
   };
   const saveMemory = async (_scope, event) => {
     const reply = replyTextOf(event);
@@ -4243,22 +4253,6 @@ function createSurfaceActions(options) {
     return { copy: reply.slice(0, MAX_COPY_CHARS) };
   };
   return { [DSHGO_DISPATCH_ACTION]: dispatch, [DSHGO_SAVE_MEMORY_ACTION]: saveMemory, [DSHGO_COPY_REPLY_ACTION]: copyReply };
-}
-async function deferredOr(running, label) {
-  let settle;
-  const marker = Symbol("mpd-surface-timeout");
-  const deadline = new Promise((resolve3) => {
-    settle = resolve3;
-  });
-  const timer = setTimeout(() => settle?.(marker), 2000);
-  try {
-    const raced = await Promise.race([running, deadline]);
-    if (raced !== marker)
-      return raced;
-    return { pending: { label, timeoutMs: 60000 }, result: () => running };
-  } finally {
-    clearTimeout(timer);
-  }
 }
 function registerDshGoSurfaces(options) {
   const log = options.log ?? ((line) => {

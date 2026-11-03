@@ -9,7 +9,7 @@
 // everything else as English. That is not a translation system — the two panels ship exactly two
 // languages, matching the manifest's `{ en, zh }` titles — and an unknown tag therefore falls back to
 // the app's own `[English]` spelling instead of inventing one.
-import type { DshGoCaps } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
+import type { DshGoCaps } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 
 /** Every sentence a panel says, in one language; the builders read these fields and nothing else. */
 export interface DshGoCopy {

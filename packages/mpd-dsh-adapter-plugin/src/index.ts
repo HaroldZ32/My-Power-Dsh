@@ -4319,7 +4319,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     const value = (target as Record<string, unknown>)[member]
     // `typeof` narrows to `Function`, which carries no call signature; the cast restores the
     // "call it with the bridge's own arguments" shape without changing the value.
-    return typeof value === "function" ? (value as (...args: unknown[]) => unknown) : undefined
+    // BOUND TO ITS SERVICE: every caller invokes the member DETACHED (`member(args)`), so a bridge that
+    // implements it as a class method reading `this` would throw on every call — and the degrade path
+    // would turn that into `false`/`null` plus a warning, i.e. a silently dead surface.
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : undefined
   }
 
   /**

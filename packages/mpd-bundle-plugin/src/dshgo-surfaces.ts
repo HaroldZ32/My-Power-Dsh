@@ -12,8 +12,8 @@
 // memory row or a clipboard effect answers a toast — the protocol's own failure shape — and never throws
 // into the bridge.
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
-import type { DshGoCaps, DshGoStripValue } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
-import { DSHGO_POLL_MS, readPanelSnapshot, sessionIdOfScope, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
+import type { DshGoCaps, DshGoStripValue } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { DSHGO_POLL_MS, orDeferred, readPanelSnapshot, sessionIdOfScope, type PanelBridge, type PanelEffect, type PanelReply, type PanelServices, type PanelTeamActionsFace } from "./dshgo-panel"
 
 /** The composer.action id that runs one dispatch pass (declared in the manifest). */
 export const DSHGO_DISPATCH_ACTION = "mpd-dispatch"
@@ -193,7 +193,7 @@ export function createSurfaceActions(options: SurfaceOptions): Record<string, (s
       .then((value): PanelEffect => (recordOf(value)?.ok === false ? { toast: clip(stringOf(recordOf(value)?.error) || "The action was refused", MAX_TOAST_CHARS) } : { toast: "Dispatched" }), (error: unknown) => ({ toast: clip(error instanceof Error ? error.message : "The action was refused", MAX_TOAST_CHARS) }))
     // The app runs an effect only inside its three-second tap window; a longer pass is acknowledged
     // first and its result delivered by the deferred shape.
-    return deferredOr(running, "Dispatching…")
+    return orDeferred(running, "Dispatching…")
   }
   /** The save handler: ONE memory entry whose description is the reply's first line. */
   const saveMemory = async (_scope: unknown, event: unknown): Promise<PanelReply> => {
@@ -214,33 +214,6 @@ export function createSurfaceActions(options: SurfaceOptions): Record<string, (s
     return { copy: reply.slice(0, MAX_COPY_CHARS) }
   }
   return { [DSHGO_DISPATCH_ACTION]: dispatch, [DSHGO_SAVE_MEMORY_ACTION]: saveMemory, [DSHGO_COPY_REPLY_ACTION]: copyReply }
-}
-
-/**
- * Wait for an effect, or acknowledge with the app's deferred shape when it outlives the tap window.
- * @param running - the effect, already started.
- * @param label - the waiting-state word, at most 16 characters.
- * @returns the effect, or `{ pending, result }`.
- */
-async function deferredOr(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
-  /** The deadline's resolution function, captured so the timer can be replaced by the race. */
-  let settle: ((value: PanelEffect | symbol) => void) | undefined
-  /** The marker a timeout resolves with. */
-  const marker = Symbol("mpd-surface-timeout")
-  /** The deadline promise. */
-  const deadline = new Promise<PanelEffect | symbol>((resolve) => {
-    settle = resolve
-  })
-  /** The deadline timer, cleared on the fast path. */
-  const timer = setTimeout(() => settle?.(marker), 2000)
-  try {
-    /** Whichever settles first: the effect or the deadline. */
-    const raced = await Promise.race([running, deadline])
-    if (raced !== marker) return raced as PanelEffect
-    return { pending: { label, timeoutMs: 60000 }, result: (): Promise<PanelEffect> => running }
-  } finally {
-    clearTimeout(timer)
-  }
 }
 
 /**

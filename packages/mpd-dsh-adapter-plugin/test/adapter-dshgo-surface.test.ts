@@ -106,3 +106,40 @@ test("dshGoPresent reports whether the bridge is bound", () => {
   expect(adapterWith({ dshGo: { panel: () => undefined } }).dshGoPresent()).toBe(true)
   expect(adapterWith({}).dshGoPresent()).toBe(false)
 })
+
+test("a class-based bridge keeps its receiver on every seam (repair T10 #11)", () => {
+  /**
+   * A bridge whose members read `this`, which is what a real service object may do.
+   *
+   * The adapter calls `member(args)` DETACHED on `dshGoOn`, and `read()` detached on `dshGoCaps`; an
+   * unbound read throws a TypeError there and the degrade path turns it into `false`/`null`, i.e. a
+   * silently dead composer action, strip and capability read. This arm fails unless the seam binds.
+   */
+  class ClassBridge {
+    /** The sink the registered handlers land in; a detached call cannot reach it. */
+    readonly handlers: Array<{ id: string; handler: unknown }> = []
+    /** The capabilities this bridge reports; a detached call throws on `this`. */
+    readonly capabilities = { app: "1.0.9", locale: "zh-CN" }
+    /** Register one handler through the receiver. */
+    on(id: string, handler: unknown): boolean {
+      this.handlers.push({ id, handler })
+      return true
+    }
+    /** Publish one strip through the receiver. */
+    strip(id: string, dataFn: unknown): boolean {
+      return id !== "" && typeof dataFn === "function"
+    }
+    /** Report the capabilities through the receiver. */
+    caps(): { app: string; locale: string } {
+      return this.capabilities
+    }
+  }
+  /** The bridge under test. */
+  const bridge = new ClassBridge()
+  /** The adapter over it. */
+  const adapter = adapterWith({ dshGo: bridge })
+  expect(adapter.dshGoOn("mpd-dispatch", () => ({ toast: "ok" }))).toBe(true)
+  expect(bridge.handlers.map((entry) => entry.id)).toEqual(["mpd-dispatch"])
+  expect(adapter.dshGoStrip("mpd-status", () => () => {})).toBe(true)
+  expect(adapter.dshGoCaps()).toEqual({ app: "1.0.9", locale: "zh-CN" })
+})

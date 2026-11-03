@@ -117,8 +117,8 @@ interface FakeParked {
 interface FakeAnswerCall {
   /** The parked id the tap answered. */
   id: string
-  /** The batch as submitted, so the item id and the label can both be asserted. */
-  answers: Array<{ id: string; selected: string[] }>
+  /** The batch as submitted, so the item id, the selection and the typed text can all be asserted. */
+  answers: Array<{ id: string; selected: string[]; custom?: string }>
 }
 
 /** Everything a case mutates and asserts on: the doubles' state plus the bridge's own record. */
@@ -911,6 +911,31 @@ describe("refresh follows the question's IDENTITY, not its text", () => {
   })
 })
 
+describe("refresh follows the view's STRUCTURE, including the ready set (repair T10 #6)", () => {
+  test("a task becoming ready refreshes exactly once", () => {
+    clock = installFakeClock()
+    /** A live panel whose board has one ready row. */
+    const live = livePanel((() => {
+      /** The default board. */
+      const state = fakeState()
+      return state
+    })())
+    expect(live.host.refreshes).toHaveLength(0)
+    // T2 loses its blocker (T1 completes), so a NEW row becomes ready: the list is literal in the view,
+    // so only a re-fetch can show it.
+    /** The board this arm mutates; the fake always has one. */
+    const board = live.host.state.team
+    if (board === null) throw new Error("the fake state lost its team")
+    board.tasks = board.tasks.map((task) => (task.id === "T1" ? { ...task, status: "completed" } : task))
+    clock.tick()
+    expect(live.host.refreshes).toHaveLength(1)
+    // A steady tick after that refresh is silent.
+    clock.tick()
+    expect(live.host.refreshes).toHaveLength(1)
+    live.cancel()
+  })
+})
+
 describe("taps answer a toast and never reject", () => {
   test("approve, dispatch and an option answer each succeed against their service", async () => {
     /** A live panel with one question parked. */
@@ -1028,6 +1053,25 @@ describe("taps answer a toast and never reject", () => {
     // A service that answers the OTHER refusal shape (`{ok:false, error}`) gets its own sentence.
     live.host.state.answerOutcome = { ok: false, error: "that option is no longer offered" }
     expect(await actions["answer:0"]?.({ sessionId: "s1" }, { action: "answer:0" })).toEqual({ toast: "that option is no longer offered" })
+    live.cancel()
+  })
+})
+
+describe("a custom answer travels in `custom`, never as an option label (repair T10 #5)", () => {
+  test("the typed words reach the relay's custom field with an empty selection", async () => {
+    /** A live panel with one question parked. */
+    const live = livePanel((() => {
+      /** A state carrying one question with two options. */
+      const state = fakeState()
+      state.parked = [{ id: "q1", sessionId: "s1", createdAt: 1, questions: [{ id: "item-1", question: "Pick one", options: [{ label: "main" }, { label: "dev" }] }] }]
+      return state
+    })())
+    /** The actions map the bridge received. */
+    const actions = actionsOf(live.spec)
+    // The app renders the view first, so the answer tap resolves against its capture.
+    viewOf(live.spec)({ sessionId: "s1" })
+    await actions["answer-custom"]?.({ sessionId: "s1" }, { action: "answer-custom", value: { customAnswer: "ship it" } })
+    expect(live.host.state.answerCalls).toEqual([{ id: "q1", answers: [{ id: "item-1", selected: [], custom: "ship it" }] }])
     live.cancel()
   })
 })
