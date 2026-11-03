@@ -148,6 +148,14 @@ export interface SplitVerdict {
   accepted: boolean
   /** Every graph-rule violation, in task order. */
   findings: GraphFinding[]
+  /**
+   * NON-FATAL advisories: the omissions that freeze a contract nobody can work under.
+   *
+   * Deliberately OUTSIDE {@link SplitVerdict.accepted} (C4/D3): a task that legitimately writes nothing is
+   * not refused, but a `work`/`repair`/`integration` task that declared NO path freezes a contract allowing
+   * none, and the splitter must see that rather than discover it when its writer stops at the first edit.
+   */
+  warnings: GraphFinding[]
   /** Every distinct owner role's window reading. */
   roles: RoleWindowRecord[]
   /** Every task's measured verdict, in submission order. */
@@ -267,6 +275,40 @@ export function scopesOverlap(left: string, right: string): boolean {
   const b = normalize(right)
   if (a === "" || b === "") return a === b
   return a === b || a.startsWith(b + "/") || b.startsWith(a + "/")
+}
+
+/**
+ * The task kinds whose FROZEN CONTRACT must name a writable path, because the kind's whole job is a write.
+ *
+ * `requirement` and `review` are exempt on purpose: a requirements document and a blind review can
+ * legitimately produce no code, so warning about them would train a splitter to ignore the channel.
+ */
+const SCOPE_REQUIRED_KINDS: readonly string[] = ["work", "repair", "integration"]
+
+/**
+ * The NON-FATAL advisories one submission earns: a code task that declared no write scope.
+ *
+ * WHY THIS IS NOT A FINDING (C4/D3): an empty `writeScopes` is not a broken graph — it is a graph whose
+ * frozen contract allows NO path, which a writer only discovers when it stops on its first edit (the worst
+ * case being a `repair` row, whose only job IS an edit). Refusing it would also refuse the legitimate
+ * "this task produces no code" declaration, so the omission is made LOUD instead of impossible.
+ *
+ * @param tasks - the submitted tasks.
+ * @returns one advisory per scope-less code task, in submission order.
+ */
+export function writeScopeWarnings(tasks: readonly SplitTaskInput[]): GraphFinding[] {
+  /** The advisories found. */
+  const warnings: GraphFinding[] = []
+  for (const task of tasks) {
+    if (!SCOPE_REQUIRED_KINDS.includes(task.kind ?? "work")) continue
+    if (task.writeScopes.some((scope) => scope.trim() !== "")) continue
+    warnings.push({
+      taskKey: task.key,
+      code: "write-scopes-empty",
+      detail: "task " + JSON.stringify(task.key) + " (" + (task.kind ?? "work") + ") declares NO write scope, so its frozen contract allows no path and its writer must stop at the first edit — declare `writeScopes` now, or ask the captain for a scope extension BEFORE the first write",
+    })
+  }
+  return warnings
 }
 
 /**
@@ -453,6 +495,8 @@ export function validateGraph(tasks: readonly SplitTaskInput[], roster: readonly
 export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission): Promise<SplitVerdict> {
   /** The graph-rule findings, computed before any measurement so a structurally broken graph is not priced. */
   const findings = validateGraph(submission.tasks, deps.roster)
+  /** The NON-FATAL scope advisories, which never enter the acceptance predicate (C4). */
+  const warnings = writeScopeWarnings(submission.tasks)
   /** One window reading per distinct role (the FIRST spelling is the one resolved). */
   const readings = new Map<string, WindowReading>()
   for (const task of submission.tasks) {
@@ -521,6 +565,7 @@ export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission)
     submittedAt: deps.now.toISOString(),
     accepted,
     findings,
+    warnings,
     roles,
     tasks,
     totals: {
@@ -575,6 +620,9 @@ function readVerdictFile(path: string): SplitRead {
   if (!Array.isArray(verdict.tasks) || typeof verdict.accepted !== "boolean" || typeof verdict.revision !== "number") {
     return { ok: false, path, detail: "the split verdict does not have the shape of a verdict" }
   }
+  // AN OLDER VERDICT CARRIES NO `warnings` CHANNEL (C4 landed after those revisions were frozen). The read
+  // is TOTAL: the field is normalised to an empty list rather than leaking `undefined` into a renderer.
+  if (!Array.isArray(verdict.warnings)) verdict.warnings = []
   return { ok: true, verdict }
 }
 

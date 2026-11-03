@@ -129,6 +129,14 @@ A revision is not a rewrite of the team; it is a delta applied to the live recor
 - **Kept rows are reused, and their contracts are NOT rewritten.** A task that survives the revision
   keeps its board row and the frozen contract its verify loop was opened with: the verifier still
   judges the acceptance criteria that were frozen before the work started.
+- **The activation says what it kept.** When a revision keeps tasks, `cellwork_activate` returns a
+  `notice` — prose in the result, because a captain must not infer any of it from counts: how many kept
+  rows were reused, that their frozen contracts are NOT rewritten (the bytes a verifier may already be
+  reading stay as first frozen), that a scope expansion needs a manual re-freeze plus a new verify loop
+  and belongs in a NEW split revision, and how many ready rows this activation dispatched OWNER-ONLY.
+  The stage-4 exception is stated in the same notice: a kept task whose loop was never recorded is the
+  ONLY case where a kept contract is rebuilt — it gains its verify loop id, and the notice names those
+  keys.
 - **Dropped rows are marked `cancelled`, never deleted.** They stay in the cell record as history, and
   dispatch skips them.
 - **The splitter keeps ONE live row to re-dispatch on.** A requirements update looks for a LIVE splitter
@@ -199,8 +207,8 @@ merely theoretical risk.
 | `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths |
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it: an update bumps the revision and marks the split stale; a section body runs to the next heading of the same or a higher level, so `###` subheadings stay inside their parent |
 | `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
-| `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json` |
-| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised |
+| `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes, by key, and never changes `accepted` |
+| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only) |
 | `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), the repair for a fenced owner |
 | `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every fenced member with the open rows it still owns; every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
@@ -322,15 +330,25 @@ and hands the work to a successor. The sequence is mechanical:
    artifacts, verified facts, open questions, next step), writes `handoff/<member>-<n>.md`, journals
    it and marks the checkpoint `handoff-ready`. The directive tells the agent to end its turn and do
    nothing else.
-4. **Compact**: on `agent/turn-stopping` the plugin schedules a barrier that waits for the agent to be
-   idle (`compactionRetries` bounded retries, `idleBarrierDelayMs` between them) and then calls the
-   agent's own compaction engine with a real `AbortController` signal. The outcome is classified and
-   journaled: a `null` result (no safe useful range), a `busy` agent and an `error` are all recorded,
-   so a retry budget running out is never a silent no-op.
-5. **Promote or reseed**: on a successful compaction the session's mode becomes `subcaptain` and it
-   receives the promotion directive (depth + 1, the remaining scope taken from the handoff, the
-   sub-team protocol). If there is no safe range, or compaction fails, the activation is disposed and
-   a fresh child is started with the handoff text as its prompt plus the same promotion directive.
+4. **Compact**: on `agent/turn-stopping` the listener RETURNS the barrier promise, so the host's serial
+   dispatch AWAITS it instead of racing a detached one. The barrier waits for the agent to be idle
+   (`compactionRetries` bounded retries, `idleBarrierDelayMs` between them) and resolves the engine from
+   the LIVE member handle the event carries — through `compactionEngineForLiveAgent`, BEFORE any sleep
+   and BEFORE the registry lookup — so a member already detached from `ctx.agents` still compacts in
+   place; only when that handle carries no engine does the id-keyed `compactionEngineForAgent` get a
+   chance. A retry delay may sit between attempts; there is none before the FIRST one. The engine is
+   driven with a real `AbortController` signal, and the outcome is classified and journaled: a `null`
+   result (no safe useful range), a `busy` agent and an `error` are all recorded, so a retry budget
+   running out is never a silent no-op.
+5. **Promote or reseed**: the outcome union is exactly `promoted | reseeded | refused`. On a successful
+   compaction the SAME member is promoted in place — no interrupt, no reseed — its session's mode becomes
+   `subcaptain` and it receives the promotion directive (depth + 1, the remaining scope taken from the
+   handoff, the sub-team protocol). If there is no safe range, or compaction fails, the activation is
+   disposed and a fresh child is started with the handoff text as its prompt plus the same promotion
+   directive — but never from the member's own dead Agent: the reseed parent is, in order, the member's
+   recorded `parentSession` resolved live, then the cell's captain, and when neither is live the barrier
+   REFUSES with the distinct reason `reseed-parent-unavailable`. The parent actually used is journaled
+   (`parentSource` + `parentSessionId`), so lineage is observable rather than inferred.
 6. **Sub-team**: the promoted agent registers its sub-cell with `cellwork_subteam` and leads its own
    plan. `cellwork_subteam` refuses when `depth + 1 > depthMax` (default 3) and returns the exact
    bound; the direct start path passes the same depth as an absolute `maxDepth`, so the harness cap
@@ -391,6 +409,13 @@ kinds, the label rule, addressing and acknowledgement ownership are documented o
   this cell's parent (`cell.subcellIds` / `cell.parentCellId`); anything else is refused as `"not in this
   cell's tree"`. A supplied name that is neither `captain` nor a member of the TARGET cell is REFUSED: the
   answer lists that cell's members, and never quietly delivered to the caller's own inbox.
+- **The backlog bound is a workspace knob, and both mail tools share it.** `mail.maxUndelivered`
+  (default 8, `0` disables; an absent or unusable value falls back to 8) is read per call on the ONE
+  store path behind `cellwork_send` AND `agent_teams_mail`, so the bound can never differ between them.
+  A recipient at the bound is refused with its name, the count, the bound and two recovery paths —
+  acknowledge the inbox (`cellwork_inbox`, `agent_teams_mail {action:"read"}`) or reassign the rows
+  behind it (`cellwork_dispatch {reassign:[…]}`) — and nothing is written. An acknowledgement frees one
+  slot, and so does a delivery.
 - **Where a row lands.** In the workspace mailbox, stamped with the cell's `teamId` and an additive `cellId`
   the view scopes by (a cross-cell sender also stamps `fromCell`). The write goes through the shared store's
   atomic fan-out, so every rule runs before the first append. A pre-unification `<cell>/mail.jsonl` is still
@@ -453,6 +478,10 @@ and reported on the row's log line (`<workspace>/.mpd/logs/mpd-cellwork.log`).
 `fixedOverheadByRoute` {} · `toolSchemaChars` 0 · `outputReserveTokens` 8192 ·
 `compactionHeadroomTokens` 65536 · `compactionRetries` 3 · `idleBarrierDelayMs` 200 ·
 `asciiCharsPerToken` 3 · `cjkCharsPerToken` 1 · `contractGates` [] · `windowOverride` null.
+
+The mail bound is the ONE knob outside this table: `mail.maxUndelivered` (default 8, `0` disables; an
+absent or unusable value falls back to 8) lives under the `mail.` prefix because BOTH mail tools read it
+(see "Cell-aware mail").
 
 The model's context window is NOT a knob: it is read from the catalog at split time and from the
 observed token meter at runtime, with the provenance recorded. `windowOverride` exists only so a route

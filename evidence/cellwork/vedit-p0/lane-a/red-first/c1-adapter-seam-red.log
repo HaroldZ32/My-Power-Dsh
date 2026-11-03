@@ -1,0 +1,41 @@
+# RED-FIRST on HEAD d2032bf3 — 2026-11-03T03:50:43Z
+# command: bun test packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts
+bun test v1.4.2 (744846f84)
+
+packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts:
+40 |   const agent = liveAgent("agent-detached", engine)
+41 |   /** The adapter under test. */
+42 |   const dsh = adapterWithoutRegistryEntries()
+43 |   // The registry-by-id seam answers nothing (that is the `no-engine` fence), the live handle answers.
+44 |   expect(dsh.compactionEngineForAgent("agent-detached")).toBeUndefined()
+45 |   expect(dsh.compactionEngineForLiveAgent(agent)).toBe(engine)
+                  ^
+TypeError: dsh.compactionEngineForLiveAgent is not a function. (In 'dsh.compactionEngineForLiveAgent(agent)', 'dsh.compactionEngineForLiveAgent' is undefined)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts:45:14)
+(fail) C1: compactionEngineForLiveAgent reads the handle's OWN ctx, with no registry entry required [0.41ms]
+52 |   const second = { realm: "incarnation-2" }
+53 |   /** The adapter under test. */
+54 |   const dsh = adapterWithoutRegistryEntries()
+55 |   /** The first handle. */
+56 |   const agentOne = liveAgent("agent-1", first)
+57 |   expect(dsh.compactionEngineForLiveAgent(agentOne)).toBe(first)
+                  ^
+TypeError: dsh.compactionEngineForLiveAgent is not a function. (In 'dsh.compactionEngineForLiveAgent(agentOne)', 'dsh.compactionEngineForLiveAgent' is undefined)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts:57:14)
+(fail) C1: the live-handle seam is memoized per Agent object, and a different incarnation gets its own engine [0.07ms]
+62 | })
+63 | 
+64 | test("C1: a handle with no usable scope answers undefined and never throws", () => {
+65 |   /** The adapter under test. */
+66 |   const dsh = adapterWithoutRegistryEntries()
+67 |   expect(dsh.compactionEngineForLiveAgent(undefined)).toBeUndefined()
+                  ^
+TypeError: dsh.compactionEngineForLiveAgent is not a function. (In 'dsh.compactionEngineForLiveAgent(void 0)', 'dsh.compactionEngineForLiveAgent' is undefined)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts:67:14)
+(fail) C1: a handle with no usable scope answers undefined and never throws [0.07ms]
+
+ 0 pass
+ 3 fail
+ 1 expect() calls
+Ran 3 tests across 1 file. [140.00ms]
+# exit: 1

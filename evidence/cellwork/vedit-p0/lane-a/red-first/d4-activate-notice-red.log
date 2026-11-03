@@ -1,0 +1,26 @@
+# RED-FIRST on HEAD d2032bf3 — 2026-11-03T03:51:29Z
+# command: bun test packages/mpd-cellwork-plugin/test/flow.test.ts -t 'D4/C5|D3/C4'
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/flow.test.ts:
+1182 |   /** The re-split activation. */
+1183 |   const resplit = await runTool(harness, "cellwork_activate", {}, harness.captain)
+1184 |   expect(resplit.ok).toBe(true)
+1185 |   expect(resplit.mode).toBe("resplit")
+1186 |   // THE STATEMENT (C5): a captain must not have to INFER any of these four facts from the result counts.
+1187 |   expect(typeof resplit.notice).toBe("string")
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "string"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/flow.test.ts:1187:33)
+(fail) D4/C5: a re-split activation STATES what it kept, that kept contracts are NOT rewritten, and that it auto-dispatched [13.00ms]
+
+ 0 pass
+ 35 filtered out
+ 1 fail
+ 4 expect() calls
+Ran 1 test across 1 file. [168.00ms]
+# exit: 1

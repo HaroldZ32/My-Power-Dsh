@@ -1,0 +1,15 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/vedit-p0-lane-b.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+SyntaxError: Export named 'DEFAULT_MAIL_MAX_UNDELIVERED' not found in module '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/src/mailbox-store.ts'.
+-------------------------------
+
+
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file. [147.00ms]
+exit=1

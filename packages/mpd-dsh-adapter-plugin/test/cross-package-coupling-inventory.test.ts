@@ -346,7 +346,12 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-cellwork-plugin/src/mail.ts :: import { acknowledge, appendRecord, fold as foldMailbox, mailboxPath, readMailbox, readRecords } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAck, MailMessage as TeamMailMessage, MailSendLine } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/mail.ts :: import type { MailAnswer, MailKind, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",
-  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { sendMany } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
+  // RE-FROZEN 2026-11-03 (VEdit P0 wave, lane A, `.mpd/plans/cellwork-vedit-p0-fix-r2.md` §2 C3): the SAME
+  // edge and the SAME module — the cellwork `cellwork_send` call site now imports the shared resolver
+  // `mailMaxUndeliveredOf` beside `sendMany`, so the undelivered bound is resolved by ONE rule instead of a
+  // private copy (captain ruling). The count is unchanged: still one cross-package import from this module
+  // in this file, so importing the resolver grew no new coupling.
+  "packages/mpd-cellwork-plugin/src/protocol.ts :: import { mailMaxUndeliveredOf, sendMany } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { SendInput, SendManyResult } from \"../../mpd-team-core-plugin/src/mailbox-store\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import { fanOutTargets } from \"../../mpd-mail-protocol/src/index\"",
   "packages/mpd-cellwork-plugin/src/protocol.ts :: import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from \"../../mpd-mail-protocol/src/index\"",

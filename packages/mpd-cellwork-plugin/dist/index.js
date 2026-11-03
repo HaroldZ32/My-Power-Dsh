@@ -863,17 +863,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -884,8 +881,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1391,6 +1400,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -3283,6 +3293,22 @@ function scopesOverlap(left, right) {
     return a === b;
   return a === b || a.startsWith(b + "/") || b.startsWith(a + "/");
 }
+var SCOPE_REQUIRED_KINDS = ["work", "repair", "integration"];
+function writeScopeWarnings(tasks) {
+  const warnings = [];
+  for (const task of tasks) {
+    if (!SCOPE_REQUIRED_KINDS.includes(task.kind ?? "work"))
+      continue;
+    if (task.writeScopes.some((scope) => scope.trim() !== ""))
+      continue;
+    warnings.push({
+      taskKey: task.key,
+      code: "write-scopes-empty",
+      detail: "task " + JSON.stringify(task.key) + " (" + (task.kind ?? "work") + ") declares NO write scope, so its frozen contract allows no path and its writer must stop at the first edit — declare `writeScopes` now, or ask the captain for a scope extension BEFORE the first write"
+    });
+  }
+  return warnings;
+}
 function validateGraph(tasks, roster) {
   const findings = [];
   const seen = new Set;
@@ -3425,6 +3451,7 @@ function validateGraph(tasks, roster) {
 }
 async function submitSplit(deps, submission) {
   const findings = validateGraph(submission.tasks, deps.roster);
+  const warnings = writeScopeWarnings(submission.tasks);
   const readings = new Map;
   for (const task of submission.tasks) {
     const key = roleKey(task.ownerRole);
@@ -3480,6 +3507,7 @@ async function submitSplit(deps, submission) {
     submittedAt: deps.now.toISOString(),
     accepted,
     findings,
+    warnings,
     roles,
     tasks,
     totals: {
@@ -3516,6 +3544,8 @@ function readVerdictFile(path) {
   if (!Array.isArray(verdict.tasks) || typeof verdict.accepted !== "boolean" || typeof verdict.revision !== "number") {
     return { ok: false, path, detail: "the split verdict does not have the shape of a verdict" };
   }
+  if (!Array.isArray(verdict.warnings))
+    verdict.warnings = [];
   return { ok: true, verdict };
 }
 function readSplit(workspace, cellId, revision) {
@@ -4032,6 +4062,10 @@ function reviewTaskDescription(task, workTask, cellId) {
   ].join(`
 `);
 }
+function resplitNotice(keptCount, dispatched, rebuiltKept) {
+  const exception = rebuiltKept.length === 0 ? "Stage-4 exception: a kept task whose loop was never recorded is the ONLY case where a kept contract is rebuilt, gaining its verify loop id." : "Stage-4 exception: " + String(rebuiltKept.length) + " kept task(s) had no recorded loop, so their frozen contracts WERE rebuilt with the loop id (" + rebuiltKept.join(", ") + ").";
+  return "RE-SPLIT on the same team: " + String(keptCount) + " kept task(s) reuse their live board rows, and their frozen contracts are NOT rewritten — the bytes a verifier may already be reading stay as first frozen. Consequence: a scope expansion needs a manual re-freeze plus a new verify loop, so land it as a NEW split revision; editing the kept contract in place is not what this activation does. " + String(dispatched) + " owner-only pair(s) were dispatched by this activation. " + exception;
+}
 function buildContractDoc(deps, task, reviewer, boardId) {
   const gates = deps.config.contractGates.length === 0 ? ["the repository's own declared gates (read the project instruction file: AGENTS.md §4, or its equivalent)"] : [...deps.config.contractGates];
   const verifier = reviewer === undefined ? "NO REVIEW TASK — this task's verification is not armed" : reviewer.ownerRole;
@@ -4047,7 +4081,7 @@ function buildContractDoc(deps, task, reviewer, boardId) {
     task.description,
     "",
     "## Allowed write scopes",
-    ...task.writeScopes.length === 0 ? ["(none declared — this task produces no code)"] : task.writeScopes.map((scope) => "- `" + scope + "`"),
+    ...task.writeScopes.length === 0 ? ["(none declared — this task produces no code)", "", "If it DOES need to write, ask the captain for a scope extension BEFORE the first write: this contract allows no path, so any edit is outside it."] : task.writeScopes.map((scope) => "- `" + scope + "`"),
     "",
     "## Acceptance criteria",
     "1. The deliverable above exists, and every changed path is inside the allowed write scopes.",
@@ -4366,6 +4400,8 @@ async function materializeSplit(deps) {
     skipped: dispatch.skipped.length,
     ...splitTaskId === "" ? {} : { splitTaskId }
   }, deps.now);
+  const rebuiltKept = loopTargets.filter((task) => keptKeys.has(task.key)).map((task) => task.key);
+  const notice = keptKeys.size === 0 ? undefined : resplitNotice(keptKeys.size, dispatch.pairs.length, rebuiltKept);
   return {
     ok: true,
     outcome: {
@@ -4379,7 +4415,8 @@ async function materializeSplit(deps) {
       cancelled,
       loops,
       dispatch,
-      ...splitTaskId === "" ? {} : { splitTaskId }
+      ...splitTaskId === "" ? {} : { splitTaskId },
+      ...notice === undefined ? {} : { notice }
     }
   };
 }
@@ -4697,7 +4734,7 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_split",
-    description: "The SPLITTER's tool (cell-splitter only) for `submit`; any cell seat may `show` the last verdict. `submit` MEASURES every task (declared input bytes → tokens, the model-read context window) and validates the graph (dependency answer, acyclicity, write-scope ordering, verifier ≠ writer, role existence), accepting or refusing with a per-task breakdown; a refused split may be resubmitted.",
+    description: "The SPLITTER's tool (cell-splitter only) for `submit`; any cell seat may `show` the last verdict. `submit` MEASURES every task (declared input bytes → tokens, the model-read context window) and validates the graph (dependency answer, acyclicity, write-scope ordering, verifier ≠ writer, role existence), accepting or refusing with a per-task breakdown; a refused split may be resubmitted. NON-FATAL `warnings` are reported BESIDE the verdict and never change `accepted`: a `work`/`repair`/`integration` task that declares NO `writeScopes` freezes a contract allowing no path, so its writer would stop at the first edit — declare the scopes, or amend the contract with the captain BEFORE the first write.",
     parameters: {
       type: "object",
       properties: {
@@ -4739,6 +4776,7 @@ missing sections: ` + result.missing.join(", ") : ""));
           accepted: { type: "boolean" },
           revision: { type: "number" },
           findings: { type: "array", items: { type: "object" } },
+          warnings: { type: "array", items: { type: "object" }, description: "NON-FATAL advisories (e.g. a code task with no write scope). They never change `accepted`." },
           roles: { type: "array", items: { type: "object" } },
           tasks: { type: "array", items: { type: "object" } },
           totals: { type: "object" },
@@ -4752,9 +4790,12 @@ missing sections: ` + result.missing.join(", ") : ""));
         const result = typeof value === "object" && value !== null ? value : {};
         if (result.ok === false)
           return text("cellwork_split refused: " + String(result.error ?? "unknown refusal"));
+        const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+        const warnLine = warnings.length === 0 ? "" : `
+SCOPE WARNING(S) — non-fatal, the split stays accepted: ` + warnings.map((warning) => String(warning.taskKey ?? "?") + ": " + String(warning.detail ?? warning.code ?? "")).join(" | ") + "\nRemedy: declare `writeScopes` in the next revision, or ask the captain for a scope extension BEFORE the first write.";
         if (typeof result.message === "string")
-          return text(result.message);
-        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + `
+          return text(result.message + warnLine);
+        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + warnLine + `
 ` + JSON.stringify(result.totals ?? {}, null, 2));
       }
     },
@@ -4777,7 +4818,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         if (!read.ok)
           return { ok: false, error: "cellwork_split show: " + read.detail, path: read.path };
         const verdict2 = read.verdict;
-        return { ok: true, action, accepted: verdict2.accepted, revision: verdict2.revision, findings: verdict2.findings, roles: verdict2.roles, tasks: verdict2.tasks, totals: verdict2.totals, splitPath: splitPathFor(caller.workspace, verdict2) };
+        return { ok: true, action, accepted: verdict2.accepted, revision: verdict2.revision, findings: verdict2.findings, warnings: verdict2.warnings, roles: verdict2.roles, tasks: verdict2.tasks, totals: verdict2.totals, splitPath: splitPathFor(caller.workspace, verdict2) };
       }
       if (action !== "submit")
         return { ok: false, error: "cellwork_split: action must be `submit` or `show` (got " + JSON.stringify(action) + ")" };
@@ -4823,15 +4864,15 @@ missing sections: ` + result.missing.join(", ") : ""));
         if (supersededRevision !== null) {
           appendJournal(caller.workspace, state.cellId, { event: "split-superseded", revision: supersededRevision, by: verdict.revision, activated: state.activatedRevision }, new Date);
         }
-        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" };
+        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, warnings: verdict.warnings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" };
       }
-      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.map((finding) => ({ code: finding.code, taskKey: finding.taskKey, detail: finding.detail })), refused: verdict.totals.refusedCount }, new Date);
-      return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2 };
+      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.map((finding) => ({ code: finding.code, taskKey: finding.taskKey, detail: finding.detail })), warnings: verdict.warnings.map((warning) => ({ code: warning.code, taskKey: warning.taskKey })), refused: verdict.totals.refusedCount }, new Date);
+      return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, warnings: verdict.warnings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPath2 };
     }
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises ONE member per distinct `member` (its owner role routes it, persona TEXT in the prompt), appends each NEW task owned by that member with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises ONE member per distinct `member` (its owner role routes it, persona TEXT in the prompt), appends each NEW task owned by that member with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. On a re-split the result carries a `notice` stating how many tasks were kept, that their FROZEN contracts are NOT rewritten (a scope expansion needs a manual re-freeze plus a new verify loop), that this activation dispatched owner-only, and the one stage-4 exception where a kept contract IS rebuilt with its loop id. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -4856,7 +4897,8 @@ missing sections: ` + result.missing.join(", ") : ""));
           kept: { type: "array", items: { type: "string" }, description: "Split keys whose live board row was reused (never duplicated)." },
           cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
           loops: { type: "array", items: { type: "object" } },
-          dispatch: { type: "object" }
+          dispatch: { type: "object" },
+          notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." }
         },
         required: ["ok"]
       },
@@ -4867,7 +4909,8 @@ missing sections: ` + result.missing.join(", ") : ""));
         const dispatch = typeof result.dispatch === "object" && result.dispatch !== null ? result.dispatch : {};
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs : [];
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped : [];
-        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")));
+        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? `
+NOTICE: ` + result.notice : ""));
       }
     },
     execute: async (args, exec) => {
@@ -4976,7 +5019,8 @@ missing sections: ` + result.missing.join(", ") : ""));
         kept: activated.outcome.kept,
         cancelled: activated.outcome.cancelled,
         loops: activated.outcome.loops,
-        dispatch: activated.outcome.dispatch
+        dispatch: activated.outcome.dispatch,
+        ...activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }
       };
     }
   }));
@@ -5509,6 +5553,21 @@ function problemsSentence(check2) {
 function unauthorizedAnswer(messageId) {
   return "only a recipient of the question may answer it: " + messageId;
 }
+var MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered";
+var DEFAULT_MAIL_MAX_UNDELIVERED = 8;
+var MAIL_MAX_UNDELIVERED_CEILING = 1000;
+function mailMaxUndeliveredOf(readConfig) {
+  let declared;
+  try {
+    declared = readConfig(MAIL_MAX_UNDELIVERED_KEY);
+  } catch {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  if (typeof declared !== "number" || !Number.isInteger(declared) || declared < 0 || declared > MAIL_MAX_UNDELIVERED_CEILING) {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  return declared;
+}
 function sendMany(workspace, input, targets, now) {
   const replyTo = input.replyTo !== undefined && input.replyTo !== "" ? input.replyTo : input.kind === "answer" && input.answer !== undefined && input.answer.answerTo !== "" ? input.answer.answerTo : undefined;
   const envelope = {
@@ -5556,11 +5615,11 @@ function sendMany(workspace, input, targets, now) {
   if (!referenceCheck.ok) {
     return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) };
   }
-  const cap = input.maxUndelivered ?? 8;
+  const cap = input.maxUndelivered ?? DEFAULT_MAIL_MAX_UNDELIVERED;
   for (const target of targets) {
     const backlog = undeliveredOf(scoped, target.id).length;
     if (cap > 0 && backlog >= cap) {
-      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) and the bound (${MAIL_MAX_UNDELIVERED_KEY}) is ${cap} — it is not keeping up. Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:"read"} for a team member), or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.` };
     }
   }
   const at = now.toISOString();
@@ -5966,6 +6025,37 @@ function compactionSignal(parent) {
   const controller = new AbortController;
   return { controller, signal: parent === undefined ? controller.signal : AbortSignal.any([parent, controller.signal]) };
 }
+function liveSessionOf(deps, sessionId) {
+  const seam = deps.dsh.liveAgent;
+  if (typeof seam !== "function" || sessionId === "")
+    return;
+  try {
+    return seam.call(deps.dsh, sessionId) ?? undefined;
+  } catch {
+    return;
+  }
+}
+function engineForBarrier(deps) {
+  const liveHandle = deps.dsh.compactionEngineForLiveAgent;
+  if (typeof liveHandle === "function") {
+    const fromHandle = liveHandle.call(deps.dsh, deps.agent);
+    if (fromHandle !== undefined && fromHandle !== null)
+      return fromHandle;
+  }
+  const fromRegistry = deps.dsh.compactionEngineForAgent(deps.sessionId);
+  return fromRegistry === undefined || fromRegistry === null ? undefined : fromRegistry;
+}
+function reseedParentOf(deps) {
+  const originalParent = deps.parentSessionId ?? "";
+  const parent = liveSessionOf(deps, originalParent);
+  if (parent !== undefined)
+    return { parent, source: "parent", sessionId: originalParent };
+  const captainSession = deps.cell.captainSessionId ?? "";
+  const captain = liveSessionOf(deps, captainSession);
+  if (captain !== undefined)
+    return { parent: captain, source: "captain", sessionId: captainSession };
+  return;
+}
 function compactionJournalEntry(memberName, result) {
   return {
     event: "compaction",
@@ -5973,7 +6063,8 @@ function compactionJournalEntry(memberName, result) {
     outcome: result.outcome,
     attempts: result.attempts,
     reason: result.reason,
-    ...result.newHandle === undefined ? {} : { newHandle: result.newHandle }
+    ...result.newHandle === undefined ? {} : { newHandle: result.newHandle },
+    ...result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId }
   };
 }
 function checkpointUnrecoverableEntry(memberName, result) {
@@ -6002,8 +6093,9 @@ function memberAfterBarrier(previous, result) {
 async function promoteAfterHandoff(deps) {
   let lastReason = "not attempted";
   for (let attempt = 1;attempt <= deps.config.compactionRetries; attempt += 1) {
-    await deps.sleep(deps.config.idleBarrierDelayMs);
-    const engine = deps.dsh.compactionEngineForAgent(deps.sessionId);
+    if (attempt > 1)
+      await deps.sleep(deps.config.idleBarrierDelayMs);
+    const engine = engineForBarrier(deps);
     if (engine === undefined || typeof engine.compactNow !== "function") {
       lastReason = "no-engine";
       continue;
@@ -6026,6 +6118,14 @@ async function promoteAfterHandoff(deps) {
   try {
     deps.dsh.interruptAgent(deps.sessionId, { kind: "ancestor", agent: deps.agent });
   } catch {}
+  const parent = reseedParentOf(deps);
+  if (parent === undefined) {
+    return {
+      outcome: "refused",
+      attempts: deps.config.compactionRetries,
+      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent)"
+    };
+  }
   try {
     const activation = await deps.dsh.startContinuableAgent({
       provider: "spawn",
@@ -6034,7 +6134,7 @@ async function promoteAfterHandoff(deps) {
         prompt: deps.handoffText + `
 
 ` + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
-        parent: deps.agent,
+        parent: parent.parent,
         maxDepth: deps.config.depthMax
       },
       signal: compactionSignal().signal
@@ -6042,7 +6142,7 @@ async function promoteAfterHandoff(deps) {
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : "";
     if (handle === "")
       return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed reported no child id" };
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle };
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source };
   } catch (error) {
     return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) };
   }
@@ -6054,6 +6154,18 @@ function nextStepOf(text2) {
 
 // packages/mpd-cellwork-plugin/src/protocol.ts
 import { readFileSync as readFileSync7 } from "node:fs";
+function workspaceConfigReader(ctx) {
+  return (dottedKey) => {
+    const service = ctx.get?.("mpdConfig", false);
+    if (service === undefined || service === null || typeof service.get !== "function")
+      return;
+    try {
+      return service.get(dottedKey);
+    } catch {
+      return;
+    }
+  };
+}
 function readArgs2(args) {
   if (typeof args !== "object" || args === null || Array.isArray(args))
     return {};
@@ -6573,7 +6685,7 @@ missing sections: ` + result.missing.join(", ") : ""));
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). MAILBOX FULL: a recipient with `mail.maxUndelivered` undelivered messages is refused (the key is read per call from the workspace config; its DEFAULT is 8, and `agent_teams_mail` shares the SAME bound, so the official tool is not a fallback). Two recoveries: acknowledge that inbox (`cellwork_inbox` for a cell seat, or `agent_teams_mail {action:\"read\"}` for a team member), or reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
@@ -6729,6 +6841,7 @@ missing sections: ` + result.missing.join(", ") : ""));
       }
       const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name));
       const leadIds = [seatKey(target, "captain")];
+      const undeliveredBound = mailMaxUndeliveredOf(workspaceConfigReader(deps.ctx));
       const input = {
         fromId: seatKey(cell, caller.member),
         fromName: caller.member,
@@ -6741,6 +6854,7 @@ missing sections: ` + result.missing.join(", ") : ""));
         teamId: target.teamId,
         cellId: targetCellId,
         fromMemberId: caller.member,
+        maxUndelivered: undeliveredBound,
         ...crossCell ? { fromCell: cell.cellId } : {},
         ...kind === "message" ? {} : { kind },
         ...replyTo === "" ? {} : { replyTo },
@@ -6913,6 +7027,12 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
   const preStepDispose = dsh.onAgentPreStep(onPreStep);
   if (typeof preStepDispose === "function")
     disposers.push(preStepDispose);
+  const parentSessionOf = (agent) => {
+    const handle = typeof agent === "object" && agent !== null ? agent : undefined;
+    const session = typeof handle?.session === "object" && handle.session !== null ? handle.session : undefined;
+    const header = typeof session?.header === "object" && session.header !== null ? session.header : undefined;
+    return typeof header?.parentSession === "string" ? header.parentSession : "";
+  };
   const runBarrier = async (agent) => {
     const caller = callerContext(dsh, { agent }, { teams });
     if (caller.cell === null || caller.member === "")
@@ -6931,11 +7051,13 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       } catch {
         handoffText = "(the handoff document could not be read back; the journal names its path)";
       }
+      const parentSessionId = parentSessionOf(agent);
       const result = await promoteAfterHandoff({
         dsh,
         agent,
         memberName: caller.member,
         sessionId: member.sessionId,
+        parentSessionId,
         cell: caller.cell,
         config,
         handoffText,
@@ -6959,6 +7081,16 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       const next = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } };
       if (result.outcome === "refused")
         appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now);
+      if (result.outcome === "reseeded" && result.parentSource !== undefined) {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "reseed-parent",
+          member: caller.member,
+          parentSource: result.parentSource,
+          parentSessionId: result.parentSessionId ?? "",
+          originalParentSessionId: parentSessionId,
+          newHandle: result.newHandle ?? ""
+        }, now);
+      }
       transition(caller.workspace, next, compactionJournalEntry(caller.member, result), now);
     } finally {
       inFlight.delete(key);
@@ -6969,9 +7101,12 @@ acknowledgement refused for ` + String(refused.length) + " row(s), which stay un
       const agent = typeof payload === "object" && payload !== null ? payload.agent : undefined;
       if (agent === undefined || agent === null)
         return;
-      runBarrier(agent).catch((error) => deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error))));
+      return runBarrier(agent).catch((error) => {
+        deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error)));
+      });
     } catch (error) {
       deps.warn("[mpd-cellwork] the turn-stopping listener failed: " + (error instanceof Error ? error.message : String(error)));
+      return;
     }
   });
   if (typeof stopDispose === "function")

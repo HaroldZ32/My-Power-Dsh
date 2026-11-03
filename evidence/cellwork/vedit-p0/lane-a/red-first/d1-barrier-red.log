@@ -1,0 +1,123 @@
+# RED-FIRST on HEAD d2032bf3 — d2032bf3 — 2026-11-03T03:49:45Z
+# command: bun test packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:
+263 |   /** The harness whose member is detached after its turn. */
+264 |   const harness = makeHarness({ detached: true })
+265 |   /** Whatever the listener handed the host. */
+266 |   const returned = stopListener(harness)({ agent: harness.member })
+267 |   // A returned promise is awaited by the host's serial dispatch; `void` is not, and that is the defect.
+268 |   expect(returned).toBeInstanceOf(Promise)
+                         ^
+error: expect(received).toBeInstanceOf(expected)
+
+Expected constructor: [Function: Promise]
+Received value: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:268:20)
+(fail) D1/C6(a): the turn-stopping listener RETURNS the barrier promise, so the serial dispatch awaits it [2.40ms]
+277 |   /** The harness whose member the registry no longer lists. */
+278 |   const harness = makeHarness({ detached: true })
+279 |   // The exact D1 condition: the registry would answer `no-engine`, the handle still serves the engine.
+280 |   expect(harness.adapter.compactionEngineForAgent === undefined ? undefined : (harness.adapter.compactionEngineForAgent as (id: string) => unknown)(MEMBER_SESSION)).toBeUndefined()
+281 |   await stopListener(harness)({ agent: harness.member })
+282 |   expect(harness.engine.calls.length).toBe(1)
+                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:282:39)
+(fail) D1/C6(b,c,d): the engine comes from the LIVE handle even when the registry lookup misses, and a compacted member is PROMOTED (not fenced) [0.39ms]
+299 |   /** The harness whose retry delay is long enough that a pre-attempt sleep is measurable. */
+300 |   const harness = makeHarness({ detached: true, answers: [{ shadowedTokenCount: 5 }], knobs: { compactionRetries: 1, idleBarrierDelayMs: 1500 } })
+301 |   /** The instant the listener was handed the payload. */
+302 |   const startedAt = Date.now()
+303 |   await stopListener(harness)({ agent: harness.member })
+304 |   expect(harness.engine.calls.length).toBe(1)
+                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:304:39)
+(fail) C1: no sleep happens before the FIRST attempt (the engine is driven immediately) [0.28ms]
+309 | 
+310 | test("C1: the registry lookup is the FALLBACK for a composition without the live-handle seam", async () => {
+311 |   /** The harness with an older adapter (no `compactionEngineForLiveAgent`) whose member is still live. */
+312 |   const harness = makeHarness({ detached: false, liveEngineSeam: false })
+313 |   await stopListener(harness)({ agent: harness.member })
+314 |   expect(harness.engine.calls.length).toBe(1)
+                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:314:39)
+(fail) C1: the registry lookup is the FALLBACK for a composition without the live-handle seam [0.26ms]
+320 | 
+321 | test("D1/C6(e): a reseed is raised under the LIVE parent object, never the dead member", async () => {
+322 |   /** The harness whose engine answers "no safely compactable range" on every attempt. */
+323 |   const harness = makeHarness({ detached: true, answers: [null] })
+324 |   await stopListener(harness)({ agent: harness.member })
+325 |   expect(harness.reseeds.length).toBe(1)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:325:34)
+(fail) D1/C6(e): a reseed is raised under the LIVE parent object, never the dead member [0.36ms]
+333 | 
+334 | test("D1/C6(f): a dead parent falls back to the CAPTAIN, and the fallback is journaled as a fact", async () => {
+335 |   /** The harness whose original parent session ended but whose captain is still live. */
+336 |   const harness = makeHarness({ detached: true, answers: [null], parentLive: false })
+337 |   await stopListener(harness)({ agent: harness.member })
+338 |   expect(harness.reseeds.length).toBe(1)
+                                       ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 0
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:338:34)
+(fail) D1/C6(f): a dead parent falls back to the CAPTAIN, and the fallback is journaled as a fact [0.34ms]
+350 |   await stopListener(harness)({ agent: harness.member })
+351 |   // NO child: a reseed under a dead parent is the very throw this fix removes.
+352 |   expect(harness.reseeds.length).toBe(0)
+353 |   /** The member row the refused barrier fenced. */
+354 |   const stored = rawMember(harness)
+355 |   expect(stored.fenced).toBe(true)
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:355:25)
+(fail) D1/C6(g): with BOTH parents dead the reseed is refused as `reseed-parent-unavailable` and no child is raised [0.33ms]
+366 |   /** The harness whose live parent makes the reseed reach the host, which then refuses for its own reason. */
+367 |   const harness = makeHarness({ detached: true, answers: [null] })
+368 |   // The host seam refuses even a LIVE parent here, so the appended sentence is observable.
+369 |   harness.adapter.startContinuableAgent = async (): Promise<never> => { throw new Error("the host is out of slots") }
+370 |   await stopListener(harness)({ agent: harness.member })
+371 |   expect(String(rawMember(harness).fencedReason)).toContain("the reseed failed: the host is out of slots")
+                                                        ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "the reseed failed: the host is out of slots"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts:371:51)
+(fail) C2: the reseed parent ids are carried, and a host throw during the reseed still appends its sentence [0.35ms]
+
+ 0 pass
+ 8 fail
+ 10 expect() calls
+Ran 8 tests across 1 file. [140.00ms]
+# exit: 1

@@ -533,7 +533,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_split ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_split",
-    description: "The SPLITTER's tool (cell-splitter only) for `submit`; any cell seat may `show` the last verdict. `submit` MEASURES every task (declared input bytes → tokens, the model-read context window) and validates the graph (dependency answer, acyclicity, write-scope ordering, verifier ≠ writer, role existence), accepting or refusing with a per-task breakdown; a refused split may be resubmitted.",
+    description: "The SPLITTER's tool (cell-splitter only) for `submit`; any cell seat may `show` the last verdict. `submit` MEASURES every task (declared input bytes → tokens, the model-read context window) and validates the graph (dependency answer, acyclicity, write-scope ordering, verifier ≠ writer, role existence), accepting or refusing with a per-task breakdown; a refused split may be resubmitted. NON-FATAL `warnings` are reported BESIDE the verdict and never change `accepted`: a `work`/`repair`/`integration` task that declares NO `writeScopes` freezes a contract allowing no path, so its writer would stop at the first edit — declare the scopes, or amend the contract with the captain BEFORE the first write.",
     parameters: {
       type: "object",
       properties: {
@@ -575,6 +575,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           accepted: { type: "boolean" },
           revision: { type: "number" },
           findings: { type: "array", items: { type: "object" } },
+          warnings: { type: "array", items: { type: "object" }, description: "NON-FATAL advisories (e.g. a code task with no write scope). They never change `accepted`." },
           roles: { type: "array", items: { type: "object" } },
           tasks: { type: "array", items: { type: "object" } },
           totals: { type: "object" },
@@ -588,8 +589,14 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return text("cellwork_split refused: " + String(result.error ?? "unknown refusal"))
-        if (typeof result.message === "string") return text(result.message)
-        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + "\n" + JSON.stringify(result.totals ?? {}, null, 2))
+        /** The non-fatal advisories this verdict carries. */
+        const warnings = Array.isArray(result.warnings) ? result.warnings as Array<Record<string, unknown>> : []
+        /** The one line that makes the omissions visible; empty when there is nothing to say. */
+        const warnLine = warnings.length === 0
+          ? ""
+          : "\nSCOPE WARNING(S) — non-fatal, the split stays accepted: " + warnings.map((warning) => String(warning.taskKey ?? "?") + ": " + String(warning.detail ?? warning.code ?? "")).join(" | ") + "\nRemedy: declare `writeScopes` in the next revision, or ask the captain for a scope extension BEFORE the first write."
+        if (typeof result.message === "string") return text(result.message + warnLine)
+        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + warnLine + "\n" + JSON.stringify(result.totals ?? {}, null, 2))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -613,7 +620,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         if (!read.ok) return { ok: false, error: "cellwork_split show: " + read.detail, path: read.path }
         /** The stored verdict. */
         const verdict = read.verdict
-        return { ok: true, action, accepted: verdict.accepted, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPathFor(caller.workspace, verdict) }
+        return { ok: true, action, accepted: verdict.accepted, revision: verdict.revision, findings: verdict.findings, warnings: verdict.warnings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPathFor(caller.workspace, verdict) }
       }
       if (action !== "submit") return { ok: false, error: "cellwork_split: action must be `submit` or `show` (got " + JSON.stringify(action) + ")" }
       if (caller.member !== SPLITTER_MEMBER) {
@@ -669,21 +676,21 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           // The PREVIOUS accepted revision is superseded, recorded where a reader of the history finds it.
           appendJournal(caller.workspace, state.cellId, { event: "split-superseded", revision: supersededRevision, by: verdict.revision, activated: state.activatedRevision }, new Date())
         }
-        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" }
+        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, warnings: verdict.warnings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" }
       }
       // THE FINDINGS TRAVEL ON THE ROW (contract C9): a bare count cannot tell a reader what to fix. The
       // refusal itself also lands at `split/<revision>.refused.json`, BESIDE the accepted record (never on
       // top of it), so nothing is overwritten by a later accepted resubmission — and this journal row is
       // the ORDERED half of that record: which refusal came before which accepted verdict.
-      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.map((finding) => ({ code: finding.code, taskKey: finding.taskKey, detail: finding.detail })), refused: verdict.totals.refusedCount }, new Date())
-      return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath }
+      appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.map((finding) => ({ code: finding.code, taskKey: finding.taskKey, detail: finding.detail })), warnings: verdict.warnings.map((warning) => ({ code: warning.code, taskKey: warning.taskKey })), refused: verdict.totals.refusedCount }, new Date())
+      return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, warnings: verdict.warnings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath }
     },
   }))
 
   // ── cellwork_activate ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises ONE member per distinct `member` (its owner role routes it, persona TEXT in the prompt), appends each NEW task owned by that member with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises ONE member per distinct `member` (its owner role routes it, persona TEXT in the prompt), appends each NEW task owned by that member with reviews blocked by their work task, opens a verify loop for EVERY code task that has none yet BEFORE dispatch (a kept task whose frozen contract already names a loop is left untouched), then dispatches owner-only. A failed pass is checkpointed and the SAME accepted revision resumes it; a newer accepted revision supersedes an older in-flight one (revisions never move backwards). A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. On a re-split the result carries a `notice` stating how many tasks were kept, that their FROZEN contracts are NOT rewritten (a scope expansion needs a manual re-freeze plus a new verify loop), that this activation dispatched owner-only, and the one stage-4 exception where a kept contract IS rebuilt with its loop id. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -709,6 +716,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
           loops: { type: "array", items: { type: "object" } },
           dispatch: { type: "object" },
+          notice: { type: "string", description: "Present on a re-split: how many tasks were kept, that their frozen contracts are NOT rewritten, what a scope expansion therefore needs, that this activation dispatched owner-only, and the stage-4 rebuild exception." },
         },
         required: ["ok"],
       },
@@ -722,7 +730,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs as Array<Record<string, unknown>> : []
         /** The tasks left out. */
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped as Array<Record<string, unknown>> : []
-        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")))
+        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")) + (typeof result.notice === "string" ? "\nNOTICE: " + result.notice : ""))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -871,6 +879,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         cancelled: activated.outcome.cancelled,
         loops: activated.outcome.loops,
         dispatch: activated.outcome.dispatch,
+        ...(activated.outcome.notice === undefined ? {} : { notice: activated.outcome.notice }),
       }
     },
   }))

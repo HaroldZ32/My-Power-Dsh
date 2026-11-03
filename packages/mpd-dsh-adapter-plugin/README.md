@@ -30,6 +30,9 @@ instead of across every plugin.
 | `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | THROWING forwarder, signal passed through |
 | `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer pass-through; THROW at the call when the seam is absent (the caller's usage section is mandatory) |
 | a live agent's own scoped ctx | `agentScope(agent)` | `{ context, tools.restrict, on, effect }` built from `agent.ctx`; `undefined` when a promised member is missing, so the caller falls back per call |
+| `ctx.agents.get(id)` / `ctx.agents.list` | `liveAgent(agentId)` / `liveAgents()` | the live-session registry: one Agent by id (the registry's own `get`, then a `list` scan) or `[]`; an absent registry, a throwing read or a non-array answer degrades to "no entry"; never throws |
+| `agent.ctx.get("compaction")`, via the registry | `compactionEngineForAgent(agentId)` | the compaction engine of the live Agent that id names, memoized per Agent OBJECT; `undefined` when no live Agent owns that id or its scope serves no engine |
+| `agent.ctx.get("compaction")`, from a handle already held | `compactionEngineForLiveAgent(agent)` | the SAME memoized engine body, resolved straight from the caller's own Agent handle and NEVER from the live-session registry — the compaction barrier's FIRST choice, so a member already detached from `ctx.agents` before its barrier still compacts IN PLACE instead of being fenced; `undefined` when the handle carries no engine; never throws |
 | `agent.followup` | `startAgentTurn(agent, message)` | THROWING verbatim forwarder (never swallowed into a boolean or `undefined`) |
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | THROWING verbatim forwarder |
 | `agent.steer` | `steerAgentTurn(agent, message)` | THROWING verbatim forwarder — nearest-step steering, distinct from `followup`'s new turn |

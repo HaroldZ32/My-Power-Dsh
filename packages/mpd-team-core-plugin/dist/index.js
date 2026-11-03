@@ -867,17 +867,14 @@ function createDshAdapter(ctx, config = {}) {
     return liveAgents().find((candidate) => candidate.id === id);
   }
   const engineCache = new WeakMap;
-  function compactionEngineForAgent(agentId) {
-    const id = String(agentId ?? "");
-    if (id === "")
+  function engineOfLiveHandle(agent) {
+    if (agent === undefined || agent === null || typeof agent !== "object")
       return;
-    const agent = liveAgent(id);
-    if (agent === undefined || agent === null)
-      return;
-    const cached = engineCache.get(agent);
+    const handle = agent;
+    const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
-    const scoped = agent.ctx;
+    const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
     let engine;
@@ -888,8 +885,20 @@ function createDshAdapter(ctx, config = {}) {
     }
     if (engine === undefined || engine === null)
       return;
-    engineCache.set(agent, engine);
+    engineCache.set(handle, engine);
     return engine;
+  }
+  function compactionEngineForAgent(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agent = liveAgent(id);
+    if (agent === undefined || agent === null)
+      return;
+    return engineOfLiveHandle(agent);
+  }
+  function compactionEngineForLiveAgent(agent) {
+    return engineOfLiveHandle(agent);
   }
   function contextPressureSession(target) {
     if (typeof target === "string") {
@@ -1395,6 +1404,7 @@ function createDshAdapter(ctx, config = {}) {
     liveAgent,
     contextPressure,
     compactionEngineForAgent,
+    compactionEngineForLiveAgent,
     onEvent,
     llmCatalog,
     goalState(agent) {
@@ -3243,6 +3253,21 @@ function problemsSentence(check2) {
 function unauthorizedAnswer(messageId) {
   return "only a recipient of the question may answer it: " + messageId;
 }
+var MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered";
+var DEFAULT_MAIL_MAX_UNDELIVERED = 8;
+var MAIL_MAX_UNDELIVERED_CEILING = 1000;
+function mailMaxUndeliveredOf(readConfig) {
+  let declared;
+  try {
+    declared = readConfig(MAIL_MAX_UNDELIVERED_KEY);
+  } catch {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  if (typeof declared !== "number" || !Number.isInteger(declared) || declared < 0 || declared > MAIL_MAX_UNDELIVERED_CEILING) {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
+  return declared;
+}
 function sendMany(workspace, input, targets, now) {
   const replyTo = input.replyTo !== undefined && input.replyTo !== "" ? input.replyTo : input.kind === "answer" && input.answer !== undefined && input.answer.answerTo !== "" ? input.answer.answerTo : undefined;
   const envelope = {
@@ -3290,11 +3315,11 @@ function sendMany(workspace, input, targets, now) {
   if (!referenceCheck.ok) {
     return { ok: false, reason: "invalid-envelope", detail: problemsSentence(referenceCheck) };
   }
-  const cap = input.maxUndelivered ?? 8;
+  const cap = input.maxUndelivered ?? DEFAULT_MAIL_MAX_UNDELIVERED;
   for (const target of targets) {
     const backlog = undeliveredOf(scoped, target.id).length;
     if (cap > 0 && backlog >= cap) {
-      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) (bound ${cap}) — it is not keeping up` };
+      return { ok: false, reason: "backlog-full", detail: `"${target.name || target.id}" already has ${backlog} undelivered message(s) and the bound (${MAIL_MAX_UNDELIVERED_KEY}) is ${cap} — it is not keeping up. Two recovery paths: acknowledge its inbox (cellwork_inbox for a cell seat, or agent_teams_mail {action:"read"} for a team member), or reassign the rows behind it (cellwork_dispatch {reassign:[{task_id, owner}]}). Nothing was written.` };
     }
   }
   const at = now.toISOString();
@@ -7754,6 +7779,14 @@ function blockerSentence(blockers) {
     return ` — blocked_by reads as ${forms}`;
   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`;
 }
+function emptyScopesWarning(kind, writeScopes, taskId, subject) {
+  const effectiveKind = kind ?? "work";
+  if (effectiveKind !== "work" && effectiveKind !== "repair" && effectiveKind !== "integration")
+    return;
+  if ((writeScopes ?? []).length > 0)
+    return;
+  return `task ${taskId} "${subject}" (${effectiveKind}) was created with NO write scopes. Its frozen contract allows NO path: its writer must stop on the first edit and ask the captain. Remedy: declare the scopes now, or amend the contract before the first write — a scope added after approval needs a re-freeze and a new verify loop.`;
+}
 function describeWireValue(value) {
   if (value === null)
     return "null";
@@ -7960,6 +7993,16 @@ function depthMaxOf(service) {
       return raw;
   } catch {}
   return DEFAULT_DEPTH_MAX;
+}
+function mailBoundOf(service) {
+  try {
+    const config = service("mpdConfig");
+    if (typeof config?.get !== "function")
+      return DEFAULT_MAIL_MAX_UNDELIVERED;
+    return mailMaxUndeliveredOf((key) => config.get?.(key));
+  } catch {
+    return DEFAULT_MAIL_MAX_UNDELIVERED;
+  }
 }
 function teamDepthOf(workspace, teamId) {
   const seen = new Set;
@@ -8365,7 +8408,7 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces; `approve` EXECUTES through the TEAM EXECUTOR, REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
+    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -8405,12 +8448,18 @@ function apply(ctx) {
           stoppedAt: { type: "string" },
           archivedTo: { type: "string" },
           blockers: { type: "array", items: { type: "object" } },
+          warning: { type: "string" },
           bindings: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text2(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
+      render: (_args, value) => {
+        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
 ` + value.bindings.map((binding) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join(`
-`) : "") + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan))
+`) : "") + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan);
+        const warning = typeof value?.warning === "string" && value.warning !== "" ? `
+WARNING: ${value.warning}` : "";
+        return text2(painted + warning);
+      }
     },
     execute: async (args, exec) => {
       const action = String(args?.action ?? "");
@@ -8517,7 +8566,12 @@ function apply(ctx) {
           const stagedId = planTaskId(next2.tasks.length - 1);
           assertNoDependencyCycle(planDependencyEdges(next2), new Map(next2.tasks.map((task, index) => [planTaskId(index), task.subject])), stagedId, namedTask(stagedId, stagedTask.subject), blockedBy2.filter((reference) => planReferenceTarget(next2, reference) === stagedId));
           writePlan(workspace, next2);
-          return { plan: next2, ...blockedBy2.length === 0 ? {} : { blockers: blockerReading(next2, blockedBy2) } };
+          const scopesWarning2 = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject);
+          return {
+            plan: next2,
+            ...blockedBy2.length === 0 ? {} : { blockers: blockerReading(next2, blockedBy2) },
+            ...scopesWarning2 === undefined ? {} : { warning: scopesWarning2 }
+          };
         }
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
@@ -8541,11 +8595,13 @@ function apply(ctx) {
         const appendedTask = next.tasks[next.tasks.length - 1];
         assertNoDependencyCycle(boardDependencyEdges(next.tasks), new Map(next.tasks.map((task) => [task.id, task.subject])), appendedTask.id, namedTask(appendedTask.id, appendedTask.subject), appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject));
         writeTeam(workspace, withDerivedPhase(next));
+        const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject);
         return {
           team: next,
           task: appendedTask,
           appended: `task ${appendedTask.id} "${appendedTask.subject}" appended to the live team ${next.teamId}`,
-          ...appendedTask.unresolvedBlockers === undefined ? {} : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }
+          ...appendedTask.unresolvedBlockers === undefined ? {} : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) },
+          ...scopesWarning === undefined ? {} : { warning: scopesWarning }
         };
       }
       if (action === "edit") {
@@ -8607,15 +8663,15 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
-    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your own occupancy and seat state), `handoff` (write the seven-section document, then end your turn).",
+    description: "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
-        content: { type: "string", description: "handoff: the document." },
+        content: { type: "string", description: "handoff: document." },
         task_id: { type: "string", description: "the task id." },
-        claimant: { type: "string", description: "claim: who claims (default: caller)." },
-        note: { type: "string", description: "complete/fail: one line on the row." },
+        claimant: { type: "string", description: "claim: who claims (default caller)." },
+        note: { type: "string", description: "complete/fail: one line." },
         expected_revision: { type: "number", description: "the revision you decided on." },
         blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." }
       },
@@ -8850,16 +8906,16 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
-    description: 'Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:"roster"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled `task-reassigned`, then delivered. `release` frees a pairing and reopens the row. Lead-only: `reassign`, `mode:"roster".',
+    description: 'Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:"roster"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled, delivered. `release` frees a pairing, reopens the row. Lead-only: `reassign`, `mode:"roster".',
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["run", "release"], description: "What to do." },
-        task_id: { type: "string", description: "release: the task to free." },
+        task_id: { type: "string", description: "release: the task." },
         dry_run: { type: "boolean", description: "run: report, send nothing." },
         limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
         mode: { type: "string", enum: ["owner-only", "roster"], description: "run: default owner-only." },
-        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] applied first." }
+        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] first." }
       },
       required: ["action"],
       additionalProperties: false
@@ -8939,28 +8995,28 @@ function apply(ctx) {
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
-    description: "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept). `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`, `more`, `nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
+    description: "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept); a recipient past `mail.maxUndelivered` undelivered rows (default 8) is REFUSED — cellwork_send sends through this store, so the bound is SHARED. `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`/`more`/`nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
-        to: { type: "string", description: "send: member id/name, captain/lead, or *." },
+        to: { type: "string", description: "send: id/name, captain/lead, or *." },
         subject: { type: "string", description: "send: subject." },
         body: { type: "string", description: "send: body." },
         question: { type: "object", description: "send: {questionId, question, options:[{label}]}." },
         answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels]}." },
-        replyTo: { type: "string", description: "send: the message id this row replies to." },
+        replyTo: { type: "string", description: "send: the message id it replies to." },
         member: { type: "string", description: "unread: whose inbox." },
-        limit: { type: "integer", description: "Rows per page." },
+        limit: { type: "integer", description: "Page size." },
         offset: { type: "integer", description: "Start row." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
-        holder: { type: "string", description: "permit: member id/name the grant is for." },
-        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
-        ttlMs: { type: "number", description: "permit: lifetime ms (default 60000, max 600000)." },
-        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
-        permitId: { type: "string", description: "wait: the captain-issued permit id." },
-        messageId: { type: "string", description: "wait: the message id being waited on." },
-        timeoutMs: { type: "number", description: "wait: block ms (default 15000, cap 60000)." }
+        ids: { type: "array", items: { type: "string" }, description: "read: ids to acknowledge." },
+        holder: { type: "string", description: "permit: member the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: wait scope, default `answer`." },
+        ttlMs: { type: "number", description: "permit: lifetime ms (max 600000)." },
+        questionId: { type: "string", description: "permit: narrow to this question id." },
+        permitId: { type: "string", description: "wait: the captain's permit id." },
+        messageId: { type: "string", description: "wait: the awaited message id." },
+        timeoutMs: { type: "number", description: "wait: block ms (max 60000)." }
       },
       required: ["action"],
       additionalProperties: false
@@ -9019,6 +9075,7 @@ function apply(ctx) {
           ...args?.question === undefined ? {} : { question: args.question },
           ...args?.answer === undefined ? {} : { answer: args.answer },
           ...callerAddress === callerId ? {} : { fromMemberId: callerAddress },
+          maxUndelivered: mailBoundOf(teamActionsDeps.service),
           ...mailTeam === undefined ? {} : { teamId: mailTeam.teamId }
         }, resolved.targets, now());
         if (!result.ok)
@@ -9177,13 +9234,13 @@ ${message.body}`, exec.signal);
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
-    description: 'Halt, resume or fence. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (end a team with agent_teams_plan action:"delete"); `resume` clears the hold; `fence`/`unfence` close or reopen ONE seat, which is then never messaged (Lead only).',
+    description: 'Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:"delete"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).',
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
         reason: { type: "string", description: "halt/fence: why." },
-        member: { type: "string", description: "fence/unfence: the seat." }
+        member: { type: "string", description: "fence/unfence: seat." }
       },
       required: ["action"],
       additionalProperties: false

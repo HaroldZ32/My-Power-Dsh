@@ -27,6 +27,9 @@
 | `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | **抛错**转发，signal 透传 |
 | `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer 透传；接缝缺失时在调用点抛错（调用方的 usage 段落是必需的） |
 | 活跃 agent 自有的 scoped ctx | `agentScope(agent)` | 由 `agent.ctx` 构造 `{ context, tools.restrict, on, effect }`；承诺的成员缺失时返回 `undefined`，调用方按次回退 |
+| `ctx.agents.get(id)` / `ctx.agents.list` | `liveAgent(agentId)` / `liveAgents()` | 活跃会话注册表：按 id 取一个 Agent（先问注册表自己的 `get`，再扫 `list`），或 `[]`；注册表缺失、读取抛错、答复不是数组时降级为「没有条目」；从不抛错 |
+| `agent.ctx.get("compaction")`（经注册表） | `compactionEngineForAgent(agentId)` | 该 id 所指活跃 Agent 的压缩引擎，按 Agent **对象**记忆化；没有活跃 Agent 拥有该 id、或其作用域没有引擎时为 `undefined` |
+| `agent.ctx.get("compaction")`（调用方已持有的 handle） | `compactionEngineForLiveAgent(agent)` | **同一段**记忆化实现，直接从调用方自己的 Agent handle 解析，**绝不查**活跃会话注册表 —— 这是压缩屏障的**首选**，因此一个在屏障运行前就已从 `ctx.agents` 脱离的成员仍能**原地**压缩，而不是被围栏；handle 没有引擎时为 `undefined`；从不抛错 |
 | `agent.followup` | `startAgentTurn(agent, message)` | **抛错**逐字节转发（绝不吞成布尔值或 `undefined`） |
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | **抛错**逐字节转发 |
 | `agent.steer` | `steerAgentTurn(agent, message)` | **抛错**逐字节转发 —— 最近步（nearest-step）转向，区别于 `followup` 的新回合 |

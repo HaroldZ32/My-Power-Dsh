@@ -46,6 +46,8 @@ interface CapturedTool {
   name: string
   /** The runner, called with `{ name, agent }` as its exec. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
+  /** The normalized output block, which carries the renderer a render arm calls directly. */
+  output?: { render?: (args: unknown, value: unknown) => unknown }
 }
 
 /** One command definition the fake registry captured. */
@@ -389,6 +391,27 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
   const tool = harness.tools.find((candidate) => candidate.name === name)
   if (tool === undefined) throw new Error("no captured tool named " + name)
   return await tool.execute(args, { name, agent }) as Record<string, any>
+}
+
+/**
+ * Render one tool result exactly as the host would, flattened to its text.
+ *
+ * The registered definition keeps the plugin's OWN renderer (`registerTool` normalizes the output block
+ * but never replaces a caller-supplied one), so this is the text a model actually reads.
+ *
+ * @param harness - the harness whose captured definitions are read.
+ * @param name - the tool name.
+ * @param value - the result object the tool returned.
+ * @returns the rendered text.
+ */
+function renderText(harness: Harness, name: string, value: unknown): string {
+/** The captured definition of the tool asked for. */
+  const tool = harness.tools.find((candidate) => candidate.name === name)
+  if (tool?.output?.render === undefined) throw new Error("no renderer captured for " + name)
+/** The rendered blocks. */
+  const blocks = tool.output.render({}, value)
+  if (!Array.isArray(blocks)) return String(blocks)
+  return blocks.map((block) => String((block as { text?: unknown }).text ?? "")).join("\n")
 }
 
 /**
@@ -844,7 +867,7 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   const engine = { compactNow: async (_agent: unknown, signal: AbortSignal): Promise<unknown> => { engineSignal = signal; return { shadowedTokenCount: 10 } } }
   /** The promoted outcome. */
   const promoted = await promoteAfterHandoff({
-    dsh: { compactionEngineForAgent: () => engine, startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => {} },
+    dsh: { compactionEngineForAgent: () => engine, compactionEngineForLiveAgent: () => undefined, liveAgent: () => undefined, startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => {} },
     agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
     handoffText: "## Next step\nfinish B", nextStep: "finish B",
     injectDirective: (text) => { directives.push(text) }, sleep: async () => {},
@@ -857,8 +880,14 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   /** Whether the old child was interrupted. */
   let interrupted = false
   /** The reseed outcome. */
+  // PROVENANCE (VEdit P0 C2): this arm used to rely on the reseed accepting the DEAD member as its parent;
+  // the rule is now "the reseed parent is a LIVE session", so the double offers the captain and the arm
+  // keeps its original subject (the reseed path runs, the stale child is interrupted, a handle is minted).
+  /** The one live session this arm offers: the captain. */
+  const liveCaptain = { id: "session-captain" }
+  /** The reseed outcome. */
   const reseeded = await promoteAfterHandoff({
-    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
+    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), compactionEngineForLiveAgent: () => undefined, liveAgent: (id: string) => (id === "session-captain" ? liveCaptain : undefined), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
     agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
     handoffText: "## Next step\nfinish B", nextStep: "finish B",
     injectDirective: () => {}, sleep: async () => {},
@@ -1142,6 +1171,65 @@ async function activatedCell(harness: Harness): Promise<{ cellId: string; activa
   return { cellId, activated }
 }
 
+test("D4/C5: a re-split activation STATES what it kept, that kept contracts are NOT rewritten, and that it auto-dispatched", async () => {
+  /** The harness at its first activation. */
+  const harness = makeHarness()
+  /** The cell and its first activation. */
+  const { cellId, activated } = await activatedCell(harness)
+  // THE INITIAL ACTIVATION KEEPS NOTHING, so there is nothing to state and no notice is invented.
+  expect(activated.notice).toBeUndefined()
+  /** The kept task's contract path. */
+  const keptContractPath = join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "auth-core.md")
+  /** The kept contract's bytes before the re-split. */
+  const contractBefore = readFileSync(keptContractPath, "utf8")
+  // The requirements move on, then a NEW split revision is accepted and activated.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  await runTool(harness, "cellwork_split", { action: "submit", tasks: resplitTasks() }, splitterAgent(harness))
+  /** The re-split activation. */
+  const resplit = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(resplit.ok).toBe(true)
+  expect(resplit.mode).toBe("resplit")
+  // THE STATEMENT (C5): a captain must not have to INFER any of these four facts from the result counts.
+  expect(typeof resplit.notice).toBe("string")
+  expect(resplit.notice).toContain("2 kept")
+  expect(resplit.notice).toContain("NOT rewritten")
+  expect(resplit.notice).toContain("re-freeze")
+  expect(resplit.notice).toContain("new verify loop")
+  // The stage-4 exception is stated, not hidden.
+  expect(resplit.notice).toContain("loop")
+  expect(resplit.notice).toContain("rebuilt")
+  // The owner-only dispatch this activation ran is named too.
+  expect(resplit.notice).toContain("dispatched")
+  // NO SEMANTIC CHANGE (C5): the kept contract's bytes are exactly what the first activation froze.
+  expect(readFileSync(keptContractPath, "utf8")).toBe(contractBefore)
+  // The notice reaches the model through the tool's own renderer.
+  expect(renderText(harness, "cellwork_activate", resplit)).toContain("2 kept")
+})
+
+test("D3/C4: cellwork_split reports a scope-less task's warning in the RESULT and in its render", async () => {
+  /** The harness with a finalized cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  /** The submission whose work task declares NO path. */
+  const submitted = await runTool(harness, "cellwork_split", {
+    action: "submit",
+    tasks: [
+      { key: "core", subject: "Implement the core", description: "Add the token store.", kind: "work", ownerRole: "Senior Engineer", writeScopes: [], blockedBy: [], inputs: [], verify: true },
+      { key: "core-review", subject: "Review the core", description: "Blind review against the frozen contract.", kind: "review", ownerRole: "Reviewer", writeScopes: ["docs/core.md"], blockedBy: ["core"], inputs: [], verify: false },
+    ],
+  }, splitterAgent(harness))
+  expect(submitted.ok).toBe(true)
+  // NON-FATAL: the split is ACCEPTED and the warning rides beside the verdict.
+  expect(submitted.accepted).toBe(true)
+  expect((submitted.warnings as Array<Record<string, unknown>>).length).toBe(1)
+  expect((submitted.warnings as Array<Record<string, unknown>>)[0].taskKey).toBe("core")
+  /** The text the model reads. */
+  const rendered = renderText(harness, "cellwork_split", submitted)
+  expect(rendered).toContain("core")
+  expect(rendered).toContain("no path")
+})
+
 test("C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row", async () => {
   /** The harness at its first activation. */
   const harness = makeHarness()
@@ -1301,7 +1389,12 @@ test("C2.1: the compaction barrier classifies busy, error and no-engine after th
   /** Two bounded attempts with no real wait. */
   const config = { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 2, idleBarrierDelayMs: 0 }
   /** The reseed and interrupt seams, shared by every arm below. */
-  const seams = { startContinuableAgent: async (): Promise<unknown> => ({ childId: "handle-fresh" }), interruptAgent: (): void => {} }
+  // PROVENANCE (VEdit P0 C2): the reseed parent must be a LIVE session, so these arms offer the captain;
+  // their subject (how each engine answer is CLASSIFIED before the fallback) is unchanged.
+  /** The one live session these arms offer: the captain. */
+  const liveCaptain = { id: "session-captain" }
+  /** The reseed, interrupt and engine seams, each arm overriding the engine it wants. */
+  const seams = { startContinuableAgent: async (): Promise<unknown> => ({ childId: "handle-fresh" }), interruptAgent: (): void => {}, compactionEngineForLiveAgent: (): undefined => undefined, liveAgent: (id: string): { id: string } | undefined => (id === "session-captain" ? liveCaptain : undefined) }
   /** How many drives the BUSY engine was handed. */
   let busyAttempts = 0
   // A BUSY engine spends the whole retry budget and is classified as busy, not as an unexplained failure.

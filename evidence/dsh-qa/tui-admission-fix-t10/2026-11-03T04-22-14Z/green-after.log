@@ -1,0 +1,4 @@
+# GREEN-AFTER — lane T10 fix in place — 2026-11-03T04:22:15Z
+# command: bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+# exit: 0

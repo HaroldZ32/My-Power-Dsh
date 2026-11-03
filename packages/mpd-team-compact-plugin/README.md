@@ -60,9 +60,12 @@ compacted.
 ## Design constraints (each one measured)
 
 - **The engine is resolved PER MEMBER through the member's own scoped context**
-  (`agent.ctx.get("compaction")`), in exactly one place: the adapter's `compactionEngineForAgent`.
-  The host-plane engine is a DIFFERENT object serving a different realm, so driving a member with it
-  would compact the wrong history.
+  (`agent.ctx.get("compaction")`), and the ONE memoized body behind it is the adapter's: a caller that
+  already holds the live Agent asks `compactionEngineForLiveAgent(agent)` — no live-session registry
+  involved, and the compaction barrier's FIRST choice — while the id-keyed
+  `compactionEngineForAgent(agentId)` resolves through the registry and shares that same engine cache, so
+  the two seams cannot disagree about which realm owns an engine. The host-plane engine is a DIFFERENT
+  object serving a different realm, so driving a member with it would compact the wrong history.
 - **`compaction` is deliberately NOT in `inject`.** The service is composed by the `mpd` preset, so a
   profile without that preset has none; a declared-but-unregistered service parks the row
   (`pending (waiting for service: compaction)`), which is the failure mode the contract forbids. It is

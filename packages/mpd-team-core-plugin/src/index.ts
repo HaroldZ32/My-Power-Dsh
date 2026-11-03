@@ -31,7 +31,9 @@ import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
   acknowledge,
+  DEFAULT_MAIL_MAX_UNDELIVERED,
   inboxOf,
+  mailMaxUndeliveredOf,
   markDelivered,
   readMailbox,
   recordWake,
@@ -538,6 +540,28 @@ function blockerSentence(blockers: unknown): string {
   const forms = [...new Set(blockers.map((entry: { form?: string }) => String(entry?.form ?? "?")))].join("/")
   if (unknown.length === 0) return ` — blocked_by reads as ${forms}`
   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`
+}
+
+/**
+ * The WRITE-TIME warning a `create_task` call earns when a WRITING task declares no path (contract C4).
+ *
+ * WHY NON-BREAKING, and why only three kinds: an empty `write_scopes` list is legitimate for a row that
+ * really writes nothing, so the task is still created — but a `work`/`repair`/`integration` row whose
+ * frozen contract allows NO path stops its writer on the first edit, and the captain must hear that at
+ * the moment the scope was omitted instead of from a stalled member. `requirement`/`review` rows are
+ * exempt because they do not write, so warning about them would train a reader to ignore the field.
+ * @param kind - the kind the row will actually carry; absent means the store's own `work` default.
+ * @param writeScopes - the list the call declared, or undefined when it declared none at all.
+ * @param taskId - the id the row carries (`T<n>`), so the sentence names the row it is about.
+ * @param subject - the subject as the caller wrote it.
+ * @returns the warning sentence, or undefined when the row declares a path or does not write.
+ */
+function emptyScopesWarning(kind: TaskKind | undefined, writeScopes: readonly string[] | undefined, taskId: string, subject: string): string | undefined {
+  /** The kind the store will record for this row; `work` is the tier's declared default. */
+  const effectiveKind: TaskKind = kind ?? "work"
+  if (effectiveKind !== "work" && effectiveKind !== "repair" && effectiveKind !== "integration") return undefined
+  if ((writeScopes ?? []).length > 0) return undefined
+  return `task ${taskId} "${subject}" (${effectiveKind}) was created with NO write scopes. Its frozen contract allows NO path: its writer must stop on the first edit and ask the captain. Remedy: declare the scopes now, or amend the contract before the first write — a scope added after approval needs a re-freeze and a new verify loop.`
 }
 
 /**
@@ -1077,6 +1101,28 @@ function depthMaxOf(service: (id: string) => unknown): number {
     // A throwing config service is a composition fact, not a reason to fail a reader: the default wins.
   }
   return DEFAULT_DEPTH_MAX
+}
+
+/**
+ * The undelivered-mail bound this workspace declares, read through the optional `mpdConfig` service.
+ *
+ * THE ONE KNOB BOTH SENDING TOOLS READ (contract C3): `cellwork_send` and `agent_teams_mail` pass the
+ * resolved number into the SAME `sendMany`, so the bound can never differ between the two surfaces and
+ * "use the other mail tool" is not an escape. The key is `mail.maxUndelivered`, the shipped default is
+ * 8, and an absent, unreadable or unusable value falls back to that default rather than failing a send.
+ * @param service - the row's optional-service lookup (`ctx.get(id, false)`), contained by the caller.
+ * @returns the bound to enforce; `0` means the bound is disabled.
+ */
+function mailBoundOf(service: (id: string) => unknown): number {
+  try {
+    /** The config row's published service, when this composition mounts it. */
+    const config = service("mpdConfig") as { get?: (key?: string) => unknown } | undefined
+    if (typeof config?.get !== "function") return DEFAULT_MAIL_MAX_UNDELIVERED
+    return mailMaxUndeliveredOf((key) => config.get?.(key))
+  } catch {
+    // A throwing config service is a composition fact, not a reason to fail a send: the default wins.
+    return DEFAULT_MAIL_MAX_UNDELIVERED
+  }
 }
 
 /**
@@ -1846,7 +1892,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces; `approve` EXECUTES through the TEAM EXECUTOR, REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
+      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append; `edit` reads or replaces; `approve` EXECUTES via the TEAM EXECUTOR (refuses an EMPTY plan); `delete` archives; `status` prints plan, hold, roster, board. `create_task` WARNS when a work/repair/integration row has no write_scopes.",
     parameters: {
       type: "object",
       properties: {
@@ -1903,15 +1949,19 @@ export function apply(ctx: any): void {
           // The write-time blocker reading of `create_task` / `edit`: one `{ reference, form }` per
           // reference, declared so the harness's own output validation accepts it.
           blockers: { type: "array", items: { type: "object" } },
+          // THE EMPTY-WRITE-SCOPES WARNING (C4): a `work`/`repair`/`integration` row staged or appended
+          // with NO path carries the sentence naming that consequence and its remedy. Declared because
+          // this allowlist is explicit — an undeclared field would be dropped by output validation.
+          warning: { type: "string" },
           // THE APPROVAL'S WORKMATE BINDINGS (W3-C): one `{ member, mode, workmate?, reason? }` per
           // staged member, in plan order. Declared so the harness's output validation accepts the
           // payload field the approval has carried since the workmate wave.
           bindings: { type: "array", items: { type: "object" } },
         },
       },
-      render: (_args: any, value: any) =>
-        text(
-          value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
+      render: (_args: any, value: any) => {
+        /** The sentence this branch paints, before any write-time warning rides below it. */
+        const painted = value?.archivedTo !== undefined ? `archived to ${value.archivedTo}`
             : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`)
               // THE LOUD HALF. An approval that carried a blocker naming no task says so HERE, in the
               // answer the captain reads, with the board task and the exact text — because the whole
@@ -1931,8 +1981,11 @@ export function apply(ctx: any): void {
             // The task-writing branches answer with the blockers reading, which is the sentence that
             // tells a captain at WRITE time whether their references can resolve (R21).
             : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
-            : describeStagedPlan(value?.plan),
-        ),
+            : describeStagedPlan(value?.plan)
+        /** The empty-scopes warning (C4) rides BELOW the branch's own sentence, so it is never lost. */
+        const warning = typeof value?.warning === "string" && value.warning !== "" ? `\nWARNING: ${value.warning}` : ""
+        return text(painted + warning)
+      },
     },
     execute: async (args: any, exec: DshToolExec) => {
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
@@ -2129,7 +2182,13 @@ export function apply(ctx: any): void {
           // a captain sees immediately which forms will resolve and which name nothing this plan can
           // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
           // reference (`3` before task 3 exists) is legitimate and reads as `position`.
-          return { plan: next, ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }) }
+          /** The empty-scopes warning this staged row earns, or undefined when it declares a path (C4). */
+          const scopesWarning = emptyScopesWarning(stagedTask.kind, stagedTask.writeScopes, stagedId, stagedTask.subject)
+          return {
+            plan: next,
+            ...(blockedBy.length === 0 ? {} : { blockers: blockerReading(next, blockedBy) }),
+            ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
+          }
         }
         // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
         // The measured defect: after approval this exact call answered "no team is staged in this
@@ -2175,6 +2234,8 @@ export function apply(ctx: any): void {
           appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject),
         )
         writeTeam(workspace, withDerivedPhase(next))
+        /** The empty-scopes warning this live row earns, or undefined when it declares a path (C4). */
+        const scopesWarning = emptyScopesWarning(appendedTask.kind, appendedTask.writeScopes, appendedTask.id, appendedTask.subject)
         return {
           team: next,
           task: appendedTask,
@@ -2182,6 +2243,7 @@ export function apply(ctx: any): void {
           ...(appendedTask.unresolvedBlockers === undefined
             ? {}
             : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }),
+          ...(scopesWarning === undefined ? {} : { warning: scopesWarning }),
         }
       }
 
@@ -2255,15 +2317,15 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
-      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your own occupancy and seat state), `handoff` (write the seven-section document, then end your turn).",
+      "Board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`), `context` (your occupancy/seat), `handoff` (write the document, then end your turn).",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"], description: "What to do." },
-        content: { type: "string", description: "handoff: the document." },
+        content: { type: "string", description: "handoff: document." },
         task_id: { type: "string", description: "the task id." },
-        claimant: { type: "string", description: "claim: who claims (default: caller)." },
-        note: { type: "string", description: "complete/fail: one line on the row." },
+        claimant: { type: "string", description: "claim: who claims (default caller)." },
+        note: { type: "string", description: "complete/fail: one line." },
         expected_revision: { type: "number", description: "the revision you decided on." },
         blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." },
       },
@@ -2643,16 +2705,16 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description:
-      "Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:\"roster\"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled `task-reassigned`, then delivered. `release` frees a pairing and reopens the row. Lead-only: `reassign`, `mode:\"roster\".",
+      "Pair READY tasks with their DECLARED OWNER (no substitute) and record it; a busy/absent/fenced owner is reported, row left pending. `mode:\"roster\"` restores the positional fallback. `reassign` hands rows to another member: claimed, journaled, delivered. `release` frees a pairing, reopens the row. Lead-only: `reassign`, `mode:\"roster\".",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["run", "release"], description: "What to do." },
-        task_id: { type: "string", description: "release: the task to free." },
+        task_id: { type: "string", description: "release: the task." },
         dry_run: { type: "boolean", description: "run: report, send nothing." },
         limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
         mode: { type: "string", enum: ["owner-only", "roster"], description: "run: default owner-only." },
-        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] applied first." },
+        reassign: { type: "array", items: { type: "object" }, description: "run: [{task_id, owner}] first." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -2797,28 +2859,28 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description:
-      "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept). `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`, `more`, `nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
+      "The team mailbox. `send` records a message; a body over 4000 chars is cut at WRITE (`truncated`, `originalLength`, original not kept); a recipient past `mail.maxUndelivered` undelivered rows (default 8) is REFUSED — cellwork_send sends through this store, so the bound is SHARED. `unread` lists unacknowledged mail PAGED (`limit` 20, `offset`/`more`/`nextOffset`); rows past the page stay UNREAD. `read` acks ids; `summary` counts totals. `question`/`answer` set the kind. `permit` (captain) grants a wait TTL; `wait` needs it.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["send", "unread", "read", "summary", "permit", "wait"], description: "What to do." },
-        to: { type: "string", description: "send: member id/name, captain/lead, or *." },
+        to: { type: "string", description: "send: id/name, captain/lead, or *." },
         subject: { type: "string", description: "send: subject." },
         body: { type: "string", description: "send: body." },
         question: { type: "object", description: "send: {questionId, question, options:[{label}]}." },
         answer: { type: "object", description: "send: {questionId, answerTo, selected:[labels]}." },
-        replyTo: { type: "string", description: "send: the message id this row replies to." },
+        replyTo: { type: "string", description: "send: the message id it replies to." },
         member: { type: "string", description: "unread: whose inbox." },
-        limit: { type: "integer", description: "Rows per page." },
+        limit: { type: "integer", description: "Page size." },
         offset: { type: "integer", description: "Start row." },
-        ids: { type: "array", items: { type: "string" }, description: "read: the message ids to acknowledge." },
-        holder: { type: "string", description: "permit: member id/name the grant is for." },
-        scope: { type: "string", enum: ["answer", "message"], description: "permit: what may be waited for (default `answer`)." },
-        ttlMs: { type: "number", description: "permit: lifetime ms (default 60000, max 600000)." },
-        questionId: { type: "string", description: "permit: narrow the grant to this question id." },
-        permitId: { type: "string", description: "wait: the captain-issued permit id." },
-        messageId: { type: "string", description: "wait: the message id being waited on." },
-        timeoutMs: { type: "number", description: "wait: block ms (default 15000, cap 60000)." },
+        ids: { type: "array", items: { type: "string" }, description: "read: ids to acknowledge." },
+        holder: { type: "string", description: "permit: member the grant is for." },
+        scope: { type: "string", enum: ["answer", "message"], description: "permit: wait scope, default `answer`." },
+        ttlMs: { type: "number", description: "permit: lifetime ms (max 600000)." },
+        questionId: { type: "string", description: "permit: narrow to this question id." },
+        permitId: { type: "string", description: "wait: the captain's permit id." },
+        messageId: { type: "string", description: "wait: the awaited message id." },
+        timeoutMs: { type: "number", description: "wait: block ms (max 60000)." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -2947,6 +3009,9 @@ export function apply(ctx: any): void {
           // THE SENDER'S ROSTER ID: a row is addressed to `M1` while the answering session names
           // itself by session id, so the ownership rules need both spellings recorded at send time.
           ...(callerAddress === callerId ? {} : { fromMemberId: callerAddress }),
+          // THE BOUND (contract C3, D2): resolved per call from the workspace's `mail.maxUndelivered`,
+          // so this tool and `cellwork_send` enforce ONE number through the ONE `sendMany` path.
+          maxUndelivered: mailBoundOf(teamActionsDeps.service),
           // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
           // team identity is recorded HERE, at the one moment the sending team is known.
           ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
@@ -3191,13 +3256,13 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "Halt, resume or fence. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close or reopen ONE seat, which is then never messaged (Lead only).",
+      "Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
         reason: { type: "string", description: "halt/fence: why." },
-        member: { type: "string", description: "fence/unfence: the seat." },
+        member: { type: "string", description: "fence/unfence: seat." },
       },
       required: ["action"],
       additionalProperties: false,

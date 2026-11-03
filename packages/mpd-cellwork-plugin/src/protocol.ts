@@ -10,7 +10,7 @@ import type { CellworkConfig } from "./config"
 import { fenceReasonOf, nameKey, sendThroughExecutor } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
 import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, pageCellMail, readCellMail, truncateCellMailBody, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
-import { sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
+import { mailMaxUndeliveredOf, sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
 import type { SendInput, SendManyResult } from "../../mpd-team-core-plugin/src/mailbox-store"
 import { fanOutTargets } from "../../mpd-mail-protocol/src/index"
 import type { MailAddress, MailAnswer, MailKind, MailOption, MailQuestion } from "../../mpd-mail-protocol/src/index"
@@ -29,7 +29,30 @@ import {
 } from "./protocol-core"
 import { readFileSync } from "node:fs"
 import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
-import type { ProtocolDeps } from "./protocol-core"
+import type { ProtocolCtx, ProtocolDeps } from "./protocol-core"
+
+/**
+ * The workspace config reader one send binds: `mpdConfig.get(<dotted key>)`, tolerant of absence.
+ *
+ * Total on purpose: a composition without the config row means "the row config is the only layer", never
+ * a failed send. The VALUE semantics live in the shared store's `mailMaxUndeliveredOf` (imported below),
+ * so this module owns only the seam read — one rule for the bound, not two.
+ *
+ * @param ctx - the host context the row reads services from.
+ * @returns a reader of one dotted `mpd.jsonc` key.
+ */
+function workspaceConfigReader(ctx: ProtocolCtx): (dottedKey: string) => unknown {
+  return (dottedKey: string): unknown => {
+    /** The config service, probed with a false default so an absent row is not an error. */
+    const service = ctx.get?.("mpdConfig", false) as { get?: (dottedKey: string) => unknown } | undefined
+    if (service === undefined || service === null || typeof service.get !== "function") return undefined
+    try {
+      return service.get(dottedKey)
+    } catch {
+      return undefined
+    }
+  }
+}
 
 /** One protocol tool's answer: a structured success (any documented fields) or the refusal sentence. */
 type ProtocolResult = Record<string, unknown> | ProtocolFailure
@@ -862,7 +885,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_send ────────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). MAILBOX FULL: a recipient with `mail.maxUndelivered` undelivered messages is refused (the key is read per call from the workspace config; its DEFAULT is 8, and `agent_teams_mail` shares the SAME bound, so the official tool is not a fallback). Two recoveries: acknowledge that inbox (`cellwork_inbox` for a cell seat, or `agent_teams_mail {action:\"read\"}` for a team member), or reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
@@ -1068,6 +1091,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name))
       /** The team lead the store addresses as `captain`. */
       const leadIds = [seatKey(target, "captain")]
+      // ONE BOUND, ONE RULE (C3): the value is resolved by the shared store's own exported resolver, read
+      // per call so an `mpd.jsonc` edit applies to the NEXT send. `0` disables the bound, exactly as the
+      // store documents, because this call site does not re-interpret the number it was handed.
+      /** The shared backlog bound this send enforces. */
+      const undeliveredBound = mailMaxUndeliveredOf(workspaceConfigReader(deps.ctx))
       /** The one send the store validates and fans out atomically; message ids are minted inside it. */
       const input: SendInput = {
         // THE SENDER'S STABLE SEAT KEY, not its session id (T9/F2): the store's ownership rules compare
@@ -1084,6 +1112,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         teamId: target.teamId,
         cellId: targetCellId,
         fromMemberId: caller.member,
+        // THE BOUND IS THE SAME ONE `agent_teams_mail` ENFORCES (C3): both tools feed this one store.
+        maxUndelivered: undeliveredBound,
         ...(crossCell ? { fromCell: cell.cellId } : {}),
         ...(kind === "message" ? {} : { kind }),
         ...(replyTo === "" ? {} : { replyTo }),
@@ -1290,6 +1320,25 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
 
   // ── the compaction barrier (agent/turn-stopping) ─────────────────────────
   /**
+   * The durable parent session a stopping agent's header carries, when it carries one.
+   *
+   * Read structurally because an Agent is opaque to a plugin: the harness records the parent link at
+   * `session.header.parentSession`. Anything else answers "", which is what sends the reseed to the
+   * captain fallback instead of inventing a parent.
+   *
+   * @param agent - the stopping agent handle.
+   * @returns the parent session id, or "".
+   */
+  const parentSessionOf = (agent: unknown): string => {
+    /** The handle, read as a record so every access below is checked. */
+    const handle = typeof agent === "object" && agent !== null ? agent as { session?: unknown } : undefined
+    /** Its session, when it carries one. */
+    const session = typeof handle?.session === "object" && handle.session !== null ? handle.session as { header?: unknown } : undefined
+    /** That session's header, when it carries one. */
+    const header = typeof session?.header === "object" && session.header !== null ? session.header as { parentSession?: unknown } : undefined
+    return typeof header?.parentSession === "string" ? header.parentSession : ""
+  }
+  /**
    * Run the post-handoff barrier for one agent, when that member is handoff-ready.
    *
    * @param agent - the stopping agent handle.
@@ -1313,12 +1362,15 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       } catch {
         handoffText = "(the handoff document could not be read back; the journal names its path)"
       }
+      /** The member's durable parent session, which the reseed may only use while it is LIVE (C2). */
+      const parentSessionId = parentSessionOf(agent)
       /** The barrier's outcome. */
       const result = await promoteAfterHandoff({
         dsh,
         agent,
         memberName: caller.member,
         sessionId: member.sessionId,
+        parentSessionId,
         cell: caller.cell,
         config,
         handoffText,
@@ -1347,20 +1399,45 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // THE GIVEN-UP BARRIER GETS ITS OWN JOURNAL ROW (C7): the compaction row below reports the attempt,
       // this one reports that the member is now OUT OF SERVICE and which verb repairs its rows.
       if (result.outcome === "refused") appendJournal(caller.workspace, caller.cell.cellId, checkpointUnrecoverableEntry(caller.member, result), now)
+      // THE SEEDED CHILD'S LINEAGE IS A FACT, NOT AN INFERENCE (C2): one row names the live session the
+      // fresh child was raised under and which rule found it, so a captain fallback is never silent.
+      if (result.outcome === "reseeded" && result.parentSource !== undefined) {
+        appendJournal(caller.workspace, caller.cell.cellId, {
+          event: "reseed-parent",
+          member: caller.member,
+          parentSource: result.parentSource,
+          parentSessionId: result.parentSessionId ?? "",
+          originalParentSessionId: parentSessionId,
+          newHandle: result.newHandle ?? "",
+        }, now)
+      }
       transition(caller.workspace, next, compactionJournalEntry(caller.member, result), now)
     } finally {
       inFlight.delete(key)
     }
   }
-  /** The turn-stopping listener: fire-and-forget, contained, never blocks the harness's own stop. */
-  const stopDispose = dsh.onEvent("agent/turn-stopping", (payload: unknown) => {
+  /**
+   * The turn-stopping listener: it HANDS THE BARRIER TO THE HOST (C1) and never rejects the host chain.
+   *
+   * The host's serial dispatch AWAITS a returned promise (a returned value bails the chain, a returned
+   * promise is awaited), so returning the barrier is what keeps the member's Agent alive until the engine
+   * has been driven. The old `void runBarrier(...)` spelling detached it, and the member was detached from
+   * `ctx.agents` by the time the engine lookup ran. Every throw is contained here: the returned promise
+   * resolves, it never rejects into the harness.
+   */
+  const stopDispose = dsh.onEvent("agent/turn-stopping", (payload: unknown): unknown => {
     try {
       /** The stopping agent, when the event payload carries it. */
       const agent = typeof payload === "object" && payload !== null ? (payload as { agent?: unknown }).agent : undefined
-      if (agent === undefined || agent === null) return
-      void runBarrier(agent).catch((error: unknown) => deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error))))
+      if (agent === undefined || agent === null) return undefined
+      // The catch is attached HERE, so a barrier failure is a log line and never a rejection of the
+      // promise the host is awaiting.
+      return runBarrier(agent).catch((error: unknown) => {
+        deps.warn("[mpd-cellwork] the compaction barrier failed: " + (error instanceof Error ? error.message : String(error)))
+      })
     } catch (error) {
       deps.warn("[mpd-cellwork] the turn-stopping listener failed: " + (error instanceof Error ? error.message : String(error)))
+      return undefined
     }
   })
   if (typeof stopDispose === "function") disposers.push(stopDispose)

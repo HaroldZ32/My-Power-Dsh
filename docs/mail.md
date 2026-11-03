@@ -63,8 +63,13 @@ Delivery and reading are separate facts, and this mailbox is the only place the 
 - **Only the row's ADDRESSEE may acknowledge it.** There is no administrative escape: an id addressed to
   somebody else is refused, with the addressee named, and the row stays unread. The acknowledgement is made
   as the caller's own member identity (its roster id, or its session id when it has no roster row).
-- A member's UNDELIVERED backlog is BOUNDED (8 per recipient, per team): a stalled member cannot silently
-  accumulate work, and an ACK (not a delivery) releases a slot.
+- A member's UNDELIVERED backlog is BOUNDED per recipient, per team: a stalled member cannot silently
+  accumulate work. The bound is the workspace key `mail.maxUndelivered` (default 8; `0` disables; an
+  absent or unusable value falls back to 8), read per call on the ONE store path that serves BOTH
+  `cellwork_send` and `agent_teams_mail` — switching tools is not an escape. **An acknowledgement frees
+  one slot, and so does a delivery.** A refusal names the recipient, the current count, the bound and the
+  TWO recovery paths — acknowledge the inbox (`agent_teams_mail {action:"read"}`, `cellwork_inbox`) or
+  reassign the rows behind it (`cellwork_dispatch {reassign:[{task_id, owner}]}`) — and writes nothing.
 - **Consequence, stated rather than discovered:** a captain CANNOT clear a stalled member's backlog by
   acknowledging on its behalf. It is refused like any other non-addressee. A permit (below) grants a WAIT,
   never an acknowledgement on another member's behalf.

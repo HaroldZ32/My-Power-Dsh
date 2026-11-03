@@ -20,7 +20,7 @@ import type { CellworkConfig } from "./config"
 
 import { validateHandoffText, writeHandoff } from "./handoff"
 import { appendCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
-import type { DshAdapter, DshContextPressure, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter, DshContextPressure, DshLiveAgent, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { readFileSync } from "node:fs"
 
 /** The host context the protocol tools read (the adapter owns every harness seam). */
@@ -285,16 +285,29 @@ export function compactionSignal(parent?: AbortSignal): { controller: AbortContr
   return { controller, signal: parent === undefined ? controller.signal : AbortSignal.any([parent, controller.signal]) }
 }
 
+/** The engine shape the barrier drives: the host's `BasicCompactionEngine`, read structurally. */
+interface CompactionEngine {
+  /** Compact this agent's history now, answering the host's own result object (or null for no range). */
+  compactNow?: (agent: unknown, signal: AbortSignal) => Promise<unknown>
+}
+
 /** What {@link promoteAfterHandoff} needs: the seams, the member and the handoff text. */
 export interface PromotionDeps {
   /** The adapter slices the barrier uses. */
-  dsh: Pick<DshAdapter, "compactionEngineForAgent" | "startContinuableAgent" | "interruptAgent">
+  dsh: Pick<DshAdapter, "compactionEngineForAgent" | "compactionEngineForLiveAgent" | "liveAgent" | "startContinuableAgent" | "interruptAgent">
   /** The member's live agent handle. */
   agent: unknown
   /** The member's board name. */
   memberName: string
-  /** The member's recorded session id (the compaction engine is resolved by it). */
+  /** The member's recorded session id (the registry fallback the engine is resolved by). */
   sessionId: string
+  /**
+   * The member's durable parent session id, read from the stopping agent's session header.
+   *
+   * Absent (or not live) means the barrier falls back to the CAPTAIN, and a missing captain too means
+   * `reseed-parent-unavailable` — the reseed never uses the dead member as its parent (C2).
+   */
+  parentSessionId?: string
   /** The cell and its team. */
   cell: CellState
   /** The resolved knobs (`compactionRetries`, `idleBarrierDelayMs`, `depthMax`). */
@@ -305,7 +318,7 @@ export interface PromotionDeps {
   nextStep: string
   /** Inject the promotion directive into the SAME agent (the inbox seam). */
   injectDirective: (text: string) => void
-  /** The barrier's idle wait; injected so tests do not sleep. */
+  /** The barrier's retry wait; injected so tests do not sleep. */
   sleep: (ms: number) => Promise<void>
   /** The event's cancellation, when it carried one. */
   signal?: AbortSignal
@@ -321,6 +334,88 @@ export interface PromotionResult {
   reason: string
   /** The fresh child's handle, when the reseed path ran. */
   newHandle?: string
+  /** The live session the reseed child was raised under, when the reseed path ran (C2 lineage). */
+  parentSessionId?: string
+  /** Which rule found that session: the member's durable parent, or the captain fallback. */
+  parentSource?: "parent" | "captain"
+}
+
+/**
+ * The live session one id names, read through the adapter's registry seam.
+ *
+ * Total on purpose: the seam is absent in an older composition or a test double, and that absence means
+ * "this composition cannot tell", which the caller treats exactly like a dead session.
+ *
+ * @param deps - the barrier's seams.
+ * @param sessionId - the session to resolve; "" names nothing.
+ * @returns the live Agent, or undefined.
+ */
+function liveSessionOf(deps: PromotionDeps, sessionId: string): DshLiveAgent | undefined {
+  /** The adapter's own lookup, probed rather than assumed (older compositions lack it). */
+  const seam = deps.dsh.liveAgent
+  if (typeof seam !== "function" || sessionId === "") return undefined
+  try {
+    return seam.call(deps.dsh, sessionId) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The engine the barrier should drive, resolved WITHOUT a preceding sleep (C1).
+ *
+ * ORDER IS THE FIX: the LIVE HANDLE the event carried is asked first, because the id-keyed lookup misses
+ * a member the registry has already detached — the measured `no-engine` fence. The registry seam stays as
+ * the fallback for an older composition (or a resumable pass) that only offers an id.
+ *
+ * @param deps - the barrier's seams.
+ * @returns the engine, or undefined when neither seam can name one.
+ */
+function engineForBarrier(deps: PromotionDeps): CompactionEngine | undefined {
+  /** The live-handle seam, probed rather than assumed. */
+  const liveHandle = deps.dsh.compactionEngineForLiveAgent
+  if (typeof liveHandle === "function") {
+    /** The engine of the Agent this event handed us. */
+    const fromHandle = liveHandle.call(deps.dsh, deps.agent)
+    if (fromHandle !== undefined && fromHandle !== null) return fromHandle as CompactionEngine
+  }
+  /** The registry lookup, which is the only route a composition without the handle seam offers. */
+  const fromRegistry = deps.dsh.compactionEngineForAgent(deps.sessionId)
+  return fromRegistry === undefined || fromRegistry === null ? undefined : fromRegistry as CompactionEngine
+}
+
+/** The live session a reseed is raised under, and which rule found it. */
+interface ReseedParent {
+  /** The live Agent the child is raised under. */
+  parent: DshLiveAgent
+  /** Which rule found it, journaled so the lineage is observable rather than inferred. */
+  source: "parent" | "captain"
+  /** That session's id. */
+  sessionId: string
+}
+
+/**
+ * The LIVE session a reseed child is raised under: the member's durable parent, else the captain (C2).
+ *
+ * The dead member is NEVER a candidate: the host's `startActivation` refuses a parent it no longer holds
+ * (`UNAUTHORIZED: subagent creation requires the exact live parent agent`), which is what turned every
+ * checkpoint into a fence.
+ *
+ * @param deps - the barrier's seams.
+ * @returns the live parent and its rule, or undefined when neither session is live.
+ */
+function reseedParentOf(deps: PromotionDeps): ReseedParent | undefined {
+  /** The member's own durable parent session, when the header carried one. */
+  const originalParent = deps.parentSessionId ?? ""
+  /** The original parent, when that session is still live. */
+  const parent = liveSessionOf(deps, originalParent)
+  if (parent !== undefined) return { parent, source: "parent", sessionId: originalParent }
+  /** The captain's session, the documented last resort. */
+  const captainSession = deps.cell.captainSessionId ?? ""
+  /** The captain, when that session is still live. */
+  const captain = liveSessionOf(deps, captainSession)
+  if (captain !== undefined) return { parent: captain, source: "captain", sessionId: captainSession }
+  return undefined
 }
 
 /**
@@ -341,6 +436,7 @@ export function compactionJournalEntry(memberName: string, result: PromotionResu
     attempts: result.attempts,
     reason: result.reason,
     ...(result.newHandle === undefined ? {} : { newHandle: result.newHandle }),
+    ...(result.parentSource === undefined ? {} : { parentSource: result.parentSource, parentSessionId: result.parentSessionId }),
   }
 }
 
@@ -409,9 +505,11 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   /** The last classification, journaled on every path. */
   let lastReason = "not attempted"
   for (let attempt = 1; attempt <= deps.config.compactionRetries; attempt += 1) {
-    await deps.sleep(deps.config.idleBarrierDelayMs)
-    /** The member's own engine, resolved by its session id. */
-    const engine = deps.dsh.compactionEngineForAgent(deps.sessionId) as { compactNow?: (agent: unknown, signal: AbortSignal) => Promise<unknown> } | undefined
+    // NO SLEEP BEFORE THE FIRST ATTEMPT (C1). The member is live NOW; a delay before the first drive is
+    // exactly the window in which the host's serial dispatch moves on and the handle stops mattering.
+    if (attempt > 1) await deps.sleep(deps.config.idleBarrierDelayMs)
+    /** The engine, resolved from the LIVE handle first and the registry only as a fallback. */
+    const engine = engineForBarrier(deps)
     if (engine === undefined || typeof engine.compactNow !== "function") {
       lastReason = "no-engine"
       continue
@@ -439,6 +537,16 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
   } catch {
     // An absent interrupt seam does not block the reseed; the stale child is simply left idle.
   }
+  /** The LIVE session the fresh child is raised under, or undefined when neither candidate is live. */
+  const parent = reseedParentOf(deps)
+  if (parent === undefined) {
+    // A DISTINCT reason, never the host's UNAUTHORIZED sentence: nothing tried to raise a child.
+    return {
+      outcome: "refused",
+      attempts: deps.config.compactionRetries,
+      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent)",
+    }
+  }
   try {
     /** The fresh durable child's activation. */
     const activation = await deps.dsh.startContinuableAgent({
@@ -446,7 +554,9 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
       label: deps.memberName + " · " + deps.cell.teamId,
       request: {
         prompt: deps.handoffText + "\n\n" + promotionDirective(deps.cell.cellId, deps.memberName, deps.cell.depth + 1, deps.nextStep),
-        parent: deps.agent,
+        // THE LIVE PARENT, never `deps.agent` (C2): the member's own handle is detached, and the host
+        // refuses a parent it no longer holds.
+        parent: parent.parent,
         maxDepth: deps.config.depthMax,
       },
       signal: compactionSignal().signal,
@@ -454,7 +564,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     /** The fresh handle the backend minted. */
     const handle = typeof activation?.childId === "string" ? activation.childId : typeof activation?.id === "string" ? activation.id : ""
     if (handle === "") return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed reported no child id" }
-    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle }
+    return { outcome: "reseeded", attempts: deps.config.compactionRetries, reason: lastReason, newHandle: handle, parentSessionId: parent.sessionId, parentSource: parent.source }
   } catch (error) {
     return { outcome: "refused", attempts: deps.config.compactionRetries, reason: lastReason + "; the reseed failed: " + (error instanceof Error ? error.message : String(error)) }
   }

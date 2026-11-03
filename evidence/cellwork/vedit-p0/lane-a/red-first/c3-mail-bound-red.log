@@ -1,0 +1,41 @@
+# RED-FIRST on HEAD d2032bf3 — 2026-11-03T03:52:20Z
+# NOTE: mail.maxUndelivered reaches sendMany through lane A's call site only; absent key = 8 is a control.
+# command: bun test packages/mpd-cellwork-plugin/test/mail-bound-config.test.ts
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/mail-bound-config.test.ts:
+141 |   /** The first message: one undelivered row, which is the bound itself. */
+142 |   const first = await runTool(harness, "cellwork_send", { to: MEMBER_NAME, subject: "one", body: "first" })
+143 |   expect(first.ok).toBe(true)
+144 |   /** The second message: over the configured bound. */
+145 |   const second = await runTool(harness, "cellwork_send", { to: MEMBER_NAME, subject: "two", body: "second" })
+146 |   expect(second.ok).toBe(false)
+                          ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/mail-bound-config.test.ts:146:21)
+(fail) C3: `mail.maxUndelivered` reaches the shared store's bound (a configured 1 refuses the second row) [3.67ms]
+(pass) C3 control: an ABSENT config key keeps the documented default of 8 [1.84ms]
+167 | test("C3: the cellwork_send description DISCLOSES the bound, the config key and both recovery paths", () => {
+168 |   /** The harness whose captured description is under test. */
+169 |   const harness = makeHarness(undefined)
+170 |   /** The tool's description, which is the only place a model learns the bound exists. */
+171 |   const description = String(harness.tools.get("cellwork_send")?.description ?? "")
+172 |   expect(description).toContain("mail.maxUndelivered")
+                            ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "mail.maxUndelivered"
+Received: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). Optional STRUCTURED mail: `kind` (`message`|`question`|`answer`); a question carries `options` (+`multiSelect`) and its `questionId` defaults to its own message id; an answer carries `replyTo` (the question's message id), `selected` (the offered labels copied VERBATIM) and/or `custom` — an unknown label is refused WITH the valid label list, and the answer's `questionId` defaults to the answered question's. `broadcast:true` mints ONE ROW PER SEAT of the target cell (the sender excluded). The row(s) are written to the workspace mailbox FIRST (atomic fan-out through the shared store), then a wake-up is attempted per row when the sender is this cell's captain and the recipient holds a handle; the attempt's outcome is appended as a `wake` record, so a failed wake-up leaves the row in place and is surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp."
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/mail-bound-config.test.ts:172:23)
+(fail) C3: the cellwork_send description DISCLOSES the bound, the config key and both recovery paths [0.20ms]
+
+ 1 pass
+ 2 fail
+ 13 expect() calls
+Ran 3 tests across 1 file. [139.00ms]
+# exit: 1
