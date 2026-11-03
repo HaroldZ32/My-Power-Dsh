@@ -38,9 +38,9 @@ import {
   type DshGoTone,
   type DshGoView,
 } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
-import { copyFor, type DshGoCopy } from "./dshgo-copy"
-import { graphLinesOf, graphNeedsFold, graphStepsOf, layerGraphOf } from "./dshgo-graph"
-import type { PanelSnapshot } from "./dshgo-panel"
+import { copyFor, type DshGoCopy } from "./dshgo-copy.ts"
+import { graphLinesOf, graphNeedsFold, graphStepsOf, layerGraphOf } from "./dshgo-graph.ts"
+import type { PanelSnapshot } from "./dshgo-panel.ts"
 
 /** One task row of the team board, as the team panel renders it. */
 export interface TeamPanelTask {

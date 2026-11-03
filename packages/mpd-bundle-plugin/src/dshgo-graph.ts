@@ -12,8 +12,8 @@
 // WHAT IT DELIBERATELY IS NOT: it does not draw boxes or diagonal edges. A phone-width code block is
 // about forty characters, and box art either wraps or needs horizontal scrolling; `L2 T3 Ship it <-T2`
 // keeps the level, the id, the subject and the incoming edges on one readable line.
-import type { DshGoStep } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
-import type { TeamPanelTask } from "./dshgo-views"
+import type { DshGoStep } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import type { TeamPanelTask } from "./dshgo-views.ts"
 
 /** One level of the layout: its depth from the roots, and the tasks that sit at it. */
 export interface GraphLayer {

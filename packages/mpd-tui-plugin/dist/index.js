@@ -11518,16 +11518,17 @@ var MPD_THEME = Object.freeze({
 });
 function registerTheme(ctx, tui, log) {
   let outcome = { id: "themes", state: "absent", detail: "the theme registry is not composed" };
-  tui.whenBound("themes", (service) => {
+  tui.whenBound("themes", (service, scope) => {
+    const owner = scope ?? ctx;
     const registry = service;
     if (typeof registry?.register !== "function") {
       outcome = { id: "themes", state: "refused", detail: "the bound theme registry exposes no register()" };
       return;
     }
     try {
-      const disposer = registry.register(MPD_THEME, ctx);
+      const disposer = registry.register(MPD_THEME, owner);
       if (typeof disposer === "function")
-        effectOn(ctx, disposer, `mpd-tui theme ${MPD_THEME.name}`);
+        effectOn(owner, disposer, `mpd-tui theme ${MPD_THEME.name}`);
       outcome = { id: "themes", state: "requested", detail: `theme ${MPD_THEME.name} handed to the registry (the plugin face has no read-back)` };
     } catch (error) {
       outcome = { id: "themes", state: "refused", detail: String(error?.message ?? error) };

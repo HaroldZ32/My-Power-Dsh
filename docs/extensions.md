@@ -104,8 +104,8 @@ unknown key and is rejected.
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `apiVersion` | number | **yes** |: | must equal exactly `1`; any other value rejects the whole extension |
-| `id` | string | **yes** |: | grammar `^[a-z0-9][a-z0-9-]{0,63}$` (1–64 chars, lower-case ASCII, digits, dashes) |
+| `apiVersion` | number | **yes** | — | must equal exactly `1`; any other value rejects the whole extension |
+| `id` | string | **yes** | — | grammar `^[a-z0-9][a-z0-9-]{0,63}$` (1–64 chars, lower-case ASCII, digits, dashes) |
 | `description` | string | no | `""` | shown by `mpd_ext_list` / `mpd_ext_show` |
 | `enabled` | boolean | no | `true` | a config `disable` still wins over this (§4.3) |
 | `contributes` | object | no | `{}` | only the four keys below; any other key is rejected |

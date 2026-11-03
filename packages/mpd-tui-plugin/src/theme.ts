@@ -10,8 +10,8 @@
 // A returned disposer therefore proves nothing, so the seam reports `requested`, never `confirmed`;
 // what IS verified here is that `register` was callable and did not throw.
 import { effectOn } from "../../mpd-tui-adapter-plugin/src/index.js"
-import type { Log } from "./log.js"
-import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiThemeDescriptorLike, TuiThemesLike } from "./types.js"
+import type { Log } from "./log.ts"
+import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiThemeDescriptorLike, TuiThemesLike } from "./types.ts"
 
 /**
  * The palette `themes/mpd-tui.json` ships, byte-identical to that asset.
@@ -52,7 +52,12 @@ export interface ThemeSeam {
  * The registration is attempted when the `tuiThemes` service binds (it may bind after `apply`
  * returns), owned by the activation through `effectOn`, and never throws: a host without the seam,
  * or one whose registry refuses the call, degrades to one diagnostic line.
- * @param ctx - the plugin context; the host records it as the registration's identity and owner.
+ *
+ * THE IDENTITY IS THE CALLBACK'S SCOPE, NOT THIS `ctx` (repair T23): the adapter hands the seam the
+ * ACTIVATION'S scope, and the 0.18.0 host rejects an identity from another activation by returning an
+ * inert disposer — so passing the outer `ctx` registered the theme against the wrong activation and
+ * still reported `requested`. `ctx` survives only as the fallback for an adapter that hands none.
+ * @param ctx - the plugin context, used as the identity only when the adapter supplies no scope.
  * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @returns the seam handle.
@@ -60,7 +65,12 @@ export interface ThemeSeam {
 export function registerTheme(ctx: PluginContextLike, tui: TuiAdapter, log: Log): ThemeSeam {
   /** What this registration measured; `absent` until the seam binds and answers. */
   let outcome: SeamOutcome = { id: "themes", state: "absent", detail: "the theme registry is not composed" }
-  tui.whenBound("themes", (service) => {
+  tui.whenBound("themes", (service, scope) => {
+    /**
+     * The identity and owner this registration belongs to: the activation the adapter bound. `ctx` is
+     * the fallback only for an adapter (or a test double) that hands no scope at all.
+     */
+    const owner = scope ?? ctx
     /** The bound registry, read as the adapter's own shape. */
     const registry = service as TuiThemesLike | undefined
     if (typeof registry?.register !== "function") {
@@ -69,8 +79,8 @@ export function registerTheme(ctx: PluginContextLike, tui: TuiAdapter, log: Log)
     }
     try {
       /** The host's handle; an invalid or duplicate descriptor also returns an inert one. */
-      const disposer = registry.register(MPD_THEME, ctx)
-      if (typeof disposer === "function") effectOn(ctx, disposer, `mpd-tui theme ${MPD_THEME.name}`)
+      const disposer = registry.register(MPD_THEME, owner)
+      if (typeof disposer === "function") effectOn(owner, disposer, `mpd-tui theme ${MPD_THEME.name}`)
       outcome = { id: "themes", state: "requested", detail: `theme ${MPD_THEME.name} handed to the registry (the plugin face has no read-back)` }
     } catch (error) {
       outcome = { id: "themes", state: "refused", detail: String((error as Error)?.message ?? error) }

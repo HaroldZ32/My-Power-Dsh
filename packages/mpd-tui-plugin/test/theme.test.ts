@@ -54,29 +54,37 @@ function effectCtx(): { ctx: PluginContextLike; effects: OwnedEffect[] } {
   return { ctx: ctx as unknown as PluginContextLike, effects }
 }
 
-/** A theme registry double that records the descriptor it was handed. */
-function registryDouble(): { register: (descriptor: unknown, identity?: unknown) => () => void; calls: unknown[] } {
+/** A theme registry double that records the descriptor AND the identity it was handed. */
+function registryDouble(): { register: (descriptor: unknown, identity?: unknown) => () => void; calls: unknown[]; identities: unknown[] } {
   /** The descriptors, by identity, in call order. */
   const calls: unknown[] = []
+  /** The identity argument of each call, in the same order. */
+  const identities: unknown[] = []
   return {
-    register: (descriptor: unknown): (() => void) => {
+    register: (descriptor: unknown, identity?: unknown): (() => void) => {
       calls.push(descriptor)
+      identities.push(identity)
       return (): void => {}
     },
     calls,
+    identities,
   }
 }
 
 /**
  * An adapter double whose `whenBound` either fires at once (a bound host) or never (an absent one).
+ *
+ * The callback receives a SCOPE, exactly as the real adapter does (`binding.scope ?? ctx`); the arm for
+ * the identity asserts that this scope — not the outer `ctx` — is what reaches the registry.
  * @param service - the value handed to the `themes` callback.
  * @param bound - whether the seam binds.
+ * @param scope - the activation scope the callback reports.
  * @returns the adapter slice {@link registerTheme} drives.
  */
-function adapterWith(service: unknown, bound: boolean): TuiAdapter {
+function adapterWith(service: unknown, bound: boolean, scope?: PluginContextLike): TuiAdapter {
   return {
-    whenBound: (_key: string, setup: (value: unknown) => void): unknown => {
-      if (bound) setup(service)
+    whenBound: (_key: string, setup: (value: unknown, boundScope?: PluginContextLike) => void): unknown => {
+      if (bound) setup(service, scope)
       return {}
     },
   } as unknown as TuiAdapter
@@ -107,15 +115,23 @@ describe("registerTheme hands the declaration over and owns the cleanup", () => 
   test("the bound registry receives the descriptor by identity, and the effect is owned", () => {
     /** The host's registry double. */
     const registry = registryDouble()
-    /** The ctx and what it was asked to own. */
-    const { ctx, effects } = effectCtx()
+    /** The outer plugin context: it must NOT be the identity handed to the host. */
+    const outer = effectCtx()
+    /** The activation scope the adapter reports for the bound seam. */
+    const bound = effectCtx()
     /** The seam handle under test. */
-    const seam = registerTheme(ctx, adapterWith(registry, true), quietLog())
+    const seam = registerTheme(outer.ctx, adapterWith(registry, true, bound.ctx), quietLog())
     expect(registry.calls).toHaveLength(1)
     expect(registry.calls[0]).toBe(MPD_THEME)
-    expect(effects).toHaveLength(1)
-    expect(effects[0]?.label).toBe("mpd-tui theme mpd-tui")
-    expect(typeof effects[0]?.cleanup).toBe("function")
+    // The IDENTITY is the callback's scope (repair T23): the 0.18.0 host rejects another activation's
+    // identity with an inert disposer, so passing the outer ctx registered nothing and still said
+    // `requested`. Both the registration and the owned effect belong to the bound scope.
+    expect(registry.identities[0]).toBe(bound.ctx)
+    expect(registry.identities[0]).not.toBe(outer.ctx)
+    expect(bound.effects).toHaveLength(1)
+    expect(outer.effects).toHaveLength(0)
+    expect(bound.effects[0]?.label).toBe("mpd-tui theme mpd-tui")
+    expect(typeof bound.effects[0]?.cleanup).toBe("function")
     expect(seam.outcome()).toMatchObject({ id: "themes", state: "requested" })
     expect(String(seam.outcome().detail)).toContain("no read-back")
   })
