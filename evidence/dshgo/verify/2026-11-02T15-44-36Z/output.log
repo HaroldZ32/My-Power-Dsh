@@ -1,0 +1,194 @@
+
+===== CONTEXT =====
+at_utc=2026-11-02T15:46:56Z
+branch=feature/mpd-dshgo-native-parity
+head=1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+dev=1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+tracked_changes=0
+
+===== D1-D7 DELIVERABLE PRESENCE (contract §4) =====
+packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts          PRESENT
+scripts/verify-dshgo-views.ts                              ABSENT
+dsh-go/views/mpd-team.json                                 ABSENT
+evidence/dshgo                                             PRESENT
+packages/mpd-bundle-plugin/src/dshgo-panel.ts              PRESENT
+
+===== MANIFEST dshGo (contract §4 D2) =====
+{"v":1,"panels":["mpd"],"strip":[],"actions":[],"message":[]}
+
+===== TEAM BOARD SNAPSHOT =====
+T1 in_progress 16621883-056c-4084-9af6-8088c8468c01 D1: dsh-Go plane in the adapter — view kit, ctx.dshGo seams, view-budg
+T2 pending     Senior Engineer        D2-D5: two live native panels, strip, capsules, menu, manifest and sta
+T3 pending     Junior Engineer        D6a: native tool cards for agent_teams_plan/task/dispatch + mpd_roles_
+T4 pending     Junior Engineer B      D6b: native tool cards for workmate, memory, verify, boulder and watch
+T5 pending     Deep Worker            D7: rebuild all dist, re-pack, gate sweep, two real mounts
+T6 pending     Senior Engineer        Docs: bilingual native-surface coverage (drive-surface, user-guide, se
+T7 pending     Reviewer               Verify: gates + real mount + a real tool-card result + adversarial con
+
+===== GATE §6.1: check.mjs <repo root> =====
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs .
+@mpd-dsh/mpd 0.17.0
+  错误 /dsh/bundle/patch：不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上
+  提示 /engines/dsh：没写 engines.dsh：DSH 不检查版本，装到不兼容的 DSH 上会在运行时出错
+  原生界面能显示（面板 1）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 1]
+
+===== GATE §6.1 JSON: check.mjs --json . =====
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs --json .
+{"kind":"plugin","target":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh","name":"@mpd-dsh/mpd","version":"0.17.0","package":[{"path":"/dsh/bundle/patch","code":"package","severity":"error","message":"不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上"},{"path":"/engines/dsh","code":"package","severity":"warn","message":"没写 engines.dsh：DSH 不检查版本，装到不兼容的 DSH 上会在运行时出错"}],"views":[{"where":"dsh-go/views/mpd.json","ok":true,"fatal":false,"budget":"panel","issues":[],"title":"MPD","bytes":701,"components":4,"placeholders":0,"empty":0,"truncated":0}],"load":null,"manifest":{"state":"ok","title":"MPD","counts":{"composer.actions":0,"message.actions":0,"composer.strip":0,"panels":1},"contributes":{"composer.actions":[],"message.actions":[],"composer.strip":[],"panels":[{"id":"mpd","title":"MPD 工作台","icon":"bolt","placement":["session.tab","features"],"ready":true,"live":false}]},"issues":[]}}
+[exit 1]
+
+===== GATE §6.1 scoped: check.mjs dsh-go/views/mpd.json =====
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs dsh-go/views/mpd.json
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 0]
+
+===== CHECKER PROBE A: legal v2 (accent app, tinted hero, grid metrics, badge, one primary) =====
+  视图 -（面板）：能显示，4 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[3].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[3].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[5].items[0].style：此样式由 App 保留，已忽略
+[exit 0]
+
+===== CHECKER PROBE B: forbidden design (named colour, numeric padding, two primaries) =====
+  视图 -（面板）：能显示，4 处问题
+    提示 view.accent：dark：#167F84 已校正为 #4C9DA0，对比度至少 4.5:1
+    提示 view.style.padding：样式无效，支持 S / M / L
+    提示 view.children[1].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[1].items[1].style：此样式由 App 保留，已忽略
+[exit 0]
+
+===== CHECKER PROBE D: avatar with initials (what §7.2 rule 6 asks for) =====
+  视图 -（面板）：能显示，3 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.children[0].style.color：dark：#3D6FD6 已校正为 #698FDF，对比度至少 4.5:1
+    提示 view.children[0].src：图片只收插件资源 asset:<路径>（png、jpg、webp、gif）或 data:image/…
+[exit 0]
+
+===== CHECKER PROBE F: tabs root + two accents + badge without text =====
+  视图 -（面板）：能显示，5 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.items[0].children[1].style.color：light：#AA7900 已校正为 #976C00，对比度至少 4.5:1
+    提示 view.items[0].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+    错误 view.items[0].children[1].text：应该是字符串
+[exit 1]
+
+===== PROBE SELF-TEST (§7.2 executable checklist) =====
+$ node evidence/dshgo/verify/2026-11-02T15-44-36Z/probe-section7.mjs --self-test
+  ok    legal v2 tree is accepted
+  ok    illegal v2 tree reports every planted rule
+  ok    legal v1 fallback is accepted
+  ok    v1 leftovers are refused
+SELF-TEST PASS
+[exit 0]
+
+===== PROBE on the shipped static fallback (v1 mode) =====
+$ node evidence/dshgo/verify/2026-11-02T15-44-36Z/probe-section7.mjs dsh-go/views/mpd.json --v1
+section7 dsh-go/views/mpd.json (v1 fallback): OK — {}
+[exit 0]
+
+===== DONE =====
+log_closed_at=2026-11-02T15:46:57Z
+
+===== KIT FIXTURE: build + downgrade (D1 kit, contract §7 rules 2/4/7/8/10) =====
+v2 bytes=1326 nodes=19 depth=5 budget={"bytes":32768,"nodes":120,"depth":8}
+v2 fits=measured accent="app" v=2
+v1 root v=1 accent=undefined keys=type,v,children
+v1 grid->list: null
+v1 any style left: false
+fixture-v2.json + fixture-v1.json written
+[exit 0]
+
+===== CHECKER on the kit's v2 fixture =====
+  视图 evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v2.json（面板）：能显示，8 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].children[1].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].children[1].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].children[2].palette.other：light：#9AA0AA 已校正为 #888D96，对比度至少 3:1
+    提示 view.children[0].items[0].children[1].children[2].palette.other：dark：#6B707A 已校正为 #787D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[2].items[0].style：此样式由 App 保留，已忽略
+[exit 0]
+
+===== CHECKER on the kit's v1 fallback =====
+  视图 evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v1.json（面板）：能显示
+[exit 0]
+
+===== PROBE §7.2 on the v2 fixture =====
+section7 evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v2.json: OK — {}
+[exit 0]
+
+===== PROBE v1 rules on the fallback =====
+section7 evidence/dshgo/verify/2026-11-02T15-44-36Z/fixture-v1.json (v1 fallback): OK — {}
+[exit 0]
+
+===== METRIC VALUES IN THE FALLBACK (rule 4 + rule 10) =====
+no list
+contains metric values 3/1: false
+log_updated_at=2026-11-02T15:48:47Z
+lists_in_fallback=[[{"title":"Ready"},{"title":"Active"}],[{"title":"Parked"}]]
+true
+=== T1/T2 progress now ===
+-rw------- 1 haroldzhao haroldzhao 45051 Nov  2 23:48 packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+mpd.json
+ls: cannot access 'scripts/verify-dshgo-views.ts': No such file or directory
+2026-11-02T15:48:57Z
+final_state_at=2026-11-02T15:50:12Z
+head=1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+-rw------- 1 haroldzhao haroldzhao 48490 Nov  2 23:49 packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+scripts/verify-dshgo-views.ts            ABSENT
+dsh-go/views/mpd-team.json               ABSENT
+panels=["mpd"]
+
+===== KIT SOURCE COLOUR AUDIT (2026-11-02T15:50:26Z) =====
+$ grep -nE '#[0-9A-Fa-f]{3,8}|(red|orange|amber|green|teal|blue|indigo|violet|pink|gray)\b' packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts (string literals only)
+(none)
+$ grep -nE 'accent' packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts | wc -l
+20
+$ grep -n 'accent: "app"' packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+10://   1. A panel view follows the user's theme: `panelView()` always writes `accent: "app"`, and
+479: * The panel root: a v2 stack carrying `accent: "app"` and the tabs.
+492:/** The complete root node; `accent: "app"` is written here and nowhere else. */
+493:  const view = node("stack", { v: 2, accent: "app", style: root, children: input.children })
+
+===== AMENDED GATE §6.1(b): fixture shell carrying the REAL dshGo block + REAL view copies =====
+$ node .mpd/recon/dsh-go/sdk/plugin-kit/bin/check.mjs evidence/dshgo/verify/2026-11-02T15-44-36Z/check-pkg-shell
+@mpd-dsh/mpd 0.17.0
+  原生界面能显示（面板 1）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 0]
+
+===== AMENDED GATE §6.1(b) JSON =====
+{"kind":"plugin","target":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dshgo/verify/2026-11-02T15-44-36Z/check-pkg-shell","name":"@mpd-dsh/mpd","version":"0.17.0","package":[],"views":[{"where":"dsh-go/views/mpd.json","ok":true,"fatal":false,"budget":"panel","issues":[],"title":"MPD","bytes":701,"components":4,"placeholders":0,"empty":0,"truncated":0}],"load":null,"manifest":{"state":"ok","title":"MPD","counts":{"composer.actions":0,"message.actions":0,"composer.strip":0,"panels":1},"contributes":{"composer.actions":[],"message.actions":[],"composer.strip":[],"panels":[{"id":"mpd","title":"MPD 工作台","icon":"bolt","placement":["session.tab","features"],"ready":true,"live":false}]},"issues":[]}}
+[exit 0]
+
+===== NEGATIVE CONTROL: same shell with the REAL array patch (must exit 1) =====
+@mpd-dsh/mpd 0.17.0
+  错误 /dsh/bundle/patch：不是 DSH 组合包：package.json 缺 dsh.bundle.patch，DSH 装不上
+  原生界面能显示（面板 1）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+[exit 1]
+shell restored; 2026-11-02T15:53:45Z
+
+===== AMENDMENT-2 VERIFICATION (2026-11-02T15:55:40Z) =====
+plan_mtime=2026-11-02 23:54:46.576483245 +0800
+plan_bytes=22821
+lintDesign signature:
+308:lintDesign(view: DshGoView, options?: { version?: 1 | 2 }): Array<{ path: string; rule: string; message: string }>
+v1-mode clause:
+96:the panel budget, and uses no v2-only component name at v1. Exit non-zero on any violation.
+324:every colour/spacing ban is vacuous:** no v2-only component name may appear; no `style` or `accent` key may
+positive rules present:
+4
+H2 kit test clause:
+328:**One assertion cannot be static and must live in the kit's tests:** a metric's VALUE survives the
+engines-in-shell clause:
+223:      `engines.dsh` present **IN THE SHELL ONLY**, → exit 0 and `--json` reports `manifest.state == ok`
+kit V2_ONLY_COMPONENTS count: 1

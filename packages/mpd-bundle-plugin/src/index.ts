@@ -16,6 +16,8 @@ import type { ConfigServiceLike } from "./model-config-web.js"
 import { registerWatchdogRoutes, WATCHDOG_WEB_READER, DEFAULT_TEAM_STATE_DIR } from "./watchdog-web.js"
 import { registerDshGoPanel } from "./dshgo-panel.js"
 import type { PanelBridge } from "./dshgo-panel.js"
+import { registerDshGoTeamPanel } from "./dshgo-team-panel.js"
+import { registerDshGoSurfaces } from "./dshgo-surfaces.js"
 
 /** The loader entry id the bundle patch's self-registration row names. */
 export const name = "@mpd-dsh/mpd"
@@ -170,18 +172,52 @@ function apply(ctx: any): void {
   // host that binds the bridge later still gets the panel. Registered HERE rather than in a row of
   // its own because the bundle package already owns the web surface of the same team store, and the
   // panel reads exactly what those routes read (`mpdTeams`, `mpdTeamActions`, `mpdQuestions`).
+  /**
+   * Read the memory row's addressing from the mounted config, so the Memory tab reads the store the row
+   * actually writes (`memory.dir` / `memory.agentSlug`, repair T8/M2+N1). Absent row or absent keys mean
+   * the documented defaults, never a guess.
+   * @returns the resolved scope, or undefined when this composition mounts no config row.
+   */
+  const memoryScopeOf = (): { dir?: string; agentSlug?: string } | undefined => {
+    /** The config service, when the composition mounted one. */
+    const config = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined
+    if (config === null || typeof config !== "object") return undefined
+    /** The service's keyed reader. */
+    const read = (config as { get?: (key?: string) => unknown }).get
+    if (typeof read !== "function") return undefined
+    /** The two keys the memory row addresses its store with. */
+    const dir = read.call(config, "memory.dir")
+    /** The explicit agent slug, when the workspace pins one. */
+    const agentSlug = read.call(config, "memory.agentSlug")
+    return { dir: typeof dir === "string" ? dir : undefined, agentSlug: typeof agentSlug === "string" ? agentSlug : undefined }
+  }
   try {
     /** The live registration; its `dispose` releases every poller this row owns. */
     const panel = registerDshGoPanel({
+      dsh: dsh as PanelBridge,
+      ctx,
+      memory: memoryScopeOf(),
+      log: (line: string): void => { rowLogLine("mpd-bundle", line) },
+    })
+    // THE SECOND PANEL, THE STRIP AND THE MENU ACTIONS (contract D2–D5). Each owns its own bridge
+    // attempt and its own pollers; one refusing costs that surface only, so they are released together
+    // with the workbench panel below.
+    const teamPanel = registerDshGoTeamPanel({
+      dsh: dsh as PanelBridge,
+      ctx,
+      log: (line: string): void => { rowLogLine("mpd-bundle", line) },
+    })
+    /** The composer strip plus the three menu handlers; its own bridge attempt, released with the rest. */
+    const surfaces = registerDshGoSurfaces({
       dsh: dsh as PanelBridge,
       ctx,
       log: (line: string): void => { rowLogLine("mpd-bundle", line) },
     })
     if (typeof ctx?.effect === "function") {
       try {
-        // The bridge keeps the panel row after this release; what ends here is OUR polling, so a
+        // The bridge keeps the panel rows after this release; what ends here is OUR polling, so a
         // reloaded profile cannot leave an interval behind against a store it no longer serves.
-        ctx.effect(() => () => { panel.dispose() }, "mpd-dshgo-panel")
+        ctx.effect(() => () => { panel.dispose(); teamPanel.dispose(); surfaces.dispose() }, "mpd-dshgo-panel")
       } catch {
         // An effect seam that refuses the release leaves the intervals to the host's own teardown.
       }

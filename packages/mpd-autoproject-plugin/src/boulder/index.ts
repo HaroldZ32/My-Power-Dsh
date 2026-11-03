@@ -23,6 +23,7 @@ import {
 import { join, isAbsolute, resolve } from "node:path"
 import { existsSync } from "node:fs"
 import { DSH_SEAM_TOOLS, dshSeamInject, type DshAdapter, textBlock, resolveDshAdapter } from "../../../mpd-dsh-adapter-plugin/src/index"
+import { BOULDER_STATUS_CARD } from "./dshgo-cards.ts"
 // THE ONE READING OF `boulder.dir`. Its normalization rule is shared with the session gate's signal D
 // (`mpd-roles-plugin`'s `resolveBoulderDir`), deliberately: this knob is a STATE ROOT whose ledger is
 // read at `<root>/.mpd/boulder.json`, so a `.mpd` value accepted literally as a root double-nests the
@@ -166,7 +167,7 @@ export function applyBoulder(ctx: Ctx, config: Config = {}): void {
     name: "mpd_boulder_status",
     description: "Show the boulder work ledger: active works, statuses, session ids, task timers, resume options and (optionally) the progress of one plan file. State lives in .mpd/boulder.json.",
     parameters: { type: "object", properties: { planPath: { type: "string" } } },
-    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a: unknown, v: any) => textBlock("boulder status: " + v.stateFile + "\nactive works: " + JSON.stringify(v.activeWorks, null, 1) + "\nresume: " + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? "\nplan: " + JSON.stringify(v.planProgress) : "")) },
+    output: { schema: { type: "object", properties: { stateFile: { type: "string" }, activeWorks: { type: "array", items: { type: "object" } }, resumeOptions: { type: "array", items: { type: "object" } }, planProgress: { type: "object" }, state: { type: "object" } }, required: ["stateFile", "activeWorks", "resumeOptions"] }, render: (_a: unknown, v: any) => textBlock("boulder status: " + v.stateFile + "\nactive works: " + JSON.stringify(v.activeWorks, null, 1) + "\nresume: " + JSON.stringify(v.resumeOptions, null, 1) + (v.planProgress ? "\nplan: " + JSON.stringify(v.planProgress) : "")) , presentationMeta: BOULDER_STATUS_CARD },
     execute: async (args: any, exec: any) => {
       // State root for this call: the calling session's workspace, unless `boulder.dir` overrides it.
       const dir = root(exec)

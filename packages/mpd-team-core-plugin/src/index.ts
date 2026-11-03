@@ -27,6 +27,8 @@
 import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshContextPressure, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards.ts"
 import {
   acknowledge,
   inboxOf,
@@ -1871,6 +1873,10 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
+      // THE dsh-Go TOOL CARD: a v1 tree the app draws in the chat log, built by the SAME pure builder
+      // the lane's unit test lints. `toolCard()` degrades to `{}` (the generic tool row) on any
+      // failure, so this never turns a working tool call into a broken card.
+      presentationMeta: toolCard(agentTeamsPlanCard),
       // THE DECLARED SHAPE OF EVERY BRANCH, stated honestly rather than loosely: `status` answers
       // `plan`/`hold`/`team`/`summary` as an OBJECT or as `null` when this session has no staged
       // plan, no hold and no team (measured 2026-10-02, defect 1: the schema said `object` only, so
@@ -2265,6 +2271,7 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
+      presentationMeta: toolCard(agentTeamsTaskCard),
       schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
       // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
       // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
@@ -2651,6 +2658,7 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
+      presentationMeta: toolCard(agentTeamsDispatchCard),
       // `refused` and `holdRead` are declared because BOTH really appear: a pass with no team record
       // is refused, and a watchdog hold that could not be read is REPORTED rather than guessed at.
       // `reaped` is the C7-3 consistency pass's own report: the team ids it marked terminal on disk.

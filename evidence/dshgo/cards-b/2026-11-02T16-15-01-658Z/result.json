@@ -1,0 +1,44 @@
+{
+  "lane": "cards-b (T4)",
+  "contract": ".mpd/plans/dshgo-native-parity.md §4 D6",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "gitRevAtEvidence": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "budget": { "bytes": 8192, "nodes": 40, "depth": 6 },
+  "cards": [
+    { "tool": "mpd_workmate_list",     "package": "mpd-workmate-plugin",        "bytes": 328, "nodes": 6, "depth": 3 },
+    { "tool": "mpd_workmate_match",    "package": "mpd-workmate-plugin",        "bytes": 381, "nodes": 6, "depth": 3 },
+    { "tool": "mpd_memory_write",      "package": "mpd-memory-plugin",          "bytes": 320, "nodes": 5, "depth": 3 },
+    { "tool": "mpd_memory_read",       "package": "mpd-memory-plugin",          "bytes": 324, "nodes": 6, "depth": 3 },
+    { "tool": "mpd_memory_status",     "package": "mpd-memory-plugin",          "bytes": 350, "nodes": 6, "depth": 3 },
+    { "tool": "mpd_verify_evidence",   "package": "mpd-verify-plugin",          "bytes": 309, "nodes": 5, "depth": 3, "variant": "gate" },
+    { "tool": "mpd_verify_evidence",   "package": "mpd-verify-plugin",          "bytes": 298, "nodes": 5, "depth": 3, "variant": "probe" },
+    { "tool": "mpd_verify_evidence",   "package": "mpd-verify-plugin",          "bytes": 147, "nodes": 2, "depth": 2, "variant": "refused" },
+    { "tool": "mpd_verify_record",     "package": "mpd-verify-plugin",          "bytes": 360, "nodes": 6, "depth": 3, "variant": "PASS" },
+    { "tool": "mpd_verify_record",     "package": "mpd-verify-plugin",          "bytes": 422, "nodes": 7, "depth": 3, "variant": "FAIL+repair" },
+    { "tool": "mpd_boulder_status",    "package": "mpd-autoproject-plugin",     "bytes": 392, "nodes": 6, "depth": 3 },
+    { "tool": "session-watchdog-status","package": "mpd-team-watchdog-plugin",  "bytes": 374, "nodes": 6, "depth": 3 }
+  ],
+  "assertions": [
+    "every card's presentationMeta is a function (typeof === 'function')",
+    "every card returns the dsh-go/view key",
+    "every tree passes measureView <= 8192 bytes / 40 nodes / depth 6",
+    "every tree passes lintDesign(tree, { version: 1 }) with zero findings",
+    "a throwing builder degrades to {} (toolCard catch path)",
+    "each registered tool definition carries exactly the tested card function (mount arm)"
+  ],
+  "gates": {
+    "bun test packages/mpd-workmate-plugin":  { "exit": 0, "pass": 83, "fail": 0 },
+    "bun test packages/mpd-memory-plugin":    { "exit": 0, "pass": 31, "skip": 2, "fail": 0 },
+    "bun test packages/mpd-verify-plugin":    { "exit": 0, "pass": 91, "fail": 0 },
+    "bun test packages/mpd-autoproject-plugin":{ "exit": 0, "pass": 55, "fail": 0 },
+    "bun test packages/mpd-team-watchdog-plugin": { "exit": 0, "pass": 159, "fail": 0 },
+    "pinned bun build (per touched entry)":  { "exit": 0, "targets": 5 },
+    "bun run verify:docs":                    { "exit": 0, "pairs": 54, "failed": 0, "violations": 0 },
+    "bun run verify:comments":                { "exit": 1, "scope": "UNRELATED", "detail": "2 violations in packages/mpd-bundle-plugin/src/dshgo-views.ts (another lane's file); zero in the five touched packages" },
+    "npx tsgo --noEmit":                      { "scope": "UNRELATED", "detail": "19 diagnostics in packages/mpd-bundle-plugin/src/dshgo-panel.ts (another lane mid-edit); zero in the five touched packages" }
+  },
+  "bounds": [
+    "render output and output schemas are unchanged; the five mpd_verify_* tools still declare NO schema",
+    "the rendered look in the dsh-Go app is UNPROVEN here (no Flutter app in this workspace); the cards are proven v1-legal, within budget and lint-clean"
+  ]
+}

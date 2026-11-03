@@ -50,6 +50,9 @@ instead of across every plugin.
 | `ctx.dshGo` (presence) | `dshGoPresent()` | whether the bridge service is bound right now — the per-call form of `capabilities().dshGo`, through the same probe |
 | `ctx.dshGo.panel` | `dshGoPanel(id, spec)` | `view`/`data`/`actions` forwarded VERBATIM (they are the bridge's own contract); `true` only when the call returned, `false` + ONE warning line when the bridge is absent or the call throws — never a throw |
 | `ctx.dshGo.refresh` | `dshGoRefresh(id)` | best-effort re-render; a silent no-op without the bridge, and never a throw, never a log (a polling caller must not see a rejected tick) |
+| `ctx.dshGo.on` | `dshGoOn(id, handler)` | `service.on(id, handler)`; the handler's return value is the bridge's own effects vocabulary and is forwarded unchanged; `true` only when the call returned, `false` + ONE warning line when the bridge is absent, exposes no `on()`, or throws |
+| `ctx.dshGo.strip` | `dshGoStrip(id, dataFn)` | `service.strip(id, dataFn)`; the bridge drives `dataFn(scope, emit, caps)` and owns the returned cancel handle; same degrade shape as `on` |
+| the bridge's capabilities | `dshGoCaps()` | feature-detects a `caps()` method, then a `caps` / `capabilities` property (the 1.0.9 bridge documents NO `caps()` member), narrows `app` / `locale` / `components` / `surfaces` and invents no field; `null` + ONE warning line when it cannot answer |
 | capability probing | `capabilities()` | one boolean per seam, so a caller can degrade instead of crashing |
 
 The fourteen rows from `registerHostTool` down to `injectAgentMessage` exist for ONE consumer:
@@ -109,8 +112,8 @@ cached: every call re-reads the projection, so a checkpoint decision never runs 
 
 ## The drive surface — questions and the DSH Go panel
 
-Five seams let a client that is not a model turn drive the harness: ask a structured question, answer
-one through the waterfall, and publish or refresh a DSH Go native panel. Every shape below is this
+Eight seams let a client that is not a model turn drive the harness: ask a structured question,
+answer one through the waterfall, and publish, refresh, subscribe to or feed a DSH Go native surface. Every shape below is this
 bundle's OWN plain data — no harness type crosses the adapter (AGENTS.md §6), so a consumer never
 imports one:
 
@@ -121,7 +124,8 @@ export interface DshQuestionAnswer { id: string; selected: string[]; custom?: st
 export interface DshQuestionAnswerEnvelope { answers: DshQuestionAnswer[] }
 export interface DshUserQuestionRequest { questions: DshQuestionItem[]; sessionId?: string; signal?: AbortSignal }
 export interface DshAskUserQuestionInput { questions: DshQuestionItem[]; signal?: AbortSignal }
-export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Record<string, unknown> }
+export type DshGoPanelView = DshGoView | ((scope: DshGoScope, caps: DshGoCaps) => DshGoView | Promise<DshGoView>)
+export interface DshGoPanelSpec { view: DshGoPanelView; data?: unknown; actions?: Record<string, unknown> }
 ```
 
 - **`askUserQuestion(request): Promise<DshQuestionAnswer[]>`** drives the `userQuestions` service's
@@ -159,12 +163,50 @@ export interface DshGoPanelSpec { view: unknown; data?: unknown; actions?: Recor
 - **`dshGoRefresh(id): void`** calls `service.refresh(id)` when it is callable and is otherwise a
   silent no-op. It never throws and never logs: it is called from a polling path, so a missing bridge
   or a failed refresh must not become a per-tick diagnostic.
+- **`dshGoOn(id, handler): boolean`** subscribes one manifest action id through `service.on`. The
+  handler receives `(scope, event)` and its return value — the bridge's effects object, including the
+  v1.1 deferred `{ pending, result }` shape — is forwarded unchanged. `false` + ONE warning line when
+  the bridge is absent, exposes no `on()`, or throws.
+- **`dshGoStrip(id, dataFn): boolean`** publishes one composer strip's `dataFn(scope, emit, caps)`; the
+  returned cancel handle belongs to the bridge. Same degrade shape as `dshGoOn`.
+- **`dshGoCaps(): DshGoCaps | null`** reads what the app can draw. The 1.0.9 bridge hands `caps` to
+  every view/data function as an ARGUMENT and documents no `caps()` member, so the seam probes both a
+  `caps()` method and a `caps`/`capabilities` property, narrows the four known fields and never
+  invents one; a caller that already received `caps` as an argument must use THAT object. `null` +
+  ONE warning line when the bridge cannot answer.
+- **`dshGoPanel(id, spec)`** also accepts a `view` FUNCTION `(scope, caps) => view` (or a promise of
+  one), because the bridge calls it per render so a panel can adapt to the app's capabilities.
 
 **Bound.** A seam is not a mount. `dshGoPresent()` true proves a service was bound at that instant; it
 does not prove a row booted, that a DSH Go engine is attached, or that any panel rendered. Likewise
 `askUserQuestion` proves the call path to a service, not that a human — or any surface — is in front of
 the question. No live mount or boot is proved by these seams; that takes a boot which MOUNTS the rows,
 a different measurement from this one.
+
+## The DSH Go view kit (`src/dshgo-view.ts`)
+
+`src/dshgo-view.ts` is the bundle's PURE, harness-free view kit for the DSH Go app — panels, composer
+strips and tool cards share it. It has no ctx, no I/O and no dependency on the private
+`@dsh-go/plugin-kit`, and a plugin imports it as `../../mpd-dsh-adapter-plugin/src/dshgo-view`, so one
+file owns the app's shape instead of every lane hand-rolling JSON.
+
+| Export | What it does |
+|---|---|
+| `bind(path)` | a `data.…` binding, prefixing `data` once and never twice |
+| builders | `stack`, `row`, `text`, `metric`, `chart`, `table`, `keyValue`, `list`, `progress`, `callout`, `steps`, `actions`, `tabs`, `grid`, `timeline`, `form`, `textField`, `select`, `toggle`, `emptyState`, `avatar`, `badge`, `tag`, `divider`, `spacer` — each an app-legal node that THROWS past the app's own list limit instead of truncating, and refuses a prop the app silently ignores (a `grid` style, an `emptyState` `text`, an `avatar` without `src`, an empty tab) |
+| `style(tokens)` | the closed v2 style set: `card` / `padding` / `gap` (S / M / L only) / `align` / `columns` / `dividers` / text `size` / `weight` / `color: "accent"` / `maxLines`. A numeric padding or gap, a named colour and a `#RRGGBB` value are REFUSED, not forwarded |
+| `panelView({ children, style? })` | the panel root: `v: 2`, `accent: "app"`, a stack holding the tabs. The accent is written here and nowhere else, so a themed panel cannot carry a named or hex accent; a second `style: "primary"` action is refused |
+| `measureView` / `countViewNodes` / `viewDepth` | the app's own three units: UTF-8 JSON bytes, component nodes, component nesting with the root at 1 |
+| `BUDGETS` / `fitsBudget` | toolCard 8 KiB / 40 / 6, panel 32 KiB / 120 / 8, strip 2 KiB / 8 / 3 |
+| `toolCard(build)` | a tool's `presentationMeta`: never throws, returns `{ "dsh-go/view": … }`, and degrades to `{}` on a builder error, an over-budget view, a v2 root, a v2-only component, a binding or an accent |
+| `adaptView(view, caps)` | the v1 fallback: `tabs` → a stack of titled sections, `grid` → a list (a metric keeps its NUMBER as the row's `trailing`), `timeline` → `steps`, `badge`/`tag`/`avatar` → `text`, `emptyState` → its copy, `divider`/`spacer` dropped, every `style`/`accent` removed, root `v: 1`; idempotent and never mutating its input |
+| `lintDesign(view, { version })` | the static design gate the app checker leaves open. VERSION 2 (a panel) reports hex/named colours, numeric spacing, reserved decoration keys, a second primary action, `tabs` written as `children`, `emptyState` written as `text`, a grid carrying a container style, an avatar without `src`, a badge with no word, plus the POSITIVE rules: exactly one `tinted` hero per tab, every `metric` inside a `grid`, a data-less tab carrying `emptyState`, and long or bound text setting `maxLines`. VERSION 1 (a static fallback) asserts no v2 component survives, no `style`/`accent` survives, and every `text` carries words |
+
+**Bound.** The app-side render is UNPROVEN in this workspace: there is no Flutter app to draw a tree.
+What the kit proves is that a tree is v2-legal, inside the app's budgets and theme-token-only — by
+`lintDesign` and by the pinned 1.0.9 `check.mjs`. `accent: "app"` always produces ONE dark-mode
+contrast note from that checker (`#4B67B4 → #7B8FC8`): it is the contrast correction working, and it
+must not be "fixed" by substituting a hex value.
 
 ## The official Agent Teams plane
 

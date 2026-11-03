@@ -42,7 +42,11 @@
 // throws is caught, and an action that runs long answers a toast while the work continues in the
 // background. And it registers NOTHING on a host without the bridge: one log token, one service-bound
 // subscription, and silence.
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
+import { basename, join } from "node:path"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
+import { type DshGoCaps, type DshGoView } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
+import { buildMpdView } from "./dshgo-views"
 
 /** The panel id the bundle's `dshGo` manifest declares; the live registration MUST use the same id. */
 export const DSHGO_PANEL_ID = "mpd"
@@ -59,8 +63,28 @@ export const DSHGO_MAX_READY_ROWS = 10
 /** How many option buttons one question may render: the schema's `actionsMax` per `actions` node. */
 export const DSHGO_MAX_OPTIONS = 4
 
-/** How long one tap waits for its service before answering a toast and letting the work continue. */
-export const DSHGO_ACTION_TIMEOUT_MS = 4000
+/** How many memory entries the memory tab lists (contract D3: "the last ≤ 10 entries"). */
+export const DSHGO_MAX_MEMORY_ROWS = 10
+
+/** How many workmate rows the workmates tab lists; the library is a reading surface, not a table. */
+export const DSHGO_MAX_WORKMATES = 12
+
+/** The workspace state directory the memory store hangs under, as its own row documents it. */
+const MEMORY_DIR = ".mpd"
+
+/** The one alert the overview renders: a plan that is staged and waiting for the user's decision. */
+const ALERT_PLAN_WAITING = "A plan is staged and waits for approval"
+
+/** How long one tap WAITS for its service before acknowledging with the deferred shape (§3.5). */
+export const DSHGO_ACTION_WAIT_MS = 2000
+
+/**
+ * How long a deferred result may take, as the app's own ceiling states it.
+ *
+ * Measured in dsh-Go 1.0.9 `docs/plugins/actions.md`: "Return `pending` first … the real result arrives
+ * up to 60 s later", with `pending.timeoutMs` naming that bound.
+ */
+export const DSHGO_DEFERRED_TIMEOUT_MS = 60000
 
 /** The toast a tap answers when the panel has no conversation to act on. */
 const TOAST_NO_SESSION = "Open a conversation first"
@@ -71,8 +95,14 @@ const TOAST_UNAVAILABLE = "Unavailable here"
 /** The toast a tap answers when its service reported a refusal. */
 const TOAST_REFUSED = "The action was refused"
 
-/** The toast a tap answers when its service outlived {@link DSHGO_ACTION_TIMEOUT_MS}. */
-const TOAST_STILL_RUNNING = "Still working — check the team panel"
+/** The waiting-state word an approval shows while its deferred result is pending (app limit: 16 chars). */
+const PENDING_APPROVE = "Approving…"
+
+/** The waiting-state word a dispatch pass shows while its deferred result is pending. */
+const PENDING_DISPATCH = "Dispatching…"
+
+/** The waiting-state word an answer shows while its deferred result is pending. */
+const PENDING_ANSWER = "Answering…"
 
 /** The toast a successful approval answers. */
 const TOAST_APPROVED = "Approved"
@@ -89,8 +119,8 @@ const TOAST_QUESTION_GONE = "That question is gone"
 /** The toast a tap answers when the view it came from rendered no question at all. */
 const TOAST_NO_QUESTION = "No question on screen"
 
-/** The footer sentence naming what this panel can and cannot drive. */
-const LIMITS_TEXT = "Local engine only: these actions drive this host's MPD team and need a live conversation."
+/** How many characters a custom answer may carry, matching the relay's own question bound. */
+const MAX_ANSWER_CHARS = 400
 
 /** The sentence shown when a question offers more options than the panel can render as buttons. */
 const TRUNCATED_TEXT = "Only the first four options are shown; answer the rest from another client."
@@ -118,10 +148,60 @@ export interface PanelScope {
 
 /** One ready task row, already in the `list` component's own `{title, subtitle}` shape. */
 export interface PanelReadyRow {
+  /** The board row id, so a structural change of the ready SET is a value this module can diff. */
+  id: string
   /** The task's subject, clipped to {@link MAX_TITLE_CHARS}. */
   title: string
   /** The task's kind and owner, clipped to {@link MAX_CAPTION_CHARS}; never its acceptance text. */
   subtitle: string
+}
+
+/** One workmate of the library, narrowed to what the panel draws: no persona, no memory, no path. */
+export interface PanelWorkmateRow {
+  /** The instance name (its directory key). */
+  name: string
+  /** The roster base the instance was copied from. */
+  base: string
+  /** How many work sessions the instance has accumulated. */
+  uses: number
+  /** The first line of its note card, clipped for the list's trailing position. */
+  note: string
+}
+
+/** One memory entry: its kind, its one-line description and a human age. */
+export interface PanelMemoryEntry {
+  /** `note`, `fact` or `reflection`. */
+  kind: string
+  /** The entry's own description line, clipped to {@link MAX_CAPTION_CHARS}. */
+  description: string
+  /** A short relative age (`3m`, `2h`, `4d`). */
+  age: string
+}
+
+/** The memory half of the snapshot: the last entries plus the reflection counters. */
+export interface PanelMemorySnapshot {
+  /** The newest entries, at most {@link DSHGO_MAX_MEMORY_ROWS}. */
+  entries: PanelMemoryEntry[]
+  /** How many reflections this agent has completed. */
+  reflections: number
+  /** How many writes have landed since the last reflection. */
+  steps: number
+}
+
+/** The derived counters the overview tiles read, computed ONCE per read so the view can bind them. */
+export interface PanelCounts {
+  /** Rows whose blockers are all closed. */
+  ready: number
+  /** Rows in flight. */
+  active: number
+  /** Rows in a terminal status. */
+  done: number
+  /** Every row on the board. */
+  total: number
+  /** Finished rows as a percentage of the board, 0 when the board is empty. */
+  completion: number
+  /** How many members the roster holds, so the tile never binds through a null team. */
+  members: number
 }
 
 /** The team half of the snapshot: what one conversation's team is, or null when it has none. */
@@ -193,6 +273,14 @@ export interface PanelSnapshot {
   question: PanelQuestionSnapshot | null
   /** The board's ready tasks, at most {@link DSHGO_MAX_READY_ROWS} rows. */
   readyTasks: PanelReadyRow[]
+  /** The derived counters the overview tiles bind. */
+  counts: PanelCounts
+  /** The first thing the user should look at, or null when nothing needs attention. */
+  alert: string | null
+  /** The workmate library, read-only. */
+  workmates: PanelWorkmateRow[]
+  /** The memory store's latest entries, or null when it could not be read. */
+  memory: PanelMemorySnapshot | null
 }
 
 /** One live read: the snapshot the panel renders, plus the question identity that snapshot was built from. */
@@ -224,7 +312,7 @@ export interface PanelQuestionsFace {
   /** Every parked question a client may answer, newest last; a session filter narrows it. */
   list?: (input: { sessionId?: string }) => unknown
   /** Settle one parked question by id and by option LABEL; false when it could not. */
-  answer?: (input: { id: string; answers: Array<{ id: string; selected: string[] }> }) => unknown
+  answer?: (input: { id: string; answers: Array<{ id: string; selected: string[]; custom?: string }> }) => unknown
 }
 
 /** The one service-registry member this module reads: a tolerant, per-call probe. */
@@ -261,6 +349,19 @@ export interface PanelBridge {
    * panel shows its empty state rather than guessing a root and reading another project's team.
    */
   workspaceRootForSession?: (sessionId: string) => string | undefined
+  /** Subscribe one declared action's taps: the composer actions and the message actions (contract D5). */
+  dshGoOn?: (id: string, handler: (scope: unknown, event: unknown) => unknown) => boolean
+  /** Publish one composer strip's live line; the bridge drives the data function on its own clock. */
+  dshGoStrip?: (id: string, dataFn: (scope: unknown, emit: (value: { text: string; icon?: string; tone?: string }) => void, caps: DshGoCaps) => () => void) => boolean
+  /** Read what the app can draw, for callers the bridge hands no `caps` argument. */
+  dshGoCaps?: () => DshGoCaps | null
+  /**
+   * Call one registered tool in-process, when the composition exposes the runtime.
+   *
+   * The team panel's settle/hold verbs and the save-memory menu action drive the SAME tools a person
+   * would call, so their refusals reach the toast verbatim instead of being re-derived here.
+   */
+  executeTool?: (input: { name: string; arguments?: unknown }) => Promise<unknown>
 }
 
 /** What one registration needs: the bridge, the service registry and its injectable sinks. */
@@ -281,6 +382,13 @@ export interface PanelOptions {
   log?: (line: string) => void
   /** The poll period, defaulting to {@link DSHGO_POLL_MS}; a test lowers it to avoid waiting. */
   pollMs?: number
+  /**
+   * The memory row's addressing, resolved by the caller from the mounted config.
+   *
+   * Absent means "the documented defaults" (`.mpd`, `agent-<workspace name>`), which is what a tester or
+   * a composition without the config row gets — never a guess at some other agent's store.
+   */
+  memory?: PanelMemoryScope
 }
 
 /** What a registration reports: whether the panel is published now, and the release for our work. */
@@ -297,6 +405,35 @@ export interface PanelEffect {
   toast: string
 }
 
+/** The shorthand that asks the app to re-fetch this panel's view, which is what `refresh` taps answer. */
+export interface PanelRefreshEffect {
+  /** `true` means "refresh the panel that raised the tap"; the app accepts no other spelling here. */
+  refresh: true
+}
+
+/**
+ * The app's v1.1 DEFERRED effect: acknowledge the tap at once, deliver the real effect later.
+ *
+ * Required because the app runs an effect only if it arrives within three seconds of the tap, while an
+ * approval or a dispatch pass may take longer. `pending` is the acknowledgement (shown on the tapped
+ * element) and `result` settles with the effect the panel would have returned had it been fast.
+ */
+export interface PanelDeferredEffect {
+  /** The waiting state: a word of at most 16 characters and how long the result may take. */
+  pending: { label: string; timeoutMs: number }
+  /** The work that is still running; it settles with the real effect. */
+  result: () => Promise<PanelEffect>
+}
+
+/** The app's clipboard effect: the text a `{ copy }` tap puts on the clipboard (≤ 8000 characters). */
+export interface PanelCopyEffect {
+  /** The words to copy; the app clips anything past its own 8000-character ceiling. */
+  copy: string
+}
+
+/** Everything one tap may answer: a toast, a refresh request, a copy, or the deferred acknowledgement. */
+export type PanelReply = PanelEffect | PanelRefreshEffect | PanelCopyEffect | PanelDeferredEffect
+
 /** What one snapshot read is scoped to. */
 export interface PanelSnapshotRead {
   /** The service registry the three faces resolve through. */
@@ -305,11 +442,22 @@ export interface PanelSnapshotRead {
   workspace: string | undefined
   /** The live session the panel is driving; empty reads nothing at all. */
   sessionId: string
+  /** The resolved memory addressing (`memory.dir` / `memory.agentSlug`), when the caller has it. */
+  memory?: PanelMemoryScope
 }
 
 /** The snapshot a panel renders before its first data tick: every section absent, no rows. */
 function emptySnapshot(): PanelSnapshot {
-  return { team: null, plan: null, question: null, readyTasks: [] }
+  return {
+    team: null,
+    plan: null,
+    question: null,
+    readyTasks: [],
+    counts: { ready: 0, active: 0, done: 0, total: 0, completion: 0, members: 0 },
+    alert: null,
+    workmates: [],
+    memory: null,
+  }
 }
 
 /** A one-segment view binding, spelled once so the shape cannot drift between nodes. */
@@ -412,10 +560,56 @@ function readyRowsOf(tasks: readonly Record<string, unknown>[]): PanelReadyRow[]
     if (blocked) continue
     /** The row's caption: the task's kind and owner, both optional. */
     const caption = [stringOf(task.kind), stringOf(task.owner)].filter((part) => part !== "").join(" · ")
-    rows.push({ title: clip(stringOf(task.subject), MAX_TITLE_CHARS), subtitle: clip(caption === "" ? "ready" : caption, MAX_CAPTION_CHARS) })
+    rows.push({
+      id: stringOf(task.id),
+      title: clip(stringOf(task.subject), MAX_TITLE_CHARS),
+      subtitle: clip(caption === "" ? "ready" : caption, MAX_CAPTION_CHARS),
+    })
     if (rows.length >= DSHGO_MAX_READY_ROWS) break
   }
   return rows
+}
+
+/**
+ * The counters the overview tiles read.
+ *
+ * `ready` counts the SAME rule {@link readyRowsOf} lists (pending with every blocker released) but is
+ * never capped: the tile reports the board, the list reports what fits.
+ * @param tasks - the record's task rows, already narrowed to records.
+ * @returns the five derived counters, with `completion` as a whole percentage.
+ */
+function countsOf(tasks: readonly Record<string, unknown>[]): PanelCounts {
+  /** The status of every task on the board. */
+  const statusById = new Map<string, string>()
+  for (const task of tasks) statusById.set(stringOf(task.id), stringOf(task.status))
+  /** Rows in flight. */
+  let active = 0
+  /** Rows in a terminal status. */
+  let done = 0
+  /** Rows whose blockers are all released. */
+  let ready = 0
+  for (const task of tasks) {
+    /** This row's status word. */
+    const status = stringOf(task.status)
+    if (RELEASING_STATUSES.has(status)) {
+      done += 1
+      continue
+    }
+    if (status === "in_progress") active += 1
+    if (status === "pending" && !arrayOf(task.blockedBy).some((entry) => {
+      /** The blocker's own status, when it names a row on this board. */
+      const blockedStatus = statusById.get(stringOf(entry))
+      return blockedStatus !== undefined && !RELEASING_STATUSES.has(blockedStatus)
+    })) ready += 1
+  }
+  return {
+    ready,
+    active,
+    done,
+    total: tasks.length,
+    completion: tasks.length === 0 ? 0 : Math.round((done / tasks.length) * 100),
+    members: 0,
+  }
 }
 
 /** Project one team record onto the snapshot's team half, or null when there is no readable record. */
@@ -493,19 +687,202 @@ function questionReadOf(value: unknown): { snapshot: PanelQuestionSnapshot; bind
   }
 }
 
+/** The structural face of the `mpdWorkmate` service: the READ-ONLY listing this panel draws. */
+export interface PanelWorkmateFace {
+  /** Every instance in the library, newest-agnostic; the panel never mutates one. */
+  list?: () => unknown
+}
+
+/**
+ * Read the workmate library through its service.
+ *
+ * The panel is READ-ONLY here by contract: it never spawns, reflects or deletes, so `list` is the only
+ * member this module touches. An absent service — or one that throws — answers "no library" rather
+ * than an error, because a composition without the workmate row still renders the other tabs.
+ * @param services - the row context the service is resolved from.
+ * @returns up to {@link DSHGO_MAX_WORKMATES} rows, or `[]` when the library is not mounted.
+ */
+function workmatesOf(services: PanelServices): PanelWorkmateRow[] {
+  /** The library service, or undefined when this composition has none. */
+  const face = faceOf<PanelWorkmateFace>(services, "mpdWorkmate")
+  if (face?.list === undefined) return []
+  return arrayOf(probe(() => face.list?.(), undefined))
+    .map((entry) => recordOf(entry))
+    .filter((entry): entry is Record<string, unknown> => entry !== undefined)
+    .slice(0, DSHGO_MAX_WORKMATES)
+    .map((entry) => ({
+      name: clip(stringOf(entry.name), MAX_TITLE_CHARS),
+      base: clip(stringOf(entry.baseName), MAX_CAPTION_CHARS),
+      uses: typeof entry.uses === "number" && Number.isFinite(entry.uses) ? entry.uses : 0,
+      note: clip(stringOf(entry.note), MAX_CAPTION_CHARS),
+    }))
+}
+
+/** The frontmatter a memory entry carries between its two `---` fences, read as a record. */
+function frontmatterOf(text: string): Record<string, unknown> | undefined {
+  /** The fence-delimited header, matched once at the file's head. */
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)
+  if (match === null) return undefined
+  try {
+    /** The header parsed as the JSON the store writes there. */
+    const parsed: unknown = JSON.parse(match[1] ?? "")
+    return recordOf(parsed)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A short relative age for a millisecond timestamp: `3m`, `2h`, `4d`, `never` for a missing instant.
+ * @param at - the entry's modification instant in epoch milliseconds, or 0 when unknown.
+ * @param now - the instant the read happens, injected so a test can pin it.
+ * @returns the clipped age label.
+ */
+function ageOf(at: number, now: number): string {
+  if (at <= 0) return "never"
+  /** How long ago the instant was, in whole minutes. */
+  const minutes = Math.max(0, Math.floor((now - at) / 60000))
+  if (minutes < 60) return String(minutes) + "m"
+  if (minutes < 60 * 24) return String(Math.floor(minutes / 60)) + "h"
+  return String(Math.floor(minutes / (60 * 24))) + "d"
+}
+
+/**
+ * The memory row's addressing, as the panel resolves it: where the store lives and WHICH agent's.
+ *
+ * Both fields mirror the memory row's own config (`memory.dir`, `memory.agentSlug`). The panel does not
+ * invent them: `index.ts` reads them from the mounted `mpdConfig` service, so a workspace that points
+ * `memory.dir` somewhere else sees ITS store in the tab instead of an empty state.
+ */
+export interface PanelMemoryScope {
+  /** The workspace state directory the store hangs under (`memory.dir`), `.mpd` when unset. */
+  dir?: string
+  /** The agent slug this panel reads (`memory.agentSlug`); derived from the workspace name when unset. */
+  agentSlug?: string
+}
+
+/**
+ * The memory row's slug rule, mirrored: an explicit `memory.agentSlug`, else `agent-<workspace name>`.
+ *
+ * The mirror is one line of documented behaviour (the memory package's `slugOf`), not a re-implementation
+ * of the store: getting it wrong shows ANOTHER agent's entries, which is exactly the defect this fixes.
+ * @param workspace - the absolute workspace root the store belongs to.
+ * @param scope - the resolved memory scope, when the caller supplied one.
+ * @returns the slug whose store this panel reads.
+ */
+export function memorySlugOf(workspace: string, scope?: PanelMemoryScope): string {
+  if (scope?.agentSlug !== undefined && scope.agentSlug !== "") return scope.agentSlug
+  /** The workspace directory's own name, which the derived slug is built from. */
+  const base = basename(workspace).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24)
+  return "agent-" + base
+}
+
+/**
+ * Read ONE agent's workspace memory store, WITHOUT the memory row.
+ *
+ * WHY THIS READS FILES: the memory row publishes no service (only tools), and this panel must not edit
+ * another package's plugin to add one. The layout it reads is that package's DOCUMENTED contract —
+ * `<workspace>/<memory.dir or ".mpd">/memory/agents/<slug>/repo/memory/*.md` with a JSON frontmatter, and
+ * `<slug>/runtime/reflection.json` for the counters — so this reader is a projection of a published
+ * shape, not a second implementation of the store.
+ *
+ * SCOPE, STATED SO THE TAB CAN SAY IT: the read is WORKSPACE-ONLY and THIS-AGENT-ONLY. It never walks a
+ * sibling agent's directory (a workspace with `memory.agentSlug` overrides would otherwise show another
+ * agent's entries) and it never reads the global store under `$HOME` (that store is shared, and a panel
+ * that mixed it into "this workspace's latest" would be lying about what it shows).
+ *
+ * A missing directory answers `null` (the tab says "no entry yet"), never an error.
+ * @param workspace - the absolute workspace root the store hangs under.
+ * @param now - the instant the relative ages are computed against.
+ * @param scope - the resolved `memory.dir` / `memory.agentSlug`, or undefined for the documented defaults.
+ * @returns the newest entries plus the reflection counters, or null when this agent has no store.
+ */
+export function readMemoryStore(workspace: string, now: number, scope?: PanelMemoryScope): PanelMemorySnapshot | null {
+  /** The state directory the store hangs under: the row's `memory.dir`, else `.mpd`. */
+  const stateDir = scope?.dir === undefined || scope.dir === "" ? MEMORY_DIR : scope.dir
+  /** The ONE agent's store root this panel reads. */
+  const agentRoot = join(workspace, stateDir, "memory", "agents", memorySlugOf(workspace, scope))
+  /** The agent's entry directory; absent until the memory row's first write. */
+  const memoryDir = join(agentRoot, "repo", "memory")
+  if (!existsSync(memoryDir)) return null
+  // STAT FIRST, READ ONLY THE WINNERS. The directory is unbounded while this read runs at 0.5 Hz, so
+  // parsing every entry to sort it would cost a full read of the store on every tick; the tenth-newest
+  // instant is all the tab needs.
+  /** Every entry file with its modification instant, newest first, capped at the rows the tab draws. */
+  const newest = probe(() => readdirSync(memoryDir), [] as string[])
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => ({ file, at: probe(() => statSync(join(memoryDir, file)).mtimeMs, 0) }))
+    .sort((left, right) => right.at - left.at)
+    .slice(0, DSHGO_MAX_MEMORY_ROWS)
+  /** The rows of those files, in the same newest-first order. */
+  const found: PanelMemoryEntry[] = []
+  for (const { file, at } of newest) {
+    /** The entry's absolute path. */
+    const path = join(memoryDir, file)
+    /** The entry's text, or undefined when it cannot be read. */
+    const text = probe(() => readFileSync(path, "utf8"), undefined as string | undefined)
+    if (text === undefined) continue
+    /** The frontmatter record carrying `kind` and `description`. */
+    const meta = frontmatterOf(text)
+    if (meta === undefined) continue
+    found.push({ kind: clip(stringOf(meta.kind), MAX_CAPTION_CHARS), description: clip(stringOf(meta.description), MAX_CAPTION_CHARS), age: ageOf(at, now) })
+  }
+  /** This agent's reflection state, when it has one. */
+  const state = probe(() => JSON.parse(readFileSync(join(agentRoot, "runtime", "reflection.json"), "utf8")) as unknown, undefined)
+  /** The state read as a record, so the counters are typed reads. */
+  const record = recordOf(state) ?? {}
+  return {
+    entries: found,
+    // The LEGACY names are read and never written (the memory row's own compatibility bound: real
+    // `reflection.json` files predating the current vocabulary carry them).
+    reflections: typeof record.reflectionsCompleted === "number" ? record.reflectionsCompleted : typeof record.reflected_completed_steps === "number" ? record.reflected_completed_steps : 0,
+    steps: typeof record.stepsSinceReflection === "number" ? record.stepsSinceReflection : typeof record.steps_since_last_successful_reflection === "number" ? record.steps_since_last_successful_reflection : 0,
+  }
+}
+
+
+/**
+ * The STRUCTURAL signature of one snapshot: every part of the view the data push cannot update.
+ *
+ * `buildMpdView` writes these as LITERALS, so a change among them is invisible until the app re-fetches
+ * the view: the parked question and the option labels its buttons show, the ready-task id set, whether a
+ * plan/ready action exists, the alert, the workmate list and the memory list. Bound values are
+ * deliberately absent — the emit already carries them.
+ * @param snapshot - the snapshot the signature describes.
+ * @returns one string that changes exactly when the view's structure must be rebuilt.
+ */
+export function refreshKeyOf(snapshot: PanelSnapshot): string {
+  /** The parked question's identity: its id and the labels the buttons render. */
+  const question = snapshot.question === null ? "" : snapshot.question.id + "|" + snapshot.question.options.map((option) => option.label).join("|")
+  /** The ready rows, by id: the list is literal, so a new row means a new tree. */
+  const ready = snapshot.readyTasks.map((task) => task.id).join(",")
+  /** Whether the approve button exists (a staged plan) and whether dispatch does (a ready row). */
+  const plan = snapshot.plan?.ready === true ? "plan" : ""
+  /** The alert callout, which is literal text. */
+  const alert = snapshot.alert ?? ""
+  /** The workmate rows, by name: a rename or a new instance rebuilds the list. */
+  const workmates = snapshot.workmates.map((mate) => mate.name).join(",")
+  /** The memory rows and the reflection counters, which the tab renders as literals. */
+  const memory = snapshot.memory === null ? "" : snapshot.memory.entries.map((entry) => entry.kind + ":" + entry.description).join("|") + "@" + String(snapshot.memory.reflections) + "/" + String(snapshot.memory.steps)
+  return [question, ready, plan, alert, workmates, memory].join("#")
+}
+
 /**
  * Read one panel's whole state: the snapshot the data push emits AND the binding a view captures.
  *
  * ONE reader serves both paths. `view` calls this directly (a synchronous read) so the first view an
  * app fetches BEFORE subscribing is complete, and `data()` calls {@link readPanelSnapshot}, which is
- * this same read narrowed to the snapshot. NOTHING HERE THROWS and nothing here reads the disk:
- * `mpdTeams` owns the record root, the relay owns the parking lot, and a service that is absent or
- * broken answers the empty state. A conversation-less panel (no `sessionId`) reads nothing at all, so
- * it cannot display another conversation's team or answer another conversation's question.
+ * this same read narrowed to the snapshot. NOTHING HERE THROWS: `mpdTeams` owns the team record, the
+ * relay owns the parking lot, `mpdWorkmate` owns the library, and the ONE disk read is the memory
+ * store's documented layout ({@link readMemoryStore}) — a missing store answers the tab's empty state.
+ * A conversation-less panel (no `sessionId`) reads nothing at all, so it cannot display another
+ * conversation's team or answer another conversation's question.
+
  * @param read - the service registry plus the workspace and session this panel is scoped to.
+ * @param options - `light: true` skips the workmate and memory reads, for the strip's 2 s tick.
  * @returns the narrowed snapshot plus the question identity it was built from.
  */
-export function readPanelState(read: PanelSnapshotRead): PanelReadState {
+export function readPanelState(read: PanelSnapshotRead, options: { light?: boolean } = {}): PanelReadState {
   /** The session this panel drives, or `""` when the app gave none. */
   const sessionId = read.sessionId
   /** The workspace root this read is scoped to; an absent one reads nothing at all. */
@@ -519,14 +896,20 @@ export function readPanelState(read: PanelSnapshotRead): PanelReadState {
   const record = teams?.active === undefined ? undefined : probe(() => teams.active?.(workspace, sessionId), undefined)
   /** The parked question, read ONCE so the snapshot and the binding describe the same instant. */
   const question = questions?.list === undefined ? null : questionReadOf(probe(() => questions.list?.({ sessionId }), undefined))
+  /** The board rows, narrowed once and reused by the ready list and the counters. */
+  const tasks = arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task): task is Record<string, unknown> => task !== undefined)
+  /** The staged plan's projection, read once and reused by the snapshot and the alert. */
+  const plan = teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined))
   return {
     snapshot: {
       team: teamSnapshotOf(record),
-      plan: teams?.planFor === undefined ? null : planSnapshotOf(probe(() => teams.planFor?.(workspace, sessionId), undefined)),
+      plan,
       question: question?.snapshot ?? null,
-      readyTasks: readyRowsOf(
-        arrayOf(recordOf(record)?.tasks).map((task) => recordOf(task)).filter((task): task is Record<string, unknown> => task !== undefined),
-      ),
+      readyTasks: readyRowsOf(tasks),
+      counts: { ...countsOf(tasks), members: teamSnapshotOf(record)?.members ?? 0 },
+      alert: plan?.ready === true ? ALERT_PLAN_WAITING : null,
+      workmates: options.light === true ? [] : workmatesOf(read.services),
+      memory: options.light === true ? null : probe(() => readMemoryStore(workspace, Date.now(), read.memory), null),
     },
     binding: { question: question?.binding ?? null },
   }
@@ -537,58 +920,23 @@ export function readPanelState(read: PanelSnapshotRead): PanelReadState {
  * @param read - the service registry plus the workspace and session this panel is scoped to.
  * @returns the narrowed snapshot; every section is null/empty when it could not be read.
  */
-export function readPanelSnapshot(read: PanelSnapshotRead): PanelSnapshot {
-  return readPanelState(read).snapshot
+export function readPanelSnapshot(read: PanelSnapshotRead, options: { light?: boolean } = {}): PanelSnapshot {
+  return readPanelState(read, options).snapshot
 }
 
 /**
- * Build the v1 view tree for one snapshot.
+ * Build the view tree for one snapshot.
  *
- * STRUCTURE comes from the snapshot (the callout, the option buttons and the truncation note exist
- * only when a question does), while every VALUE that can change between refreshes is a `$` binding so
- * the data push updates it without a re-fetch. Every binding path below is a path of
- * {@link PanelSnapshot}; the test suite resolves each one against a captured snapshot.
+ * The tree itself is `dshgo-views.ts`'s job (contract §7): four v2 tabs, one `tinted` hero each, tiled
+ * metrics, designed empty states and at most one primary action. `adaptView` inside that builder turns
+ * the same tree into the v1 fallback for an older app, so a caller that passes no `caps` gets a v1 tree
+ * and a caller on 1.0.9 gets v2 — from ONE function, which is what keeps the two shapes in step.
  * @param snapshot - the snapshot the view is built from.
- * @returns the view tree the bridge renders; plain JSON, v1 components only.
+ * @param caps - what the app can draw; absent reads as an older app and yields the v1 fallback.
+ * @returns the view tree the bridge renders.
  */
-export function buildPanelView(snapshot: PanelSnapshot): Record<string, unknown> {
-  /** The tree's children, in reading order. */
-  const children: unknown[] = [
-    {
-      type: "keyValue",
-      items: [
-        { label: "Team", value: bind("data.team.name") },
-        { label: "Status", value: bind("data.team.status") },
-        { label: "Phase", value: bind("data.team.phase") },
-        { label: "Members", value: bind("data.team.members") },
-        { label: "Tasks", value: bind("data.team.tasks") },
-        { label: "Plan members", value: bind("data.plan.members") },
-        { label: "Plan tasks", value: bind("data.plan.tasks") },
-      ],
-    },
-    { type: "list", items: bind("data.readyTasks") },
-  ]
-  if (snapshot.question !== null) {
-    children.push({ type: "callout", tone: "info", text: bind("data.question.question") })
-    /** The option buttons this question can render, capped at the per-node button budget. */
-    const buttons = snapshot.question.options.slice(0, DSHGO_MAX_OPTIONS).map((_option, index) => ({
-      label: bind("data.question.options." + index + ".label"),
-      action: "answer:" + index,
-    }))
-    if (buttons.length > 0) children.push({ type: "actions", items: buttons })
-    if (snapshot.question.options.length > DSHGO_MAX_OPTIONS) children.push({ type: "text", tone: "muted", text: TRUNCATED_TEXT })
-  }
-  // The two team actions are UNCONDITIONAL: a tap on a stale view still answers a toast, and keeping
-  // them out of the refresh-triggered structure means the panel never loses its main controls.
-  children.push({
-    type: "actions",
-    items: [
-      { label: "Approve plan", action: "approve", style: "primary" },
-      { label: "Dispatch", action: "dispatch" },
-    ],
-  })
-  children.push({ type: "text", tone: "muted", text: LIMITS_TEXT })
-  return { v: 1, type: "stack", title: "MPD", children }
+export function buildPanelView(snapshot: PanelSnapshot, caps?: DshGoCaps | null): DshGoView {
+  return buildMpdView(snapshot, caps)
 }
 
 /** The refusal shape a team action answers with, read structurally (the service's own `ok` flag). */
@@ -611,36 +959,58 @@ function messageOf(value: unknown): string {
   return typeof value === "string" ? value : ""
 }
 
-/** The marker a timed-out action answers with, so a timeout is never confused with a refusal. */
+/** The marker a timed-out wait answers with, so a slow service is never confused with a refusal. */
 const TIMED_OUT = Symbol("mpd-panel-timeout")
 
+/** One service call's settled outcome, or the deadline marker. */
+type PanelAttempt = { ok: true; value: unknown } | { ok: false; error: unknown } | typeof TIMED_OUT
+
 /**
- * Await one service call for at most {@link DSHGO_ACTION_TIMEOUT_MS}.
+ * Call one service, turning both settlements into a value.
  *
- * The call is wrapped so a rejection after the deadline can never become an unhandled rejection: the
- * abandoned promise settles into a value this function already stopped waiting for, which is what a
- * tap handler must guarantee on a host that would otherwise see a rejected invoke.
+ * The call is wrapped so a rejection can never become an unhandled rejection: a tap handler must never
+ * leave a rejected promise behind on a host that would surface it as a failed invoke.
  * @param run - the service call, started immediately.
- * @param timeoutMs - how long the tap waits before answering a toast.
- * @returns the call's outcome, or {@link TIMED_OUT}.
+ * @returns the call's outcome, never a rejection.
  */
-async function settleWithin(run: () => unknown, timeoutMs: number): Promise<{ ok: true; value: unknown } | { ok: false; error: unknown } | typeof TIMED_OUT> {
-  /** The call's outcome, never a rejection: the two arms below cover both settlements. */
-  const guarded = Promise.resolve()
+function attemptOf(run: () => unknown): Promise<{ ok: true; value: unknown } | { ok: false; error: unknown }> {
+  return Promise.resolve()
     .then(run)
     .then((value) => ({ ok: true as const, value }), (error: unknown) => ({ ok: false as const, error }))
-  /** The deadline's own resolution, cleared by the `finally` below on the fast path. */
+}
+
+/**
+ * Wait for an effect, or acknowledge with the app's v1.1 DEFERRED shape when it outlives the window.
+ *
+ * THE 3-SECOND WINDOW IS THE APP'S, measured in `docs/plugins/actions.md`: an effect must reach the app
+ * within three seconds of the tap, and a handler that needs longer returns `pending` FIRST and the real
+ * effect later (up to 60 s). The old 4-second constant therefore could never be met: this waits at most
+ * {@link DSHGO_ACTION_WAIT_MS} and then hands the still-running work to the deferred result.
+ *
+ * @param running - the effect, already started.
+ * @param label - the waiting-state word, at most 16 characters as the app requires.
+ * @returns the effect, or the `{ pending, result }` shape.
+ */
+export async function orDeferred(running: Promise<PanelEffect>, label: string): Promise<PanelReply> {
+  /** The deadline's own resolution, cleared on the fast path. */
   let timer: ReturnType<typeof setTimeout> | undefined
   /** The deadline promise; it never rejects and carries only the marker. */
   const deadline = new Promise<typeof TIMED_OUT>((resolve) => {
-    timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs)
+    timer = setTimeout(() => resolve(TIMED_OUT), DSHGO_ACTION_WAIT_MS)
   })
   try {
-    return await Promise.race([guarded, deadline])
+    /** Whichever settles first: the effect or the acknowledgement deadline. */
+    const raced = await Promise.race([running, deadline])
+    if (raced !== TIMED_OUT) return raced
+    return {
+      pending: { label, timeoutMs: DSHGO_DEFERRED_TIMEOUT_MS },
+      result: (): Promise<PanelEffect> => running,
+    }
   } finally {
     if (timer !== undefined) clearTimeout(timer)
   }
 }
+
 
 /** The action id one panel tap reports, read from a string action or from an `args`-shaped value. */
 function actionIdOf(event: unknown): string {
@@ -653,6 +1023,21 @@ function actionIdOf(event: unknown): string {
   /** The args a bound action node carried, where an id may sit instead. */
   const value = recordOf(record.value)
   return value === undefined ? "" : stringOf(value.action)
+}
+
+/** The answer text a custom-answer form submitted, or `""` when the event carries none. */
+function customAnswerOf(event: unknown): string {
+  /** The event's `value`, which the protocol fills with the form's collected fields. */
+  const value = recordOf(recordOf(event)?.value)
+  if (value === undefined) return ""
+  /** The field the panel's own `textField` binds, when the bridge kept the binding's name. */
+  const named = stringOf(value.customAnswer)
+  if (named !== "") return named
+  /** The generic field name a single-input form may report instead. */
+  const generic = stringOf(value.text)
+  if (generic !== "") return generic
+  for (const entry of Object.values(value)) if (typeof entry === "string" && entry !== "") return entry
+  return ""
 }
 
 /** The option index an `answer:<n>` action id names, or undefined when the id names no option. */
@@ -701,60 +1086,69 @@ function holdsParkedId(parked: unknown, parkedId: string): boolean {
 export function createPanelActions(
   options: PanelOptions,
   bindingOf: (scope: unknown) => PanelViewBinding | undefined = () => undefined,
-): Record<string, (scope: unknown, event: unknown) => Promise<PanelEffect>> {
+): Record<string, (scope: unknown, event: unknown) => Promise<PanelReply>> {
   /** The team-actions service, resolved per tap so a row that binds later is honoured. */
   const teamActions = (): PanelTeamActionsFace | undefined => faceOf<PanelTeamActionsFace>(options.ctx, "mpdTeamActions")
   /** The relay, resolved per tap for the same reason. */
   const questions = (): PanelQuestionsFace | undefined => faceOf<PanelQuestionsFace>(options.ctx, "mpdQuestions")
+  /**
+   * Turn one settled service call into the effect a tap answers.
+   * @param outcome - the call's outcome, as {@link attemptOf} narrowed it.
+   * @param success - the effect a non-refusing answer produces.
+   * @param accepted - what a successful answer's value must satisfy; the relay's boolean, by default.
+   * @returns the effect; never a rejection and never a throw.
+   */
+  const effectOf = (outcome: { ok: true; value: unknown } | { ok: false; error: unknown }, success: PanelEffect, accepted: (value: unknown) => boolean = () => true): PanelEffect => {
+    if (outcome.ok === false) return { toast: clipToast(messageOf(outcome.error)) }
+    if (isRefusal(outcome.value)) return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) }
+    return accepted(outcome.value) ? success : { toast: TOAST_UNAVAILABLE }
+  }
   /** The approve handler: approve the conversation's staged plan. */
-  const approve = async (scope: unknown): Promise<PanelEffect> => {
+  const approve = async (scope: unknown): Promise<PanelReply> => {
     /** The conversation this tap belongs to. */
     const sessionId = sessionIdOfScope(scope)
     if (sessionId === "") return { toast: TOAST_NO_SESSION }
     /** The service this tap needs, or undefined when the composition has none. */
     const face = teamActions()
     if (face?.approve === undefined) return { toast: TOAST_UNAVAILABLE }
-    /** The service call's outcome, or the timeout marker. */
-    const outcome = await settleWithin(() => face.approve?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS)
-    if (outcome === TIMED_OUT) return { toast: TOAST_STILL_RUNNING }
-    if (outcome.ok === false) return { toast: clipToast(messageOf(outcome.error)) }
-    if (isRefusal(outcome.value)) return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) }
-    return { toast: TOAST_APPROVED }
+    // Starts the call, then waits only inside the app's tap window before deferring.
+    const running = attemptOf(() => face.approve?.({ sessionId })).then((outcome) => effectOf(outcome, { toast: TOAST_APPROVED }))
+    return orDeferred(running, PENDING_APPROVE)
   }
   /** The dispatch handler: run one dispatch pass over the conversation's team. */
-  const dispatch = async (scope: unknown): Promise<PanelEffect> => {
+  const dispatch = async (scope: unknown): Promise<PanelReply> => {
     /** The conversation this tap belongs to. */
     const sessionId = sessionIdOfScope(scope)
     if (sessionId === "") return { toast: TOAST_NO_SESSION }
     /** The service this tap needs, or undefined when the composition has none. */
     const face = teamActions()
     if (face?.dispatch === undefined) return { toast: TOAST_UNAVAILABLE }
-    /** The service call's outcome, or the timeout marker. */
-    const outcome = await settleWithin(() => face.dispatch?.({ sessionId }), DSHGO_ACTION_TIMEOUT_MS)
-    if (outcome === TIMED_OUT) return { toast: TOAST_STILL_RUNNING }
-    if (outcome.ok === false) return { toast: clipToast(messageOf(outcome.error)) }
-    if (isRefusal(outcome.value)) return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) }
-    return { toast: TOAST_DISPATCHED }
+    /** The service call's effect, once it settles at all. */
+    const running = attemptOf(() => face.dispatch?.({ sessionId })).then((outcome) => effectOf(outcome, { toast: TOAST_DISPATCHED }))
+    return orDeferred(running, PENDING_DISPATCH)
   }
-  /** The handler one option button runs: answer the question the VIEW was rendered from. */
-  const answerWith = async (scope: unknown, event: unknown): Promise<PanelEffect> => {
+  /**
+   * The shared answer path: settle the question the VIEW was rendered from.
+   * @param scope - the invocation scope, whose session selects the relay lot.
+   * @param index - the option index an `answer:<n>` tap names, or undefined for a custom answer.
+   * @param custom - the typed answer, used instead of an offered label when non-empty.
+   * @returns the effect; a gone question asks for a refresh instead of settling its replacement.
+   */
+  const answerFor = async (scope: unknown, index: number | undefined, custom: string): Promise<PanelReply> => {
     /** The conversation this tap belongs to. */
     const sessionId = sessionIdOfScope(scope)
     if (sessionId === "") return { toast: TOAST_NO_SESSION }
-    /** The option index the action id names. */
-    const index = optionIndexOf(actionIdOf(event))
-    if (index === undefined) return { toast: TOAST_UNAVAILABLE }
     /** The relay this tap needs, or undefined when the composition has none. */
     const face = questions()
     if (face?.list === undefined || face.answer === undefined) return { toast: TOAST_UNAVAILABLE }
     /** The identity the view captured when it was rendered; a tap never re-derives it from the lot. */
     const captured = bindingOf(scope)?.question
     if (captured === undefined || captured === null) return { toast: TOAST_NO_QUESTION }
-    /** The label the user actually saw on that button, which is also the value the relay validates. */
-    const label = captured.labels[index]
+    /** The label the answer carries: an offered one, or the typed answer clipped to the relay's bound. */
+    const label = custom === "" ? captured.labels[index ?? -1] : clip(custom, MAX_ANSWER_CHARS)
     /** The item id the answer batch must carry: the first question item of the captured parked entry. */
     const itemId = captured.itemIds[0]
-    if (label === undefined || itemId === undefined) return { toast: TOAST_UNAVAILABLE }
+    if (label === undefined || itemId === undefined || label === "") return { toast: TOAST_UNAVAILABLE }
     /** Whether the captured question is STILL parked; this is the only fact the live lot supplies. */
     const stillParked = holdsParkedId(probe(() => face.list?.({ sessionId }), undefined), captured.parkedId)
     if (!stillParked) {
@@ -763,18 +1157,23 @@ export function createPanelActions(
       probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
       return { toast: TOAST_QUESTION_GONE }
     }
-    /** The settle call's outcome, or the timeout marker. */
-    const outcome = await settleWithin(() => face.answer?.({ id: captured.parkedId, answers: [{ id: itemId, selected: [label] }] }), DSHGO_ACTION_TIMEOUT_MS)
-    if (outcome === TIMED_OUT) return { toast: TOAST_STILL_RUNNING }
-    if (outcome.ok === false) return { toast: clipToast(messageOf(outcome.error)) }
-    if (outcome.value === true) return { toast: TOAST_ANSWERED }
-    // The relay answers a boolean; a service that grows a `{ok:false, error}` refusal gets its own
-    // sentence rather than the generic one, so the two shapes can never drift into different toasts.
-    if (isRefusal(outcome.value)) return { toast: clipToast(messageOf(outcome.value) || TOAST_REFUSED) }
-    return { toast: TOAST_UNAVAILABLE }
+    // TYPED TEXT TRAVELS IN `custom`, NEVER AS A LABEL (measured: the relay validates `selected` against
+    // the labels it stored and would refuse free text as an unknown option). An offered option keeps
+    // `selected`; the custom path sends an empty `selected` plus `custom`.
+    const answer = custom === "" ? { id: itemId, selected: [label] } : { id: itemId, selected: [], custom: label }
+    /** The settle call's effect, once it settles at all. */
+    const running = attemptOf(() => face.answer?.({ id: captured.parkedId, answers: [answer] }))
+      .then((outcome) => effectOf(outcome, { toast: TOAST_ANSWERED }, (value) => value === true))
+    return orDeferred(running, PENDING_ANSWER)
   }
-  /** The action map this panel publishes: the two team actions plus one id per option button. */
-  const actions: Record<string, (scope: unknown, event: unknown) => Promise<PanelEffect>> = { approve, dispatch }
+  /** The handler one option button runs: answer the question the VIEW was rendered from. */
+  const answerWith = async (scope: unknown, event: unknown): Promise<PanelReply> => answerFor(scope, optionIndexOf(actionIdOf(event)), "")
+  /** The handler the custom-answer form runs: settle with the typed words instead of an offered label. */
+  const answerCustom = async (scope: unknown, event: unknown): Promise<PanelReply> => answerFor(scope, undefined, customAnswerOf(event))
+  /** The refresh handler: ask the app to re-fetch this panel's view, which is the protocol's own shorthand. */
+  const refresh = async (): Promise<PanelReply> => ({ refresh: true })
+  /** The action map this panel publishes: the three view actions plus one id per option button. */
+  const actions: Record<string, (scope: unknown, event: unknown) => Promise<PanelReply>> = { approve, dispatch, refresh, "answer-custom": answerCustom }
   for (let index = 0; index < DSHGO_MAX_OPTIONS; index += 1) actions["answer:" + index] = answerWith
   return actions
 }
@@ -805,8 +1204,8 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
   const viewBindings = new Map<string, PanelViewBinding>()
   /** The serialized snapshot last emitted per scope, so an unchanged tick emits nothing. */
   const emitted = new Map<string, string>()
-  /** The pending-question id set last seen per scope, so only a SET change refreshes the view. */
-  const questionKeys = new Map<string, string>()
+  /** The STRUCTURAL signature last seen per scope, so only a structural change refreshes the view. */
+  const refreshKeys = new Map<string, string>()
   /** Every interval this registration owns, so the release can clear all of them. */
   const timers = new Set<ReturnType<typeof setInterval>>()
   /** Announce one state exactly once, so a repeated attempt cannot spam the log. */
@@ -824,7 +1223,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
   }
   /** Read one scope's snapshot and view binding, through the three services, in ONE live read. */
   const stateOf = (scope: unknown): PanelReadState =>
-    readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope) })
+    readPanelState({ services: options.ctx, workspace: workspaceOf(sessionIdOfScope(scope)), sessionId: sessionIdOfScope(scope), memory: options.memory })
   /** Read the snapshot for one scope, which is the push path's model. */
   const snapshotOf = (scope: unknown): PanelSnapshot => stateOf(scope).snapshot
   /** The scopes whose first emit already happened, so a steady tick emits nothing. */
@@ -839,26 +1238,29 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
    * something else changed. The push cache stays the push path's own state; `view` never reads it.
    * The capture happens BEFORE the tree is returned, so a tap and the tree describe the same read.
    */
-  const viewFor = (scope: unknown): Record<string, unknown> => {
+  const viewFor = (scope: unknown, caps?: DshGoCaps): DshGoView => {
     /** The live read this view renders, through the same reader the data push uses. */
     const state = stateOf(scope)
     viewBindings.set(scopeKeyOf(scope), state.binding)
-    return buildPanelView(state.snapshot)
+    return buildPanelView(state.snapshot, caps)
   }
   /**
-   * Ask the app to re-fetch the view when — and only when — the pending-question ID SET changed.
+   * Ask the app to re-fetch the view when — and only when — its STRUCTURAL signature changed.
    *
-   * A question's TEXT or an option's label changing under the same parked id is a data change: the
-   * emit carries it and the bound nodes re-render, so no re-fetch is spent on it. The subscription's
-   * own seed is not a change either: the app has just fetched the view before subscribing.
+   * The signature covers everything `buildMpdView` writes as a LITERAL, because the data push cannot
+   * update a literal: the parked question (its id and the option labels its buttons show), the ready
+   * rows, whether the plan/ready buttons exist, the alert, the workmate list and the memory list. A
+   * value that is BOUND (the counters, the completion bar, the question's own text) travels on the emit
+   * instead, so no re-fetch is spent on it. The subscription's own seed is not a change: the app has
+   * just fetched the view before subscribing.
    */
-  const announceQuestionSet = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
-    /** The pending-question id set of this snapshot; empty when nothing is parked. */
-    const questionKey = snapshot.question === null ? "" : snapshot.question.id
-    if (questionKeys.get(key) === questionKey) return
+  const announceRefreshState = (key: string, snapshot: PanelSnapshot, seed: boolean): void => {
+    /** The structural signature this snapshot shows. */
+    const signature = refreshKeyOf(snapshot)
+    if (refreshKeys.get(key) === signature) return
     /** Whether this is a real change rather than the subscription's first reading. */
-    const changed = !seed && questionKeys.has(key)
-    questionKeys.set(key, questionKey)
+    const changed = !seed && refreshKeys.has(key)
+    refreshKeys.set(key, signature)
     if (changed) probe(() => options.dsh.dshGoRefresh(DSHGO_PANEL_ID), undefined)
   }
   /** Push one snapshot when it differs from the last one emitted for its scope, then track the question set. */
@@ -876,7 +1278,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       }
       probe(() => send?.(snapshot), undefined)
     }
-    announceQuestionSet(key, snapshot, seed)
+    announceRefreshState(key, snapshot, seed)
   }
   /** The `data` function: seed, poll, emit on change, refresh on a question-set change, cancel cleanly. */
   const data = (scope: unknown, emit: unknown): (() => void) => {
@@ -894,7 +1296,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       clearInterval(timer)
       timers.delete(timer)
       emitted.delete(key)
-      questionKeys.delete(key)
+      refreshKeys.delete(key)
       published.delete(key)
     }
   }
@@ -939,7 +1341,7 @@ export function registerDshGoPanel(options: PanelOptions): PanelRegistration {
       published.clear()
       viewBindings.clear()
       emitted.clear()
-      questionKeys.clear()
+      refreshKeys.clear()
       probe(() => offBound?.(), undefined)
       offBound = undefined
     },

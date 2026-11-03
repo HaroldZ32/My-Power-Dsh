@@ -1,0 +1,37 @@
+T5 (D7) — rebuild all dist, re-pack, gate sweep, two real mounts
+=================================================================
+head: 1fb7f457 (branch feature/mpd-dshgo-native-parity)
+
+DIST
+  before: exit 1, 24/34 targets STALE
+  rebuild: 24 targets, .toolchain/node_modules/.bin/bun 1.4.0, path-qualified from the repo root, 0 build failures
+  after:  exit 0, 34/34 fresh (each rebuilt twice, byte-identical)
+
+PACK
+  node scripts/pack-mpd.ts -> exit 0, staged dist/mpd-package (gitignored artifact)
+  node scripts/verify-pack-closure.ts -> exit 0: 635 files compared / 635 identical / 0 drift,
+    497 asset files, 29/29 declared packages, root files 2/2, agent references 2/2,
+    pack stamp 2026-11-02T16:28:56.367Z
+
+CHECKER (contract §6.1(b), the fixture shell — see checker.log)
+  root shell:    exit 0 — 胶囊 2 · 菜单 2 · 状态条 1 · 面板 2, both static views render
+  packed shell:  exit 0 — identical counts from dist/mpd-package/package.json
+  (the root-level array dsh.bundle.patch remains a shape mismatch with the 1.0.9 checker; pre-existing)
+
+GATES (gates.log)
+  typecheck 0 · tests_packages 0 (3385 pass / 3391 tests / 221 files) · verify:gates 0 · pack_closure 0
+  dist 0 · manifest 0 · docs 0 · rows 0 · no_host_override 0 · installer_dry 0 · test_qa 0
+  dshgo_selftest 0 (17/17) · dshgo_live 0 · manual_paths 0
+
+MOUNTS (real boots, isolated DSH_HOME + sandbox HOME + sandbox workspace)
+  preset-conformance: PASS — ok=true, 32 rows schema-checked, sessionCreate 200 agentPreset=mpd,
+    negative control refused with agent-preset/invalid
+    evidence: evidence/dsh-qa/preset-conformance/2026-11-02T16-30-12.702Z
+  bundle-lifecycle: PASS — one-command install (link + bundle entry), boot checks
+    http/adapterProvided/adapterSeams/adapterToolCall/corpusFromBundle/noPresetRefusal/probePass all true,
+    noHomeCopy (skills/presets empty), uninstall leaves no residue
+    evidence: evidence/dsh-qa/bundle-lifecycle/2026-11-02T16-30-35.741Z
+
+RACE BOUND: T6 (docs) was in_progress during this sweep; its current edits ARE reflected (closure/docs
+green at 16:3xZ). Any LATER docs edit changes files that are packed as assets -> re-run
+`node scripts/pack-mpd.ts` then `node scripts/verify-pack-closure.ts` before T7 cites closure.

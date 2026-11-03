@@ -136,3 +136,11 @@ bun build packages/mpd-autoproject-plugin/src/index.ts --target node --format es
 
 Test: `bun test packages/mpd-autoproject-plugin`.
 Live QA: `node skills/dsh-qa/scripts/autoproject-smoke.ts`.
+
+## dsh-Go tool cards
+
+`mpd_boulder_status` also publishes a native **dsh-Go tool card** through `output.presentationMeta`:
+a v1 tree (`stack` title → `row` of metrics → `keyValue` → `table`) with no data bindings and no
+actions, measured before publication against the app's 8 KiB / 40 nodes / depth-6 tool-card budget.
+A card that cannot be built returns `{}`, so the app falls back to its generic tool row. The text
+`render` and the output schema are unchanged.

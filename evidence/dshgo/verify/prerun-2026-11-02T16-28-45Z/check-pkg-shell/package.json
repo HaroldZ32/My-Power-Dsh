@@ -1,0 +1,103 @@
+{
+  "name": "@mpd-dsh/mpd",
+  "version": "0.17.0",
+  "engines": {
+    "dsh": "0.2.1"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "en": "MPD",
+      "zh": "MPD"
+    },
+    "icon": "bolt",
+    "wants": [
+      "message"
+    ],
+    "contributes": {
+      "panels": [
+        {
+          "id": "mpd",
+          "title": {
+            "en": "MPD Workbench",
+            "zh": "MPD 工作台"
+          },
+          "icon": "bolt",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ],
+          "view": "./dsh-go/views/mpd.json"
+        },
+        {
+          "id": "mpd-team",
+          "title": {
+            "en": "Team Board",
+            "zh": "团队看板"
+          },
+          "icon": "team",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ],
+          "view": "./dsh-go/views/mpd-team.json"
+        }
+      ],
+      "composer.strip": [
+        {
+          "id": "mpd-status",
+          "icon": "team",
+          "panel": "mpd",
+          "text": "—"
+        }
+      ],
+      "composer.actions": [
+        {
+          "id": "mpd-dispatch",
+          "label": {
+            "en": "Dispatch",
+            "zh": "派活"
+          },
+          "icon": "send"
+        },
+        {
+          "id": "mpd-board",
+          "label": {
+            "en": "Board",
+            "zh": "看板"
+          },
+          "icon": "panel",
+          "effect": {
+            "type": "open",
+            "page": "panel:mpd-team"
+          }
+        }
+      ],
+      "message.actions": [
+        {
+          "id": "mpd-save-memory",
+          "label": {
+            "en": "Save memory",
+            "zh": "存为记忆"
+          },
+          "icon": "save"
+        },
+        {
+          "id": "mpd-copy-reply",
+          "label": {
+            "en": "Copy reply",
+            "zh": "复制正文"
+          },
+          "icon": "copy"
+        }
+      ]
+    }
+  }
+}

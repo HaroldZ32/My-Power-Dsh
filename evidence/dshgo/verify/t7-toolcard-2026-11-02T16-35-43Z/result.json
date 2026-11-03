@@ -1,0 +1,46 @@
+{
+  "arm": "tool-card",
+  "startedAt": "2026-11-02T16:36:08.616Z",
+  "sandbox": "/tmp/mpd-t7-card-lVgosA",
+  "credentials": {
+    "seeded": false,
+    "keyName": "DEEPSEEK_API_KEY"
+  },
+  "settingsCopied": false,
+  "install": {
+    "exit": 0,
+    "tail": "   warnStreakToEscalate: 3\n      actionOnEscalate: \"pause\"\n  - id: mpd-bootstrap\n    name: \"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bootstrap-plugin/dist/index.js\"\n  - id: mpd-project-init\n    name: \"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-project-init-plugin/dist/index.js\"\n  - id: mpd-tui-adapter\n    name: \"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js\"\n  - id: mpd-tui\n    name: \"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dist/index.js\"\n  - id: mpd-agent-team\n    name: \"@deepseek-ai/dsh-experimental-agent-team\"\n    config:\n      maxMembers: 16\n      maxTasks: 256\n      maxMessageBytes: 32768\n      disposalTimeoutMs: 5000\n  - id: mpd-tool-agent-team\n    name: \"@deepseek-ai/dsh-experimental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (36 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd\n[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)\n"
+  },
+  "session": {
+    "exit": 0,
+    "log": "session.log"
+  },
+  "records": {
+    "total": 28,
+    "toolRecords": 2,
+    "file": "records.json"
+  },
+  "hits": [
+    {
+      "path": "$.data.meta[\"dsh-go/view\"]",
+      "recordType": "tool/result"
+    }
+  ],
+  "card": {
+    "path": "$.data.meta[\"dsh-go/view\"]",
+    "bytes": 390,
+    "nodes": 6,
+    "depth": 3,
+    "budget": {
+      "bytes": 8192,
+      "nodes": 40,
+      "depth": 6
+    },
+    "withinBudget": true,
+    "v1Violations": [],
+    "checkerExit": 0,
+    "checkerOutput": "视图 -（工具卡）：能显示"
+  },
+  "ok": true,
+  "finishedAt": "2026-11-02T16:36:30.332Z"
+}

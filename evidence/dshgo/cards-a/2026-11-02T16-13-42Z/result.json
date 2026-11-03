@@ -1,0 +1,99 @@
+{
+  "lane": "T3 / D6a — native tool cards for the team and roster tools",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "contract": ".mpd/plans/dshgo-native-parity.md §4 D6",
+  "measuredAt": "2026-11-02T16:13:42Z",
+  "scope": [
+    "packages/mpd-team-core-plugin/**",
+    "packages/mpd-roles-plugin/**"
+  ],
+  "changes": [
+    {
+      "package": "mpd-team-core-plugin",
+      "files": [
+        "src/tool-cards.ts (new: agentTeamsPlanCard, agentTeamsTaskCard, agentTeamsDispatchCard)",
+        "src/index.ts (presentationMeta wired into agent_teams_plan / agent_teams_task / agent_teams_dispatch output)",
+        "test/tool-cards.test.ts (new, 7 arms)",
+        "README.md + README.zh-CN.md (bilingual 'Native tool cards (dsh-Go)' subsection)"
+      ],
+      "tools": ["agent_teams_plan", "agent_teams_task", "agent_teams_dispatch"]
+    },
+    {
+      "package": "mpd-roles-plugin",
+      "files": [
+        "src/tool-cards.ts (new: rolesListCard, roleSpawnCard)",
+        "src/index.ts (presentationMeta wired into mpd_roles_list / mpd_role_spawn output)",
+        "test/tool-cards.test.ts (new, 4 arms)",
+        "README.md + README.zh-CN.md (bilingual 'Native tool cards (dsh-Go)' subsection)"
+      ],
+      "tools": ["mpd_roles_list", "mpd_role_spawn"]
+    }
+  ],
+  "cardContract": {
+    "wrapper": "toolCard() from packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts",
+    "root": "stack with a title",
+    "components": ["stack", "text", "metric", "keyValue", "table"],
+    "bindings": "none ($ ban asserted in tests)",
+    "actions": "none (actions ban asserted in tests)",
+    "styleKeys": "none (lintDesign version 1 bans style/accent)",
+    "fallback": "{} on a failed build, a v2 component, a binding or an over-budget tree",
+    "budget": { "bytes": 8192, "nodes": 40, "depth": 6 }
+  },
+  "measurements": [
+    { "card": "agent_teams_plan · status", "bytes": 620, "nodes": 7, "depth": 2 },
+    { "card": "agent_teams_plan · approve", "bytes": 287, "nodes": 4, "depth": 2 },
+    { "card": "agent_teams_plan · delete", "bytes": 217, "nodes": 4, "depth": 2 },
+    { "card": "agent_teams_task · complete", "bytes": 291, "nodes": 3, "depth": 2 },
+    { "card": "agent_teams_task · context", "bytes": 273, "nodes": 4, "depth": 2 },
+    { "card": "agent_teams_task · handoff", "bytes": 143, "nodes": 2, "depth": 2 },
+    { "card": "agent_teams_dispatch · run", "bytes": 567, "nodes": 8, "depth": 2 },
+    { "card": "agent_teams_dispatch · refused", "bytes": 161, "nodes": 2, "depth": 2 },
+    { "card": "agent_teams_dispatch · release", "bytes": 188, "nodes": 2, "depth": 2 },
+    { "card": "agent_teams_plan · worst case", "bytes": 1701, "nodes": 7, "depth": 2 },
+    { "card": "agent_teams_task · worst case", "bytes": 1034, "nodes": 3, "depth": 2 },
+    { "card": "agent_teams_dispatch · worst case", "bytes": 2696, "nodes": 7, "depth": 2 },
+    { "card": "mpd_roles_list", "bytes": 388, "nodes": 4, "depth": 2 },
+    { "card": "mpd_role_spawn", "bytes": 627, "nodes": 8, "depth": 2 },
+    { "card": "mpd_role_spawn · worst case", "bytes": 3094, "nodes": 8, "depth": 2 },
+    { "card": "mpd_roles_list · worst case", "bytes": 1259, "nodes": 4, "depth": 2 }
+  ],
+  "checks": [
+    {
+      "command": "bun test packages/mpd-team-core-plugin/test/tool-cards.test.ts packages/mpd-roles-plugin/test/tool-cards.test.ts",
+      "result": "11 pass / 0 fail — every card asserted through toolCard(): lintDesign(view,{version:1}) === [], fitsBudget(view,'toolCard') === true, no \"$\" and no \"actions\" in the encoded tree"
+    },
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "result": "559 pass / 0 fail (38 files)"
+    },
+    {
+      "command": "bun test packages/mpd-roles-plugin",
+      "result": "265 pass / 1 fail — the failure is the dist-freshness arm (rebuild belongs to T5/D7)"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile /dev/null",
+      "result": "exit 0, 33 modules"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile /dev/null",
+      "result": "exit 0, 17 modules"
+    },
+    {
+      "command": "bun run verify:docs",
+      "result": "exit 0 — PASS, pairs=54 failed=0 violations=0 links=505 dead=0"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "result": "my two packages report ZERO findings; the gate still exits 1 on OTHER lanes' files (mpd-autoproject-plugin, mpd-memory-plugin, mpd-team-watchdog-plugin, mpd-verify-plugin, mpd-workmate-plugin dshgo-cards.ts) — not this lane's scope"
+    },
+    {
+      "command": "bun run typecheck",
+      "result": "my two packages are clean; the run still exits 1 on packages/mpd-autoproject-plugin/src/boulder/dshgo-cards.ts TS2307 (its relative import is one level short: ../../ needs ../../../) — another lane's file"
+    }
+  ],
+  "bounds": [
+    "dist freshness for both touched packages is RED until T5/D7 rebuilds every touched dist with the pinned toolchain — this lane wrote src only, per §7's derived-surface rule",
+    "the tool-card VIEW is unproven visually: no Flutter app in this workspace, so the rendered look is not asserted",
+    "the cards were not piped to the app-side checker check.mjs by this lane; the verifier lane (T7) owns §6.1c"
+  ]
+}

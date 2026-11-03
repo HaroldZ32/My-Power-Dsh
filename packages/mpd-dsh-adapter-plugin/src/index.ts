@@ -30,6 +30,7 @@ import { readFileSync } from "node:fs"
 import { userInfo } from "node:os"
 import { resolve, sep } from "node:path"
 import { errorMessage } from "./shared"
+import type { DshGoCaps, DshGoStripValue, DshGoView } from "./dshgo-view"
 // R5: the ONE log sink every row routes its diagnostics through. The adapter is the sanctioned
 // contact surface (AGENTS.md §6) AND the owner of workspace-root resolution, so a row asks the
 // adapter instead of importing the sink itself — which keeps the coupling inventory at ONE entry.
@@ -343,13 +344,42 @@ export interface DshAskUserQuestionInput {
  * one bridge version).
  */
 export interface DshGoPanelSpec {
-  /** The view tree the bridge renders; required, passed through verbatim. */
-  view: unknown
+  /**
+   * The view tree the bridge renders, or a function it calls per render with the invocation scope
+   * and the app's capabilities; required, passed through verbatim.
+   */
+  view: DshGoPanelView
   /** Data bindings the view reads; passed through verbatim. */
   data?: unknown
   /** Tap actions keyed by action name; passed through verbatim. */
   actions?: Record<string, unknown>
 }
+
+/** The scope of one DSH Go invocation (session, turn, message, clipboard…), forwarded verbatim. */
+export type DshGoScope = Record<string, unknown>
+
+/** The event payload of one DSH Go invocation, forwarded verbatim. */
+export type DshGoEvent = Record<string, unknown>
+
+/**
+ * A tap handler registered through {@link DshAdapter.dshGoOn}.
+ *
+ * The return value is the bridge's effects object (`{ toast }`, `{ copy }`, an effect list, or the
+ * v1.1 deferred shape) — `unknown` on purpose, because the bridge owns that vocabulary and a copy
+ * here would pin this file to one bridge version.
+ */
+export type DshGoHandler = (scope: DshGoScope, event: DshGoEvent) => unknown
+
+/**
+ * The data function a composer strip registers through {@link DshAdapter.dshGoStrip}.
+ *
+ * `emit` pushes one line to the strip; the returned function is the bridge's cancel handle.
+ */
+export type DshGoStripData = (scope: DshGoScope, emit: (data: DshGoStripValue) => void, caps: DshGoCaps) => () => void
+
+/** The `view` a panel spec carries: a static tree, or a per-render function of scope and caps. */
+export type DshGoPanelView = DshGoView | ((scope: DshGoScope, caps: DshGoCaps) => DshGoView | Promise<DshGoView>)
+
 
 /** Waterfall decision handed to a post-execute listener (the downstream result). */
 export interface DshPostDecision {
@@ -2241,6 +2271,45 @@ export interface DshAdapter {
    * @returns nothing; the refresh is best-effort.
    */
   dshGoRefresh(id: string): void
+  /**
+   * Subscribe to the taps of ONE declared action: `service.on(id, handler)`.
+   *
+   * `id` is the action id the DSH Go manifest declares, so an unhandled tap is a missing
+   * subscription rather than a wrong name. The handler's return value is forwarded to the bridge
+   * unchanged: it is the bridge's effects vocabulary, not this adapter's.
+   *
+   * Degrade: `false` — plus ONE warning line — when the bridge is absent, exposes no `on()`, or the
+   * call throws, so a host without DSH Go stays bootable.
+   * @param id - the action id from the manifest.
+   * @param handler - the tap handler, receiving the invocation scope and event.
+   * @returns true only when the bridge accepted the registration without throwing.
+   */
+  dshGoOn(id: string, handler: DshGoHandler): boolean
+  /**
+   * Publish the live line of ONE composer strip: `service.strip(id, dataFn)`.
+   *
+   * The bridge calls `dataFn(scope, emit, caps)` on its own schedule; `emit` carries one line. The
+   * returned cancel function is the bridge's to call.
+   *
+   * Degrade: `false` — plus ONE warning line — when the bridge is absent, exposes no `strip()`, or
+   * the call throws.
+   * @param id - the strip id from the manifest.
+   * @param dataFn - the data function the bridge drives.
+   * @returns true only when the bridge accepted the registration without throwing.
+   */
+  dshGoStrip(id: string, dataFn: DshGoStripData): boolean
+  /**
+   * Read what the app on the other end can draw.
+   *
+   * The 1.0.9 bridge hands `caps` to every view/data function as an ARGUMENT and documents no
+   * `caps()` member, so this seam feature-detects both spellings: a `caps()` function, or a `caps`
+   * / `capabilities` property. It never invents a field the bridge did not send.
+   *
+   * Degrade: `null` — plus ONE warning line — when the bridge is absent, exposes neither spelling,
+   * or the read throws. Callers that already received `caps` as an argument must use THAT object.
+   * @returns the narrowed capabilities, or null when the bridge cannot answer.
+   */
+  dshGoCaps(): DshGoCaps | null
   /** Register the pre-step listener inside ONE agent's own scope — the site delivery reliably reaches. */
   registerAgentPreStep(
     agent: unknown,
@@ -4235,6 +4304,65 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     }
   }
 
+  /**
+   * Read one callable member of a service object without trusting its shape.
+   *
+   * The bridge is a `ctx` service with no declaration this bundle owns, so the member is fetched as
+   * `unknown` and only the `typeof` check promotes it to a callable.
+   * @param target - the service object, possibly absent.
+   * @param member - the member name to read.
+   * @returns the member when it is a function, otherwise undefined.
+   */
+  function callableMember(target: unknown, member: string): ((...args: unknown[]) => unknown) | undefined {
+    if (typeof target !== "object" || target === null) return undefined
+    /** The member as the service exposes it: unknown until the typeof check below. */
+    const value = (target as Record<string, unknown>)[member]
+    // `typeof` narrows to `Function`, which carries no call signature; the cast restores the
+    // "call it with the bridge's own arguments" shape without changing the value.
+    // BOUND TO ITS SERVICE: every caller invokes the member DETACHED (`member(args)`), so a bridge that
+    // implements it as a class method reading `this` would throw on every call — and the degrade path
+    // would turn that into `false`/`null` plus a warning, i.e. a silently dead surface.
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(target) : undefined
+  }
+
+  /**
+   * The capabilities object a bridge may carry as a property instead of a `caps()` method.
+   * @param bridge - the bridge service object.
+   * @returns the `caps` field, else the `capabilities` field, else undefined.
+   */
+  function capsPropertyOf(bridge: unknown): unknown {
+    if (typeof bridge !== "object" || bridge === null) return undefined
+    /** The bridge's own fields, read without trusting their types. */
+    const fields = bridge as Record<string, unknown>
+    return fields.caps !== undefined ? fields.caps : fields.capabilities
+  }
+
+  /**
+   * Narrow a raw capabilities answer to the four fields this bundle consumes.
+   * @param raw - whatever the bridge answered.
+   * @returns the narrowed capabilities, or null when the answer is not an object.
+   */
+  function dshGoCapsOf(raw: unknown): DshGoCaps | null {
+    if (typeof raw !== "object" || raw === null) return null
+    /** The answer's own fields, read field by field. */
+    const source = raw as Record<string, unknown>
+    /** The capabilities this read could confirm; every absent field stays absent. */
+    const caps: DshGoCaps = {}
+    if (typeof source.app === "string") caps.app = source.app
+    if (typeof source.locale === "string") caps.locale = source.locale
+    if (Array.isArray(source.components)) {
+      /** The component names that are actually strings. */
+      const components = source.components.filter((name): name is string => typeof name === "string")
+      if (components.length > 0) caps.components = components
+    }
+    if (Array.isArray(source.surfaces)) {
+      /** The surface names that are actually strings. */
+      const surfaces = source.surfaces.filter((name): name is string => typeof name === "string")
+      if (surfaces.length > 0) caps.surfaces = surfaces
+    }
+    return caps
+  }
+
   // ── llm plane: the model catalog, read ONLY here (AGENTS.md §6) ───────────
   // The projection mirrors the host's own buildModelCatalog
   // (dsh-api-session-controller/lib/types/catalog.js) so a picker fed from here sees
@@ -5365,6 +5493,75 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       } catch {
         // A refresh is best-effort by contract: a polling caller must never see a rejected tick.
       }
+    },
+
+    /**
+     * Subscribe one action handler; see the interface member for the contract.
+     *
+     * A bridge that cannot register degrades to ONE warning line plus `false`: an unhandled tap must
+     * never take down the row that would have served it.
+     */
+    dshGoOn(id: string, handler: DshGoHandler): boolean {
+      /** The bridge's own `on`, or undefined when this host is not DSH Go. */
+      const on = callableMember(service("dshGo"), "on")
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`)
+        return false
+      }
+      try {
+        on(id, handler)
+        return true
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`)
+        return false
+      }
+    },
+
+    /** Publish one strip's data function; see the interface member for the contract. */
+    dshGoStrip(id: string, dataFn: DshGoStripData): boolean {
+      /** The bridge's own `strip`, or undefined when this host is not DSH Go. */
+      const strip = callableMember(service("dshGo"), "strip")
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`)
+        return false
+      }
+      try {
+        strip(id, dataFn)
+        return true
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`)
+        return false
+      }
+    },
+
+    /**
+     * Read the app's capabilities; see the interface member for the contract and the honest bound
+     * (the 1.0.9 bridge documents no `caps()` member, so both spellings are feature-detected).
+     */
+    dshGoCaps(): DshGoCaps | null {
+      /** The bridge service, or undefined when this host is not DSH Go. */
+      const bridge = service("dshGo")
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent")
+        return null
+      }
+      /** The raw capabilities answer, when the bridge gave one. */
+      let raw: unknown
+      try {
+        /** The bridge's own `caps()`, when this bridge version exposes one. */
+        const read = callableMember(bridge, "caps")
+        raw = read !== undefined ? read() : capsPropertyOf(bridge)
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`)
+        return null
+      }
+      /** The narrowed capabilities, or null when the answer is not an object. */
+      const caps = dshGoCapsOf(raw)
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object")
+        return null
+      }
+      return caps
     },
 
     /**

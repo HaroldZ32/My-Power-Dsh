@@ -1,0 +1,74 @@
+== git rev ==
+1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+feature/mpd-dshgo-native-parity
+== card unit arms ==
+workmate-list bytes=328 nodes=6 depth=3
+(pass) workmate tool cards > mpd_workmate_list card is a v1 view inside the tool-card budget [1.26ms]
+workmate-match bytes=381 nodes=6 depth=3
+(pass) workmate tool cards > mpd_workmate_match card is a v1 view inside the tool-card budget [0.36ms]
+workmate-list-empty bytes=275 nodes=6 depth=3
+(pass) workmate tool cards > an empty library still renders a designed card rather than throwing [0.19ms]
+(pass) workmate tool cards > a throwing builder degrades to {} so the app falls back to its generic row [0.08ms]
+(pass) workmate tool cards > the registered definitions carry exactly these card functions [1.38ms]
+(pass) workmate tool cards > the pure builders stay usable without the toolCard wrapper [0.09ms]
+ 6 pass
+ 0 fail
+Ran 6 tests across 1 file. [179.00ms]
+memory-write bytes=320 nodes=5 depth=3
+(pass) memory tool cards > mpd_memory_write card is a v1 view inside the tool-card budget [1.66ms]
+memory-write-error bytes=392 nodes=6 depth=3
+(pass) memory tool cards > a failed commit is visible as a warning callout, not a silent success [0.31ms]
+memory-read bytes=324 nodes=6 depth=3
+(pass) memory tool cards > mpd_memory_read card is a v1 view inside the tool-card budget [0.39ms]
+memory-status bytes=350 nodes=6 depth=3
+(pass) memory tool cards > mpd_memory_status card is a v1 view inside the tool-card budget [0.23ms]
+memory-read-empty bytes=281 nodes=6 depth=3
+(pass) memory tool cards > an empty page renders a designed card rather than throwing [0.24ms]
+(pass) memory tool cards > a throwing builder degrades to {} so the app falls back to its generic row [0.09ms]
+(pass) memory tool cards > the registered definitions carry exactly these card functions [2.09ms]
+(pass) memory tool cards > the pure builders stay usable without the toolCard wrapper [0.15ms]
+ 8 pass
+ 0 fail
+Ran 8 tests across 1 file. [201.00ms]
+verify-evidence-gate bytes=309 nodes=5 depth=3
+(pass) verify tool cards > mpd_verify_evidence card covers a gate run inside the tool-card budget [1.58ms]
+verify-evidence-refused bytes=147 nodes=2 depth=2
+(pass) verify tool cards > a refused gate renders a bad callout instead of a blank card [0.15ms]
+verify-evidence-probe bytes=298 nodes=5 depth=3
+(pass) verify tool cards > a probe renders one row per artifact [0.35ms]
+verify-record-pass bytes=360 nodes=6 depth=3
+(pass) verify tool cards > mpd_verify_record card covers a PASS inside the tool-card budget [0.28ms]
+verify-record-fail bytes=422 nodes=7 depth=3
+(pass) verify tool cards > a FAIL with a repair names the repair it opened [0.18ms]
+verify-record-refused bytes=146 nodes=2 depth=2
+(pass) verify tool cards > a validator refusal is reported with the rule it names [0.09ms]
+(pass) verify tool cards > a throwing builder degrades to {} so the app falls back to its generic row [0.08ms]
+(pass) verify tool cards > the registered definitions carry exactly these card functions [1.75ms]
+(pass) verify tool cards > the pure builders stay usable without the toolCard wrapper [0.15ms]
+ 9 pass
+ 0 fail
+Ran 9 tests across 1 file. [221.00ms]
+boulder-status bytes=392 nodes=6 depth=3
+(pass) boulder tool cards > mpd_boulder_status card is a v1 view inside the tool-card budget [1.36ms]
+boulder-status-empty bytes=358 nodes=6 depth=3
+(pass) boulder tool cards > a workspace with no ledger renders a designed card rather than throwing [0.24ms]
+boulder-status-plan-error bytes=469 nodes=7 depth=3
+(pass) boulder tool cards > an unreadable plan is reported instead of a zero progress bar [0.25ms]
+(pass) boulder tool cards > a throwing builder degrades to {} so the app falls back to its generic row [0.07ms]
+(pass) boulder tool cards > the registered definition carries exactly this card function [1.16ms]
+(pass) boulder tool cards > the pure builder stays usable without the toolCard wrapper [0.05ms]
+ 6 pass
+ 0 fail
+Ran 6 tests across 1 file. [167.00ms]
+watchdog-status bytes=374 nodes=6 depth=3
+(pass) watchdog tool cards > session-watchdog-status card is a v1 view inside the tool-card budget [1.31ms]
+watchdog-status-empty bytes=291 nodes=5 depth=3
+(pass) watchdog tool cards > no teams renders a designed card rather than throwing [0.25ms]
+watchdog-status-restart bytes=471 nodes=7 depth=3
+(pass) watchdog tool cards > a pending config edit is visible as a warning callout [0.33ms]
+(pass) watchdog tool cards > a throwing builder degrades to {} so the app falls back to its generic row [0.10ms]
+(pass) watchdog tool cards > the registered definition carries exactly this card function [2.36ms]
+(pass) watchdog tool cards > the pure builder stays usable without the toolCard wrapper [0.06ms]
+ 6 pass
+ 0 fail
+Ran 6 tests across 1 file. [166.00ms]

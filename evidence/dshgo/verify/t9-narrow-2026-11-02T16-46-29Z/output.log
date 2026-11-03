@@ -1,0 +1,260 @@
+at_utc=2026-11-02T16:46:49Z
+head=1fb7f45703d054b8a0a960ef0b4b782ed29b9a32
+note=four trees rebuilt from CURRENT source with pinned bun 1.4.0
+
+===== CHECKER: four rebuilt trees piped --budget panel =====
+$ check.mjs - --budget panel < mpd-v2.json
+  视图 -（面板）：能显示，18 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[1].style.color：light：#AA7900 已校正为 #976C00，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[4].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[1].children[1].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+[exit 0]
+$ check.mjs - --budget panel < mpd-v1-fallback.json
+  视图 -（面板）：能显示
+[exit 0]
+$ check.mjs - --budget panel < mpd-team-v2.json
+  视图 -（面板）：能显示，25 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[2].children[1].children[5].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[2].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+[exit 0]
+$ check.mjs - --budget panel < mpd-team-v1-fallback.json
+  视图 -（面板）：能显示，2 处问题
+    提示 view.children[0].children[8].children[3].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+    提示 view.children[0].children[12].tone：未知 tone "muted"，按 info 画；可用：info, good, warn, bad
+[exit 0]
+
+===== ACTION-ID ABSENCE in the built trees =====
+mpd-team-v2: action refs=[{"id":"select","args":{"task":"T1"}},{"id":"select","args":{"task":"T2"}},"back"]
+  banned-ids-present=[]
+mpd-team-v1-fallback: action refs=[{"id":"select","args":{"task":"T1"}},{"id":"select","args":{"task":"T2"}},"back"]
+  banned-ids-present=[]
+callout mentioning ownership: true
+
+===== COPY: detail callout + watchdog read-only line =====
+  "Settling a row is the owning member's call; run it from that agent."
+  "The preserving hold and the recorded incidents"
+  "Pause and resume run from the captain's console, not from a tap."
+log_at=2026-11-02T16:46:49Z
+{
+ "ok": true,
+ "failures": [],
+ "actionTableKeys": [
+  "back",
+  "refresh",
+  "select"
+ ],
+ "memory": {
+  "entries": [
+   "default newer",
+   "default older"
+  ],
+  "reflections": 2,
+  "steps": 5
+ }
+}
+
+===== OWNER GATE: did anything change in the team core store? =====
+$ git diff --stat HEAD -- packages/mpd-team-core-plugin/
+ packages/mpd-team-core-plugin/README.md       |  14 +
+ packages/mpd-team-core-plugin/README.zh-CN.md |  12 +
+ packages/mpd-team-core-plugin/dist/index.js   | 697 +++++++++++++++++++++++---
+ packages/mpd-team-core-plugin/src/index.ts    |   8 +
+ 4 files changed, 656 insertions(+), 75 deletions(-)
+$ git diff HEAD -- packages/mpd-team-core-plugin/src/team-store.ts | grep -c 'casCloseTask'
+0
+$ grep refusal in casCloseTask
+1094:  if (!isOwner && !isLead) {
+
+===== PROBE §7.2 on the four REBUILT trees (external corroboration) =====
+section7 evidence/dshgo/verify/t9-narrow-2026-11-02T16-46-29Z/mpd-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t9-narrow-2026-11-02T16-46-29Z/mpd-team-v2.json: OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t9-narrow-2026-11-02T16-46-29Z/mpd-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+section7 evidence/dshgo/verify/t9-narrow-2026-11-02T16-46-29Z/mpd-team-v1-fallback.json (v1 fallback): OK — {}
+[exit 0]
+
+===== BUDGET DELTA vs T7 =====
+mpd-v2               3999B (T7 3983B, d=16) 50n (T7 50, d=0) 5d fits=true lint=0
+mpd-v1-fallback      2514B (T7 2498B, d=16) 41n (T7 41, d=0) 5d fits=true lint=0
+mpd-team-v2          4600B (T7 4668B, d=-68) 57n (T7 57, d=0) 6d fits=true lint=0
+mpd-team-v1-fallback 2934B (T7 2955B, d=-21) 49n (T7 48, d=1) 6d fits=true lint=0
+
+===== §8: D4 action-id supersession recorded? =====
+56:8. Old-app behaviour: unknown component → grey placeholder; unknown view `v` → v1 + diagnostic;
+57:   `caps.components` / `caps.app` drive `adaptView`. A panel that fails 5 consecutive times degrades
+76:  or `{}` on any failure.
+155:   dependencies, verdict, and `actions`: `complete:<id>` (primary), `fail:<id>`, `back`.
+156:4. **Watchdog** — predicate in force, hold state, the last ≤ 5 incidents, and `actions`:
+157:   `hold` / `resume` (only the one that applies).
+197:truncated to 2000 chars; a failed build returns `{}` (the card silently falls back). Each package gets
+292:   holding the tab title (size `title`, weight `bold`), a one-line `caption`, and the key metrics.
+304:   a `list` row and a `table` cell cannot hold a `badge`, so `badge` is used only where a component can
+355:`scripts/verify-dshgo-views.ts` applies `lintDesign` to every DECLARED view (v1 mode) and fails on any
+379:  instead of `select:<id>` / `complete:<id>` / `fail:<id>`: a handler table is fixed at registration, so a
+389:  - H1 (High, must fix): the Detail tab's `complete` / `fail` taps are a DEAD CONTROL — an agentless panel
+log_at=2026-11-02T16:47:34Z
+
+===== SHIPPED BYTES carry the repair (dist + packed) =====
+-- packages/mpd-bundle-plugin/dist/index.js
+  new detail copy: 1
+grep: and: No such file or directory
+grep: resume: No such file or directory
+grep: run: No such file or directory
+grep: from: No such file or directory
+grep: the: No such file or directory
+grep: captain": No such file or directory
+  new watchdog copy: packages/mpd-bundle-plugin/dist/index.js:1
+  old toast 'Completed' as a panel effect: 0
+  handler keys complete:/fail: in source map? 0
+-- dist/mpd-package/packages/mpd-bundle-plugin/dist/index.js
+  new detail copy: 1
+grep: and: No such file or directory
+grep: resume: No such file or directory
+grep: run: No such file or directory
+grep: from: No such file or directory
+grep: the: No such file or directory
+grep: captain": No such file or directory
+  new watchdog copy: dist/mpd-package/packages/mpd-bundle-plugin/dist/index.js:1
+  old toast 'Completed' as a panel effect: 0
+  handler keys complete:/fail: in source map? 0
+
+===== §8 tail: D4 action-id supersession =====
+    the panel's workspace explicitly, or be dropped.
+  - M2 (Medium, fix): the Memory tab ignores the documented `memory.dir` override and never reads the
+    global store, so a configured workspace reads as EMPTY. It must honour the override and the documented
+    layout, with a test using a temp dir + a real override.
+  - N1/N2 (Nit, fix if cheap): cross-agent merge and mtime ordering must match `mpd_memory_read`; legacy
+    reflection keys should be tolerated.
+  - Rule 6 amended (see §7.2): a `list` row and a `table` cell cannot carry a `badge`, and a `timeline`
+    requires real history — the rule now says what the components can actually express.
+- 2026-11-03: T7's PASSING arms are recorded for the PR: 14/14 cards censused, both panel budgets on both
+  paths, ZERO direct `ctx.dshGo` violations (three adapter-mediated `onServiceBound(["dshGo"])`), static
+  views + four live trees + fixture shell all exit 0 with only app-owned contrast notes, metric label AND
+  value surviving the fallback, and a REAL tool-card record in a harness session log at
+  `$.data.meta["dsh-go/view"]` (390 B / 6 nodes / depth 3).
+  `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts`** (`DshGoListItem.action?`, `progress()` accepting a
+  binding) because the panels cannot be expressed without them. Conditions: the adapter package's own test
+  suite must stay green (`bun test packages/mpd-dsh-adapter-plugin`, 48 kit/seam arms), `adaptView` and
+  `lintDesign` semantics must not change, and the kit delta is reported for review. This is a scope
+  EXCEPTION recorded here, not a precedent: every other lane reports a kit gap instead of editing it.
+
+===== MEMORY TAB copy states its scope =====
+63:  memoryCaption: string
+65:  emptyMemory: [string, string]
+149:  memoryCaption: "This agent's entries in this workspace, newest by write time",
+150:  emptyMemory: ["No memory entry yet", "Notes, facts and reflections written by this agent show up here."],
+206:  memoryCaption: "本工作区中这个 agent 的条目，按写入时间排序",
+207:  emptyMemory: ["还没有记忆条目", "这个 agent 写下的笔记、事实和反思会出现在这里。"],
+
+===== team-core src diff: the 8 added lines =====
++import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view"
++import { agentTeamsDispatchCard, agentTeamsPlanCard, agentTeamsTaskCard } from "./tool-cards"
++      // THE dsh-Go TOOL CARD: a v1 tree the app draws in the chat log, built by the SAME pure builder
++      // the lane's unit test lints. `toolCard()` degrades to `{}` (the generic tool row) on any
++      // failure, so this never turns a working tool call into a broken card.
++      presentationMeta: toolCard(agentTeamsPlanCard),
++      presentationMeta: toolCard(agentTeamsTaskCard),
++      presentationMeta: toolCard(agentTeamsDispatchCard),
+log_at=2026-11-02T16:47:49Z
+
+===== WATCHDOG COPY in shipped bytes (quoted) =====
+packages/mpd-bundle-plugin/dist/index.js -> 1
+dist/mpd-package/packages/mpd-bundle-plugin/dist/index.js -> 1
+
+===== §8: is the D4 action-id supersession recorded? =====
+147:### D4 — panel `mpd-team` (live)
+-- supersed* --
+
+===== T8 unit tests: override + removal =====
+packages/mpd-bundle-plugin/test/client-harness.ts:26:  /** A control's placeholder text. */
+packages/mpd-bundle-plugin/test/client-harness.ts:27:  placeholder?: string
+packages/mpd-bundle-plugin/test/client-harness.ts:58:  /** The value a useRef slot holds. */
+packages/mpd-bundle-plugin/test/client-harness.ts:60:  /** The unsubscribe a store-subscription slot holds. */
+packages/mpd-bundle-plugin/test/client-harness.ts:62:  /** Any other value a state slot holds. */
+packages/mpd-bundle-plugin/test/client-harness.ts:170:  /** Every tab this service instance holds, in registration order. */
+packages/mpd-bundle-plugin/test/client-harness.ts:953:    /** The tabs this service instance holds. */
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts:302:  test("memory.dir moves the store, and another agent's entries never leak in", () => {
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts:311:        /** That agent's memory directory. */
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts:318:      // With the row's `memory.dir`, the OTHER directory is read instead and `.mpd` is ignored.
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts:321:      expect(readMemoryStore(root, Date.now(), { dir: "custom-state", agentSlug: other })?.entries.map((one) => one.description)).toEqual(["theirs"])
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts:353:  test("the detail and watchdog tabs carry no settle/hold control, and the action map has no mutation", () => {
+
+===== SCOPED SUITE: bun test packages/mpd-bundle-plugin =====
+(fail) R2: the styled contract (the harness's own settings-form tokens) > R2-C2: the footer is the host's `.footer` and its three actions carry the radius [0.14ms]
+(fail) R2: the styled contract (the harness's own settings-form tokens) > R2-D1: the disclosure is ONE `.help` block — the SAME four paragraphs, hint-sized, 8px apart [0.20ms]
+(fail) R2: the styled contract (the harness's own settings-form tokens) > R2 NEGATIVE CONTROL: the styled predicates redden on the PRE-restyle presentation [0.11ms]
+
+ 259 pass
+ 45 fail
+ 16884 expect() calls
+Ran 304 tests across 14 files. [5.61s]
+log_at=2026-11-02T16:48:06Z
+
+===== NOTE: the earlier scoped run was from the package dir and the client-harness doubles the path there; the sanctioned form is the repo root (T5 ran 'bun test packages') =====
+
+===== SUITE from the REPO ROOT: bun test packages/mpd-bundle-plugin =====
+(pass) T25 · mixed heights keep the nested lanes apart > equal MIDDLES in neighbouring columns never become collinear runs [41.34ms]
+
+ 304 pass
+ 0 fail
+ 17566 expect() calls
+Ran 304 tests across 14 files. [5.94s]
+
+===== §8: does anything record the removal / supersession of D4's action ids? =====
+-- lines mentioning D4 --
+147:### D4 — panel `mpd-team` (live)
+-- removed/gone/superseded --
+80:  `divider|spacer` → dropped, and every `style`/`accent` key removed. Idempotent.
+392:    it is either removed (replaced by the exact command a human can run, copyable) or made to succeed
+log_at=2026-11-02T16:48:59Z
+
+===== PACKED MANIFEST still equals the root dshGo block =====
+equal=true bytes=925 panels=mpd,mpd-team
+
+===== FINAL DELTA VERDICT =====
+{"ok":true,"failures":[],"actionTable":["back","refresh","select"],"memoryEntries":["default newer","default older"],"legacy":{"reflections":2,"steps":5}}
+
+===== PACK STAMP on disk =====
+2026-11-03 00:45:18.911107723 +0800 dist/mpd-package/package.json
+2026-11-03 00:45:18.806256986 +0800 dist/mpd-package/packages/mpd-bundle-plugin/dist/index.js
+log_at=2026-11-02T16:49:12Z

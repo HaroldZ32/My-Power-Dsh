@@ -1,0 +1,489 @@
+{
+  "type": "stack",
+  "v": 2,
+  "accent": "app",
+  "style": {
+    "gap": "M"
+  },
+  "children": [
+    {
+      "type": "tabs",
+      "items": [
+        {
+          "label": "Board",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Team Board",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "Drive surface · approved · active",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Tasks",
+                      "value": {
+                        "$": "data.counts.total"
+                      }
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Active",
+                      "value": {
+                        "$": "data.counts.active"
+                      },
+                      "tone": "info"
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Done",
+                      "value": {
+                        "$": "data.counts.done"
+                      },
+                      "tone": "good"
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Blocked",
+                      "value": {
+                        "$": "data.counts.blocked"
+                      },
+                      "tone": "warn"
+                    }
+                  ],
+                  "columns": 2
+                },
+                {
+                  "type": "progress",
+                  "value": {
+                    "$": "data.counts.completion"
+                  },
+                  "label": "Completion",
+                  "tone": "good"
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "The active team's board",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "T1 Adapt the view kit",
+                      "subtitle": "Deep Worker · work",
+                      "trailing": "in_progress",
+                      "action": {
+                        "id": "select",
+                        "args": {
+                          "task": "T1"
+                        }
+                      }
+                    },
+                    {
+                      "title": "T2 Migrate the panels",
+                      "subtitle": "Senior Engineer · work · blocked 1",
+                      "trailing": "pending",
+                      "action": {
+                        "id": "select",
+                        "args": {
+                          "task": "T2"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Members",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Members",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "Who is on this team",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Members",
+                      "value": {
+                        "$": "data.members.length"
+                      }
+                    }
+                  ],
+                  "columns": 1
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Who is on this team",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "badge",
+                      "text": "DW",
+                      "tone": "info"
+                    },
+                    {
+                      "type": "stack",
+                      "children": [
+                        {
+                          "type": "text",
+                          "text": "Deep Worker",
+                          "style": {
+                            "maxLines": 1
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": "running",
+                          "tone": "muted",
+                          "style": {
+                            "size": "caption",
+                            "maxLines": 1
+                          }
+                        }
+                      ],
+                      "style": {
+                        "gap": "S"
+                      }
+                    },
+                    {
+                      "type": "badge",
+                      "text": "running",
+                      "tone": "info"
+                    }
+                  ],
+                  "style": {
+                    "gap": "S",
+                    "align": "center"
+                  }
+                },
+                {
+                  "type": "row",
+                  "children": [
+                    {
+                      "type": "badge",
+                      "text": "SE",
+                      "tone": "info"
+                    },
+                    {
+                      "type": "stack",
+                      "children": [
+                        {
+                          "type": "text",
+                          "text": "Senior Engineer",
+                          "style": {
+                            "maxLines": 1
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": "idle",
+                          "tone": "muted",
+                          "style": {
+                            "size": "caption",
+                            "maxLines": 1
+                          }
+                        }
+                      ],
+                      "style": {
+                        "gap": "S"
+                      }
+                    },
+                    {
+                      "type": "badge",
+                      "text": "handoff ready",
+                      "tone": "muted"
+                    }
+                  ],
+                  "style": {
+                    "gap": "S",
+                    "align": "center"
+                  }
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Detail",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Detail",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "T1 Adapt the view kit",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "The selected row",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "text",
+                  "text": "Build the v2 kit and its fallback.",
+                  "tone": "muted",
+                  "style": {
+                    "maxLines": 4
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "keyValue",
+                  "items": [
+                    [
+                      "Owner",
+                      "Deep Worker"
+                    ],
+                    [
+                      "Status",
+                      "in_progress"
+                    ],
+                    [
+                      "Kind",
+                      "work"
+                    ],
+                    [
+                      "Dependencies",
+                      "—"
+                    ],
+                    [
+                      "Verdict",
+                      "—"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "text": "Settling a row is the owning member's call; run it from that agent.",
+                  "tone": "muted"
+                },
+                {
+                  "type": "actions",
+                  "items": [
+                    {
+                      "label": "Back",
+                      "action": "back",
+                      "icon": "expand"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Watchdog",
+          "children": [
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Watchdog",
+                  "style": {
+                    "size": "title",
+                    "weight": "bold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "text",
+                  "text": "The preserving hold and the recorded incidents",
+                  "tone": "muted",
+                  "style": {
+                    "size": "caption",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "grid",
+                  "children": [
+                    {
+                      "type": "metric",
+                      "label": "Predicate",
+                      "value": "channel"
+                    },
+                    {
+                      "type": "metric",
+                      "label": "Watchdog",
+                      "value": "Held · silence",
+                      "tone": "warn"
+                    }
+                  ],
+                  "columns": 2
+                }
+              ],
+              "style": {
+                "card": "tinted",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Incidents",
+                  "style": {
+                    "size": "subtitle",
+                    "weight": "semibold",
+                    "maxLines": 1
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "list",
+                  "items": [
+                    {
+                      "title": "silence",
+                      "subtitle": "2026-11-02T20:00:00Z",
+                      "trailing": "T2 was silent past the bound"
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "card": "surface",
+                "padding": "M",
+                "gap": "S"
+              }
+            },
+            {
+              "type": "callout",
+              "text": "Pause and resume run from the captain's console, not from a tap.",
+              "tone": "muted"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -66,6 +66,20 @@ justify itself against that number.
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 
+### Native tool cards (dsh-Go)
+
+`agent_teams_plan`, `agent_teams_task` and `agent_teams_dispatch` carry
+`output.presentationMeta`, so the dsh-Go app draws them as a **native card** in the chat log instead
+of a generic tool row: the plan's counts, roster and board for the plan tool; the row, its
+attempt/revision and its dependents for the task tool; the pairs, skips and hand-overs for the
+dispatch tool. Each card is a **v1** view tree (`stack` with a title, then metrics, `keyValue`,
+tables and short text) with **no `$` binding, no `actions` and no `style` key** — a chat-log entry has
+no data model and no action channel, and an older app must still be able to draw it. `toolCard()`
+from `packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` is the seam: a failed build, a v2 component
+or a tree over **8 KiB / 40 nodes / depth 6** degrades to `{}` and the app falls back to its generic
+row, so a card can never break a tool call. The builders are pure functions in `src/tool-cards.ts`,
+and the unit test runs them through the SAME wrapper the registration uses.
+
 ## The change feed — publish, do not poll
 
 Every team mutation **publishes**. The record at `<workspace>/.mpd/team/teams/<teamId>.json` is the one

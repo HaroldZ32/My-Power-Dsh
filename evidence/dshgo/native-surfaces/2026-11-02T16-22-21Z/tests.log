@@ -1,0 +1,13 @@
+### bun test packages/mpd-dsh-adapter-plugin packages/mpd-bundle-plugin
+(pass) T25 · mixed heights keep the nested lanes apart > equal MIDDLES in neighbouring columns never become collinear runs [45.08ms]
+
+ 662 pass
+ 0 fail
+ 19001 expect() calls
+Ran 662 tests across 37 files. [8.82s]
+test-exit=0
+### bun run typecheck
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts(266,121): error TS2353: Object literal may only specify known properties, and 'executeTool' does not exist in type 'PanelBridge'.
+packages/mpd-bundle-plugin/test/dshgo-panels-v2.test.ts(275,72): error TS2367: This comparison appears to be unintentional because the types '"second line"' and '""' have no overlap.
+error: script "typecheck" exited with code 1
+typecheck-exit=0

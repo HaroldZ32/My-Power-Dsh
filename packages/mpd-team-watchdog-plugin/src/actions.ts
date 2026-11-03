@@ -14,6 +14,7 @@
 import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
+import { WATCHDOG_STATUS_CARD } from "./dshgo-cards.ts"
 import type { HoldRegistry } from "./holds.js"
 import { heartbeatDir, holdPath, incidentsPath, watermarkPath } from "./paths.js"
 import { appendIncident, clearHold, readHold, readIncidents, readWatermarks, writeHold, type HoldRecord } from "./sidecars.js"
@@ -275,6 +276,7 @@ export function registerWatchdogActions(
       additionalProperties: false,
     },
     output: {
+      presentationMeta: WATCHDOG_STATUS_CARD,
       schema: {
         type: "object",
         properties: {

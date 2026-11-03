@@ -17,6 +17,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { createHash } from "node:crypto"
 import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, HomeGuardRefusal, assertHomeMutationSandboxed, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, agentUnconfiguredRefusal, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { WORKMATE_LIST_CARD, WORKMATE_MATCH_CARD } from "./dshgo-cards.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -1842,7 +1843,7 @@ export function apply(ctx: Ctx): void {
     name: "mpd_workmate_list",
     description: "List the workmate library (~/.mpd/workmate): each durable evolving agent instance with its base specialist, use count, last-updated time and note summary. Use before delegating a task: if a workmate's note matches well you can reuse it; otherwise initialize a new one.",
     parameters: { type: "object", properties: {} },
-    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmates (" + v.count + "):\n" + (v.workmates as any[]).map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " rev=" + w.personaRevision + (w.defaultUpdated ? " default-updated:" + w.baseDriftLines + "L" : w.baseDriftUnknown ? " default-unverified" : "") + " :: " + String(w.note).slice(0, 140)).join("\n") || "(empty)") },
+    output: { schema: { type: "object", properties: { workmates: { type: "array", items: { type: "object" } }, count: { type: "integer" } }, required: ["workmates", "count"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmates (" + v.count + "):\n" + (v.workmates as any[]).map((w) => "- " + w.name + " [" + w.baseName + (w.readonly ? " readonly" : "") + "] uses=" + w.uses + " rev=" + w.personaRevision + (w.defaultUpdated ? " default-updated:" + w.baseDriftLines + "L" : w.baseDriftUnknown ? " default-unverified" : "") + " :: " + String(w.note).slice(0, 140)).join("\n") || "(empty)"), presentationMeta: WORKMATE_LIST_CARD },
     execute: async () => {
       /** The tool's row set: the public fields, the note that makes matching possible, and the persona record. */
       const list = listInstances().map(({ name, meta, note }) => {
@@ -2079,7 +2080,7 @@ export function apply(ctx: Ctx): void {
     name: "mpd_workmate_match",
     description: "Score every workmate note against a task and return the ranked matches. If the best score is below the threshold, matched=false and you should initialize a NEW workmate (mpd_workmate_init) instead of forcing a weak match. If matched=true, delegate to the best workmate (mpd_workmate_spawn, or a team member named after it).",
     parameters: { type: "object", properties: { task: { type: "string" } }, required: ["task"], additionalProperties: false },
-    output: { schema: { type: "object", properties: { matched: { type: "boolean" }, threshold: { type: "number" }, matches: { type: "array", items: { type: "object" } }, suggestion: { type: "string" } }, required: ["matched", "threshold", "matches"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock((v.matched ? "MATCHED" : "NO MATCH (threshold " + v.threshold + ")") + "\n" + (v.matches as any[]).map((m) => "- " + m.name + " score=" + m.score.toFixed(2) + " [" + m.baseName + "] :: " + String(m.note).slice(0, 120)).join("\n") + (v.suggestion ? "\n" + v.suggestion : "")) },
+    output: { schema: { type: "object", properties: { matched: { type: "boolean" }, threshold: { type: "number" }, matches: { type: "array", items: { type: "object" } }, suggestion: { type: "string" } }, required: ["matched", "threshold", "matches"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock((v.matched ? "MATCHED" : "NO MATCH (threshold " + v.threshold + ")") + "\n" + (v.matches as any[]).map((m) => "- " + m.name + " score=" + m.score.toFixed(2) + " [" + m.baseName + "] :: " + String(m.note).slice(0, 120)).join("\n") + (v.suggestion ? "\n" + v.suggestion : "")), presentationMeta: WORKMATE_MATCH_CARD },
     execute: async (args: any) => {
       /** The task to match against, required. */
       const task = String(args?.task ?? "").trim()

@@ -206,3 +206,12 @@ and `verify.dir`.
    command's quality. The frozen table supplies every id the file does not declare — that is the PER-ID
    fallback, and with no file at all it supplies every id. The freeze's own bound: byte identity of one
    file per loop, never a signature, so it constrains WHEN the file may change, not WHO wrote it.
+
+## dsh-Go tool cards
+
+`mpd_verify_evidence` and `mpd_verify_record` also publish native **dsh-Go tool cards** through
+`output.presentationMeta`: each card is a v1 tree (`stack` title → `row` of metrics → `callout` /
+`keyValue` / `table`) with no data bindings and no actions, measured before publication against the
+app's 8 KiB / 40 nodes / depth-6 tool-card budget. A refusal renders as a `callout` instead of a blank
+card; a card that cannot be built returns `{}`, so the app falls back to its generic tool row. The
+text `render` is unchanged, and these tools keep declaring NO output schema.

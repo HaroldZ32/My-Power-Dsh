@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "type": "stack",
+  "title": "MPD",
+  "children": [
+    {
+      "type": "callout",
+      "tone": "info",
+      "text": "The live MPD panel needs the DSH Go local engine bridge. This static view is what renders without it."
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "title": "Overview",
+          "subtitle": "Team status, ready / in-flight / done counts and the first thing that needs attention."
+        },
+        {
+          "title": "Questions",
+          "subtitle": "The first parked question, its options and a free-text answer."
+        },
+        {
+          "title": "Workmates",
+          "subtitle": "The durable instances in the workmate library, read-only."
+        },
+        {
+          "title": "Memory",
+          "subtitle": "The latest entries of this workspace's memory store and the reflection counters."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "tone": "muted",
+      "text": "Slots are served by the local engine only, so a relay or SSH host shows tool cards instead of this panel."
+    }
+  ]
+}

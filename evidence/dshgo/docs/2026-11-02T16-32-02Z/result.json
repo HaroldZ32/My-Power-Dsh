@@ -1,0 +1,35 @@
+{
+  "lane": "T6 — Docs: bilingual native-surface coverage (drive-surface, user-guide, seam-adapters, CHANGELOG)",
+  "at": "2026-11-02T16:32:29.103Z",
+  "changed": [
+    "docs/drive-surface.md — §4 rewritten as 'The DSH Go native surface': the manifest (two panels + strip + composer/message actions), the two panels' four tabs each, the visual language (v2, tinted hero, grid metrics, adaptView fallback), the strip/composer/message actions, tool cards, and where it works. §5 gained two honest bounds; §6 now names the new modules and the view kit.",
+    "docs/drive-surface.zh-CN.md — the SAME section and the SAME heading tree in 简体中文.",
+    "docs/user-guide.md — NEW §16 'The DSH Go app (the native surface)': what the user gets (panels, strip, menu actions, tool cards, theme-following) and what to know (local engine only, older-app fallback, a tap needs a live conversation, the 3-second deferral).",
+    "docs/user-guide.zh-CN.md — the SAME §16 in 简体中文.",
+    "agent-references/seam-adapters.md — NEW 'The dshGo plane' section: the no-`ctx.dshGo`-outside-the-adapter rule, the six seams with signature and degrade, the view contract (a `(scope, caps)` function, async included), the PURE view kit and its three builder-enforced properties, and the new `verify-dshgo-views.ts` row in the enforcement table (with its DECLARED-views-only scope).",
+    "CHANGELOG.md — NEW 'Unreleased' section: two panels + strip + menu actions, tool cards, the three new adapter seams, the 3-second deferred shape replacing the 4-second timeout, and the DSH Go gate.",
+    "docs/index.md + docs/index.zh-CN.md — the drive-surface row now says two panels + strip + menu actions + tool cards instead of 'the DSH Go native panel' (a one-line bilingual pair; the entry was stale after the rewrite)."
+  ],
+  "gate": {
+    "id": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=54 failed=0 violations=0 dead=0 links=503 — PASS",
+    "log": "output.log"
+  },
+  "headingTrees": [
+    "docs/drive-surface.md == docs/drive-surface.zh-CN.md",
+    "docs/user-guide.md == docs/user-guide.zh-CN.md",
+    "docs/index.md == docs/index.zh-CN.md"
+  ],
+  "measured": {
+    "diffstat": "8 files changed, 298 insertions(+), 45 deletions(-)",
+    "driveSurfaceSections": "1 H2 + 6 H3 in §4, identical in both languages",
+    "userGuideSections": "1 H2 + 2 H3 appended as §16, identical in both languages"
+  },
+  "bounds": [
+    "The docs describe the surface the code and the contract establish; the RENDERED look stays unproven in this workspace (no Flutter app), and both docs say so.",
+    "`agent-references/seam-adapters.md` is agent-facing and English-only by policy, so it has no zh-CN twin and the docs gate does not discover it (stated in AGENTS.md §3).",
+    "CHANGELOG is English-only by its own header and is outside the bilingual band; the entry is 'Unreleased' because no version is cut in this wave.",
+    "The claim 'the team, roster, workmate, memory, verification, boulder and watchdog tools carry a card' is accurate as a package list; the contract's D6 table names fifteen tool ids while this tree wires fourteen `presentationMeta` values — reported to the Lead rather than papered over in the docs."
+  ]
+}

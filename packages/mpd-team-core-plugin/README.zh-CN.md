@@ -40,6 +40,18 @@
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
 
+### 原生工具卡片（dsh-Go）
+
+`agent_teams_plan`、`agent_teams_task` 与 `agent_teams_dispatch` 都带有 `output.presentationMeta`，
+因此 dsh-Go 客户端会把它们画成聊天记录里的**原生卡片**，而不是通用的工具行：计划工具给出成员数、
+任务数、名册与看板；任务工具给出该行、attempt/revision 与依赖方；派发工具给出配对、跳过与移交。
+每张卡片都是一棵 **v1** 视图树（带标题的 `stack`，随后是 metric、`keyValue`、表格与短文本），
+**没有 `$` 数据绑定、没有 `actions`，也没有 `style` 键** —— 聊天记录既没有数据模型也没有动作通道，
+而且更旧的客户端仍然必须能画出来。接缝是
+`packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts` 的 `toolCard()`：构建失败、出现 v2 组件，或任一维度超过
+**8 KiB / 40 节点 / 深度 6**，都会退化成 `{}`，客户端回落到通用工具行 —— 所以卡片永远不会弄坏一次工具调用。
+构建器是 `src/tool-cards.ts` 里的纯函数，单元测试跑的是注册所包装的**同一个**包装器。
+
 ## 变更推送——不再轮询
 
 每一次团队改动都会**被推送**。`<workspace>/.mpd/team/teams/<teamId>.json` 是团队唯一的事实来源，现在它会自己宣告变化，

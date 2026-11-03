@@ -253,3 +253,11 @@ instead of silently going stale.
 
 **Attribution:** `meta.workspaces` keeps the per-workspace attribution of an instance (capped), so a
 shared library shows which workspaces drove it.
+
+## dsh-Go tool cards
+
+`mpd_workmate_list` and `mpd_workmate_match` also publish native **dsh-Go tool cards** through
+`output.presentationMeta`: each card is a v1 tree (`stack` title → `row` of metrics → `table`) with no
+data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
+depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
+generic tool row. The text `render` and the output schema are unchanged.

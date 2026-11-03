@@ -1,0 +1,15 @@
+--- fixture shell: root ---
+@mpd-dsh/mpd 0.17.0
+  提示 /engines/dsh：没写 engines.dsh：DSH 不检查版本，装到不兼容的 DSH 上会在运行时出错
+  原生界面能显示（胶囊 2 · 菜单 2 · 状态条 1 · 面板 2）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+[checker_fixture_root exit 0]
+--- fixture shell: packed ---
+@mpd-dsh/mpd 0.17.0
+  原生界面能显示（胶囊 2 · 菜单 2 · 状态条 1 · 面板 2）
+  加 --load 再查处理函数和视图函数
+  视图 dsh-go/views/mpd.json（面板）：能显示
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+[checker_fixture_packed exit 0]

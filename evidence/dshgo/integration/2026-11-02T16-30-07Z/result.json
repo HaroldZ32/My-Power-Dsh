@@ -1,0 +1,134 @@
+{
+  "task": "T5 (contract §4 D7 / §6) — rebuild all dist, re-pack, gate sweep, two real mounts",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "timestampUtc": "2026-11-02T16-30-07Z",
+  "dist": {
+    "command": "node scripts/verify-dist-fresh.ts",
+    "before": "exit 1 — 24 of 34 targets STALE",
+    "rebuilt": "24 targets with .toolchain/node_modules/.bin/bun (1.4.0), path-qualified from the repo root, build failures=0",
+    "after": "exit 0 — 34/34 targets fresh (each rebuilt twice, byte-identical)"
+  },
+  "pack": {
+    "command": "node scripts/pack-mpd.ts",
+    "exit": 0,
+    "observed": "655 files mode-normalized, staged -> dist/mpd-package (gitignored artifact), 2 patch files, 4 launchers / 5 npm packages resolved",
+    "closure": {
+      "command": "node scripts/verify-pack-closure.ts",
+      "exit": 0,
+      "observed": "635 files compared, 635 identical, 0 drift; 497 asset files; 29/29 declared packages present; root files 2/2; agent references 2/2; pack stamp 2026-11-02T16:28:56.367Z; exemption exercised packages/mpd-qa-roles-probe/dist/index.js"
+    }
+  },
+  "checker_fixture_shell": {
+    "rationale": "The dsh-Go checker requires dsh.bundle.patch to be a STRING while this repository declares the harness-0.1.7 ARRAY form (pre-existing, proven on HEAD). Contract §6.1 now asks for the fixture shell instead: a shell package.json carrying the REAL dshGo block, the real dsh-go/views, and a string patch path.",
+    "runs": [
+      {
+        "id": "checker_fixture_root",
+        "exit": 0
+      },
+      {
+        "id": "checker_fixture_packed",
+        "exit": 0
+      }
+    ],
+    "observed": "root: 原生界面能显示（胶囊 2 · 菜单 2 · 状态条 1 · 面板 2）+ both static views render; packed: identical counts from dist/mpd-package/package.json"
+  },
+  "gates": [
+    {
+      "id": "typecheck",
+      "exit": 0
+    },
+    {
+      "id": "dist",
+      "exit": 0
+    },
+    {
+      "id": "rows",
+      "exit": 0
+    },
+    {
+      "id": "docs",
+      "exit": 0
+    },
+    {
+      "id": "manifest",
+      "exit": 0
+    },
+    {
+      "id": "no_host_override",
+      "exit": 0
+    },
+    {
+      "id": "installer_dry",
+      "exit": 0
+    },
+    {
+      "id": "tests_packages",
+      "exit": 0
+    },
+    {
+      "id": "verify_gates",
+      "exit": 0
+    },
+    {
+      "id": "pack_closure",
+      "exit": 0
+    },
+    {
+      "id": "test_qa",
+      "exit": 0
+    },
+    {
+      "id": "dshgo_selftest",
+      "exit": 0
+    },
+    {
+      "id": "dshgo_live",
+      "exit": 0
+    },
+    {
+      "id": "manual_paths",
+      "exit": 0
+    }
+  ],
+  "gates_detail": {
+    "tests_packages": "3385 pass / 3391 tests across 221 files",
+    "verify_gates": "aggregate exit 0 (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows)",
+    "test_qa": "all --self-test arms exit 0",
+    "manual_paths": "PASS resolved=153 over-report=73 under-report=82 declared=2",
+    "no_host_override": "exit 0",
+    "installer_dry": "exit 0 (default --dry-run)"
+  },
+  "mounts": {
+    "isolation": "each script makes its own mktemp DSH_HOME + sandbox HOME + sandbox workspace; the real ~/.dsh is never written (their own evidence dirs cited below)",
+    "runs": [
+      {
+        "id": "preset-conformance",
+        "log": "mount-preset.log",
+        "exit": 0,
+        "verdict": "PASS"
+      },
+      {
+        "id": "bundle-lifecycle",
+        "log": "mount-lifecycle.log",
+        "exit": 0,
+        "verdict": "PASS"
+      }
+    ],
+    "preset_conformance_evidence": "evidence/dsh-qa/preset-conformance/2026-11-02T16-30-12.702Z",
+    "bundle_lifecycle_evidence": "evidence/dsh-qa/bundle-lifecycle/2026-11-02T16-30-35.741Z",
+    "observed": "preset-conformance: ok=true, sessionCreate 200 agentPreset=mpd, negative control refused with agent-preset/invalid, 32 rows schema-checked. bundle-lifecycle: PASS — one-command install (link + bundle entry), boot with http/adapterProvided/adapterSeams/adapterToolCall/corpusFromBundle/noPresetRefusal/probePass all true, noHomeCopy (skills/presets empty), uninstall leaves no residue."
+  },
+  "changed": [
+    "24 packages/*/dist/index.js rebuilt with the pinned toolchain",
+    "dist/mpd-package re-packed (gitignored artifact, not committed)",
+    "evidence/dshgo/integration/2026-11-02T16-30-07Z/* (this record)"
+  ],
+  "bounds": [
+    "The app-side render stays UNPROVEN (no Flutter app here); the checker proves the trees are legal, not that they draw.",
+    "A real tool-card result in a HARNESS session log (meta[\"dsh-go/view\"]) is T7's arm, not run here; bundle-lifecycle's adapterToolCall proves the adapter path, not a card.",
+    "verify-pack-closure certifies the artifact staged in THIS workspace (dist/mpd-package is gitignored); a clean checkout must re-run pack before citing closure.",
+    "The dsh-Go checker's root-level `dsh.bundle.patch` string requirement remains a shape mismatch with harness 0.1.7; the fixture shell is the contract-approved way to prove the manifest and it is green for BOTH the checkout and the packed artifact.",
+    "Docs lane T6 was still open while this sweep ran; re-run verify:docs after it lands (it was green at 16:30Z)."
+  ]
+}

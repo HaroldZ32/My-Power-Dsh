@@ -1,0 +1,92 @@
+[
+  {
+    "type": "tool/call",
+    "seq": 19,
+    "time": 1793637389594,
+    "data": {
+      "turn": 1,
+      "step": 1,
+      "callId": "call_00_y35t4dlNAFzD3vizd8eX0084",
+      "name": "mpd_memory_status",
+      "arguments": "{}"
+    }
+  },
+  {
+    "type": "tool/result",
+    "seq": 20,
+    "time": 1793637389600,
+    "data": {
+      "turn": 1,
+      "step": 1,
+      "message": {
+        "role": "tool",
+        "source": {
+          "kind": "tool",
+          "callId": "call_00_y35t4dlNAFzD3vizd8eX0084"
+        },
+        "toolCallId": "call_00_y35t4dlNAFzD3vizd8eX0084",
+        "content": [
+          {
+            "type": "text",
+            "text": "memory status: vcs=git root=/tmp/mpd-t7-card-lVgosA/ws/.mpd/memory/agents/agent-ws entries=0 journal=0\nreflection: {\"steps\":0,\"reflectionsCompleted\":0,\"stepsSinceReflection\":0,\"pendingReflection\":null,\"triggered\":false}"
+          }
+        ],
+        "isError": false,
+        "id": "bb3e5c92-c82d-492c-99fa-9ea5df55f0f5"
+      },
+      "meta": {
+        "dsh-go/view": {
+          "type": "stack",
+          "children": [
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "metric",
+                  "label": "Entries",
+                  "value": 0
+                },
+                {
+                  "type": "metric",
+                  "label": "Journal lines",
+                  "value": 0
+                },
+                {
+                  "type": "metric",
+                  "label": "Reflections",
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "type": "keyValue",
+              "items": [
+                [
+                  "VCS",
+                  "git"
+                ],
+                [
+                  "Scope",
+                  "workspace"
+                ],
+                [
+                  "Root",
+                  "/tmp/mpd-t7-card-lVgosA/ws/.mpd/memory/agents/agent-ws"
+                ],
+                [
+                  "Steps since reflection",
+                  0
+                ]
+              ]
+            }
+          ],
+          "title": "Memory status"
+        }
+      }
+    },
+    "sourceEventSeqs": [
+      19
+    ],
+    "surfaceOp": "append"
+  }
+]

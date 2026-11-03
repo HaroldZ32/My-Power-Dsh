@@ -165,48 +165,77 @@ Chat/Trajectory.
 - **`order` is NOT used.** The shell projects its tab list from registration order, so the entry registers
   on the slot's first declaration instead of competing for a position.
 
-## The DSH Go native panel
+## The DSH Go native surface (contract `.mpd/plans/dshgo-native-parity.md` D2–D5)
 
-`src/dshgo-panel.ts` is the **live host half** of the DSH Go surface the root `dshGo` manifest declares:
-the manifest contributes panel id **`mpd`** with `placement: ["session.tab", "features"]` and the static
-fallback view `dsh-go/views/mpd.json`, and this module publishes `panel('mpd', …)` through the adapter
-under the SAME id, so the app upgrades the fallback in place instead of listing two panels.
+The root `dshGo` manifest contributes **two panels**, one composer strip, two composer actions and two
+message actions; each panel has a hand-written STATIC v1 fallback under `dsh-go/views/`, and this package
+publishes the LIVE half under the SAME ids, so the app upgrades a fallback in place instead of listing
+two entries.
+
+| slot | id | live half |
+|---|---|---|
+| `panels` | `mpd` | `registerDshGoPanel` (`src/dshgo-panel.ts`) |
+| `panels` | `mpd-team` | `registerDshGoTeamPanel` (`src/dshgo-team-panel.ts`) |
+| `composer.strip` | `mpd-status` | `registerDshGoSurfaces` (`src/dshgo-surfaces.ts`) |
+| `composer.actions` | `mpd-dispatch` | `registerDshGoSurfaces` |
+| `composer.actions` | `mpd-board` | static `open` effect in the manifest, no handler |
+| `message.actions` | `mpd-save-memory`, `mpd-copy-reply` | `registerDshGoSurfaces` |
 
 - **Registered lazily and silently.** One attempt at `apply`; a host without the `dshGo` bridge gets one
-  log token (`dshGo=absent`) and one `onServiceBound(["dshGo"], …)` subscription, no poll and no throw,
-  and a host that binds the bridge later is upgraded once (`dshGo=panel`). A second bind never publishes a
-  second panel.
-- **What it shows.** A `keyValue` row for the team (name, status, phase, member count, task count — an em
-  dash when this conversation has no team) and one for the staged plan (members/tasks), a `list` of up to
-  10 ready tasks (title plus kind/owner), an `info` callout with the pending question, one option button
-  per answer (first four, with a note when there are more), the two action buttons, and a muted footer
-  naming the limits.
-- **What it pushes.** `data(scope, emit)` polls at 2000 ms (the 0.5 Hz ceiling), emits ONLY when the
-  serialized snapshot changed, and returns the cancel function that clears its interval. `view` builds
-  from a LIVE read of the same services instead of from that push cache: the app fetches the view BEFORE
-  it subscribes, so a cache-built first view would carry no callout and no option buttons. The snapshot
-  is narrowed to `{ team, plan, question, readyTasks }` — ids, names, statuses, counts, the question's
-  own text and task titles: never a filesystem path, a token or a credential, and never more than the
-  bridge's 32 KiB cap. `refresh('mpd')` fires only when the pending-question SET (the parked ids)
-  changes, because the option buttons are built from it; a content-only change (same id, new text)
-  travels on the data push.
-- **The three actions.** `approve` calls `mpdTeamActions.approve({sessionId})`, `dispatch` calls
-  `mpdTeamActions.dispatch({sessionId})`, and `answer:<n>` calls `mpdQuestions.answer({id, answers})`
-  with the question the VIEW was rendered from: building a view captures that question's parked id, its
-  item ids and its RAW option labels, and the tap sends that captured id and label. The live parking lot
-  is consulted only to check the captured id is still there — if it is gone the tap answers "That
-  question is gone" and asks for a refresh instead of settling whatever is parked now, and a tap with no
-  rendered question answers "No question on screen". The fixed ids `answer:0`…`answer:3` therefore index
-  the CAPTURED view, never the live lot. Every tap answers a `toast` (≤ 40 characters) and NEVER rejects:
-  a missing conversation answers "Open a conversation first", a missing service "Unavailable here", a
-  refusal its own sentence, a throw its message, and a call that outlives four seconds "Still working —
-  check the team panel".
+  log token (`dshGo=absent`, `dshGo=team-absent`, `dshGo=surfaces …`) and one `onServiceBound(["dshGo"], …)`
+  subscription, no poll and no throw, and a host that binds the bridge later is upgraded once.
+- **The view is v2 and theme-following (contract §7).** Both roots are built by the adapter's
+  `panelView()`, which writes `v: 2` and `accent: "app"` in ONE place, so a named or hex accent is
+  unrepresentable. Each tab carries exactly one `tinted` hero (the app's theme-tinted material), its
+  metrics inside a v2 `grid`, a `surface` section with a header and a `divider`, a designed `emptyState`
+  instead of a blank tab, and at most one `style: "primary"` action. Statuses are `badge`/`tone` **with a
+  word**; member initials are a `badge` (`avatar` is the image node); free text sets `maxLines`. No radius,
+  size, opacity, gradient, shadow or colour literal appears in a view — that is the App's to decide, and
+  the kit's builders refuse one.
+- **`adaptView` is the fallback.** An app below 1.0.9 (or one whose `caps.components` omits a v2 name)
+  receives the SAME tree downgraded to v1: tabs become a stack of titled sections, the grid becomes a
+  list, badges become text, `divider`/`spacer` disappear and every `style`/`accent` is stripped. One
+  builder produces both shapes, so the fallback cannot drift; a metric's label AND value survive the
+  grid→list rewrite.
+- **What the workbench panel shows.** Four tabs — Overview (hero counters, completion bar, the first
+  alert, the ready rows, and the actions), Questions (the FIRST parked question only, its options and a
+  free-text form), Workmates (the library, read-only) and Memory (the last ≤ 10 entries and the reflection
+  counters, read from the store's documented layout).
+- **What the team panel shows.** Four tabs — Board (a tappable row per task; a tap carries
+  `{id: "select", args: {task}}` and the Detail tab follows it), Members (initials badge + name + mode +
+  handoff word), Detail (owner, status, kind, dependencies and verdict, plus a line saying settling is the
+  owning member's job) and Watchdog (the predicate in force, the preserving hold and the last ≤ 5
+  incidents, read through `session-watchdog-status` with the `mpdWatchdog` hold registry as the fallback).
+- **What they push.** `data(scope, emit)` polls at 2000 ms (the 0.5 Hz ceiling), emits ONLY when the
+  serialized model changed, and returns the cancel function that clears its interval. The workbench model
+  is `{ team, plan, question, readyTasks, counts, alert, workmates, memory }` — ids, names, statuses,
+  counts, the question's own text and task titles, never a filesystem path, a token or a credential.
+  `view` builds from a LIVE read of the same services instead of the push cache, because the app fetches
+  the view BEFORE it subscribes. `refresh` fires only when a STRUCTURAL signature changes: the parked
+  question's identity (id plus its option labels — the buttons carry literal labels) or the ready-task id
+  set. A text-only change travels on the data push.
+- **Taps.** `approve`, `dispatch`, `refresh` (the protocol's `{refresh:true}` shorthand), `answer:<n>` and
+  `answer-custom` on the workbench panel; `select`, `back` and `refresh` on the team panel. **Neither panel
+  MUTATES through a tap**: a tap carries no agent, so `agent_teams_task` would refuse every owned row, and
+  the watchdog tools resolve their workspace from the environment rather than from the panel's session.
+  Settling a row stays with the owning member and pausing a team with the captain's tools; the Detail and
+  Watchdog tabs say so instead of showing a button that cannot work. The question taps act on the identity the VIEW captured (parked id, item ids, raw
+  labels), never on whatever sits in the parking lot now: a gone question answers "That question is gone"
+  and asks for a refresh. Every handler answers an effect and NEVER rejects.
+- **The 3-second window.** The app runs an effect only if it arrives within 3 s of the tap and gives
+  handlers the same budget, so a slow service is acknowledged with the v1.1 DEFERRED shape
+  (`{ pending: { label, timeoutMs }, result }`, `timeoutMs` up to the app's 60 s) and the real effect is
+  delivered by `result`. The old 4-second in-handler timeout is gone.
+- **The strip** is ONE line of at most 24 characters, chosen by `caps.locale` (`3 ready · 1 active` /
+  `3 就绪 · 1 进行`), prefixed `❓` when a question is parked, `warn` when a plan waits for approval, and
+  emitted only when it changes.
 - **Declared bounds.** Slots are **local engine only** (the relay blocks `/dsh-go/*`, so a remote host
-  renders tool cards instead of this panel); without this host half the **static** `dsh-go/views/mpd.json`
-  is what renders, with no live values; the actions need a **live conversation** (a tap with no
-  `sessionId` is refused before any service is called); and the Flutter app is not in this workspace, so
-  unit tests pin the protocol shape (component catalog, budget walk, action-id pattern, binding
-  resolution) while a real device install stays the user's check.
+  renders tool cards); without this host half the static views are what renders, with no live values; the
+  actions need a **live conversation**; settling a board row and pausing a team are NOT offered here (a tap
+  carries no agent identity, so the team tools would refuse every owned row, and the watchdog tools would
+  resolve a root from the environment rather than the panel's session); and the Flutter app is not in this
+  workspace, so the checker plus the unit tests pin the protocol shape while the RENDERED look stays
+  **unproven** (no PNG preview without Flutter).
 
 ## Config
 
@@ -222,8 +251,14 @@ node scripts/pack-mpd.ts           # restage the bundle
 ## Files
 
 - `src/index.ts` — the no-op main plugin.
-- `src/dshgo-panel.ts` — the live DSH Go native panel (`panel('mpd', …)`): the polled snapshot, the v1
-  view tree and the three tap actions described above.
+- `src/dshgo-panel.ts` — the workbench panel's live half: the read model, the deferred tap actions and
+  the registration (`panel('mpd', …)`).
+- `src/dshgo-team-panel.ts` — the team panel's live half (`panel('mpd-team', …)`): the board/member/detail
+  readers, the per-scope selection store and the `select` / `back` / `refresh` actions (no mutation — an
+  anonymous tap cannot own a board row or name the session's workspace root).
+- `src/dshgo-views.ts` — the PURE view builders for both panels (kit builders only; no services, no I/O).
+- `src/dshgo-copy.ts` — the panel copy in English and 简体中文, selected from `caps.locale`.
+- `src/dshgo-surfaces.ts` — the composer strip and the three menu handlers.
 - `src/web-client.ts` — the mpd client factory body (plain JS, React.createElement).
 - `src/team-view.ts` — the shared TEAM view factory body both sidebar hosts render (the member cards,
   the dependency DAG and the poll-plus-push refresh described above). Spliced into the client as

@@ -1,0 +1,104 @@
+{
+  "name": "mpd-dshgo-fixture",
+  "version": "0.0.0",
+  "description": "FIXTURE SHELL: carries the REAL dshGo block and copies of the REAL declared views; dsh.bundle.patch is a STRING here only so the plugin checker accepts the package shape",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1"
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "en": "MPD",
+      "zh": "MPD"
+    },
+    "icon": "bolt",
+    "wants": [
+      "message"
+    ],
+    "contributes": {
+      "panels": [
+        {
+          "id": "mpd",
+          "title": {
+            "en": "MPD Workbench",
+            "zh": "MPD 工作台"
+          },
+          "icon": "bolt",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ],
+          "view": "./dsh-go/views/mpd.json"
+        },
+        {
+          "id": "mpd-team",
+          "title": {
+            "en": "Team Board",
+            "zh": "团队看板"
+          },
+          "icon": "team",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ],
+          "view": "./dsh-go/views/mpd-team.json"
+        }
+      ],
+      "composer.strip": [
+        {
+          "id": "mpd-status",
+          "icon": "team",
+          "panel": "mpd",
+          "text": "—"
+        }
+      ],
+      "composer.actions": [
+        {
+          "id": "mpd-dispatch",
+          "label": {
+            "en": "Dispatch",
+            "zh": "派活"
+          },
+          "icon": "send"
+        },
+        {
+          "id": "mpd-board",
+          "label": {
+            "en": "Board",
+            "zh": "看板"
+          },
+          "icon": "panel",
+          "effect": {
+            "type": "open",
+            "page": "panel:mpd-team"
+          }
+        }
+      ],
+      "message.actions": [
+        {
+          "id": "mpd-save-memory",
+          "label": {
+            "en": "Save memory",
+            "zh": "存为记忆"
+          },
+          "icon": "save"
+        },
+        {
+          "id": "mpd-copy-reply",
+          "label": {
+            "en": "Copy reply",
+            "zh": "复制正文"
+          },
+          "icon": "copy"
+        }
+      ]
+    }
+  }
+}

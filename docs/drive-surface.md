@@ -93,36 +93,95 @@ the wrong choice. An unknown label is refused and the question stays parked.
 64 KiB. The same fence-first order applies, and the `GET` carries its own `405` guard like every other
 route in this bundle.
 
-## 4. The DSH Go native panel
+## 4. The DSH Go native surface
 
 ### The manifest
 
-The root package declares a DSH Go protocol-1 manifest (`dshGo`) with **one panel**, id `mpd`, placed in
-both `session.tab` and `features`, and a static fallback view at
-[`dsh-go/views/mpd.json`](../dsh-go/views/mpd.json). The manifest is declarative: the app draws the JSON
-component tree with its own renderer and executes none of this bundle's code.
+The root package declares a DSH Go protocol-1 manifest (`dshGo`: `v: 1`, `wants: ["message"]`) that
+contributes **two panels** — `mpd` (the workbench) and `mpd-team` (the team board), each placed in
+`session.tab`, `features` and `chat.panel` — one **composer strip** (`mpd-status`), two **composer
+actions** (`mpd-dispatch`, `mpd-board`) and two **message actions** (`mpd-save-memory`, `mpd-copy-reply`).
+Each panel names a hand-written STATIC fallback under `dsh-go/views/`. The manifest is declarative: the app
+draws the JSON component tree with its own renderer and executes none of this bundle's code. The whole
+block stays far under the 16 KiB ceiling, and `node scripts/verify-dshgo-views.ts` is the gate that keeps
+the ids unique, the per-slot counts legal and every declared view present, parseable and inside the panel
+budget.
 
-### What the panel shows and does
+### The two panels
 
-The host half (`mpd-bundle-plugin`) registers the live panel through the adapter once the DSH Go bridge
-is bound, polls the team record and the relay at 0.5 Hz, and pushes a narrowed snapshot only when it
-changes: team status and counts, the staged plan's readiness, the ready tasks and the parked question
-with its option labels. Every filesystem path stays out of the payload.
+`mpd` opens four tabs. **Overview** carries the team's counters, a completion bar, the first thing that
+needs attention, the ready rows and the actions. **Questions** shows the FIRST parked question only, its
+options as buttons and a free-text form. **Workmates** lists the library read-only — the panel never
+spawns, renames or deletes one. **Memory** shows the last ten entries and the reflection counters, read
+from the workspace store.
 
-Taps map to three action families — `approve`, `dispatch`, and an `answer` button per option — which call
-the services above and answer with a toast. The answer buttons are **bounded on purpose**: the panel renders
-only the FIRST question item of a parked request, shows at most **four** option buttons, and each tap
-submits exactly **one** label. A question set carrying more than one item therefore cannot be answered from
-the panel — the relay refuses a partial batch and leaves the request parked for a client that can answer all
-of it. A tap in a conversation-less placement answers "open a conversation first" instead of failing
-silently, and a handler never rejects.
+`mpd-team` opens four tabs. **Board** is a tappable row per task (a tap carries `select` plus the row id,
+and the Detail tab follows it). **Members** is one row per member: initials badge, name, mode and the
+handoff word. **Detail** is the selected task's contract. **Watchdog** is the predicate in force, the
+preserving hold and the last incidents.
+
+The host half (`mpd-bundle-plugin`) registers each panel through the adapter once the DSH Go bridge is
+bound, polls at 0.5 Hz (the protocol's ceiling), and pushes a narrowed model only when it changed: ids,
+names, statuses, counts, the question's own text and task titles — never a filesystem path, a token or a
+credential. `view` is built from a LIVE read rather than from the push cache, because the app fetches the
+view BEFORE it subscribes. The view is re-fetched only when a STRUCTURAL signature changes (the parked
+question's identity, or the board's id/status set); a text-only change travels on the data push.
+
+Taps answer effects and never reject. The workbench panel publishes `approve`, `dispatch`, `refresh`,
+`answer:<n>` and `answer-custom`; the team panel publishes `select`, `back` and `refresh` — and
+deliberately nothing that MUTATES. A panel tap is anonymous (it carries no agent), so a settle tap can
+never own a board row, and a watchdog tap cannot name the session's workspace root; both would either
+fail every time or write to the wrong store. Settling a row and pausing a team therefore stay where the
+identity is: the owning member's `agent_teams_task`, and the captain's watchdog tools. The Detail and
+Watchdog tabs SAY that instead of offering a button that cannot work. An answer tap acts on the identity the VIEW captured (parked id, item ids, raw
+option labels), never on whatever sits in the parking lot at tap time: a question that left the queue
+answers "That question is gone" and asks for a refresh instead of settling its replacement. The app runs
+an effect only when it arrives within three seconds of the tap, so a slow service is acknowledged at once
+with the protocol's DEFERRED shape — `{ pending: { label, timeoutMs }, result }` — and the real effect is
+delivered by `result`, up to the protocol's 60-second bound.
+
+### The visual language
+
+The panels are view v2 and follow the app's theme. Both roots are built by the adapter's `panelView()`,
+which writes `v: 2` and `accent: "app"` in ONE place, so a named or hex accent is unrepresentable. Each tab
+carries exactly one `tinted` hero (the app blends the theme colour over the content background — that IS
+the frosted, theme-tinted frame), its numbers as `metric` tiles inside a v2 `grid`, a `surface` section
+with a header and a `divider`, and a designed `emptyState` instead of a blank tab. Statuses are
+`badge`/`tone` **with a word**, so colour is never the only carrier; member initials are a `badge`
+(`avatar` is the image node); free text sets `maxLines`. A view carries no radius, size, opacity, gradient,
+shadow or colour literal: the app owns those, and the kit's builders refuse one.
+
+Older apps get the SAME tree downgraded by `adaptView`: tabs become a stack of titled sections, the grid
+becomes a list, badges become text, `divider`/`spacer` disappear and every `style`/`accent` is stripped. A
+metric's label AND value survive that rewrite. One builder produces both shapes, so the fallback cannot
+drift from the tree it was derived from.
+
+### The strip, the composer and the message actions
+
+The strip is ONE line of at most 24 characters, selected by the app's locale (`3 ready · 1 active` /
+`3 就绪 · 1 进行`), prefixed `❓` when a question is parked and coloured `warn` when a plan waits for
+approval; it emits only when the line changed, and tapping it opens the workbench panel. `mpd-dispatch`
+runs one dispatch pass over the active team. `mpd-save-memory` writes ONE memory entry whose description
+is the reply's first line. `mpd-copy-reply` puts the reply on the clipboard. `mpd-board` needs no handler:
+its `open panel:mpd-team` effect is static in the manifest. Every handler degrades to a toast — a missing
+service, a missing conversation or a refusal never reaches the bridge as an exception.
+
+### Tool cards
+
+The team, roster, workmate, memory, verification, boulder and watchdog tools carry an
+`output.presentationMeta` built with the adapter's `toolCard()`: a v1 card with a title, metrics and at
+most one table or key/value block, no data bindings and no buttons. The builder NEVER throws and never
+ships a card the app cannot draw — anything over the tool-card budget (8 KiB, 40 nodes, depth 6) or any
+v2-only component degrades to `{}`, and the app then renders its own generic tool row. Each tool keeps its
+existing `render` untouched, so a host without DSH Go loses nothing.
 
 ### Where it works
 
 Slots are a **local-engine** capability of the DSH Go app: the bridge ships with the app's own runtime,
 the relay blocks its `/dsh-go/*` namespace, and SSH support is deferred upstream. On a host without the
-bridge the panel is silent — one log line, no registration — and the static view file is what a reader
-sees. Tool cards are not affected by any of this.
+bridge the panels and the strip stay silent — one log line, no registration — and the static view files
+are what a reader sees. **Tool cards are the relay-safe half**: they ride the ordinary tool result, so a
+remote host still renders them.
 
 ## 5. Honest bounds
 
@@ -135,13 +194,21 @@ sees. Tool cards are not affected by any of this.
 - **The relay claims nothing a real answerer claimed.** Its behaviour when a desktop answers is proven;
   its behaviour when both a desktop and a phone are attached is "the desktop wins", by construction.
 - **A panel action needs a live session.** Without one the tap is a toast, not a queued intent.
+- **The v2 live trees are not what the repo gate lints.** `verify-dshgo-views.ts` checks the DECLARED
+  static views; the v2 trees the panels build at runtime are covered by the package's unit tests
+  (`lintDesign` in both version modes, plus the budget walk), never by that gate.
+- **The rendered look is unproven here.** No Flutter app and no device in this workspace: the protocol
+  shape, the budgets, the theme-token rules and the manifest are proven; the pixels are the reader's check.
 
 ## 6. Where the detail lives
 
 - `mpd-team-core-plugin` — the action plane, its routes and the status map.
 - `mpd-roles-plugin` — the relay, its attach gate and its routes.
-- `mpd-bundle-plugin` — the panel host half, the snapshot and the view.
-- `mpd-dsh-adapter-plugin` — the five seams all three consume.
+- `mpd-bundle-plugin` — both panels, the strip and the menu handlers (`dshgo-panel.ts`,
+  `dshgo-team-panel.ts`, `dshgo-surfaces.ts`), their pure view builders (`dshgo-views.ts`) and the
+  bilingual copy (`dshgo-copy.ts`).
+- `mpd-dsh-adapter-plugin` — the dshGo seams and the view kit (`src/dshgo-view.ts`): the component
+  builders, `measureView` / `fitsBudget`, `adaptView`, `lintDesign` and `toolCard`.
 
 Each package README beside the code is the contract; this page is the map. Repository-wide conventions,
 gates and the git model are in [`../AGENTS.md`](../AGENTS.md), and the commands are in

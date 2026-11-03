@@ -1,0 +1,77 @@
+{
+  "task": "T9 — narrow re-verify of the T8 repair (H1 control absence, M3 read-only, M2 override, N1/N2, structure intact)",
+  "role": "Reviewer",
+  "at": "2026-11-02T16:49:12Z",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "head": "1fb7f45703d054b8a0a960ef0b4b782ed29b9a32",
+  "packStamp": "2026-11-02T16:45:18.911Z (observed on dist/mpd-package/package.json — matches the captain's stamp)",
+  "verdict": {
+    "code": "PASS_WITH_ONE_DOC_FINDING",
+    "summary": "All four deltas are correct by measurement: the published action table and both built trees carry no complete/fail/hold/resume; the watchdog tab is read-only with the pointer copy; readMemoryStore honours a REAL memory.dir and agentSlug, reads one agent only and tolerates the legacy reflection keys; the owner gate is untouched. Structure intact: four rebuilt trees exit 0 at the checker, lintDesign 0 findings, budgets inside limits, §7 probe OK, packed dshGo equal to the root. One documentation finding: §8 does NOT record the removal / D4 supersession the dispatch said it records."
+  },
+  "deltas": {
+    "H1_controls_removed": {
+      "publishedActionTable": ["back", "refresh", "select"],
+      "builtTreeActionRefs": "[{id:select,args:{task:T1}},{id:select,args:{task:T2}},\"back\"] in both mpd-team trees",
+      "bannedIdsInTrees": [],
+      "detailCopy": "Settling a row is the owning member's call; run it from that agent.",
+      "shippedBytes": "packages/mpd-bundle-plugin/dist/index.js AND dist/mpd-package/.../dist/index.js carry the new copy and zero `complete: async` / `hold: async` handlers; the old \"Completed\" toast text is absent",
+      "t8Test": "test/dshgo-panels-v2.test.ts 'the detail and watchdog tabs carry no settle/hold control, and the action map has no mutation' passes",
+      "method": "behaviour (imported createTeamPanelActions + read the built trees + the shipped bytes), not the diff"
+    },
+    "M3_watchdog_read_only": {
+      "treeActionRefs": "no hold/resume anywhere in the built team trees",
+      "copy": "Pause and resume run from the captain's console, not from a tap.",
+      "publishedTable": "no hold/resume handler"
+    },
+    "M2_memory_override": {
+      "measured": "a real temp workspace: default scope reads .mpd (newest first) and excludes both the override dir and a sibling agent; {dir:'.memory-alt'} reads that store only; {agentSlug:'agent-other'} reads that agent only; an absent store answers null",
+      "legacyKeys": "reflection.json with reflected_completed_steps / steps_since_last_successful_reflection yields reflections=2 steps=5",
+      "scopeCopy": "EN 'This agent's entries in this workspace, newest by write time' + the 简体中文 twin",
+      "t8Test": "test/dshgo-panels-v2.test.ts 'memory.dir moves the store, and another agent's entries never leak in' passes"
+    },
+    "structure": {
+      "trees": "rebuilt from CURRENT source with the pinned bun 1.4.0 (evidence/dshgo/verify/t9-narrow-2026-11-02T16-46-29Z/build-trees.ts)",
+      "checker": "all four piped to check.mjs - --budget panel: exit 0 each",
+      "lint": "lintDesign 0 findings on all four (v2 mode for the v2 trees, v1 mode for the fallbacks)",
+      "budgets": {
+        "mpd-v2": "3999 B / 50 nodes / depth 5 (T7 3983/50/5)",
+        "mpd-v1-fallback": "2514 B / 41 / 5 (T7 2498/41/5)",
+        "mpd-team-v2": "4600 B / 57 / 6 (T7 4668/57/6)",
+        "mpd-team-v1-fallback": "2934 B / 49 / 6 (T7 2955/48/6)"
+      },
+      "probe": "probe-section7.mjs OK on all four (v2 and --v1)",
+      "packedManifest": "dist/mpd-package/package.json dshGo deep-equals the root block (925 B, panels mpd+mpd-team)"
+    },
+    "ownerGateNotWidened": {
+      "teamStoreDiff": "git diff HEAD -- packages/mpd-team-core-plugin/src/team-store.ts contains NO hunk touching casCloseTask",
+      "refusalPresent": "if (!isOwner && !isLead) refusal still in casCloseTask",
+      "teamCoreChanges": "only the three tool-card registrations (toolCard(agentTeamsPlanCard/TaskCard/DispatchCard)) — no identity change"
+    },
+    "suite": {
+      "fromRepoRoot": "bun test packages/mpd-bundle-plugin -> 304 pass / 0 fail / 17566 expect() calls across 14 files",
+      "dshgoFile": "bun test test/dshgo-panels-v2.test.ts -> 21 pass / 0 fail",
+      "declaredArtifact": "an earlier run FROM the package directory showed 45 failures because its client-harness resolves the repo root from cwd and doubled the path (packages/mpd-bundle-plugin/packages/...); the sanctioned form is the repo root (T5 ran 'bun test packages'). Not a regression — recorded so the number is not misread."
+    }
+  },
+  "findings": [
+    {
+      "id": "D1",
+      "severity": "Medium (documentation)",
+      "title": "§8 does not record the removal / D4 action-id supersession the dispatch says it records",
+      "where": ".mpd/plans/dshgo-native-parity.md §4 D4 (line 147 block) and §8 (the T7→T8 entries)",
+      "why": "D4 still specifies `complete:<id>` (primary), `fail:<id>` and `hold`/`resume` actions, and no §8 line records the accepted RESOLUTION that those four controls are removed and their action ids superseded. `grep -i 'supersed'` finds nothing; §8 line 392 states only the fix DIRECTION ('either removed … or made to succeed'). A reader of §4 alone would re-add dead controls; a reader of §8 cannot tell the removal was accepted.",
+      "direction": "one §8 line recording the removal as the accepted resolution and marking D4's action list superseded (or amend D4 in place). No code change."
+    }
+  ],
+  "declined": [
+    "the rendered look: no Flutter app, preview.mjs needs Flutter — UNPROVEN, unchanged",
+    "whether a human channel for agent_teams_task / a mutate member on mpdWatchdog / a workspace-bound exec should be added: out of T8's scope and a captain decision"
+  ],
+  "bounds": {
+    "subject": "the four deltas + structure only; T7's other PASS arms remain cited from evidence/dshgo/verify/t7-toolcard-2026-11-02T16-35-43Z/ and evidence/dshgo/verify/prerun-2026-11-02T16-28-45Z/",
+    "trees": "rebuilt from source (the lane's fixture builder copied verbatim, unchanged since 00:22) with the pinned bun; the shipped dist/packed bytes were checked separately for the two copy strings and the absence of the old handlers",
+    "writeScope": "evidence/** only; no source, patch, manifest or dist edit",
+    "moment": "measurements 16:46–16:49Z on head 1fb7f457"
+  }
+}

@@ -1,0 +1,60 @@
+=== mpd.json (declared static) ===
+  视图 dsh-go/views/mpd.json（面板）：能显示
+exit=0
+=== mpd-team.json (declared static) ===
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+exit=0
+=== mpd-v2 (LIVE-built, piped) ===
+  视图 -（面板）：能显示，18 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[0].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.children[0].items[0].children[1].style.color：light：#AA7900 已校正为 #976C00，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[4].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[1].children[1].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+exit=0
+=== mpd-v1-fallback (LIVE-built, piped) ===
+  视图 -（面板）：能显示
+exit=0
+=== mpd-team-v2 (LIVE-built, piped) ===
+  视图 -（面板）：能显示，24 处问题
+    提示 view.accent：dark：#4B67B4 已校正为 #7B8FC8，对比度至少 4.5:1
+    提示 view.accent：dark：#4B67B4 已校正为 #899BCE，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：light：#3D6FD6 已校正为 #3866C6，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[1].style.color：dark：#3D6FD6 已校正为 #799CE3，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[2].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[2].children[3].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：light：#258051 已校正为 #23794D，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].style.color：dark：#258051 已校正为 #6BA988，对比度至少 4.5:1
+    提示 view.children[0].items[0].children[0].children[3].palette[1]：light：#DC6530 已校正为 #DA6430，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette[3]：light：#B88000 已校正为 #B47D00，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：light：#9AA0AA 已校正为 #828890，对比度至少 3:1
+    提示 view.children[0].items[0].children[0].children[3].palette.other：dark：#6B707A 已校正为 #797D86，对比度至少 3:1
+    提示 view.accent：dark：#4B67B4 已校正为 #889BCD，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[2].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：light：#3D6FD6 已校正为 #3B6BCF，对比度至少 4.5:1
+    提示 view.children[0].items[1].children[1].children[3].children[0].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+    提示 view.children[0].items[2].children[1].children[5].items[0].style：此样式由 App 保留，已忽略
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：light：#AA7900 已校正为 #8C6300，对比度至少 4.5:1
+    提示 view.children[0].items[3].children[0].children[2].children[1].style.color：dark：#AA7900 已校正为 #BD9738，对比度至少 4.5:1
+exit=0
+=== mpd-team-v1-fallback (LIVE-built, piped) ===
+  视图 -（面板）：能显示
+exit=0

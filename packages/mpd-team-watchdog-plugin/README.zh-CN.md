@@ -441,3 +441,10 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 | `src/paths.ts` | 所有路径，按调用解析 |
 | `src/web.ts` | 两条带护栏的 Web 路由（hold / resume），经 adapter 挂载到宿主的服务器上 |
 | `test/web.test.ts` | 路由测试：方法守卫、护栏先于一切、请求体上限、无 agent 的工作区解析、存储往返 |
+
+## dsh-Go 工具卡片
+
+`session-watchdog-status` 还会通过 `output.presentationMeta` 发布原生 **dsh-Go 工具卡片**：一棵 v1 视图树
+（`stack` 标题 → `row` 指标 → `keyValue` → `table`），不带数据绑定、不带按钮，并在发布前按应用的
+8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
+文本 `render` 与输出 schema 均未改动。

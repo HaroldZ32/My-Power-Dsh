@@ -966,6 +966,39 @@ function createDshAdapter(ctx, config = {}) {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
   }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
+  }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
   function warnLlmCatalogOnce(detail) {
@@ -1629,6 +1662,55 @@ function createDshAdapter(ctx, config = {}) {
       try {
         bridge.refresh(id);
       } catch {}
+    },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
     },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
@@ -2968,6 +3050,388 @@ function installDelegationObserver(dsh, options) {
   }
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function row(children, props = {}) {
+  assertList("row", "children", children, MAX_CHILDREN);
+  return node("row", { children, title: props.title, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function callout(value, props = {}) {
+  return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-verify-plugin/src/dshgo-cards.ts
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordOf(value) {
+  return isRecord3(value) ? value : {};
+}
+function recordsAt(source, key) {
+  const raw = source[key];
+  return Array.isArray(raw) ? raw.filter(isRecord3) : [];
+}
+function stringOf(value, fallback) {
+  return typeof value === "string" && value !== "" ? value : fallback;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function clip(value, max) {
+  return value.length <= max ? value : value.slice(0, max - 1) + "…";
+}
+function tail(value, max) {
+  return value.length <= max ? value : "…" + value.slice(value.length - (max - 1));
+}
+function buildVerifyEvidenceCard(_args, value) {
+  const v = recordOf(value);
+  const refused = typeof v.refused === "string" ? v.refused : "";
+  if (refused !== "") {
+    return stack([callout(clip(refused, 600), { tone: "bad" })], { title: "Verify evidence" });
+  }
+  const probes = recordsAt(v, "probe");
+  const evidenceId = stringOf(v.evidenceId, "(unknown)");
+  if (probes.length > 0) {
+    return stack([
+      row([
+        metric({ label: "Probed", value: probes.length }),
+        metric({ label: "Evidence", value: clip(evidenceId, 24) })
+      ]),
+      table({
+        columns: ["Path", "Bytes", "SHA-256"],
+        rows: probes.slice(0, 20).map((probe) => [clip(stringOf(probe.path, "?"), 48), numberOf(probe.bytes), clip(stringOf(probe.sha256, "—"), 12)])
+      })
+    ], { title: "Verify evidence" });
+  }
+  const exit = numberOf(v.exit);
+  return stack([
+    row([
+      metric({ label: "Exit", value: exit, tone: exit === 0 ? "good" : "bad" }),
+      metric({ label: "Freeze", value: stringOf(v.gateFreeze, "unfrozen") })
+    ]),
+    keyValue([
+      ["Gate", stringOf(v.gate, "(unknown)")],
+      ["Evidence", clip(evidenceId, 24)],
+      ["Log", tail(stringOf(v.logPath, "(none)"), 72)]
+    ])
+  ], { title: "Verify evidence" });
+}
+function buildVerifyRecordCard(_args, value) {
+  const v = recordOf(value);
+  const refused = recordOf(v.refused);
+  if (Object.keys(refused).length > 0) {
+    const reason = stringOf(refused.reason, "refused");
+    const detail = stringOf(refused.detail, "");
+    return stack([callout(clip("refused [" + reason + "]: " + detail, 600), { tone: "bad" })], { title: "Verify record" });
+  }
+  const verdict = stringOf(v.verdict, "(unknown)");
+  const sources = numberOf(v.sources);
+  const gateEvidenceCount = numberOf(v.gateEvidence);
+  const children = [
+    row([
+      metric({ label: "Verdict", value: verdict, tone: verdict === "PASS" ? "good" : verdict === "FAIL" ? "bad" : "muted" }),
+      metric({ label: "Gate evidence", value: gateEvidenceCount }),
+      metric({ label: "Sources", value: sources })
+    ]),
+    keyValue([
+      ["Record", stringOf(v.recordId, "(unknown)")],
+      ["Basis", stringOf(v.basis, "(unproven)")],
+      ["Record path", tail(stringOf(v.recordPath, "(none)"), 72)]
+    ])
+  ];
+  const repair = recordOf(v.repair);
+  if (Object.keys(repair).length > 0) {
+    children.push(callout("repair opened: " + clip(stringOf(repair.repairId, "(unknown)"), 60), { tone: "warn" }));
+  }
+  return stack(children, { title: "Verify record" });
+}
+var VERIFY_EVIDENCE_CARD = toolCard(buildVerifyEvidenceCard);
+var VERIFY_RECORD_CARD = toolCard(buildVerifyRecordCard);
+
 // packages/mpd-verify-plugin/src/record.ts
 var REFUSAL = {
   sameAgent: "same-agent",
@@ -2985,51 +3449,51 @@ var REFUSAL = {
   postInstallClaim: "post-install-claim"
 };
 function validateVerificationRecord(record, context) {
-  const refuse = (reason, detail) => ({ ok: false, reason, detail });
+  const refuse2 = (reason, detail) => ({ ok: false, reason, detail });
   if (record.basis.kind !== "pre-plugin" && !context.loopKnown) {
-    return refuse(REFUSAL.unknownLoop, "loop " + JSON.stringify(record.loopId) + " is not in this workspace's ledger — open it with mpd_verify_open first");
+    return refuse2(REFUSAL.unknownLoop, "loop " + JSON.stringify(record.loopId) + " is not in this workspace's ledger — open it with mpd_verify_open first");
   }
   if (record.writerId === "" || record.verifierId === "") {
-    return refuse(REFUSAL.missingSeats, "the record must name both seats: a writer (the agent that wrote the code) and a verifier (the agent that checked it)");
+    return refuse2(REFUSAL.missingSeats, "the record must name both seats: a writer (the agent that wrote the code) and a verifier (the agent that checked it)");
   }
   if (record.verifierId === record.writerId) {
-    return refuse(REFUSAL.sameAgent, "the verifier and the writer are the same agent (" + JSON.stringify(record.writerId) + "): the law requires code written by A to be verified by a DIFFERENT agent B");
+    return refuse2(REFUSAL.sameAgent, "the verifier and the writer are the same agent (" + JSON.stringify(record.writerId) + "): the law requires code written by A to be verified by a DIFFERENT agent B");
   }
   if (record.basis.kind === "pre-plugin") {
     if (record.unlockedReads.length > 0) {
-      return refuse(REFUSAL.prePluginUnlocked, "a pre-plugin record may not carry unlockedReads: the exemption exists for records authored" + " before the observing plugin was live, and a diagnosis window is something the live law opens");
+      return refuse2(REFUSAL.prePluginUnlocked, "a pre-plugin record may not carry unlockedReads: the exemption exists for records authored" + " before the observing plugin was live, and a diagnosis window is something the live law opens");
     }
     if (String(record.basis.attestation ?? "") !== "no-guard-in-process" || record.basis.frozenContract.sha256 !== context.frozenContractSha) {
-      return refuse(REFUSAL.prePluginUnattested, 'a pre-plugin record must carry basis.attestation "no-guard-in-process" and a' + " basis.frozenContract.sha256 that still matches the file on disk (expected " + JSON.stringify(String(context.frozenContractSha ?? "")) + ", got " + JSON.stringify(String(record.basis.frozenContract.sha256 ?? "")) + ") — an unattestable contract is not an attested one");
+      return refuse2(REFUSAL.prePluginUnattested, 'a pre-plugin record must carry basis.attestation "no-guard-in-process" and a' + " basis.frozenContract.sha256 that still matches the file on disk (expected " + JSON.stringify(String(context.frozenContractSha ?? "")) + ", got " + JSON.stringify(String(record.basis.frozenContract.sha256 ?? "")) + ") — an unattestable contract is not an attested one");
     }
     if (context.bootInstalledAt !== undefined && Date.parse(record.createdAt) >= Date.parse(context.bootInstalledAt)) {
-      return refuse(REFUSAL.postInstallClaim, "this record claims the pre-plugin basis but was created at " + JSON.stringify(record.createdAt) + ", which does not precede the law's first boot marker (" + JSON.stringify(context.bootInstalledAt) + "): the exemption closes the moment the guard is live");
+      return refuse2(REFUSAL.postInstallClaim, "this record claims the pre-plugin basis but was created at " + JSON.stringify(record.createdAt) + ", which does not precede the law's first boot marker (" + JSON.stringify(context.bootInstalledAt) + "): the exemption closes the moment the guard is live");
     }
   }
   if (record.verdict === "PASS") {
     const spent = context.loggedImplementationReads ?? [];
     if (spent.length > 0) {
-      return refuse(REFUSAL.blindSpent, "this seat's blindness is SPENT: the plugin's own observation log recorded " + spent.map((path) => JSON.stringify(path)).join(", ") + " as path(s) this verifier read" + (context.seatUnlocked ? ", inside a diagnosis window an earlier FAIL unlocked" : "") + ", so a PASS cannot rest on its blindness. A PASS must come from a fresh verifier that has read nothing;" + " from this seat a FAIL is still admissible, which is what keeps its diagnosis window open.");
+      return refuse2(REFUSAL.blindSpent, "this seat's blindness is SPENT: the plugin's own observation log recorded " + spent.map((path) => JSON.stringify(path)).join(", ") + " as path(s) this verifier read" + (context.seatUnlocked ? ", inside a diagnosis window an earlier FAIL unlocked" : "") + ", so a PASS cannot rest on its blindness. A PASS must come from a fresh verifier that has read nothing;" + " from this seat a FAIL is still admissible, which is what keeps its diagnosis window open.");
     }
   }
   if (record.verdict === "FAIL") {
     if (record.findings.length === 0) {
-      return refuse(REFUSAL.failWithoutFindings, "a FAIL must carry at least one finding (with severity, symptom, expected behaviour and the docSource that proves it)");
+      return refuse2(REFUSAL.failWithoutFindings, "a FAIL must carry at least one finding (with severity, symptom, expected behaviour and the docSource that proves it)");
     }
     const unsupported = record.findings.find((finding) => String(finding.docSource ?? "") === "");
     if (unsupported !== undefined) {
-      return refuse(REFUSAL.findingWithoutBasis, "finding " + JSON.stringify(String(unsupported.id ?? "")) + " cites no docSource: every finding must rest on a document, because the verifier works from the docs and never from the implementation");
+      return refuse2(REFUSAL.findingWithoutBasis, "finding " + JSON.stringify(String(unsupported.id ?? "")) + " cites no docSource: every finding must rest on a document, because the verifier works from the docs and never from the implementation");
     }
     return { ok: true };
   }
   if (record.basis.kind === "unproven") {
-    return refuse(REFUSAL.bindUnproven, 'the basis is "unproven": blindness is DECLARED, never observed, and no shipped' + " composition writes the read-observation log that could establish it, so a PASS cannot be justified." + " Record a FAIL, or re-verify from a fresh agent");
+    return refuse2(REFUSAL.bindUnproven, 'the basis is "unproven": blindness is DECLARED, never observed, and no shipped' + " composition writes the read-observation log that could establish it, so a PASS cannot be justified." + " Record a FAIL, or re-verify from a fresh agent");
   }
   if (record.sources.length === 0) {
-    return refuse(REFUSAL.noDocSources, "a PASS must cite at least one document it worked from (sources[] is empty); the verifier's basis is the frozen contract and the docs");
+    return refuse2(REFUSAL.noDocSources, "a PASS must cite at least one document it worked from (sources[] is empty); the verifier's basis is the frozen contract and the docs");
   }
   if (record.gateEvidence.length === 0) {
-    return refuse(REFUSAL.noGateEvidence, 'a PASS must carry at least one piece of gate evidence (run it with mpd_verify_evidence {kind:"gate"}); gateEvidence[] is empty');
+    return refuse2(REFUSAL.noGateEvidence, 'a PASS must carry at least one piece of gate evidence (run it with mpd_verify_evidence {kind:"gate"}); gateEvidence[] is empty');
   }
   const forged = record.gateEvidence.find((evidence) => {
     const id = String(evidence.evidenceId ?? "");
@@ -3038,7 +3502,7 @@ function validateVerificationRecord(record, context) {
     return !context.producedEvidenceIds.includes(id);
   });
   if (forged !== undefined) {
-    return refuse(REFUSAL.forgedEvidence, "gateEvidence cites " + JSON.stringify(String(forged.evidenceId ?? "(no evidenceId)")) + ", which mpd_verify_evidence did not produce for loop " + JSON.stringify(record.loopId) + " — evidence cannot be asserted, only run" + (forged.evidenceId === undefined ? " (an id-less entry is admissible only on a pre-plugin basis)" : ""));
+    return refuse2(REFUSAL.forgedEvidence, "gateEvidence cites " + JSON.stringify(String(forged.evidenceId ?? "(no evidenceId)")) + ", which mpd_verify_evidence did not produce for loop " + JSON.stringify(record.loopId) + " — evidence cannot be asserted, only run" + (forged.evidenceId === undefined ? " (an id-less entry is admissible only on a pre-plugin basis)" : ""));
   }
   return { ok: true };
 }
@@ -3193,13 +3657,13 @@ function escapeTool(deps) {
       if (reason.trim() === "") {
         return { refused: "`reason` is required: an escape that does not say why is a silent bypass. State what made delegating and looping impossible." };
       }
-      const row = appendEscape(workspace, sessionId, reason, args?.path === undefined ? undefined : String(args.path));
-      if (row === undefined)
+      const row2 = appendEscape(workspace, sessionId, reason, args?.path === undefined ? undefined : String(args.path));
+      if (row2 === undefined)
         return { refused: "the escape could not be logged (the workspace's .mpd/verify/escape.jsonl is not writable), so no allowance was granted — an escape that is not recorded is not the counted path." };
       const uses = resolvePositiveInt(deps.configValue("verify.escapeUses"), 1);
       deps.runtime.grantEscape(sessionId, uses);
-      deps.log("escape " + row.count + " reason=" + JSON.stringify(reason) + (row.path === undefined ? "" : " path=" + row.path));
-      return { count: row.count, at: row.at, reason, uses, sessionId, ...row.path === undefined ? {} : { path: row.path } };
+      deps.log("escape " + row2.count + " reason=" + JSON.stringify(reason) + (row2.path === undefined ? "" : " path=" + row2.path));
+      return { count: row2.count, at: row2.at, reason, uses, sessionId, ...row2.path === undefined ? {} : { path: row2.path } };
     }
   };
 }
@@ -3260,6 +3724,7 @@ function evidenceTool(deps) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: VERIFY_EVIDENCE_CARD,
       render: (_args, value) => textBlock(value?.refused !== undefined ? "refused: " + value.refused : value?.probe !== undefined ? value.probe.length + " artifact(s) probed" : "gate " + value.gate + " exit " + value.exit + " -> " + value.logPath)
     },
     execute: (args, exec) => {
@@ -3344,6 +3809,7 @@ function recordTool(deps) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: VERIFY_RECORD_CARD,
       render: (_args, value) => textBlock(value?.refused !== undefined ? "refused [" + value.refused.reason + "]: " + value.refused.detail : "record " + value.recordId + " " + value.verdict + (value.repair === undefined ? "" : " -> repair " + value.repair.repairId))
     },
     execute: (args, exec) => {
@@ -3358,11 +3824,11 @@ function recordTool(deps) {
       const contractPath = loopContractPath(loop);
       const contractSha = sha256File(join5(workspace, contractPath));
       const sources = (Array.isArray(args?.sources) ? args.sources.map(String) : []).map((path) => sourceDoc(workspace, path)).filter((doc) => doc !== undefined);
-      const produced = readEvidence(workspace).filter((row) => row.kind === "gate" && row.loopId === loopId);
+      const produced = readEvidence(workspace).filter((row2) => row2.kind === "gate" && row2.loopId === loopId);
       const cited = Array.isArray(args?.evidence_ids) ? args.evidence_ids.map(String) : [];
       const gateEvidence = cited.map((id) => {
-        const row = produced.find((candidate) => candidate.evidenceId === id);
-        return row === undefined ? { evidenceId: id, cmd: "(asserted)", exit: -1, logPath: "", logSha256: "" } : { evidenceId: id, cmd: String(row.cmd ?? ""), exit: Number(row.exit ?? -1), logPath: String(row.logPath ?? ""), logSha256: String(row.logSha256 ?? "") };
+        const row2 = produced.find((candidate) => candidate.evidenceId === id);
+        return row2 === undefined ? { evidenceId: id, cmd: "(asserted)", exit: -1, logPath: "", logSha256: "" } : { evidenceId: id, cmd: String(row2.cmd ?? ""), exit: Number(row2.exit ?? -1), logPath: String(row2.logPath ?? ""), logSha256: String(row2.logSha256 ?? "") };
       });
       const findings = (Array.isArray(args?.findings) ? args.findings : []).map((raw, index) => ({
         id: String(raw?.id ?? "F" + (index + 1)),
@@ -3380,7 +3846,7 @@ function recordTool(deps) {
       const seats = readSeats(workspace);
       const seat = seats.seats?.[sessionId];
       const drained = deps.runtime.drainReads(sessionId);
-      const openedBy = readRecords(workspace).filter((row) => row.verifierId === sessionId && row.verdict === "FAIL").at(-1)?.recordId ?? "";
+      const openedBy = readRecords(workspace).filter((row2) => row2.verifierId === sessionId && row2.verdict === "FAIL").at(-1)?.recordId ?? "";
       const record = buildRecord({
         loopId,
         taskId: args?.task_id === undefined ? loop?.taskId ?? null : String(args.task_id),
@@ -3403,7 +3869,7 @@ function recordTool(deps) {
       if (Array.isArray(args?.notes))
         record.notes = args.notes.map(String);
       const outcome = validateVerificationRecord(record, {
-        producedEvidenceIds: produced.map((row) => String(row.evidenceId)),
+        producedEvidenceIds: produced.map((row2) => String(row2.evidenceId)),
         seatUnlocked: seat?.unlocked === true,
         loggedImplementationReads: deps.runtime.observedImplementationReads(sessionId),
         loopKnown: loop !== undefined,

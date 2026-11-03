@@ -967,6 +967,39 @@ function createDshAdapter(ctx, config = {}) {
       rowLogLine("mpd-dsh-adapter", "mpd-dsh-adapter: dshGo degraded — " + detail);
     } catch {}
   }
+  function callableMember(target, member) {
+    if (typeof target !== "object" || target === null)
+      return;
+    const value = target[member];
+    return typeof value === "function" ? value.bind(target) : undefined;
+  }
+  function capsPropertyOf(bridge) {
+    if (typeof bridge !== "object" || bridge === null)
+      return;
+    const fields = bridge;
+    return fields.caps !== undefined ? fields.caps : fields.capabilities;
+  }
+  function dshGoCapsOf(raw) {
+    if (typeof raw !== "object" || raw === null)
+      return null;
+    const source = raw;
+    const caps = {};
+    if (typeof source.app === "string")
+      caps.app = source.app;
+    if (typeof source.locale === "string")
+      caps.locale = source.locale;
+    if (Array.isArray(source.components)) {
+      const components = source.components.filter((name) => typeof name === "string");
+      if (components.length > 0)
+        caps.components = components;
+    }
+    if (Array.isArray(source.surfaces)) {
+      const surfaces = source.surfaces.filter((name) => typeof name === "string");
+      if (surfaces.length > 0)
+        caps.surfaces = surfaces;
+    }
+    return caps;
+  }
   const LLM_CATALOG_METHODS = ["listProviders", "listModels", "resolveModelInfo"];
   let llmCatalogWarned = false;
   function warnLlmCatalogOnce(detail) {
@@ -1631,6 +1664,55 @@ function createDshAdapter(ctx, config = {}) {
         bridge.refresh(id);
       } catch {}
     },
+    dshGoOn(id, handler) {
+      const on = callableMember(service("dshGo"), "on");
+      if (on === undefined) {
+        warnDshGo(`action "${id}" not registered — the bridge service is absent or exposes no on()`);
+        return false;
+      }
+      try {
+        on(id, handler);
+        return true;
+      } catch (error) {
+        warnDshGo(`action "${id}" not registered — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoStrip(id, dataFn) {
+      const strip = callableMember(service("dshGo"), "strip");
+      if (strip === undefined) {
+        warnDshGo(`strip "${id}" not published — the bridge service is absent or exposes no strip()`);
+        return false;
+      }
+      try {
+        strip(id, dataFn);
+        return true;
+      } catch (error) {
+        warnDshGo(`strip "${id}" not published — the bridge threw: ${errorTextOf(error)}`);
+        return false;
+      }
+    },
+    dshGoCaps() {
+      const bridge = service("dshGo");
+      if (bridge === undefined || bridge === null) {
+        warnDshGo("capabilities are unavailable — the bridge service is absent");
+        return null;
+      }
+      let raw;
+      try {
+        const read = callableMember(bridge, "caps");
+        raw = read !== undefined ? read() : capsPropertyOf(bridge);
+      } catch (error) {
+        warnDshGo(`capabilities are unavailable — the bridge threw: ${errorTextOf(error)}`);
+        return null;
+      }
+      const caps = dshGoCapsOf(raw);
+      if (caps === null) {
+        warnDshGo("capabilities are unavailable — the bridge exposes neither caps() nor a caps object");
+        return null;
+      }
+      return caps;
+    },
     hasTool(toolName, agent) {
       return toolDefinitionFor(toolName, agent) !== undefined;
     },
@@ -2194,6 +2276,468 @@ function createLazyDshAdapter(ctx, options) {
   });
 }
 
+// packages/mpd-dsh-adapter-plugin/src/dshgo-view.ts
+var V1_COMPONENTS = Object.freeze([
+  "stack",
+  "row",
+  "text",
+  "metric",
+  "chart",
+  "compare",
+  "steps",
+  "callout",
+  "options",
+  "confirm",
+  "list",
+  "keyValue",
+  "progress",
+  "table",
+  "actions",
+  "image"
+]);
+var V2_ONLY_COMPONENTS = Object.freeze([
+  "textField",
+  "number",
+  "stepper",
+  "toggle",
+  "slider",
+  "select",
+  "segmented",
+  "chips",
+  "date",
+  "time",
+  "rating",
+  "form",
+  "tabs",
+  "collapsible",
+  "accordion",
+  "carousel",
+  "timeline",
+  "grid",
+  "badge",
+  "tag",
+  "avatar",
+  "codeBlock",
+  "divider",
+  "spacer",
+  "emptyState",
+  "gallery"
+]);
+var VIEW_KEY = "dsh-go/view";
+var BUDGETS = Object.freeze({
+  toolCard: Object.freeze({ bytes: 8192, nodes: 40, depth: 6 }),
+  panel: Object.freeze({ bytes: 32768, nodes: 120, depth: 8 }),
+  strip: Object.freeze({ bytes: 2048, nodes: 8, depth: 3 })
+});
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isBinding(value) {
+  if (!isRecord2(value))
+    return false;
+  const keys = Object.keys(value);
+  return keys.length === 1 && keys[0] === "$" && typeof value.$ === "string";
+}
+function isNode(value) {
+  return isRecord2(value) && typeof value.type === "string";
+}
+function refuse(builder, detail) {
+  throw new RangeError(`dsh-go view: ${builder} ${detail}`);
+}
+function choice(builder, field, value, allowed) {
+  if (typeof value !== "string" || !allowed.includes(value)) {
+    refuse(builder, `needs ${field} to be one of ${allowed.join(" / ")}, got ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function assertList(builder, field, value, max) {
+  if (!Array.isArray(value))
+    refuse(builder, `needs ${field} to be an array`);
+  if (value.length > max)
+    refuse(builder, `accepts at most ${max} ${field}, got ${value.length}`);
+  return value;
+}
+var MAX_CHILDREN = 32;
+function node(type, props) {
+  const out = { type };
+  for (const [key, value] of Object.entries(props))
+    if (value !== undefined)
+      out[key] = value;
+  return out;
+}
+function style(input) {
+  const known = ["card", "padding", "gap", "align", "columns", "dividers", "size", "weight", "color", "maxLines"];
+  for (const key of Object.keys(input)) {
+    if (!known.includes(key))
+      refuse("style", `does not know the key "${key}" (decoration is the app's)`);
+  }
+  const out = {};
+  if (input.card !== undefined)
+    out.card = choice("style", "card", input.card, ["plain", "surface", "tinted", "outlined"]);
+  if (input.padding !== undefined)
+    out.padding = choice("style", "padding", input.padding, ["S", "M", "L"]);
+  if (input.gap !== undefined)
+    out.gap = choice("style", "gap", input.gap, ["S", "M", "L"]);
+  if (input.align !== undefined)
+    out.align = choice("style", "align", input.align, ["start", "center", "end"]);
+  if (input.dividers !== undefined) {
+    if (typeof input.dividers !== "boolean")
+      refuse("style", "needs dividers to be a boolean");
+    out.dividers = input.dividers;
+  }
+  if (input.size !== undefined)
+    out.size = choice("style", "size", input.size, ["display", "title", "subtitle", "body", "caption", "mono"]);
+  if (input.weight !== undefined)
+    out.weight = choice("style", "weight", input.weight, ["regular", "medium", "semibold", "bold"]);
+  if (input.maxLines !== undefined) {
+    if (!Number.isInteger(input.maxLines) || input.maxLines < 1 || input.maxLines > 20) {
+      refuse("style", "needs maxLines to be an integer 1–20");
+    }
+    out.maxLines = input.maxLines;
+  }
+  if (input.color !== undefined)
+    out.color = choice("style", "color", input.color, ["accent"]);
+  if (input.columns !== undefined) {
+    if (input.columns === "equal")
+      out.columns = "equal";
+    else if (Array.isArray(input.columns) && input.columns.length > 0 && input.columns.length <= 8 && input.columns.every((weight) => Number.isInteger(weight) && weight >= 1 && weight <= 12)) {
+      out.columns = [...input.columns];
+    } else
+      refuse("style", 'needs columns to be "equal" or 1–8 integer weights of 1–12');
+  }
+  return out;
+}
+function styleOf(input) {
+  return input === undefined ? undefined : style(input);
+}
+function* componentNodes(view, depth = 1) {
+  if (!isNode(view))
+    return;
+  yield { node: view, depth };
+  for (const child of childrenOf(view))
+    yield* componentNodes(child, depth + 1);
+}
+function childrenOf(node2) {
+  const out = [];
+  if (Array.isArray(node2.children))
+    out.push(...node2.children);
+  if (Array.isArray(node2.items)) {
+    for (const item of node2.items)
+      if (isRecord2(item) && Array.isArray(item.children))
+        out.push(...item.children);
+  }
+  return out;
+}
+function stack(children, props = {}) {
+  assertList("stack", "children", children, MAX_CHILDREN);
+  return node("stack", { children, title: props.title, style: styleOf(props.style) });
+}
+function text(value, props = {}) {
+  return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function metric(props) {
+  return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function table(props) {
+  assertList("table", "columns", props.columns, 8);
+  const rows = assertList("table", "rows", props.rows, 50);
+  for (const cells of rows)
+    assertList("table", "row cells", cells, props.columns.length);
+  return node("table", { columns: props.columns, rows });
+}
+function keyValue(items, props = {}) {
+  assertList("keyValue", "items", items, 24);
+  return node("keyValue", { items, title: props.title, style: styleOf(props.style) });
+}
+function countViewNodes(view) {
+  let nodes = 0;
+  for (const _found of componentNodes(view))
+    nodes += 1;
+  return nodes;
+}
+function viewDepth(view) {
+  let depth = 0;
+  for (const found of componentNodes(view))
+    depth = Math.max(depth, found.depth);
+  return depth;
+}
+function measureView(view) {
+  const encoded = JSON.stringify(view);
+  const bytes = encoded === undefined ? 0 : new TextEncoder().encode(encoded).length;
+  return { bytes, nodes: countViewNodes(view), depth: viewDepth(view) };
+}
+function fitsBudget(view, budget) {
+  const target = typeof budget === "string" ? BUDGETS[budget] : budget;
+  const measured = measureView(view);
+  return measured.bytes <= target.bytes && measured.nodes <= target.nodes && measured.depth <= target.depth;
+}
+var NAMED_COLOURS = Object.freeze([
+  "red",
+  "orange",
+  "amber",
+  "green",
+  "teal",
+  "blue",
+  "indigo",
+  "violet",
+  "pink",
+  "gray"
+]);
+var COLOUR_KEYS = Object.freeze(["accent", "color", "background"]);
+var BANNED_STYLE_KEYS = Object.freeze([
+  "radius",
+  "borderRadius",
+  "position",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "width",
+  "height",
+  "fontSize",
+  "lineHeight",
+  "fontFamily",
+  "opacity",
+  "gradient",
+  "transform",
+  "zIndex",
+  "elevation",
+  "shadow"
+]);
+var SPACING_STEPS = Object.freeze(["S", "M", "L"]);
+var DATA_COMPONENTS = Object.freeze([
+  "metric",
+  "table",
+  "keyValue",
+  "list",
+  "chart",
+  "progress",
+  "steps",
+  "compare",
+  "timeline",
+  "options",
+  "codeBlock",
+  "gallery",
+  "image"
+]);
+function losslessJson(value) {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? undefined : JSON.parse(encoded);
+  } catch {
+    return;
+  }
+}
+function hasBinding(value) {
+  if (isBinding(value))
+    return true;
+  if (Array.isArray(value))
+    return value.some(hasBinding);
+  if (isRecord2(value))
+    return Object.values(value).some(hasBinding);
+  return false;
+}
+function hasV2Component(value) {
+  for (const found of componentNodes(value)) {
+    if (V2_ONLY_COMPONENTS.includes(found.node.type))
+      return true;
+  }
+  return false;
+}
+function toolCard(build) {
+  return (args, value) => {
+    try {
+      const built = losslessJson(build(args, value));
+      if (!isNode(built))
+        return {};
+      const view = built;
+      if (view.accent !== undefined)
+        return {};
+      if (view.v === 2 || hasV2Component(view))
+        return {};
+      if (hasBinding(view))
+        return {};
+      if (!fitsBudget(view, "toolCard"))
+        return {};
+      return { [VIEW_KEY]: view };
+    } catch {
+      return {};
+    }
+  };
+}
+
+// packages/mpd-team-core-plugin/src/tool-cards.ts
+var CELL_LIMIT = 60;
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function recordAt(source, key) {
+  const found = source[key];
+  return isRecord3(found) ? found : {};
+}
+function arrayAt(source, key) {
+  const found = source[key];
+  return Array.isArray(found) ? found : [];
+}
+function firstRows(candidates) {
+  for (const candidate of candidates)
+    if (candidate.length > 0)
+      return candidate;
+  return [];
+}
+function words(value, limit = 200) {
+  if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
+    return;
+  const flat = String(value).replace(/\s+/g, " ").trim();
+  if (flat === "")
+    return;
+  return flat.length <= limit ? flat : `${flat.slice(0, Math.max(0, limit - 1))}…`;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+function cell(value, limit = CELL_LIMIT) {
+  return words(value, limit) ?? "—";
+}
+function addFact(facts, name, value) {
+  const shown = numberOf(value) ?? words(value, 120);
+  if (shown !== undefined && facts.length < 24)
+    facts.push([name, shown]);
+}
+function taskRow(row) {
+  const task = isRecord3(row) ? row : {};
+  return [cell(task.id, 12), cell(task.subject, 48), cell(task.status, 12), cell(task.owner, 24)];
+}
+function memberRow(row) {
+  const member = isRecord3(row) ? row : {};
+  return [cell(member.name, 24), cell(member.status, 12), cell(member.role, 24)];
+}
+function relatedRow(row) {
+  const related = isRecord3(row) ? row : {};
+  return [cell(isRecord3(row) ? related.id : row, 12), cell(related.subject, 48)];
+}
+function agentTeamsPlanCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "status";
+  const plan = recordAt(answer, "plan");
+  const team = recordAt(answer, "team");
+  const created = recordAt(answer, "created");
+  const members = firstRows([arrayAt(team, "members"), arrayAt(answer, "members"), arrayAt(plan, "members"), arrayAt(created, "members")]);
+  const tasks = firstRows([arrayAt(team, "tasks"), arrayAt(answer, "tasks"), arrayAt(plan, "tasks"), arrayAt(created, "tasks")]);
+  const summary = recordAt(answer, "summary");
+  const facts = [];
+  addFact(facts, "plan", plan.planId);
+  addFact(facts, "approval", plan.approval);
+  addFact(facts, "team", team.teamId);
+  addFact(facts, "total", summary.total);
+  addFact(facts, "completed", summary.completed);
+  addFact(facts, "running", summary.running);
+  addFact(facts, "ready", summary.ready);
+  addFact(facts, "appended", answer.appended);
+  addFact(facts, "archived to", answer.archivedTo);
+  addFact(facts, "stopped at", answer.stoppedAt);
+  const children = [
+    metric({ label: "members", value: members.length }),
+    metric({ label: "tasks", value: tasks.length })
+  ];
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  const description = words(plan.description, 200);
+  if (description !== undefined)
+    children.push(text(description));
+  if (tasks.length > 0)
+    children.push(table({ columns: ["id", "subject", "status", "owner"], rows: tasks.slice(0, 12).map(taskRow) }));
+  if (members.length > 0)
+    children.push(table({ columns: ["name", "status", "role"], rows: members.slice(0, 8).map(memberRow) }));
+  return stack(children, { title: `plan · ${action}` });
+}
+function agentTeamsTaskCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "claim";
+  const task = recordAt(answer, "task");
+  const contract = recordAt(answer, "contract");
+  const occupancy = answer.provenance !== undefined;
+  const facts = [];
+  addFact(facts, "task", answer.taskId ?? task.id ?? contract.taskId);
+  addFact(facts, "status", answer.status ?? task.status);
+  addFact(facts, "closed by", answer.closedBy);
+  addFact(facts, "attempt", answer.attempt ?? contract.attempt);
+  addFact(facts, "revision", answer.revision);
+  addFact(facts, "released", answer.released);
+  addFact(facts, "note", answer.note ?? task.note);
+  addFact(facts, "file", answer.path);
+  addFact(facts, "member", answer.member);
+  addFact(facts, "mode", answer.mode);
+  addFact(facts, "provenance", answer.provenance);
+  addFact(facts, "fenced", answer.fenced);
+  addFact(facts, "refused", answer.refused);
+  const children = [];
+  if (occupancy) {
+    children.push(metric({ label: "used", value: numberOf(answer.usedTokens) ?? "?" }));
+    children.push(metric({ label: "window", value: numberOf(answer.windowTokens) ?? "no window" }));
+  }
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  const related = firstRows([arrayAt(answer, "dependents"), arrayAt(answer, "added")]);
+  if (related.length > 0)
+    children.push(table({ columns: ["task", "subject"], rows: related.slice(0, 12).map(relatedRow) }));
+  const unresolved = arrayAt(answer, "unresolved");
+  if (unresolved.length > 0)
+    children.push(table({ columns: ["reference"], rows: unresolved.slice(0, 8).map((item) => [cell(item)]) }));
+  if (children.length === 0)
+    return null;
+  return stack(children, { title: `task · ${action}` });
+}
+function agentTeamsDispatchCard(args, value) {
+  const call = isRecord3(args) ? args : {};
+  const answer = isRecord3(value) ? value : {};
+  const action = words(call.action, 24) ?? "run";
+  const pairs = arrayAt(answer, "pairs");
+  const skipped = arrayAt(answer, "skipped");
+  const reassigned = arrayAt(answer, "reassigned");
+  const facts = [];
+  addFact(facts, "released", answer.released);
+  addFact(facts, "task", answer.taskId);
+  addFact(facts, "status", answer.status);
+  addFact(facts, "revision", answer.revision);
+  addFact(facts, "halted", answer.halted);
+  addFact(facts, "hold read", answer.holdRead);
+  addFact(facts, "refused", answer.refused);
+  addFact(facts, "reaped", arrayAt(answer, "reaped").length);
+  addFact(facts, "forgotten", arrayAt(answer, "forgotten").length);
+  const children = [];
+  if (pairs.length > 0 || skipped.length > 0 || reassigned.length > 0) {
+    children.push(metric({ label: "paired", value: pairs.length }));
+    children.push(metric({ label: "skipped", value: skipped.length }));
+    children.push(metric({ label: "handed over", value: reassigned.length }));
+  }
+  if (facts.length > 0)
+    children.push(keyValue(facts));
+  if (pairs.length > 0)
+    children.push(table({ columns: ["subject", "member", "note"], rows: pairs.slice(0, 12).map(pairRow) }));
+  if (skipped.length > 0)
+    children.push(table({ columns: ["subject", "reason"], rows: skipped.slice(0, 8).map(skippedRow) }));
+  if (reassigned.length > 0)
+    children.push(table({ columns: ["task", "owner", "delivered"], rows: reassigned.slice(0, 8).map(handoverRow) }));
+  if (children.length === 0)
+    return null;
+  return stack(children, { title: `dispatch · ${action}` });
+}
+function pairRow(row) {
+  const pair = isRecord3(row) ? row : {};
+  return [cell(pair.subject, 48), cell(pair.memberName, 24), cell(pair.note, 48)];
+}
+function skippedRow(row) {
+  const skip = isRecord3(row) ? row : {};
+  return [cell(skip.subject, 48), cell(skip.reason, 60)];
+}
+function handoverRow(row) {
+  const handover = isRecord3(row) ? row : {};
+  return [cell(handover.taskId, 12), cell(handover.owner, 24), handover.delivered === true ? "yes" : "NOT delivered"];
+}
+
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
 import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync } from "node:fs";
 import { join as join2 } from "node:path";
@@ -2552,10 +3096,10 @@ function pageOf(rows, limit, offset) {
   return { page, more, nextOffset: more === 0 ? null : start + page.length, limit: size, offset: start };
 }
 var MAIL_BODY_MAX = 4000;
-function truncateMailBody(text) {
-  if (text.length <= MAIL_BODY_MAX)
-    return { body: text, truncated: false, originalLength: text.length };
-  return { body: text.slice(0, MAIL_BODY_MAX), truncated: true, originalLength: text.length };
+function truncateMailBody(text2) {
+  if (text2.length <= MAIL_BODY_MAX)
+    return { body: text2, truncated: false, originalLength: text2.length };
+  return { body: text2.slice(0, MAIL_BODY_MAX), truncated: true, originalLength: text2.length };
 }
 function mailboxPath(workspace) {
   return join2(workspace, ".mpd", "team", "mailbox.jsonl");
@@ -2596,14 +3140,14 @@ function readRecords(workspace) {
   const path = mailboxPath(workspace);
   if (!existsSync(path))
     return [];
-  let text = "";
+  let text2 = "";
   try {
-    text = readFileSync(path, "utf8");
+    text2 = readFileSync(path, "utf8");
   } catch {
     return [];
   }
   const out = [];
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     if (line.trim() === "")
       continue;
@@ -2835,14 +3379,14 @@ function readPermitRecords(workspace) {
   const path = permitsPath(workspace);
   if (!existsSync2(path))
     return [];
-  let text = "";
+  let text2 = "";
   try {
-    text = readFileSync2(path, "utf8");
+    text2 = readFileSync2(path, "utf8");
   } catch {
     return [];
   }
   const out = [];
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     if (line.trim() === "")
       continue;
@@ -3761,14 +4305,14 @@ function taskDepths(board) {
 function cycleIds(board) {
   const byId = new Map(board.map((task) => [task.id, task]));
   const done = new Set;
-  const stack = [];
+  const stack2 = [];
   const inStack = new Set;
   const cyclic = new Set;
   const visit = (id) => {
     if (done.has(id))
       return;
     if (inStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
+      for (const entry of stack2.slice(stack2.indexOf(id)))
         cyclic.add(entry);
       return;
     }
@@ -3776,11 +4320,11 @@ function cycleIds(board) {
     if (task === undefined)
       return;
     inStack.add(id);
-    stack.push(id);
+    stack2.push(id);
     for (const blocker of task.blockedBy)
       if (byId.has(blocker))
         visit(blocker);
-    stack.pop();
+    stack2.pop();
     inStack.delete(id);
     done.add(id);
   };
@@ -4344,8 +4888,8 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
   const idle = new Set(idleMembers(record).map((member) => member.name));
   const rankOf = new Map;
   if (model !== undefined)
-    for (const node of model.nodes)
-      rankOf.set(node.id, node.depth);
+    for (const node2 of model.nodes)
+      rankOf.set(node2.id, node2.depth);
   const tasks = record.tasks.map((task) => {
     const visual = taskVisual(task, record.tasks);
     return {
@@ -5057,7 +5601,7 @@ var HANDOFF_SECTIONS = [
 function normalizeHandoffLabel(label) {
   return label.replace(/[*_`]/g, "").replace(/[:：]\s*$/, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
-function parseHandoff(text) {
+function parseHandoff(text2) {
   const sections = new Map;
   let current;
   let body = [];
@@ -5067,7 +5611,7 @@ function parseHandoff(text) {
 `).trim());
     body = [];
   };
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     const heading = /^(#{1,4})\s+(.+?)\s*$/.exec(line);
     if (heading !== null) {
@@ -5081,7 +5625,7 @@ function parseHandoff(text) {
   flush();
   if (sections.size > 0)
     return sections;
-  for (const line of text.split(`
+  for (const line of text2.split(`
 `)) {
     const keyed = /^\s*(?:[-*+]\s+)?([A-Za-z][A-Za-z /_-]{0,40}):\s*(.*)$/.exec(line);
     if (keyed === null)
@@ -5092,8 +5636,8 @@ function parseHandoff(text) {
   }
   return sections;
 }
-function validateHandoffText(text) {
-  const parsed = parseHandoff(text);
+function validateHandoffText(text2) {
+  const parsed = parseHandoff(text2);
   const readings = [];
   const missing = [];
   for (const section of HANDOFF_SECTIONS) {
@@ -5115,11 +5659,11 @@ function validateHandoffText(text) {
 function teamHandoffPath(workspace, teamId, member, ordinal) {
   return join9(teamRoot(workspace), "handoff", sanitizeId(teamId), sanitizeId(member) + "-" + String(ordinal) + ".md");
 }
-function writeHandoffDocument(workspace, teamId, member, ordinal, text) {
+function writeHandoffDocument(workspace, teamId, member, ordinal, text2) {
   const path = teamHandoffPath(workspace, teamId, member, ordinal);
   mkdirSync8(join9(path, ".."), { recursive: true });
-  writeFileSync4(path, text.endsWith(`
-`) ? text : text + `
+  writeFileSync4(path, text2.endsWith(`
+`) ? text2 : text2 + `
 `);
   return path;
 }
@@ -5193,8 +5737,8 @@ function workmateKeyOf(raw) {
 }
 function explicitWorkmateOf(member) {
   const marker = /^[ \t]*\[?workmate[ \t]*:[ \t]*([A-Za-z0-9_-]+)\]?[ \t]*$/m;
-  for (const text of [member.prompt, member.description]) {
-    const hit = marker.exec(String(text ?? ""));
+  for (const text2 of [member.prompt, member.description]) {
+    const hit = marker.exec(String(text2 ?? ""));
     if (hit !== null) {
       const key = workmateKeyOf(hit[1]);
       if (key !== "")
@@ -5806,10 +6350,10 @@ function deriveRanks(tasks, byId) {
   for (const root of tasks) {
     if (settled.has(root.id))
       continue;
-    const stack = [{ id: root.id, next: 0 }];
+    const stack2 = [{ id: root.id, next: 0 }];
     walking.add(root.id);
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
+    while (stack2.length > 0) {
+      const frame = stack2[stack2.length - 1];
       const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
       if (frame.next < deps.length) {
         const dependency = deps[frame.next];
@@ -5817,7 +6361,7 @@ function deriveRanks(tasks, byId) {
         if (settled.has(dependency) || walking.has(dependency))
           continue;
         walking.add(dependency);
-        stack.push({ id: dependency, next: 0 });
+        stack2.push({ id: dependency, next: 0 });
         continue;
       }
       let deepest = 0;
@@ -5825,7 +6369,7 @@ function deriveRanks(tasks, byId) {
         deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
       settled.set(frame.id, deepest);
       walking.delete(frame.id);
-      stack.pop();
+      stack2.pop();
     }
   }
   return settled;
@@ -5877,14 +6421,14 @@ function rankPlan(tasks, served) {
 function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
-  const stack = [];
+  const stack2 = [];
   const onStack = new Set;
   const cyclic = new Set;
   const visit = (id) => {
     if (done.has(id))
       return;
     if (onStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
+      for (const entry of stack2.slice(stack2.indexOf(id)))
         cyclic.add(entry);
       return;
     }
@@ -5892,11 +6436,11 @@ function cycleIds2(tasks) {
     if (task === undefined)
       return;
     onStack.add(id);
-    stack.push(id);
+    stack2.push(id);
     for (const dependency of task.dependencies)
       if (byId.has(dependency))
         visit(dependency);
-    stack.pop();
+    stack2.pop();
     onStack.delete(id);
     done.add(id);
   };
@@ -5920,14 +6464,14 @@ function splitCells(row) {
   if (!trimmed.startsWith("|"))
     return [];
   const body = trimmed.replace(/^\|/, "").replace(/\|$/, "");
-  return body.split("|").map((cell) => cell.trim());
+  return body.split("|").map((cell2) => cell2.trim());
 }
 function isTableSeparator(row) {
   const cells = splitCells(row);
-  return cells.length > 0 && cells.every((cell) => /^:?-+:?$/.test(cell.replace(/[ \t]/g, "")));
+  return cells.length > 0 && cells.every((cell2) => /^:?-+:?$/.test(cell2.replace(/[ \t]/g, "")));
 }
-function stripEmphasis(text) {
-  let value = text.trim();
+function stripEmphasis(text2) {
+  let value = text2.trim();
   while (value.startsWith("**") || value.startsWith("*") || value.startsWith("`")) {
     value = (value.startsWith("**") ? value.slice(2) : value.slice(1)).trim();
   }
@@ -5936,13 +6480,13 @@ function stripEmphasis(text) {
   }
   return value;
 }
-function laneKeyOf(text) {
-  const value = stripEmphasis(text);
+function laneKeyOf(text2) {
+  const value = stripEmphasis(text2);
   const match = /^(?:Lane\s+)?([A-Za-z][A-Za-z0-9]{0,3})(?=[ \t]*[.:—–·(]|[ \t]*$)/.exec(value);
   return match === null ? undefined : match[1].toUpperCase();
 }
-function leadingLane(text) {
-  let value = text.trim();
+function leadingLane(text2) {
+  let value = text2.trim();
   let bold = false;
   if (value.startsWith("**")) {
     bold = true;
@@ -5962,16 +6506,16 @@ function leadingLane(text) {
   rest = rest.replace(/^[ \t]*(?:—|–|-|·|:)[ \t]*/, "").trim();
   return { key: match[1].toUpperCase(), title: rest === "" ? value.trim() : rest };
 }
-function normalizeOwner(cell) {
-  const value = stripEmphasis(cell);
+function normalizeOwner(cell2) {
+  const value = stripEmphasis(cell2);
   const cut = value.indexOf("(");
   return (cut >= 0 ? value.slice(0, cut) : value).trim();
 }
-function readableLines(text) {
+function readableLines(text2) {
   const lines = [];
   let fence;
   let number = 0;
-  for (const raw of text.split(`
+  for (const raw of text2.split(`
 `)) {
     number += 1;
     const opener = FENCE.exec(raw);
@@ -5994,7 +6538,7 @@ function collectLanes(lines, problems) {
   let index = 0;
   while (index < lines.length) {
     const header = splitCells(lines[index].text);
-    const named = header.some((cell) => stripEmphasis(cell).toLowerCase() === "lane") && header.some((cell) => stripEmphasis(cell).toLowerCase() === "owner");
+    const named = header.some((cell2) => stripEmphasis(cell2).toLowerCase() === "lane") && header.some((cell2) => stripEmphasis(cell2).toLowerCase() === "owner");
     const separator = lines[index + 1];
     if (!named || separator === undefined || !isTableSeparator(separator.text)) {
       index += 1;
@@ -6073,11 +6617,11 @@ function collectTasks(lines, lanes, problems) {
   }
   return tasks;
 }
-function declaredReferences(text) {
+function declaredReferences(text2) {
   const lists = [];
-  for (const match of text.matchAll(PARENTHESISED_BLOCKS))
+  for (const match of text2.matchAll(PARENTHESISED_BLOCKS))
     lists.push(match[1]);
-  for (const match of text.matchAll(LABELLED_BLOCKS))
+  for (const match of text2.matchAll(LABELLED_BLOCKS))
     lists.push(match[1]);
   return lists.flatMap((list) => list.split(/[ \t]*(?:,|\+|&|\band\b)[ \t]*/i).map((token) => token.trim()).filter((token) => token !== ""));
 }
@@ -6106,8 +6650,8 @@ function resolveTask(task, lanes, byLane, problems) {
   const blockedBy = [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
   return { id: task.id, title: task.title, section: task.section, line: task.line, owner, blockedBy };
 }
-function parsePlanMarkdown(text) {
-  const lines = readableLines(text);
+function parsePlanMarkdown(text2) {
+  const lines = readableLines(text2);
   const problems = [];
   const lanes = collectLanes(lines, problems);
   const raw = collectTasks(lines, lanes, problems);
@@ -6331,8 +6875,8 @@ function buildModel(input) {
   const merges = frames.map((frame) => mergeFrame(frame));
   const frameOf = new Map;
   for (const merge of merges)
-    for (const node of merge.nodes)
-      claimId(frameOf, node.id, merge.frame);
+    for (const node2 of merge.nodes)
+      claimId(frameOf, node2.id, merge.frame);
   const level = new Map;
   for (const merge of merges)
     level.set(merge.frame, [...merge.nodes].sort(byNodeId));
@@ -6393,14 +6937,14 @@ function buildModel(input) {
   const drawingNodes = new Map;
   for (const frame of frames) {
     const nodes2 = level.get(frame) ?? [];
-    const drawn = nodes2.map((node) => ({ ...node, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node.id) ?? []) }));
+    const drawn = nodes2.map((node2) => ({ ...node2, dependencies: uniqueSorted(drawnDeps.get(frame)?.get(node2.id) ?? []) }));
     drawingNodes.set(frame, drawn);
     const layout = rankPlan(drawn);
     layouts.set(frame, layout);
     if (frame === root)
       rootLayout = layout;
-    for (const node of nodes2)
-      node.depth = layout.rankOf.get(node.id) ?? node.depth;
+    for (const node2 of nodes2)
+      node2.depth = layout.rankOf.get(node2.id) ?? node2.depth;
   }
   const edges = [];
   for (const frame of frames) {
@@ -6419,8 +6963,8 @@ function buildModel(input) {
       cyclic.add(id);
   const refs = new Set;
   for (const merge of merges)
-    for (const node of merge.nodes)
-      for (const ref of node.dependencies)
+    for (const node2 of merge.nodes)
+      for (const ref of node2.dependencies)
         refs.add(ref);
   for (const frame of frames)
     if (frame.originTaskId !== undefined)
@@ -6445,7 +6989,7 @@ function groupRecords(frames, level) {
       id: frame.id,
       label: frame.label,
       parentId: frame.parent === null ? null : frame.parent.id,
-      memberIds: sortedIds((level.get(frame) ?? []).map((node) => node.id)),
+      memberIds: sortedIds((level.get(frame) ?? []).map((node2) => node2.id)),
       depth: frame.depth,
       ...frame.originTaskId === undefined ? {} : { originTaskId: frame.originTaskId }
     });
@@ -6458,7 +7002,7 @@ import { isAbsolute as isAbsolute2, join as join10, resolve as resolve3 } from "
 var LEDGER_PATH = join10(".mpd", "boulder.json");
 var PLANS_DIR = join10(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
-function isRecord2(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function planPathFrom(root, value) {
@@ -6469,7 +7013,7 @@ function planPathFrom(root, value) {
 function readBoulderState(root) {
   try {
     const parsed = JSON.parse(readFileSync8(join10(root, LEDGER_PATH), "utf8"));
-    return isRecord2(parsed) ? parsed : undefined;
+    return isRecord4(parsed) ? parsed : undefined;
   } catch {
     return;
   }
@@ -6478,9 +7022,9 @@ function beaconPlan(root) {
   const state = readBoulderState(root);
   if (state === undefined)
     return;
-  const works = isRecord2(state.works) ? state.works : undefined;
+  const works = isRecord4(state.works) ? state.works : undefined;
   const activeId = typeof state.active_work_id === "string" ? state.active_work_id : undefined;
-  const record = works !== undefined && activeId !== undefined && isRecord2(works[activeId]) ? works[activeId] : undefined;
+  const record = works !== undefined && activeId !== undefined && isRecord4(works[activeId]) ? works[activeId] : undefined;
   if (record === undefined || record.status !== "active")
     return;
   const path = planPathFrom(root, record.active_plan) ?? planPathFrom(root, state.active_plan);
@@ -7132,7 +7676,7 @@ class ChangeFeed {
 var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
-var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
+var text2 = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
 function describePlan(plan) {
   if (plan === undefined)
     return "no staged plan";
@@ -7193,10 +7737,10 @@ function stringList(value) {
 function parseTaskKind(value) {
   if (value === undefined || value === null || value === "")
     return;
-  const text2 = String(value);
-  if (!TASK_KINDS.includes(text2))
-    throw new Error(`unknown task kind "${text2}" (${TASK_KINDS.join(" | ")})`);
-  return text2;
+  const text3 = String(value);
+  if (!TASK_KINDS.includes(text3))
+    throw new Error(`unknown task kind "${text3}" (${TASK_KINDS.join(" | ")})`);
+  return text3;
 }
 function blockerReading(plan, references) {
   return references.map((reference) => ({ reference, form: classifyBlocker(plan, reference) }));
@@ -7843,6 +8387,7 @@ function apply(ctx) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: toolCard(agentTeamsPlanCard),
       schema: {
         type: "object",
         properties: {
@@ -7863,7 +8408,7 @@ function apply(ctx) {
           bindings: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
+      render: (_args, value) => text2(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.bindings) && value.bindings.length > 0 ? `
 ` + value.bindings.map((binding) => "  " + String(binding.member ?? "?") + " — " + String(binding.mode ?? "?") + (binding.workmate === undefined ? "" : ": " + binding.workmate) + (binding.reason === undefined ? "" : " (" + binding.reason + ")")).join(`
 `) : "") + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan))
     },
@@ -8078,8 +8623,9 @@ function apply(ctx) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: toolCard(agentTeamsTaskCard),
       schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } }, teamId: { type: "string" }, member: { type: "string" }, mode: { type: "string" }, fenced: { type: "boolean" }, fencedReason: { type: "string" }, usedTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, windowTokens: { oneOf: [{ type: "number" }, { type: "null" }] }, ratio: { oneOf: [{ type: "number" }, { type: "null" }] }, provenance: { type: "string" }, contextCheckpoint: { type: "object" }, path: { type: "string" }, ordinal: { type: "number" }, directive: { type: "string" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.directive !== undefined ? `handoff written: ${value.path} (#${value.ordinal}) — end your turn now` : value?.provenance !== undefined ? `${value.member ?? "this session"}${value.mode === undefined ? "" : ` [${value.mode}]`} used ${value.usedTokens ?? "?"} / ${value.windowTokens ?? "no window"} (${value.provenance})${typeof value.ratio === "number" ? ` = ${Math.round(value.ratio * 100)}%` : ""}${value.fenced === true ? " · FENCED" : ""}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.directive !== undefined ? `handoff written: ${value.path} (#${value.ordinal}) — end your turn now` : value?.provenance !== undefined ? `${value.member ?? "this session"}${value.mode === undefined ? "" : ` [${value.mode}]`} used ${value.usedTokens ?? "?"} / ${value.windowTokens ?? "no window"} (${value.provenance})${typeof value.ratio === "number" ? ` = ${Math.round(value.ratio * 100)}%` : ""}${value.fenced === true ? " · FENCED" : ""}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
@@ -8319,8 +8865,9 @@ function apply(ctx) {
       additionalProperties: false
     },
     output: {
+      presentationMeta: toolCard(agentTeamsDispatchCard),
       schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, reassigned: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : [
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.halted !== undefined ? `halted: ${value.halted}` : [
         ...Array.isArray(value?.reassigned) ? value.reassigned.map((row) => `reassigned ${row.taskId} -> ${row.owner}${row.delivered === true ? "" : " (NOT delivered: " + String(row.reason ?? "unknown") + ")"}`) : [],
         ...(value?.pairs?.length ?? 0) === 0 ? ["nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row) => row.subject + ": " + row.reason).join("; ") + ")")] : value.pairs.map((pair) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : ""))
       ].join(`
@@ -8420,7 +8967,7 @@ function apply(ctx) {
     },
     output: {
       schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" }, broadcast: { type: "boolean" }, ok: { type: "boolean" }, reason: { type: "string" }, permit: { type: "object" }, permitScope: { type: "string" }, answers: { type: "array", items: { type: "object" } }, polls: { type: "number" }, waitedMs: { type: "number" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}` : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))` : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` + (value.message.truncated === true ? ` (body truncated at 4000 chars of ${value.message.originalLength} — the pre-cut text is not kept)` : "") : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.permit !== undefined ? `permit ${value.permit.permitId} → ${value.permit.holderName} · scope ${value.permit.scope} · expires ${value.permit.expiresAt}` : value?.ok === false ? `wait ${value.reason} after ${value.waitedMs} ms (${value.polls} poll(s))` : value?.ok === true ? `wait returned ${(value.answers ?? value.messages ?? []).length} row(s) after ${value.waitedMs} ms` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` + (value.message.truncated === true ? ` (body truncated at 4000 chars of ${value.message.originalLength} — the pre-cut text is not kept)` : "") : value?.broadcast === true ? `sent ${value.messages?.length ?? 0} message(s), one row per recipient` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
 `) + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "") : (value?.messages?.length ?? 0) === 0 ? "nothing unread" : value.messages.map((mail) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join(`
 `) + (typeof value?.more === "number" && value.more > 0 ? `
 (showing ${value.messages.length} of ${value.unreadTotal}; more: ${value.more} — next page offset=${value.nextOffset})` : ""))
@@ -8643,7 +9190,7 @@ ${message.body}`, exec.signal);
     },
     output: {
       schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
