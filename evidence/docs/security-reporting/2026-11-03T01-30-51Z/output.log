@@ -1,0 +1,10 @@
+### evidence of the premise
+{"has_issues":true,"private":false,"security_and_analysis":{"dependabot_security_updates":{"status":"disabled"},"secret_scanning":{"status":"enabled"},"secret_scanning_non_provider_patterns":{"status":"disabled"},"secret_scanning_push_protection":{"status":"enabled"},"secret_scanning_validity_checks":{"status":"disabled"}}}
+
+### the two files changed
+ M CONTRIBUTING.md
+ M CONTRIBUTING.zh-CN.md
+
+### verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=501 dead=0 — PASS

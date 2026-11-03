@@ -1,0 +1,18 @@
+### tests
+ 675 pass
+ 0 fail
+ 19042 expect() calls
+Ran 675 tests across 38 files. [8.91s]
+### typecheck (mine)
+### verify:comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### verify:docs
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=501 dead=0 — PASS
+### verify-dshgo-views
+[verify-dshgo-views] PASS — /home/haroldzhao/MyProj/DshProj/My-Power-Dsh: manifest + static views are legal
+### verify-dist-fresh
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 733ms
+### verify:gates
+[verify-gates] member workflows: exit=0 PASS - 33ms
+[verify-gates] PASS - 9/9 member gate(s) green

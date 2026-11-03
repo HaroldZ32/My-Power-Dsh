@@ -1,0 +1,57 @@
+{
+  "lane": "T15 — unify the outward descriptions + light de-AI pass on package README pairs",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "measuredAt": "2026-11-03T01:24:50Z",
+  "writeSet": [
+    "package.json (description, keywords, dshGo titles)",
+    "packages/*/README.md + README.zh-CN.md",
+    "evidence/dshgo/outward-copy/**"
+  ],
+  "notTouched": [
+    "README.md / README.zh-CN.md at the repo root — owned by the concurrent T14 docs lane; the lead paragraph is REPORTED here instead of applied",
+    "docs/** — T14",
+    "dist/mpd-package/** and packages/*/dist/** — derived surfaces owned by the integration task (§7)"
+  ],
+  "unifiedDescriptions": {
+    "npmDescription": "A DeepSeek Harness plugin bundle: an eleven-role specialist roster, a durable workmate library, team staging with a shared board, and native dsh-Go panels and tool cards.",
+    "keywords": ["dsh", "deepseek-harness", "plugin-bundle", "agent-teams", "roster", "workmate", "memory", "tui", "dsh-go", "native-ui"],
+    "dshGoTitles": {
+      "plugin": { "en": "MPD", "zh": "MPD" },
+      "panelMpd": { "en": "MPD Workbench", "zh": "MPD 工作台" },
+      "panelTeam": { "en": "MPD Team Board", "zh": "MPD 团队看板" },
+      "note": "The plugin's own name stays `MPD` (a name, not a sentence); the two PANEL titles now both carry the plugin prefix, so the plugin list and the two surfaces read as one product. `MPD Team Board` / `MPD 团队看板` is the only title change."
+    },
+    "readmeLeadEN_reportedNotApplied": "my-power-dsh is a DeepSeek Harness plugin bundle. It carries an eleven-role specialist roster, a durable workmate library, team staging with a shared board, and native dsh-Go panels and tool cards. Install it with one command: `dsh plugin --profile web add @mpd-dsh/mpd`.",
+    "readmeLeadZH_reportedNotApplied": "my-power-dsh 是一套 DeepSeek Harness 插件包：十一个专家 role 的名册、可长期演化的 workmate 库、团队暂存与共享看板，以及 dsh-Go 原生面板与工具卡片。一条命令即可安装：`dsh plugin --profile web add @mpd-dsh/mpd`。",
+    "sharedNouns": ["eleven-role specialist roster / 十一个专家 role 的名册", "workmate library / workmate 库", "team staging with a shared board / 团队暂存与共享看板", "native dsh-Go panels and tool cards / dsh-Go 原生面板与工具卡片"]
+  },
+  "packageReadmes": {
+    "rewritten": [
+      { "package": "mpd-autoproject-plugin", "change": "opening sentence: wave label `Plan C / C2 —` removed; the engine is described in its own words (fixed-policy autoproject engine on the DSH subagent seam, second design replacing the retired loop engine). No contract text moved." },
+      { "package": "mpd-comment-checker-plugin", "change": "opening line: wave label removed, fragment turned into a sentence (comment and docstring detection on the DSH tool seam, shipped as an opt-in binary)." },
+      { "package": "mpd-config-plugin", "change": "opening line: wave label removed, states what the layer is and who reads it." },
+      { "package": "mpd-goal-plugin", "change": "opening line: internal wave marker `C8 —` removed (EN and zh)." },
+      { "package": "mpd-hashline-plugin", "change": "opening line: wave label removed (EN and zh)." },
+      { "package": "mpd-memory-plugin", "change": "opening line: wave label removed, reads as a sentence (EN and zh)." }
+    ],
+    "rewrittenCount": 6,
+    "skippedCount": 28,
+    "skippedReason": "Read the first paragraph of all 34 EN pages: the remaining 28 already open with a concrete sentence naming the contract they implement (adapter, bootstrap, bundle patch layer, mail protocol, MCP launchers, team core, verification law, TUI, workmate …). No machine-written padding, padded triad, 'seamless/robust/comprehensive/leverage' filler or rhetorical 'not X but Y' was found in them, so they were left byte-identical — a light pass means NOT rewriting pages that are already concrete.",
+    "invariants": [
+      "every table, limit, command, code sample and contract sentence is byte-identical in all six rewritten pairs",
+      "the two languages' heading trees stay aligned and both switch links are intact",
+      "no page was restructured"
+    ]
+  },
+  "checks": [
+    { "command": "bun run verify:docs", "result": "exit 0 — PASS, pairs=55 failed=0 violations=0 links=507 dead=0" },
+    { "command": "bun run verify:manifest", "result": "exit 0 — VERDICT: PASS (version coherence, files allowlist, packed content 1202 files)" },
+    { "command": "node scripts/verify-dshgo-views.ts", "result": "exit 0 — PASS, manifest + static views legal after the panel-title change" },
+    { "command": "node scripts/verify-pack-closure.ts", "result": "exit 1 — 2 violations, both reported as BOUNDS below (neither is a T15 acceptance criterion)" }
+  ],
+  "bounds": [
+    "verify-pack-closure is RED with exactly two violations. (1) MANIFEST: the packed dist/mpd-package/package.json still carries the OLD dshGo block, because this lane changed the source panel title after the pack stamp 2026-11-03T00:22:29.695Z — the integration step must re-run `node scripts/pack-mpd.ts` (§7 puts dist/mpd-package/** in the integration task's scope, so this lane did not pack). (2) TREE-DRIFT: docs/market-listing.md, docs/market-listing.zh-CN.md and docs/market/dsh-go-entry.json are newer than the artifact — the concurrent docs lane added them, and a re-pack after THAT lane lands clears both in one pass.",
+    "the README lead paragraph is REPORTED, not applied, per the Lead's boundary: the root README pair belongs to T14 and had two writers.",
+    "no claim was added that the code does not do: the npm sentence names only surfaces this wave ships (roster, workmate library, team staging + shared board, dsh-Go panels and tool cards); memory and TUI stay in the keywords rather than the sentence, because the sentence is one and the keywords carry breadth."
+  ]
+}

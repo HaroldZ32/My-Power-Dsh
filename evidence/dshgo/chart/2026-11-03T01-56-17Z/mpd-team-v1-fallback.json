@@ -1,0 +1,290 @@
+{
+  "type": "stack",
+  "v": 1,
+  "children": [
+    {
+      "type": "stack",
+      "children": [
+        {
+          "type": "text",
+          "text": "Board"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Team Board"
+            },
+            {
+              "type": "text",
+              "text": "Drive surface · 2 Tasks · 1 Blocked",
+              "tone": "muted"
+            },
+            {
+              "type": "progress",
+              "value": {
+                "$": "data.counts.completion"
+              },
+              "label": "Completion",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "title": "Active",
+              "trailing": {
+                "$": "data.counts.active"
+              }
+            },
+            {
+              "title": "Done",
+              "trailing": {
+                "$": "data.counts.done"
+              }
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "The active team's board"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "T1 Adapt the view kit",
+                  "subtitle": "Deep Worker",
+                  "trailing": "active",
+                  "action": {
+                    "id": "select",
+                    "args": {
+                      "task": "T1"
+                    }
+                  }
+                },
+                {
+                  "title": "T2 Migrate the panels",
+                  "subtitle": "Senior Engineer · blocked 1",
+                  "trailing": "todo",
+                  "action": {
+                    "id": "select",
+                    "args": {
+                      "task": "T2"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Work per member"
+            },
+            {
+              "type": "chart",
+              "kind": "bar",
+              "categories": [
+                "Deep Worker",
+                "Senior Engineer"
+              ],
+              "series": [
+                {
+                  "name": "Tasks",
+                  "values": [
+                    1,
+                    1
+                  ]
+                }
+              ],
+              "caption": "Board rows owned, by member"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Dependency graph"
+            },
+            {
+              "type": "steps",
+              "items": [
+                {
+                  "label": "L0",
+                  "detail": "T1",
+                  "status": "done"
+                },
+                {
+                  "label": "L1",
+                  "detail": "T2",
+                  "status": "todo"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Who is on this team"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "DW · Deep Worker",
+                  "trailing": "running",
+                  "tone": "info"
+                },
+                {
+                  "title": "SE · Senior Engineer",
+                  "trailing": "handoff ready",
+                  "tone": "muted"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Detail"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Watch"
+            },
+            {
+              "type": "text",
+              "text": "T1 Adapt the view kit",
+              "tone": "muted"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "The selected row"
+            },
+            {
+              "type": "text",
+              "text": "Build the v2 kit and its fallback.",
+              "tone": "muted"
+            },
+            {
+              "type": "keyValue",
+              "items": [
+                [
+                  "Owner",
+                  "Deep Worker"
+                ],
+                [
+                  "Status",
+                  "in_progress"
+                ],
+                [
+                  "Kind",
+                  "work"
+                ],
+                [
+                  "Dependencies",
+                  "—"
+                ],
+                [
+                  "Verdict",
+                  "—"
+                ]
+              ]
+            },
+            {
+              "type": "callout",
+              "text": "Settling a row is the owning member's call; run it from that agent."
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "Back",
+                  "action": "back",
+                  "icon": "expand"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Watch"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Watch"
+            },
+            {
+              "type": "text",
+              "text": "The preserving hold and the recorded incidents",
+              "tone": "muted"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "title": "Predicate",
+              "trailing": "channel"
+            },
+            {
+              "title": "Watch",
+              "trailing": "Held · silence"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Incidents"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "silence",
+                  "subtitle": "2026-11-02T20:00:00Z",
+                  "trailing": "T2 was silent past the bound"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "Pause and resume run from the captain's console, not from a tap."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+== LICENSE-NOTICES.md: 146 lines ==
+
+== forbidden-word grep (must be empty) ==
+grep_exit=1 (1 = nothing found)
+
+== tree-path existence loop ==
+checked=31 missing=0
+
+== verify:manifest ==
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+
+== verify:docs ==
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=501 dead=0 — PASS

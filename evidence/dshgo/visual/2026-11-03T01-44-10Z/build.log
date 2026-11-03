@@ -1,0 +1,54 @@
+{
+  "mpd-v2": {
+    "bytes": 3313,
+    "nodes": 41,
+    "depth": 5,
+    "budget": {
+      "bytes": 32768,
+      "nodes": 120,
+      "depth": 8
+    },
+    "fitsBudget": true,
+    "lintMode": 2,
+    "findings": []
+  },
+  "mpd-v1-fallback": {
+    "bytes": 2054,
+    "nodes": 35,
+    "depth": 5,
+    "budget": {
+      "bytes": 32768,
+      "nodes": 120,
+      "depth": 8
+    },
+    "fitsBudget": true,
+    "lintMode": 1,
+    "findings": []
+  },
+  "mpd-team-v2": {
+    "bytes": 3452,
+    "nodes": 39,
+    "depth": 4,
+    "budget": {
+      "bytes": 32768,
+      "nodes": 120,
+      "depth": 8
+    },
+    "fitsBudget": true,
+    "lintMode": 2,
+    "findings": []
+  },
+  "mpd-team-v1-fallback": {
+    "bytes": 2299,
+    "nodes": 33,
+    "depth": 4,
+    "budget": {
+      "bytes": 32768,
+      "nodes": 120,
+      "depth": 8
+    },
+    "fitsBudget": true,
+    "lintMode": 1,
+    "findings": []
+  }
+}

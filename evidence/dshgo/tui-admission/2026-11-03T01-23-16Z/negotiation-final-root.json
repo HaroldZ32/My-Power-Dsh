@@ -1,0 +1,18 @@
+{
+  "manifest": "dsh-plugin.json",
+  "hostVersion": "0.18.0",
+  "hostContracts": [
+    "commands.dsh/v1alpha1#Command",
+    "storage.dsh/v1alpha1#LocalStorage",
+    "messages.dsh/v1alpha1#MessageObserver",
+    "tui.dsh/v1alpha1#DecisionEvents",
+    "tui.dsh/v1alpha1#Backend"
+  ],
+  "validation": "ok",
+  "decision": {
+    "decision": "compatible"
+  },
+  "hostWarnings": [
+    "legacy compatibility descriptor: contracts declared from the mounted legacy service topology without live probe evidence"
+  ]
+}

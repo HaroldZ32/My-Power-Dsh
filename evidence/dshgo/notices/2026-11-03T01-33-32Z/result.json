@@ -1,0 +1,58 @@
+{
+  "lane": "T16 — rewrite LICENSE-NOTICES as current-only third-party notices",
+  "branch": "feature/mpd-dshgo-native-parity",
+  "measuredAt": "2026-11-03T01:33:32Z",
+  "file": "LICENSE-NOTICES.md",
+  "result": { "linesBefore": 419, "linesAfter": 146, "target": "100-160" },
+  "method": "Every entry was checked against the tree rather than trusted from the old text: each path below was opened, each licence read from a file in this tree or from the installed package's own metadata.",
+  "keptComponents": [
+    { "component": "Skill corpus (16 skills)", "path": "skills/<name>/", "licence": "MIT", "copyright": "Copyright (c) 2026 Yeongyu Kim", "source": "https://github.com/code-yeongyu/lazycodex", "attribution": "re-license notice quoted verbatim; per-skill ATTRIBUTION.md carries the full MIT text" },
+    { "component": "review-work review panel", "path": "skills/review-work/", "licence": "MIT", "copyright": "this repository (Copyright (c) 2026 HaroldZ32)", "source": "own work", "attribution": "per-file split in skills/review-work/ATTRIBUTION.md" },
+    { "component": "dsh-qa, svn-master", "path": "skills/dsh-qa/SKILL.md, skills/svn-master/SKILL.md", "licence": "MIT", "copyright": "this repository", "source": "own work", "attribution": "none required" },
+    { "component": "Open Design references", "path": "skills/frontend/LICENSE-Apache-2.0.txt", "licence": "Apache-2.0", "copyright": "not stated in the shipped text", "source": "skills/frontend/ATTRIBUTION.md", "attribution": "full Apache text shipped" },
+    { "component": "ast-grep skill carriers", "path": "skills/ast-grep/SOURCE, skills/ast-grep/LICENSE", "licence": "MIT", "copyright": "Copyright (c) 2026 Yeongyu Kim", "source": "https://github.com/code-yeongyu/ast-grep-skill", "attribution": "carriers ship with the skill" },
+    { "component": "insane-search engine", "path": "skills/ultimate-browsing/engine/", "licence": "MIT", "copyright": "Copyright (c) 2026 fivetaku", "source": "https://github.com/fivetaku/insane-search", "attribution": "notice text in skills/ultimate-browsing/ATTRIBUTION.md" },
+    { "component": "CloakBrowser", "path": "runtime dependency, not vendored", "licence": "MIT wrapper; separate binary licence", "copyright": "not stated in tree", "source": "https://github.com/CloakHQ/CloakBrowser", "attribution": "pointed at the binary licence" },
+    { "component": "agent-browser", "path": "runtime dependency, not vendored", "licence": "Apache-2.0", "copyright": "not stated in tree", "source": "https://github.com/vercel-labs/agent-browser", "attribution": "licence URL cited" },
+    { "component": "cordis-dev skill", "path": "skills/cordis-dev/SKILL.md", "licence": "MIT", "copyright": "Copyright (c) 2026 DeepSeek", "source": "https://github.com/deepseek-ai/deepseek-harness", "attribution": "adapted, no upstream file redistributed" },
+    { "component": "roster persona texts (9 adapted)", "path": "packages/mpd-roles-plugin/personas/", "licence": "MIT or Apache-2.0 per row", "copyright": "per row in the table", "source": "per row URL", "attribution": "table keeps holder + licence + upstream URL" },
+    { "component": "AgentTeams browser client", "path": "packages/mpd-bundle-plugin/adopted/agent-teams-client.js", "licence": "MIT", "copyright": "no copyright line in the upstream build", "source": "https://github.com/NanmiCoder/dsh-agent-teams", "attribution": "licence named; embedded into packages/mpd-bundle-plugin/client.js" },
+    { "component": "schemastery / cosmokit / cordis", "path": "packages/mpd-schemastery/lib/", "licence": "MIT", "copyright": "Copyright (c) 2021-present Shigma", "source": "https://github.com/deepseek-ai/deepseek-harness", "attribution": "full text in packages/mpd-schemastery/LICENSE" },
+    { "component": "DSH framework modules", "path": "packages/mpd-schemastery/harness/", "licence": "MIT", "copyright": "Copyright (c) 2026 DeepSeek", "source": "https://github.com/deepseek-ai/deepseek-harness", "attribution": "full text in packages/mpd-schemastery/LICENSE" },
+    { "component": "@deepseek-ai/* harness packages", "path": "declared dependency", "licence": "MIT", "copyright": "Copyright (c) 2026 DeepSeek", "source": "npm", "attribution": "not redistributed" },
+    { "component": "@dsh-std/sdk", "path": "declared dependency", "licence": "MIT", "copyright": "Copyright (c) 2026 DSH Standard contributors", "source": "npm", "attribution": "not redistributed" },
+    { "component": "dsh-better-sidebar", "path": "peer dependency", "licence": "MIT", "copyright": "Copyright (c) 2026 dsh-external", "source": "npm", "attribution": "not redistributed" },
+    { "component": "cclsp", "path": "optional dependency, launched by packages/mpd-mcp-lsp/", "licence": "MIT", "copyright": "Copyright (c) 2025 ktnyt", "source": "npm", "attribution": "not redistributed" },
+    { "component": "@cyanheads/git-mcp-server", "path": "optional dependency, launched by packages/mpd-mcp-gitbash/", "licence": "Apache-2.0", "copyright": "Casey Hand", "source": "npm", "attribution": "not redistributed" },
+    { "component": "mcp-server-commands", "path": "optional dependency, launched by packages/mpd-mcp-gitbash/", "licence": "MIT", "copyright": "NOT ESTABLISHED — no copyright line in the package's LICENSE", "source": "npm", "attribution": "not redistributed" },
+    { "component": "@colbymchenry/codegraph", "path": "optional dependency", "licence": "MIT (declared metadata)", "copyright": "NOT ESTABLISHED in the installed package", "source": "npm", "attribution": "the vendored server's LICENSE carries Copyright (c) 2026 Yeongyu Kim" },
+    { "component": "CodeGraph prebuilt server", "path": "packages/mpd-mcp-codegraph/dist/serve.js", "licence": "MIT", "copyright": "Copyright (c) 2026 Yeongyu Kim", "source": "packages/mpd-mcp-codegraph/LICENSE", "attribution": "LICENSE + NOTICE + NODE-RUNTIME-LICENSES.md ship beside it" },
+    { "component": "@code-yeongyu/comment-checker", "path": "opt-in binary in .toolchain", "licence": "MIT", "copyright": "not stated in tree", "source": "https://github.com/code-yeongyu/go-claude-code-comment-checker", "attribution": "not redistributed" },
+    { "component": "Official Agent Teams plugin set (3 packages)", "path": "declared dependencies, mounted by mpd-agent-team / mpd-tool-agent-team / mpd-ui-agent-team", "licence": "MIT", "copyright": "Copyright (c) 2026 DeepSeek", "source": "npm", "attribution": "not vendored" }
+  ],
+  "droppedComponents": [
+    { "subject": "oh-my-openagent MCP server snapshots", "reason": "no such tree ships; there is no path to cite" },
+    { "subject": "packages/mpd-boulder-plugin/src/vendor/**", "reason": "PATH ABSENT — `ls packages/mpd-boulder-plugin` fails; the boulder tools live in mpd-autoproject-plugin as mpd-owned code" },
+    { "subject": "packages/mpd-comment-checker-plugin/src/vendor/**", "reason": "PATH ABSENT — `ls packages/mpd-comment-checker-plugin/src/vendor` fails; the plugin's dependency is the opt-in npm binary" },
+    { "subject": "packages/mpd-ulw-plugin two-ports section", "reason": "PATH ABSENT — the package no longer exists" },
+    { "subject": "packages/mpd-memory-plugin derived-reducer section", "reason": "the package ships mpd-owned code with no third-party bytes; its provenance note stays in the package README pair, not in a notices file" },
+    { "subject": "dsh-agent-teams body history", "reason": "only the two pieces that still ship are kept, described as what they are (the adopted client bundle, the schemastery/runtime modules), with no replacement narrative" }
+  ],
+  "licenceNotEstablished": [
+    "mcp-server-commands — its LICENSE is the MIT text with no copyright line, so no holder can be named.",
+    "@colbymchenry/codegraph — the installed package declares MIT metadata but ships no LICENSE file; the copyright holder is named only for the vendored serve.js (Copyright (c) 2026 Yeongyu Kim).",
+    "the adopted agent-teams browser client — the upstream build carries no copyright line; the project licence is MIT (dsh-agent-teams).",
+    "Open Design (skills/frontend Apache-2.0) and the Architect persona seed (Apache-2.0) — Apache texts reproduced in the tree carry no per-file copyright line."
+  ],
+  "checks": [
+    { "command": "grep -niE 'wave|REMOVED|DELETED|replaced|historical|no longer' LICENSE-NOTICES.md", "result": "exit 1 — NO match (clean)" },
+    { "command": "python3 path loop over every backticked/link path in the file", "result": "checked=31 missing=0" },
+    { "command": "bun run verify:manifest", "result": "exit 0 — VERDICT: PASS" },
+    { "command": "bun run verify:docs", "result": "exit 0 — PASS, pairs=55 failed=0 violations=0 links=501 dead=0" }
+  ],
+  "bounds": [
+    "Pins and dates were dropped per the task's 'no upstream commits' rule; the per-skill ATTRIBUTION.md files (untouched) still carry the lazycodex revision and the full MIT text, so verifiability is preserved there rather than in this file.",
+    "Upstream provenance paths that are not tree paths were converted to full blob URLs in the persona table, so the path-existence check has no false misses.",
+    "This lane wrote LICENSE-NOTICES.md only; no code, no dist, no README."
+  ]
+}
