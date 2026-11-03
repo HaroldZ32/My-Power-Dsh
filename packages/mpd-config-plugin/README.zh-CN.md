@@ -2,7 +2,7 @@
 
 **中文** | [English](./README.md)
 
-Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
+极简的 `mpd.jsonc` 运行时配置层，供 bundle 的其它行读取。
 
 分层（深合并，项目优先）：项目 `<workspace>/.mpd/mpd.jsonc` 与用户
 `$DSH_HOME/mpd.jsonc`（回退 `~/.dsh/mpd.jsonc`）。JSONC（注释 + 尾随逗号），

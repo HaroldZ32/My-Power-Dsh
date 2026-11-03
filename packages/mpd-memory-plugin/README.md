@@ -1,7 +1,7 @@
 # mpd-memory-plugin
 **English** | [中文](./README.zh-CN.md)
 
-Plan C / C6 — git/svn-backed memory engine with a reflection state machine.
+A git/svn-backed memory engine with a reflection state machine.
 
 **mpd-owned code.** The engine's semantics — markdown memory files with frontmatter
 (`description`/`kind`/`aliases`/`read_only`), a journal plus a facts queue (part of the

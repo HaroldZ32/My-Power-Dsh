@@ -3,14 +3,14 @@
 **English** | [中文](./extensions.zh-CN.md)
 
 The extension interface of the `@mpd-dsh/mpd` bundle: one frozen contract through which a plugin
-package — or a plain directory on disk — contributes **skills**, **flows**, **MCP servers** and
+package (or a plain directory on disk) contributes **skills**, **flows**, **MCP servers** and
 **roles** without touching the core bundle. Loader row id `mpd-ext`, cordis service
 `mpdExtensions`.
 
 This guide is written for the plugin author who wants to add an authoring flow, a HarmonyOS
 porting procedure, a skill pack or an MCP server. Every sample below was taken from the shipped
 code (`packages/mpd-ext-plugin`, `extensions/mpd-ext-example`, `scripts/mpd-ext.ts`) and every
-command was run as printed — see [§12](#12-how-the-samples-in-this-guide-are-verified).
+command was run as printed: see [§12](#12-how-the-samples-in-this-guide-are-verified).
 
 ---
 
@@ -26,7 +26,7 @@ That is the **install-plane path**, it is first-class, and this interface does *
 | | Install plane (a package with its own `dsh.bundle.patch`) | Extension interface (this guide) |
 |---|---|---|
 | What you ship | an npm-shaped package with a patch layer | a directory with `mpd-ext.json`, or a plugin row that calls `register()` |
-| Who installs it | the user, with `dsh plugin --profile <p> add <package>` | nobody — the manifest file is discovered from a known root |
+| Who installs it | the user, with `dsh plugin --profile <p> add <package>` | nobody: the manifest file is discovered from a known root |
 | Can contribute | anything a patch row can compose (rows, MCP servers, tools, presets) | skills, flows, MCP servers (stdio), roles |
 | Validation | the loader's own row/schema rules | the frozen contract of §3, per item |
 | Update a running host | reinstall + restart | edit the manifest; the project plane is re-read per call |
@@ -35,9 +35,9 @@ What this interface adds on top of the install plane:
 
 1. a **frozen contract** (`packages/mpd-ext-plugin/src/sdk.ts`) so every contributor declares
    capabilities the same way, with the same validation, namespacing and failure policy;
-2. the **data plane** — a directory holding `mpd-ext.json` plus its assets: no packaging, no
+2. the **data plane**: a directory holding `mpd-ext.json` plus its assets: no packaging, no
    `dsh plugin add`, no profile change;
-3. **flows** — a declarative procedure (JSON) rendered into a skill document, because the harness
+3. **flows**: a declarative procedure (JSON) rendered into a skill document, because the harness
    has no flow seam of its own;
 4. a **runtime stdio MCP bridge** for servers that must not become a profile patch row (per-project
    or per-user servers, profiles that cannot be re-installed).
@@ -52,7 +52,7 @@ in per project or per home directory.
 Both forms produce the same registry entry; only the `origin` metadata differs (`"plugin"` |
 `"directory"`), and `origin`/`plane` are never author input.
 
-**Code plane** — any plugin row registers at its own apply time:
+**Code plane**: any plugin row registers at its own apply time:
 
 ```ts
 import { defineExtension } from "@mpd-dsh/mpd/packages/mpd-ext-plugin/dist/sdk.js"
@@ -76,7 +76,7 @@ call is `register(descriptor, { root })`. Resolve the service **lazily** (`ctx.g
 declare it in `inject`: a declared-but-unregistered service is a fatal `pending` loader entry in
 this harness, and the extension row may legitimately be absent.
 
-**Data plane** — a directory whose name is the root, with one manifest file:
+**Data plane**: a directory whose name is the root, with one manifest file:
 
 ```text
 ~/.mpd/extensions/authoring-flows/
@@ -91,26 +91,26 @@ this harness, and the extension row may legitimately be absent.
 ```
 
 The manifest file name is `mpd-ext.json` (`MPD_EXT_CONTRACT.manifestFile`), and the JSON must parse
-strictly — JSONC comments are not accepted in the manifest (unlike `.mpd/mpd.jsonc`).
+strictly: JSONC comments are not accepted in the manifest (unlike `.mpd/mpd.jsonc`).
 
 ## 3. The descriptor reference
 
 Every key below is read from the machine-readable contract
 (`packages/mpd-ext-plugin/src/sdk.ts`, `MPD_EXT_CONTRACT`), which the runtime validator **and** the
-developer CLI share. The validator does not re-state a rule — a key that is not listed here is an
+developer CLI share. The validator does not re-state a rule: a key that is not listed here is an
 unknown key and is rejected.
 
 ### 3.1 Top level
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `apiVersion` | number | **yes** | — | must equal exactly `1`; any other value rejects the whole extension |
-| `id` | string | **yes** | — | grammar `^[a-z0-9][a-z0-9-]{0,63}$` (1–64 chars, lower-case ASCII, digits, dashes) |
+| `apiVersion` | number | **yes** |: | must equal exactly `1`; any other value rejects the whole extension |
+| `id` | string | **yes** |: | grammar `^[a-z0-9][a-z0-9-]{0,63}$` (1–64 chars, lower-case ASCII, digits, dashes) |
 | `description` | string | no | `""` | shown by `mpd_ext_list` / `mpd_ext_show` |
 | `enabled` | boolean | no | `true` | a config `disable` still wins over this (§4.3) |
 | `contributes` | object | no | `{}` | only the four keys below; any other key is rejected |
 
-**Unknown keys anywhere — top level, inside `contributes`, inside any item — are rejected per item
+**Unknown keys anywhere (top level, inside `contributes`, inside any item) are rejected per item
 and recorded on that extension.** That is deliberate: this repository has measured the opposite
 failure mode (a schema that silently keeps unknown keys, so a renamed option is accepted and does
 nothing). Here a typo is loud.
@@ -124,19 +124,19 @@ nothing). Here a typo is loud.
 | `mcp` | array | `serverName`, `transport`, `command` | `args` (`[]`), `env` (`{}`), `cwd` (`"."`), `toolCallTimeoutMs` (`60000`), `connectTimeoutMs` (`10000`) |
 | `roles` | array | `name`, `persona` | `description` (`""`), `readonly` (`false`), `provider` + `model` (must be supplied together) |
 
-`skills` item — a directory whose **immediate subdirectories** each hold a `SKILL.md`:
+`skills` item: a directory whose **immediate subdirectories** each hold a `SKILL.md`:
 
 ```json
 { "root": "skills", "rank": 300 }
 ```
 
-`flows` item — a directory holding `*.json` flow documents (one flow per file):
+`flows` item: a directory holding `*.json` flow documents (one flow per file):
 
 ```json
 { "dir": "flows", "rank": 300 }
 ```
 
-`mcp` item — one stdio MCP server (v1 has no HTTP/SSE transport):
+`mcp` item: one stdio MCP server (v1 has no HTTP/SSE transport):
 
 ```json
 {
@@ -151,7 +151,7 @@ nothing). Here a typo is loud.
 }
 ```
 
-`roles` item — one specialist for the roster:
+`roles` item: one specialist for the roster:
 
 ```json
 {
@@ -169,9 +169,9 @@ nothing). Here a typo is loud.
 | Value | Rule | Where it comes from |
 |---|---|---|
 | extension `id` | `^[a-z0-9][a-z0-9-]{0,63}$` | `MPD_EXT_CONTRACT.idPattern` |
-| skill name (frontmatter `name`) and **flow id** | `^[a-z0-9]+(?:-[a-z0-9]+)*$` | `skillNamePattern` — a flow id must satisfy this **stricter** grammar, so `a--b` is rejected |
+| skill name (frontmatter `name`) and **flow id** | `^[a-z0-9]+(?:-[a-z0-9]+)*$` | `skillNamePattern`: a flow id must satisfy this **stricter** grammar, so `a--b` is rejected |
 | MCP `serverName` | `^[A-Za-z0-9_-]{1,32}$` | `serverNamePattern` (identical to the harness `dsh-mcp-client` constant) |
-| asset references (`skills.root`, `flows.dir`, `roles.persona`) | extension-root-relative only | absolute paths and `..` escapes are rejected per item — no extension reaches outside its own root |
+| asset references (`skills.root`, `flows.dir`, `roles.persona`) | extension-root-relative only | absolute paths and `..` escapes are rejected per item: no extension reaches outside its own root |
 
 `rank` is explicit and only meaningful for `skills` and `flows`. The full ladder, **lower wins inside
 a layer**: `100` project-dsh < `200` project-agents < `250` runtime < `300` custom (the default) <
@@ -207,13 +207,13 @@ catalogue. Nothing executes a flow for you; the model follows the steps with its
 
 | Root | Lifecycle | May contribute |
 |---|---|---|
-| `<session workspace>/.mpd/extensions/*/mpd-ext.json` | **per call** — resolved from the calling session's workspace for the tools, and from the harness's own `provider.list({ cwd })` for the skills plane | **skills + flows only** |
+| `<session workspace>/.mpd/extensions/*/mpd-ext.json` | **per call**: resolved from the calling session's workspace for the tools, and from the harness's own `provider.list({ cwd })` for the skills plane | **skills + flows only** |
 | `~/.mpd/extensions/*/mpd-ext.json` | host-wide, discovered at apply | skills, flows, mcp, roles |
 | `<bundle>/extensions/*/mpd-ext.json` | host-wide, discovered at apply from the bundle path | skills, flows, mcp, roles |
 
 ### 4.2 Why the project plane is restricted
 
-Tool and provider registration in this harness is **process-global** — there is no session scope for
+Tool and provider registration in this harness is **process-global**: there is no session scope for
 it. A per-session MCP server or roster role therefore cannot be represented honestly, so a
 project-level manifest that declares one is **rejected for that item**, loudly, with this reason:
 
@@ -225,7 +225,7 @@ The rejection is per item: the rest of that extension still loads. Nothing half-
 ### 4.3 Precedence, shadowing and the config keys
 
 For equal ids the discovery precedence is **project → user → bundle** (first wins). The shadowed
-entry is recorded and reported by `mpd_ext_list` (`shadowed`) — never fatal, never silent.
+entry is recorded and reported by `mpd_ext_list` (`shadowed`): never fatal, never silent.
 
 Config lives in `.mpd/mpd.jsonc` (project layer) merged over `$DSH_HOME/mpd.jsonc` (user layer,
 project wins):
@@ -245,14 +245,14 @@ order. Two honest limits are worth knowing before you rely on these keys:
   process layer stack, so a project's `enable`/`disable` is not a per-session switch. The extension
   interface deliberately does not call `reload(exec)` per skill snapshot: that would make the skills
   provider's view and the tools' view disagree, which is worse than a documented limit. The
-  `extensions.roots[]` key does **not** exist — a declared root list would add path-escape and
+  `extensions.roots[]` key does **not** exist: a declared root list would add path-escape and
   precedence questions for no v1 value.
 - **enable/disable only filter what is served**; they never gate a registration.
 
 ## 5. Worked examples
 
 All four kinds, taken verbatim from the shipped reference extension
-`extensions/mpd-ext-example/` (disabled by default — enable it to watch the interface end to end).
+`extensions/mpd-ext-example/` (disabled by default: enable it to watch the interface end to end).
 
 ### 5.1 A skill (`skills`)
 
@@ -357,7 +357,7 @@ Manifest item plus its persona file (`extensions/mpd-ext-example/personas/code-r
 ```
 
 A contributed role is resolved **per call** by `mpd-roles-plugin`, which reads the registry lazily at
-tool-execute time (never an apply-time merge — that would silently lose every role whose extension
+tool-execute time (never an apply-time merge, that would silently lose every role whose extension
 row applied after the roster). It then behaves like a base specialist:
 
 - `mpd_roles_list` lists it with its owning extension (`extension: <extension-id>`), and its stable
@@ -372,8 +372,8 @@ row applied after the roster). It then behaves like a base specialist:
 **A role never becomes a teammate on its own.** The teammate roster is what the Lead adds to a plan by
 name with `agent_teams_plan {action:"add_member"}` and approves, which is a model-facing tool call
 rather than a registration surface, so an extension cannot add a member to it from a plugin. The five
-official AUTHORING verbs — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
-`team_task_update` — are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
+official AUTHORING verbs: `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+`team_task_update`: are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
 is that a row calling the team SERVICE directly (the official-executor fallback) is not a tool call and
 is not gated. Spawn an extension role one-shot or as a workmate base.
 
@@ -390,7 +390,7 @@ surfaced by `mpd_ext_list` / `mpd_ext_show`. Nothing in the extension interface 
 | `apiVersion` ≠ 1, or a malformed `id` | the whole extension is **rejected** (nothing about it can be interpreted safely) |
 | asset path absolute or escaping with `..` | that item is rejected |
 | a project manifest declaring `mcp` or `roles` | rejected per item, with the reason quoted in §4.2 |
-| a `SKILL.md` with a missing/invalid `name` or `description` | that candidate is **skipped and warned** — deliberately stricter than the harness, which treats `invocation` as optional and then dereferences it unguarded in every session's pre-step |
+| a `SKILL.md` with a missing/invalid `name` or `description` | that candidate is **skipped and warned**: deliberately stricter than the harness, which treats `invocation` as optional and then dereferences it unguarded in every session's pre-step |
 | two skills with the same name **inside one extension** | skip + warn + load-error entry |
 | a skill name colliding with a lower-ranked provider | the rank ladder decides; the losing candidate is dropped by the harness. Both surfaces are now reported: a collision between two EXTENSIONS is annotated on the loser (`skill surface:` in its error list, naming the winner and both ranks), and every claimed name is checked against the harness's own catalog by `mpd_ext_list` / `mpd_ext_show` (`skillServing.served` / `.notServed`) |
 | an MCP tool name colliding with a live tool | that tool is skipped and recorded; the number of tools that survive from a failed swap is **zero**, never a half-mounted server |
@@ -401,7 +401,7 @@ surfaced by `mpd_ext_list` / `mpd_ext_show`. Nothing in the extension interface 
 
 ## 7. The model-facing tools
 
-v1 ships **four** tools — an earlier plan counted a fifth, `mpd_ext_reload`, which was **cut**: a
+v1 ships **four** tools: an earlier plan counted a fifth, `mpd_ext_reload`, which was **cut**: a
 reload is a state machine with its own failure class, and this repository's measured rule is that a
 plugin-module change needs a process restart anyway. **The honest reload is a restart.**
 
@@ -452,7 +452,7 @@ $EDITOR ~/.mpd/extensions/demo-ext/mpd-ext.json
 
 Two ways to enable something without editing its manifest: `"enabled": true` in the descriptor, or
 `extensions.enable: ["demo-ext"]` in `.mpd/mpd.jsonc` (§4.3). A **disabled** extension contributes
-nothing anywhere — not skills, not flows, not MCP, not roles — and the CLI's `list` shows the
+nothing anywhere (not skills, not flows, not MCP, not roles) and the CLI's `list` shows the
 manifest's own flag while `mpd_ext_list` shows the *effective* state (so the two can differ when a
 config list overrides the manifest).
 
@@ -463,7 +463,7 @@ bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list, temp dirs o
 ```
 
 One note about `validate`'s output: it prints a `pending` line for every declared MCP server,
-because the CLI is an **offline checker** — it validates the contract and never connects to
+because the CLI is an **offline checker**: it validates the contract and never connects to
 anything. At runtime the bridge connects the server at apply time, and `mpd_ext_show` /
 `mpd_ext_list` replace that line with the server's live state (`connecting` / `connected` /
 `unavailable` / `failed` / `disabled`). Treat a `pending` line as "declared, state not yet
@@ -490,7 +490,7 @@ stdio is enough.
 The bridge replicates the harness's public naming (`mcp__<server>__<tool>`, 64-char cap, `_<hash>`
 on lossy transformation) so a tool call written against one path keeps working on the other. It
 also treats a **foreign `output.schema`** the way the harness does: keep it if it satisfies the
-supported subset, otherwise **drop the SCHEMA and keep the tool** — it is registered without
+supported subset, otherwise **drop the SCHEMA and keep the tool**: it is registered without
 `structuredContent` and the reason is recorded, because a third party's schema is never rewritten
 (a rewritten schema would no longer describe what the server returns) and because the harness's own
 `supportedOutputSchema` does exactly this. An `inputSchema` is projected onto the subset and its
@@ -502,11 +502,11 @@ a future harness (this release does not validate `parameters` at registration).
 ## 10. Trust model
 
 - A **code-plane** extension is a plugin row: `register()` is called inside the host process by code
-  the operator already installed. It runs **in-process with full trust** — it can do anything the
+  the operator already installed. It runs **in-process with full trust**: it can do anything the
   host can. There is no sandbox, and no attempt to build one.
 - A **data-plane** extension is content, not code: skills and flows are text served to the model,
   and its assets stay inside its own root (paths are validated, §3.3). It is only as trusted as the
-  directory it lives in — anything that can write `~/.mpd/extensions/` can change what your model
+  directory it lives in: anything that can write `~/.mpd/extensions/` can change what your model
   reads.
 - An **MCP server** is a **child process** started from the manifest: the command you author is
   executed. Its environment is built from a safe inherit list with credential-shaped names removed
@@ -518,26 +518,26 @@ a future harness (this release does not validate `parameters` at registration).
 
 Stated plainly, so nobody discovers them from a failure:
 
-- **stdio MCP only** — no HTTP/SSE transports, no MCP resources or prompts (tools only).
-- **JSON flow files only, BY DESIGN** — a closed product decision, not a pending one: a flow corpus is
+- **stdio MCP only**: no HTTP/SSE transports, no MCP resources or prompts (tools only).
+- **JSON flow files only, BY DESIGN**: a closed product decision, not a pending one: a flow corpus is
   read with `JSON.parse` (`packages/mpd-ext-plugin/src/flows.ts`), the zero-dependency rule forbids the
   runtime ever gaining a YAML parser, and YAML is **not planned**. A flow is declarative, with no
   execution state machine.
-- **No extension-contributed agent presets** — the preset plane is deliberately out of scope (no
+- **No extension-contributed agent presets**: the preset plane is deliberately out of scope (no
   clean runtime seam).
-- **Extension roles never become teammates by themselves** — a teammate exists only when the Lead
+- **Extension roles never become teammates by themselves**: a teammate exists only when the Lead
   adds it by name with `agent_teams_plan {action:"add_member"}` and approves the plan (the official
   `spawn_teammate` tool is REFUSED at the tool boundary, §5).
-- **No reload** — restart dsh; a failed MCP server is retried on the next boot.
+- **No reload**: restart dsh; a failed MCP server is retried on the next boot.
 - **`extensions.*` config is process-level, not per session** (§4.3), because `mpdConfig` is an
   apply-time process-level snapshot.
-- **A cross-provider skill shadow needs a catalog read to be visible** — our own registry can only
+- **A cross-provider skill shadow needs a catalog read to be visible**: our own registry can only
   compare extensions, so `mpd_ext_list` / `mpd_ext_show` ask the harness's catalog
   (`ctx.skills.list`) and report each claim as `served` or `notServed`. If that read fails, the
   report says `checked: false` with the reason instead of guessing.
 - **A role the roster refuses is reported by both surfaces.** `mpd_ext_list` re-derives the same
   refusals (`refused: …` lines in the extension's `errors`, produced by `annotateRoleSurfaces` in
-  `src/registry.ts`) and lists only the usable names, so its view matches `mpd_roles_list.refused` —
+  `src/registry.ts`) and lists only the usable names, so its view matches `mpd_roles_list.refused`:
   the former follow-up is closed.
 - **No GUI panel, no marketplace, no remote download, no version solving.**
 - Language- and domain-specific capability surfaces are **not** built here: this release ships the
@@ -562,7 +562,7 @@ bun scripts/mpd-ext.ts --self-test
 grep -n "defaultRank\|idPattern\|skillNamePattern\|serverNamePattern" packages/mpd-ext-plugin/src/sdk.ts
 ```
 
-If a sample in this document and the shipped code ever disagree, the code wins — the contract
+If a sample in this document and the shipped code ever disagree, the code wins: the contract
 constants live in `packages/mpd-ext-plugin/src/sdk.ts` and a manifest the CLI accepts is a manifest
 the loader accepts, because both call the same validator.
 
@@ -598,5 +598,5 @@ apply.
 **Does a flow run anything?** No. It is a procedure rendered into a skill document; the model
 follows it step by step with its own tools.
 
-**Can I keep declaring a helper MCP server as a patch row instead?** Yes — that is the install
+**Can I keep declaring a helper MCP server as a patch row instead?** Yes, that is the install
 plane, and §9 shows when it is the better choice.

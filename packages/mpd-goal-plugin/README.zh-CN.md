@@ -1,7 +1,7 @@
 # mpd-goal-plugin
 **中文** | [English](./README.md)
 
-C8 —— 把持久化 GOAL 作为持续化执行的依据。
+把持久化 GOAL 作为持续执行依据的一行插件。
 
 Harness 本身已经交付了完整的 goal 域：`@deepseek-ai/dsh-goal`（每会话状态机）、
 `@deepseek-ai/dsh-tool-goal`（`get_goal` / `create_goal` / `update_goal`）与

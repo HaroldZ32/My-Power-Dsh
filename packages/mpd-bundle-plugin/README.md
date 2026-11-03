@@ -189,7 +189,8 @@ two entries.
   unrepresentable. Each tab carries exactly one `tinted` hero (the app's theme-tinted material), its
   metrics inside a v2 `grid`, a `surface` section with a header and a `divider`, a designed `emptyState`
   instead of a blank tab, and at most one `style: "primary"` action. Statuses are `badge`/`tone` **with a
-  word**; member initials are a `badge` (`avatar` is the image node); free text sets `maxLines`. No radius,
+  word**; a member's initials lead its ONE list-row title (`avatar` is the image node, and a horizontal
+  `row` of badges stacks at phone width); free text sets `maxLines`. No radius,
   size, opacity, gradient, shadow or colour literal appears in a view — that is the App's to decide, and
   the kit's builders refuse one.
 - **`adaptView` is the fallback.** An app below 1.0.9 (or one whose `caps.components` omits a v2 name)
@@ -197,15 +198,19 @@ two entries.
   list, badges become text, `divider`/`spacer` disappear and every `style`/`accent` is stripped. One
   builder produces both shapes, so the fallback cannot drift; a metric's label AND value survive the
   grid→list rewrite.
-- **What the workbench panel shows.** Four tabs — Overview (hero counters, completion bar, the first
-  alert, the ready rows, and the actions), Questions (the FIRST parked question only, its options and a
-  free-text form), Workmates (the library, read-only) and Memory (the last ≤ 10 entries and the reflection
-  counters, read from the store's documented layout).
-- **What the team panel shows.** Four tabs — Board (a tappable row per task; a tap carries
-  `{id: "select", args: {task}}` and the Detail tab follows it), Members (initials badge + name + mode +
-  handoff word), Detail (owner, status, kind, dependencies and verdict, plus a line saying settling is the
-  owning member's job) and Watchdog (the predicate in force, the preserving hold and the last ≤ 5
-  incidents, read through `session-watchdog-status` with the `mpdWatchdog` hold registry as the fallback).
+- **What the workbench panel shows.** Three tabs — Overview (hero counters, completion bar, the first
+  alert, the ready rows, and the actions), Ask (the FIRST parked question only, its options and a
+  free-text form) and Library (the workmate list plus the last ≤ 10 memory entries and the reflection
+  counters, read from the store's documented layout; read-only).
+- **What the team panel shows.** Three tabs — Board (a tappable row per task, then a PER-MEMBER BAR CHART
+  of the rows each member owns, then a LAYERED DEPENDENCY GRAPH and the roster), Detail (owner, status,
+  kind, dependencies and verdict, plus a line saying settling is the owning member's job) and Watch (the
+  predicate in force, the preserving hold and the last ≤ 5 incidents, read through
+  `session-watchdog-status` with the `mpdWatchdog` hold registry as the fallback). A tap on a board row
+  carries `{id: "select", args: {task}}` and the Detail tab follows it. The graph is a `codeBlock` with
+  one line per task (`L2 T4 Ship it <-T2`), folded into a v2 `collapsible` only past six rows or three
+  layers, and rendered as `steps` per layer below 1.0.9. The roster is ONE list line per member:
+  `DW · Deep Worker` with the state word as the trailing text.
 - **What they push.** `data(scope, emit)` polls at 2000 ms (the 0.5 Hz ceiling), emits ONLY when the
   serialized model changed, and returns the cancel function that clears its interval. The workbench model
   is `{ team, plan, question, readyTasks, counts, alert, workmates, memory }` — ids, names, statuses,

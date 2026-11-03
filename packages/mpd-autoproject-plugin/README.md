@@ -1,8 +1,8 @@
 # mpd-autoproject-plugin
 **English** | [中文](./README.zh-CN.md)
 
-Plan C / C2 — fixed-policy autoproject engine on the DSH subagent seam (v2,
-replacing the retired loop engine). The discipline has ONE command and ONE tool: `/autoproject` and
+A fixed-policy autoproject engine on the DSH subagent seam, and the second design
+to replace the retired loop engine. The discipline has ONE command and ONE tool: `/autoproject` and
 `mpd_autoproject`.
 
 ## Commands
