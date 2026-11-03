@@ -1,0 +1,103 @@
++import { findToolCall, readSessionEvents, type SessionStore } from "./lib/session-evidence.ts"
++/**
++ * The `llm-pi-ai` route the deepseek track stages into its sandbox's OWN `settings.yaml`.
++ *
++ * WHY IT IS NEEDED (F5, `evidence/dsh-qa/dual-track-deepseek/2026-10-29T01-30-11Z/diagnosis.md`): the
++ * `@deepseek-ai/dsh-base` patch mounts the `llm-pi-ai` row with NO config, so it composes dormant, never
++ * calls `registerAdapter`, and provider `deepseek` is absent from the LLM runtime — the track's overlay
++ * route then dies `NO_ADAPTER` before any credential is consulted. The block below gives the row that
++ * route. The `models` entry is REQUIRED, not decoration: the installed pi-ai catalog has no
++ * `deepseek-v4-flash` id, and the overlay names exactly that model.
++ */
++const DEEPSEEK_ROUTE_SETTINGS = [
++  "llm-pi-ai:",
++  "  providers:",
++  "    deepseek:",
++  "      apiKeyEnv: DEEPSEEK_API_KEY",
++  "      models:",
++  "        - id: deepseek-v4-flash",
++  "",
++].join("\n")
++  /**
++   * The YAML block this track appends to its sandbox `settings.yaml`, or `null` when the machine's own
++   * settings are enough.
++   *
++   * The deepseek track declares its provider route here; the official track needs nothing, and an EMPTY
++   * value keeps it byte-identical to what it booted before this fix.
++   */
++  readonly settings: string | null
+-  official: { label: "deepseek-official (dsh-llm-deepseek)", provider: "deepseek-official", overlay: null },
+-  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/compat-track.yml" }
++  official: { label: "deepseek-official (dsh-llm-deepseek)", provider: "deepseek-official", overlay: null, settings: null },
++  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/compat-track.yml", settings: DEEPSEEK_ROUTE_SETTINGS }
+-  console.log("[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified")
++  // THE ROUTE STAGE (F5): the deepseek track must declare the llm-pi-ai route AND the model id the
++  // installed catalog lacks, or the boot returns to NO_ADAPTER; the official track must stay UN-staged so
++  // its boot is exactly what it was.
++  if (!DEEPSEEK_ROUTE_SETTINGS.includes("llm-pi-ai:") || !DEEPSEEK_ROUTE_SETTINGS.includes("    deepseek:")
++    || !DEEPSEEK_ROUTE_SETTINGS.includes("- id: deepseek-v4-flash") || !DEEPSEEK_ROUTE_SETTINGS.includes("apiKeyEnv: DEEPSEEK_API_KEY")) {
++    console.error("[llm-dual-track self-test] FAIL: the deepseek route block lost its provider or its models entry (NO_ADAPTER would return)")
++    process.exit(1)
++  }
++  if (TRACKS.deepseek.settings !== DEEPSEEK_ROUTE_SETTINGS || TRACKS.official.settings !== null) {
++    console.error("[llm-dual-track self-test] FAIL: only the deepseek track may stage settings; the official boot must stay unchanged")
++    process.exit(1)
++  }
++  console.log("[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand + the staged deepseek route verified")
++/**
++ * The harness's OWN tool evidence for one track's boot.
++ *
++ * WHY THIS REPLACES THE STDOUT REGEX (F5 nit): `/bash|tool/` matches the ANSWER the model wrote, which
++ * AGENTS.md §7 says is wrong in BOTH directions — a model can describe a call it never made, and a real
++ * call can go unmentioned — so the regex could pass a boot that used no tool at all. The harness session
++ * log is the ground truth: a `tool/call` for `bash` paired with a non-error `tool/result`.
++ *
++ * @param sandbox - the track's throwaway DSH_HOME, which holds the session store.
++ * @param ws - the sandbox workspace the boot ran in (the store is project-keyed by it).
++ * @returns the recorded verdict (with a bounded slice of the tool result) and the reader's reason when nothing was paired.
++ */
++function toolEvidenceOf(sandbox: string, ws: string): { succeeded: boolean; called: string[]; reason: string; resultText: string } {
++  /** The decoded session store for this sandbox workspace. */
++  let store: SessionStore
++  try {
++    store = readSessionEvents(sandbox, { workspace: ws })
++  } catch (error) {
++    // A named workspace whose store is ABSENT is a boot/isolation failure, reported as "no evidence".
++    return { succeeded: false, called: [], reason: "no session store for the sandbox workspace (" + (error instanceof Error ? error.message : String(error)) + ")", resultText: "" }
++  }
++  // The task's own shell call, paired with its result.
++  const bash = findToolCall(store.records, "bash")
++  // A BOUNDED slice of the tool result, so the artifact shows what the shell actually printed instead of
++  // asking a reader to trust the model's narration about it.
++  return { succeeded: bash.succeeded, called: bash.called ? ["bash"] : [], reason: bash.reason, resultText: bash.resultText.slice(0, 4000) }
++}
++
++    // THE TRACK'S OWN ROUTE (F5), staged AFTER that copy so a machine with settings keeps every other
++    // provider it declares: appended, never substituted. A pre-existing top-level `llm-pi-ai:` key would
++    // be a duplicate key, so the block goes LAST and the track's route is the one a last-wins reader
++    // takes; the sandbox's settings file is disposable either way.
++    if (t.settings !== null) {
++      // The sandbox settings path this track stages into.
++      const stagedSettings = join(sandbox, "settings.yaml")
++      // What the copy above already put there, or "" when this machine has no settings file.
++      const prior = existsSync(stagedSettings) ? readFileSync(stagedSettings, "utf8") : ""
++      writeFileSync(stagedSettings, prior + (prior === "" || prior.endsWith("\n") ? "" : "\n") + t.settings)
++    }
+-    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
++    // HOME is sandboxed too (AGENTS.md §7 isolation arm b, the sibling `mcp-call.ts` pattern): skill roots
++    // and the workmate library resolve through HOME, so the child must not see the real one. The launcher
++    // resolution above is PATH-based, so it is unaffected.
++    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox })
+-    // The run's combined output, which the tool-evidence regex matches against.
++    // The run's combined output, kept as the run artifact a reader greps.
+-    // Whether the boot passed AND its output carries tool evidence.
+-    const ok = run.status === 0 && /bash|tool/.test(out)
++    // The HARNESS's own tool evidence for this boot: the `bash` call the task asks for, paired with a
++    // non-error result in the session log. NOT the answer text — `/bash|tool/` matches the model's own
++    // narration, which AGENTS.md §7 calls wrong in BOTH directions (a model can claim a call it never
++    // made, and a real call can go unmentioned).
++    const toolEvidence = toolEvidenceOf(sandbox, ws)
++    // Whether the boot passed AND the harness recorded a real tool call for it.
++    const ok = run.status === 0 && toolEvidence.succeeded
+-    writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, track: key, provider: t.provider, durationMs: ms, exit: run.status, hasToolEvidence: /bash|tool/.test(out) }, null, 2))
++    writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, track: key, provider: t.provider, durationMs: ms, exit: run.status, hasToolEvidence: toolEvidence.succeeded, toolEvidence }, null, 2))

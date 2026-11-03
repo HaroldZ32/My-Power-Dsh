@@ -1,0 +1,9 @@
+# REAL REPO — 2026-11-03T06:47:45Z
+# command: bun test packages/mpd-cellwork-plugin
+(pass) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours [0.27ms]
+
+ 198 pass
+ 0 fail
+ 2325 expect() calls
+Ran 198 tests across 24 files. [371.00ms]
+# exit: 0

@@ -1,0 +1,25 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/vedit-p0-lane-b.test.ts:
+(pass) C3 — the mail bound is a declared workspace knob > the key and the shipped default are exactly the ones the contract names [0.03ms]
+(pass) C3 — the mail bound is a declared workspace knob > the resolver reads the config layer, defaults to 8, and accepts 0 as `no bound` [0.06ms]
+(pass) C3 — the mail bound is a declared workspace knob > the resolver's declared ceiling is INCLUSIVE: 1000 is honoured and 1001 falls back to 8 [0.01ms]
+(pass) C3 — the mail bound is a declared workspace knob > the refusal NAMES the recipient, the count, the bound and BOTH recovery paths [0.89ms]
+(pass) C3 — the mail bound is a declared workspace knob > an ACK frees exactly one slot, and so does a DELIVERY [0.43ms]
+(pass) C3 — the mail bound is a declared workspace knob > counting stays PER TEAM: a retired team's rows count for nobody, and so do unstamped legacy rows [0.36ms]
+(pass) C3 — the mail bound is a declared workspace knob > the ONE sendMany path applies the config bound to agent_teams_mail, end to end [8.29ms]
+(pass) C3 — the mail bound is a declared workspace knob > with no config the tool applies the shipped DEFAULT 8 [2.44ms]
+(pass) C3 — the mail bound is a declared workspace knob > BOTH tool descriptions disclose the bound and the shared enforcement [0.14ms]
+(pass) C3 — the mail bound is a declared workspace knob > no mpd-gates.json is created in the checkout by any of this [1.03ms]
+(pass) C4 — create_task WARNS about empty write scopes > a work task with no scopes is still created AND carries the warning [0.43ms]
+(pass) C4 — create_task WARNS about empty write scopes > every WRITING kind warns, and an explicit empty list warns too [0.97ms]
+(pass) C4 — create_task WARNS about empty write scopes > a declared scope list does NOT warn [0.45ms]
+(pass) C4 — create_task WARNS about empty write scopes > the MID-RUN append warns the same way [2.48ms]
+(pass) C4 — create_task WARNS about empty write scopes > the output-schema allowlist DECLARES the field, and the pass-through description states the rule [0.31ms]
+(pass) C4 — create_task WARNS about empty write scopes > no scope-clash regression: the overlap refusal still names the pair and both remedies [2.17ms]
+
+ 16 pass
+ 0 fail
+ 89 expect() calls
+Ran 16 tests across 1 file. [169.00ms]
+EXIT:0

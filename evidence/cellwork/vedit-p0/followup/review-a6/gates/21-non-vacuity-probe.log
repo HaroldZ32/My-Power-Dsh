@@ -1,0 +1,3 @@
+clone-granted (a SWALLOWED step would leave this)  decisions=2 state=compatible arm5d=false
+old shared-boot shipped-granted capture           decisions=3 state=compatible arm5d=false
+empty pane                                         decisions=0 state=undefined arm5d=false

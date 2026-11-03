@@ -1,0 +1,22 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-team-core-plugin/test/team-end.test.ts:
+(pass) agent_teams_control {action:"end"} > a Lead ends a live team, and the record carries the terminal stamp [3.31ms]
+(pass) agent_teams_control {action:"end"} > after the end the team resolves for nobody, and the stale index binding cannot win [1.54ms]
+(pass) agent_teams_control {action:"end"} > a member and a stranger are refused, and a refusal writes nothing [0.98ms]
+(pass) agent_teams_control {action:"end"} > end is a reported no-op on a repeat, and it never restamps the audit trail [1.12ms]
+(pass) agent_teams_control {action:"end"} > an end with no reason stores the default sentence [0.94ms]
+(pass) agent_teams_control {action:"end"} > a declared id that names no team is refused [0.96ms]
+(pass) agent_teams_control {action:"end"} > B1 (F-B/CWE-863): a roster member that records the Lead as parentSession is refused all the same [1.73ms]
+(pass) agent_teams_control {action:"end"} > B1 control: a forked/resumed Lead that names NO member row keeps its recorded lineage [1.16ms]
+(pass) agent_teams_control {action:"end"} > M1: a default-target repeat reports the first ending instead of refusing [1.26ms]
+(pass) agent_teams_control {action:"end"} > N1: the ending appends ONE team-journal row, and the record stays as history [1.28ms]
+(pass) agent_teams_control {action:"end"} > N2: a workspace halt SURVIVES the end, and resume is the only verb that lifts it [1.30ms]
+(pass) agent_teams_control {action:"end"} > N3: a declared id authorizes by RECORD, not by the index binding [0.99ms]
+(pass) agent_teams_control {action:"end"} > N3 negative control: the Lead of ANOTHER team cannot end this one by declaring its id [1.67ms]
+
+ 13 pass
+ 0 fail
+ 92 expect() calls
+Ran 13 tests across 1 file. [161.00ms]
+EXIT:0

@@ -1,0 +1,54 @@
+{
+  "surfaceCost": 6390,
+  "aEnd1": {
+    "teamId": "team-20261103062617689-8pk7-002",
+    "endedAt": "2026-11-03T06:26:17.691Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  },
+  "aRetryError": "no team record in this workspace — approve a plan first",
+  "aRetryWithId": {
+    "teamId": "team-20261103062617689-8pk7-002",
+    "endedAt": "2026-11-03T06:26:17.691Z",
+    "reason": "ended by the team Lead",
+    "changed": false
+  },
+  "aBindingStillOnDisk": true,
+  "aTeamDirAfterEnd": [
+    "archive",
+    "staging",
+    "teams",
+    "teams.json"
+  ],
+  "bEnd": {
+    "teamId": "team-20261103062617692-8pk7-004",
+    "endedAt": "2026-11-03T06:26:17.692Z",
+    "reason": "repair",
+    "changed": true
+  },
+  "bRecord": {
+    "phase": "ended",
+    "reason": "repair"
+  },
+  "cHalt": {
+    "hold": {
+      "version": 1,
+      "reason": "pause",
+      "heldAt": "2026-11-03T06:26:17.693Z",
+      "heldBy": "sess-lead"
+    }
+  },
+  "cEnd": {
+    "teamId": "team-20261103062617692-8pk7-006",
+    "endedAt": "2026-11-03T06:26:17.693Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  },
+  "cHoldFileExists": true,
+  "dJournalRowsBeforeAfter": [
+    0,
+    0
+  ],
+  "dJournalTail": null
+}
+EXIT:0

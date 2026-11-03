@@ -1,0 +1,3 @@
+# verify:comments on the files T21 touched
+scripts/verify-pack-closure.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+packages/mpd-team-core-plugin/src/mailbox-store.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

@@ -1,0 +1,26 @@
+{
+  "memberHandle": "child-senior-engineer-1",
+  "arm1": {
+    "teamId": "team-20261103062758579-ozbz-002",
+    "endedAt": "2026-11-03T06:27:58.580Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  },
+  "arm1Record": {
+    "phase": "ended",
+    "endedAt": "2026-11-03T06:27:58.580Z",
+    "reason": "ended by the team Lead"
+  },
+  "arm2Error": "only the Lead of team team-20261103062758581-ozbz-004 may end it (senior-engineer-1 is a member, not the Lead)",
+  "arm2Record": {
+    "phase": "active"
+  },
+  "arm3Error": "only the Lead of team team-20261103062758582-ozbz-006 may end it (senior-engineer-1 is a member, not the Lead)",
+  "arm4": {
+    "teamId": "team-20261103062758583-ozbz-008",
+    "endedAt": "2026-11-03T06:27:58.583Z",
+    "reason": "ended by the team Lead",
+    "changed": true
+  }
+}
+EXIT:0

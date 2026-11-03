@@ -1,0 +1,8 @@
+# tui-admission self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0
+
+# test:qa
+[mpd-ext] ok
+[test:qa] all self-tests passed
+exit=0

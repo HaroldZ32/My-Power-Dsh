@@ -1,0 +1,3 @@
+=== typecheck
+$ tsgo --noEmit
+typecheck-exit=0

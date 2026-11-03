@@ -1,0 +1,50 @@
+
+        启用：/plugin enable @deepseek-ai/dsh-experimental-session-search                                                                           │ ◀     ?    ♥    ❖    ⬢    ⚠   待办   ▸    ◆    ⓘ    ∿    ⌗      ▶
+        用途：Agent 能翻本工作区的历史会话                                                                                                          ├─────────────────────────────────────────────────────────────────────
+      Git 工作树 0.2.1-rc.5 · 未启用                                                                                                                │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-tool-worktree                                                                            │
+        用途：Agent 新开 Git 分支与工作树，转到里面干活                                                                                             │
+                                                                                                                                                    │
+  ❯ mpd admission lane decision arm                                                                                                                 │
+                                                                                                                                                    │
+  ⚓ 思考 · 1s （ctrl+o 展开）                                                                                                                      │
+                                                                                                                                                    │
+  ● ⏵ 摸清 admission 工作区的现状                                                                                                                   │
+                                                                                                                                                    │
+  • Bash(pwd; echo ---; ls -la; echo ---; find . -maxdepth 3 -type d | head -50) · 0s                                                               │
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/tui-admission/ws                                                                          │
+     ---                                                                                                                                            │
+     total 20                                                                                                                                       │
+     … +15 行（ctrl+o 展开）                                                                                                                        │
+                                                                                                                                                    │
+  ✗ Glob **/*.md · 0s                                                                                                                               │
+   ⎿ Error: captain investigation rule: `glob` on (no path argument — a bare call searches the whole workspace) is refused — the `mpd` preset's     │
+     TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with   │
+     the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume   │
+     the REPORT. The documentation band stays open to you, and this is the whole of it: `AGENT.md`, `AGENTS.md` and `CLAUDE.md` at ANY depth —      │
+     inside this workspace or outside its root, so a sibling project's instruction file is readable; the trees `.mpd/**`, `docs/**`, `evidence/**`  │
+     and `agent-references/**`; and, at the workspace root only, `README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md` — those two README│
+     spellings exactly, since there is no `README*` glob. Every source path stays refused, and `captain.investigation: "allow"` in mpd.jsonc        │
+     restores full acces … 已折叠 2 字符（点击或 ctrl+o 展开）                                                                                      │
+     ctrl+t 看完整轨迹                                                                                                                              │
+                                                                                                                                                    │
+  ⚓ 思考 · 1s （ctrl+o 展开）                                                                                                                      │
+                                                                                                                                                    │
+  • Bash(find .mpd -type f | head -100; echo ---; find .mpd -type f | wc -l; echo ---; du -sh .mpd) · 0s                                            │
+   ⎿ .mpd/project-init.json                                                                                                                         │
+     .mpd/verify/boot.json                                                                                                                          │
+     .mpd/lsp/cclsp.json                                                                                                                            │
+     … +27 行（ctrl+o 展开）                                                                                                                        │
+                                                                                                                                                    │
+  ⚓ 思考 · 1s （ctrl+o 展开）                                                                                                                      │
+                                                                                                                                                    │
+  已打断 · 接下来想让 DeepSeek 做什么？                                                                                                             │
+  mpd: 团队 - · 计划 0 · workmate 0                                                                                                                 │
+                                                                                                                                                    │
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  ⌸ ❯                                                                                                                                              ⛶│
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+                                                                                                                                      37k/1.0M 3.5% │
+   deepseek-flash · max · 缓存 98.1% · ≈¥0.01 峰 · ws                                                                           ctx 3.5% (37k/1.0m) ├─────────────────────────────────────────────────────────────────────
+                                                                                                                                                    │ Ctrl+B 聚焦侧栏
+

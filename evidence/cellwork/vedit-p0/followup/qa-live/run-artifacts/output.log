@@ -1,0 +1,16 @@
+static admission: ok=true parse=ok validatePlugin=ok controls=["brokenSyntax","optionalWithoutFallback","unknownPermission"]
+static result ok=true
+shipped /plugin check -> state=compatible; /plugin list -> state=compatible
+shipped /plugin check grants hint absent: true
+arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true (stderr=evidence/tui/lanes/2026-11-03T06-33-55.528Z/shipped/host-stderr.log 572091B)
+shipped boot debug stream: 5803 park frame(s), redirected off the pane (shipped/host-stderr.log)
+arm3 (ledger attribution) applicable=false attributed=0 decisionHandlerBinds(applied)=0 — INAPPLICABLE while the shipped manifest declares NO permission (no authorize operation exists): recorded as a BOUND, never a pass
+arm4 real input submit rendered the turn: true
+grant clone written -> evidence/tui/lanes/2026-11-03T06-33-55.528Z/grant-clone/dsh-plugin.grant-clone.json declaring session.input.intercept@tui/input (the shipped file is never touched)
+grants file written -> .mpd/sb/tui-admission/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=1
+grants file rewritten with the WRONG scope (tui/not-a-declared-scope)
+grants file revoked mid-session (arm 6, observed)
+clone ungranted /plugin check -> state=waiting_authorization hint=true
+clone granted /plugin check -> state=compatible
+clone wrong-scope /plugin check -> state=waiting_authorization
+arm6 revocation re-check -> state=waiting_authorization flipped=true

@@ -1,0 +1,281 @@
+diff --git a/packages/mpd-team-core-plugin/src/index.ts b/packages/mpd-team-core-plugin/src/index.ts
+index 3e4674f8..7470e87e 100644
+--- a/packages/mpd-team-core-plugin/src/index.ts
++++ b/packages/mpd-team-core-plugin/src/index.ts
+@@ -82,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
+ import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
+ // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
+ // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
+-import { approveTeam, cancelTasks, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
++import { approveTeam, cancelTasks, endTeam, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+ import { installIdleGuard, withIdlePreamble } from "./idle-guard"
+ import { GraphModels } from "./graph-model"
+ import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
+@@ -3256,41 +3256,56 @@ export function apply(ctx: any): void {
+   disposers.push(dsh.registerTool({
+     name: "agent_teams_control",
+     description:
+-      "Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).",
++      "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
+     parameters: {
+       type: "object",
+       properties: {
+-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
+-        reason: { type: "string", description: "halt/fence: why." },
++        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
++        reason: { type: "string", description: "halt/fence/end: why." },
+         member: { type: "string", description: "fence/unfence: seat." },
++        team_id: { type: "string", description: "end: team to close (default: yours)." },
+       },
+       required: ["action"],
+       additionalProperties: false,
+     },
+     output: {
+-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
++      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+       render: (_args: any, value: any) =>
+         text(value?.refused !== undefined ? `refused: ${value.refused}`
+-          : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
+-            : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
++          : value?.changed !== undefined ? (value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed`)
++            : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
++              : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
+     },
+     execute: async (args: any, exec: DshToolExec) => {
+       /** The call's workspace, session and recorded ancestry. */
+       const { workspace, sessionId, lineage } = where(exec)
+       /** The requested action, stringified so a non-string argument can only miss, never throw. */
+       const action = String(args?.action ?? "")
++      /** The caller this action acts as, built exactly like every other team action's caller. */
++      const caller: TeamActionCaller = {
++        workspace, sessionId, lineage,
++        ...(exec.agent === undefined ? {} : { agent: exec.agent }),
++        ...(exec.signal === undefined ? {} : { signal: exec.signal }),
++      }
++      if (action === "end") {
++        // THE TERMINAL VERB (N3): the one supported close for a live team. `team_id` names the record
++        // explicitly so a repair target works from any session; absent, the caller's own team is read.
++        /** The close request and what it stamped, or the sentence it refused with. */
++        const outcome = await endTeam(teamActionsDeps, caller, {
++          ...(args?.team_id === undefined ? {} : { teamId: String(args.team_id) }),
++          ...(args?.reason === undefined ? {} : { reason: String(args.reason) }),
++        })
++        if (!outcome.ok) throw new Error(outcome.error)
++        /** The reply, without the result envelope's own flag. */
++        const { ok: _envelope, ...reply } = outcome
++        return reply
++      }
+       if (action === "fence" || action === "unfence") {
+         // ONE SEAT, LEAD-ONLY (D4). The body is exec-free, so a panel button, the service and this tool
+         // drive the same sequence; the tool simply rethrows a refusal, which is what a tool caller sees.
+         /** The seat this call names. */
+         const member = String(args?.member ?? "").trim()
+         if (member === "") throw new Error(`agent_teams_control ${action}: member is required`)
+-        /** The caller this action acts as, built exactly like every other team action's caller. */
+-        const caller: TeamActionCaller = {
+-          workspace, sessionId, lineage,
+-          ...(exec.agent === undefined ? {} : { agent: exec.agent }),
+-          ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+-        }
+         /** The fence change, or the sentence it refused with. */
+         const outcome = action === "fence"
+           ? await fenceMember(teamActionsDeps, caller, { member, ...(args?.reason === undefined ? {} : { reason: String(args.reason) }) })
+@@ -3301,7 +3316,7 @@ export function apply(ctx: any): void {
+         return reply
+       }
+       if (action === "resume") return { resumed: clearHold(workspace) }
+-      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence)`)
++      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`)
+       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
+     },
+   }))
+diff --git a/packages/mpd-team-core-plugin/src/team-actions.ts b/packages/mpd-team-core-plugin/src/team-actions.ts
+index a237513b..ac5b5424 100644
+--- a/packages/mpd-team-core-plugin/src/team-actions.ts
++++ b/packages/mpd-team-core-plugin/src/team-actions.ts
+@@ -38,6 +38,7 @@ import {
+   blockingDependencies,
+   casClaimTask,
+   createTeam,
++  endTeamRecord,
+   idleMembers,
+   memberNamedBy,
+   readTeam,
+@@ -330,6 +331,26 @@ export interface TeamFenceInput {
+   reason?: string
+ }
+ 
++/** What one team end produced, in the shape the tool reply and a service caller read. */
++export interface TeamEndPayload {
++  /** The team that was ended, or was already ended. */
++  teamId: string
++  /** ISO instant the team ended: this call's stamp, or the FIRST ending's for a repeat. */
++  endedAt: string
++  /** The stored audit sentence: this call's reason, or the FIRST ending's for a repeat. */
++  reason: string
++  /** Whether THIS call performed the ending; false for the idempotent repeat. */
++  changed: boolean
++}
++
++/** The input of one team end. */
++export interface TeamEndInput {
++  /** The team to end; absent names the team the calling session resolves. */
++  teamId?: string
++  /** Why it ended; stored as the record's `archivedReason`. */
++  reason?: string
++}
++
+ /** The input of one handoff write. */
+ export interface TeamHandoffInput {
+   /** The complete handoff document; it must carry the seven required sections. */
+@@ -1641,6 +1662,67 @@ export async function unfenceMember(deps: TeamActionDeps, caller: TeamActionCall
+   return setMemberFence(deps, caller, input, false)
+ }
+ 
++/**
++ * End one team: the terminal transition that closes a whole wave.
++ *
++ * WHY IT IS A VERB OF ITS OWN. Before it existed no supported call could close a live team: the plan
++ * `delete` action archives a STAGED plan, `halt` writes a workspace-wide hold (a pause, explicitly not
++ * an ending), the reaper only touches records that are already non-live, and the store's `deleteTeam`
++ * has no caller — so the only real close was a hand edit of `phase` + `endedAt`. This body performs
++ * that edit through the store ({@link endTeamRecord}), which is what makes the record, the change feed
++ * and every resolver agree afterwards.
++ *
++ * ONLY THE LEAD MAY END, and it ends ONE team. A declared `team_id` is read directly so an explicit
++ * repair target works from any session; the Lead check is then what refuses a stranger, and the
++ * sentence distinguishes "not on the roster" from "a member, not the Lead".
++ *
++ * AN ALREADY-ENDED TEAM IS A REPORTED NO-OP (`changed: false`) that returns the FIRST ending's instant
++ * and reason, so a retry is safe and the audit trail is never restamped.
++ * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
++ * @param caller - who is acting, in which workspace and with which recorded ancestry.
++ * @param input - the team to end (absent: the caller's own) and why.
++ * @returns what the ending stamped, or one refusal sentence.
++ */
++export async function endTeam(deps: TeamActionDeps, caller: TeamActionCaller, input: TeamEndInput): Promise<TeamActionResult<TeamEndPayload>> {
++  try {
++    /** Every spelling that identifies the caller: its own id plus the ancestors the harness recorded. */
++    const spellings = [caller.sessionId, ...caller.lineage].filter((id) => id !== "")
++    /** The team the call names, trimmed; empty means "the team this session works on". */
++    const declared = String(input.teamId ?? "").trim()
++    /** The caller's own resolution, read only when the call names no team. */
++    const resolved = declared === "" ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage) : undefined
++    /** The record to end: a declared id read directly, otherwise the session's own team. */
++    const record = declared === "" ? resolved?.record : readTeam(caller.workspace, declared)
++    if (record === undefined) {
++      return {
++        ok: false,
++        error: declared === ""
++          ? (resolved?.refusal ?? "no team record in this workspace — approve a plan first")
++          : `no team record is named ${JSON.stringify(declared)} in this workspace`,
++      }
++    }
++    if (!recordNamesLead(record, spellings)) {
++      /** The member row the caller's spellings name, when the roster names it at all. */
++      const member = memberNamedBy(record, spellings)
++      return { ok: false, error: `only the Lead of team ${record.teamId} may end it (${member === undefined ? "this session is not on the team's roster" : `${member.name} is a member, not the Lead`})` }
++    }
++    /** The store's idempotent stamp: the FIRST ending owns the instant and the reason. */
++    const outcome = endTeamRecord(caller.workspace, record.teamId, String(input.reason ?? ""), deps.now())
++    // A record that vanished between the read above and the write is a real race, not a validation
++    // failure — report it as the same "no such team" sentence rather than claiming an ending.
++    if (outcome === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(record.teamId)} in this workspace` }
++    return {
++      ok: true,
++      teamId: outcome.record.teamId,
++      endedAt: String(outcome.record.endedAt),
++      reason: String(outcome.record.archivedReason ?? ""),
++      changed: outcome.changed,
++    }
++  } catch (error) {
++    return unexpectedRefusalOf(error)
++  }
++}
++
+ /**
+  * Write the CALLING member's handoff document and move its seat into the handoff window.
+  *
+diff --git a/packages/mpd-team-core-plugin/src/team-store.ts b/packages/mpd-team-core-plugin/src/team-store.ts
+index 106faf3a..a8042fbf 100644
+--- a/packages/mpd-team-core-plugin/src/team-store.ts
++++ b/packages/mpd-team-core-plugin/src/team-store.ts
+@@ -280,9 +280,9 @@ export interface TeamRecord {
+   /** ISO instant the team was explicitly ended; absent while it is live. */
+   endedAt?: string
+   /**
+-   * Why the record was marked terminal, written by the C7-3 consistency pass
+-   * (`reapReapedTeams` in `team-lifecycle.ts`) when it reaped a ghost. Absent on a team that never
+-   * needed reaping; informational only, never read by a gate.
++   * Why the record was marked terminal: the sentence an explicit end recorded, or the rule the C7-3
++   * consistency pass (`reapReapedTeams` in `team-lifecycle.ts`) caught when it reaped a ghost. Absent
++   * only on a team that never ended; informational, never read by a gate.
+    */
+   archivedReason?: string
+   /** The roster. */
+@@ -534,6 +534,37 @@ export function deleteTeam(workspace: string, teamId: string): boolean {
+   return true
+ }
+ 
++/**
++ * End one team for good: stamp the terminal phase, the instant and the audit reason, then persist the
++ * record through {@link writeTeam} — never a raw file write, so the change feed and the store's own
++ * observers see exactly the write every other mutation produces.
++ *
++ * IDEMPOTENT BY THE RECORD ITSELF. A team that already carries `endedAt` answers unchanged with
++ * `changed: false`: the FIRST ending owns the instant and the reason, and a repeated call (or a late
++ * retry from another surface) must never rewrite that history. The stamp is also what
++ * `team-lifecycle.ts#isLiveTeam` reads, so once this write lands the record can no longer resolve for
++ * any seat and no longer wins the bound-index arm — the binding needs no separate edit.
++ * @param workspace - the workspace holding the team.
++ * @param teamId - the team to end.
++ * @param reason - why it ended; an empty sentence is replaced by the default below, never stored empty.
++ * @param now - the instant stamped as `endedAt`.
++ * @returns the record as stored and whether THIS call changed it; undefined when no such team exists.
++ */
++export function endTeamRecord(workspace: string, teamId: string, reason: string, now: Date): { record: TeamRecord; changed: boolean } | undefined {
++  /** The record as it stands, or undefined for an unknown team. */
++  const record = readTeam(workspace, teamId)
++  if (record === undefined) return undefined
++  // A REPEAT IS A REPORTED NO-OP, not a second ending: `endedAt` and `archivedReason` keep the values
++  // the first call wrote, so a retry cannot quietly restamp the audit trail with a later clock.
++  if (record.endedAt !== undefined) return { record, changed: false }
++  /** The audit sentence: the caller's own, or the default that says the Lead ended it without one. */
++  const archivedReason = reason.trim() === "" ? "ended by the team Lead" : reason.trim()
++  /** The terminal record, assembled immutably so the stored one is only ever replaced whole. */
++  const ended: TeamRecord = { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason }
++  writeTeam(workspace, ended)
++  return { record: ended, changed: true }
++}
++
+ /** What {@link createTeam} needs to mint a record. */
+ export interface NewTeamInput {
+   /** The team name the user reads. */
+diff --git a/packages/mpd-team-core-plugin/test/tool-surface.test.ts b/packages/mpd-team-core-plugin/test/tool-surface.test.ts
+index 2f3153f3..ab1291df 100644
+--- a/packages/mpd-team-core-plugin/test/tool-surface.test.ts
++++ b/packages/mpd-team-core-plugin/test/tool-surface.test.ts
+@@ -113,6 +113,11 @@ describe("the consolidated surface", () => {
+     // `bindings` OUTPUT property and one render line per seat. `costOf` below charges NAME +
+     // DESCRIPTION + PARAMETERS only — an output schema and a render are not part of the model's tool
+     // list — so the surface is UNCHANGED at MEASURED 6,379; the headroom stays 21 characters.
++    //
++    // RE-MEASURED 2026-11-03 by N3: `agent_teams_control` gained the terminal `end` verb and its
++    // `team_id` argument, paid for by tightening the halt sentence — the retired pointer to
++    // `agent_teams_plan {action:"delete"}` was WRONG (that archives a STAGED plan, never a live team).
++    // MEASURED 6,390, so 10 characters of headroom remain.
+     expect(total).toBeLessThan(6400)
+     expect(captured.tools.length + captured.commands.length).toBeLessThanOrEqual(6)
+   })
+@@ -142,8 +147,9 @@ describe("the consolidated surface", () => {
+     // permit-bounded wait (contract §7)
+     expect(actions("agent_teams_mail").sort()).toEqual(["permit", "read", "send", "summary", "unread", "wait"])
+     // control absorbed halt/resume, and (2026-11-02) the two seat verbs `fence`/`unfence` (D4): a fenced
+-    // member is never messaged, so closing a seat belongs beside the team-level holds.
+-    expect(actions("agent_teams_control").sort()).toEqual(["fence", "halt", "resume", "unfence"])
++    // member is never messaged, so closing a seat belongs beside the team-level holds. (2026-11-03) `end`
++    // joins as the TERMINAL verb of the same plane: before it, no supported call could close a LIVE team.
++    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence"])
+   })
+ 
+   test("the retired TOOL NAMES are gone — a re-added one would redden here", () => {

@@ -1,0 +1,11 @@
+# package tests
+ 198 pass
+ 0 fail
+ 2325 expect() calls
+Ran 198 tests across 24 files. [364.00ms]
+# typecheck (after the surface-pin edit too)
+$ tsgo --noEmit
+typecheck-exit=0
+# comments
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

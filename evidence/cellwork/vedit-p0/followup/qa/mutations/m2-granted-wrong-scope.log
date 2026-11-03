@@ -1,0 +1,6 @@
+mutated: granted-uses-wrong-scope
+# MUTATION CASE: m2-granted-wrong-scope (mode=granted-uses-wrong-scope) — 2026-11-03T05:49:15Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --static-only
+[tui-admission] static result ok=true
+[tui-admission] ok=false -> /tmp/tmp.7k1eb91G8k/m2-granted-wrong-scope/evidence/tui/lanes/2026-11-03T05-49-15.468Z
+# exit: 1

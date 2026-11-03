@@ -113,6 +113,11 @@ describe("the consolidated surface", () => {
     // `bindings` OUTPUT property and one render line per seat. `costOf` below charges NAME +
     // DESCRIPTION + PARAMETERS only — an output schema and a render are not part of the model's tool
     // list — so the surface is UNCHANGED at MEASURED 6,379; the headroom stays 21 characters.
+    //
+    // RE-MEASURED 2026-11-03 by N3: `agent_teams_control` gained the terminal `end` verb and its
+    // `team_id` argument, paid for by tightening the halt sentence — the retired pointer to
+    // `agent_teams_plan {action:"delete"}` was WRONG (that archives a STAGED plan, never a live team).
+    // MEASURED 6,390, so 10 characters of headroom remain.
     expect(total).toBeLessThan(6400)
     expect(captured.tools.length + captured.commands.length).toBeLessThanOrEqual(6)
   })
@@ -142,8 +147,9 @@ describe("the consolidated surface", () => {
     // permit-bounded wait (contract §7)
     expect(actions("agent_teams_mail").sort()).toEqual(["permit", "read", "send", "summary", "unread", "wait"])
     // control absorbed halt/resume, and (2026-11-02) the two seat verbs `fence`/`unfence` (D4): a fenced
-    // member is never messaged, so closing a seat belongs beside the team-level holds.
-    expect(actions("agent_teams_control").sort()).toEqual(["fence", "halt", "resume", "unfence"])
+    // member is never messaged, so closing a seat belongs beside the team-level holds. (2026-11-03) `end`
+    // joins as the TERMINAL verb of the same plane: before it, no supported call could close a LIVE team.
+    expect(actions("agent_teams_control").sort()).toEqual(["end", "fence", "halt", "resume", "unfence"])
   })
 
   test("the retired TOOL NAMES are gone — a re-added one would redden here", () => {

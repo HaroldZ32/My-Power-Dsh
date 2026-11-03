@@ -1,0 +1,43 @@
+{
+  "sameSlugTitle": {
+    "member": {
+      "id": "M1",
+      "name": "senior-engineer-1",
+      "description": "d",
+      "role": "Senior Engineer",
+      "status": "running",
+      "spawnedAt": "2026-11-03T00:00:00.000Z",
+      "executorRef": "child-1"
+    },
+    "named": true
+  },
+  "differentSlugTitle": {
+    "named": false
+  },
+  "overlapTitle": {
+    "named": true
+  },
+  "overlapTitleMatches": [
+    [
+      "Reviewer",
+      true
+    ],
+    [
+      "Plan Reviewer",
+      true
+    ]
+  ],
+  "onlyReviewerPlanTitle": {
+    "member": {
+      "id": "M1",
+      "name": "reviewer-1",
+      "description": "d",
+      "role": "Reviewer",
+      "status": "running",
+      "spawnedAt": "2026-11-03T00:00:00.000Z",
+      "executorRef": "child-1"
+    },
+    "named": true
+  }
+}
+EXIT:0

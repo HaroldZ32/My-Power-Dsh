@@ -484,6 +484,21 @@ const ROOT_FILES: readonly string[] = [
   "CONTRIBUTING.zh-CN.md",
   "CHANGELOG.md",
   "EXTENSIONS-FOR-AGENTS.md",
+  // THE SEVEN ROOT FILES THE PACK REALLY COPIES (follow-up F4, 0.17.2). `package.json`'s `files`
+  // declares every one of them and the copy above carries them, so before this anchor named them the
+  // pack printed one NOTE listing all seven as "declared but unanchored". An anchor and a manifest that
+  // agree about what ships is the whole point of the reconciliation below, and seven files silently
+  // outside it is exactly the T-70 shape (a declaration and a copy list that can disagree).
+  // BOUND, stated because the claim is weaker than "the closure gate byte-checks them": that gate owns a
+  // SEPARATE named list (its own required-root-files constant) and derives nothing from this table by
+  // design, so these entries make the two lists agree about WHAT ships without adding a byte rule.
+  "AGENTS.md",
+  "PLAN.md",
+  "VENDOR_LOCK.json",
+  "cordis.patch.yml",
+  "dsh-distribution.json",
+  "dsh-plugin.json",
+  "icon.svg",
   // The DSH Go static view is a ROOT DIRECTORY, not a file: `package.json`'s `files` admits the bare
   // `dsh-go` and the `dshGo` panel points at `./dsh-go/views/mpd.json`, so the anchor names the
   // directory and the copy above carries its whole tree into the artifact.
@@ -611,7 +626,11 @@ function cpAssets(): void {
   /** Declared root files the anchor omits — copied anyway, and reported so the anchor can catch up. */
   const anchorBehind = ROOT_DECLARED.files.filter((file) => !ROOT_FILES.includes(file))
   if (anchorBehind.length > 0) {
-    console.log("[pack-mpd] NOTE: package.json declares root file(s) the closure gate's ROOT_FILES anchor omits: " + anchorBehind.join(", ") + " — they ARE packed (the copy is the manifest's answer); extend the anchor in scripts/pack-mpd.ts so the gate byte-checks them too")
+    // The byte rule is the GATE's own list, never this anchor: `scripts/verify-pack-closure.ts`
+    // derives nothing from this file, and its `REQUIRED_ROOT_FILES` (`pack-mpd` only feeds the gate's
+    // self-test fixture) is what byte-checks the packed artifact. Extending this anchor closes the
+    // presence gap; it does not, by itself, make the gate check the bytes.
+    console.log("[pack-mpd] NOTE: package.json declares root file(s) this packer's ROOT_FILES anchor omits: " + anchorBehind.join(", ") + " — they ARE packed (the copy is the manifest's answer); add them here so the NOTE stops, and add them to scripts/verify-pack-closure.ts#REQUIRED_ROOT_FILES so the gate byte-checks them")
   }
   /** The declared root assets that failed to arrive, so ONE message names them all. */
   const absentRoot: string[] = []

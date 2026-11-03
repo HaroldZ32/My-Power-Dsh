@@ -1,0 +1,22 @@
+### A5 m6 red-first — 2026-11-03T07:26:34Z
+original sha256: f5461b9d792a616a9dac27ee8a8b797254573c9ef4d705f9a8054c663e3de113
+
+### baseline live
+baseline_live_exit=0
+[surface-pin] PASS — every surface the autoproject refactor introduced is declared as the contract fixes it (12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads)
+### baseline self-test
+baseline_selftest_exit=0
+[surface-pin self-test] ok: the extractors, the SHIPPED-tree pin, EIGHT negative controls (parameter, action verb, alias tool, alias command, cellwork name, producer output key, consumer read, command name) and the SKILL.md case-table row
+
+m6 applied: `end` removed from the agent_teams_control enum (1 occurrence)
+### m6 live
+m6_live_exit=1
+[surface-pin] FAIL: 1 surface problem(s)
+  - tool agent_teams_control no longer offers action 'end'
+### m6 self-test
+m6_selftest_exit=1
+[surface-pin self-test] FAIL: 2 problem(s)
+  - the SHIPPED tree must satisfy every pin: tool agent_teams_control no longer offers action 'end'
+  - negative control: a removed action verb must redden
+
+### restored sha256: f5461b9d792a616a9dac27ee8a8b797254573c9ef4d705f9a8054c663e3de113

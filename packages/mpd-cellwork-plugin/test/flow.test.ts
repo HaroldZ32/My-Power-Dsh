@@ -48,6 +48,8 @@ interface CapturedTool {
   execute: (args: unknown, exec: unknown) => Promise<unknown>
   /** The normalized output block, which carries the renderer a render arm calls directly. */
   output?: { render?: (args: unknown, value: unknown) => unknown }
+  /** The registered description — the only place a model learns a rule the tool enforces. */
+  description?: string
 }
 
 /** One command definition the fake registry captured. */
@@ -1228,6 +1230,23 @@ test("D3/C4: cellwork_split reports a scope-less task's warning in the RESULT an
   const rendered = renderText(harness, "cellwork_split", submitted)
   expect(rendered).toContain("core")
   expect(rendered).toContain("no path")
+})
+
+test("D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition)", () => {
+  /** The harness whose captured definitions carry the registered descriptions. */
+  const harness = makeHarness()
+  /** The registered splitter definition, found by the name the model calls. */
+  const split = harness.tools.find((tool) => tool.name === "cellwork_split")
+  expect(split).toBeDefined()
+  /** The description as registered, which is what a model reads before it decides how to split. */
+  const description = String(split?.description ?? "")
+  // N3 — THE RULE ITSELF, not just the word: warnings are NON-FATAL and reported BESIDE the verdict,
+  // so a model cannot believe they block acceptance, and the scope-less-contract consequence is named.
+  expect(description).toContain("warnings")
+  expect(description).toContain("never change")
+  expect(description).toContain("writeScopes")
+  // and the recovery path, so a warned split is actionable rather than mysterious.
+  expect(description).toContain("BEFORE the first write")
 })
 
 test("C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row", async () => {

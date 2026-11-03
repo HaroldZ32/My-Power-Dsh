@@ -1,0 +1,50 @@
+
+                                                                                                                                                    │ ◀     ?    ♥    ❖    ⬢    ⚠   待办   ▸    ◆    ⓘ    ∿    ⌗      ▶
+    DSH 自带实验性功能（EXP，4 项）：                                                                                                               ├─────────────────────────────────────────────────────────────────────
+      智能体团队 0.2.1-rc.5 · 未启用                                                                                                                │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-agent-team-profile                                                                       │
+        用途：Agent 分工合作，/team status 看状态                                                                                                   │
+      自动授权审查 0.2.1-rc.5 · 未启用                                                                                                              │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-auto-review                                                                              │
+        用途：/permission auto，模型自主审批                                                                                                        │
+      会话搜索 0.2.1-rc.5 · 未启用                                                                                                                  │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-session-search                                                                           │
+        用途：Agent 能翻本工作区的历史会话                                                                                                          │
+      Git 工作树 0.2.1-rc.5 · 未启用                                                                                                                │
+        启用：/plugin enable @deepseek-ai/dsh-experimental-tool-worktree                                                                            │
+        用途：Agent 新开 Git 分支与工作树，转到里面干活                                                                                             │
+                                                                                                                                                    │
+  ❯ mpd admission lane decision arm                                                                                                                 │
+                                                                                                                                                    │
+  ⚓ 思考 · 2s （ctrl+o 展开）                                                                                                                      │
+                                                                                                                                                    │
+  ● ⏵ 先摸清 tui-admission 工作区里有什么                                                                                                           │
+                                                                                                                                                    │
+  • Bash(pwd; ls -la; echo '---'; find . -maxdepth 3 -not -path './.git/*' | head -100) · 0s                                                        │
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/tui-admission/ws                                                                          │
+     total 20                                                                                                                                       │
+     drwxrwxr-x 4 haroldzhao haroldzhao 4096 Nov  3 14:22 .                                                                                         │
+     … +41 行（ctrl+o 展开）                                                                                                                        │
+                                                                                                                                                    │
+  • Bash(ls -la .mpd 2>/dev/null; echo '--- sb tree ---'; ls -la /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb 2>/dev/null; echo '---    ·   │
+        tui-admission ---'; ls -la /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/sb/tui-admission 2>/dev/null)                             0s   │
+   ⎿ total 28                                                                                                                                       │
+     drwxrwxr-x 6 haroldzhao haroldzhao 4096 Nov  3 14:22 .                                                                                         │
+     drwxrwxr-x 4 haroldzhao haroldzhao 4096 Nov  3 14:22 ..                                                                                        │
+     … +23 行（ctrl+o 展开）                                                                                                                        │
+                                                                                                                                                    │
+   ⠧ 思考…                                                                                                                                          │
+    │ …Actually let me check logs for something related. And check `.mpd/verify/boot.json`, `project-init.json`.                                    │
+    │                                                                                                                                               │
+    │ Also the socket `tui-admission-shipped.sock` suggests                                                                                         │
+                                                                                                                                                    │
+  🌑 ✓ 敲回车 ls -la .mpd 2>/dev/null; echo '--- sb t… · 54ms · ↑ 35.1k · ↓ 7 tokens                                                                │
+  mpd: 团队 - · 计划 0 · workmate 0                                                                                                                 │
+                                                                                                                                                    │
+  ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮│
+  ⌸ ❯                                                                                                                                              ⛶│
+  ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯│
+                                                                                                                                      36k/1.0M 3.5% │
+   deepseek-flash · max · 缓存 99.5% · ≈¥0.01 峰 · ws                                                                           ctx 3.5% (36k/1.0m) ├─────────────────────────────────────────────────────────────────────
+   esc 中断                                                                                                                                         │ Ctrl+B 聚焦侧栏
+
