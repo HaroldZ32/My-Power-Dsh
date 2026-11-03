@@ -1,0 +1,27 @@
+# F4 byte-check discriminator (delta method): does verify-pack-closure BYTE-CHECK the seven root files the packer anchor now names?
+# Method: copy the real artifact once (cp -a), run the gate with --packed <copy> and ONE pinned --pack-stamp (2026-11-03T06:00:00.000Z),
+# mutating ONE file per arm. A byte rule would ADD a finding naming the mutated file (kind ROOT-FILE for the gate's own
+# required root entries, CONTENT-DRIFT for the swept trees); the ABSENCE of such a finding is the discriminator.
+# The base run already carries ONE unrelated CONTENT-DRIFT row: another lane edited skills/dsh-qa/scripts/tui-admission.ts
+# after this pack, so the copy is stale for that file. That row is identical in every arm and is not what this measures.
+
+## arm 1 control: unmodified copy
+exit=1
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  CONTENT-DRIFT - skills/dsh-qa/scripts/tui-admission.ts differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/tui-admission.ts (source 8654d402d7d7… / 66381 B, artifact 7087a70da934… / 61656 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:48:28.817Z) - the artifact ships bytes no reading was taken on (T-63)
+
+## arm 2: PLAN.md mutated in the ARTIFACT (one of the seven)
+exit=1
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  CONTENT-DRIFT - skills/dsh-qa/scripts/tui-admission.ts differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/tui-admission.ts (source 8654d402d7d7… / 66381 B, artifact 7087a70da934… / 61656 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:48:28.817Z) - the artifact ships bytes no reading was taken on (T-63)
+
+## arm 3: dsh-plugin.json mutated in the ARTIFACT (another of the seven)
+exit=1
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  CONTENT-DRIFT - skills/dsh-qa/scripts/tui-admission.ts differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/tui-admission.ts (source 8654d402d7d7… / 66381 B, artifact 7087a70da934… / 61656 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:48:28.817Z) - the artifact ships bytes no reading was taken on (T-63)
+
+## arm 4: EXTENSIONS-FOR-AGENTS.md mutated (one of the GATE OWN two required root files)
+exit=1
+[verify-pack-closure] FAIL - 2 closure violation(s)
+  CONTENT-DRIFT - skills/dsh-qa/scripts/tui-admission.ts differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/tui-admission.ts (source 8654d402d7d7… / 66381 B, artifact 7087a70da934… / 61656 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-11-03T05:48:28.817Z) - the artifact ships bytes no reading was taken on (T-63)
+  ROOT-FILE - EXTENSIONS-FOR-AGENTS.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/EXTENSIONS-FOR-AGENTS.md (source 24f5187c7e97… / 15618 B, artifact c5d917fec729… / 15619 B) and the source was NOT written after the artifact stamp 2026-11-03T06:00:00.000Z (source mtime 2026-10-02T12:34:40.655Z) - the artifact ships bytes no reading was taken on (T-70)

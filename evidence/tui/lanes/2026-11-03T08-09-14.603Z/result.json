@@ -1,0 +1,125 @@
+{
+  "slug": "tui-admission",
+  "ok": true,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "34fc614c9aa64257b0d2f0dc27f56c3526785b02eb8aa07e744ef595d4542013",
+    "bytes": 507791,
+    "mtimeLocal": "2026-11-03T05:32:12.464Z",
+    "mtimeUtc": "2026-11-03T05:32:12.464Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "34fc614c9aa64257b0d2f0dc27f56c3526785b02eb8aa07e744ef595d4542013",
+    "after": "34fc614c9aa64257b0d2f0dc27f56c3526785b02eb8aa07e744ef595d4542013",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "87fdb475b232ac379b48d9c4cbff061aa78942bd50f52a9a15e302f775b974c3",
+  "steps": {
+    "static": {
+      "ok": true,
+      "specRoot": "installed-payload",
+      "specDir": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/tui-profile",
+      "profileVersion": "tui-admission/0.15",
+      "parse": "ok",
+      "projected": {
+        "apiVersion": "manifest.dsh/internal/v1alpha1",
+        "kind": "Component",
+        "metadata": {
+          "name": "com.mpd-dsh.mpd-tui",
+          "displayName": "@mpd-dsh/mpd",
+          "version": "0.17.1"
+        },
+        "spec": {
+          "facets": [
+            {
+              "name": "host",
+              "activation": {
+                "apiVersion": "lifecycle.dsh/v1alpha1",
+                "kind": "FacetModule",
+                "spec": {
+                  "module": "packages/mpd-tui-plugin/dist/index.js"
+                }
+              },
+              "protocols": {
+                "requires": [
+                  {
+                    "apiVersion": "tui.dsh/v1alpha1",
+                    "kind": "DecisionEvents",
+                    "optional": true,
+                    "x-community-fallback": "Decision interception is skipped and nothing else degrades: the status line, transcript renderers, /settings section, full-screen board, command tree, shortcuts, dialogs and the three sidebar panels keep working. No input, rewind, session-switch or compact decision is intercepted or claimed; no intercept permission is requested, so the seam is inactive by design."
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "manifest": {
+        "id": "com.mpd-dsh.mpd-tui",
+        "manifestVersion": "0.15",
+        "entry": "packages/mpd-tui-plugin/dist/index.js",
+        "apiVersion": "v1alpha1",
+        "requiredContracts": [],
+        "optionalContracts": [
+          "tui.dsh/v1alpha1#DecisionEvents"
+        ],
+        "permissions": [],
+        "subscriptions": []
+      },
+      "structural": {
+        "provides": false,
+        "requires.services": false,
+        "findings": [],
+        "entryExists": true,
+        "entrySha256": "sha256:34fc614c9aa64257b0d2f0dc27f56c3526785b02eb8aa07e744ef595d4542013"
+      },
+      "validatePlugin": "ok",
+      "negotiation": {
+        "decision": "compatible"
+      },
+      "grants": {
+        "rows": [
+          {
+            "name": "session.input.intercept",
+            "scope": "tui/input"
+          }
+        ],
+        "manifestDecision": "compatible",
+        "manifestGranted": "compatible",
+        "ungranted": "waiting_authorization",
+        "granted": "compatible",
+        "wrongScope": "waiting_authorization",
+        "ok": true
+      },
+      "controls": {
+        "brokenSyntax": "SyntaxError",
+        "optionalWithoutFallback": "optional protocol requires a TUI fallback: tui.dsh/v1alpha1#DecisionEvents",
+        "unknownPermission": "undefined is not an object (evaluating 'badPermission.permissions[0].name = \"mpd-dsh.not-a-registered-permission\"')"
+      },
+      "inputDigests": {
+        "manifest": "sha256:87fdb475b232ac379b48d9c4cbff061aa78942bd50f52a9a15e302f775b974c3",
+        "manifestLib": "sha256:1041a84e010c5b6924d9d921e82719a63a54ae2a697d041de24c5a32b2ae6dce",
+        "manifestSchema": "sha256:78392a63585c202ca1fbd262aa17145a320ee99ba72f0a257f99daa752603b33",
+        "registry": "sha256:5c390eabce620c6700da27cd51676e9bd4571cf25a697654cb99dbf2f2b49ad2",
+        "permissions": "sha256:1e2cfeaa860936f1608cb8a8bffdf6343de6f513645eb98f6765d72157d5a1a7",
+        "schemas": [
+          {
+            "name": "conformance-claim.schema.json",
+            "sha256": "sha256:447940843bd9324a8864a9cb0018a9a6bc1fd1834865d15419f1e6f85631834f"
+          },
+          {
+            "name": "effect-ledger-record.schema.json",
+            "sha256": "sha256:bfa0ea159daa1ab801053a946eb4c8f902cb96f83851502f7c3ae314d1ee75aa"
+          },
+          {
+            "name": "host-descriptor.schema.json",
+            "sha256": "sha256:4b76c43de2d7f8d0b8e171dd96a7a5c9c7732775e0f552e7345074bf95f5755e"
+          }
+        ],
+        "specProfileVersion": "tui-admission/0.15"
+      }
+    }
+  },
+  "sandboxRoot": "not used (--static-only)"
+}

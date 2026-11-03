@@ -82,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, cancelTasks, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, endTeam, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -99,6 +99,7 @@ import {
   casReleaseTask,
   createTeam,
   idleMembers,
+  memberIdentityOf,
   memberNamedBy,
   readyTasks,
   deleteTeam,
@@ -911,25 +912,31 @@ interface CallerIdentity {
 /**
  * The identity a caller may present on ONE record: its own member row, and the ancestors it may borrow.
  *
- * WHY THE NARROWING EXISTS (PR #42 review, F-B/CWE-863). `lineage` is the CAPTAIN-continuity link
- * (C7-4 F5): a forked or resumed Lead gets a fresh session id while the record keeps the original, and
- * the harness-recorded `parentSession` is the one durable way back. But a SPAWNED MEMBER's session
- * names the Lead as its parent too, so adding the ancestors unconditionally let a roster member
- * inherit the Lead's spelling — and with it the Lead close override on another member's row (F-B) and
- * the live-append authorization (F-A, CWE-862). A member is therefore identified by its OWN id, then
- * by the session title the record's roster names, and borrows NO ancestry; a caller the roster does
- * not name (the ordinary Lead, the forked captain) keeps the C7-4 behaviour unchanged.
+ * WHY THE NARROWING EXISTS (PR #42 review, F-B/CWE-863; widened to the whole plane by T12). `lineage` is
+ * the CAPTAIN-continuity link (C7-4 F5): a forked or resumed Lead gets a fresh session id while the
+ * record keeps the original, and the harness-recorded `parentSession` is the one durable way back. But a
+ * SPAWNED MEMBER's session names the Lead as its parent too, so adding the ancestors unconditionally let
+ * a roster member inherit the Lead's spelling — and with it the Lead close override on another member's
+ * row (F-B) and the live-append authorization (F-A, CWE-862). Worse, a RESUMED member's id is neither its
+ * `executorRef` nor any Lead id, so the old id-only member guard read the seat as a forked Lead and the
+ * churn heal promoted it into `leadHistory`.
+ *
+ * THE DECISION IS THE RECORD'S, NOT THIS FILE'S: {@link memberIdentityOf} in `team-store.ts` is the ONE
+ * narrowing (own id → recorded ancestor → persona title over the seat's ROLE, then its stored name), and both this
+ * identity and `team-actions.ts#leadAuthorityOf` call it, so they can never disagree. A caller the roster
+ * NAMES — even ambiguously — borrows NO ancestry; only a caller the roster does not name (the ordinary
+ * Lead, the genuine fork) keeps the C7-4 behaviour unchanged.
  * @param record - the record the caller's membership is decided against.
  * @param sessionId - the caller's own session id.
  * @param title - the session title the harness gave the caller (the persona prompt prefix).
  * @param lineage - the ancestors the harness recorded for this caller.
- * @returns the caller's member row (when the roster names it) and the ancestry it may present.
+ * @returns the caller's member row (when the roster names one uniquely) and the ancestry it may present.
  */
 function callerIdentity(record: TeamRecord, sessionId: string, title: string, lineage: readonly string[]): CallerIdentity {
-  /** The member this session is: its own id first, then a roster name the session title contains. */
-  const ownMember = memberNamedBy(record, [sessionId])
-    ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name))
-  return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] }
+  /** The roster identity this record's own narrowing rule grants the session. */
+  const identity = memberIdentityOf(record, sessionId, title, lineage)
+  if (!identity.named) return { ancestry: lineage }
+  return identity.member === undefined ? { ancestry: [] } : { ownMember: identity.member, ancestry: [] }
 }
 
 /** The tool whose WHOLE-LIST write carries a wave's checklist; probed before it is ever called. */
@@ -1315,21 +1322,26 @@ export function apply(ctx: any): void {
    * `leadHistory` and `teams.json` are what make the captaincy durable — exactly what the hand rebind
    * rewrote this wave. The write is narrowly gated so it can never invent a Lead: only a session the
    * record does NOT already name by its own id, whose recorded ancestor IS the record's Lead, that is
-   * neither on the record's roster (a member resolves through the member arm) nor a DELEGATION CHILD
-   * (`origin: "subagent"` or a depth of 1+, which is what the harness records for a subagent — a seeded
-   * fork carries none of them). Anything else leaves the record untouched.
+   * neither on the record's roster (the plane's shared {@link memberIdentityOf} narrowing, which reads the
+   * own id, a recorded ancestor AND the persona title, so a RESUMED member is not mistaken for a fork) nor
+   * a DELEGATION CHILD (`origin: "subagent"` or a depth of 1+, which is what the harness records for a
+   * subagent — a seeded fork carries none of them). Anything else leaves the record untouched.
    * @param workspace - the workspace holding the record.
    * @param sessionId - the caller's own session id.
    * @param lineage - the ancestors the harness recorded for this call.
    * @param record - the record resolution found.
    * @param delegated - true when the caller is a recorded delegation child.
+   * @param title - the session title the harness gave the caller (the persona prompt prefix), or "".
    * @returns the record to use (the healed one, or the input untouched).
    */
-  const healLeadBinding = (workspace: string, sessionId: string, lineage: readonly string[], record: TeamRecord, delegated: boolean): TeamRecord => {
+  const healLeadBinding = (workspace: string, sessionId: string, lineage: readonly string[], record: TeamRecord, delegated: boolean, title: string): TeamRecord => {
     /** Whether the record already names the caller's OWN id as its Lead — nothing to heal then. */
     const ownLead = record.leadSessionId === sessionId || (record.leadHistory ?? []).includes(sessionId)
     if (ownLead || delegated) return record
-    if (recordNamesMember(record, [sessionId])) return record
+    // A SESSION THE ROSTER NAMES IS NEVER A NEW LEAD (T12). Before the shared narrowing this guard was
+    // id-only, so a resumed member (new id, member's ancestor or persona title) was promoted into
+    // `leadHistory` and could thereafter append to the live roster and end the team.
+    if (memberIdentityOf(record, sessionId, title, lineage).named) return record
     /** Whether a recorded ancestor of this call IS this record's Lead. */
     const fromLead = lineage.some((id) => id === record.leadSessionId || (record.leadHistory ?? []).includes(id))
     if (!fromLead) return record
@@ -1450,14 +1462,15 @@ export function apply(ctx: any): void {
    * @param sessionId - the caller's own session id.
    * @param lineage - the ancestors the harness recorded for this caller.
    * @param delegated - true when the caller is a recorded delegation child.
+   * @param title - the session title the harness gave the caller (the persona prompt prefix), or "".
    * @returns the resolution, with a healed record when a rebind was owed.
    */
-  const resolveForWrite = (workspace: string, sessionId: string, lineage: readonly string[], delegated: boolean): TeamResolution => {
+  const resolveForWrite = (workspace: string, sessionId: string, lineage: readonly string[], delegated: boolean, title: string): TeamResolution => {
     /** The resolution over the caller's own id plus its recorded ancestors. */
     const resolved = resolveTeam(workspace, sessionId, lineage)
     if (resolved.record === undefined) return resolved
     /** The record after the churn heal, or the same one when no rebind was owed. */
-    const healed = healLeadBinding(workspace, sessionId, lineage, resolved.record, delegated)
+    const healed = healLeadBinding(workspace, sessionId, lineage, resolved.record, delegated, title)
     return healed === resolved.record ? resolved : { ...resolved, record: healed }
   }
 
@@ -1697,8 +1710,10 @@ export function apply(ctx: any): void {
     if (agent === undefined) return { ok: false, error: `session ${sessionId} is not live` }
     /** The ancestors the resolved agent contributes, with the SAME delegation guard `where` applies. */
     const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent })
+    /** The session title of the resolved agent — the identity plane's member arm reads it. */
+    const title = sessionTitleOf({ agent } as DshToolExec)
     try {
-      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...(signal === undefined ? {} : { signal }) } }
+      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...(title === "" ? {} : { title }), ...(signal === undefined ? {} : { signal }) } }
     } catch (error) {
       return { ok: false, error: String((error as Error)?.message ?? error) }
     }
@@ -2059,7 +2074,7 @@ export function apply(ctx: any): void {
         // live APPROVED record and the append lands on it, persisted through `writeTeam` so the change
         // feed every panel follows fires.
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
         // ── LEAD AUTHORIZATION ON THE LIVE ROSTER (PR #42 review F-A, CWE-862) ──
         // The staged-plan arm above is the caller's OWN staging file; this arm writes a LIVE team every
@@ -2195,7 +2210,7 @@ export function apply(ctx: any): void {
         // session", so a DAG could never grow a repair row mid-run. It now appends to the live APPROVED
         // record through `addTeamTask` + `writeTeam`, carrying the requirement-chain fields.
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
         // ── LEAD AUTHORIZATION ON THE LIVE BOARD (PR #42 review F-A, CWE-862) ──
         // Same rule as the live roster arm: a member must not assign arbitrary ownership or
@@ -2372,9 +2387,9 @@ export function apply(ctx: any): void {
         /** The occupancy the harness meter reports for this caller. */
         const pressure = dsh.contextPressure(exec.agent)
         /** The team this call resolves, when it resolves one; a seat-less caller still gets the numbers. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
-        /** The caller's own roster row, when the record names one. */
-        const member = resolved.record === undefined ? undefined : memberNamedBy(resolved.record, [sessionId])
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
+        /** The caller's own roster row, when the record names one — the SHARED narrowing, so a resumed member still finds its seat. */
+        const member = resolved.record === undefined ? undefined : callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ownMember
         return {
           ...(resolved.record === undefined || member === undefined
             ? {}
@@ -2397,9 +2412,12 @@ export function apply(ctx: any): void {
         // THE MEMBER'S CHECKPOINT DUTY (D4). The body is exec-free, so the SAME sequence backs the
         // `mpdTeamActions.handoff` service member; this branch only binds the caller and rethrows a
         // refusal as the tool error a caller has always observed.
+        /** The session title the harness stamped; the identity plane's shared narrowing reads it. */
+        const handoffTitle = sessionTitleOf(exec)
         /** The caller this action acts as, built exactly like every other team action's caller. */
         const caller: TeamActionCaller = {
           workspace, sessionId, lineage,
+          ...(handoffTitle === "" ? {} : { title: handoffTitle }),
           ...(exec.agent === undefined ? {} : { agent: exec.agent }),
           ...(exec.signal === undefined ? {} : { signal: exec.signal }),
         }
@@ -2416,7 +2434,7 @@ export function apply(ctx: any): void {
         // a row can be named at all; on an ambiguous roster `resolveForWrite` carries the refusal that
         // names the teams, and the release REFUSES rather than guessing which team's row to free.
         /** The team this release works on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The task this release names; the empty string is refused by the task half. */
         const taskId = String(args?.task_id ?? "")
@@ -2445,7 +2463,7 @@ export function apply(ctx: any): void {
         // row — so a lane added after approval could not depend on anything and the DAG stayed flat.
         // This verb wires an EXISTING row and never removes an edge.
         /** The team this call works on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The row the caller named. */
         const taskId = String(args?.task_id ?? "")
@@ -2555,7 +2573,7 @@ export function apply(ctx: any): void {
         // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
         // teams instead of the standing "approve a plan first", which would be a lie about the cause.
         /** The team this call works on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The team this call works on. */
         const record = resolved.record
@@ -2612,7 +2630,7 @@ export function apply(ctx: any): void {
         // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
         // teams instead of the standing "approve a plan first", which would be a lie about the cause.
         /** The team this call works on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The team this call works on. */
         const record = resolved.record
@@ -2756,7 +2774,7 @@ export function apply(ctx: any): void {
         // cannot name a row; and a session on several rosters must be REFUSED rather than guessed at,
         // because freeing the wrong team's pairing would let that team dispatch the task twice.
         /** The team this release works on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The task this release names. */
         const taskId = String(args?.task_id ?? "")
@@ -2812,7 +2830,7 @@ export function apply(ctx: any): void {
       const ownershipAsked = requestedPairs > 0 || requestedMode === "roster"
       if (ownershipAsked) {
         /** The team this caller acts on, or the sentence saying why none resolved. */
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec))
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         // THE SAME SPELLINGS THE RELEASE BRANCH ACCEPTS, built the same way: the session id, the session
         // TITLE, the official membership name, the caller's OWN roster row and the NARROWED ancestry — a
@@ -3256,41 +3274,59 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
-      "Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:\"delete\"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).",
+      "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
-        reason: { type: "string", description: "halt/fence: why." },
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
+        reason: { type: "string", description: "halt/fence/end: why." },
         member: { type: "string", description: "fence/unfence: seat." },
+        team_id: { type: "string", description: "end: team to close (default: yours)." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
       render: (_args: any, value: any) =>
         text(value?.refused !== undefined ? `refused: ${value.refused}`
-          : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
-            : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
+          : value?.changed !== undefined ? (value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed`)
+            : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}`
+              : value?.resumed !== undefined ? (value.resumed ? "resumed" : "was not halted") : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`),
     },
     execute: async (args: any, exec: DshToolExec) => {
       /** The call's workspace, session and recorded ancestry. */
       const { workspace, sessionId, lineage } = where(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
+      /** The session title the harness stamped (the persona prompt prefix); the identity plane reads it. */
+      const title = sessionTitleOf(exec)
+      /** The caller this action acts as, built exactly like every other team action's caller. */
+      const caller: TeamActionCaller = {
+        workspace, sessionId, lineage,
+        ...(title === "" ? {} : { title }),
+        ...(exec.agent === undefined ? {} : { agent: exec.agent }),
+        ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+      }
+      if (action === "end") {
+        // THE TERMINAL VERB (N3): the one supported close for a live team. `team_id` names the record
+        // explicitly so a repair target works from any session; absent, the caller's own team is read.
+        /** The close request and what it stamped, or the sentence it refused with. */
+        const outcome = await endTeam(teamActionsDeps, caller, {
+          ...(args?.team_id === undefined ? {} : { teamId: String(args.team_id) }),
+          ...(args?.reason === undefined ? {} : { reason: String(args.reason) }),
+        })
+        if (!outcome.ok) throw new Error(outcome.error)
+        /** The reply, without the result envelope's own flag. */
+        const { ok: _envelope, ...reply } = outcome
+        return reply
+      }
       if (action === "fence" || action === "unfence") {
         // ONE SEAT, LEAD-ONLY (D4). The body is exec-free, so a panel button, the service and this tool
         // drive the same sequence; the tool simply rethrows a refusal, which is what a tool caller sees.
         /** The seat this call names. */
         const member = String(args?.member ?? "").trim()
         if (member === "") throw new Error(`agent_teams_control ${action}: member is required`)
-        /** The caller this action acts as, built exactly like every other team action's caller. */
-        const caller: TeamActionCaller = {
-          workspace, sessionId, lineage,
-          ...(exec.agent === undefined ? {} : { agent: exec.agent }),
-          ...(exec.signal === undefined ? {} : { signal: exec.signal }),
-        }
         /** The fence change, or the sentence it refused with. */
         const outcome = action === "fence"
           ? await fenceMember(teamActionsDeps, caller, { member, ...(args?.reason === undefined ? {} : { reason: String(args.reason) }) })
@@ -3301,7 +3337,7 @@ export function apply(ctx: any): void {
         return reply
       }
       if (action === "resume") return { resumed: clearHold(workspace) }
-      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence)`)
+      if (action !== "halt") throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`)
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) }
     },
   }))

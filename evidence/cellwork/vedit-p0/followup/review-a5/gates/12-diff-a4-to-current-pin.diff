@@ -1,0 +1,14 @@
+--- .mpd/recon/qa/rev-a5/rebuild/pin.a4.ts	2026-11-03 15:25:27.096034408 +0800
++++ skills/dsh-qa/scripts/surface-pin.ts	2026-11-03 15:18:36.899262939 +0800
+@@ -298,7 +298,10 @@
+   { source: "teamCore", name: "agent_teams_task", actions: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"] },
+   { source: "teamCore", name: "agent_teams_dispatch", parameters: ["action", "task_id", "dry_run", "limit", "mode", "reassign"], actions: ["run", "release"] },
+   { source: "teamCore", name: "agent_teams_mail", actions: ["send", "unread", "read", "summary", "permit", "wait"] },
+-  { source: "teamCore", name: "agent_teams_control", actions: ["halt", "resume", "fence", "unfence"] },
++  // A4-F2: the `end` verb is PINNED with the rest — the pinned set is a SUBSET check, so an ADDED action is
++  // tolerated and would have been invisible; naming it is what makes a future REMOVAL of `end` redden like
++  // `fence` does.
++  { source: "teamCore", name: "agent_teams_control", actions: ["halt", "resume", "fence", "unfence", "end"] },
+   // 4 — cellwork keeps its 15 names; `cellwork_open` is the NEW one.
+   { source: "cellworkIndex", name: "cellwork_open" },
+   // 5 — the workmate surfaces the wave added.

@@ -1,0 +1,16 @@
+$ bun test packages/mpd-team-core-plugin
+
+ 603 pass
+ 0 fail
+ 2905 expect() calls
+Ran 603 tests across 42 files. [3.16s]
+exit=0
+
+$ bun run typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+
+$ node scripts/verify-comment-coverage.ts
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+comments-exit=0

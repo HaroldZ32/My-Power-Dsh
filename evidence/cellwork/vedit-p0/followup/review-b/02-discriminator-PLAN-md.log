@@ -1,0 +1,7 @@
+[verify-pack-closure] FAIL - 1 closure violation(s)
+  ROOT-FILE - PLAN.md differs byte-wise from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/PLAN.md (source fb3faa3aa05c… / 25066 B, artifact 24035b9f72b8… / 25103 B) and the source was NOT written after the artifact stamp 2026-11-03T05:59:45.011Z (source mtime 2026-11-03T05:32:12.369Z) - the artifact ships bytes no reading was taken on (T-70)
+  packer: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/pack-mpd.ts
+  cli: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/scripts/mpd-ext.ts
+  packages dir: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages
+  patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml
+  packed tree: /tmp/rev-b-discriminator.U2lYfG/arm-PLAN-md (504 asset files); content bytes: 649 file(s) compared, 648 identical, 1 drift, 0 expected-after-pack; completeness: 541 declared source file(s) compared, 540 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-03T05:59:45.011Z (command line (--pack-stamp))

@@ -1,0 +1,8 @@
+$ bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0
+
+$ bun skills/dsh-qa/scripts/tui-admission.ts --static-only
+[tui-admission] static result ok=true
+[tui-admission] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-11-03T06-36-50.728Z
+exit=0

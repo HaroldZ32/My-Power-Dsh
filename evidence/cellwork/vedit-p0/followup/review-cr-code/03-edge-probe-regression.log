@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "name": "plan-reviewer title on overlap roster",
+      "named": true,
+      "member": "M2"
+    },
+    {
+      "name": "reviewer title on overlap roster",
+      "named": true,
+      "member": "M1"
+    },
+    {
+      "name": "equal-length tie (two Reviewer seats)",
+      "named": true,
+      "member": null
+    },
+    {
+      "name": "seat's own stored slug in the title",
+      "named": true,
+      "member": "M1"
+    },
+    {
+      "name": "a DIFFERENT seat's slug",
+      "named": false,
+      "member": null
+    },
+    {
+      "name": "genuine fork title",
+      "named": false,
+      "member": null
+    }
+  ],
+  "failures": []
+}
+EDGE PROBE PASS
+EXIT:0

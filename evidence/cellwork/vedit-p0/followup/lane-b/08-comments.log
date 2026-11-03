@@ -1,0 +1,10 @@
+# verify:comments on the files lane B touched (follow-up F3+F4)
+packages/mpd-team-core-plugin/test/vedit-p0-lane-b.test.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+scripts/pack-mpd.ts: VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+# repo-wide gate (other lanes may still be in flight):
+# verify-comment-coverage
+
+scanned 591 TypeScript file(s) of 591 in the source set; inspected 51779 declaration(s); skipped 25192 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

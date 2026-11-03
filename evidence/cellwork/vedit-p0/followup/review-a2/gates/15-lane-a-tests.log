@@ -1,0 +1,7 @@
+# REAL REPO — 2026-11-03T06:47:45Z
+# command: bun test packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts packages/mpd-cellwork-plugin/test/flow.test.ts
+
+ 47 pass
+ 0 fail
+ 468 expect() calls
+Ran 47 tests across 2 files. [260.00ms]

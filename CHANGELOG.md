@@ -14,6 +14,76 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.2 — the follow-up wave and the team-end verb
+
+**0.17.1's npm stage was never approved, and this release supersedes it.** Nothing was ever public under
+0.17.1 and `latest` never moved, so 0.17.2 carries that release's code plus the follow-up wave below; the
+0.17.1 section stays as the record of what that tag contained.
+
+**Fixed — the `tui-admission` grant arms are two-sided again (H1).** Both the static arms and the live
+lane demanded states only a DECLARING manifest can produce, while the shipped manifest declares
+`"permissions": []` by decision — so `--static-only` was red by construction and the live lane failed on
+`arm3`/`arm5`. The static arms now negotiate a `structuredClone(manifest)` carrying ONE
+`session.input.intercept` row and assert none → `waiting_authorization`, granted → `compatible`,
+wrong-scope → `waiting_authorization`, while the shipped manifest stays permission-less; N1's tautological
+scope check became a real write→read-back round trip, and N2's writer control checks the ROW, not just
+that it is an array. The LIVE lane is re-specified to the same contract: the shipped posture asserts
+`compatible` with NO grants file and NO grants hint, the admission-loader line is read from the SHIPPED
+boot, the attribution clause is gated by `attributionArmsApplicable(rows)` and recorded as the string
+`"inapplicable"` — never a folded `true` — when nothing is declared, and the real three-way grant
+discriminator runs on the CLONE. It drives THREE boots, one per grants-file state. The
+registration/attribution gap measured 2026-10-14 stays UNMEASURED by this lane and is stated as a bound,
+not claimed.
+
+**Fixed — `dual-track-smoke`'s deepseek track boots.** The overlay id-targeted `agent-default-model` with
+`provider: deepseek`, but `@deepseek-ai/dsh-base` mounts the `llm-pi-ai` row with no config, so it composed
+dormant, never called `registerAdapter`, and the boot died `NO_ADAPTER: no adapter registered for provider
+"deepseek"` (exit 1) before any credential was consulted — a QA-CASE bug, not a product defect. The case
+now stages the ruling's `llm-pi-ai` block (the provider's apiKey env plus the `deepseek-v4-flash` model)
+into the sandbox `settings.yaml`, APPENDED after the copied one so no other provider is replaced, and reads
+its verdict from the HARNESS session log (`tool/call` paired with a non-error `tool/result`) instead of a
+stdout regex — which is what makes the pass real: the printed workspace is the sandbox. Both tracks PASS.
+
+**Added — `agent_teams_control {action:"end"}`: the team-close verb.** Before it, NO supported call could
+end a LIVE team: `agent_teams_plan {action:"delete"}` archives a STAGED plan and ends nothing once a team
+exists, `halt` is a pause, `mpd_team_compact_run` is audit-only, and `reapReapedTeams` skips live teams by
+design — the only close was a hand edit of `phase`/`endedAt`. `end` (Lead only) stamps `phase: "ended"`,
+`endedAt` and `archivedReason` on the mpd record THROUGH THE STORE (`endTeamRecord`, which calls
+`writeTeam`), so the team stops resolving for every seat — dispatch, claim and mailbox writes can no longer
+reach it — while the record itself stays on disk as history. A repeated `end` is a reported no-op
+(`changed: false`) that keeps the first ending's instant and reason.
+
+**Fixed — identity plane: a RESUMED member is a member (A1/HIGH).** `team-store.ts#memberIdentityOf` is
+the ONE narrowing every Lead check uses: the session's own id (a member's `name`/`executorRef`), then a
+recorded ANCESTOR (a resumed session whose parent is the member's old session), then the persona TITLE —
+matched against the seat's ROLE first and then its STORED name, with the LONGEST match winning, so a
+`Plan Reviewer` title names the Plan Reviewer instead of colliding with `Reviewer`. A genuine equal-length
+tie names a member but picks no seat, so it can borrow no Lead ancestry and cannot act as one seat.
+
+**Fixed — the two CodeRabbit round-1 findings.** `endTeam` persists the terminal record before appending
+its `team-ended` journal row, and the append was unguarded: a disk failure escaped to the outer catch,
+reported the ending as a FAILURE although the record was already `ended`, and a retry then answered
+`changed:false` so the missing row could never be written. The append is now contained (its failure goes
+to the row's diagnostic sink) and the ending is reported as what it is. The captain identity is also
+checked BEFORE the title arm, so a recorded Lead persona that happens to contain a roster role can never be
+addressed by a member id; a FORKED Lead's new session id is recorded only when the churn heal runs, and the
+heal SKIPS any session the identity plane names as a member — so a fork whose title names a seat is NEVER
+healed on that record and stays identified as that seat, fail-closed (the stated bound).
+
+**Tests — seven reviewer Nits pinned by arms, none weakened.** Lane A's arms now discriminate what the old
+ones could not: the LIVE handle's engine WINS over a registry that answers a DIFFERENT engine, the first
+attempt is driven BEFORE any delay is scheduled (an ORDER probe that sees any positive timer, replacing the
+`< 500 ms` duration bound), the `cellwork_split` DESCRIPTION states its warnings rule (black-box, from the
+captured definition), and the promoted path asserts `interrupts.length === 0`. Lane B pins the resolver's
+inclusive 0..1000 ceiling (`1000` honoured, `1001` → the shipped default `8`). Each new or extended arm
+reddens under its own defect; the historical red-first log is NOT rewritten and its duplicated hash is
+recorded instead of healed.
+
+**Changed — `verify-pack-closure` byte-checks the root files the pack really copies.** The `ROOT_FILES`
+anchor in `scripts/pack-mpd.ts` now lists `AGENTS.md`, `PLAN.md`, `VENDOR_LOCK.json`, `cordis.patch.yml`,
+`dsh-distribution.json`, `dsh-plugin.json` and `icon.svg`, so the closure gate compares their bytes instead
+of only noting them. No other packaging behaviour changed.
+
 ## 0.17.1 — DSH Go native parity and the cellwork checkpoint fence
 
 **Fixed — the checkpoint fence (the interruption).** A member that reached its context checkpoint was

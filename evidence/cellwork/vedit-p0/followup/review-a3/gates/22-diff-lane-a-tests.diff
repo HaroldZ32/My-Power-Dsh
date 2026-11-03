@@ -1,0 +1,193 @@
+diff --git a/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts b/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
+index 17eec8ed..6be74a4a 100644
+--- a/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
++++ b/packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts
+@@ -102,8 +102,15 @@ interface HarnessOptions {
+   /** Whether the captain handle is still live. */
+   captainLive?: boolean
+   /** Whether the live-handle engine seam exists (false = an older mounted adapter). */
+   liveEngineSeam?: boolean
++  /**
++   * The engine the REGISTRY seam answers instead of the member's own.
++   *
++   * N1's arm needs BOTH sources reachable at once with DIFFERENT answers: without it the registry and
++   * the handle serve the same object, so a registry-first implementation would pass every existing arm.
++   */
++  registryEngineOverride?: Engine
+   /** The engine's scripted answers, one per drive; the last one repeats. */
+   answers?: readonly unknown[]
+   /** The knobs that change the arm's timing. */
+   knobs?: Partial<typeof DEFAULT_CELLWORK_CONFIG>
+@@ -176,9 +183,9 @@ function makeHarness(options: HarnessOptions = {}): Harness {
+   const events = new Map<string, (payload: unknown) => unknown>()
+   /** The captured tool definitions. */
+   const tools = new Map<string, CapturedTool>()
+   /** The engine the registry-lookup seam answers with: the member's own, only while it is LIVE. */
+-  const registryEngine = (id: string): unknown => registry.get(String(id ?? ""))?.ctx?.get("compaction")
++  const registryEngine = (id: string): unknown => options.registryEngineOverride ?? registry.get(String(id ?? ""))?.ctx?.get("compaction")
+   /** The adapter double: the shape the host exposes, narrowed to what the barrier touches. */
+   const adapter: Record<string, unknown> = {
+     registerTool: (definition: CapturedTool): (() => void) => { tools.set(definition.name, definition); return (): void => {} },
+     onAgentPreStep: (): undefined => undefined,
+@@ -283,8 +290,11 @@ test("D1/C6(b,c,d): the engine comes from the LIVE handle even when the registry
+   expect(harness.engine.calls[0].agent).toBe(harness.member)
+   expect(harness.directives.length).toBe(1)
+   expect(harness.directives[0]).toContain("PROMOTED")
+   expect(harness.reseeds.length).toBe(0)
++  // N4 — NO INTERRUPT: C1's promoted path keeps the member live, and an interrupt would kill exactly the
++  // member this arm proves survives (the harness collects every interruptAgent call).
++  expect(harness.interrupts.length).toBe(0)
+   /** The persisted member row. */
+   const stored = rawMember(harness)
+   expect(stored.mode).toBe("subcaptain")
+   expect(stored.handoffReady).toBe(false)
+@@ -294,18 +304,74 @@ test("D1/C6(b,c,d): the engine comes from the LIVE handle even when the registry
+   expect(rows.some((row) => row.event === "compaction" && row.outcome === "promoted")).toBe(true)
+   expect(rows.some((row) => row.event === "checkpoint-unrecoverable")).toBe(false)
+ })
+ 
+-test("C1: no sleep happens before the FIRST attempt (the engine is driven immediately)", async () => {
+-  /** The harness whose retry delay is long enough that a pre-attempt sleep is measurable. */
++test("C1: the FIRST attempt is driven BEFORE any barrier delay is scheduled (ORDER, never a duration bound)", async () => {
++  /** The harness whose configured delay is far longer than any reasonable first attempt. */
+   const harness = makeHarness({ detached: true, answers: [{ shadowedTokenCount: 5 }], knobs: { compactionRetries: 1, idleBarrierDelayMs: 1500 } })
+-  /** The instant the listener was handed the payload. */
+-  const startedAt = Date.now()
+-  await stopListener(harness)({ agent: harness.member })
++  /** The configured retry delay, and the only timer value the probe records. */
++  const DELAY_MS = 1500
++  /** The two events this arm discriminates, recorded in the order they really happen. */
++  const timeline: string[] = []
++  /** The runtime's own timer, restored in finally so no later arm inherits the probe. */
++  const realSetTimeout = globalThis.setTimeout
++  // ORDER, NOT DURATION (N2): the D1 defect this contract removes was a 200 ms pre-attempt sleep, which a
++  // 500 ms bound cannot see; recording WHICH event comes first can. Only the barrier's OWN delay is
++  // recorded, so an unrelated runtime timer can never be mistaken for the seam under test.
++  globalThis.setTimeout = ((callback: (...args: never[]) => void, ms?: number, ...rest: never[]) => {
++    if (ms === DELAY_MS) timeline.push("delay")
++    return realSetTimeout(callback as never, ms, ...(rest as never[]))
++  }) as unknown as typeof globalThis.setTimeout
++  /** The member's own drive, recorded into the SAME timeline the timer seam writes to. */
++  const realCompactNow = harness.engine.compactNow
++  harness.engine.compactNow = async (agent: unknown, signal: AbortSignal): Promise<unknown> => {
++    timeline.push("drive")
++    return realCompactNow(agent, signal)
++  }
++  try {
++    await stopListener(harness)({ agent: harness.member })
++  } finally {
++    globalThis.setTimeout = realSetTimeout
++  }
+   expect(harness.engine.calls.length).toBe(1)
+-  /** How long the FIRST drive took to happen. */
+-  const firstDriveAfterMs = harness.engine.calls[0].at - startedAt
+-  expect(firstDriveAfterMs).toBeLessThan(500)
++  // THE CLAUSE: the drive is the FIRST event — a pre-attempt sleep of ANY length puts the delay first.
++  expect(timeline[0]).toBe("drive")
++  // and no delay was scheduled at all on the one-attempt path.
++  expect(timeline).not.toContain("delay")
++})
++
++test("C1: the ORDER probe SEES the barrier delay when a retry really sleeps (two-sided control)", async () => {
++  /** The harness whose first attempt answers null, so the SECOND one follows a real sleep. */
++  const harness = makeHarness({ detached: true, answers: [null, { shadowedTokenCount: 5 }], knobs: { compactionRetries: 2, idleBarrierDelayMs: 40 } })
++  /** The configured retry delay, and the only timer value the probe records. */
++  const DELAY_MS = 40
++  /** The two events this arm discriminates, recorded in the order they really happen. */
++  const timeline: string[] = []
++  /** The runtime's own timer, restored in finally so no later arm inherits the probe. */
++  const realSetTimeout = globalThis.setTimeout
++  // ORDER, NOT DURATION (N2): the D1 defect this contract removes was a 200 ms pre-attempt sleep, which a
++  // 500 ms bound cannot see; recording WHICH event comes first can. Only the barrier's OWN delay is
++  // recorded, so an unrelated runtime timer can never be mistaken for the seam under test.
++  globalThis.setTimeout = ((callback: (...args: never[]) => void, ms?: number, ...rest: never[]) => {
++    if (ms === DELAY_MS) timeline.push("delay")
++    return realSetTimeout(callback as never, ms, ...(rest as never[]))
++  }) as unknown as typeof globalThis.setTimeout
++  /** The member's own drive, recorded into the SAME timeline the timer seam writes to. */
++  const realCompactNow = harness.engine.compactNow
++  harness.engine.compactNow = async (agent: unknown, signal: AbortSignal): Promise<unknown> => {
++    timeline.push("drive")
++    return realCompactNow(agent, signal)
++  }
++  try {
++    await stopListener(harness)({ agent: harness.member })
++  } finally {
++    globalThis.setTimeout = realSetTimeout
++  }
++  // THE CONTROL: the probe is not blind — the retry really slept, and only AFTER the first drive.
++  expect(harness.engine.calls.length).toBe(2)
++  expect(timeline).toContain("delay")
++  expect(timeline[0]).toBe("drive")
++  expect(timeline.indexOf("delay")).toBeGreaterThan(timeline.indexOf("drive"))
+ })
+ 
+ test("C1: the registry lookup is the FALLBACK for a composition without the live-handle seam", async () => {
+   /** The harness with an older adapter (no `compactionEngineForLiveAgent`) whose member is still live. */
+@@ -315,8 +381,25 @@ test("C1: the registry lookup is the FALLBACK for a composition without the live
+   expect(harness.directives.length).toBe(1)
+   expect(String(rawMember(harness).mode)).toBe("subcaptain")
+ })
+ 
++test("D1/C1: the LIVE handle's engine WINS over a registry that answers a DIFFERENT engine", async () => {
++  /** The engine the registry would serve — a different object from the member's own. */
++  const otherEngine: Engine = { calls: [], compactNow: async (): Promise<unknown> => ({ shadowedTokenCount: 1 }) }
++  /** The harness whose member is STILL registered, while the registry answers that other engine. */
++  const harness = makeHarness({ detached: false, registryEngineOverride: otherEngine })
++  // BOTH sources are reachable in this arm, with different answers: that is what makes the order visible.
++  expect((harness.adapter.compactionEngineForAgent as (id: string) => unknown)(MEMBER_SESSION)).toBe(otherEngine)
++  await stopListener(harness)({ agent: harness.member })
++  // THE HANDLE WINS: the member's own engine was driven, once, with the member as the agent.
++  expect(harness.engine.calls.length).toBe(1)
++  expect(harness.engine.calls[0].agent).toBe(harness.member)
++  // THE PRIORITY, which no same-engine arm could see: a registry-first implementation would drive THIS
++  // engine and answer from a different shadowed count — the recycled-incarnation defect C1 freezes.
++  expect(otherEngine.calls.length).toBe(0)
++  expect(String(rawMember(harness).mode)).toBe("subcaptain")
++})
++
+ // ── C6(e,f,g): the reseed parent is a LIVE session ─────────────────────────
+ 
+ test("D1/C6(e): a reseed is raised under the LIVE parent object, never the dead member", async () => {
+   /** The harness whose engine answers "no safely compactable range" on every attempt. */
+diff --git a/packages/mpd-cellwork-plugin/test/flow.test.ts b/packages/mpd-cellwork-plugin/test/flow.test.ts
+index 8571cf61..b86706f0 100644
+--- a/packages/mpd-cellwork-plugin/test/flow.test.ts
++++ b/packages/mpd-cellwork-plugin/test/flow.test.ts
+@@ -47,8 +47,10 @@ interface CapturedTool {
+   /** The runner, called with `{ name, agent }` as its exec. */
+   execute: (args: unknown, exec: unknown) => Promise<unknown>
+   /** The normalized output block, which carries the renderer a render arm calls directly. */
+   output?: { render?: (args: unknown, value: unknown) => unknown }
++  /** The registered description — the only place a model learns a rule the tool enforces. */
++  description?: string
+ }
+ 
+ /** One command definition the fake registry captured. */
+ interface CapturedCommand {
+@@ -1229,8 +1231,25 @@ test("D3/C4: cellwork_split reports a scope-less task's warning in the RESULT an
+   expect(rendered).toContain("core")
+   expect(rendered).toContain("no path")
+ })
+ 
++test("D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition)", () => {
++  /** The harness whose captured definitions carry the registered descriptions. */
++  const harness = makeHarness()
++  /** The registered splitter definition, found by the name the model calls. */
++  const split = harness.tools.find((tool) => tool.name === "cellwork_split")
++  expect(split).toBeDefined()
++  /** The description as registered, which is what a model reads before it decides how to split. */
++  const description = String(split?.description ?? "")
++  // N3 — THE RULE ITSELF, not just the word: warnings are NON-FATAL and reported BESIDE the verdict,
++  // so a model cannot believe they block acceptance, and the scope-less-contract consequence is named.
++  expect(description).toContain("warnings")
++  expect(description).toContain("never change")
++  expect(description).toContain("writeScopes")
++  // and the recovery path, so a warned split is actionable rather than mysterious.
++  expect(description).toContain("BEFORE the first write")
++})
++
+ test("C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row", async () => {
+   /** The harness at its first activation. */
+   const harness = makeHarness()
+   /** The cell and its first activation. */

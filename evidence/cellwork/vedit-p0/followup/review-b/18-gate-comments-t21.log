@@ -1,0 +1,7 @@
+# gate comments cmd: "bun run verify:comments" program: "/home/haroldzhao/.bun/bin/bun" argv: ["run","verify:comments"]
+# verify-comment-coverage
+
+scanned 591 TypeScript file(s) of 591 in the source set; inspected 51791 declaration(s); skipped 25195 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+$ node scripts/verify-comment-coverage.ts

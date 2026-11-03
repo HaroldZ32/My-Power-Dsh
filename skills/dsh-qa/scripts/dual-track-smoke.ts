@@ -10,12 +10,32 @@ import { fileURLToPath } from "node:url"
 import { homedir } from "node:os"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.ts"
 import { credentialDescriptor, credentialEnv, seedSandboxCredentials } from "./lib/credentials.ts"
+import { findToolCall, readSessionEvents, type SessionStore } from "./lib/session-evidence.ts"
 import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.ts"
 
 /** The repository root, derived from this script's own URL (four directories below it). */
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 /** The one headless task both tracks run: list the working directory through the bash tool, then answer. */
 const JOB = "List the files in the current working directory (first use the bash tool with pwd and ls), then answer only: which tools you called and how many files are in the directory."
+/**
+ * The `llm-pi-ai` route the deepseek track stages into its sandbox's OWN `settings.yaml`.
+ *
+ * WHY IT IS NEEDED (F5, `evidence/dsh-qa/dual-track-deepseek/2026-10-29T01-30-11Z/diagnosis.md`): the
+ * `@deepseek-ai/dsh-base` patch mounts the `llm-pi-ai` row with NO config, so it composes dormant, never
+ * calls `registerAdapter`, and provider `deepseek` is absent from the LLM runtime — the track's overlay
+ * route then dies `NO_ADAPTER` before any credential is consulted. The block below gives the row that
+ * route. The `models` entry is REQUIRED, not decoration: the installed pi-ai catalog has no
+ * `deepseek-v4-flash` id, and the overlay names exactly that model.
+ */
+const DEEPSEEK_ROUTE_SETTINGS = [
+  "llm-pi-ai:",
+  "  providers:",
+  "    deepseek:",
+  "      apiKeyEnv: DEEPSEEK_API_KEY",
+  "      models:",
+  "        - id: deepseek-v4-flash",
+  "",
+].join("\n")
 /** One provider track: its label, the provider id it routes through and the overlay it needs (if any). */
 interface Track {
   /** The human label the evidence row prints. */
@@ -24,11 +44,19 @@ interface Track {
   readonly provider: string
   /** A repo-relative overlay patch, or `null` when the track needs none. */
   readonly overlay: string | null
+  /**
+   * The YAML block this track appends to its sandbox `settings.yaml`, or `null` when the machine's own
+   * settings are enough.
+   *
+   * The deepseek track declares its provider route here; the official track needs nothing, and an EMPTY
+   * value keeps it byte-identical to what it booted before this fix.
+   */
+  readonly settings: string | null
 }
 /** The tracks, keyed by the evidence-directory name each one records under. */
 const TRACKS: Record<string, Track> = {
-  official: { label: "deepseek-official (dsh-llm-deepseek)", provider: "deepseek-official", overlay: null },
-  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/compat-track.yml" }
+  official: { label: "deepseek-official (dsh-llm-deepseek)", provider: "deepseek-official", overlay: null, settings: null },
+  deepseek: { label: "deepseek (dsh-llm-pi-ai)", provider: "deepseek", overlay: "tests/overlays/compat-track.yml", settings: DEEPSEEK_ROUTE_SETTINGS }
 }
 /** The model-route row the offline self-test asserts on (official route, never the gateway one). */
 const FIXTURE_ROW = "- id: agent-default-model\n  config:\n    provider: deepseek-official\n"
@@ -72,7 +100,19 @@ function selfTest(): void {
     console.error("[llm-dual-track self-test] FAIL: devPatch left a packed/self-row operand (boot would be ERR_MODULE_NOT_FOUND again)")
     process.exit(1)
   }
-  console.log("[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand verified")
+  // THE ROUTE STAGE (F5): the deepseek track must declare the llm-pi-ai route AND the model id the
+  // installed catalog lacks, or the boot returns to NO_ADAPTER; the official track must stay UN-staged so
+  // its boot is exactly what it was.
+  if (!DEEPSEEK_ROUTE_SETTINGS.includes("llm-pi-ai:") || !DEEPSEEK_ROUTE_SETTINGS.includes("    deepseek:")
+    || !DEEPSEEK_ROUTE_SETTINGS.includes("- id: deepseek-v4-flash") || !DEEPSEEK_ROUTE_SETTINGS.includes("apiKeyEnv: DEEPSEEK_API_KEY")) {
+    console.error("[llm-dual-track self-test] FAIL: the deepseek route block lost its provider or its models entry (NO_ADAPTER would return)")
+    process.exit(1)
+  }
+  if (TRACKS.deepseek.settings !== DEEPSEEK_ROUTE_SETTINGS || TRACKS.official.settings !== null) {
+    console.error("[llm-dual-track self-test] FAIL: only the deepseek track may stage settings; the official boot must stay unchanged")
+    process.exit(1)
+  }
+  console.log("[llm-dual-track self-test] ok: track fixture assertions + devPatch boot operand + the staged deepseek route verified")
 }
 
 /** One summary-table row, one per provider track. */
@@ -87,6 +127,34 @@ interface TrackRow {
   readonly ms: number
   /** The child's exit status, `null` when no launcher resolved. */
   readonly exit: number | null
+}
+
+/**
+ * The harness's OWN tool evidence for one track's boot.
+ *
+ * WHY THIS REPLACES THE STDOUT REGEX (F5 nit): `/bash|tool/` matches the ANSWER the model wrote, which
+ * AGENTS.md §7 says is wrong in BOTH directions — a model can describe a call it never made, and a real
+ * call can go unmentioned — so the regex could pass a boot that used no tool at all. The harness session
+ * log is the ground truth: a `tool/call` for `bash` paired with a non-error `tool/result`.
+ *
+ * @param sandbox - the track's throwaway DSH_HOME, which holds the session store.
+ * @param ws - the sandbox workspace the boot ran in (the store is project-keyed by it).
+ * @returns the recorded verdict (with a bounded slice of the tool result) and the reader's reason when nothing was paired.
+ */
+function toolEvidenceOf(sandbox: string, ws: string): { succeeded: boolean; called: string[]; reason: string; resultText: string } {
+  /** The decoded session store for this sandbox workspace. */
+  let store: SessionStore
+  try {
+    store = readSessionEvents(sandbox, { workspace: ws })
+  } catch (error) {
+    // A named workspace whose store is ABSENT is a boot/isolation failure, reported as "no evidence".
+    return { succeeded: false, called: [], reason: "no session store for the sandbox workspace (" + (error instanceof Error ? error.message : String(error)) + ")", resultText: "" }
+  }
+  // The task's own shell call, paired with its result.
+  const bash = findToolCall(store.records, "bash")
+  // A BOUNDED slice of the tool result, so the artifact shows what the shell actually printed instead of
+  // asking a reader to trust the model's narration about it.
+  return { succeeded: bash.succeeded, called: bash.called ? ["bash"] : [], reason: bash.reason, resultText: bash.resultText.slice(0, 4000) }
 }
 
 /** The live case: boot both tracks in their own sandbox, record each one's evidence and print the table. */
@@ -108,6 +176,17 @@ function runReal(): void {
     // base deepseek-official route and dies MISSING_CREDENTIAL.
     const settings = join(homedir(), ".dsh", "settings.yaml")
     if (existsSync(settings)) cpSync(settings, join(sandbox, "settings.yaml"))
+    // THE TRACK'S OWN ROUTE (F5), staged AFTER that copy so a machine with settings keeps every other
+    // provider it declares: appended, never substituted. A pre-existing top-level `llm-pi-ai:` key would
+    // be a duplicate key, so the block goes LAST and the track's route is the one a last-wins reader
+    // takes; the sandbox's settings file is disposable either way.
+    if (t.settings !== null) {
+      // The sandbox settings path this track stages into.
+      const stagedSettings = join(sandbox, "settings.yaml")
+      // What the copy above already put there, or "" when this machine has no settings file.
+      const prior = existsSync(stagedSettings) ? readFileSync(stagedSettings, "utf8") : ""
+      writeFileSync(stagedSettings, prior + (prior === "" || prior.endsWith("\n") ? "" : "\n") + t.settings)
+    }
     // The boot-repaired bundle patch staged inside the sandbox.
     const bundlePatch = join(sandbox, "bundle.dev.patch.yml")
     writeFileSync(bundlePatch, devPatch())
@@ -121,7 +200,10 @@ function runReal(): void {
     // The wall-clock start of this track's boot, for the duration column.
     const t0 = Date.now()
     // The child environment: the sandbox home plus the resolved credential key.
-    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox  })
+    // HOME is sandboxed too (AGENTS.md §7 isolation arm b, the sibling `mcp-call.ts` pattern): skill roots
+    // and the workmate library resolve through HOME, so the child must not see the real one. The launcher
+    // resolution above is PATH-based, so it is unaffected.
+    const env = credentialEnv({ ...process.env, DSH_HOME: sandbox, HOME: sandbox })
     if (env.DSH_HOME !== sandbox) { console.error("[llm-dual-track] isolation assertion failed: DSH_HOME does not point to the sandbox"); process.exit(1) }
     // Workspace isolation: the session workspace is the spawn cwd, so boot inside a
     // sandbox workspace (DSH_HOME alone does not isolate workspace-scoped state).
@@ -133,14 +215,19 @@ function runReal(): void {
     assertSessionsSandboxed(sandbox, sandbox, { label: "llm-dual-track/" + key })
     // How long this track's boot took, in milliseconds.
     const ms = Date.now() - t0
-    // The run's combined output, which the tool-evidence regex matches against.
+    // The run's combined output, kept as the run artifact a reader greps.
     const out = (run.stdout || "") + (run.stderr || "")
-    // Whether the boot passed AND its output carries tool evidence.
-    const ok = run.status === 0 && /bash|tool/.test(out)
+    // The HARNESS's own tool evidence for this boot: the `bash` call the task asks for, paired with a
+    // non-error result in the session log. NOT the answer text — `/bash|tool/` matches the model's own
+    // narration, which AGENTS.md §7 calls wrong in BOTH directions (a model can claim a call it never
+    // made, and a real call can go unmentioned).
+    const toolEvidence = toolEvidenceOf(sandbox, ws)
+    // Whether the boot passed AND the harness recorded a real tool call for it.
+    const ok = run.status === 0 && toolEvidence.succeeded
     // The timestamped evidence directory for this track.
     const outDir = join(repoRoot, "evidence", "dsh-qa", "llm-dual-track", key, new Date().toISOString().replaceAll(":", "-"))
     mkdirSync(outDir, { recursive: true })
-    writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, track: key, provider: t.provider, durationMs: ms, exit: run.status, hasToolEvidence: /bash|tool/.test(out) }, null, 2))
+    writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, track: key, provider: t.provider, durationMs: ms, exit: run.status, hasToolEvidence: toolEvidence.succeeded, toolEvidence }, null, 2))
     writeFileSync(join(outDir, "output.log"), out)
     rows.push({ track: key, provider: t.provider, ok, ms, exit: run.status })
     console.log("[llm-dual-track] " + key + " ok=" + ok + " (" + ms + "ms, exit=" + run.status + ") -> " + outDir)

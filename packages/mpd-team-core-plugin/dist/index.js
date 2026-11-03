@@ -3953,6 +3953,17 @@ function listTeams(workspace) {
   }
   return out.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
+function endTeamRecord(workspace, teamId, reason, now) {
+  const record = readTeam(workspace, teamId);
+  if (record === undefined)
+    return;
+  if (record.endedAt !== undefined)
+    return { record, changed: false };
+  const archivedReason = reason.trim() === "" ? "ended by the team Lead" : reason.trim();
+  const ended = { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason };
+  writeTeam(workspace, ended);
+  return { record: ended, changed: true };
+}
 function createTeam(workspace, input, now) {
   const teamId = input.teamId ?? newTeamId(now);
   if (existsSync3(teamRecordPath(workspace, teamId))) {
@@ -4192,6 +4203,33 @@ function memberNamedBy(record, caller) {
     const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "");
     return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)));
   });
+}
+function titleMatchLength(member, title) {
+  const haystack = title.toLowerCase();
+  const role = String(member.role ?? "").trim().toLowerCase();
+  if (role !== "" && haystack.includes(role))
+    return role.length;
+  const name = String(member.name ?? "").trim().toLowerCase();
+  return name !== "" && haystack.includes(name) ? name.length : 0;
+}
+function memberIdentityOf(record, sessionId = "", title = "", lineage = []) {
+  const direct = memberNamedBy(record, [sessionId]);
+  if (direct !== undefined)
+    return { member: direct, named: true };
+  const ancestral = memberNamedBy(record, lineage);
+  if (ancestral !== undefined)
+    return { member: ancestral, named: true };
+  if (sessionId !== "" && recordNamesLead(record, [sessionId]))
+    return { named: false };
+  if (String(title ?? "") === "")
+    return { named: false };
+  const scored = (Array.isArray(record.members) ? record.members : []).map((member) => ({ member, strength: titleMatchLength(member, String(title)) })).filter((entry) => entry.strength > 0);
+  if (scored.length === 0)
+    return { named: false };
+  const strongest = Math.max(...scored.map((entry) => entry.strength));
+  const winners = scored.filter((entry) => entry.strength === strongest);
+  const [only] = winners;
+  return winners.length === 1 && only !== undefined ? { member: only.member, named: true } : { named: true };
 }
 function recordNamesMember(record, caller) {
   return memberNamedBy(record, caller) !== undefined;
@@ -6313,12 +6351,72 @@ async function fenceMember(deps, caller, input) {
 async function unfenceMember(deps, caller, input) {
   return setMemberFence(deps, caller, input, false);
 }
+function leadAuthorityOf(record, caller) {
+  const identity = memberIdentityOf(record, caller.sessionId, caller.title ?? "", caller.lineage);
+  const spellings = identity.named ? [caller.sessionId] : [caller.sessionId, ...caller.lineage].filter((id) => id !== "");
+  return { identity, lead: recordNamesLead(record, spellings) };
+}
+function boundEndedTeamOf(caller) {
+  const spellings = [caller.sessionId, ...caller.lineage].filter((id) => id !== "");
+  for (const spelling of spellings) {
+    const teamId = activeTeamId(caller.workspace, spelling);
+    if (teamId === undefined)
+      continue;
+    const record = readTeam(caller.workspace, teamId);
+    if (record !== undefined && record.endedAt !== undefined)
+      return record;
+  }
+  return;
+}
+async function endTeam(deps, caller, input) {
+  try {
+    const declared = String(input.teamId ?? "").trim();
+    const resolved = declared === "" ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage) : undefined;
+    const live = declared === "" ? resolved?.record : readTeam(caller.workspace, declared);
+    const endedRepeat = declared === "" && live === undefined ? boundEndedTeamOf(caller) : undefined;
+    const record = live ?? endedRepeat;
+    if (record === undefined) {
+      return {
+        ok: false,
+        error: declared === "" ? resolved?.refusal ?? "no team record in this workspace — approve a plan first" : `no team record is named ${JSON.stringify(declared)} in this workspace`
+      };
+    }
+    const authority = leadAuthorityOf(record, caller);
+    if (!authority.lead) {
+      const member = authority.identity.member;
+      return {
+        ok: false,
+        error: `only the Lead of team ${record.teamId} may end it (${member !== undefined ? `${member.name} is a member, not the Lead` : authority.identity.named ? "this session is on the team's roster, not its Lead" : "this session is not on the team's roster"})`
+      };
+    }
+    const now = deps.now();
+    const outcome = endTeamRecord(caller.workspace, record.teamId, String(input.reason ?? ""), now);
+    if (outcome === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(record.teamId)} in this workspace` };
+    if (outcome.changed) {
+      try {
+        appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") });
+      } catch (error) {
+        deps.log(`team ${outcome.record.teamId} ended but its journal row was not written: ${refusalOf(error)}`);
+      }
+    }
+    return {
+      ok: true,
+      teamId: outcome.record.teamId,
+      endedAt: String(outcome.record.endedAt),
+      reason: String(outcome.record.archivedReason ?? ""),
+      changed: outcome.changed
+    };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
 async function writeMemberHandoff(deps, caller, input) {
   try {
     const resolved = deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage);
     if (resolved.record === undefined)
       return { ok: false, error: resolved.refusal ?? "no team record in this workspace — approve a plan first" };
-    const member = memberNamedBy(resolved.record, [caller.sessionId]);
+    const member = memberIdentityOf(resolved.record, caller.sessionId, caller.title ?? "", caller.lineage).member;
     if (member === undefined)
       return { ok: false, error: `session ${caller.sessionId} is on no roster of team ${resolved.record.teamId} — only a member writes its own handoff` };
     const validation = validateHandoffText(input.content);
@@ -7928,8 +8026,10 @@ function sessionTitleOf(exec) {
   return String(exec?.agent?.session?.header?.title ?? "");
 }
 function callerIdentity(record, sessionId, title, lineage) {
-  const ownMember = memberNamedBy(record, [sessionId]) ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name));
-  return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] };
+  const identity = memberIdentityOf(record, sessionId, title, lineage);
+  if (!identity.named)
+    return { ancestry: lineage };
+  return identity.member === undefined ? { ancestry: [] } : { ownMember: identity.member, ancestry: [] };
 }
 var TODO_TOOL_NAME = "todo_write";
 var SEED_TIMEOUT_MS = 1e4;
@@ -8092,11 +8192,11 @@ function apply(ctx) {
       throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`);
     return plan;
   };
-  const healLeadBinding = (workspace, sessionId, lineage, record, delegated) => {
+  const healLeadBinding = (workspace, sessionId, lineage, record, delegated, title) => {
     const ownLead = record.leadSessionId === sessionId || (record.leadHistory ?? []).includes(sessionId);
     if (ownLead || delegated)
       return record;
-    if (recordNamesMember(record, [sessionId]))
+    if (memberIdentityOf(record, sessionId, title, lineage).named)
       return record;
     const fromLead = lineage.some((id) => id === record.leadSessionId || (record.leadHistory ?? []).includes(id));
     if (!fromLead)
@@ -8145,11 +8245,11 @@ function apply(ctx) {
       return {};
     }
   };
-  const resolveForWrite = (workspace, sessionId, lineage, delegated) => {
+  const resolveForWrite = (workspace, sessionId, lineage, delegated, title) => {
     const resolved = resolveTeam(workspace, sessionId, lineage);
     if (resolved.record === undefined)
       return resolved;
-    const healed = healLeadBinding(workspace, sessionId, lineage, resolved.record, delegated);
+    const healed = healLeadBinding(workspace, sessionId, lineage, resolved.record, delegated, title);
     return healed === resolved.record ? resolved : { ...resolved, record: healed };
   };
   const recordFor = (workspace, sessionId, lineage = []) => resolveTeam(workspace, sessionId, lineage).record;
@@ -8249,8 +8349,9 @@ function apply(ctx) {
     if (agent === undefined)
       return { ok: false, error: `session ${sessionId} is not live` };
     const lineage = sessionIsDelegatedChild({ agent }) ? [] : sessionLineageOf({ agent });
+    const title = sessionTitleOf({ agent });
     try {
-      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...signal === undefined ? {} : { signal } } };
+      return { ok: true, caller: { workspace: workspaceForRequest(sessionId), sessionId, lineage, agent, ...title === "" ? {} : { title }, ...signal === undefined ? {} : { signal } } };
     } catch (error) {
       return { ok: false, error: String(error?.message ?? error) };
     }
@@ -8509,7 +8610,7 @@ WARNING: ${value.warning}` : "";
           writePlan(workspace, next);
           return { plan: next };
         }
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
@@ -8573,7 +8674,7 @@ WARNING: ${value.warning}` : "";
             ...scopesWarning2 === undefined ? {} : { warning: scopesWarning2 }
           };
         }
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
         if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
@@ -8689,8 +8790,8 @@ WARNING: ${value.warning}` : "";
       const action = String(args?.action ?? "");
       if (action === "context") {
         const pressure = dsh.contextPressure(exec.agent);
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
-        const member = resolved.record === undefined ? undefined : memberNamedBy(resolved.record, [sessionId]);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
+        const member = resolved.record === undefined ? undefined : callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ownMember;
         return {
           ...resolved.record === undefined || member === undefined ? {} : {
             teamId: resolved.record.teamId,
@@ -8707,10 +8808,12 @@ WARNING: ${value.warning}` : "";
         };
       }
       if (action === "handoff") {
+        const handoffTitle = sessionTitleOf(exec);
         const caller = {
           workspace,
           sessionId,
           lineage,
+          ...handoffTitle === "" ? {} : { title: handoffTitle },
           ...exec.agent === undefined ? {} : { agent: exec.agent },
           ...exec.signal === undefined ? {} : { signal: exec.signal }
         };
@@ -8721,7 +8824,7 @@ WARNING: ${value.warning}` : "";
         return reply;
       }
       if (action === "release") {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const taskId = String(args?.task_id ?? "");
@@ -8740,7 +8843,7 @@ WARNING: ${value.warning}` : "";
         return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead");
       }
       if (action === "depend") {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const taskId = String(args?.task_id ?? "");
@@ -8816,7 +8919,7 @@ WARNING: ${value.warning}` : "";
         return { contract };
       }
       if (action === "claim") {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const record = resolved.record;
@@ -8841,7 +8944,7 @@ WARNING: ${value.warning}` : "";
         return { contract, task: view };
       }
       if (action === "complete" || action === "fail") {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const record = resolved.record;
@@ -8934,7 +9037,7 @@ WARNING: ${value.warning}` : "";
       const action = String(args?.action ?? "");
       const delegated = sessionIsDelegatedChild(exec);
       if (action === "release") {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const taskId = String(args?.task_id ?? "");
@@ -8957,7 +9060,7 @@ WARNING: ${value.warning}` : "";
       const requestedPairs = Array.isArray(requestedReassign) ? requestedReassign.length : requestedReassign === undefined ? 0 : 1;
       const ownershipAsked = requestedPairs > 0 || requestedMode === "roster";
       if (ownershipAsked) {
-        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated, sessionTitleOf(exec));
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
         const membership = (() => {
@@ -9234,35 +9337,48 @@ ${message.body}`, exec.signal);
   toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
-    description: 'Halt, resume or fence. `halt` stops NEW DISPATCH, team and teammates alive (end a team with agent_teams_plan action:"delete"); `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only).',
+    description: "`halt` stops NEW DISPATCH only; `resume` clears the hold; `fence`/`unfence` close/reopen ONE seat, then never messaged (Lead only); `end` closes the team (Lead only, idempotent).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["halt", "resume", "fence", "unfence"], description: "What to do." },
-        reason: { type: "string", description: "halt/fence: why." },
-        member: { type: "string", description: "fence/unfence: seat." }
+        action: { type: "string", enum: ["halt", "resume", "fence", "unfence", "end"], description: "What to do." },
+        reason: { type: "string", description: "halt/fence/end: why." },
+        member: { type: "string", description: "fence/unfence: seat." },
+        team_id: { type: "string", description: "end: team to close (default: yours)." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
-      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
+      schema: { type: "object", properties: { hold: { type: "object" }, resumed: { type: "boolean" }, teamId: { type: "string" }, member: { type: "string" }, fenced: { type: "boolean" }, endedAt: { type: "string" }, changed: { type: "boolean" }, reason: { type: "string" }, refused: { type: "string" } } },
+      render: (_args, value) => text2(value?.refused !== undefined ? `refused: ${value.refused}` : value?.changed !== undefined ? value.changed ? `team ${value.teamId} ended (${value.reason})` : `team ${value.teamId} was already ended at ${value.endedAt} — nothing changed` : value?.fenced !== undefined ? `${value.member} ${value.fenced ? "fenced" : "unfenced"}${value.fenced && typeof value.reason === "string" && value.reason !== "" ? ` (${value.reason})` : ""}` : value?.resumed !== undefined ? value.resumed ? "resumed" : "was not halted" : value?.hold === undefined ? "not halted" : `halted: ${value.hold.reason}`)
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
       const action = String(args?.action ?? "");
+      const title = sessionTitleOf(exec);
+      const caller = {
+        workspace,
+        sessionId,
+        lineage,
+        ...title === "" ? {} : { title },
+        ...exec.agent === undefined ? {} : { agent: exec.agent },
+        ...exec.signal === undefined ? {} : { signal: exec.signal }
+      };
+      if (action === "end") {
+        const outcome = await endTeam(teamActionsDeps, caller, {
+          ...args?.team_id === undefined ? {} : { teamId: String(args.team_id) },
+          ...args?.reason === undefined ? {} : { reason: String(args.reason) }
+        });
+        if (!outcome.ok)
+          throw new Error(outcome.error);
+        const { ok: _envelope, ...reply } = outcome;
+        return reply;
+      }
       if (action === "fence" || action === "unfence") {
         const member = String(args?.member ?? "").trim();
         if (member === "")
           throw new Error(`agent_teams_control ${action}: member is required`);
-        const caller = {
-          workspace,
-          sessionId,
-          lineage,
-          ...exec.agent === undefined ? {} : { agent: exec.agent },
-          ...exec.signal === undefined ? {} : { signal: exec.signal }
-        };
         const outcome = action === "fence" ? await fenceMember(teamActionsDeps, caller, { member, ...args?.reason === undefined ? {} : { reason: String(args.reason) } }) : await unfenceMember(teamActionsDeps, caller, { member });
         if (!outcome.ok)
           throw new Error(outcome.error);
@@ -9272,7 +9388,7 @@ ${message.body}`, exec.signal);
       if (action === "resume")
         return { resumed: clearHold(workspace) };
       if (action !== "halt")
-        throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence)`);
+        throw new Error(`agent_teams_control: unknown action "${action}" (halt | resume | fence | unfence | end)`);
       return { hold: placeHold(workspace, String(args?.reason ?? ""), sessionIdOf(exec), now()) };
     }
   }));

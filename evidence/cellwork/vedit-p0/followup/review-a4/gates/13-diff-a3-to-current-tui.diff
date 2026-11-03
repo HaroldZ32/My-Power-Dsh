@@ -1,0 +1,32 @@
+--- .mpd/recon/qa/rev-a4/rebuild/a3-tui-admission.ts	2026-11-03 15:14:17.290694037 +0800
++++ skills/dsh-qa/scripts/tui-admission.ts	2026-11-03 15:07:04.376561663 +0800
+@@ -57,13 +57,27 @@
+ // string (`0.15`) is the dsh-ecosystem-spec number, UNRELATED to the dsh-tui 0.15.0
+ // release this lane's carriers pin — it is recorded verbatim and never "adapted".
+ //
+-// PREREQ: absent-runtime dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.18.0"
++// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.18.0"
++// PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
+ // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
++// (Those three are the codes `tuiPrereqs` in `lib/tui-lane.ts` actually gates: `absent-dsh-binary` probes the
++//  `dsh-tui` binary, `absent-runtime` probes `tmux`, `absent-fixture` probes the sandbox profile. A marker
++//  always prints the probe it used and the remedy, so a SKIP names its own fix.)
++//
++// THE SANDBOX ROOT IS ITSELF A CONSTRAINT, MEASURED (A3-F7): the tmux server binds `<root>/<lane>.sock`, a
++// unix socket whose whole path must stay under ~107 bytes, so a root under the lane's DEFAULT
++// `.mpd/recon/qa/tui-lanes/<lane>` dies on a deep checkout with `File name too long` — the boot never happens
++// and every pane arm reports `undefined`. Use a SHORT root (`--sandbox-root .mpd/sb/<lane>`). The profile must
++// be WARM (a `~/.dsh/profiles/dsh-tui` that carries the host AND this bundle) because a lane that passed the
++// gate never reinstalls it, and the sandbox needs the CREDENTIALS the boot hands the model
++// (`<root>/dshhome/.credentials.yaml` copied from `~/.dsh`) or the chat-turn arm cannot render. tmux, a real
++// TTY and the launchpad gate are already handled by `runTuiSession`.
+ //
+ // Usage:
+ //   bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+ //   bun skills/dsh-qa/scripts/tui-admission.ts [--sandbox-root <dir>] [--static-only]
+-// Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,negctl/,grants/}
++// Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,admission-static.json,REVISION.json,
++//             shipped/,clone/,grant-clone/}
+ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+ import { join, resolve, sep } from "node:path"
+ import { tmpdir } from "node:os"

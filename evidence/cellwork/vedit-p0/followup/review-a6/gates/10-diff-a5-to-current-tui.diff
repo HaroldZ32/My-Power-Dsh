@@ -1,0 +1,134 @@
+--- .mpd/recon/qa/rev-a6/rebuild/tui.a5.ts	2026-11-03 15:38:46.106493132 +0800
++++ skills/dsh-qa/scripts/tui-admission.ts	2026-11-03 15:34:46.155761701 +0800
+@@ -24,10 +24,12 @@
+ //       advertise `compatible`, and the pane carries NO grants-file hint: nothing is requested, so nothing
+ //       needs authorizing. A regression that re-requests a permission without a grant reddens HERE (the
+ //       pane flips to `waiting_authorization` and prints the hint);
+-//   (1b) SHIPPED POSTURE, WITH ONE GRANT (A4-F1) — the SAME `/plugin check` is driven again INSIDE the
+-//        granted boot, while the grants file names the intercept point the manifest never declares: it must
+-//        STAY `compatible`, so "a stray grant cannot flip a permission-less manifest" is MEASURED rather
+-//        than promised (the static arm negotiates the same pair);
++//   (1b) SHIPPED POSTURE, WITH ONE GRANT (A4-F1 / A5-F1) — a THIRD boot stages the grants file (the clone's
++//        one row, a point the manifest never declares) BEFORE the boot and drives ONE `/plugin check` of the
++//        SHIPPED manifest: it must STAY `compatible`, so "a stray grant cannot flip a permission-less
++//        manifest" is MEASURED rather than promised. The boot is its OWN so the arm cannot be vacuous: the
++//        pane must carry EXACTLY ONE decision line, and a swallowed step leaves zero and reddens (in a
++//        shared boot the expected `compatible` would equal the neighbour's verdict);
+ //       (0.15.0 RENAMED THE HOST COMMAND `/plugins` -> `/plugin`: measured 2026-10-14, the old
+ //        spelling is not registered any more, so the line was submitted as CHAT TEXT and the model
+ //        answered it — the pane carried a thinking indicator and tool calls, never a verdict);
+@@ -218,17 +220,17 @@
+  * (`Negotiation decision:` / `协商结果：`) and therefore carries exactly one decision, its `(...)` detail
+  * and the grant hint the host prints below it: the shape ONE isolated check paints.
+  * @param paneText The captured pane, possibly carrying several checks.
+- * @returns The measured window and the verdict for THAT window.
++ * @returns The measured window, the verdict for THAT window, and how many decision lines the pane carries.
+  */
+-function lastCheckWindow(paneText: string): { window: string; verdict: AdmissionPaneVerdict } {
++export function lastCheckWindow(paneText: string): { window: string; verdict: AdmissionPaneVerdict; decisions: number } {
+   /** Every decision line in the pane, in transcript order — the last one belongs to the newest check. */
+   const decisions = [...paneText.matchAll(/(?:Negotiation decision:|协商结果：)\s*[a-z_]+/g)]
+   /** The newest decision line's match; absent when the pane carries no check output at all. */
+   const last = decisions.at(-1)
+-  if (last === undefined) return { window: paneText, verdict: classifyAdmissionPane(paneText) }
++  if (last === undefined) return { window: paneText, verdict: classifyAdmissionPane(paneText), decisions: 0 }
+   /** The text from that decision line to the end of the captured pane. */
+   const window = paneText.slice(last.index ?? 0)
+-  return { window, verdict: classifyAdmissionPane(window) }
++  return { window, verdict: classifyAdmissionPane(window), decisions: decisions.length }
+ }
+ 
+ /** One `requires.contracts[]` entry of the manifest as the falsifiability controls mutate it in place. */
+@@ -931,6 +933,12 @@
+   check(lastCheckWindow("旧：协商结果：waiting_authorization\n新：协商结果：compatible\n").verdict.state === "compatible",
+     "a NEGATIVE CONTROL failed: the zh decision line must be windowed exactly like the en one")
+   check(lastCheckWindow("a pane with no check output at all").verdict.state === undefined, "a NEGATIVE CONTROL failed: a pane without a decision line must not invent a state")
++  // THE FRESHNESS COUNTER (A5-F1) is what stops an arm whose expected value equals its NEIGHBOUR's from
++  // passing on a swallowed step: the count must be exact, so "the boot painted exactly one decision" is an
++  // assertion a step that painted nothing cannot satisfy.
++  check(twoCheckWindow.decisions === 2, "the window must report how MANY decisions the pane carries: " + String(twoCheckWindow.decisions))
++  check(lastCheckWindow("a pane with no check output at all").decisions === 0,
++    "a NEGATIVE CONTROL failed: a pane with no decision line must report ZERO decisions, not one")
+ 
+   // THE ATTRIBUTION ARM'S APPLICABILITY, two-sided. The arm gated by this predicate is the one that stayed
+   // red even WITH a declaration and is unreachable without one, so the predicate itself must be proven to
+@@ -1117,14 +1125,6 @@
+         waitMs: 20_000,
+       },
+       {
+-        // A4-F1 ON THE LIVE PLANE: the SHIPPED manifest is re-checked WHILE that grant is in place, so the
+-        // claim "a stray grant cannot flip a permission-less manifest" is measured by the host's own
+-        // `/plugin check`, not only negotiated statically.
+-        name: "shipped-granted",
+-        keys: ["/plugin check " + MANIFEST, "Enter"],
+-        waitMs: 20_000,
+-      },
+-      {
+         name: "clone-wrong-scope",
+         before: () => { writeExtensionGrants(grantFile, componentId, [{ name: clone.row.name, scope: "tui/not-a-declared-scope" }]); say("grants file rewritten with the WRONG scope (tui/not-a-declared-scope)") },
+         keys: ["/plugin check " + clone.file, "Enter"],
+@@ -1157,10 +1157,6 @@
+   const cloneGrantedWindow = lastCheckWindow(cloneGrantedPane)
+   /** The clone's THAT-ROW-GRANTED verdict. */
+   const cloneGrantedVerdict = cloneGrantedWindow.verdict
+-  /** The SHIPPED manifest's pane captured WHILE the clone's one row was granted (A4-F1, live plane). */
+-  const shippedGrantedPane = clonePane("shipped-granted")
+-  /** The SHIPPED manifest's window and verdict inside that granted boot. */
+-  const shippedGrantedWindow = lastCheckWindow(shippedGrantedPane)
+   /** The clone's WRONG-SCOPE window and verdict. */
+   const cloneWrongScopeWindow = lastCheckWindow(cloneWrongScopePane)
+   /** The clone's WRONG-SCOPE verdict. */
+@@ -1171,9 +1167,6 @@
+   /** ARM 5b — the SAME clone with its ONE row granted answers `compatible`: the GRANT flips it, not the declaration. */
+   const arm5b = cloneGrantedVerdict.state === "compatible"
+   say("clone granted /plugin check -> state=" + String(cloneGrantedVerdict.state))
+-  /** ARM 5d (A4-F1) — the SHIPPED, permission-less manifest stays `compatible` EVEN WITH a grant in place: the grant cannot flip what it does not declare. */
+-  const arm5d = shippedGrantedWindow.verdict.state === "compatible"
+-  say("shipped-with-grant /plugin check -> state=" + String(shippedGrantedWindow.verdict.state))
+   /** ARM 5c — the same NAME at an undeclared scope still answers `waiting_authorization`: a grant cannot authorize a point nothing declares. */
+   const arm5c = cloneWrongScopeVerdict.state === "waiting_authorization"
+   say("clone wrong-scope /plugin check -> state=" + String(cloneWrongScopeVerdict.state))
+@@ -1183,6 +1176,34 @@
+   const revocationFlipped = revokedClassification.state === "waiting_authorization"
+   say("arm6 revocation re-check -> state=" + String(revokedClassification.state) + " flipped=" + revocationFlipped)
+ 
++  // ── PHASE C — THE SHIPPED MANIFEST *WITH* A GRANT, IN ITS OWN BOOT (A4-F1 measured, A5-F1 non-vacuous) ──
++  // WHY A SEPARATE BOOT: the decision this arm expects (`compatible`) is the SAME one the clone's granted
++  // check produces, so in a shared boot a SWALLOWED step leaves the PREVIOUS pane on screen and the arm would
++  // read that older `compatible` — a vacuous pass (A5-F1, measured). A fresh boot has no decision to inherit:
++  // THIS pane must carry exactly ONE decision line, so a step that painted nothing leaves zero and reddens.
++  writeExtensionGrants(grantFile, componentId, [clone.row])
++  say("shipped-with-grant boot: the clone's one row staged in the grants file -> " + grantFile.replace(REPO + "/", "") + " rows=1")
++  /** The shipped-bond-with-grant lifecycle: ONE `/plugin check` of the SHIPPED manifest, with that grant in place. */
++  const shippedGrantedSession = runTuiSession({
++    lane: SLUG + "-shipped-granted",
++    root,
++    outDir: join(outDir, "shipped-granted"),
++    bootWaitMs: 180_000,
++    extraEnv: { DSH_TUI_DEBUG: "1" },
++    stderrFile: join(outDir, "shipped-granted", "host-stderr.log"),
++    steps: [{ name: "shipped-granted-check", keys: ["/plugin check " + MANIFEST, "Enter"], waitMs: 20_000 }],
++  })
++  for (const failure of shippedGrantedSession.failures) say("shipped-granted tmux: " + failure)
++  /** The fresh boot's ONLY check pane; `""` when the step produced no capture at all. */
++  const shippedGrantedPane = shippedGrantedSession.panes.find((pane) => pane.name === "shipped-granted-check")?.text ?? ""
++  /** Its window, verdict and decision count — the newest decision this boot painted, and how many it painted. */
++  const shippedGrantedWindow = lastCheckWindow(shippedGrantedPane)
++  /** ARM 5d (A4-F1 + A5-F1) — the SHIPPED, permission-less manifest stays `compatible` WITH a grant in place, and the FRESHNESS half makes that non-vacuous: the boot must have painted EXACTLY ONE decision, so a swallowed step reddens instead of re-reading a neighbour's verdict. */
++  const arm5d = shippedGrantedWindow.verdict.state === "compatible" && shippedGrantedWindow.decisions === 1
++  say("shipped-with-grant /plugin check -> state=" + String(shippedGrantedWindow.verdict.state) + " decisions=" + shippedGrantedWindow.decisions + " (fresh boot, exactly one expected)")
++  // The sandbox is left as the next run expects it: no grant file.
++  rmSync(grantFile, { force: true })
++
+   /** The lane verdict: static admission + its three grant tables + the shipped-posture arms + the three clone states (arm 6 observed, never gated; arm 3 gated only while a permission is declared). */
+   const ok = stat.ok === true && staticGrantsOk(stat) && arm1 && arm1NoHint && arm2 && arm3 && arm4 && arm5 && arm5b && arm5c && arm5d && revokedClassification.state !== undefined
+   /** The dist revision at evidence-write time, compared with the start-of-run reading. */
+@@ -1216,7 +1237,7 @@
+       check: classification,
+       list: descriptorClassification,
+       grantsHintAbsent: arm1NoHint,
+-      withGrant: { check: shippedGrantedWindow.verdict.state, arm: arm5d, why: "A4-F1: the shipped manifest is re-checked inside the granted boot, so the claim is measured live and not only negotiated statically" },
++      withGrant: { check: shippedGrantedWindow.verdict.state, decisions: shippedGrantedWindow.decisions, arm: arm5d, boot: "its OWN boot, with the clone's one row staged BEFORE the boot, so a swallowed step leaves ZERO decisions and reddens (A5-F1)" },
+       stderr: { file: shippedStderrFile.replace(REPO + "/", ""), bytes: shippedStderr.length, parkLines: shippedParkLines, why: "DSH_TUI_DEBUG=1 drives the host's per-frame `park target=…` trace; redirecting fd 2 keeps it out of the pane so the chat screen paints (see runTuiSession's stderrFile)" },
+       ledgerDelta: shippedLedger.length,
+       attributed: attributed.length,

@@ -1,0 +1,5 @@
+# MUTATION CASE: baseline-static (mode=baseline) — 2026-11-03T05:49:15Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --static-only
+[tui-admission] static result ok=true
+[tui-admission] ok=true -> /tmp/tmp.7k1eb91G8k/baseline-static/evidence/tui/lanes/2026-11-03T05-49-15.294Z
+# exit: 0

@@ -1,0 +1,5 @@
+baseline live: PASS ["[surface-pin] PASS — every surface the autoproject refactor introduced is declared as the contract fixes it (12 tool surfaces, 2 command surfaces, 15 cellwork names, 4 archive producer keys + 7 consumer reads)"]
+baseline self-test: PASS ["[surface-pin self-test] ok: the extractors, the SHIPPED-tree pin, EIGHT negative controls (parameter, action verb, alias tool, alias command, cellwork name, producer output key, consumer read, command name) and the SKILL.md case-table row"]
+m6 (end removed) live: RED as expected ["[surface-pin] FAIL: 1 surface problem(s)","  - tool agent_teams_control no longer offers action 'end'"]
+m6 (end removed) self-test: RED ["[surface-pin self-test] FAIL: 2 problem(s)","  - the SHIPPED tree must satisfy every pin: tool agent_teams_control no longer offers action 'end'"]
+A4-F2 pin falsifiable: true

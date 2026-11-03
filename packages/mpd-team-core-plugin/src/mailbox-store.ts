@@ -596,7 +596,13 @@ export const MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered"
  */
 export const DEFAULT_MAIL_MAX_UNDELIVERED = 8
 
-/** The largest accepted bound; above it a value reads as "disabled", so the ceiling is the safer rule. */
+/**
+ * The largest accepted bound, INCLUSIVE ({@link mailMaxUndeliveredOf} pins `0..1000`).
+ *
+ * WHY A CEILING AT ALL: a bound that high would effectively disable the safety valve, so anything ABOVE
+ * it falls back to {@link DEFAULT_MAIL_MAX_UNDELIVERED} — never to the declared number. `0` is the
+ * DOCUMENTED way to disable the bound, which is why the ceiling does not silently mean "disabled".
+ */
 const MAIL_MAX_UNDELIVERED_CEILING = 1000
 
 /**

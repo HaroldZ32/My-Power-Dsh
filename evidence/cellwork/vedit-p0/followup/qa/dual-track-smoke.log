@@ -1,0 +1,6 @@
+# LIVE dual-track run (FINAL, with the tool-result slice) — 2026-11-03T05:54:46Z
+# command: bun skills/dsh-qa/scripts/dual-track-smoke.ts
+[llm-dual-track] official ok=true (10772ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-11-03T05-54-57.129Z
+[llm-dual-track] deepseek ok=true (9328ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-11-03T05-55-06.460Z
+[llm-dual-track] PASS
+# exit: 0

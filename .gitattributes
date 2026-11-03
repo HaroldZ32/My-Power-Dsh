@@ -19,3 +19,9 @@
 *.md text eol=lf
 *.ts text eol=lf
 *.yml text eol=lf
+
+# The evidence band is ~1.4 GB of QA records that the package never ships: the `files` allowlist
+# excludes it and the pack closure asserts no evidence/ tree travels in the artifact. Keeping it OUT
+# of the GitHub source tarball keeps the one-click install (`dsh plugin add github:...#<ref>`) from
+# fetching a ~169 MB archive on every install.
+evidence/** export-ignore

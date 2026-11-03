@@ -1,0 +1,46 @@
+baseline barrier: PASS
+baseline flow: PASS
+m1 RED as expected exit=1 ["D1/C1: the LIVE handle's engine WINS over a registry that answers a DIFFERENT engine [1.02ms]"]
+m2 RED as expected exit=1 ["C1: the FIRST attempt is driven BEFORE any barrier delay is scheduled (ORDER, never a duration bound) [1503.88ms]","C1: the ORDER probe SEES the barrier delay when a retry really sleeps (two-sided control) [81.20ms]"]
+m3 RED as expected exit=1 ["D1/C6(b,c,d): the engine comes from the LIVE handle even when the registry lookup misses, and a compacted member is PROM"]
+m4 RED as expected exit=1 ["D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition) [0.48ms]","D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition) [0.48ms]"]
+[
+  {
+    "id": "m1",
+    "name": "N1 — engine resolution made REGISTRY-FIRST",
+    "exit": 1,
+    "failed": [
+      "D1/C1: the LIVE handle's engine WINS over a registry that answers a DIFFERENT engine [1.02ms]"
+    ],
+    "reddened": true
+  },
+  {
+    "id": "m2",
+    "name": "N2 — a pre-attempt sleep (the 200 ms D1 defect class) reintroduced",
+    "exit": 1,
+    "failed": [
+      "C1: the FIRST attempt is driven BEFORE any barrier delay is scheduled (ORDER, never a duration bound) [1503.88ms]",
+      "C1: the ORDER probe SEES the barrier delay when a retry really sleeps (two-sided control) [81.20ms]"
+    ],
+    "reddened": true
+  },
+  {
+    "id": "m3",
+    "name": "N4 — an interrupt issued on the PROMOTED path",
+    "exit": 1,
+    "failed": [
+      "D1/C6(b,c,d): the engine comes from the LIVE handle even when the registry lookup misses, and a compacted member is PROM"
+    ],
+    "reddened": true
+  },
+  {
+    "id": "m4",
+    "name": "N3 — the split description loses the warnings rule",
+    "exit": 1,
+    "failed": [
+      "D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition) [0.48ms]",
+      "D3/C4: the cellwork_split DESCRIPTION states the warnings rule (black-box, from the captured definition) [0.48ms]"
+    ],
+    "reddened": true
+  }
+]

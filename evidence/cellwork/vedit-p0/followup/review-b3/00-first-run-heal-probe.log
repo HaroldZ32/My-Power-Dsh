@@ -1,0 +1,81 @@
+{
+  "teamId": "team-20261103065052495-tsgb-002",
+  "executorRef": "child-senior-engineer-1",
+  "leadBefore": "sess-lead",
+  "leadHistoryBefore": [],
+  "append": {
+    "team": {
+      "version": 1,
+      "teamId": "team-20261103065052495-tsgb-002",
+      "name": "w",
+      "description": "d",
+      "leadSessionId": "sess-lead",
+      "planId": "plan-20261103065052494-tsgb-001",
+      "phase": "active",
+      "createdAt": "2026-11-03T06:50:52.495Z",
+      "members": [
+        {
+          "id": "M1",
+          "name": "senior-engineer-1",
+          "description": "i",
+          "status": "running",
+          "spawnedAt": "2026-11-03T06:50:52.496Z",
+          "role": "Senior Engineer",
+          "workmate": "senior-engineer-1",
+          "workmateMode": "init",
+          "executorRef": "child-senior-engineer-1"
+        },
+        {
+          "id": "M2",
+          "name": "Sneak",
+          "description": "x",
+          "status": "running",
+          "spawnedAt": "2026-11-03T06:50:52.497Z",
+          "executorRef": "child-Sneak"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1",
+          "subject": "t",
+          "description": "d",
+          "kind": "work",
+          "status": "pending",
+          "blockedBy": [],
+          "writeScopes": [],
+          "createdAt": "2026-11-03T06:50:52.496Z",
+          "updatedAt": "2026-11-03T06:50:52.496Z",
+          "revision": 1,
+          "owner": "senior-engineer-1"
+        }
+      ],
+      "nextMemberNumber": 3,
+      "nextTaskNumber": 2,
+      "approvedAt": "2026-11-03T06:50:52.496Z",
+      "leadHistory": [
+        "member-resumed-77"
+      ]
+    },
+    "member": {
+      "id": "M2",
+      "name": "Sneak",
+      "description": "x",
+      "status": "running",
+      "spawnedAt": "2026-11-03T06:50:52.497Z",
+      "executorRef": "child-Sneak"
+    },
+    "spawned": "child-Sneak",
+    "appended": "member Sneak (M2) appended to the live team team-20261103065052495-tsgb-002"
+  },
+  "leadAfter": "sess-lead",
+  "leadHistoryAfter": [
+    "member-resumed-77"
+  ],
+  "boundToMember": "team-20261103065052495-tsgb-002",
+  "rosterNames": [
+    "senior-engineer-1",
+    "Sneak"
+  ],
+  "memberNamedById": false
+}
+EXIT:0

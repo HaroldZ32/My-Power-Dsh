@@ -418,6 +418,20 @@ const REQUIRED_ROOT_FILES: readonly string[] = [
   // in the source tree and in the artifact, so the shipped panel can never point at a file the package
   // does not carry (CodeRabbit PR #88, found on the anchored-but-unchecked shape).
   "dsh-go",
+  // THE SEVEN ROOT FILES THE PACKER'S ANCHOR NAMES (follow-up F4-closure, 0.17.2). `package.json`'s
+  // `files` declares them, the pack copies them and `scripts/pack-mpd.ts`'s root-file anchor names
+  // them — but only THIS list makes the gate BYTE-check them: the content sweep covers `packages/**`
+  // and the ROOT_ASSET_DIRS trees, so a root FILE outside this list was present-but-uncompared (the
+  // T-70 shape; MEASURED before this change: mutating `PLAN.md` inside the artifact produced no
+  // finding at all). Appended rather than prepended on purpose: the self-test's fixture arms key on
+  // `REQUIRED_ROOT_FILES[0]`, which stays `EXTENSIONS-FOR-AGENTS.md`, so none of their subjects move.
+  "AGENTS.md",
+  "PLAN.md",
+  "VENDOR_LOCK.json",
+  "cordis.patch.yml",
+  "dsh-distribution.json",
+  "dsh-plugin.json",
+  "icon.svg",
 ]
 /** Finding kind of a named ROOT FILE the artifact must carry (T-70). */
 const ROOT_FILE_KIND: string = "ROOT-FILE"

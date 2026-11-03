@@ -1,0 +1,44 @@
+diff --git a/packages/mpd-team-core-plugin/src/mailbox-store.ts b/packages/mpd-team-core-plugin/src/mailbox-store.ts
+index f3bf687b..91176747 100644
+--- a/packages/mpd-team-core-plugin/src/mailbox-store.ts
++++ b/packages/mpd-team-core-plugin/src/mailbox-store.ts
+@@ -596,7 +596,13 @@ export const MAIL_MAX_UNDELIVERED_KEY = "mail.maxUndelivered"
+  */
+ export const DEFAULT_MAIL_MAX_UNDELIVERED = 8
+ 
+-/** The largest accepted bound; above it a value reads as "disabled", so the ceiling is the safer rule. */
++/**
++ * The largest accepted bound, INCLUSIVE ({@link mailMaxUndeliveredOf} pins `0..1000`).
++ *
++ * WHY A CEILING AT ALL: a bound that high would effectively disable the safety valve, so anything ABOVE
++ * it falls back to {@link DEFAULT_MAIL_MAX_UNDELIVERED} — never to the declared number. `0` is the
++ * DOCUMENTED way to disable the bound, which is why the ceiling does not silently mean "disabled".
++ */
+ const MAIL_MAX_UNDELIVERED_CEILING = 1000
+ 
+ /**
+diff --git a/scripts/verify-pack-closure.ts b/scripts/verify-pack-closure.ts
+index 50174a01..72a3c0dc 100644
+--- a/scripts/verify-pack-closure.ts
++++ b/scripts/verify-pack-closure.ts
+@@ -418,6 +418,20 @@ const REQUIRED_ROOT_FILES: readonly string[] = [
+   // in the source tree and in the artifact, so the shipped panel can never point at a file the package
+   // does not carry (CodeRabbit PR #88, found on the anchored-but-unchecked shape).
+   "dsh-go",
++  // THE SEVEN ROOT FILES THE PACKER'S ANCHOR NAMES (follow-up F4-closure, 0.17.2). `package.json`'s
++  // `files` declares them, the pack copies them and `scripts/pack-mpd.ts`'s root-file anchor names
++  // them — but only THIS list makes the gate BYTE-check them: the content sweep covers `packages/**`
++  // and the ROOT_ASSET_DIRS trees, so a root FILE outside this list was present-but-uncompared (the
++  // T-70 shape; MEASURED before this change: mutating `PLAN.md` inside the artifact produced no
++  // finding at all). Appended rather than prepended on purpose: the self-test's fixture arms key on
++  // `REQUIRED_ROOT_FILES[0]`, which stays `EXTENSIONS-FOR-AGENTS.md`, so none of their subjects move.
++  "AGENTS.md",
++  "PLAN.md",
++  "VENDOR_LOCK.json",
++  "cordis.patch.yml",
++  "dsh-distribution.json",
++  "dsh-plugin.json",
++  "icon.svg",
+ ]
+ /** Finding kind of a named ROOT FILE the artifact must carry (T-70). */
+ const ROOT_FILE_KIND: string = "ROOT-FILE"

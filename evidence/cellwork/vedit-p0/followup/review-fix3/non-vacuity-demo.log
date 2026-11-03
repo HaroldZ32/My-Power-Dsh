@@ -1,0 +1,6 @@
+the pane a SWALLOWED step would leave on screen (the previous step's capture, newest decision = compatible)
+  -> {"state":"compatible","decisions":2,"arm":false}
+  -> arm5d RED
+the real phase-C pane (its own boot, one check driven)
+  -> {"state":"compatible","decisions":1,"arm":true}
+  -> arm5d PASS

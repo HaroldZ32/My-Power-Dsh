@@ -1,0 +1,5 @@
+=== dual-track-smoke
+[llm-dual-track] official ok=true (11623ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-11-03T08-40-26.671Z
+[llm-dual-track] deepseek ok=true (8567ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-11-03T08-40-35.239Z
+[llm-dual-track] PASS
+dual-exit=0

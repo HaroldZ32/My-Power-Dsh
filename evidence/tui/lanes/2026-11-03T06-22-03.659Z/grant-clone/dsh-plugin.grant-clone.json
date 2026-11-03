@@ -1,0 +1,65 @@
+{
+  "$schema": "https://dsh.community/schemas/dsh-plugin-0.15.json",
+  "manifestVersion": "0.15",
+  "id": "com.mpd-dsh.mpd-tui",
+  "name": "@mpd-dsh/mpd",
+  "version": "0.17.1",
+  "facets": {
+    "host": {
+      "entry": "packages/mpd-tui-plugin/dist/index.js",
+      "apiVersion": "v1alpha1"
+    }
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "tui.dsh/v1alpha1",
+        "kind": "DecisionEvents",
+        "optional": true,
+        "fallback": "Decision interception is skipped and nothing else degrades: the status line, transcript renderers, /settings section, full-screen board, command tree, shortcuts, dialogs and the three sidebar panels keep working. No input, rewind, session-switch or compact decision is intercepted or claimed; no intercept permission is requested, so the seam is inactive by design."
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "name": "session.input.intercept",
+      "scope": "tui/input",
+      "reason": "grant-arm clone: the intercept subscription a grant authorizes; the shipped manifest requests none, because the seam is inactive by design"
+    }
+  ],
+  "contributes": {
+    "commands": []
+  },
+  "subscriptions": [],
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/HaroldZ32/My-Power-Dsh"
+  },
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.18.0"
+    ]
+  },
+  "x-mpd-tui-surfaces": {
+    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.17.1) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). Since the TUI-admission wave the implementing package ALSO carries its own dsh-plugin.json at packages/mpd-tui-plugin/dsh-plugin.json (same id, that package's own name/version/facet entry), so the two files are one identity declared for two packaging shapes: the root file is what a profile install reads, the package file is what TUI-PKG-001 asks of the package itself. A unit test asserts the two never diverge on id, licence, facet apiVersion, permissions and requires.contracts.",
+    "runtimeBoundSurfaces": [
+      "tuiStatus",
+      "tuiRenderers",
+      "tuiSettingsSections",
+      "tuiScenes",
+      "tuiCommandTrees",
+      "tuiShortcuts",
+      "tuiDialogs"
+    ],
+    "whyNoContribution": "Those seven surfaces bind at runtime through the host's own service seams (ctx.get(id, false) then service.register(...)); at v0.15 the manifest mediates only contributes.commands, contributes.panels (must be empty) and vendor x- points whose registered kinds are tui.dsh/v1alpha1#SettingsSection and #Scene. This plugin registers no host Command through the Command capability, and it does not pass its settings section or scene through the manifest projection, so contributes.commands is declared empty instead of asserting a contribution the code does not make.",
+    "decisionEvents": "tui.dsh/v1alpha1#DecisionEvents is declared as an OPTIONAL requirement with the written TUI-visible fallback above; NO intercept permission is requested, so the seam is INACTIVE BY DESIGN rather than ready-but-not-activated. This supersedes decision D9's complete-manifest shape, at the user's direction for the TUI-admission wave: an unused default-deny permission must not be declared, because a manifest that requests it never gets past admission. MEASURED on dsh-tui 0.18.0 with the host's OWN admission library (loadSpecData -> createContractIndex -> legacy Host Descriptor -> negotiate(manifest, host, []); evidence evidence/dshgo/tui-admission/, result.json): with the four session.*.intercept permissions the run answered waiting_authorization / PERMISSION_NOT_GRANTED (registry default: deny, and a Community v0.15 permission object carries no optional flag), while admitInternal accepts only compatible/compatible_degraded, so no Component identity was bound and the host's effect ledger kept attributing this bundle as undeclared; with the minimal declaration the SAME run answers compatible (and validatePlugin answers ok), so the identity path is open and attribution is possible. NOTHING USER-VISIBLE IS LOST: decisions.ts subscribed all four points with handlers that express no opinion, so no interception behaviour existed to keep. The seam's code stays as measured (it reports refused/degraded and claims nothing). If interception is ever wanted, declare the ONE permission that point needs WITH its reason and accept that admission returns to waiting_authorization until a grant row exists in <DATA_DIR>/extension-grants.json (DATA_DIR, default ~/.dsh-tui). The seven surfaces in runtimeBoundSurfaces need no permission and no identity and are the working surface.",
+    "identityDeviation": "HONEST DEVIATION, not an oversight (user decisions D4/D5; its LICENCE element was resolved by the de-omo wave E licence swap, and its one-manifest-per-package element by the TUI-admission wave): the dsh-TUI ecosystem convention for third-party plugins is the @dsh-tui-ecosystem/<name> package scope, an MIT licence, and one manifest per package. This bundle follows the licence element (MIT, this repository's own LICENSE.md) and the one-manifest-per-package element (see the note above: the bundle-level file here plus packages/mpd-tui-plugin/dsh-plugin.json). It still deviates on the ecosystem SCOPE: the TUI edition's package identity is @mpd-dsh/mpd-tui (0.1.0), the bundle's own scope, because both packages ship from one repository and one release. The bilingual TUI docs (docs/tui.md / docs/tui.zh-CN.md) carry the same statement.",
+    "hostReservations": {
+      "environment": "This manifest claims NO DSH_TUI_* environment variable. The only variables the bundle's TUI plugin reads are the host's own (its debug gate reuses the host's DSH_TUI_DEBUG); nothing under DSH_TUI_* is invented, and no variable is owned.",
+      "commands": "contributes.commands is empty, so no built-in command name is claimed and no registration can collide with the host's reserved command set (a conflicting registration would be refused with a warning, never a throw).",
+      "settingsNamespaces": "No /settings namespace is claimed by this manifest. The plugin's section, if the host mounts it, uses the bundle's own `mpd` namespace, never the host's `dsh-tui` namespace.",
+      "theme": "The plugin's theme asset is named `mpd-tui`, which is not one of the host's reserved theme names (auto / light / dark / dark-ansi / status).",
+      "optionalServices": "Every optional host service is soft-probed with ctx.get(id, false) and degrades with a warning instead of failing the boot; the seam surfaces are listed in x-mpd-tui-surfaces."
+    }
+  }
+}

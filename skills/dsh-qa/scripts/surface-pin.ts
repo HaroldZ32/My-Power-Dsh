@@ -298,7 +298,10 @@ export const TOOL_EXPECTATIONS: readonly ToolExpectation[] = [
   { source: "teamCore", name: "agent_teams_task", actions: ["claim", "contract", "release", "complete", "fail", "depend", "context", "handoff"] },
   { source: "teamCore", name: "agent_teams_dispatch", parameters: ["action", "task_id", "dry_run", "limit", "mode", "reassign"], actions: ["run", "release"] },
   { source: "teamCore", name: "agent_teams_mail", actions: ["send", "unread", "read", "summary", "permit", "wait"] },
-  { source: "teamCore", name: "agent_teams_control", actions: ["halt", "resume", "fence", "unfence"] },
+  // A4-F2: the `end` verb is PINNED with the rest — the pinned set is a SUBSET check, so an ADDED action is
+  // tolerated and would have been invisible; naming it is what makes a future REMOVAL of `end` redden like
+  // `fence` does.
+  { source: "teamCore", name: "agent_teams_control", actions: ["halt", "resume", "fence", "unfence", "end"] },
   // 4 — cellwork keeps its 15 names; `cellwork_open` is the NEW one.
   { source: "cellworkIndex", name: "cellwork_open" },
   // 5 — the workmate surfaces the wave added.
@@ -520,8 +523,13 @@ function selfTest(): void {
   const noScope = mutated("autoproject", (text) => text.replace("scope: { type: \"array\"", "declaredScope: { type: \"array\""))
   check(problemsOf(noScope).includes("no longer declares parameter 'scope'"), "negative control: a renamed parameter must redden")
   // (b) a removed ACTION VERB reddens.
+  // THE ANCHOR IS THE CURRENT ENUM, VERBATIM: it still carried the four verbs the tool had before the
+  // team-END verb landed, so the replace became a NO-OP and the control could no longer redden at all —
+  // a dead negative control is worse than a missing one. The pinned action set above stays a SUBSET check
+  // (a NEW verb is tolerated there, which is why the live case stayed green); only this mutation has to
+  // spell the whole literal it edits.
   /** The control tool with `fence` removed from its enum. */
-  const noFence = mutated("teamCore", (text) => text.replace('enum: ["halt", "resume", "fence", "unfence"]', 'enum: ["halt", "resume"]'))
+  const noFence = mutated("teamCore", (text) => text.replace('enum: ["halt", "resume", "fence", "unfence", "end"]', 'enum: ["halt", "resume"]'))
   check(problemsOf(noFence).includes("no longer offers action 'fence'"), "negative control: a removed action verb must redden")
   // (c) a RETIRED ALIAS reappearing reddens.
   /** The autoproject source with an `mpd_ulw` alias re-added. */

@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.17.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.17.2-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.5-4B32C3.svg)](#致谢)
@@ -137,8 +137,9 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
 |---|---|---|---|
-| 0.17.1 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
-| 0.17.0 | 0.2.1-rc.5 | 0.18.0 | 上一版本 |
+| 0.17.2 | 0.2.1-rc.5 | 0.18.0 | 本次发布 |
+| 0.17.1 | 0.2.1-rc.5 | 0.18.0 | 上一版本 |
+| 0.17.0 | 0.2.1-rc.5 | 0.18.0 | `previous` |
 | 0.16.4 | 0.2.1-rc.3 | 0.17.0 | `previous` |
 | 0.16.3 | 0.2.1-rc.3 | 0.17.0 | `previous` |
 | 0.16.2 | 0.2.1-rc.3 | 0.17.0 | `previous` |
@@ -149,7 +150,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 | 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
 | 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous`（harness 0.2.1 适配发布） |
 
-最新一行**就是**这一对：`0.17.1` 对 harness `0.2.1-rc.5` 与 DSH-TUI `0.18.0`，两者必须一起移动。
+最新一行**就是**这一对：`0.17.2` 对 harness `0.2.1-rc.5` 与 DSH-TUI `0.18.0`，两者必须一起移动。
 `dsh-tui@0.17.0` 的 peer 名单止于 harness `0.2.1-rc.3`，所以 rc.5 的 harness 配 0.17.0 的宿主会被
 `dsh plugin --profile dsh-tui add` 拒装。钉定位置是 [`package.json`](./package.json) 与
 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`；其下各行保留为历史，记录更早版本实际钉定的组合。
@@ -257,7 +258,7 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.17.1**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.17.2**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

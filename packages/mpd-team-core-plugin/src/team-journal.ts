@@ -23,11 +23,12 @@ import { teamRoot } from "./team-store"
  * Every event the team plane journals.
  *
  * `task-reassigned` is the hand-over the dispatch repair performs and `task-cancelled` is the abandonment
- * that makes a row undispatchable; the other three are the seat events the same wave adds (a fence, its
- * removal, and a member's handoff), journaled here because they change what a later dispatch pass may do
- * with that seat.
+ * that makes a row undispatchable; the next three are the seat events (a fence, its removal, and a
+ * member's handoff), journaled here because they change what a later dispatch pass may do with that seat;
+ * `team-ended` is the TERMINAL transition of the whole team (`agent_teams_control {action:"end"}`), the
+ * one row that says when and why the wave closed — written once, never on the idempotent repeat.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {

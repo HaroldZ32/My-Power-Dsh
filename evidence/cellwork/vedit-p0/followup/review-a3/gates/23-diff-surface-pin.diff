@@ -1,0 +1,25 @@
+diff --git a/skills/dsh-qa/scripts/surface-pin.ts b/skills/dsh-qa/scripts/surface-pin.ts
+index f857979d..a45b043a 100644
+--- a/skills/dsh-qa/scripts/surface-pin.ts
++++ b/skills/dsh-qa/scripts/surface-pin.ts
+@@ -517,14 +517,19 @@ function selfTest(): void {
+ 
+   // (a) a renamed PARAMETER reddens.
+   /** The autoproject tool with `scope` renamed away. */
+   const noScope = mutated("autoproject", (text) => text.replace("scope: { type: \"array\"", "declaredScope: { type: \"array\""))
+   check(problemsOf(noScope).includes("no longer declares parameter 'scope'"), "negative control: a renamed parameter must redden")
+   // (b) a removed ACTION VERB reddens.
++  // THE ANCHOR IS THE CURRENT ENUM, VERBATIM: it still carried the four verbs the tool had before the
++  // team-END verb landed, so the replace became a NO-OP and the control could no longer redden at all —
++  // a dead negative control is worse than a missing one. The pinned action set above stays a SUBSET check
++  // (a NEW verb is tolerated there, which is why the live case stayed green); only this mutation has to
++  // spell the whole literal it edits.
+   /** The control tool with `fence` removed from its enum. */
+-  const noFence = mutated("teamCore", (text) => text.replace('enum: ["halt", "resume", "fence", "unfence"]', 'enum: ["halt", "resume"]'))
++  const noFence = mutated("teamCore", (text) => text.replace('enum: ["halt", "resume", "fence", "unfence", "end"]', 'enum: ["halt", "resume"]'))
+   check(problemsOf(noFence).includes("no longer offers action 'fence'"), "negative control: a removed action verb must redden")
+   // (c) a RETIRED ALIAS reappearing reddens.
+   /** The autoproject source with an `mpd_ulw` alias re-added. */
+   const alias = mutated("autoproject", (text) => text + '\n  dsh.registerTool({ name: "mpd_ulw", description: "alias", parameters: { type: "object", properties: {} } })\n')
+   check(problemsOf(alias).includes("the RETIRED tool mpd_ulw is still declared"), "negative control: a re-added alias must redden")
+   // (d) a RETIRED COMMAND reappearing reddens.

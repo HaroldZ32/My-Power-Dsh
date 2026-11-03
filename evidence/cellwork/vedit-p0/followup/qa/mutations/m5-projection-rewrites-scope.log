@@ -1,0 +1,6 @@
+mutated: projection-rewrites-scope
+# MUTATION CASE: m5-projection-rewrites-scope (mode=projection-rewrites-scope) — 2026-11-03T05:49:15Z
+# command: bun <scratch>/skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] FAIL: 1 check(s)
+  - the projection must round-trip every declaration's name and scope in order: [{"name":"session.input.intercept","scope":"tui/rewritten"},{"name":"session.rewind.intercept","scope":"tui/rewritten"}]
+# exit: 1
