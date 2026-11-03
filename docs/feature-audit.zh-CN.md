@@ -3,11 +3,11 @@
 **中文** | [English](./feature-audit.md)
 
 > **状态已重新定位（de-vendor-and-verify-law，2026-10-07）。** oh-my-openagent 是一份**早期参考**，
-> 而不是一致性目标。曾用它衡量本仓库的身份校验已被**删除**，没有任何关卡会去读取上游 checkout，也不
-> 欠任何同步义务 —— 名册、十一个角色描述与模型链术语来自那个项目，其归属记录在
-> [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) 与根 README 中。因此下文全部内容都是对某项能力面的
-> **历史测量**，保留下来是因为这份对照仍有信息量；请把 ✅ 读作“这曾经发布”，绝不读作“至今仍与上游
-> 一致”，也不要把这里任何一句读成“逐版本跟随上游”的承诺。
+> 也是一把对照尺，而不是一致性目标。曾用它衡量本仓库的身份校验已被**删除**，没有任何关卡会去读取
+> 上游 checkout，也不欠任何同步义务。**本仓库没有任何内容源自它**：名册名称、persona 文本与模型链
+> 术语要么是项目自己的，要么取自宽松许可的公开 agent 提示词，`LICENSE-NOTICES.md` 有记录。因此下文
+> 全部内容都是对某项能力面的**历史测量**，保留下来是因为这份对照仍有信息量；请把 ✅ 读作“这曾经发布”，
+> 绝不读作“至今仍与上游一致”，也不要把这里任何一句读成“逐版本跟随上游”的承诺。
 
 本文档是移植的**当前基线/能力对照**：AGENTS.md §1 将其引用为工程目标。历史移植规划记录
 位于 `docs/plan-*`，属于 process 记录，不属于本审计范围。
@@ -18,18 +18,18 @@
 | 领域 | 上游 spec | 状态 | 位置 / 说明 |
 |---|---|---|---|
 | Agent roster（11） | sisyphus, sisyphus-junior, hephaestus, oracle, librarian, explore, metis, momus, atlas, multimodal-looker, prometheus | ✅ | mpd-roles-plugin roster，使用常规显示名（Senior Engineer, Junior Engineer, Deep Worker, Architect, Researcher, Explorer, Reviewer, Plan Reviewer, Lead, Vision Analyst, Planner）；一次性咨询走 `mpd_role_spawn`，队友模板由 Lead 用官方 `spawn_teammate` 按名字创建（persona 文本取自 `mpd_role_persona`） |
-| 团队模式 | 11-agent 编排、mailbox、tasklist、state、worktree、tmux | ✅ | **官方** Agent Teams 插件提供**运行时**，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 三行挂载（三个已声明 `dependencies`）：队友经 `spawn_teammate`（fresh 或 fork）生成，是**一次性（ONE-SHOT）咨询** —— 一次有界委派、一份报告，报告落定后激活即被**销毁**，已落定的子会话绝不再续（只追加的目录仍可能把它**列为** `inactive`）；带唤醒的逐成员邮箱（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`）、带依赖与就绪判定的 compare-and-set 共享任务板（`team_task_*`），以及会话头部里的 Web 名册/任务板面板。**团队真相是 mpd 自有的记录** `<workspace>/.mpd/team/teams/<teamId>.json`（`mpd-team-core-plugin`）：名册、任务板、DAG、`kind`/`attempt`/`round`/`verdict` 与每个执行器句柄，被每个 mpd 界面读取；官方平面自己的名册/邮箱/任务板状态（保存在 Lead 的会话日志里，经 `dsh.teamLiveTeams()` 读回）只是"由官方执行器运行的 composition"那个受控 **FALLBACK**。没有 worktree 或 tmux 集成（上游的 worktree/tmux 两项记为 ➖）。已退役的内置 `dsh-agent-teams` 主体只作为来源记录保留；见下文小节 |
-| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用、重命名/删除 | ✅ | mpd-workmate-plugin：roster BASE → 独立命名 instance（persona/memory/note，大小封顶：8/8/1.5 KiB）；工作后自总结（mpd_workmate_reflect）；note 匹配复用（mpd_workmate_match，阈值 0.35——弱匹配不得强用，应新建 workmate）；一次性复用走 mpd_workmate_spawn；**重命名**（mpd_workmate_rename —— 搬移目录键 + meta + 索引键 + note 自引用 + renamedFrom，绝不重新实例化）与**删除**（mpd_workmate_delete —— 先归档到 `.archive/<key>-<stamp>/`，只有 purge + confirm === name 才彻底移除；恢复靠手动 `mv` 搬回，产品内没有恢复功能）；两种变更在该 workmate 被进行中的 spawn（或**任一布局**的团队记录 —— 今天批准的团队所写的 mpd 自有 `.mpd/team/teams/<teamId>.json`，以及仍被尊重的已退役 `.mpd/team/<teamId>/team.json`）占用时都以 409 `in-use` 拒绝并列出阻塞团队，且与变更处于同一同步块；名称仅限 ASCII `[a-z0-9_-]`（CJK/大写在任何 fs 调用前即拒绝；Unicode 延后）。路由：`POST /plugins/mpd-workmate/{rename,delete}`，遵循 §D 状态/reason 矩阵。团队参与靠**提示词**：队友之所以带着 workmate 的 persona/memory，是因为 captain 把它们放进了 `spawn_teammate` 的提示词 —— 自动 memberPersona 注入属于已退役的内置插件。库按设计位于用户 HOME（QA 用 HOME=<sandbox> 启动）。GUI：该库是一个 DSH-better-sidebar Tab（`mpd-workmate`），仅此一处 —— 浮层与页脚开关已移除，侧边栏是它唯一的宿主；该 Tab 带 zh/en 的重命名/删除控件。Evidence：evidence/plan-f/workmate-library、evidence/workmate/rename-delete-core、evidence/workmate/rename-delete-gui、evidence/workmate/rename-delete-verify |
+| 团队模式 | 11-agent 编排、mailbox、tasklist、state、worktree、tmux | ✅ | **官方** Agent Teams 插件提供**运行时**，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 三行挂载（三个已声明 `dependencies`）：队友经 `spawn_teammate`（fresh 或 fork）生成，是**一次性（ONE-SHOT）咨询**：一次有界委派、一份报告，报告落定后激活即被**销毁**，已落定的子会话绝不再续（只追加的目录仍可能把它**列为** `inactive`）；带唤醒的逐成员邮箱（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`）、带依赖与就绪判定的 compare-and-set 共享任务板（`team_task_*`），以及会话头部里的 Web 名册/任务板面板。**团队真相是 mpd 自有的记录** `<workspace>/.mpd/team/teams/<teamId>.json`（`mpd-team-core-plugin`）：名册、任务板、DAG、`kind`/`attempt`/`round`/`verdict` 与每个执行器句柄，被每个 mpd 界面读取；官方平面自己的名册/邮箱/任务板状态（保存在 Lead 的会话日志里，经 `dsh.teamLiveTeams()` 读回）只是"由官方执行器运行的 composition"那个受控 **FALLBACK**。没有 worktree 或 tmux 集成（上游的 worktree/tmux 两项记为 ➖）。已退役的内置 `dsh-agent-teams` 主体只作为来源记录保留；见下文小节 |
+| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用、重命名/删除 | ✅ | mpd-workmate-plugin：roster BASE → 独立命名 instance（persona/memory/note，大小封顶：8/8/1.5 KiB）；工作后自总结（mpd_workmate_reflect）；note 匹配复用（mpd_workmate_match，阈值 0.35：弱匹配不得强用，应新建 workmate）；一次性复用走 mpd_workmate_spawn；**重命名**（mpd_workmate_rename：搬移目录键 + meta + 索引键 + note 自引用 + renamedFrom，绝不重新实例化）与**删除**（mpd_workmate_delete：先归档到 `.archive/<key>-<stamp>/`，只有 purge + confirm === name 才彻底移除；恢复靠手动 `mv` 搬回，产品内没有恢复功能）；两种变更在该 workmate 被进行中的 spawn（或**任一布局**的团队记录：今天批准的团队所写的 mpd 自有 `.mpd/team/teams/<teamId>.json`，以及仍被尊重的已退役 `.mpd/team/<teamId>/team.json`）占用时都以 409 `in-use` 拒绝并列出阻塞团队，且与变更处于同一同步块；名称仅限 ASCII `[a-z0-9_-]`（CJK/大写在任何 fs 调用前即拒绝；Unicode 延后）。路由：`POST /plugins/mpd-workmate/{rename,delete}`，遵循 §D 状态/reason 矩阵。团队参与靠**提示词**：队友之所以带着 workmate 的 persona/memory，是因为 captain 把它们放进了 `spawn_teammate` 的提示词：自动 memberPersona 注入属于已退役的内置插件。库按设计位于用户 HOME（QA 用 HOME=<sandbox> 启动）。GUI：该库是一个 DSH-better-sidebar Tab（`mpd-workmate`），仅此一处：浮层与页脚开关已移除，侧边栏是它唯一的宿主；该 Tab 带 zh/en 的重命名/删除控件。Evidence：evidence/plan-f/workmate-library、evidence/workmate/rename-delete-core、evidence/workmate/rename-delete-gui、evidence/workmate/rename-delete-verify |
 | autoproject loop | plan->execute->verify 纪律、模式、hashline 编辑 | ✅ | mpd_autoproject v2 引擎：discovery waves（2 次无果即停）、逐 criterion PIN->RED->GREEN->SURFACE->CLEAN、plan gate + verification gate（最多 2 次 re-review）+ quality gate ledger、可选 hyperplan 对抗波、subagent barrier（evidence/plan-c/c2-autoproject；确定性引擎测试）。可作为 `/autoproject <objective>` 直接调用（工作确需团队时该运行自行以 `approval="automatic"` 建队）；execute-verify 中可接 hashline/comment-checker 钩子 |
 | /goal 与 goal rounds | 上游 /goal 带持久状态 | ✅ | DSH 原生 goal + tool-goal + command-goal + goal-round-driver |
-| ralph loop | 全新 agent 迭代 | ➖ | Harness 已**把 `tool-ralph` 行从 0.2.1 的 `standard` preset 中移除**（`tool-subagent-codex` / `tool-subagent-claude-code` 随之而去），而 `mpd` preset 与 `standard` 逐行保持一致，因此本 bundle 的任何 preset 都不再组合它 —— 在仍然提供该行的 harness 上，`ralph` 工具仍可调用。该行承载的全新 agent 循环纪律由 `mpd_autoproject` 的执行轮次与 Agent Teams 成员承担 |
+| ralph loop | 全新 agent 迭代 | ➖ | Harness 已**把 `tool-ralph` 行从 0.2.1 的 `standard` preset 中移除**（`tool-subagent-codex` / `tool-subagent-claude-code` 随之而去），而 `mpd` preset 与 `standard` 逐行保持一致，因此本 bundle 的任何 preset 都不再组合它：在仍然提供该行的 harness 上，`ralph` 工具仍可调用。该行承载的全新 agent 循环纪律由 `mpd_autoproject` 的执行轮次与 Agent Teams 成员承担 |
 | plan mode | 仅规划模式 | ✅ | DSH 原生 plan-mode |
 | delegate / multi-model | delegate-task 带 fallback chains | 🟡 | subagent 工具 + mpd_modelchain_resolve（11 roles，2-3 层 DeepSeek chains）。上游 model-core 更丰富的 variant/effort 映射未移植 |
 | 后台 agent | 并行后台任务 | ✅ | DSH jobs + tool-jobs |
-| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev` —— 后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务 —— `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
+| Skills 语料 | 上游 skill corpus | ✅ | 已移植（2026-08-27）：语料随仓库发布于 `skills/`（19 个目录，含 `svn-master`、本仓库自有的 `dsh-qa` 与 `cordis-dev`：后者改写自 DeepSeek Harness 的创造模式 preset skills，MIT，见 `LICENSE-NOTICES.md`），并以**引用**方式服务： `mpd-bootstrap` 通过 adapter 把 `<bundle>/skills` 注册为 `bundled` skill provider，因此不会复制进 `$DSH_HOME`；见 `docs/omo-parity-gap.md` 的 §Content gaps |
 | Rules / AGENTS.md | 嵌套规则发现与注入 | ✅ | DSH agent-instructions（baseline + nested + change tracking） |
 | 内置 MCPs（5） | git_bash, lsp, codegraph, context7, grep_app | ✅ | git（28 工具）+ shell（`run_process`，两行均 `disabled: true`）、lsp（12 个 cclsp 工具）、codegraph（plugin+init）、context7、grep_app（远程行）+ 额外 ast_grep |
-| Slash commands | /goal /autoproject /team /hyperplan … | 🟡 | DSH 原生命令 + 本 bundle 贡献的六条 —— `/autoproject`（目标即参数）、`/mpd-codegraph`、`/agent-teams`、`/cellwork` —— 再加仅 TUI 的 `/mpd` 与 `/mpd-model` 命令树；带**测量口径**的完整清单见 [`user-guide.md`](user-guide.zh-CN.md) §12。autoproject 引擎同时以一个工具交付：`mpd_autoproject`，由 `tier` 决定形态。没有 `/team` 命令 —— 团队工作由官方工具驱动 |
+| Slash commands | /goal /autoproject /team /hyperplan … | 🟡 | DSH 原生命令 + 本 bundle 贡献的六条： `/autoproject`（目标即参数）、`/mpd-codegraph`、`/agent-teams`、`/cellwork`：再加仅 TUI 的 `/mpd` 与 `/mpd-model` 命令树；带**测量口径**的完整清单见 [`user-guide.md`](user-guide.zh-CN.md) §12。autoproject 引擎同时以一个工具交付：`mpd_autoproject`，由 `tier` 决定形态。没有 `/team` 命令：团队工作由官方工具驱动 |
 | hashline 哈希编辑 | 保持哈希的编辑纪律 | ✅ | mpd_hashline_read/edit/format/restore + 注册文件 post-edit guard（vendor hashline-core；evidence/plan-c/plan-c-smoke + 单元测试） |
 | comment-checker | post-edit 注释检查 | ✅ | mpd_comment_check（opt-in 二进制 @code-yeongyu/comment-checker，MIT；installer --with-comment-checker；autoCheck 默认关闭；单元测试 + plan-c-smoke） |
 | monitor / toast / TUI sidebar | 会话监视器 + UI | ➖ | 由 DSH session telemetry（otel）、token-meter、web GUI 取代 |
@@ -37,7 +37,7 @@
 | 记忆引擎 | git-backed MemFS + 反思 | ✅ | mpd-memory-plugin：Markdown memo 文件（frontmatter）、journal、反思状态机（step-count/manual 触发、reservation）、VCS 抽象支持 git 与 svn 后端（memory.vcs git\|svn\|both）；工具 mpd_memory_write/read/reflect/reflect_complete/status；evidence/plan-c/c6-memory + 单元测试（git 真实提交、svn fake-CLI 接线） |
 | Boulder state | 持久工作状态机 | ✅ | mpd_boulder_status/start/complete/task_timer/plan_progress/plans 于 .mpd/boulder.json（vendor boulder-state，dsh: session 前缀；evidence/plan-c/plan-c-smoke + 单元测试） |
 | Config（上游 config） | 分层 config schema | ✅ | 最小 mpd.jsonc 运行时层（项目 .mpd/mpd.jsonc + 用户 $DSH_HOME/mpd.jsonc，JSONC，深合并；bundle patch 仍是组合真相；evidence/plan-c/plan-c-smoke + 单元测试） |
-| LSP 工具 | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__*（12 个工具，经已声明的 cclsp 依赖；`status`/`prepare_rename`/`install_decision` 已删除 —— 见 packages/mpd-mcp-lsp/README.md） |
+| LSP 工具 | diagnostics/goto/refs/rename/symbols | ✅ | mcp__lsp__*（12 个工具，经已声明的 cclsp 依赖；`status`/`prepare_rename`/`install_decision` 已删除：见 packages/mpd-mcp-lsp/README.md） |
 | 多模态 | 图像分析模型路由 | ✅ | modality 路由实测：fixture PNG -> deepseek-v4-flash-vision-exp 官方 API -> 接地答案（evidence/plan-c/c8-vision） |
 | 模型护栏 | capability 启发式/别名 | ✅ (scoped) | mpd_modelchain_resolve 中的 chains（11 roles，DeepSeek-first）。上游 model-core 深度有意跳过（用户决策：仅 DeepSeek，官方 vs 非官方 API；D-C9） |
 | 宿主特定遗留 | claude-code compat loaders、opengateway、mcp-oauth、上游 CLI 运行时 | ➖ | 对 DSH bundle 有意排除 |
@@ -60,16 +60,16 @@
 **请把本节读作历史，绝不是随包能力：本节描述的主体已退役（2026-09-27）并被移除（2026-10-07），
 其中没有任何东西存在于当前代码树中。** 内置的 `agent-teams` 主体（含其 `_deps/` 闭包，
 共 768 个文件）已在 de-vendor 波次（2026-10-07）中从 `packages/mpd-agent-teams-plugin/` **删除**；
-自 0.1.7-rc.2 起就没有任何 loader 行挂载它 —— 那一次由官方 Agent Teams 插件取代（见上文团队模式行、
+自 0.1.7-rc.2 起就没有任何 loader 行挂载它，那一次由官方 Agent Teams 插件取代（见上文团队模式行、
 `docs/plan-0.1.7-adaptation.md`，以及 `docs/design.md`、`docs/independence.md` §5 与
 `LICENSE-NOTICES.md` 中的删除记录）。
 
-最后保留的版本是 `0.1.16-rc.3-mpd` —— **0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
+最后保留的版本是 `0.1.16-rc.3-mpd`（**0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量）
 `lib/harness-compat.ts`（在 harness **0.1.5-rc.2+** 上经公开的
 `ctx.subagents.prompt(request, signal)` 可续投递面进行团队投递，Alpha.2 的 `followup` 与
 Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queuePrompt')` 仅作为
 旧世代回退保留；`agent/session-start` 上的同步成员初始化从事件负载中取得 live Agent
-（`setup(agent.ctx, agent)`），而不再读 `childCtx.agent` —— agent 作用域的 Cordis ctx 是代理，
+（`setup(agent.ctx, agent)`），而不再读 `childCtx.agent`： agent 作用域的 Cordis ctx 是代理，
 读取会抛 `cannot get property "agent" without inject`（不存在 `agent` 服务；宿主注入的是复数
 `agents`），且该监听器对队长自身会话同样触发，旧读法会全队中止成员初始化、使 0.1.5 团队模式
 不可用；所有投递面上的退役守卫）、`lib/capabilities.ts`
@@ -80,12 +80,12 @@ Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queue
 
 **该版本已退役（2026-09-27）并被移除（2026-10-07）。** 官方 Agent Teams 插件于 2026-09-27 取代它，
 此后它再未被任何 loader 行挂载，而 de-vendor 波次又在 2026-10-07 删除了
-`packages/mpd-agent-teams-plugin/` —— 上文点名的 `lib/…` 路径在当前代码树中已不存在，没有 loader 行
+`packages/mpd-agent-teams-plugin/`：上文点名的 `lib/…` 路径在当前代码树中已不存在，没有 loader 行
 挂载它们，被采纳主体的仅存部分已作为我们自己的代码迁入新址：`packages/mpd-schemastery/**` 的
 schemastery 校验器，以及作为视图库保留的已采纳浏览器 bundle（`docs/design.md` §7）。本节全部内容
 （包括下面两处从未采纳的增量）都是移除时留下的记录，仅供溯源。
 
-**保留**主体在移除前有两处上游增量从未采纳（两者都不可能影响随包会话 —— 它们跑在官方插件上）：
+**保留**主体在移除前有两处上游增量从未采纳（两者都不可能影响随包会话，它们跑在官方插件上）：
 
 | 上游增量 | 当时不采纳的原因 | 当时采纳所需工作 |
 | --- | --- | --- |

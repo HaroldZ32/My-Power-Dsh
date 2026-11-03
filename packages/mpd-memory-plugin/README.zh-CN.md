@@ -1,7 +1,7 @@
 # mpd-memory-plugin
 **中文** | [English](./README.md)
 
-Plan C / C6 — 基于 git/svn 的记忆引擎，带一个 reflection（反思）状态机。
+基于 git/svn 的记忆引擎，带一个 reflection（反思）状态机。
 
 **本包是 mpd 自有代码。** 引擎的语义——markdown 记忆文件带 frontmatter（`description`/`kind`/`aliases`/`read_only`）、journal 加 facts 队列（属于已记录的存储布局；目前没有工具写入它）、以及一个按步数计数的 reflection reducer——是依据上游包 `memory-core` 的**已记录行为**（base 8c57e46）在此**重新表达**的。没有翻译任何上游源码，也没有复制任何上游提示词或文本。
 

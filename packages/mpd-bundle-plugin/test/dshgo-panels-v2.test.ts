@@ -21,6 +21,8 @@ import { buildTeamView, type TeamPanelSnapshot } from "../src/dshgo-views.ts"
 import type { PanelSnapshot } from "../src/dshgo-panel.ts"
 import { createSurfaceActions, replyTextOf, stripLine } from "../src/dshgo-surfaces.ts"
 import { memorySlugOf, readMemoryStore } from "../src/dshgo-panel.ts"
+import { graphLinesOf, graphStepsOf, layerGraphOf } from "../src/dshgo-graph.ts"
+import type { TeamPanelTask } from "../src/dshgo-views.ts"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -105,12 +107,12 @@ describe("the workbench panel's v2 design", () => {
     expect(measured.bytes).toBeLessThanOrEqual(BUDGETS.panel.bytes)
   })
 
-  test("four tabs, each with exactly ONE tinted hero and its own title", () => {
+  test("THREE tabs, each with exactly ONE tinted hero and its own title", () => {
     /** The v2 tree. */
     const view = buildMpdView(snapshotWithEverything(), V2_CAPS)
     /** The panel's tabs. */
     const sections = tabSections(view)
-    expect(sections).toHaveLength(4)
+    expect(sections).toHaveLength(3)
     for (const section of sections) {
       /** Every node inside this tab. */
       const nodes = nodesOf(section.children)
@@ -137,8 +139,52 @@ describe("the workbench panel's v2 design", () => {
     const zh = tabSections(buildMpdView(snapshotWithEverything(), { ...V2_CAPS, locale: "zh-CN" })).map((section) => section.label)
     /** The tabs an `en` app sees. */
     const en = tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)).map((section) => section.label)
-    expect(zh).toEqual(["总览", "问题", "工作伙伴", "记忆"])
-    expect(en).toEqual(["Overview", "Questions", "Workmates", "Memory"])
+    expect(zh).toEqual(["总览", "问题", "资料库"])
+    expect(en).toEqual(["Overview", "Ask", "Library"])
+  })
+
+  test("every tab label fits ONE line at a 390 px viewport (repair T12)", () => {
+    /** Both panels, both languages. */
+    const strips = [
+      tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)),
+      tabSections(buildMpdView(snapshotWithEverything(), { ...V2_CAPS, locale: "zh-CN" })),
+      tabSections(buildTeamView(teamSnapshot(), V2_CAPS)),
+      tabSections(buildTeamView(teamSnapshot(), { ...V2_CAPS, locale: "zh-CN" })),
+    ]
+    for (const sections of strips) {
+      // Measured on the app's own render: a nine-character label broke mid-word and pushed the fourth
+      // tab onto a second row, so the budget is eight characters per label AND about 24 per strip.
+      expect(sections).toHaveLength(3)
+      for (const section of sections) expect(String(section.label).length).toBeLessThanOrEqual(8)
+      expect(sections.reduce((total, section) => total + String(section.label).length, 0)).toBeLessThanOrEqual(24)
+    }
+  })
+
+  test("the hero does NOT hold the metric grid, so the grid gets the panel's full width (repair T18)", () => {
+    // Measured in the app: a grid keeps two columns only while (width - 8) / 2 >= 136 * textScale. A
+    // padded hero shrinks that width below the threshold and the grid stacks, so the tiles must sit
+    // outside the card. This arm fails if a grid is nested inside a `tinted` node again.
+    /** Every tab of both panels, in v2. */
+    const tabsTotal = [...tabSections(buildMpdView(snapshotWithEverything(), V2_CAPS)), ...tabSections(buildTeamView(teamSnapshot(), V2_CAPS))]
+    expect(tabsTotal.length).toBeGreaterThan(0)
+    for (const tab of tabsTotal) {
+      for (const node of nodesOf(tab.children)) {
+        if (node.type !== "grid") continue
+        /** The tinted card this grid sits under, if any. */
+        const insideHero = nodesOf(tab.children).some((candidate) => typeof candidate.style === "object" && candidate.style !== null && (candidate.style as Record<string, unknown>).card === "tinted" && nodesOf(candidate.children).includes(node))
+        expect(insideHero).toBe(false)
+      }
+    }
+    /** Both trees, built ONCE, so the walks below share object identity. */
+    const trees = [buildMpdView(snapshotWithEverything(), V2_CAPS), buildTeamView(teamSnapshot(), V2_CAPS)]
+    /** Every metric of both trees, with the tree it belongs to. */
+    const metrics = trees.map((tree) => ({ tree, metrics: nodesOf(tree).filter((node) => node.type === "metric") }))
+    expect(metrics.reduce((total, one) => total + one.metrics.length, 0)).toBeGreaterThan(0)
+    for (const { tree, metrics: tiles } of metrics) {
+      /** Every grid of that same tree. */
+      const grids = nodesOf(tree).filter((node) => node.type === "grid")
+      for (const tile of tiles) expect(grids.some((gridNode) => nodesOf(gridNode.children).includes(tile))).toBe(true)
+    }
   })
 
   test("the empty state is designed copy, never a blank tab", () => {
@@ -164,7 +210,9 @@ describe("the workbench panel's v2 design", () => {
     expect(fitsBudget(view, "panel")).toBe(true)
     /** The fallback flattened into words, so a metric that survived can be found. */
     const flat = JSON.stringify(view)
-    for (const [label, value] of [["Ready", "counts.ready"], ["Active", "counts.active"], ["Done", "counts.done"], ["Members", "counts.members"], ["Completion", "counts.completion"]] as const) {
+    // The workbench hero carries TWO tiles after the phone-width repair; the completion bar and the
+    // caption keep the other numbers readable, so those are what the fallback must still show.
+    for (const [label, value] of [["Ready", "counts.ready"], ["Active", "counts.active"], ["Completion", "counts.completion"]] as const) {
       expect(flat).toContain(label)
       expect(flat).toContain(value)
     }
@@ -184,10 +232,10 @@ describe("the team panel's v2 design", () => {
     expect(fitsBudget(v1, "panel")).toBe(true)
   })
 
-  test("four tabs, one hero each, and a tappable board row carrying `select` + its task id", () => {
+  test("THREE tabs, one hero each, and a tappable board row carrying `select` + its task id", () => {
     /** The v2 tree. */
     const view = buildTeamView(teamSnapshot(), V2_CAPS)
-    expect(tabSections(view)).toHaveLength(4)
+    expect(tabSections(view)).toHaveLength(3)
     /** Every list row that carries an action. */
     const rows = nodesOf(view).filter((node) => node.type === "list").flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
     /** The board rows: the ones whose action selects a task. */
@@ -196,14 +244,45 @@ describe("the team panel's v2 design", () => {
     expect((tappable[0]?.action as { args?: { task?: string } }).args?.task).toBe("T1")
   })
 
-  test("members carry an initials badge and a state WORD, never colour alone", () => {
+  test("board rows are DENSE: a short trailing word and an owner-only subtitle (repair T12)", () => {
     /** The v2 tree. */
     const view = buildTeamView(teamSnapshot(), V2_CAPS)
-    /** Every badge in the tree. */
-    const badges = nodesOf(view).filter((node) => node.type === "badge")
-    expect(badges.map((node) => node.text)).toContain("DW")
-    expect(badges.map((node) => node.text)).toContain("handoff ready")
-    for (const node of badges) expect(String(node.text).length).toBeGreaterThan(0)
+    /** Every board row: the list rows whose action selects a task. */
+    const rows = nodesOf(view)
+      .filter((node) => node.type === "list")
+      .flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
+      .filter((row) => (row.action as { id?: string } | undefined)?.id === "select")
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      // The trailing column competes with the subject for the same pixels at phone width.
+      expect(String(row.trailing).length).toBeLessThanOrEqual(8)
+      // owner, plus the blocker count when there is one — never the kind, which the Detail tab carries.
+      expect(String(row.subtitle).split(" · ").length).toBeLessThanOrEqual(2)
+    }
+    // The machine status words are spelled short for the row.
+    expect(rows.map((row) => row.trailing)).toContain("active")
+  })
+
+  test("member rows are ONE line each: initials+name as the title, the state WORD as trailing (repair T19)", () => {
+    /** The v2 tree. */
+    const view = buildTeamView(teamSnapshot(), V2_CAPS)
+    /** Every roster row: a list item whose title carries the initials separator. */
+    const rows = nodesOf(view)
+      .filter((node) => node.type === "list")
+      .flatMap((node) => (Array.isArray(node.items) ? node.items as Array<Record<string, unknown>> : []))
+      .filter((row) => String(row.title).includes(" · ") && row.action === undefined)
+    expect(rows.length).toBeGreaterThan(0)
+    // ONE line: the item carries a title and a trailing word and NO subtitle (a subtitle is a second
+    // line), and it is a list item — never a `row` of badge + stack + badge, which the app lays out one
+    // child per line at phone width (minimum widths: badge/text 160, nested layout 200).
+    for (const row of rows) {
+      expect(row.subtitle).toBeUndefined()
+      expect(String(row.trailing).length).toBeGreaterThan(0)
+    }
+    expect(rows.map((row) => row.title)).toContain("DW · Deep Worker")
+    expect(rows.map((row) => row.trailing)).toContain("handoff ready")
+    // No member is drawn as a horizontal `row` any more.
+    expect(nodesOf(view).filter((node) => node.type === "row")).toHaveLength(0)
   })
 
   test("an empty team renders the designed empty state instead of an empty board", () => {
@@ -360,5 +439,81 @@ describe("the team panel offers only the controls it can address (repair T8/H1+M
     expect(ids).not.toContain("hold")
     expect(ids).not.toContain("resume")
     expect(lintDesign(view, { version: 2 })).toEqual([])
+  })
+})
+
+describe("the dependency graph (task T20)", () => {
+  /** One task with the fields the layering reads. */
+  const task = (id: string, dependencies: string, subject: string = id): TeamPanelTask => ({ id, subject, owner: "", status: "pending", kind: "work", blockedBy: dependencies === "" ? 0 : dependencies.split(",").length, description: "", dependencies, verdict: "" })
+
+  test("levels follow the longest blocker chain, and an unknown blocker is ignored", () => {
+    /** A chain T1 -> T2 -> T4 plus a row blocked by an id no longer on the board, plus a parallel root. */
+    const layers = layerGraphOf([task("T1", ""), task("T2", "T1"), task("T3", "GONE"), task("T4", "T2"), task("T5", "")])
+    expect(layers.map((layer) => layer.level)).toEqual([0, 1, 2])
+    expect(layers[0]?.tasks.map((one) => one.id)).toEqual(["T1", "T3", "T5"])
+    expect(layers[1]?.tasks.map((one) => one.id)).toEqual(["T2"])
+    expect(layers[2]?.tasks.map((one) => one.id)).toEqual(["T4"])
+  })
+
+  test("a cyclic board LAYS OUT instead of hanging", () => {
+    /** Two rows that block each other, which a hand-edited record can produce. */
+    const layers = layerGraphOf([task("A", "B"), task("B", "A")])
+    expect(layers.length).toBeGreaterThan(0)
+    expect(layers.flatMap((layer) => layer.tasks.map((one) => one.id)).sort()).toEqual(["A", "B"])
+  })
+
+  test("the code block prints one line per task with its level and its incoming edges", () => {
+    /** The rendered lines of the fixture chain. */
+    const lines = graphLinesOf(layerGraphOf([task("T1", "", "Build it"), task("T2", "T1", "Prove it")]))
+    expect(lines).toEqual(["L0 T1 Build it", "L1 T2 Prove it <-T1"])
+  })
+
+  test("a TINY team gets a bare codeBlock and a big one gets a fold (repair T21)", () => {
+    /** The v2 tree of the two-task fixture. */
+    const small = buildTeamView(teamSnapshot(), V2_CAPS)
+    // Two tasks is under the fold threshold: a fold around two lines is noise, so the block shows.
+    expect(nodesOf(small).filter((node) => node.type === "collapsible")).toHaveLength(0)
+    expect(nodesOf(small).filter((node) => node.type === "codeBlock")).toHaveLength(1)
+    /** A seven-task board, above the threshold. */
+    const big = { ...teamSnapshot(), tasks: Array.from({ length: 7 }, (_, index) => ({ id: "T" + String(index + 1), subject: "Task " + String(index + 1), owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" })) }
+    expect(nodesOf(buildTeamView(big, V2_CAPS)).filter((node) => node.type === "collapsible")).toHaveLength(1)
+  })
+
+  test("the panel emits a codeBlock on v2 and steps on v1", () => {
+    /** The v2 tree. */
+    const v2 = buildTeamView(teamSnapshot(), V2_CAPS)
+    /** The code block of the v2 tree. */
+    const block = nodesOf(v2).find((node) => node.type === "codeBlock")
+    expect(String(block?.code)).toContain("L0 T1")
+    expect(String(block?.code)).toContain("<-T1")
+    // NO language chip (repair T22): the app draws the block's header strip regardless, and a language
+    // value would print "text" at its content edge next to the Copy control.
+    expect(block?.language).toBeUndefined()
+    // v1 has neither component (both are v2-only) and renders the same layout as steps instead.
+    /** The v1 fallback tree. */
+    const v1 = buildTeamView(teamSnapshot(), V1_CAPS)
+    expect(JSON.stringify(v1)).not.toContain("codeBlock")
+    expect(JSON.stringify(v1)).not.toContain("collapsible")
+    expect(nodesOf(v1).filter((node) => node.type === "steps")).toHaveLength(1)
+    expect(graphStepsOf(layerGraphOf(teamSnapshot().tasks)).length).toBeGreaterThan(0)
+  })
+
+  test("the per-member bar chart counts the rows each member owns (repair T21)", () => {
+    /** A board where one member owns two rows and the other owns one. */
+    const snapshot = { ...teamSnapshot(), tasks: [
+      { id: "T1", subject: "a", owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+      { id: "T2", subject: "b", owner: "Deep Worker", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+      { id: "T3", subject: "c", owner: "Senior Engineer", status: "pending", kind: "work", blockedBy: 0, description: "", dependencies: "", verdict: "" },
+    ] }
+    /** Every chart node in the tree. */
+    const charts = nodesOf(buildTeamView(snapshot, V2_CAPS)).filter((node) => node.type === "chart")
+    expect(charts).toHaveLength(1)
+    // The examples' discipline: a bar chart with a caption that says what it counts.
+    expect(charts[0]?.kind).toBe("bar")
+    expect(charts[0]?.categories).toEqual(["Deep Worker", "Senior Engineer"])
+    expect((charts[0]?.series as Array<{ name: string; values: number[] }>)[0]).toEqual({ name: "Tasks", values: [2, 1] })
+    expect(String(charts[0]?.caption).length).toBeGreaterThan(0)
+    // No roster, no chart: an empty board must not draw an empty axis.
+    expect(nodesOf(buildTeamView({ ...teamSnapshot(), members: [], tasks: [] }, V2_CAPS)).filter((node) => node.type === "chart")).toHaveLength(0)
   })
 })

@@ -11497,6 +11497,47 @@ function attemptDecisionEvents(ctx, tui, log) {
   return { outcome, attempts };
 }
 
+// packages/mpd-tui-plugin/src/theme.ts
+var MPD_THEME = Object.freeze({
+  name: "mpd-tui",
+  displayName: "MPD 终端 (MPD terminal)",
+  base: "dark",
+  colors: Object.freeze({
+    accent: "#7FB6E8",
+    accentShimmer: "#A9D0F5",
+    permission: "#E0B36A",
+    promptBorder: "#5C7A99",
+    text: "#E6EAF0",
+    inactive: "#9AA6B2",
+    subtle: "#7C8894",
+    selectionBg: "#2C3E50",
+    success: "#8FD1A4",
+    error: "#E08A8A",
+    warning: "#E3C77E"
+  })
+});
+function registerTheme(ctx, tui, log) {
+  let outcome = { id: "themes", state: "absent", detail: "the theme registry is not composed" };
+  tui.whenBound("themes", (service, scope) => {
+    const owner = scope ?? ctx;
+    const registry = service;
+    if (typeof registry?.register !== "function") {
+      outcome = { id: "themes", state: "refused", detail: "the bound theme registry exposes no register()" };
+      return;
+    }
+    try {
+      const disposer = registry.register(MPD_THEME, owner);
+      if (typeof disposer === "function")
+        effectOn(owner, disposer, `mpd-tui theme ${MPD_THEME.name}`);
+      outcome = { id: "themes", state: "requested", detail: `theme ${MPD_THEME.name} handed to the registry (the plugin face has no read-back)` };
+    } catch (error) {
+      outcome = { id: "themes", state: "refused", detail: String(error?.message ?? error) };
+    }
+  });
+  log.debug(`theme ${MPD_THEME.name}: registration requested through the theme seam`);
+  return { outcome: () => outcome };
+}
+
 // packages/mpd-tui-plugin/src/commands.ts
 var USAGE = `/${COMMAND_ROOT} [${COMMAND_ACTIONS.join("|")}]`;
 function registerCommands(tui, actions) {
@@ -12402,6 +12443,7 @@ function apply(ctx, config = {}) {
     }
   }) : skipped("commands", "disabled by config");
   const decisions = resolved.decisionEvents ? attemptDecisionEvents(ctx, tui, log) : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] };
+  const theme = registerTheme(ctx, tui, log);
   const decisionOutcome = decisions.outcome();
   if (decisionOutcome.state === "absent") {
     log.info(`decision-event seam: no intercept point attempted — ${decisionOutcome.detail ?? "the mediated plugin host was not injected"} ` + "(read at apply time; the seam discloses its own verdict once it binds)");
@@ -12422,6 +12464,7 @@ function apply(ctx, config = {}) {
   record(dialogs);
   record(commands);
   outcomes.push({ id: "decisionEvents", outcome: decisions.outcome() });
+  outcomes.push({ id: "theme", outcome: theme.outcome() });
   reportOutcomes(log, outcomes.map((entry) => entry.outcome));
   log.debug(`session event type ${BOARD_OPENED_EVENT}: ${sessionEventTypeKnown ? "verified known" : "NOT verified (records will be skipped)"}`);
   return { outcomes, sessionEventTypeKnown };

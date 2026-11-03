@@ -3,7 +3,7 @@
 [中文](./preset-default.zh-CN.md)
 
 This page explains where the **deployment default agent preset** lives, why this bundle cannot set it
-for you, and the exact steps that do — for a dsh-tui profile and for a web/headless one. Read it if a
+for you, and the exact steps that do, for a dsh-tui profile and for a web/headless one. Read it if a
 new session no longer starts on the `mpd` preset after upgrading this bundle.
 
 ## The deployment default is a host-owned row
@@ -16,9 +16,9 @@ Two host layers declare it, each in its own composition:
 | web / headless | `agent-preset-registry` | `@deepseek-ai/dsh-web-app`'s own `cordis.patch.yml` | `standard` |
 | dsh-tui | `dsh-tui-agent-preset-registry` | `@deepseek-harness-tui/dsh-tui`'s own `cordis.patch.yml` | `standard` |
 
-This bundle **ships the `mpd` preset additively** — the `preset-mpd` row in
+This bundle **ships the `mpd` preset additively**: the `preset-mpd` row in
 [`presets/mpd.patch.yml`](../presets/mpd.patch.yml), listed as the second layer of the manifest's
-`dsh.bundle.patch` — so after installing the bundle `mpd` is **available** in both compositions but
+`dsh.bundle.patch`, so after installing the bundle `mpd` is **available** in both compositions but
 **not** the default.
 
 The bundle deliberately does **not** overwrite those rows (strict zero-override, see
@@ -32,7 +32,7 @@ The bundle deliberately does **not** overwrite those rows (strict zero-override,
    the second one fails to mount with
    `Error: service "agentPresets" has been registered at <AgentPresetRegistry>` (measured in an
    isolated sandbox with exactly such an additive row). The composition survives, but the extra row
-   never activates — so it is no route to changing the deployment default. The default is therefore
+   never activates, so it is no route to changing the deployment default. The default is therefore
    yours to set through one of the supported channels below.
 
 ## Making `mpd` the default
@@ -64,7 +64,7 @@ for example in a container image.
 In the web UI, open **Settings → Agent preset** and pick `mpd`. That writes the `selectedDefault`
 **volatile field of the `agent-preset-registry` entry**, which the registry resolves for new sessions
 in preference to the deployment `default`. No file is edited and no host row is overridden. There is no
-preference file for this plane — the field is the channel.
+preference file for this plane: the field is the channel.
 
 ### Option 4 — the one-command helper
 
@@ -84,7 +84,7 @@ resolved target **is** the real one **and** `--yes` was passed.
 ## The exact file format
 
 `~/.dsh-tui/agent-preset.json` holds one key. This is byte-for-byte what dsh-tui's own
-`writePresetPref` writes — two-space JSON, **no trailing newline**:
+`writePresetPref` writes: two-space JSON, **no trailing newline**:
 
 ```json
 {
@@ -104,10 +104,10 @@ for you. They are gone, which means:
   ships the `mpd` preset; it is simply opt-in now.
 - In a **dsh-tui** profile the fallback is the host default `standard`, and dsh-tui ships no such
   preset row. MEASURED: the session still starts, and its own record reads `agentPreset: "standard"`,
-  but it composes WITHOUT the `mpd` preset — no mpd persona, instructions or tool rows are applied.
+  but it composes WITHOUT the `mpd` preset, no mpd persona, instructions or tool rows are applied.
   The resolution path is read from the source, not observed: the registry answers
   `agent-preset/not-found` (`Unknown agent preset: standard`) for an id it has no record for, and the
-  TUI composes anyway. That warning was NOT captured — it appeared nowhere on the terminal byte stream
+  TUI composes anyway. That warning was NOT captured: it appeared nowhere on the terminal byte stream
   of four sandbox boots (a stream that merges stdout and stderr), and no file under the profile's home
   carries it. Options 1 and 2 close this in one step.
 - In a **web/headless** profile the fallback is whatever `default` your profile already had, usually

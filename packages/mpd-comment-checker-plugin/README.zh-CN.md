@@ -2,7 +2,7 @@
 
 **中文** | [English](./README.md)
 
-Plan C / C4 —— 在 DSH 工具接缝上的注释/docstring 检测（opt-in 二进制）。
+在 DSH 工具接缝上的注释/docstring 检测，以 opt-in 二进制方式提供。
 
 无 vendored 解析器：本插件**不 vendored 任何东西**，也不含上游源码——检测在按需 npm 二进制
 `@code-yeongyu/comment-checker` 0.8.0（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）

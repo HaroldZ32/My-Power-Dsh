@@ -4,7 +4,19 @@
   "type": "module",
   "buildToolchain": "bun@1.4.0",
   "version": "0.17.0",
-  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+  "description": "A DeepSeek Harness plugin bundle: an eleven-role specialist roster, a durable workmate library, team staging with a shared board, and native dsh-Go panels and tool cards.",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin-bundle",
+    "agent-teams",
+    "roster",
+    "workmate",
+    "memory",
+    "tui",
+    "dsh-go",
+    "native-ui"
+  ],
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "icon": "./icon.svg",
   "license": "MIT",
@@ -102,8 +114,8 @@
         {
           "id": "mpd-team",
           "title": {
-            "en": "Team Board",
-            "zh": "团队看板"
+            "en": "MPD Team Board",
+            "zh": "MPD 团队看板"
           },
           "icon": "team",
           "placement": [

@@ -83,17 +83,20 @@ locale 命名空间 `mpdWorkbench` —— 会话外壳把它渲染成 Chat/Traje
 - **视图是 v2，并且跟随主题（合同 §7）。** 两个根都由适配器的 `panelView()` 构建，它在**唯一一处**写入 `v: 2` 与
   `accent: "app"`，因此命名色或十六进制 accent 根本无法表达。每个 Tab 恰好一个 `tinted` hero（App 的主题着色材质），
   数字放在 v2 `grid` 里的 `metric`；数据区块是带标题与 `divider` 的 `surface`；空 Tab 是设计过的 `emptyState` 而不是
-  空白；每个视图至多一个 `style: "primary"` 动作。状态永远是**带文字的** `badge`/`tone`；成员首字母用 `badge`
+  空白；每个视图至多一个 `style: "primary"` 动作。状态永远是**带文字的** `badge`/`tone`；成员首字母写成列表行标题的前缀
   （`avatar` 是图片节点）；长文本设置 `maxLines`。视图里不出现圆角、尺寸、透明度、渐变、阴影或颜色字面量——那是 App
   的决定，kit 的 builder 会直接拒绝。
 - **`adaptView` 是回退路径。** 低于 1.0.9（或 `caps.components` 缺少某个 v2 名字）的 App 拿到的是**同一棵树**降级后的
   v1：tabs 变成带标题的 stack，grid 变成 list，badge 变文本，`divider`/`spacer` 消失，所有 `style`/`accent` 被剥掉。
   一个 builder 产出两种形状，因此回退不会漂移；`grid`→`list` 重写后 metric 的标签**与数值**都保留。
-- **工作台面板显示什么。** 四个 Tab——总览（hero 计数、完成度进度条、第一条告警、就绪行与动作）、问题（只显示**第一条**
-  停放问题、它的选项与自定义回答表单）、工作伙伴（库，只读）、记忆（最近 ≤ 10 条与反思计数，按其存储的既有布局读取）。
-- **团队面板显示什么。** 四个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它）、成员
-  （首字母 badge + 名称 + 模式 + handoff 文字）、详情（负责人、状态、类型、依赖与结论）、看门狗（生效中的判据、
-  保活暂停与最近 ≤ 5 条事件；经 `session-watchdog-status` 读取，缺失时回退到 `mpdWatchdog` 的持有登记）。
+- **工作台面板显示什么。** 三个 Tab——总览（hero 计数、完成度进度条、第一条告警、就绪行与动作）、问题（只显示**第一条**
+  停放问题、它的选项与自定义回答表单）、资料库（工作伙伴库，加上最近 ≤ 10 条记忆与反思计数，按其存储的既有布局读取；
+  只读）。
+- **团队面板显示什么。** 三个 Tab——看板（每行可点，点击携带 `{id: "select", args: {task}}`，详情 Tab 跟随它；
+  下面是**各成员工作量柱状图**（每人负责的行数）、**分层依赖图**与成员名册）、详情（负责人、状态、类型、依赖与结论）
+  与看门狗（生效中的判据、保活暂停与最近 ≤ 5 条事件；经 `session-watchdog-status` 读取，缺失时回退到 `mpdWatchdog`
+  的持有登记）。依赖图是 `codeBlock`，每个任务一行（`L2 T4 Ship it <-T2`），只在超过六行或三层时折进 v2
+  `collapsible`，低于 1.0.9 时按层渲染为 `steps`。名册每位成员**一行**：`DW · Deep Worker` 加末尾的状态词。
 - **它推送什么。** `data(scope, emit)` 以 2000 ms（0.5 Hz 上限）轮询，**仅在**序列化后的模型变化时发射，并返回清除定时器
   的 cancel 函数。工作台模型是 `{ team, plan, question, readyTasks, counts, alert, workmates, memory }`——id、名称、
   状态、计数、问题自身的文本与任务标题，绝不含文件系统路径、token 或凭据。`view` 是对同一批服务的**实时读取**而不是读

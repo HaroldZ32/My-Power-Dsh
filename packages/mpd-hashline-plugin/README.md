@@ -1,7 +1,7 @@
 # mpd-hashline-plugin
 **English** | [中文](./README.zh-CN.md)
 
-Plan C / C3 — hash-anchored edit discipline on the DeepSeek Harness tool seam.
+Hash-anchored edit discipline on the DeepSeek Harness tool seam.
 
 This tree is our own TypeScript, ported **BY DESIGN** from the `crates/pi-edit` crate of
 `can1357/oh-my-pi` @ `602b6c812fa9ef774f359f1e399a09d30ee2eaca` (MIT). No source under that upstream licence is

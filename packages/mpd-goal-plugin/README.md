@@ -1,7 +1,7 @@
 # mpd-goal-plugin
 **English** | [中文](./README.zh-CN.md)
 
-C8 — the persisted GOAL as the durable basis of continuous execution.
+The persisted GOAL as the durable basis of continuous execution.
 
 The harness already ships the whole goal domain: `@deepseek-ai/dsh-goal` (the per-session state
 machine), `@deepseek-ai/dsh-tool-goal` (`get_goal` / `create_goal` / `update_goal`) and

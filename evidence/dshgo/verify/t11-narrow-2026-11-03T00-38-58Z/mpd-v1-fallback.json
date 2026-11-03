@@ -1,0 +1,283 @@
+{
+  "type": "stack",
+  "v": 1,
+  "children": [
+    {
+      "type": "stack",
+      "children": [
+        {
+          "type": "text",
+          "text": "Overview"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "MPD Workbench"
+            },
+            {
+              "type": "text",
+              "text": "1 Ready · 1 Active · 2 Members",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Ready",
+                  "trailing": {
+                    "$": "data.counts.ready"
+                  }
+                },
+                {
+                  "title": "Active",
+                  "trailing": {
+                    "$": "data.counts.active"
+                  }
+                },
+                {
+                  "title": "Done",
+                  "trailing": {
+                    "$": "data.counts.done"
+                  }
+                },
+                {
+                  "title": "Members",
+                  "trailing": {
+                    "$": "data.counts.members"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "progress",
+              "value": {
+                "$": "data.counts.completion"
+              },
+              "label": "Completion",
+              "tone": "good"
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "A plan is staged and waits for approval",
+          "tone": "warn"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Ready to dispatch"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Ship the panel",
+                  "subtitle": "work · Lead"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "items": [
+            {
+              "label": "Approve plan",
+              "action": "approve",
+              "icon": "check"
+            },
+            {
+              "label": "Dispatch",
+              "action": "dispatch",
+              "icon": "send"
+            },
+            {
+              "label": "Refresh",
+              "action": "refresh",
+              "icon": "refresh"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Questions"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Questions"
+            },
+            {
+              "type": "text",
+              "text": "Answer what a teammate parked",
+              "tone": "muted"
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Questions"
+            },
+            {
+              "type": "callout",
+              "text": {
+                "$": "data.question.question"
+              },
+              "tone": "info"
+            },
+            {
+              "type": "actions",
+              "items": [
+                {
+                  "label": "main",
+                  "action": "answer:0"
+                },
+                {
+                  "label": "dev",
+                  "action": "answer:1"
+                },
+                {
+                  "label": "edge",
+                  "action": "answer:2"
+                }
+              ]
+            },
+            {
+              "type": "stack",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Custom answer"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Workmates"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Workmates"
+            },
+            {
+              "type": "text",
+              "text": "Durable instances from the workmate library",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Workmates",
+                  "trailing": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Workmates"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "deep-worker-1",
+                  "subtitle": "Deep Worker · 4 uses",
+                  "trailing": "carries the D1 lane"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "actions",
+          "items": [
+            {
+              "label": "Refresh",
+              "action": "refresh",
+              "icon": "refresh"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "Memory"
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Memory"
+            },
+            {
+              "type": "text",
+              "text": "This agent's entries in this workspace, newest by write time",
+              "tone": "muted"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "Memory",
+                  "trailing": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "stack",
+          "children": [
+            {
+              "type": "text",
+              "text": "Memory"
+            },
+            {
+              "type": "list",
+              "items": [
+                {
+                  "title": "the kit writes accent app",
+                  "subtitle": "fact · 2h"
+                }
+              ]
+            },
+            {
+              "type": "keyValue",
+              "items": [
+                [
+                  "Reflection",
+                  "3"
+                ],
+                [
+                  "Memory",
+                  "1"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

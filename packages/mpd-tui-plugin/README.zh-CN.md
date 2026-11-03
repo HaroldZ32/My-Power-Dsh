@@ -524,8 +524,10 @@ TUI 原生等价物。它**只读**状态：
 
 ## 静态资产
 
-- `themes/mpd-tui.json` —— 一套深色 TUI 主题（部分配色的覆盖）。主题接缝本就是
-  静态资产：把文件复制到 `~/.dsh-tui/themes/` 即可选用。本行**不**代为安装。
+- `themes/mpd-tui.json` —— 一套深色 TUI 主题（部分配色的覆盖）。它有**两条**送达路径，且背后是同一套配色
+  （`theme.test.ts` 锁住两者不漂移）：插件在 apply 时经适配器的 `tuiThemes` 接缝**注册**它，因此无需复制即可
+  选用、并随 activation 一起消失；用户仍可把文件复制到 `~/.dsh-tui/themes/`，走指南的零代码路径。该注册被如实
+  报告为 `requested` 而不是 `confirmed`，因为宿主的插件面没有回读接口。
 - `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` —— 仅为资产，见"明确不声明"第 4 条。
 
 ## 插件契约
@@ -583,7 +585,8 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    `tui/session-switch`、`tui/compact`）尝试托管注册、把拒绝视为预期结果、**只
    告警一次**，并且不注册任何东西。它绝不调用 `admit`/`admitInternal`，绝不使用
    测试专用 token，绝不伪造身份。**不声明任何输入 / rewind / 会话切换 / 压缩
-   拦截能力。**
+   拦截能力。** 自 TUI-admission 轮起，清单也**不再申请**任何拦截权限，因此该接缝是**按设计**未激活，
+   而不只是"到达不了"；清单本身协商为 `compatible`（用宿主自己的准入库实测，见 `docs/tui.md` §4.1）。
 2. **`/settings` 区块的保存由**宿主**持久化 —— 不是写成工作区的 `.mpd/mpd.jsonc` —— 而新值的“何时”生效是**逐开关**的。** 字段声明的
    是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
    `autoproject.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并把它们作为

@@ -17,13 +17,13 @@ filesystem, so there is no install step, no publish step, no profile patch and n
 files, validate them, restart `dsh`, and the capability exists. It is the cheapest way to make a
 capability exist, and it is deliberately narrow.
 
-An extension speaks **declarative data** — a skill, a flow, a stdio MCP server, a read-only roster
+An extension speaks **declarative data**: a skill, a flow, a stdio MCP server, a read-only roster
 role. If what you need is not one of those four, an extension is the wrong instrument:
 
 | You need | Use instead |
 |---|---|
 | a new profile row, a pinned dependency, code that runs at install time, or a versioned package for many users | the **install plane**: a plugin bundle ([`extensions.md`](./extensions.md) §1) |
-| one instruction an agent should follow once | nothing new — write it into the task, or into a skill of the corpus |
+| one instruction an agent should follow once | nothing new: write it into the task, or into a skill of the corpus |
 | a graphical panel, a marketplace, remote download or version solving | none of these exist in v1 ([§7](#7-distribution)) |
 
 This section chooses an **instrument**; it never chooses a root. §2 is the only place in this guide
@@ -38,7 +38,7 @@ the directory goes in** (§2) and **when the host re-reads it** (§4).
 
 > Put the extension in `<session workspace>/.mpd/extensions/<id>/` when every kind it declares is a
 > **skill or a flow** and it should travel with that workspace. Put it in `~/.mpd/extensions/<id>/`
-> when it declares an **MCP server or a role** — those two kinds are illegal in the project plane —
+> when it declares an **MCP server or a role**: those two kinds are illegal in the project plane,
 > or when it must be visible to **every** session on this machine. `<bundle>/extensions/<id>/` is the
 > same decision with a different owner: it is for an extension that ships inside a bundle rather than
 > living in a home directory.
@@ -46,7 +46,7 @@ the directory goes in** (§2) and **when the host re-reads it** (§4).
 The restriction is not cosmetic. Registering a tool or a skill provider is **process-global** in this
 harness, so a per-session MCP server or roster role cannot be represented honestly. A project-plane
 manifest that declares `mcp` or `roles` is refused **per item** with a stated reason
-(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`) — the refusal is loud, it names the item, and the
+(`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`), the refusal is loud, it names the item, and the
 skills and flows in the same manifest still load.
 
 Read the rule before writing the manifest rather than after the first refusal: it is the single most
@@ -55,13 +55,13 @@ common wrong-plane mistake, and the refusal only arrives at discovery time.
 ## 3. The isolation posture, and the residuals we accept
 
 A declared MCP server is a **child process**, and it receives a deliberately small environment. Only
-the SDK's measured safe inherit list crosses into it — `HOME`, `LOGNAME`, `PATH`, `SHELL`, `TERM`,
+the SDK's measured safe inherit list crosses into it: `HOME`, `LOGNAME`, `PATH`, `SHELL`, `TERM`,
 `USER` on POSIX (a win32 list of `APPDATA`, `HOMEDRIVE`, `HOMEPATH`, `LOCALAPPDATA`, `PATH`,
 `PROCESSOR_ARCHITECTURE`, `SYSTEMDRIVE`, `SYSTEMROOT`, `TEMP`, `USERNAME`, `USERPROFILE`,
 `PROGRAMFILES`), as declared at (`INHERITED_ENV_VARS`, `packages/mpd-ext-plugin/src/mcp-client.ts:69-85`). On top of that,
 any name that looks credential-shaped is dropped even if it is on the list
 (`isCredentialShapedEnvName`, `packages/mpd-ext-plugin/src/mcp-client.ts:87-97`), so the harness's own provider keys are never
-inherited by accident. What the extension declares in its manifest `env` **is** passed — that is
+inherited by accident. What the extension declares in its manifest `env` **is** passed, that is
 authored, visible configuration, not inheritance (`childEnv`, `packages/mpd-ext-plugin/src/mcp-client.ts:99-117`).
 
 The posture is real, and so are its accepted residuals. They are stated here because an accept
@@ -73,7 +73,7 @@ decision nobody wrote down is indistinguishable from an oversight:
 2. **Author-declared secrets are real secrets.** Anything you write into a manifest `env` block is
    readable in the manifest on disk. `mpd_ext_show` redacts the **values** (keys stay visible,
    `redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:760`) so a tool result in a session log cannot leak
-   them — but the file itself is not encrypted, and a value you wrote down is a value you own.
+   them, but the file itself is not encrypted, and a value you wrote down is a value you own.
 3. **Filesystem trust.** Installing an extension means executing a stdio server that you or someone
    else provided. There is no signature, no sandbox namespace, no seccomp profile and no capability
    drop.
@@ -86,7 +86,7 @@ onto an object, and an `outputSchema` outside the subset costs that tool its **s
 tool.
 
 One precision about provenance: the four residuals above are posture assessments from reading the
-spawn and registration paths — they are an explicit accept decision, not the result of executed
+spawn and registration paths: they are an explicit accept decision, not the result of executed
 exploits. [`extension-adaptation-report.md`](./extension-adaptation-report.md) §9 records the same
 caveat for the audit that first stated them.
 
@@ -101,7 +101,7 @@ plane.
 | `skills` | project | **per call**, from the calling session's workspace | no |
 | `flows` | project | **per call** | no |
 | `skills`, `flows` | user, bundle | discovered at **apply** | yes |
-| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply** — in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`) | yes |
+| `mcp` | user, bundle | the extension is discovered at apply, and servers are **connected at apply**: in parallel, time-boxed by `connectTimeoutMs`, never lazily (`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`) | yes |
 | `roles` | user, bundle | the declaration is discovered at apply; the role itself is resolved **per call** by the roster plane, which re-reads the persona text (`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`) | yes for adding or renaming a role; editing only the persona body does not need one |
 
 Three consequences worth carrying in your head:
@@ -112,12 +112,12 @@ Three consequences worth carrying in your head:
   bounded child-stderr tail (`stderrTail`, `packages/mpd-ext-plugin/src/mcp.ts:48`), and every other extension
   still activates. The next boot retries it.
 - `extensions.enable` / `extensions.disable` in `.mpd/mpd.jsonc` are **process-level**, not a
-  per-session switch, and they only filter what is served — they never gate registration, so a
+  per-session switch, and they only filter what is served: they never gate registration, so a
   disabled extension cannot break anything else.
 
 ## 5. From the template to a running extension
 
-The copy-me skeleton is [`../templates/mpd-extension/`](../templates/mpd-extension) — all four kinds,
+The copy-me skeleton is [`../templates/mpd-extension/`](../templates/mpd-extension): all four kinds,
 with a placeholder id that the scaffold rewrites. Two ways in, same result:
 
 ```bash
@@ -131,7 +131,7 @@ cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
 
 Both commands assume a checkout. From an installed (packed) bundle the same CLI lives inside the <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-package — `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>` from the profile directory —
+package: `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>` from the profile directory —
 and §7 says exactly what such an artifact carries and which bound still applies.
 
 Then walk the same five steps every extension goes through:
@@ -164,7 +164,7 @@ rather than assuming it.
 
 Two details that save a debugging round: the manifest's `skills.root` and `flows.dir` are relative to
 the extension root and may not escape it, and the stdio server's `command` is `node` with
-`args: ["server.ts"]` and `cwd: "."` — the working directory is the extension root, so the server
+`args: ["server.ts"]` and `cwd: "."`, the working directory is the extension root, so the server
 finds its own manifest. You can smoke the server with no host at all:
 
 ```bash
@@ -173,7 +173,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/ext
 
 If you are writing a **project-plane** extension instead, the same walkthrough applies with two
 differences: the root is `<session workspace>/.mpd/extensions/my-extension/`, and `mcp`/`roles` are
-refused there (§2) — so a project copy is the three-kind one.
+refused there (§2), so a project copy is the three-kind one.
 
 ## 6. Verifying before you ship
 
@@ -193,8 +193,8 @@ bun skills/dsh-qa/scripts/extension-mcp-bridge.ts --no-skip
 bun skills/dsh-qa/scripts/extension-template.ts
 ```
 
-The middle two drive the shipped example end to end — discovery, the per-call project plane, the
-bridge, the isolation assertions — and the third scaffolds the template and verifies a real mount of
+The middle two drive the shipped example end to end: discovery, the per-call project plane, the
+bridge, the isolation assertions, and the third scaffolds the template and verifies a real mount of
 the copy. `skills/dsh-qa/scripts/extension-isolation.ts` is the shared proof helper those lanes
 import; it is **not** a case lane, and its only offline proof is its own `--self-test`.
 
@@ -205,7 +205,7 @@ One rule about evidence: `dsh --profile <p> --dump-config` composes rows and exe
 
 An extension distributes as a **directory**, and the whole directory is the unit: asset paths in the
 manifest resolve against the extension root, so a partial copy is a broken copy. Where it goes is the
-decision from §2 — this section only says how the bytes get there:
+decision from §2: this section only says how the bytes get there:
 
 - **For yourself, one machine:** put the directory in `~/.mpd/extensions/<id>/`. Copy it, restart,
   done.
@@ -218,7 +218,7 @@ decision from §2 — this section only says how the bytes get there:
 A packed artifact is **author-facing** since the 2026-09-17 packaging change, so these commands run
 there too. The packer ships the scaffold template (`templates/mpd-extension`, T-35), the `docs/` set
 with its EN + `*.zh-CN.md` pairs (T-36/T-45), the on-demand `agent-references/`
-(`troubleshooting.md` — the symptom → cause/fix table — plus the adopted-plugin delta registry and
+(`troubleshooting.md` (the symptom → cause/fix table) plus the adopted-plugin delta registry and
 its index), and a **compiled validator entry** <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 (`packages/mpd-ext-plugin/dist/validator.js`, generated at pack time from the shipped bundle) that
 `scripts/mpd-ext.ts` falls back to when the TypeScript sources are absent (T-51). Measured from
@@ -234,14 +234,14 @@ bun scripts/mpd-ext.ts --validator                           # which validator t
 An installed bundle carries the same CLI: from the profile directory, <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>`. The honest bound: a checkout run
 validates from `src` (live rules, no build step), so a **source** edit is not visible inside an
-artifact until the next `npm run pack` — re-pack before judging a packed CLI.
+artifact until the next `npm run pack`: re-pack before judging a packed CLI.
 
 What does **not** exist in v1, so that you do not plan around it: `mpd_ext_reload`, YAML flows, MCP
 resources or prompts, a GUI panel, a marketplace or remote download, extension-contributed agent
 presets, and extension roles becoming teammates on their own (a teammate exists only when the Lead
 adds it by name with `agent_teams_plan {action:"add_member"}` and approves the plan). The five
-official AUTHORING verbs — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
-`team_task_update` — are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
+official AUTHORING verbs: `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+`team_task_update`: are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
 is that a row calling the team SERVICE directly (the official-executor fallback) is not a tool call and
 is not gated.
 
@@ -255,21 +255,21 @@ is not gated.
 | an MCP tool is missing | the server is `unavailable` or `failed` | `mpd_ext_show` prints the state and a bounded stderr tail; check `command`, `args`, `cwd` and the declared `env` |
 | a change to a user-plane extension has no effect | it is discovered at apply | restart `dsh` (§4) |
 | a change to a project-plane skill or flow has no effect | the session's workspace is not the directory you edited | the project plane is resolved from the **calling session's** workspace |
-| two extensions with the same id | first wins: project → user → bundle | the shadowed entry is reported, never silently dropped — rename one |
+| two extensions with the same id | first wins: project → user → bundle | the shadowed entry is reported, never silently dropped: rename one |
 | `enabled` is `true` but nothing happens | the config layer force-disabled it, and `disable` wins over `enable` | check `.mpd/mpd.jsonc` `extensions.enable` / `extensions.disable` |
 
 ## 9. Where the field-level reference lives
 
-- [`extensions.md`](./extensions.md) — the descriptor reference (top level, `contributes`, grammars
+- [`extensions.md`](./extensions.md): the descriptor reference (top level, `contributes`, grammars
   and asset-path rules), the worked snippets per kind, the failure and collision policy, the
   model-facing tools, the install-plane comparison and the v1 limits. **This is where the tables
   live.**
-- [`../packages/mpd-ext-plugin/README.md`](../packages/mpd-ext-plugin/README.md) — the plugin's own
+- [`../packages/mpd-ext-plugin/README.md`](../packages/mpd-ext-plugin/README.md): the plugin's own
   reference: configuration, the four inspection tools, the failure policy, the schema posture, and
   the documented limits.
-- [`../extensions/README.md`](../extensions/README.md) — the shipped discovery root and the
+- [`../extensions/README.md`](../extensions/README.md): the shipped discovery root and the
   `mpd-ext-example` reference extension, in its disabled-by-default form.
-- [`../templates/mpd-extension/README.md`](../templates/mpd-extension/README.md) — the template you
+- [`../templates/mpd-extension/README.md`](../templates/mpd-extension/README.md): the template you
   copy, its `--with-mcp` semantics and its own verification commands.
-- [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) — the machine contract: kind-by-kind
+- [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md): the machine contract: kind-by-kind
   requirements, a validated manifest skeleton, error signatures and the refusal list.

@@ -1,7 +1,7 @@
 # mpd-autoproject-plugin
 **中文** | [English](./README.md)
 
-Plan C / C2 — 在 DSH subagent seam 上的固定策略 autoproject 引擎（v2，取代已退役的 loop 引擎）。该纪律只有一条命令与一个工具：`/autoproject` 与 `mpd_autoproject`。
+在 DSH subagent seam 上的固定策略 autoproject 引擎，也是取代已退役 loop 引擎的第二版设计。该纪律只有一条命令与一个工具：`/autoproject` 与 `mpd_autoproject`。
 
 ## 命令
 

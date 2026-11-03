@@ -2,15 +2,16 @@
 **English** | [中文](./upstream-parity-ledger.zh-CN.md)
 
 > **STATUS REFRAMED (de-vendor-and-verify-law, 2026-10-07).** oh-my-openagent is an EARLY
-> REFERENCE, not a conformance target. The identity checks that used to measure this repository
-> against it are DELETED, no gate reads an upstream checkout, and no synchronisation is owed — the
-> roster, the eleven role descriptions and the model-chain vocabulary came from that project and are
-> acknowledged in [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) and the root README. Everything below
-> is therefore a HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is
-> informative; read a ✅ as "this shipped", never as "this is still upstream-conformant", and read
-> nothing here as a promise to follow upstream release by release.
+> REFERENCE and a yardstick, not a conformance target. The identity checks that used to measure this
+> repository against it are DELETED, no gate reads an upstream checkout, and no synchronisation is
+> owed. **Nothing in this repository is derived from it**: the roster names, the persona texts and the
+> model-chain vocabulary are this project's own or re-sourced from permissively licensed public agent
+> prompts, as [`LICENSE-NOTICES.md`](../LICENSE-NOTICES.md) records. Everything below is therefore a
+> HISTORICAL MEASUREMENT of a capability surface, kept because the comparison is informative; read a
+> ✅ as "this shipped", never as "this is still upstream-conformant", and read nothing here as a
+> promise to follow upstream release by release.
 
-> Wave: `omo-parity-align`. Status: **VERIFIED — values frozen, implementation landed, gates green
+> Wave: `omo-parity-align`. Status: **VERIFIED: values frozen, implementation landed, gates green
 > (§8).**
 > This is the persistent human-facing ledger for the functional-alignment wave against upstream
 > `/root/dshProj/oh-my-openagent` @ `v5.0.0-beta.62` (HEAD `d1557a4b4`). Our baseline stays pinned
@@ -19,9 +20,9 @@
 >
 > Historical records are exempt from the bilingual rule (AGENTS.md `L18–L23`). The earlier
 > `docs/omo-parity-gap.md` is such a record: it is **single-language and untouched** by this wave.
-> It is not superseded — it is cited as input below.
+> It is not superseded: it is cited as input below.
 
-> **BASELINE STATUS — 0.1.7-rc.2.** This ledger froze the `omo-parity-align` wave on the vendored
+> **BASELINE STATUS: 0.1.7-rc.2.** This ledger froze the `omo-parity-align` wave on the vendored
 > `agent-teams` plugin, which is now **RETIRED from the composition** (no loader row mounts it). Its
 > configuration keys (`sessionTeamPolicy.mode`, `sessionTeamPolicy.autoRoute`), its team
 > tools and its staged-team flow do not exist in a shipped session any more. What SURVIVED the
@@ -29,8 +30,8 @@
 > predicate `trigger = explicit flag OR (matchedSignals >= 1)` is still evaluated at the session's
 > first pre-step, and its notice keeps the marker `[AgentTeams] Session-start team rule`. The gate is
 > now **MECHANICAL by default** (the implementation moved into `mpd-roles-plugin`, on the official
-> plugin's seams): a trigger STAGES an approvable plan shell — 0 members, 0 tasks, through this
-> bundle's OWN `agent_teams_plan` tool — and injects ONE notice naming the returned plan id, with
+> plugin's seams): a trigger STAGES an approvable plan shell: 0 members, 0 tasks, through this
+> bundle's OWN `agent_teams_plan` tool: and injects ONE notice naming the returned plan id, with
 > NOTHING spawned and the shell INERT until the captain extends it (`add_member` / `create_task`) and
 > approves it with `agent_teams_plan {action:"approve"}`. `team.gate` in `mpd.jsonc` selects
 > `mechanical` (the default) | `advisory` | `off`; under `advisory`, or with that tool unmounted, the
@@ -38,7 +39,7 @@
 > (`easy` default | `normal` | `strict`) selects the CURRENT threshold table in §3, and an approve
 > success also anchors a persisted goal and seeds the todo list.
 > See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
-> record, read as history — including the `D_AUTOROUTE_ADVISORY` decision and the `D_planArtifact`
+> record, read as history: including the `D_AUTOROUTE_ADVISORY` decision and the `D_planArtifact`
 > signal row, both superseded on 2026-10-07 (see the dated note under the signal table).
 
 Single source of truth for frozen values: `evidence/omo-align/requirements/frozen-contract.json`
@@ -51,7 +52,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 
 | # | Goal (user wording) | Frozen decision |
 |---|---|---|
-| G1 | Align functionality with the pinned upstream baseline (beta.62) | `D_UPSTREAM_REF` — reference only, no re-pin |
+| G1 | Align functionality with the pinned upstream baseline (beta.62) | `D_UPSTREAM_REF`: reference only, no re-pin |
 | G2 | agent-teams no longer the default; auto-invoke for complex tasks | `D_FIRST` + `complexityGate` |
 | G3 | Align with mass-ulw | four semantics on the existing task-board model (M1–M4) |
 | G4 | Align functionality only (no structural/naming copy) | manual entry names frozen; ceiling values stay local |
@@ -66,7 +67,7 @@ Single source of truth for frozen values: `evidence/omo-align/requirements/froze
 |---|---|---|
 | `D_FIRST` | Every qualifying session starts with **no team and no team notice** unless a complexity signal fires. | Upstream parity, not local taste: upstream `team_mode.enabled` defaults to `false` (t3 `[U2][U3]`). |
 | `D_AUTOROUTE_SPLIT` | The mechanical gate and the legacy injection mode are **decoupled**: `sessionTeamPolicy.mode` defaults to `off` (existing enum values kept); the new mechanical gate is a separate key `sessionTeamPolicy.autoRoute` (default enabled). | Upstream has **no** complexity heuristic (0 hits for heuristic/threshold in t3); activation upstream is an explicit keyword. The split lets us add a gate without silently changing what `off`/`instruct` mean. |
-| `D_AUTOROUTE_ADVISORY` | A triggered auto-route **stages nothing**: the gate injects ONE advisory notice (same marker `[AgentTeams] Session-start team rule`) that names the fired signals, states that **no team was staged**, and asks the captain to stage one with the official `spawn_teammate` + `team_task_create` (at the time of this wave: the plugin's own create-team tool with `approval="required", profile="mpd"` — it no longer exists) only at the moment the work actually warrants a team — otherwise to continue solo and say so. An explicit `team:`/`!team` flag is likewise only ADVISED; nothing is pre-staged for it. | User clause 4 (2026-09-17): judging complexity must not cost the user a pre-staged team plus an approval step. The advisory wording deliberately says nothing against automatic approval, because a autoproject run stages its own team (frozen contract §4.3). |
+| `D_AUTOROUTE_ADVISORY` | A triggered auto-route **stages nothing**: the gate injects ONE advisory notice (same marker `[AgentTeams] Session-start team rule`) that names the fired signals, states that **no team was staged**, and asks the captain to stage one with the official `spawn_teammate` + `team_task_create` (at the time of this wave: the plugin's own create-team tool with `approval="required", profile="mpd"`: it no longer exists) only at the moment the work actually warrants a team: otherwise to continue solo and say so. An explicit `team:`/`!team` flag is likewise only ADVISED; nothing is pre-staged for it. | User clause 4 (2026-09-17): judging complexity must not cost the user a pre-staged team plus an approval step. The advisory wording deliberately says nothing against automatic approval, because a autoproject run stages its own team (frozen contract §4.3). |
 | `D_SKILLS_WRITER` | This wave's **only** writer of `skills/**` is `t5`, limited to `skills/dsh-qa/SKILL.md` and `skills/dsh-qa/scripts/session-start-team.ts`. `t9` writes nothing this wave. | AGENTS.md `§9`: one writer per wave; a `skills/**` edit invalidates the corpus `treeSha` and the re-pin must ride the same commit. Baseline: `afe718251965a933b6a15b40bbe6ebf2e5222996fecb48b05fc8e770e390fcad`, 328 files. |
 | `D_LEDGER` | Ledger = `docs/upstream-parity-ledger.md` + `docs/upstream-parity-ledger.zh-CN.md`, same commit, language switch link directly under each title. `docs/omo-parity-gap.md` and prior wave reports stay untouched. | User ruling 6; AGENTS.md `§3` bilingual rule with the historical-record exemption. |
 | `D_UPSTREAM_REF` | Upstream reference is beta.62 (`d1557a4b4`); repo baseline remains beta.20. | User ruling 1; AGENTS.md `§9` (never chase upstream). |
@@ -85,18 +86,18 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 | `C_enumeratedSteps` | soft | satisfied at **2-of-3** sub-signals: `C1` ≥ 3 enumerated lines (`^\s*(\d+[.)]\|[-*])\s`); `C2` ≥ 3 distinct action verbs; `C3` ≥ 3 action clauses (each pairing an action verb with an object, numbered or not) |
 | `D_planArtifact` | soft | a `.mpd/plans/*.md` file exists for the session workspace at the first pre-step |
 
-> **SUPERSEDED 2026-10-07 — signal `D`, and the advisory decision with it.** The `D_planArtifact` row
+> **SUPERSEDED 2026-10-07: signal `D`, and the advisory decision with it.** The `D_planArtifact` row
 > above is this wave's frozen record and is kept VERBATIM as history; the shipped predicate no longer
-> probes for a plan file. **`D` is an ACTIVE boulder work for the workspace** — `status: "active"` in
-> `.mpd/boulder.json` — because the plan-file probe measurably fired in EVERY session of this
+> probes for a plan file. **`D` is an ACTIVE boulder work for the workspace**: `status: "active"` in
+> `.mpd/boulder.json`: because the plan-file probe measurably fired in EVERY session of this
 > workspace: one plan file outlives the work that produced it. A plan FILE alone is not a signal any
-> more. The same date supersedes `D_AUTOROUTE_ADVISORY` (§ above): a trigger no longer only advises —
+> more. The same date supersedes `D_AUTOROUTE_ADVISORY` (§ above): a trigger no longer only advises,
 > the default mode STAGES an approvable, inert plan shell through `agent_teams_plan` and the captain
 > approves it, while the advisory notice and its `NO team was staged` wording survive as the
 > `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
 > `packages/mpd-roles-plugin/README.md`.
 
-> **CURRENT THRESHOLDS — 2026-10-22 (`team-gate-wave`).** The shipped gate reads `team.sensitivity`
+> **CURRENT THRESHOLDS: 2026-10-22 (`team-gate-wave`).** The shipped gate reads `team.sensitivity`
 > from `mpd.jsonc` (live `mpdConfig` first, row config second; an unknown or missing value resolves to
 > `easy`, never throws). `easy` is the DEFAULT, `normal` reproduces the pre-wave five-signal behaviour
 > exactly, and `strict` tightens every threshold:
@@ -108,7 +109,7 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 > | strict | >= 6 | >= 4 / >= 4 / >= 4 (3-of-3) | >= 80 / >= 3 | off |
 >
 > Signal **F (workspace scale)** is NEW and is evaluated only under `easy`: a BOUNDED root `readdir`
-> (never recursive) must find `manifests >= 1` AND `projectDirs >= 1` AND `visibleEntries >= 8` —
+> (never recursive) must find `manifests >= 1` AND `projectDirs >= 1` AND `visibleEntries >= 8`,
 > manifests `package.json, pyproject.toml, Cargo.toml, go.mod, pom.xml, build.gradle(.kts),
 > composer.json, Gemfile, mix.exs, pubspec.yaml, CMakeLists.txt`; project dirs
 > `packages, src, apps, lib, services, plugins, crates, cmd, internal, modules`; a visible entry is one
@@ -126,12 +127,12 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 > substring and may append `sensitivity=<x>`.
 
 **Harmonized verb tables (behaviour change, R3; CJK count corrected 2026-10-22).** `C2` and `C3`
-share ONE verb set. At R3 it read 14 English — `add, align, audit, build, change, check, consolidate,
-implement, migrate, overhaul, port, refactor, rewrite, verify` — and the CJK set, which the pre-wave
+share ONE verb set. At R3 it read 14 English: `add, align, audit, build, change, check, consolidate,
+implement, migrate, overhaul, port, refactor, rewrite, verify`, and the CJK set, which the pre-wave
 source carried as **24 verbs** (the "12 CJK" this ledger printed at R3 was a counting error: the source
 held 24, not 12). They differ only in **role**: `C2` counts a verb anywhere in the text, `C3` counts a
 clause that OPENS with one. Before R3, `C2` lacked `audit`, `C3` lacked `consolidate|overhaul|port`,
-and the CJK sets differed by 7 entries — all eliminated, so no verb is silently C2-only or C3-only.
+and the CJK sets differed by 7 entries: all eliminated, so no verb is silently C2-only or C3-only.
 The 2026-10-22 wave expands both sets again (see the CURRENT THRESHOLDS block above).
 
 **Why the threshold is 1 (Option A), and the accepted cost.** A two-counted-signal bar is
@@ -142,14 +143,14 @@ multi-clause request such as “Check the test, build the package, verify the ou
 (C2+C3) and therefore DOES route to a team; no rule operating on C alone can separate it from frozen
 complex prompt #1. See §7 `O1` and §8's rate study.
 
-*Frozen wave record. Superseded 2026-10-07 — the default mode now STAGES an approvable plan shell
+*Frozen wave record. Superseded 2026-10-07: the default mode now STAGES an approvable plan shell
 through `agent_teams_plan` and the captain approves it; see the dated note under the signal table.*
 
 On a trigger the gate now **ADVISES** (`D_AUTOROUTE_ADVISORY`): it stages nothing and injects ONE
 advisory notice (marker `[AgentTeams] Session-start team rule`) naming the fired signals and stating
 that **no team was staged**; the captain stages a team itself with the official
 `spawn_teammate` + `team_task_create` at the moment the work actually warrants
-one, or continues solo and says so. An explicit `team:` / `!team` request is likewise only ADVISED —
+one, or continues solo and says so. An explicit `team:` / `!team` request is likewise only ADVISED:
 the agent is told to stage, and nothing is pre-staged for it. (At the time of this wave the call was
 the plugin's own create-team tool with `profile: mpd, approval: required`, name `MPD Default`, with
 the Web plan the
@@ -165,7 +166,7 @@ side must run on the same settled revision hash, in a sandboxed workspace (`sand
 `assertSessionsSandboxed`).
 
 **Measured trigger rate on REAL ordinary prompts (t37, re-verified by t40).** 20 real ordinary
-prompts (all containing Chinese; 5 session-start — the only stratum the gate actually evaluates —
+prompts (all containing Chinese; 5 session-start: the only stratum the gate actually evaluates,
 and 15 later follow-ups) sampled from this repository's own session logs and replayed through the
 gate's own exported predicate: **0 triggered** (0/5 session-start, 0/15 follow-up), so the literal
 phrase “one needless approval every N” has **no finite N** in this sample. The 95% upper bound on the
@@ -189,7 +190,7 @@ this ledger only indexes it.
 | Id | Semantics | Frozen assertion (verbatim) |
 |---|---|---|
 | `S1` | node-level retry | “a terminal failed task can be retried without discarding the tasks that already completed” |
-| `S2` | revision without re-running completed work | “amending a task definition re-runs ONLY the changed task and its TRANSITIVE DEPENDENTS. A completed node whose own definition is unchanged AND none of whose transitive dependencies were changed/added/xor-moved keeps its cached result — that is the 'completed nodes are not re-run' guarantee. A completed DEPENDENT of an amended task IS re-run, because its input changed” |
+| `S2` | revision without re-running completed work | “amending a task definition re-runs ONLY the changed task and its TRANSITIVE DEPENDENTS. A completed node whose own definition is unchanged AND none of whose transitive dependencies were changed/added/xor-moved keeps its cached result: that is the 'completed nodes are not re-run' guarantee. A completed DEPENDENT of an amended task IS re-run, because its input changed” |
 | `S3` | resume across restart | “a run interrupted by process exit resumes from persisted state instead of restarting finished tasks” |
 | `S4` | mid-run steering | “a running member can be steered back into its scope with a bounded notice, without restarting the attempt” |
 
@@ -211,11 +212,11 @@ Renaming any of these WAS forbidden at the time; **adding** names was allowed. T
 describe the retired plugin and are kept as the wave's record.
 
 - Slash commands: `/agent-teams`, `/agent-teams-mpd` (from `AGENT_TEAMS_COMMAND = 'agent-teams'`
-  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`) — the retired plugin's names:
+  and `profileCommandName('mpd')`, `lib/command.ts:3,24-34,95-111`), the retired plugin's names:
   `/agent-teams-mpd` exists in no shipped session, and the NAME `/agent-teams` is registered today by
   the `mpd-team-core` row for the official team flow ([`user-guide.md`](user-guide.md) §12, measured
   2026-10-28)
-- Tools: the full team-tool set — **retired with the plugin; team work runs on the official
+- Tools: the full team-tool set: **retired with the plugin; team work runs on the official
   `spawn_teammate` / `team_*` tools**
 - Keys: `profiles.mpd` (retired with the plugin); preset id `mpd` (**still shipped**, now declared by
   the `preset-mpd` row in `presets/mpd.patch.yml`)
@@ -228,7 +229,7 @@ current landing points are named in `docs/plan-0.1.7-adaptation.md` and AGENTS.m
 
 | Id | File | Region |
 |---|---|---|
-| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED — no such row) |
+| `L1` | `cordis.patch.yml` | agent-teams row `sessionTeamPolicy` block + its comment (RETIRED: no such row) |
 | `L2` | `packages/mpd-agent-teams-plugin/lib/session-start.ts` | `policyQualifies` predicate + `advisoryNotice` / `provisionedNotice` / `instructNotice` text (retained code, not mounted) |
 | `L3` | `presets/mpd/agent.cordis.yml` | `SESSION STARTUP RULE` block and the sizing doctrine placement (RETIRED path; the preset is now `presets/mpd.patch.yml`) |
 | `L4` | `packages/mpd-bundle/README.md` | the whole `Session-start team gate (binding)` section |
@@ -247,16 +248,16 @@ No `AGENT.md` is created: the startup clause lives in `AGENTS.md` and the landin
 
 ## 7. Open items
 
-"Open" here means *awaiting a user decision or a later wave* — not "unverified". Every implementation
+"Open" here means *awaiting a user decision or a later wave*, not "unverified". Every implementation
 door this wave set out to close is closed and measured in §8.
 
 | Id | Item | State |
 |---|---|---|
 | `O1` | Complexity-gate calibration | frozen defaults, **not** measured optima. The empirical run has now happened (t37, re-verified by t40): on 20 real ordinary prompts the gate triggered **0** times, so the accepted false-positive path did not fire at all, and the measured cost ran the other way (a genuinely complex session-start prompt produced no signal). The user may still adjust the values **once**; the numbers to judge are in §3 and §8 |
-| `O2` | Whether the skills corpus (mass-ulw / dag-library / hyperplan) is ported at all | decided only after the t8 gate report, per user instruction — still awaiting the user's call; this wave ports nothing |
+| `O2` | Whether the skills corpus (mass-ulw / dag-library / hyperplan) is ported at all | decided only after the t8 gate report, per user instruction: still awaiting the user's call; this wave ports nothing |
 | `O3` | t4 `D10-recovery` coverage | **closed / `uncertain` recorded.** t2 measured `retry`×8, `revision`×2, but `resume`×1 and live-steering×0; the thin coverage is recorded here with its reason (a single observed `resume`, no observed live steering) rather than silently dropped |
 | `O4` | Residual conflict in `session-start.js` | **closed.** The shipped predicate has no unconditional-notice path under `D_FIRST`: `trigger = anyExplicitFlag OR (matchedSignals >= 1)`, and `mode: "off"` means no auto-provision and no unconditional notice. The two-sided case measures 3/3 plain prompts silent (see §8) |
-| `O5` | `S2` frozen wording vs the user ruling | **closed / reconciled.** The no-re-run guarantee is scoped to nodes whose transitive inputs did not change, so a completed dependent of an amended task *is* re-run because its input changed — see §4. The upstream citation the freeze rests on is not present in this repository, and that limitation is recorded rather than glossed over |
+| `O5` | `S2` frozen wording vs the user ruling | **closed / reconciled.** The no-re-run guarantee is scoped to nodes whose transitive inputs did not change, so a completed dependent of an amended task *is* re-run because its input changed: see §4. The upstream citation the freeze rests on is not present in this repository, and that limitation is recorded rather than glossed over |
 | `O6` | Ledger id labels | the frozen contract labels the complexity signals `A/B/C/D` and the mass-ulw semantics `S1–S4`; earlier requirement rounds labelled the latter `M1–M4`. This ledger follows the contract; no contract value changed |
 
 ## 8. Verification state
@@ -280,14 +281,14 @@ anchors. The wave's own frozen values and gate code were byte-identical across t
 | Gate | Command | State |
 |---|---|---|
 | typecheck | `bun run typecheck` | verified (exit 0) |
-| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files — the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.ts`; registry 46 → 48 regions) |
+| plugin tests | `bun test packages/mpd-agent-teams-plugin` | verified at this anchor (161 pass / 0 fail, 42 files). **Current tree (v0.9.1):** 220 pass / 0 fail over 60 files: the plugin gained the dispatch-stall regression + region-pinning suites (`evidence/agent-teams/dispatch-stall/`) and, in v0.9.1, the pool-capability guard (`self-fix-tests/pool-capability-guard.test.ts`; registry 46 → 48 regions) |
 | QA self-tests | `bun run test:qa` | verified (exit 0, all self-tests passed) |
 | runtime boot | `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` | verified (PASS; one-command install, no home copy, uninstall leaves no residue) |
 | two-sided gate case | `bun skills/dsh-qa/scripts/session-start-team.ts` | verified at this pre-advisory anchor (PASS: simple 3/3 silent, complex 3/3 exactly one staged team + one notice, negative control disarmed = true). **Superseded for the current tree by `D_AUTOROUTE_ADVISORY`:** the complex side must now assert 0 staged teams + one advisory notice and the explicit-flag side must assert exactly one staged team; that re-run belongs to this wave's QA case (`L7`/`L8`) |
 | preset/patch rows | `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | verified (30 harness rows conform, row parity 31/31) |
 | installer | `node scripts/install-profile.ts --self-test` | verified (exit 0) |
-| vendor | `node scripts/verify-vendor.ts` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again — see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |
-| trigger-rate study | `node evidence/omo-parity-rate/raw/probe.ts --json` | verified (20 real ordinary prompts, 0 triggered; anchors and per-row verdicts recomputable — see §3) |
+| vendor | `node scripts/verify-vendor.ts` | verified at this anchor (PASS; that wave's corpus re-pin had landed). **Superseded for the current tree by v0.9.0:** the extension wave added the `skills/dsh-qa/SKILL.md` rows plus the three `extension-*.mjs` QA cases, so the skills asset is re-pinned to `fileCount: 301` / `treeSha: 0dd4a6ee68e0a11499f2b502873016d066cface6b59036147bca066433b4b576` and the gate PASSes again: see `VENDOR_LOCK.json` and `evidence/release/v0.9.0-integration/` |
+| trigger-rate study | `node evidence/omo-parity-rate/raw/probe.ts --json` | verified (20 real ordinary prompts, 0 triggered; anchors and per-row verdicts recomputable: see §3) |
 
 This ledger is updated **in the same commit as the change it records**; an evidence-free pass is not
 a pass (AGENTS.md `§2.3`, `§4`).

@@ -1,0 +1,20 @@
+=== declared static views ===
+-- dsh-go/views/mpd.json
+  视图 dsh-go/views/mpd.json（面板）：能显示
+exit=0
+-- dsh-go/views/mpd-team.json
+  视图 dsh-go/views/mpd-team.json（面板）：能显示
+exit=0
+=== live trees (piped) ===
+-- mpd-v2
+    提示 view.children[0].items[1].children[1].children[2].style.color：dark：#3D6FD6 已校正为 #799BE3，对比度至少 4.5:1
+exit=0
+-- mpd-v1-fallback
+  视图 -（面板）：能显示
+exit=0
+-- mpd-team-v2
+    提示 view.children[0].items[2].children[1].children[1].style.color：dark：#AA7900 已校正为 #B48A1F，对比度至少 4.5:1
+exit=0
+-- mpd-team-v1-fallback
+  视图 -（面板）：能显示
+exit=0

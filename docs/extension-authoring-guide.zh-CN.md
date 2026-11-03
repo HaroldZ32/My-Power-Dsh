@@ -14,13 +14,13 @@
 步骤、没有 profile 补丁、也不需要重新构建：写好文件、校验、重启 `dsh`，能力就存在了。这是让一项
 能力存在起来最便宜的方式，而它的适用范围也刻意很窄。
 
-扩展只表达**声明式数据**——一个技能、一个流程、一个 stdio MCP 服务器、一个只读名册角色。如果你
+扩展只表达**声明式数据**：一个技能、一个流程、一个 stdio MCP 服务器、一个只读名册角色。如果你
 需要的不是这四者之一，那扩展就是错的工具：
 
 | 你需要的是 | 应该用 |
 |---|---|
 | 新的 profile 行、锁定依赖、安装期执行的代码，或给很多用户使用的带版本包 | **安装平面**：插件 bundle（[`extensions.md`](./extensions.md) §1） |
-| 一条只执行一次的指令 | 不需要新东西——写进任务里，或写进语料库中的技能 |
+| 一条只执行一次的指令 | 不需要新东西：写进任务里，或写进语料库中的技能 |
 | 图形面板、应用市场、远程下载或版本求解 | v1 中都不存在（[§7](#7-分发)） |
 
 本节选的是**工具**，它从不选根目录。本指南中回答"放在哪个根"的地方只有 §2，且只回答一次。
@@ -32,14 +32,14 @@
 **选择根目录只有一条规则，就是它：**
 
 > 当扩展声明的每一种类型都只是**技能或流程**、并且它应当跟随某个工作区时，把它放在
-> `<会话工作区>/.mpd/extensions/<id>/`。当它声明了 **MCP 服务器或角色**——这两种类型在项目
-> 平面不合法——或者当它必须对本机上**每一个**会话可见时，把它放在 `~/.mpd/extensions/<id>/`。
+> `<会话工作区>/.mpd/extensions/<id>/`。当它声明了 **MCP 服务器或角色**，这两种类型在项目
+> 平面不合法：或者当它必须对本机上**每一个**会话可见时，把它放在 `~/.mpd/extensions/<id>/`。
 > `<bundle>/extensions/<id>/` 是同一个决定、不同的归属：它用于随 bundle 一起分发、而不是放在
 > 用户主目录里的扩展。
 
 这条限制不是装饰。在本 harness 中，注册工具或技能提供者是**进程级全局**的，所以"每会话"的 MCP
 服务器或名册角色无法被诚实地表达。项目平面清单如果声明 `mcp` 或 `roles`，会被**逐项**拒绝并给出
-明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`）——拒绝是响亮的、会指出具体条目，
+明确原因（`refuseHostKind`, `packages/mpd-ext-plugin/src/registry.ts:879-886`）：拒绝是响亮的、会指出具体条目，
 而同一个清单里的技能与流程照常加载。
 
 请在写清单**之前**读这条规则，而不是在第一次被拒之后：这是最常见的选错平面错误，而拒绝只在发现
@@ -48,12 +48,12 @@
 ## 3. 隔离姿态，以及我们接受的残余风险
 
 被声明的 MCP 服务器是一个**子进程**，它拿到的环境被刻意压到最小。只有 SDK 实测安全的白名单会进入
-子进程——POSIX 下是 `HOME`、`LOGNAME`、`PATH`、`SHELL`、`TERM`、`USER`（win32 下是 `APPDATA`、
+子进程：POSIX 下是 `HOME`、`LOGNAME`、`PATH`、`SHELL`、`TERM`、`USER`（win32 下是 `APPDATA`、
 `HOMEDRIVE`、`HOMEPATH`、`LOCALAPPDATA`、`PATH`、`PROCESSOR_ARCHITECTURE`、`SYSTEMDRIVE`、
 `SYSTEMROOT`、`TEMP`、`USERNAME`、`USERPROFILE`、`PROGRAMFILES`），声明位置见
 （`INHERITED_ENV_VARS`, `packages/mpd-ext-plugin/src/mcp-client.ts:69-85`）。在此之上，任何看起来像凭证的变量名即使属于白名单
 也会被丢弃（`isCredentialShapedEnvName`, `packages/mpd-ext-plugin/src/mcp-client.ts:87-97`），因此 harness 自己的 provider 密钥
-不会被意外继承。扩展在清单 `env` 中声明的内容**会**被传入——那是作者写下的、可见的配置，而不是继承
+不会被意外继承。扩展在清单 `env` 中声明的内容**会**被传入，那是作者写下的、可见的配置，而不是继承
 （`childEnv`, `packages/mpd-ext-plugin/src/mcp-client.ts:99-117`）。
 
 这份姿态是真实的，它接受的残余风险同样真实。之所以写在这里，是因为一个没人写下来的"接受"决定，
@@ -64,7 +64,7 @@
    沙箱。
 2. **作者声明的密钥就是真实密钥。** 你写进清单 `env` 的任何内容，在磁盘上的清单里都是可读的。
    `mpd_ext_show` 会抹掉**值**（键仍可见，`redactedDescriptor`, `packages/mpd-ext-plugin/src/index.ts:760`），所以
-   会话日志里的工具结果不会泄漏它们——但文件本身没有加密，你写下来的值就是你要负责的值。
+   会话日志里的工具结果不会泄漏它们，但文件本身没有加密，你写下来的值就是你要负责的值。
 3. **文件系统信任。** 安装一个扩展就意味着执行一个你或别人提供的 stdio 服务器。这里没有签名、没有
    沙箱命名空间、没有 seccomp 配置、没有能力裁剪。
 4. **原生代码不受这份姿态约束。** 服务器自己可以再启动任何东西；它往外传什么环境，是它自己的事。
@@ -73,7 +73,7 @@
 会被投影、并把参数根归一到对象；而超出子集的 `outputSchema` 只会让该工具**失去 schema**，永远不会
 失去工具本身。
 
-关于来源的一点精确说明：上面四项残余风险是阅读启动与注册路径后得出的姿态评估——它们是一项显式的
+关于来源的一点精确说明：上面四项残余风险是阅读启动与注册路径后得出的姿态评估，它们是一项显式的
 "接受"决定，而不是实际执行过的攻击结果。[`extension-adaptation-report.zh-CN.md`](./extension-adaptation-report.zh-CN.md)
 §9 记录了首次给出这些结论的审计对同一问题的说明。
 
@@ -87,7 +87,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 | `skills` | 项目 | **每次调用**，从调用会话的工作区解析 | 不需要 |
 | `flows` | 项目 | **每次调用** | 不需要 |
 | `skills`、`flows` | user、bundle | 在 **apply** 时发现 | 需要 |
-| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**——并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`） | 需要 |
+| `mcp` | user、bundle | 扩展在 apply 时被发现，服务器也在 **apply 时连接**：并行、受 `connectTimeoutMs` 限时、绝不惰性（`connectExtensionMcpServers`, `packages/mpd-ext-plugin/src/index.ts:1189`） | 需要 |
 | `roles` | user、bundle | 声明在 apply 时被发现；角色本身由名册平面**每次调用**解析，并重新读取 persona 文本（`extensionRoles`, `packages/mpd-roles-plugin/src/index.ts:225-292`） | 新增或改名需要；只改 persona 正文不需要 |
 
 三个值得记住的推论：
@@ -101,7 +101,7 @@ v1 没有重新加载工具：**重启就是重新加载**（`"No reload"`, `doc
 
 ## 5. 从模板到一个正在运行的扩展
 
-可直接拷贝的骨架在 [`../templates/mpd-extension/`](../templates/mpd-extension)——包含全部四种类型，
+可直接拷贝的骨架在 [`../templates/mpd-extension/`](../templates/mpd-extension)：包含全部四种类型，
 其 id 是占位符，由脚手架在拷贝时改写。两种入口，结果相同：
 
 ```bash
@@ -114,8 +114,8 @@ bun scripts/mpd-ext.ts scaffold my-extension --dir ~/.mpd/extensions
 cp -r templates/mpd-extension ~/.mpd/extensions/my-extension
 ```
 
-上面两条命令都假定你在检出目录里。若用的是已安装（打包）的 bundle，同一个 CLI 就在包内——在 profile <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
-目录下运行 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>`——而 §7 精确说明了这样的产物
+上面两条命令都假定你在检出目录里。若用的是已安装（打包）的 bundle，同一个 CLI 就在包内：在 profile <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
+目录下运行 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts <command>`，而 §7 精确说明了这样的产物
 携带什么、以及仍存在哪一条边界。
 
 然后走每个扩展都要走的同样五步：
@@ -128,7 +128,7 @@ bun scripts/mpd-ext.ts validate ~/.mpd/extensions/my-extension
 bun scripts/mpd-ext.ts list
 
 # 3. 编辑清单：写上真实的 id、描述与内容，然后把 "enabled" 设为 true
-#    （拷贝出来的扩展之所以默认禁用，是因为**模板**里写的是 "enabled": false——运行时默认值正好
+#（拷贝出来的扩展之所以默认禁用，是因为**模板**里写的是 "enabled": false——运行时默认值正好
 #     相反：干脆省略该键的扩展就是启用的）
 
 # 4. 重启 dsh——§4 解释了为什么没有别的办法让 user 平面的修改生效
@@ -145,7 +145,7 @@ bun scripts/mpd-ext.ts list
 名字，而不是想当然。
 
 两个能省掉一轮排错的细节：清单里的 `skills.root` 与 `flows.dir` 相对于扩展根，且不允许逃逸出根；
-stdio 服务器的 `command` 是 `node`、`args` 是 `["server.ts"]`、`cwd` 是 `"."`——工作目录就是扩展
+stdio 服务器的 `command` 是 `node`、`args` 是 `["server.ts"]`、`cwd` 是 `"."`：工作目录就是扩展
 根，所以服务器能找到自己的清单。你完全不需要宿主就能冒烟测试这个服务器：
 
 ```bash
@@ -153,7 +153,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node ~/.mpd/ext
 ```
 
 如果你要写的是**项目平面**扩展，同一套流程适用，只有两处不同：根是
-`<会话工作区>/.mpd/extensions/my-extension/`，并且 `mcp`/`roles` 在那里会被拒绝（§2）——所以项目
+`<会话工作区>/.mpd/extensions/my-extension/`，并且 `mcp`/`roles` 在那里会被拒绝（§2），所以项目
 平面的拷贝是三种类型的那个。
 
 ## 6. 发布前如何验证
@@ -173,7 +173,7 @@ bun skills/dsh-qa/scripts/extension-mcp-bridge.ts --no-skip
 bun skills/dsh-qa/scripts/extension-template.ts
 ```
 
-中间两条端到端驱动随包示例——发现、项目平面的按调用解析、桥接、隔离断言——第三条把模板脚手架出来，
+中间两条端到端驱动随包示例（发现、项目平面的按调用解析、桥接、隔离断言）第三条把模板脚手架出来，
 并对拷贝做一次真实挂载验证。`skills/dsh-qa/scripts/extension-isolation.ts` 是这些 lane 共同 import
 的证明辅助模块；它**不是** case 通道，它唯一的离线证明是自己的 `--self-test`。
 
@@ -183,7 +183,7 @@ bun skills/dsh-qa/scripts/extension-template.ts
 ## 7. 分发
 
 扩展以**目录**为单位分发，整个目录就是分发单元：清单里的资产路径相对扩展根解析，所以残缺的拷贝就是
-坏掉的拷贝。放在哪里由 §2 的决定给出——本节只讲字节怎么到达那里：
+坏掉的拷贝。放在哪里由 §2 的决定给出：本节只讲字节怎么到达那里：
 
 - **自己用、一台机器：** 把目录放进 `~/.mpd/extensions/<id>/`。拷贝、重启，完成。
 - **作为 bundle 的一部分：** 放进 `<bundle>/extensions/<id>/`。它随后就像任何随包扩展一样在 apply
@@ -193,7 +193,7 @@ bun skills/dsh-qa/scripts/extension-template.ts
 
 自 2026-09-17 的打包变更起，打包产物就是**面向作者**的，因此这些命令在那里同样可用。打包器会交付
 脚手架模板（`templates/mpd-extension`，T-35）、带 EN + `*.zh-CN.md` 配对的 `docs/` 文档集
-（T-36/T-45）、按需查阅的 `agent-references/`（`troubleshooting.md`——症状 → 原因/修复对照表——加上
+（T-36/T-45）、按需查阅的 `agent-references/`（`troubleshooting.md`（症状 → 原因/修复对照表）加上
 采纳插件的 delta 登记册与其索引），以及一个**已编译的校验器入口**：
 <!-- citation-check: illustrative: a pack-time artifact emitted by the packer into the artifact, not a repo path -->
 （`packages/mpd-ext-plugin/dist/validator.js`，打包时由已交付的 bundle 生成）；当 TypeScript 源码不存在时，
@@ -208,13 +208,13 @@ bun scripts/mpd-ext.ts --validator                           # 本次运行实�
 
 已安装的 bundle 带有同一个 CLI：在 profile 目录下运行 <!-- citation-check: illustrative: a path inside an installed bundle, not a repo path -->
 `bun node_modules/@mpd-dsh/mpd/scripts/mpd-ext.ts validate <dir>`。诚实的边界：检出目录中的运行从 `src`
-校验（规则是活的、无需构建步骤），因此**源码**改动在产物内要等下一次 `npm run pack` 才可见——判断打包 CLI
+校验（规则是活的、无需构建步骤），因此**源码**改动在产物内要等下一次 `npm run pack` 才可见：判断打包 CLI
 之前请先重新打包。
 
 v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`、YAML 流程、MCP resources/prompts、
 图形面板、应用市场或远程下载、由扩展贡献的 agent preset，以及扩展角色自己变成队友（只有 Lead 用
 `agent_teams_plan {action:"add_member"}` 按名字加入并批准 plan，才存在队友）。五个官方**创作类**动词
-—— `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update` ——
+（`spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`）
 在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板；其边界是：直接调用团队**服务**的行（官方执行器
 回退路径）不是工具调用，**不受**这道门约束。
 
@@ -228,19 +228,19 @@ v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`
 | MCP 工具缺失 | 服务器处于 `unavailable` 或 `failed` | `mpd_ext_show` 会打印状态与有界的 stderr 尾部；检查 `command`、`args`、`cwd` 与声明的 `env` |
 | 对 user 平面扩展的修改没有生效 | 它在 apply 时被发现 | 重启 `dsh`（§4） |
 | 对项目平面技能或流程的修改没有生效 | 当前会话的工作区不是你编辑的目录 | 项目平面是按**调用会话**的工作区解析的 |
-| 两个扩展用了同一个 id | 先到先得：项目 → user → bundle | 被遮蔽的条目会被报告、绝不静默丢弃——改名即可 |
+| 两个扩展用了同一个 id | 先到先得：项目 → user → bundle | 被遮蔽的条目会被报告、绝不静默丢弃：改名即可 |
 | `enabled` 是 `true` 却没有任何效果 | 配置层强制禁用了它，且 `disable` 优先于 `enable` | 检查 `.mpd/mpd.jsonc` 的 `extensions.enable` / `extensions.disable` |
 
 ## 9. 字段级参考在哪里
 
-- [`extensions.md`](./extensions.md) —— 描述符参考（顶层、`contributes`、语法与资产路径规则）、
+- [`extensions.md`](./extensions.md)：描述符参考（顶层、`contributes`、语法与资产路径规则）、
   每种类型的可用片段、失败与冲突策略、面向模型的工具、与安装平面的对比，以及 v1 限制。**表格都在
   那里。**
-- [`../packages/mpd-ext-plugin/README.md`](../packages/mpd-ext-plugin/README.md) —— 插件自身的
+- [`../packages/mpd-ext-plugin/README.md`](../packages/mpd-ext-plugin/README.md)：插件自身的
   参考：配置、四个检查工具、失败策略、schema 姿态，以及已记录的边界。
-- [`../extensions/README.md`](../extensions/README.md) —— 随包提供的发现根，以及默认禁用的参考扩展
+- [`../extensions/README.md`](../extensions/README.md)：随包提供的发现根，以及默认禁用的参考扩展
   `mpd-ext-example`。
-- [`../templates/mpd-extension/README.md`](../templates/mpd-extension/README.md) —— 你拷贝的模板、
+- [`../templates/mpd-extension/README.md`](../templates/mpd-extension/README.md)：你拷贝的模板、
   它的 `--with-mcp` 语义，以及它自己的验证命令。
-- [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md) —— 机器契约：逐类型要求、一份可校验
+- [`../EXTENSIONS-FOR-AGENTS.md`](../EXTENSIONS-FOR-AGENTS.md)：机器契约：逐类型要求、一份可校验
   的清单骨架、错误特征与拒绝清单。

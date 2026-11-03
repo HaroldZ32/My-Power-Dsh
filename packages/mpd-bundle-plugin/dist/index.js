@@ -2740,15 +2740,20 @@ function stack(children, props = {}) {
   assertList("stack", "children", children, MAX_CHILDREN);
   return node("stack", { children, title: props.title, style: styleOf(props.style) });
 }
-function row(children, props = {}) {
-  assertList("row", "children", children, MAX_CHILDREN);
-  return node("row", { children, title: props.title, style: styleOf(props.style) });
-}
 function text(value, props = {}) {
   return node("text", { text: value, tone: props.tone, style: styleOf(props.style) });
 }
 function metric(props) {
   return node("metric", { label: props.label, value: props.value, tone: props.tone, caption: props.caption, style: styleOf(props.style) });
+}
+function chart(props) {
+  const series = assertList("chart", "series", props.series, 6);
+  for (const one of series) {
+    if (isBinding(one))
+      continue;
+    assertList("chart", "series values", one.values, 60);
+  }
+  return node("chart", { kind: props.kind, categories: props.categories, series, unit: props.unit, caption: props.caption });
 }
 function keyValue(items, props = {}) {
   assertList("keyValue", "items", items, 24);
@@ -2763,6 +2768,10 @@ function progress(value, props = {}) {
 }
 function callout(value, props = {}) {
   return node("callout", { text: value, tone: props.tone, style: styleOf(props.style) });
+}
+function steps(items, props = {}) {
+  assertList("steps", "items", items, 12);
+  return node("steps", { items, title: props.title, style: styleOf(props.style) });
 }
 function actions(items, props = {}) {
   assertList("actions", "items", items, 4);
@@ -2812,9 +2821,6 @@ function emptyState(props) {
     refuse("emptyState", 'takes "message", never "text" (the app ignores text silently)');
   rejectExtra("emptyState", fields, ["title", "message", "icon", "action"]);
   return node("emptyState", { title: props.title, message: props.message, icon: props.icon, action: props.action });
-}
-function badge(props) {
-  return node("badge", { text: props.text, tone: props.tone });
 }
 function divider() {
   return node("divider", {});
@@ -2965,10 +2971,10 @@ function fallbackFor(node2, visit) {
       if (adapted === null)
         continue;
       if (adapted.type === "metric") {
-        const row2 = { title: adapted.label, trailing: valueText(adapted.value) };
+        const row = { title: adapted.label, trailing: valueText(adapted.value) };
         if (adapted.caption !== undefined)
-          row2.subtitle = adapted.caption;
-        items.push(row2);
+          row.subtitle = adapted.caption;
+        items.push(row);
         continue;
       }
       const title = wordsOf(adapted);
@@ -3070,8 +3076,8 @@ function adaptView(view, caps) {
 var EN = {
   workbench: "MPD Workbench",
   board: "Team Board",
-  tabsWorkbench: ["Overview", "Questions", "Workmates", "Memory"],
-  tabsBoard: ["Board", "Members", "Detail", "Watchdog"],
+  tabsWorkbench: ["Overview", "Ask", "Library"],
+  tabsBoard: ["Board", "Detail", "Watch"],
   metricReady: "Ready",
   metricActive: "Active",
   metricDone: "Done",
@@ -3088,6 +3094,9 @@ var EN = {
   customAnswer: "Custom answer",
   submit: "Send",
   emptyQuestion: ["No question is waiting", "When a member needs your answer, the question and its options appear here."],
+  libraryCaption: "Workmates and memory, read-only",
+  agentsHeading: "Workmates",
+  memoryHeading: "Memory",
   workmatesCaption: "Durable instances from the workmate library",
   emptyWorkmates: ["The library is empty", "A workmate appears here once one is initialized from a roster base."],
   uses: "uses",
@@ -3095,6 +3104,10 @@ var EN = {
   emptyMemory: ["No memory entry yet", "Notes, facts and reflections written by this agent show up here."],
   reflection: "Reflection",
   boardCaption: "The active team's board",
+  graphHeading: "Dependency graph",
+  memberChartHeading: "Work per member",
+  memberChartSeries: "Tasks",
+  memberChartCaption: "Board rows owned, by member",
   membersCaption: "Who is on this team",
   emptyMembers: ["No member raised", "Approving a staged plan raises its members; they are listed here."],
   detailCaption: "The selected row",
@@ -3125,8 +3138,8 @@ var EN = {
 var ZH = {
   workbench: "MPD 工作台",
   board: "团队看板",
-  tabsWorkbench: ["总览", "问题", "工作伙伴", "记忆"],
-  tabsBoard: ["看板", "成员", "详情", "看门狗"],
+  tabsWorkbench: ["总览", "问题", "资料库"],
+  tabsBoard: ["看板", "详情", "看门狗"],
   metricReady: "就绪",
   metricActive: "进行",
   metricDone: "完成",
@@ -3143,6 +3156,9 @@ var ZH = {
   customAnswer: "自定义回答",
   submit: "提交",
   emptyQuestion: ["还没有停下来的问题", "当有成员需要你回答时，问题和它的选项会出现在这里。"],
+  libraryCaption: "工作伙伴与记忆，只读",
+  agentsHeading: "工作伙伴",
+  memoryHeading: "记忆",
   workmatesCaption: "工作伙伴库里的持久实例",
   emptyWorkmates: ["工作伙伴库是空的", "从一个基础角色初始化后，实例会出现在这里。"],
   uses: "次使用",
@@ -3150,6 +3166,10 @@ var ZH = {
   emptyMemory: ["还没有记忆条目", "这个 agent 写下的笔记、事实和反思会出现在这里。"],
   reflection: "反思",
   boardCaption: "当前团队的看板",
+  graphHeading: "依赖关系图",
+  memberChartHeading: "各成员工作量",
+  memberChartSeries: "任务",
+  memberChartCaption: "按成员统计的负责任务数",
   membersCaption: "团队里的成员",
   emptyMembers: ["还没有成员", "审批一份计划会拉起它的成员，名单出现在这里。"],
   detailCaption: "选中的任务",
@@ -3182,7 +3202,82 @@ function copyFor(caps) {
   return tag === "zh" || tag.startsWith("zh-") || tag.startsWith("zh_") ? ZH : EN;
 }
 
+// packages/mpd-bundle-plugin/src/dshgo-graph.ts
+var GRAPH_SUBJECT_CHARS = 18;
+var GRAPH_MAX_LINES = 20;
+var GRAPH_MAX_STEPS = 12;
+var GRAPH_FOLD_MIN_TASKS = 6;
+var GRAPH_FOLD_MIN_LAYERS = 3;
+function graphNeedsFold(layers) {
+  const tasks = layers.reduce((total, layer) => total + layer.tasks.length, 0);
+  return tasks > GRAPH_FOLD_MIN_TASKS || layers.length > GRAPH_FOLD_MIN_LAYERS;
+}
+function blockersOf(task, known) {
+  const declared = task.dependencies === "" ? [] : task.dependencies.split(",").map((id) => id.trim());
+  return declared.filter((id) => id !== "" && known.has(id));
+}
+function layerGraphOf(tasks) {
+  const known = new Set(tasks.map((task) => task.id));
+  const level = new Map(tasks.map((task) => [task.id, 0]));
+  for (let pass = 0;pass < tasks.length; pass += 1) {
+    let raised = false;
+    for (const task of tasks) {
+      const blocked = blockersOf(task, known);
+      if (blocked.length === 0)
+        continue;
+      const wanted = Math.max(...blocked.map((id) => level.get(id) ?? 0)) + 1;
+      if ((level.get(task.id) ?? 0) < wanted) {
+        level.set(task.id, wanted);
+        raised = true;
+      }
+    }
+    if (!raised)
+      break;
+  }
+  const deepest = tasks.reduce((max, task) => Math.max(max, level.get(task.id) ?? 0), 0);
+  const layers = [];
+  for (let depth = 0;depth <= deepest; depth += 1) {
+    const at = tasks.filter((task) => (level.get(task.id) ?? 0) === depth);
+    if (at.length > 0)
+      layers.push({ level: depth, tasks: at });
+  }
+  return layers;
+}
+function graphLinesOf(layers) {
+  const entries = layers.flatMap((layer) => layer.tasks.map((task) => ({ level: layer.level, task })));
+  if (entries.length === 0)
+    return ["(no tasks)"];
+  const lines = [];
+  for (const { level, task } of entries.slice(0, GRAPH_MAX_LINES)) {
+    const subject = task.subject.length <= GRAPH_SUBJECT_CHARS ? task.subject : task.subject.slice(0, GRAPH_SUBJECT_CHARS - 1) + "…";
+    const from = task.dependencies === "" ? "" : " <-" + task.dependencies.split(",").map((id) => id.trim()).filter((id) => id !== "").join(",");
+    lines.push("L" + String(level) + " " + task.id + " " + subject + from);
+  }
+  if (entries.length > GRAPH_MAX_LINES)
+    lines.push("+" + String(entries.length - GRAPH_MAX_LINES) + " more");
+  return lines;
+}
+function graphStepsOf(layers) {
+  return layers.slice(0, GRAPH_MAX_STEPS).map((layer) => ({
+    label: "L" + String(layer.level),
+    detail: layer.tasks.map((task) => task.id).join(" "),
+    status: layer.level === 0 ? "done" : "todo"
+  }));
+}
+
 // packages/mpd-bundle-plugin/src/dshgo-views.ts
+function fold(label, children) {
+  return { type: "collapsible", label, children };
+}
+function codeBlock(code) {
+  return { type: "codeBlock", code };
+}
+function speaksV2(caps) {
+  if (typeof caps?.app !== "string")
+    return false;
+  const [major = 0, minor = 0, patch = 0] = caps.app.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  return major > 1 || major === 1 && (minor > 0 || patch >= 9);
+}
 function hero(title, caption, extras = []) {
   return stack([
     text(title, { style: { size: "title", weight: "bold", maxLines: 1 } }),
@@ -3202,10 +3297,33 @@ function empty(copy) {
 function taskRow(task) {
   return {
     title: task.id + " " + task.subject,
-    subtitle: [task.owner === "" ? "—" : task.owner, task.kind, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
-    trailing: task.status,
+    subtitle: [task.owner === "" ? "—" : task.owner, task.blockedBy === 0 ? "" : "blocked " + String(task.blockedBy)].filter((part) => part !== "").join(" · "),
+    trailing: statusWordOf(task.status),
     action: { id: "select", args: { task: task.id } }
   };
+}
+function memberChartOf(snapshot, copy) {
+  if (snapshot.members.length === 0)
+    return null;
+  const values = snapshot.members.map((member) => snapshot.tasks.filter((task) => task.owner === member.name).length);
+  return chart({
+    kind: "bar",
+    categories: snapshot.members.map((member) => member.name),
+    series: [{ name: copy.memberChartSeries, values }],
+    caption: copy.memberChartCaption
+  });
+}
+function statusWordOf(status) {
+  const word = status.toLowerCase();
+  if (word === "in_progress" || word === "running" || word === "active")
+    return "active";
+  if (word === "completed" || word === "done")
+    return "done";
+  if (word === "pending")
+    return "todo";
+  if (word === "cancelled")
+    return "cancelled";
+  return word.length <= 8 ? word : word.slice(0, 8);
 }
 function initialsOf(name) {
   const words = name.split(/[^A-Za-z0-9\u4e00-\u9fff]+/).filter((word) => word !== "");
@@ -3233,8 +3351,7 @@ function buildMpdView(snapshot, caps) {
       tabs([
         { label: copy.tabsWorkbench[0], children: overviewTab(snapshot, copy) },
         { label: copy.tabsWorkbench[1], children: questionsTab(snapshot, copy) },
-        { label: copy.tabsWorkbench[2], children: workmatesTab(snapshot, copy) },
-        { label: copy.tabsWorkbench[3], children: memoryTab(snapshot, copy) }
+        { label: copy.tabsWorkbench[2], children: libraryTab(snapshot, copy) }
       ])
     ]
   });
@@ -3249,15 +3366,11 @@ function overviewTab(snapshot, copy) {
     buttons.push({ label: copy.dispatch, action: "dispatch", icon: "send" });
   buttons.push({ label: copy.refresh, action: "refresh", icon: "refresh" });
   const children = [
-    hero(copy.workbench, caption, [
-      tiles([
-        { label: copy.metricReady, value: bind("counts.ready"), tone: "good" },
-        { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
-        { label: copy.metricDone, value: bind("counts.done") },
-        { label: copy.metricMembers, value: bind("counts.members") }
-      ], 2),
-      progress(bind("counts.completion"), { label: copy.completion, tone: "good" })
-    ])
+    hero(copy.workbench, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    tiles([
+      { label: copy.metricReady, value: bind("counts.ready"), tone: "good" },
+      { label: copy.metricActive, value: bind("counts.active"), tone: "info" }
+    ], 2)
   ];
   if (snapshot.alert !== null)
     children.push(callout(snapshot.alert, { tone: "warn" }));
@@ -3283,27 +3396,17 @@ function questionsTab(snapshot, copy) {
     content.push(text(copy.moreOptions, { tone: "muted", style: { size: "caption", maxLines: 2 } }));
   return [head, section(copy.tabsWorkbench[1], content)];
 }
-function workmatesTab(snapshot, copy) {
-  const rows = snapshot.workmates.map((mate) => ({ title: mate.name, subtitle: mate.base + " · " + String(mate.uses) + " " + copy.uses, trailing: mate.note }));
+function libraryTab(snapshot, copy) {
+  const mates = snapshot.workmates.map((mate) => ({ title: mate.name, subtitle: mate.base + " · " + String(mate.uses) + " " + copy.uses, trailing: mate.note }));
+  const memory = snapshot.memory;
+  const entries = memory === null ? [] : memory.entries.map((entry) => ({ title: entry.description, subtitle: entry.kind + " · " + entry.age }));
+  const reflection = memory === null ? [] : [keyValue([[copy.reflection, String(memory.reflections)], [copy.memoryHeading, String(memory.entries.length)]])];
   return [
-    hero(copy.tabsWorkbench[2], copy.workmatesCaption, [tiles([{ label: copy.tabsWorkbench[2], value: snapshot.workmates.length }], 1)]),
-    section(copy.tabsWorkbench[2], rows.length === 0 ? [empty(copy.emptyWorkmates)] : [list(rows)]),
+    hero(copy.tabsWorkbench[2], copy.libraryCaption),
+    section(copy.agentsHeading, mates.length === 0 ? [empty(copy.emptyWorkmates)] : [list(mates)]),
+    section(copy.memoryHeading, entries.length === 0 ? [empty(copy.emptyMemory), ...reflection] : [list(entries), divider(), ...reflection]),
     spacer({ size: "S" }),
     actions([{ label: copy.refresh, action: "refresh", icon: "refresh" }])
-  ];
-}
-function memoryTab(snapshot, copy) {
-  const memory = snapshot.memory;
-  if (memory === null)
-    return [hero(copy.tabsWorkbench[3], copy.memoryCaption), empty(copy.emptyMemory)];
-  const rows = memory.entries.map((entry) => ({ title: entry.description, subtitle: entry.kind + " · " + entry.age }));
-  const reflection = keyValue([
-    [copy.reflection, String(memory.reflections)],
-    [copy.tabsWorkbench[3], String(memory.entries.length)]
-  ]);
-  return [
-    hero(copy.tabsWorkbench[3], copy.memoryCaption, [tiles([{ label: copy.tabsWorkbench[3], value: memory.entries.length }], 1)]),
-    section(copy.tabsWorkbench[3], rows.length === 0 ? [empty(copy.emptyMemory), reflection] : [list(rows), divider(), reflection])
   ];
 }
 function buildTeamView(snapshot, caps) {
@@ -3311,45 +3414,41 @@ function buildTeamView(snapshot, caps) {
   const view = panelView({
     children: [
       tabs([
-        { label: copy.tabsBoard[0], children: boardTab(snapshot, copy) },
-        { label: copy.tabsBoard[1], children: membersTab(snapshot, copy) },
-        { label: copy.tabsBoard[2], children: detailTab(snapshot, copy) },
-        { label: copy.tabsBoard[3], children: watchdogTab(snapshot, copy) }
+        { label: copy.tabsBoard[0], children: boardTab(snapshot, copy, speaksV2(caps)) },
+        { label: copy.tabsBoard[1], children: detailTab(snapshot, copy) },
+        { label: copy.tabsBoard[2], children: watchdogTab(snapshot, copy) }
       ])
     ]
   });
   return adaptView(view, caps);
 }
-function boardTab(snapshot, copy) {
-  const caption = snapshot.team === null ? copy.emptyTeam[0] : snapshot.team.name + " · " + snapshot.team.status + " · " + snapshot.team.phase;
+function boardTab(snapshot, copy, v2) {
+  const caption = snapshot.team === null ? copy.emptyTeam[0] : snapshot.team.name + " · " + String(snapshot.counts.total) + " " + copy.metricTasks + " · " + String(snapshot.counts.blocked) + " " + copy.metricBlocked;
   const children = [
-    hero(copy.board, caption, [
-      tiles([
-        { label: copy.metricTasks, value: bind("counts.total") },
-        { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
-        { label: copy.metricDone, value: bind("counts.done"), tone: "good" },
-        { label: copy.metricBlocked, value: bind("counts.blocked"), tone: "warn" }
-      ], 2),
-      progress(bind("counts.completion"), { label: copy.completion, tone: "good" })
-    ])
+    hero(copy.board, caption, [progress(bind("counts.completion"), { label: copy.completion, tone: "good" })]),
+    tiles([
+      { label: copy.metricActive, value: bind("counts.active"), tone: "info" },
+      { label: copy.metricDone, value: bind("counts.done"), tone: "good" }
+    ], 2)
   ];
   if (snapshot.team === null) {
     children.push(empty(copy.emptyTeam));
     return children;
   }
   children.push(section(copy.boardCaption, snapshot.tasks.length === 0 ? [empty(copy.emptyBoard)] : [list(snapshot.tasks.map(taskRow))]));
+  const chartNode = memberChartOf(snapshot, copy);
+  if (chartNode !== null)
+    children.push(section(copy.memberChartHeading, [chartNode]));
+  const layers = layerGraphOf(snapshot.tasks);
+  const block = codeBlock(graphLinesOf(layers).join(`
+`));
+  children.push(section(copy.graphHeading, v2 ? graphNeedsFold(layers) ? [fold(copy.graphHeading, [block])] : [block] : [steps(graphStepsOf(layers))]));
+  children.push(section(copy.membersCaption, snapshot.members.length === 0 ? [empty(copy.emptyMembers)] : [list(snapshot.members.map(memberLine))]));
   return children;
 }
-function membersTab(snapshot, copy) {
-  const rows = snapshot.members.map((member) => row([
-    badge({ text: initialsOf(member.name), tone: "info" }),
-    stack([text(member.name, { style: { maxLines: 1 } }), text(member.mode, { tone: "muted", style: { size: "caption", maxLines: 1 } })], { style: { gap: "S" } }),
-    badge({ text: member.handoff === "" ? member.mode : member.handoff, tone: toneOf(member.handoff === "" ? member.mode : member.handoff) })
-  ], { style: { gap: "S", align: "center" } }));
-  return [
-    hero(copy.tabsBoard[1], copy.membersCaption, [tiles([{ label: copy.metricMembers, value: snapshot.members.length }], 1)]),
-    section(copy.membersCaption, rows.length === 0 ? [empty(copy.emptyMembers)] : rows)
-  ];
+function memberLine(member) {
+  const word = member.handoff === "" ? member.mode : member.handoff;
+  return { title: initialsOf(member.name) + " · " + member.name, trailing: word, tone: toneOf(word) };
 }
 function detailTab(snapshot, copy) {
   const task = snapshot.selected;
@@ -3369,7 +3468,7 @@ function detailTab(snapshot, copy) {
       text(task.description === "" ? "—" : task.description, { tone: "muted", style: { maxLines: 4 } }),
       divider(),
       fields,
-      callout(copy.settleHint, { tone: "muted" }),
+      callout(copy.settleHint),
       actions([{ label: copy.back, action: "back", icon: "expand" }])
     ])
   ];
@@ -3379,14 +3478,13 @@ function watchdogTab(snapshot, copy) {
   const holdLine = watchdog.held ? copy.held + (watchdog.reason === "" ? "" : " · " + watchdog.reason) : copy.notHeld;
   const rows = watchdog.incidents.map((incident) => ({ title: incident.kind, subtitle: incident.at, trailing: incident.detail }));
   return [
-    hero(copy.tabsBoard[3], copy.watchdogCaption, [
-      tiles([
-        { label: copy.predicate, value: watchdog.predicate },
-        { label: copy.tabsBoard[3], value: holdLine, tone: watchdog.held ? "warn" : "good" }
-      ], 2)
-    ]),
+    hero(copy.tabsBoard[2], copy.watchdogCaption),
+    tiles([
+      { label: copy.predicate, value: watchdog.predicate },
+      { label: copy.tabsBoard[2], value: holdLine, tone: watchdog.held ? "warn" : "good" }
+    ], 2),
     section(copy.incidents, rows.length === 0 ? [empty(copy.emptyIncidents)] : [list(rows)]),
-    callout(copy.watchdogReadOnly, { tone: "muted" })
+    callout(copy.watchdogReadOnly)
   ];
 }
 

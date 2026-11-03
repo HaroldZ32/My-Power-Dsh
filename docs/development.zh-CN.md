@@ -39,7 +39,7 @@ bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packa
 提交进仓库的 `dist/` 字节本身就是构建产物：`bun run verify:dist` 会把每个 `packages/*/src` 入口
 在临时目录中重建两次并与已提交文件逐字节比较，因此源码改动与其重建必须放在同一个提交里。
 构建工具链记录在 `package.json` 的 `buildToolchain` 字段（`bun@1.4.0`）：bun 小版本不同会改写注入的
-helper 前导代码与压缩器变量名——在固定版本上重建字节完全一致，而在版本漂移时会点亮 `verify:dist`
+helper 前导代码与压缩器变量名：在固定版本上重建字节完全一致，而在版本漂移时会点亮 `verify:dist`
 以及 `packages/mpd-ext-plugin/test/adapter-identity.test.ts`、
 `packages/mpd-roles-plugin/test/adapter-identity.test.ts` 的 F1 断言，但语义上并无变化。
 然后，对 bundle：
@@ -59,11 +59,11 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 （本仓库固定 `0.2.1-rc.5`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
 适配层重述的正是它的注入列表。打包安装则由 pnpm 负责。
 
-**没有 MCP 构建步骤。** MCP 服务器来自**声明式**的 npm 包，由薄启动器在安装 profile 实际物化它们的位置解析后启动：`cclsp`（LSP 服务器）与 git/shell 这一对 `@cyanheads/git-mcp-server` + `mcp-server-commands` 通过 `packages/mpd-mcp-shared/dependency-entry.ts` 的 `resolveDependencyEntry` 解析，而采纳的 ast-grep 与 codegraph 产物随各自启动器一起放在该包的 `dist/` 内。唯一在运行时解析（而非 import）的可执行文件是 `ast-grep` **二进制**：`packages/mpd-mcp-shared/bin-resolve.ts` 的 `resolveAstGrepBinary` 依次尝试 (1) 调用方已设的 `MPD_AST_GREP_SG_PATH`——启动器不会改动既有固定值——然后是 (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`、(3) 通过 `createRequire` 读该包自己的 `bin` 入口、(4) `<bundle>/.toolchain/node_modules/.bin`、(5) `<bundle>/node_modules/.bin`；候选都没通过 `--version` 探针时，启动器保持环境变量未设，由被采纳的服务器报出它自己的 `BINARY_NOT_FOUND`。因此检出目录**完全不需要** MCP 构建步骤：退役的 `scripts/build-mcp.ts` 及其 `vendor/mcp-src/**` 快照已随 de-omo 波次 B2 删除。
+**没有 MCP 构建步骤。** MCP 服务器来自**声明式**的 npm 包，由薄启动器在安装 profile 实际物化它们的位置解析后启动：`cclsp`（LSP 服务器）与 git/shell 这一对 `@cyanheads/git-mcp-server` + `mcp-server-commands` 通过 `packages/mpd-mcp-shared/dependency-entry.ts` 的 `resolveDependencyEntry` 解析，而采纳的 ast-grep 与 codegraph 产物随各自启动器一起放在该包的 `dist/` 内。唯一在运行时解析（而非 import）的可执行文件是 `ast-grep` **二进制**：`packages/mpd-mcp-shared/bin-resolve.ts` 的 `resolveAstGrepBinary` 依次尝试 (1) 调用方已设的 `MPD_AST_GREP_SG_PATH`（启动器不会改动既有固定值）然后是 (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`、(3) 通过 `createRequire` 读该包自己的 `bin` 入口、(4) `<bundle>/.toolchain/node_modules/.bin`、(5) `<bundle>/node_modules/.bin`；候选都没通过 `--version` 探针时，启动器保持环境变量未设，由被采纳的服务器报出它自己的 `BINARY_NOT_FOUND`。因此检出目录**完全不需要** MCP 构建步骤：退役的 `scripts/build-mcp.ts` 及其 `vendor/mcp-src/**` 快照已随 de-omo 波次 B2 删除。
 
 **扩展资产不需要构建。** `packages/mpd-ext-plugin` 是一个普通插件包（改源码后与其他包一样重建
 `dist/`），而*使用*该接口的包以普通目录形式放在 `extensions/<id>/`（内含 `mpd-ext.json` 清单与
-各自的资产）—— 没有编译步骤，开发者 CLI 直接从 TypeScript 源码运行（`bun scripts/mpd-ext.ts …`），
+各自的资产）：没有编译步骤，开发者 CLI 直接从 TypeScript 源码运行（`bun scripts/mpd-ext.ts …`），
 因此它绝不会校验一份陈旧的规则副本。在**打包**产物内没有源码，CLI 于是回退到打包器生成的已编译校验器
 入口（`packages/mpd-ext-plugin/dist/validator.js`）：`validate`、`scaffold`、`list`、`--self-test` 与
 `--validator` 都能从 `dist/mpd-package/` 运行（bun 或纯 node），其中 `--validator` 会打印本次运行实际
@@ -75,7 +75,7 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 `packages/mpd-dsh-adapter-plugin`（`const dsh = resolveDshAdapter(ctx)`；该包同时在 `src/shared.ts`
 中承载 bundle 的纯共享工具），
 因此 Harness 改变某个接缝时只需改这一个包：编辑
-`packages/mpd-dsh-adapter-plugin/src/index.ts`、重新构建、重新 pack——消费方无需改动即可
+`packages/mpd-dsh-adapter-plugin/src/index.ts`、重新构建、重新 pack：消费方无需改动即可
 拿到新的已挂载实例。它的单元测试（`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`）
 同时伪造“完整 Harness”和“空 Harness”，是新增接缝最快的入口。
 
@@ -90,7 +90,7 @@ bun test packages/<pkg>                  # 单包
 测试约定（见 `packages/mpd-roles-plugin/test/roles.test.ts`、
 `packages/mpd-workmate-plugin/test/workmate.test.ts`）：`makePlugin()` 构造 mock
 `ctx`（`tools.register` 捕获定义、`subagents.start` 返回 stub 结果、`provide` 记录服务、
-`get` 返回 fixtures）并驱动 `apply(ctx)` —— 纯离线，不需要 DSH 二进制或模型。
+`get` 返回 fixtures）并驱动 `apply(ctx)`：纯离线，不需要 DSH 二进制或模型。
 涉状态的测试把 `process.env.HOME` 设为临时目录（bun 缓存 `os.homedir()`，所以插件
 直接读 `$HOME`）。
 
@@ -107,21 +107,21 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `skill-catalog-probe` | 已安装 bundle 供给技能目录（18 个 bundled 技能，fixture 可加载），且无 `$DSH_HOME/skills` 副本 | `node skills/dsh-qa/scripts/skill-catalog-probe.ts` |
 | `relocate-smoke` | 迁移后的 bundle 供给 preset + 语料库，无 dev 路径泄漏、无 home 副本 | `node skills/dsh-qa/scripts/relocate-smoke.ts` |
 | `workmate-library` | 针对沙箱 HOME 的 init→list→spawn→reflect→match；self-test 同时钉住重命名/删除 host 路由、服务面与 §D reason 矩阵 | `node skills/dsh-qa/scripts/workmate-library.ts` |
-| `workmate-team-member` | workmate 实例参与一次真实 headless 团队运行，并在之后自己执行 `mpd_workmate_reflect`。注意：workmate 的 persona/记忆只能通过 `spawn_teammate` 的**提示词**进入队友 —— 本 case 当初针对的自动 `memberPersona` 注入属于已退役的内置插件 | `node skills/dsh-qa/scripts/workmate-team-member.ts` |
+| `workmate-team-member` | workmate 实例参与一次真实 headless 团队运行，并在之后自己执行 `mpd_workmate_reflect`。注意：workmate 的 persona/记忆只能通过 `spawn_teammate` 的**提示词**进入队友：本 case 当初针对的自动 `memberPersona` 注入属于已退役的内置插件 | `node skills/dsh-qa/scripts/workmate-team-member.ts` |
 | `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由（含 client 的重命名/删除 URL） | `node skills/dsh-qa/scripts/web-client-adapt.ts` |
-| `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.ts` |
+| `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功**：并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.ts` |
 | `tui-mount` | **真实** dsh-TUI 启动：bundle 作为第三层 patch 层（`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]）、`mpd-tui` 行已被组合、原始日志中**零**条 apply-crash 特征、状态行已渲染，且该次启动自己产生的会话记录携带 `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.ts` |
-| `tui-panels` | 七个需激活的 TUI 界面**确实渲染**（状态行、`/mpd status`、`/mpd` 补全树、看板场景、renderer 行、其通知承载**全部三段**披露（`BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`：桥接 + 实时刷新 + 挂载期捕获例外 + "never lost"）的 `/settings` 分区，以及受管对话框）—— 渲染不出内容的界面直接判该 lane FAIL；该 lane 还证明 `/mpd` 从未到达模型，并在同一批 pane 上用一条不可能成立的期望重跑引擎作为负向对照 | `bun skills/dsh-qa/scripts/tui-panels.ts` |
+| `tui-panels` | 七个需激活的 TUI 界面**确实渲染**（状态行、`/mpd status`、`/mpd` 补全树、看板场景、renderer 行、其通知承载**全部三段**披露（`BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`：桥接 + 实时刷新 + 挂载期捕获例外 + "never lost"）的 `/settings` 分区，以及受管对话框）：渲染不出内容的界面直接判该 lane FAIL；该 lane 还证明 `/mpd` 从未到达模型，并在同一批 pane 上用一条不可能成立的期望重跑引擎作为负向对照 | `bun skills/dsh-qa/scripts/tui-panels.ts` |
 | `tui-admission` | 用**宿主自己的**固定版准入算法检验 bundle 级 `dsh-plugin.json`：vendored `@dsh-std/manifest` 解析 + 投影 + 宿主的 `validatePlugin` + 五态 `negotiate`，再在真实 TUI 内驱动宿主的 `/plugins check`；spec 数据根必须先**解析成功**，并记录三条负向对照 | `bun skills/dsh-qa/scripts/tui-admission.ts` |
 | `tui-distribution` | 用 dsh-distribution 协议**自带**的一致性 CLI（在沙箱内拷贝协议仓库）校验 `dsh-distribution.json`；构建无法完成时逐字记录具体阻塞点，并把该描述符标记为**未完全验证**，而不是近似成通过 | `bun skills/dsh-qa/scripts/tui-distribution.ts` |
 | `tui-spec-conformance` | 用**宿主自己**的固定版一致性套件检验我们的 manifest 与捕获到的 host descriptor，记录套件 revision 与每一份输入摘要，并重新测量载荷的三方 sha256 一致性 | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
-| `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：构建字节既含桥接披露（入口保存由宿主持久化、**不写**工作区文件；只有 legacy `mpd` 命名空间的回写才写 `<workspace>/.mpd/mpd.jsonc`）又含它的**实时那一半**（`take the new value in the RUNNING process` —— 已退役的 `… after a restart` 措辞正是其负向对照所拒绝的）；桥接前那句 "not bridged" 已**删除**；`no-live-session` 运行时提示既存在又已接入状态行组合；提示含 "never lost" 条款；且 TUI dist 中该包**自有模块零**文件系统写入。它不主张逐旋钮的重启边界——那张表在 `docs/user-guide.md` §9.1 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
-| `ask-user-question-audit`（**新增**） | 报告工具，不是 lane：解码一份 dsh 会话日志（拼接的 zstd 帧，逐帧经 `lib/session-evidence.ts`），枚举每一条 `ask_user_question` `tool/call`，把每条判为 `ok`、`structurally-broken`（逐条点出规则名，如 `question-text-missing` / `options-not-array`）或 `unparseable-arguments`，再与该调用的收尾记录配对（两种会话形态下带同一 callId 的 `tool/result`，以及/或者续问的 `user-question-reply` 用户消息）。规则是 D1 守卫的**本地复述**——绝不 import 插件代码——并且读不出 callId 的 result 会被计数上报，所以「未配对」永远不会被悄悄读成「从未作答」。报告完 exit 0，用法错误 exit 2，日志无法解码 exit 1；`--self-test` 离线（合成拼接 zstd 帧、每条规则一条断言、两种 result 形态、两种作答配对、两种 CLI 退出码） | `node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>`（或 `--self-test`） |
+| `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：构建字节既含桥接披露（入口保存由宿主持久化、**不写**工作区文件；只有 legacy `mpd` 命名空间的回写才写 `<workspace>/.mpd/mpd.jsonc`）又含它的**实时那一半**（`take the new value in the RUNNING process`：已退役的 `… after a restart` 措辞正是其负向对照所拒绝的）；桥接前那句 "not bridged" 已**删除**；`no-live-session` 运行时提示既存在又已接入状态行组合；提示含 "never lost" 条款；且 TUI dist 中该包**自有模块零**文件系统写入。它不主张逐旋钮的重启边界：那张表在 `docs/user-guide.md` §9.1 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
+| `ask-user-question-audit`（**新增**） | 报告工具，不是 lane：解码一份 dsh 会话日志（拼接的 zstd 帧，逐帧经 `lib/session-evidence.ts`），枚举每一条 `ask_user_question` `tool/call`，把每条判为 `ok`、`structurally-broken`（逐条点出规则名，如 `question-text-missing` / `options-not-array`）或 `unparseable-arguments`，再与该调用的收尾记录配对（两种会话形态下带同一 callId 的 `tool/result`，以及/或者续问的 `user-question-reply` 用户消息）。规则是 D1 守卫的**本地复述**：绝不 import 插件代码：并且读不出 callId 的 result 会被计数上报，所以「未配对」永远不会被悄悄读成「从未作答」。报告完 exit 0，用法错误 exit 2，日志无法解码 exit 1；`--self-test` 离线（合成拼接 zstd 帧、每条规则一条断言、两种 result 形态、两种作答配对、两种 CLI 退出码） | `node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>`（或 `--self-test`） |
 
 | `extension-lifecycle`（**新增**） | 在**真实挂载启动**上验证扩展接口（沙箱 `DSH_HOME` + `HOME` + 会话 cwd；各行均从**本检出**组合，且模型步骤由本地 OpenAI 形状的 stub 应答，因此不需要 provider 凭据）：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
 | `extension-mcp-bridge`（**新增**） | 在同一套**真实挂载启动** + stub 配方上验证运行时 stdio MCP 桥：声明的服务器在两次工具列表读取中都出现 `mcp__<server>__<tool>`，且真实工具调用成功；dead/hang/schema/dup 四个分支证明单台服务器失败不会影响其他服务器 | `bun skills/dsh-qa/scripts/extension-mcp-bridge.ts` |
 
-两个 case 都引用同一个共享证据辅助模块 `skills/dsh-qa/scripts/extension-isolation.ts`——本地 OpenAI 形状的 stub 模型、沙箱/启动配方、会话证据读取器，以及多会话隔离分支。它**故意不是一个 case 行**（`skills/dsh-qa/SKILL.md` 原文如此）：它**没有 lane 模式**——不带 `--self-test` 调用时它什么都不做并以 0 退出——它唯一的离线证明是自身的 `--self-test`，即 `bun skills/dsh-qa/scripts/extension-isolation.ts --self-test`；该自检只校验 stub 协议、描述符契约、随包示例与启动配方，不启动任何会话。这也是它没有被列入 `package.json` 的 `test:qa:all` case 枚举的原因。
+两个 case 都引用同一个共享证据辅助模块 `skills/dsh-qa/scripts/extension-isolation.ts`：本地 OpenAI 形状的 stub 模型、沙箱/启动配方、会话证据读取器，以及多会话隔离分支。它**故意不是一个 case 行**（`skills/dsh-qa/SKILL.md` 原文如此）：它**没有 lane 模式**：不带 `--self-test` 调用时它什么都不做并以 0 退出；它唯一的离线证明是自身的 `--self-test`，即 `bun skills/dsh-qa/scripts/extension-isolation.ts --self-test`；该自检只校验 stub 协议、描述符契约、随包示例与启动配方，不启动任何会话。这也是它没有被列入 `package.json` 的 `test:qa:all` case 枚举的原因。
 
 两个 npm 脚本，两条通道（t8）：`bun run test:qa` 运行**每个** case 的离线 `--self-test`；
 `bun run test:qa:all` 运行“重量/联机子集”的**真实通道**，其成员在 `package.json` 中按名字逐一列举
@@ -129,13 +129,13 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 
 **在沙箱内运行实时 lane。** 两个环境事实决定了 lane 到底有没有真的测到东西。(1) `BUN_TMPDIR` 必须指向工作区
 内部（`BUN_TMPDIR="$PWD/.bun-tmp"`）：当 `$BUN_INSTALL`（`~/.bun`）不在沙箱可写集合内时，任何会 spawn `bun`
-的 lane 都会立刻以 `EROFS accessing temporary directory` 死掉，case 在几毫秒内报 FAIL —— 这正是"根本没跑到断言"
+的 lane 都会立刻以 `EROFS accessing temporary directory` 死掉，case 在几毫秒内报 FAIL，这正是"根本没跑到断言"
 的样子。(2) 把某个脚本或插件 `src/` **复制**进临时树的 case，必须同时把该副本会 import 的共享模块（`scripts/lib/`，
 或同级的 `packages/mpd-dsh-adapter-plugin/src/`）一起 stage，否则该分支会以 `ERR_MODULE_NOT_FOUND` 变红，而原因
 与它要测的东西无关。
 
 **TUI lane 与 TUI 打包路径。** 上面六个 DSH-TUI case 照例带离线 `--self-test`，但它们的**实时**分支需要
-真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动，所以它们在 tmux 中驱动界面并抓取 pane —— 这也是它们不在
+真实终端：stdout 不是 TTY 时 `dsh-tui` 拒绝启动，所以它们在 tmux 中驱动界面并抓取 pane，这也是它们不在
 `bun run test:qa` 的 self-test 扫描范围之内的原因（`docs/tui.zh-CN.md` §2）。打包步骤同样覆盖 TUI 形态：
 `node scripts/pack-mpd.ts` 会把 `packages/mpd-tui-plugin/{dist/**, README.md, README.zh-CN.md,
 themes/mpd-tui.json, skills/mpd-tui/SKILL.md}` 写进 `dist/mpd-package/`，并把打包后 patch 里的 `mpd-tui`
@@ -144,16 +144,16 @@ themes/mpd-tui.json, skills/mpd-tui/SKILL.md}` 写进 `dist/mpd-package/`，并�
 
 **TUI 版本的 NOT-CLAIMED 纪律。** 本环境既没有 TTY 也没有浏览器，因此渲染相关的验收标准一律记为
 **not-claimed**，绝不写成 "passed"：清单在 `docs/tui.zh-CN.md` §10，而每个 lane 会记录它无法驱动的
-限制（击键分支、浏览器渲染），而不是用代理指标顶替。格式或解析器校验通过不等于安全或行为结论 ——
+限制（击键分支、浏览器渲染），而不是用代理指标顶替。格式或解析器校验通过不等于安全或行为结论：
 兼容性、验证级别与限制必须分开陈述。
 
 **QA 硬规则**（AGENTS.md §7）：沙箱 `DSH_HOME=<mktemp>`；只复制一次凭据；断言沙箱
 路径；绝不碰真实 `~/.dsh`；workmate 类 case 额外沙箱化 `HOME`（`~/.mpd/workmate`
 是用户批准的 HOME 例外）。
 
-**live 模型步骤需要已配置的 provider 路由** —— QA 用机器的 DSH 凭据启动。本机就是
+**live 模型步骤需要已配置的 provider 路由**： QA 用机器的 DSH 凭据启动。本机就是
 在 case 命令里 export `DEEPSEEK_API_KEY`（运行的 DSH host 从 `~/.bashrc` 继承；
-shell 子进程没有 —— 在 case 命令里显式导出）。
+shell 子进程没有：在 case 命令里显式导出）。
 
 **Web case**：当无法访问 pnpm store 时用手工拷贝流程（把 `dist/mpd-package/` 复制到
 沙箱 profile 的 `node_modules/@mpd-dsh/mpd`）；打包的 `dsh plugin add` 流程是主方式。
@@ -174,31 +174,31 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 
 ## 6. 发布流程
 
-1. 先把本次发布的改动落到 `dev` —— `feature/<slug>` / `fix/<slug>` 分支，每个分支连同证据一起提交。
+1. 先把本次发布的改动落到 `dev`： `feature/<slug>` / `fix/<slug>` 分支，每个分支连同证据一起提交。
    `master` 只接受发布合并。
 2. 从 `dev` 切出 `release/vX.Y.Z`；更新 `package.json` 中的版本（以及本套文档中出现的任何版本引用），
    并写下 changelog 条目。
 3. 跑完整门禁扫描，全部为绿且证据在盘：`node scripts/verify-vendor.ts`、`bun run typecheck`、
    `bun test packages`、`bun run test:qa`（每个 case 的离线 `--self-test`）、真实通道子集
-   `bun run test:qa:all`，以及启动检查（§5：`preset-conformance` 加挂载证明 —— 绝不能只看
+   `bun run test:qa:all`，以及启动检查（§5：`preset-conformance` 加挂载证明，绝不能只看
    `--dump-config`）。
 4. **`VENDOR_LOCK.json` 配对规则**：`skills/**` 的改动会使语料 `treeSha` 失效，而重新钉住必须与
-   该改动落在**同一个提交**里。`skills/**` 每一波只有一个写入者，因此一波只有一次重新钉住 —— 请
+   该改动落在**同一个提交**里。`skills/**` 每一波只有一个写入者，因此一波只有一次重新钉住：请
    核对它确实存在，且没有任何 `skills/**` 改动是在缺少它的情况下提交的。
 5. 打包：`npm run pack`（`node scripts/pack-mpd.ts`）组装可迁移的 `dist/mpd-package/`。请核对打包
    产物确实包含每个插件的 dist、`extensions/` 资产、脚手架 `templates/`、`docs/` 文档配对
-   （`node scripts/verify-docs-parity.ts --root dist/mpd-package`）以及 `scripts/mpd-ext.ts`（漏掉一个
+（`node scripts/verify-docs-parity.ts --root dist/mpd-package`）以及 `scripts/mpd-ext.ts`（漏掉一个
    `PLUGIN_PKGS` 条目会以退出码 0 静默通过，却在启动时崩掉）。自 2026-09-17 的打包变更起，这些不再靠
    肉眼看：`node scripts/verify-pack-closure.ts` 会断言打包器的根资产表，并在产物存在时断言每个已声明
    资产确实到达、`docs/`+`templates/`+`agent-references/` 与源目录逐文件一致、两个具名参考文件
-   （`index.md`、`troubleshooting.md`）都在、打包 manifest 的 `files`/`exports`
+（`index.md`、`troubleshooting.md`）都在、打包 manifest 的 `files`/`exports`
    与磁盘内容相符、以及 CLI 的已编译校验器入口存在。
 6. 以 `--no-ff` 合并进 `master`，提交信息为 `release: vX.Y.Z …`，打附注标签
-   （`git tag -a vX.Y.Z`），并推送 `master` + 标签（以及 `dev`）。
-7. 发布 —— 推送标签之后由**人**执行的一步：`.github/workflows/publish.yml` 会把本次发布在 npm 上
+（`git tag -a vX.Y.Z`），并推送 `master` + 标签（以及 `dev`）。
+7. 发布：推送标签之后由**人**执行的一步：`.github/workflows/publish.yml` 会把本次发布在 npm 上
    STAGE（`npm pack` 后执行 `npm stage publish --access public --tag latest`），此时一切尚未公开；
    `npm stage approve <stage-id>` 才真正发布并移动 `latest`。stage id 来自该次运行自己的
-   `npm stage list` 输出，批准则是对该工作流的**第二次** `workflow_dispatch` 并携带 `stage_id` ——
+   `npm stage list` 输出，批准则是对该工作流的**第二次** `workflow_dispatch` 并携带 `stage_id`：
    运行的 OIDC token 能 stage 却不能 approve（2FA 存在性证明）。请按版本升序批准，然后在宣布之前
    确认 registry 确实在提供该版本。
 
@@ -211,12 +211,12 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 ## 8. Vendor 与基线
 
 - `scripts/repin-vendor.ts` 重新推导 `VENDOR_LOCK.json` 所载的资产指纹：`--check` 只断言，
-  `--write` 写入，而没有 `--i-know-this-is-the-captains-step` 时会拒绝写本仓库自己的锁文件 ——
+  `--write` 写入，而没有 `--i-know-this-is-the-captains-step` 时会拒绝写本仓库自己的锁文件：
   因为每一波的那一次 re-pin 是 captain 在提交时执行的步骤（AGENTS.md §9/§11）。MCP 服务器的源码**不再**
   以快照形式存在本仓库：`vendor/mcp-src/**` 树及其 `node scripts/build-mcp.ts` 构建步骤已随 de-omo 波次
   B2 删除，服务器是声明式的 npm 包，由启动器在启动时解析（`packages/mpd-mcp-shared/dependency-entry.ts`）。
 - `VENDOR_LOCK.json` 钉住上游 commit/version + 资产指纹；`verify-vendor.ts` 不匹配即
-  阻塞。从不追上游 —— 基线变更需要专门分支 + 证据。
+  阻塞。从不追上游：基线变更需要专门分支 + 证据。
 
 ## 9. 常见坑（来自真实事故）
 

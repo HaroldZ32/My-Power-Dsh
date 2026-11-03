@@ -5,7 +5,7 @@
 This page is the written form of acceptance criterion **A1.3** (`docs/plan-0.1.7-adaptation.md`,
 wave `mpd-seam-convergence`): the parts of this bundle are **independent packages**, and the
 couplings that remain between them are **counted**, not assumed away. It states what is measured,
-by what instrument, and — in the last section — what it deliberately does **not** claim.
+by what instrument, and (in the last section) what it deliberately does **not** claim.
 
 The contract has five clauses, and each one has an executable witness:
 
@@ -32,15 +32,15 @@ elsewhere: `mpd-codegraph-plugin` is mounted by its own row through the bundle's
 `dist/launch.js` built from its own `src/launch.ts` and named by the `mcp-codegraph` row, and
 `mpd-mcp-shared` is a shared source module tree the launchers import by relative path
 (`../../mpd-mcp-shared/…`), inlined into each consumer's `dist/` at build time. **No package in this
-tree declares another package of this tree as a dependency** — not in `dependencies`, not in
+tree declares another package of this tree as a dependency**, not in `dependencies`, not in
 `devDependencies`, not in `peerDependencies`, not in `optionalDependencies`. Measured 2026-10-25:
 zero `@mpd-dsh/*` specifiers across all 31 manifests. Every cross-package edge in this repository is a
 **source-level relative import**, which is what the next two sections are about.
 
 ### 1.2 One package, one row
 
-A package becomes a capability by being named as a row in one of the two shipped patch layers —
-`cordis.patch.yml` (the host plane) or `presets/mpd.patch.yml` (the preset plane) — and never by
+A package becomes a capability by being named as a row in one of the two shipped patch layers:
+`cordis.patch.yml` (the host plane) or `presets/mpd.patch.yml` (the preset plane), and never by
 editing the harness, by writing a home directory by hand, or by pushing a row into another layer
 (AGENTS.md §8). Measured 2026-10-25: **24 distinct `packages/*/dist/*.js` row targets** in
 `cordis.patch.yml` (counted by `name:` value:
@@ -57,22 +57,22 @@ global. The gate therefore owns a `global-write` rule, and the measurement is:
 
 * **`packages/*/src` contains ZERO writes to a process global.** Measured 2026-10-02: the only
   `globalThis` occurrences in the whole band are three lines in `mpd-hashline-plugin`'s vendored
-  xxhash — two documentation sentences and one **read** (`const runtime = globalThis as typeof
+  xxhash: two documentation sentences and one **read** (`const runtime = globalThis as typeof
   globalThis & { Bun?: BunHashRuntime }`), the plugin's runtime probe for the native fast path.
 * **The only globals the bundle writes at all live in shipped patch expressions**, i.e. in
   `cordis.patch.yml` guards that the loader evaluates, not in any package's module body: **two
-  warn-once registries, in three expressions** — `globalThis.__mpdSidebarGuardSeen` (the
+  warn-once registries, in three expressions**: `globalThis.__mpdSidebarGuardSeen` (the
   `mpd-better-sidebar` mount guard) and `globalThis.__mpdTuiPlaneGuard` (the two TUI-plane team
   guards). Each is the guard's own "have I already said this?" flag, keyed on its own message. It is
   process-wide **state about a warning**, never a channel between packages: nothing reads those keys
   to obtain another package's objects. One test seeds `__mpdSidebarGuardSeen`
   (`packages/mpd-bundle-plugin/test/sidebar-guard-profile-dir.test.ts`); no other consumer exists.
 
-The second forbidden shape is a row **providing** a service id the harness owns — the mechanism by
+The second forbidden shape is a row **providing** a service id the harness owns: the mechanism by
 which a bundle would replace a host component rather than add to it. The gate's
 `harness-service-provide` rule reads `ctx.provide("<name>", …)` against the harness seam-name
-vocabulary, and the measurement is: **the band provides only MPD-owned services** —
-`mpdDsh`, `mpdRoles`, `mpdConfig`, `mpdExtensions`, `mpdWorkmate` — and **zero harness seam ids**.
+vocabulary, and the measurement is: **the band provides only MPD-owned services**:
+`mpdDsh`, `mpdRoles`, `mpdConfig`, `mpdExtensions`, `mpdWorkmate`, and **zero harness seam ids**.
 
 ## 3. Cross-package imports are source-level, and the build inlines them
 
@@ -87,7 +87,7 @@ That has three consequences, and all three are checkable:
    does for a source-level import). Measured: the adapter's module body is present in **18
    distinct `dist/index.js` artifacts**; `function dshSeamInject` and the adapter's helpers appear
    verbatim inside e.g. `packages/mpd-autoproject-plugin/dist/index.js`. Two rows that both "import the
-   adapter" do not share an object graph — they each own a copy.
+   adapter" do not share an object graph: they each own a copy.
 2. **An adapter edit changes the artifacts of the rows that consume it**, and only theirs: `bun
    build` tree-shakes an export a consumer never references. Measured while single-sourcing the
    seam names: after exporting new constants from the adapter, a rebuild of a **non-consuming**
@@ -99,9 +99,9 @@ That has three consequences, and all three are checkable:
    artifact changes for a reason unrelated to content. Measured 2026-10-02, six artefacts reported
    `STALE` and NONE of them was caused by a content change from this wave's adapter edit: four
    (`mpd-bundle-plugin`, `mpd-codegraph-plugin`, `mpd-qa-roles-probe`, `mpd-team-watchdog-plugin`)
-   carried only bun's own codegen signature — the recorded toolchain is **bun@1.4.0** and this
+   carried only bun's own codegen signature: the recorded toolchain is **bun@1.4.0** and this
    checkout runs **bun 1.4.2**, which renames colliding bindings differently (`config2` → `config`)
-   and emits a different module-helper preamble — while the other two (`mpd-tui-plugin`,
+   and emits a different module-helper preamble, while the other two (`mpd-tui-plugin`,
    `mpd-team-core-plugin`) are rows other lanes are editing in place. That is exactly why the gate
    prints the toolchain it used.
 
@@ -114,7 +114,7 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
    surface with the harness (AGENTS.md §6); a package that starts importing an adapter is being made
    *more* independent, so adapter-targeted imports are **exempt from the frozen inventory and
    allowed to grow**. The exemption is an allowlist of package NAMES, never a `*-adapter-plugin`
-   suffix rule — a suffix rule would let any package rename itself into the exemption. Measured
+   suffix rule: a suffix rule would let any package rename itself into the exemption. Measured
    2026-10-02: **47 such imports.**
 2. **A row imports the adapter's seam-name vocabulary.** The cordis `inject` arrays no longer spell
    harness service ids as free literals. `DSH_SEAM_TOOLS`, `DSH_SEAM_SUBAGENTS`, `DSH_SEAM_SKILLS`,
@@ -134,7 +134,7 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
    each case ONE declaration is the contract; a second copy is how two spellings drift apart.
 4. **Type-only imports across packages.** A `import type { TeamRecord } from
    "../../mpd-team-core-plugin/src/team-store.js"` is **erased by the build** and creates no runtime
-   edge — but it is still a source-level dependency on a sibling's internal module path, so it is
+   edge, but it is still a source-level dependency on a sibling's internal module path, so it is
    frozen like any other.
 
 ## 5. The pinned debt: the retired body's vendored `schemastery` — CLOSED
@@ -142,13 +142,13 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
 **STATUS: CLOSED by the `de-vendor-and-verify-law` wave (2026-10-07).** The closure measurement is the
 one the follow-up named, taken on the same commit as the deletion:
 
-* the adopted body `packages/mpd-agent-teams-plugin/**` is **DELETED** — the measured count is
+* the adopted body `packages/mpd-agent-teams-plugin/**` is **DELETED**: the measured count is
   **768 files**, `_deps/` included, and `git ls-files` reported the same 768 before removal;
 * the vendored tree moved to a first-class mpd-owned home: `packages/mpd-schemastery/lib/` carries the
   validator (`index.ts`), its dependency (`cosmokit.ts`) and the declaration set
   (`types/index.d.ts`), with the MIT notices reproduced in `packages/mpd-schemastery/LICENSE`;
 * the **four live importers** named below are re-pointed IN THE SAME COMMIT, from
-  `../../mpd-agent-teams-plugin/_deps/schemastery` to `../../mpd-schemastery` — verified with
+  `../../mpd-agent-teams-plugin/_deps/schemastery` to `../../mpd-schemastery`: verified with
   `grep -rn "mpd-agent-teams-plugin" packages/*/src` returning no import, only historical comments;
 * the gate's frozen set still holds exactly those four edges (they were re-pointed, not dropped), so
   the follow-up cannot grow a fifth: see
@@ -158,7 +158,7 @@ One measured widening, recorded because the contract did not name it: the same d
 the four TEST files that imported `_deps/cordis`, `_deps/dsh-llm` and `_deps/dsh-tools` for a REAL
 dispatcher or a REAL harness validator, so their eight-file transitive closure (schemastery, cosmokit
 and six `@deepseek-ai/dsh-*` modules) was relocated into the same home under `harness/`. The closure is
-self-contained — no network, no new npm dependency — and the reasoning for refusing a `cordis`-family
+self-contained (no network, no new npm dependency) and the reasoning for refusing a `cordis`-family
 `devDependencies` route is in `packages/mpd-schemastery/README.md`.
 
 ### The pinned debt as it stood (historical record, superseded by the closure above)
@@ -167,7 +167,7 @@ The bundle had adopted one third-party plugin outright (the `agent-teams` body),
 **RETIRED from the composition** but still present at `packages/mpd-agent-teams-plugin`. Its tree
 carried a vendored dependency, and live packages imported **that copy**:
 
-* the tree: `packages/mpd-agent-teams-plugin/_deps/schemastery` — **6 files, 65,846 bytes of
+* the tree: `packages/mpd-agent-teams-plugin/_deps/schemastery`: **6 files, 65,846 bytes of
   content** (92 KB as `du` reports it), including `lib/index.ts`, `lib/index.cts`, the declaration
   map and `LICENSE`;
 * **four live files** imported it: `mpd-config-plugin/src/index.ts`,
@@ -178,8 +178,8 @@ carried a vendored dependency, and live packages imported **that copy**:
 
 That was **PINNED DEBT, not an oversight**: moving the tree out of the retired body would have
 duplicated a third-party library while the body still needed it, so the debt was recorded with a
-**named follow-up** — when the body is deleted, its `_deps/schemastery` tree moves to a first-class
-home and the four importers are re-pointed in the same commit — and the gate froze the four importers
+**named follow-up**, when the body is deleted, its `_deps/schemastery` tree moves to a first-class
+home and the four importers are re-pointed in the same commit, and the gate froze the four importers
 so the follow-up could not grow a fifth.
 
 ## 6. The counted inventory: identity-keyed, frozen, and it can only shrink
@@ -191,13 +191,13 @@ three classes: cross-package imports, global writes, harness-service provides.
 * **Identity, never position.** An entry is `file :: normalized line text`. A line number would rot
   with the next edit above it (T-55), so it is not part of the key.
 * **Frozen means it can only shrink.** A coupling with no entry fails as **NEW**; an entry that
-  matches nothing fails as **STALE**. Deleting an entry is therefore how a coupling is retired —
-  deliberately, in the commit that retired it — and the set can never drift into a fiction.
+  matches nothing fails as **STALE**. Deleting an entry is therefore how a coupling is retired,
+  deliberately, in the commit that retired it, and the set can never drift into a fiction.
 * **The frozen set is 14 entries**, plus 47 exempt adapter imports, measured 2026-10-02.
 * **Both directions are proven.** `--self-test` seeds a fixture tree with every shape the rules must
   accept or reject (14 arms), and the real band is scanned with the real inventory: red on a seeded
   violation, green on the tree as it stands.
-* **The blind spots are declared, never silent** — the discipline
+* **The blind spots are declared, never silent**: the discipline
   `packages/mpd-dsh-adapter-plugin/test/no-direct-team-access.test.ts` established: non-`.ts` files
   under a scanned `src/` are printed as NOT COVERED; a `ctx.provide(...)` whose first argument is a
   constant is printed as NOT STATICALLY READABLE; and the retired body's `lib/` tree is printed as

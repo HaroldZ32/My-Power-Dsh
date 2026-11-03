@@ -1,0 +1,20 @@
+{
+  "name": "@mpd-dsh/mpd",
+  "version": "0.17.0",
+  "title": {
+    "zh": "MPD 工作台",
+    "en": "MPD Workbench"
+  },
+  "summary": {
+    "zh": "把专家名册、团队看板、Workmates、记忆与校验带进 DSH，并在 dsh-Go 里以原生面板呈现",
+    "en": "The specialist roster, team board, workmates, memory and verification for DSH, with a native dsh-Go interface"
+  },
+  "category": "tools",
+  "screenshots": [
+    "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-workbench-light.png",
+    "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-team-light.png",
+    "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-workbench-dark.png",
+    "https://raw.githubusercontent.com/HaroldZ32/My-Power-Dsh/7296ef8898a44f2f79991a86786f6148244b6e5d/docs/assets/market/panel-team-dark.png"
+  ],
+  "homepage": "https://github.com/HaroldZ32/My-Power-Dsh"
+}

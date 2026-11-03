@@ -1,0 +1,46 @@
+{
+  "$schema": "https://dsh.community/schemas/dsh-plugin-0.15.json",
+  "manifestVersion": "0.15",
+  "id": "com.mpd-dsh.mpd-tui",
+  "name": "@mpd-dsh/mpd-tui",
+  "version": "0.1.0",
+  "facets": {
+    "host": {
+      "entry": "dist/index.js",
+      "apiVersion": "v1alpha1"
+    }
+  },
+  "requires": {
+    "contracts": [
+      {
+        "apiVersion": "tui.dsh/v1alpha1",
+        "kind": "DecisionEvents",
+        "optional": true,
+        "fallback": "Decision interception is skipped and nothing else degrades: the status line, transcript renderers, /settings section, full-screen board, command tree, shortcuts, dialogs and the three sidebar panels keep working. No input, rewind, session-switch or compact decision is intercepted or claimed; no intercept permission is requested, so the seam is inactive by design."
+      }
+    ]
+  },
+  "permissions": [],
+  "contributes": {
+    "commands": []
+  },
+  "subscriptions": [],
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/HaroldZ32/My-Power-Dsh"
+  },
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.18.0"
+    ]
+  },
+  "x-mpd-tui-package": {
+    "note": "TUI-PKG-001 manifest for THIS package (@mpd-dsh/mpd-tui, version from its own package.json). It shares the bundle-level declaration's identity (id com.mpd-dsh.mpd-tui, MIT, the same single optional DecisionEvents requirement and the same empty permission list), because both files describe one plugin for two packaging shapes: the root file is what a profile install of @mpd-dsh/mpd reads, this file is what the package itself answers. A unit test asserts they never diverge on id, licence, facet apiVersion, permissions and requires.contracts.",
+    "deviations": {
+      "entry": "facets.host.entry is dist/index.js (a bun-built ESM bundle), not the template's lib/types/index.js tsc output: this package is built by bun build and ships no .d.ts tree, so the template's two-directory shape (main + types under lib/types) is replaced by dist/index.js plus a `types` field pointing at src/index.ts.",
+      "peerDependencies": "No peerDependencies.@deepseek-ai/cordis, unlike the ecosystem template: this package is private, lives inside the bundle's workspace, is never installed standalone, and the harness supplies cordis to every row it loads (AGENTS.md forbids a second cordis by name). Declaring a peer whose package is not in this workspace's lock would break a frozen-lockfile install for no gain.",
+      "files": "The package's `files` allowlist carries dsh-plugin.json so a packed tarball of this package would satisfy TUI-PKG-001."
+    },
+    "runtimeBoundSurfaces": "The surfaces listed in the root manifest's x-mpd-tui-surfaces.runtimeBoundSurfaces (status, renderers, settings section, scenes, command trees, shortcuts, dialogs, three sidebar panels and the optional DecisionEvents seam) bind at runtime through the host's service seams, not through this manifest's contributes block; contributes.commands stays [] because the /mpd command registers on the harness commands service, not through the TUI Command capability (docs/tui.md §6.4)."
+  }
+}
