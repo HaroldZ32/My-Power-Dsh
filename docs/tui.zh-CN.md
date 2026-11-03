@@ -506,15 +506,19 @@ workmate 页（`WORKMATE_PANEL_REFRESH_MS`）、board/team 场景与 subagents �
 
 ### 4.1 `dsh-plugin.json`（宿主自身的准入路径）
 
-唯一的 bundle 级清单：`manifestVersion` 为 `0.15`，id 为 `com.mpd-dsh.mpd-tui`，只有一个 host
-facet，入口为 `packages/mpd-tui-plugin/dist/index.js`，**没有** `provides`、**没有**
-`requires.services`，没有 client/worker facet；四个默认拒绝的决策事件权限；
-`tui.dsh/v1alpha1#DecisionEvents` **仅**作为可选要求声明，并附有书面降级说明。在宿主自身的解析、
-投影与协商路径上实测：准入状态为 `waiting_authorization`，原因为四个拦截权限的
-`PERMISSION_NOT_GRANTED`——这是该协议五种准入状态之一，不是解析错误。在真实 TUI 内执行
-`/plugins check <dsh-plugin.json 绝对路径>` 得到相同结果并打印出我们的 id。
-**证据级别：** `Parsed` + `Negotiated`（宿主模块，加一次真实 `/plugins check`），并记录了对照
-实验（去掉四个权限的清单协商为 `compatible`；损坏的清单报 JSON 解析错误）。
+两份清单描述**同一个身份**：bundle 级 `dsh-plugin.json`（profile 安装读到的那份：id 为
+`com.mpd-dsh.mpd-tui`，只有一个 host facet，入口为 `packages/mpd-tui-plugin/dist/index.js`，**没有**
+`provides`、**没有** `requires.services`，没有 client/worker facet，**不声明任何权限**，
+`contributes.commands: []`），以及 TUI 包自己的 `packages/mpd-tui-plugin/dsh-plugin.json`（TUI-PKG-001：
+同一 id 与许可证、自己的版本号、入口 `dist/index.js`）。两份都以 `manifestVersion` `0.15` 把
+`tui.dsh/v1alpha1#DecisionEvents` **仅**作为可选要求声明，并附**同一份**书面降级说明。
+在 dsh-tui **0.18.0** 上、用宿主**自己的**准入库实测（`loadSpecData` -> `createContractIndex` ->
+legacy Host Descriptor -> `negotiate(manifest, host, [])`）：两份清单都返回 `compatible`
+（`validatePlugin` 为 `ok`）。此前的"完整清单"形态（四条默认拒绝的 `session.*.intercept` 权限）实测为
+`waiting_authorization` / `PERMISSION_NOT_GRANTED`，而 `admitInternal` 不接受该状态；最小声明面改动删掉了
+这些**未被使用**的声明，同一次实测现在返回 `compatible`。**证据级别：** `Parsed` + `Negotiated`
+（宿主模块；`evidence/dshgo/tui-admission/`）。仍未覆盖：**实机**路径——本轮没有重测真实 TTY 的
+`/plugins check`，也没有重测效果台账归属。
 
 准入状态是五态投影：`compatible / compatible_degraded / waiting_authorization / rejected / unknown`。
 
@@ -720,9 +724,9 @@ Command 能力注册任何 host Command"。由清单中介的 Command **贡献**
 `commands` 服务留在该投影之外、不声明任何贡献，因此 `contributes.commands: []` 是**真话，而不是遗漏**。
 
 其后果是被测量并披露的，而不是被掩盖：宿主的效果台账把这次注册记为 `undeclared`，因为受中介
-（`tuiPluginHost.registerCommand`）的路径需要一个已准入的组件身份，而准入按设计处于
-`waiting_authorization`——这是 t10 的 F4 披露，见 `evidence/tui/review/t12/REVIEW.md:62` 与
-`result.json:115`。`/mpd` 本身可用：实机通道渲染了该命令及其命令树，属于七个界面中已渲染的六个（第七个
+（`tuiPluginHost.registerCommand`）的路径需要一个已准入的组件身份。清单现在协商为 `compatible`
+（§4.1），所以声明本身不再阻碍该身份；宿主**实机**是否绑定它（即台账是否把该行记为归属而不是
+`undeclared`）本轮**没有重测**，因为无头运行无法观察。t10 的 F4 披露因此收窄为这一条实机边界。`/mpd` 本身可用：实机通道渲染了该命令及其命令树，属于七个界面中已渲染的六个（第七个
 由明确不声明第 10 条覆盖）。另一种读法——在清单里声明该命令——需要已授予的 `commands.invoke` 权限，以及
 profile 安装的插件无法到达的准入路径（§6.1），因此不是本版本选择的读法。生态最终采用哪种读法，由交付报告
 说明。
@@ -770,7 +774,7 @@ harness 上，entry-config 保存**不会执行任何 `<workspace>/.mpd/mpd.json
 | 偏离项 | 取值 | 为什么是刻意的 |
 |---|---|---|
 | 包名 | `@mpd-dsh/mpd-tui` | 保持本 bundle 的命名空间；生态使用自己的命名。 |
-| 清单 | **唯一**一份 bundle 级 `dsh-plugin.json`，而非 25 份逐包清单 | 本 bundle 作为一个整体安装；清单的 host facet 指向唯一的 TUI 插件模块。 |
+| 清单 | 同一身份的**两份**声明：profile 安装读到的 bundle 级 `dsh-plugin.json`，加上 TUI 包自己的 `packages/mpd-tui-plugin/dsh-plugin.json`（TUI-PKG-001）；绝不是 25 份。 | bundle 仍作为一个整体安装；包级文件让实现包本身满足生态的"每包一份"规则，并由单元测试锁住两者在 id、许可证、入口版本、权限与依赖要求上不漂移。 |
 | 宿主输入总线 | 接缝之外**唯一**被计数的接触面，且自 0.13.0 起是一个**版本门控**的接触面：适配器解析**已安装**宿主的根目录，按**文件 URL** 动态 import `<hostRoot>/lib/types/ui.js`，取得宿主自己的 `useStdin`。**门控覆盖的是「是否拦截」，不是那次加载**：探测在每种组合下都会进行（0.13.0 通道自己的适配器日志里就有 `host contact bound: … (lib/types/ui.js)` 这一行），被版本分流的只是 `Ctrl+A` 的处理方式 | `Ctrl+A` 是宿主的内建动作，任何贡献类型都够不到它，所以在 0.13.0 之前的宿主上，另一条路只能是放弃这条需求。**门控规则：** 在**提供**面板接缝的宿主（0.13.0+）上该接触面保持**惰性**——`Ctrl+A` 保留宿主自己的 dashboard 语义，合并视图改经 `alt+a` / `/mpd panel` 打开（§3.3），这一点由 0.13.0 真机 PTY 通道实测（`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`：宿主自己的 dashboard 被打开，且 `/mpd panel` 证明了侧栏注册 + 被接受的打开）；在**没有**该接缝的宿主（0.12.0）上旧行为不变——当 `tui.dashboardKey` 打开且工作区团队投影含有至少一项任务时接触面就绪。因此 `tui.dashboardKey` 仍留在配置 schema 与 `/settings` 行里，但文档写明它**只在旧宿主**上有意义。逐次按键的规则只存在于一个函数里——`packages/mpd-tui-plugin/src/panel.ts` 的 `takeoverArmed`（**接缝优先**于任何配置层；只有没有接缝时才由已保存值、否则由行配置的下限决定），而适配器的 `panelSeamBound()` 是**每次按键**读取的，不只是应用期读一次。**历史（在 0.12.0 上实测，按记录原样保留）：** 那份 import 得到的是**另一份**模块实例，其 `useStdin()` 什么也不返回，因此适配器还会保存**场景渲染**收到的那份活 kit 并优先使用它——这正是接管会在"本次会话渲染过任一 MPD 面板或场景"之后就绪、在那之前保持惰性的原因。适配器内部还遵守另外两条宿主规则：状态类注册的 identity 必须是**正在调用它的激活**（注入 scope），并且不写入任何 DSH-TUI 文件。**边界：** 本波次没有取得 0.12.0 的 PTY 证据（§11.3），因此旧宿主的就绪路径靠单元测试而非 pane 抓取支撑。 |
 
 ## 8. 逐包兼容性台账
@@ -922,7 +926,7 @@ harness 针对 `mpd` 会话 agent 的 `commands` 注册表清单 **加上** TUI 
 | 结论组 | 本页主张的级别 | 状态与证据 |
 |---|---|---|
 | 安装 / 三层结构 / 36 行 / 0 崩溃特征 / mpd 预设**可用**（非默认） | Observed | 三层结构与 0 崩溃特征两半仍以 t5 `evidence/tui/composition/20260915T053445Z/` 的实测为准，并由 t8（`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`）与 t9（`…/conformance/20260915T064521Z/09-mount-boot.log`、`10-mount-boot-clean-root.log`）重跑；行数与预设默认值两条已被 §2 取代 —— 36 行（`cordis.patch.yml` 35 + `presets/mpd.patch.yml` 1），且部署默认仍归宿主 |
-| 清单被解析、投影、协商（`waiting_authorization`）、真实 `/plugins check` | Parsed + Negotiated | 有证据——t9 `…/conformance/20260915T064521Z/01-admission-static.log`（清单 `84ed4a5d…`、入口 `5dce2563…`）与 `02-admission-live.log` |
+| 清单被解析、投影、协商（`compatible`，用宿主自己的准入库实测）、包级清单漂移守卫 | Parsed + Negotiated | 有证据——`evidence/dshgo/tui-admission/`（探针与 `result.json`）；此前的 `waiting_authorization` 实测与真实 `/plugins check` 属历史（§4.1） |
 | 逐包台账 | Observed（逐包） | 有证据——`ledger.json`（t5）；其结构由 t8 复核 |
 | 插件契约形态（无默认导出、清理、软探测） | Tested（单元） | 有证据——`evidence/tui/plugin/20260915T054343Z/`（t4）；547 个包测试通过（t9） |
 | 七个受激活门控的界面在真实 TUI 中的表现 | Observed | **7 个中交付 6 个**——`evidence/tui/live/20260915T063140Z/result.json`（`"tuiRenderers": false` → 明确不声明第 10 条） |
@@ -1248,17 +1252,7 @@ id 报告成功），并且接缝声明了 `close(): void` 与 `active` 读取�
 逐字节相同。试运行与 `--apply` 的输出都**分别**报告两层，每层各留 `.bak-<stamp>` 备份并各自回读，脚本的
 `--self-test` 带上了新的设置层测试臂。
 
-**决策事件授权流，面向用户（C3'）。** 本页自 §6.1 起记载的"就绪但未激活"决策接缝，现在可以通过宿主自己的
-文档化授权流**激活**，`dsh-plugin.json` 里那四条 `session.*.intercept` 声明（`tui/input`、`tui/rewind-prompt`、
-`tui/session-switch`、`tui/compact`）正是它授权的对象。**如何授权**：在宿主自己的 `<DATA_DIR>/extension-grants.json`
-（位于 `~/.dsh-tui` 下）写一条以 `com.mpd-dsh.mpd-tui` 为键的行，按作用域点名这四条权限——与宿主 `/plugins`
-面板自己打印的提示完全一致——{"grants":{"com.mpd-dsh.mpd-tui":[{"name":"session.input.intercept","scope":"tui/input"},…]}}。
-**激活了什么**：准入从 `waiting_authorization` 翻为 `compatible`，组件身份绑定（效果台账归属 `com.mpd-dsh.mpd-tui`
-而不是 `undeclared`），四条决策订阅生效——输入、回退提示、会话切换与压缩拦截，即 §6.1 描述的那些面。**安全姿态**：
-该文件**默认拒绝**——旧式裸字符串规则永不授权，损坏的文件按**空表**读（损坏 ≠ 不存在）；宿主每次操作都重读并轮询
-（准入每 200 ms 重试一次、约 20 s 窗口，因此开机时或窗口内出现的授权无需重启即生效；已结算的拒绝需要重新加载）；
-撤销该行则拦截再次停用。没有授权时一切照旧：`dsh-plugin.json` DecisionEvents 依赖里写好的回退仍然成立，本 bundle
-照常可用。
+**决策事件授权流已不再需要（TUI-admission 轮）。** 本页此前把宿主的 `<DATA_DIR>/extension-grants.json` 流程记载为激活该接缝的方式；最小声明面裁决删掉了四条 `session.*.intercept` 声明，因此已无对象可授权，授权行也不会激活任何东西。接缝按设计保持未激活（§6.1），`dsh-plugin.json` 的 DecisionEvents 依赖里写好的回退仍然成立，bundle 照常可用。若将来确实需要拦截，只重新声明那一个拦截点所需的**一条**权限并写清理由，并接受准入回到 `waiting_authorization`，直到授权行存在。
 
 **有零任务的活动团队按"团队"渲染，而不是"没有团队"（C6，用户上报的缺陷）。** `dagPageOf` 过去在看板为空时
 丢掉已解析团队的身份，于是一个六人在线团队只画出一行暗色的"本工作区没有团队"。现在只要记录的 `team` 头解析了，

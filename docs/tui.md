@@ -632,17 +632,21 @@ width, and the page's title is drawn **once** (the title row, which also carries
 
 ### 4.1 `dsh-plugin.json` (the host's own admission path)
 
-One bundle-level manifest: `manifestVersion` `0.15`, id `com.mpd-dsh.mpd-tui`, a single host facet
-whose entry is `packages/mpd-tui-plugin/dist/index.js`, **no** `provides`, **no**
-`requires.services`, no client/worker facet, four default-deny decision-event permissions, and
-`tui.dsh/v1alpha1#DecisionEvents` declared **only** as an optional requirement with a written
-fallback. Measured on the host's own parser + projection + negotiation: the admission state is
-`waiting_authorization` with `PERMISSION_NOT_GRANTED` for the four intercept permissions — one of
-the five documented admission states, not a parse error. The live TUI's own
-`/plugins check <abs path to dsh-plugin.json>` prints the same result and names our id.
-**Backed at:** `Parsed` + `Negotiated` (host modules, plus a live `/plugins check`), with the
-control experiments recorded (a manifest without the four permissions negotiates `compatible`;
-a broken one reports a JSON parse error).
+Two manifests describe ONE identity: the bundle-level `dsh-plugin.json` (what a profile install
+reads: id `com.mpd-dsh.mpd-tui`, one host facet whose entry is
+`packages/mpd-tui-plugin/dist/index.js`, **no** `provides`, **no** `requires.services`, no
+client/worker facet, **no permission at all**, `contributes.commands: []`), and the TUI package's
+own `packages/mpd-tui-plugin/dsh-plugin.json` (TUI-PKG-001: same id and licence, its own version
+and a `dist/index.js` entry). Both declare `tui.dsh/v1alpha1#DecisionEvents` **only** as an optional
+requirement with the same written fallback, under `manifestVersion` `0.15`.
+Measured on dsh-tui **0.18.0** with the host's OWN admission library (`loadSpecData` ->
+`createContractIndex` -> legacy Host Descriptor -> `negotiate(manifest, host, [])`): both files
+answer `compatible` (`validatePlugin` `ok`). The earlier complete-manifest shape (four default-deny
+`session.*.intercept` permissions) measured `waiting_authorization` with `PERMISSION_NOT_GRANTED`,
+which `admitInternal` does not admit; the minimal-surface change removed those unused declarations,
+and the same run now answers `compatible`. **Backed at:** `Parsed` + `Negotiated` (host modules;
+`evidence/dshgo/tui-admission/`). Still open: the LIVE path — no real-TTY `/plugins check` and no
+effect-ledger attribution were re-measured in this wave.
 
 Admission states are the five-state projection
 `compatible / compatible_degraded / waiting_authorization / rejected / unknown`.
@@ -729,7 +733,10 @@ revision `b246411` the public `admit()` throws, `admitInternal` is gated by a mo
 and the exported production accessor has zero callers — so identity is never granted and the
 registration is refused before any policy question. The plugin therefore attempts the mediated
 registration for its four intercept points, treats the refusal as the expected outcome, warns
-**once**, registers nothing, and never uses the test-only token or fakes an identity. **No
+**once**, registers nothing, and never uses the test-only token or fakes an identity. Since the
+TUI-admission wave the manifest requests **no** intercept permission either, so the seam is
+inactive by design rather than merely unreached: even a host able to grant identity would refuse
+the subscription, and nothing user-visible is lost because the handlers express no opinion. **No
 DECISION-EVENT input, rewind, session-switch or compact interception is claimed through this seam.**
 (One key IS taken over since 2026-10-05, and by a different mechanism entirely: the host's built-in
 `dashboard` action owns `Ctrl+A`, so `packages/mpd-tui-adapter-plugin` obtains the host's own
@@ -891,8 +898,10 @@ the harness `commands` service outside that projection and declares no contribut
 
 The consequence is measured and disclosed rather than hidden: the host's effect ledger attributes
 this registration as `undeclared`, because the mediated (`tuiPluginHost.registerCommand`) path needs
-an admitted Component and admission is `waiting_authorization` by design — this is t10's F4
-disclosure, re-examined in `evidence/tui/review/t12/REVIEW.md:62` and `result.json:115`. `/mpd`
+an admitted Component. The manifest now negotiates `compatible` (§4.1), so nothing in the
+declaration blocks that identity; whether the LIVE host binds it — and therefore whether the ledger
+attributes the row instead of `undeclared` — was NOT re-measured in this wave, because a headless
+run cannot show it. That live bound is the one t10's F4 disclosure now leaves open. `/mpd`
 itself works: the live lane rendered the command and its command tree among the six of seven
 surfaces (NOT-CLAIMED #10 covers the seventh). The alternative reading — declaring the command in
 the manifest — would require a granted `commands.invoke` permission and an admission path a
@@ -947,7 +956,7 @@ listed below. The deviations that remain are these.
 | Deviation | Value | Why it is deliberate |
 |---|---|---|
 | Package name | `@mpd-dsh/mpd-tui` | Keeps this bundle's namespace; the ecosystem uses its own naming. |
-| Manifests | **ONE** bundle-level `dsh-plugin.json`, never 25 per-package manifests | The bundle installs as one unit; the manifest's host facet points at the one TUI plugin module. |
+| Manifests | TWO declarations of ONE identity: the bundle-level `dsh-plugin.json` a profile install reads, plus the TUI package's own `packages/mpd-tui-plugin/dsh-plugin.json` (TUI-PKG-001); never 25. | The bundle installs as one unit, and the package file makes the implementing package itself answer the ecosystem's per-package rule; a unit test keeps the two from drifting on id, licence, entry version, permissions and requirements. |
 | Host input bus | ONE counted contact outside the seams, and since 0.13.0 a **VERSION-GATED** one: the adapter resolves the INSTALLED host root and dynamic-imports `<hostRoot>/lib/types/ui.js` **by file URL** to obtain the host's own `useStdin`. **What the gate covers is INTERCEPTION, not that load**: the probe still runs in every composition (the 0.13.0 lane's own adapter log carries the `host contact bound: … (lib/types/ui.js)` line), and what is version-gated is how `Ctrl+A` is handled | `Ctrl+A` is a host built-in action that no contribution kind can reach, so on a pre-0.13.0 host the alternative was dropping the requirement. **The gate:** on a host that OFFERS the panel seam (0.13.0+) the contact stays **INERT** — `Ctrl+A` keeps the host's own dashboard meaning and the merged view opens through `alt+a` / `/mpd panel` (§3.3), which the 0.13.0 real-PTY lane measured (`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`: the host's own dashboard opened, and `/mpd panel` proved the sidebar registration + accepted open); on a host WITHOUT the seam (0.12.0) the old behaviour is unchanged — the contact arms when `tui.dashboardKey` is on and the workspace's team projection holds a team with at least one task. `tui.dashboardKey` therefore stays in the config schema and the `/settings` row, documented as meaningful on OLD hosts only. The per-press rule lives in ONE function, `takeoverArmed` in `packages/mpd-tui-plugin/src/panel.ts` (the seam WINS over every config layer; only without the seam does the saved value, else the row config's floor, decide), and the adapter's `panelSeamBound()` is read PER PRESS, not only at apply time. **History (measured on 0.12.0, kept as the record it is):** that import is a FOREIGN instance whose `useStdin()` answers nothing, so the adapter also stores the live kit a SCENE render receives and prefers it — which is why the take-over arms after the session has rendered any MPD panel or scene, and stays inert before that. Two further host rules are obeyed inside the adapter: a status registration's identity must be the CALLING ACTIVATION (the injected scope), and no DSH-TUI file is written. **Bound:** no 0.12.0 PTY arm was obtained in this wave (§11.3), so the old-host arming path rests on unit arms rather than on a pane capture. |
 
 ## 8. Per-package compatibility ledger
@@ -1130,7 +1139,7 @@ citation of the delivered artifact.
 | Statement group | Level claimed here | Status / evidence |
 |---|---|---|
 | Install / triple layering / 36 rows / 0 crash signatures / mpd preset AVAILABLE (not the default) | Observed | the layering and crash-signature halves stand as measured at t5 `evidence/tui/composition/20260915T053445Z/`, re-run by t8 (`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`) and t9 (`…/conformance/20260915T064521Z/09-mount-boot.log`, `10-mount-boot-clean-root.log`); the row count and the preset claim are SUPERSEDED by §2 — 36 rows (35 `cordis.patch.yml` + 1 `presets/mpd.patch.yml`), and the deployment default stays the host's |
-| Manifest parsed, projected, negotiated (`waiting_authorization`), live `/plugins check` | Parsed + Negotiated | backed — t9 `…/conformance/20260915T064521Z/01-admission-static.log` (manifest `84ed4a5d…`, entry `5dce2563…`) and `02-admission-live.log` |
+| Manifest parsed, projected, negotiated (`compatible`, measured with the host's own admission library), per-package manifest drift guard | Parsed + Negotiated | backed — `evidence/dshgo/tui-admission/` (the probe and its `result.json`); the earlier `waiting_authorization` measurement and its live `/plugins check` are history (§4.1) |
 | Per-package ledger | Observed (per package) | backed — `ledger.json` (t5); its structure re-checked by t8 |
 | Plugin contract shape (no default export, cleanup, soft probes) | Tested (unit) | backed — `evidence/tui/plugin/20260915T054343Z/` (t4); 547 package tests pass (t9) |
 | The seven activation-gated surfaces in a live TUI | Observed | **6 of 7 delivered** — `evidence/tui/live/20260915T063140Z/result.json` (`"tuiRenderers": false` → NOT-CLAIMED #10) |
@@ -1527,22 +1536,7 @@ run patch-only, byte-identical to before this layer existed. The dry run and the
 BOTH layers separately, each write keeps its own `.bak-<stamp>` backup and is read back, and the
 script's `--self-test` carries the new settings-layer arms.
 
-**The decision-events grant flow, user-facing (C3').** The decision seam this page has carried as
-ready-but-not-activated since §6.1 is now ACTIVATABLE through the host's own documented grant flow, and
-the four `session.*.intercept` declarations in `dsh-plugin.json` (`tui/input`, `tui/rewind-prompt`,
-`tui/session-switch`, `tui/compact`) are exactly what it grants. **How to grant**: write the host's own
-`<DATA_DIR>/extension-grants.json` (under `~/.dsh-tui`) with a row keyed `com.mpd-dsh.mpd-tui` naming
-the four permissions at their scopes — exactly the hint the host's own `/plugins` pane prints —
-{"grants":{"com.mpd-dsh.mpd-tui":[{"name":"session.input.intercept","scope":"tui/input"},…]}}. **What it
-enables**: admission flips from `waiting_authorization` to `compatible`, the component identity binds
-(the effect ledger attributes `com.mpd-dsh.mpd-tui` instead of `undeclared`), and the four decision
-subscriptions activate — input, rewind-prompt, session-switch and compact interception, the surfaces
-§6.1 describes. **Security posture**: the file is fail-CLOSED — a legacy bare-string rule never
-authorizes, a malformed file reads as EMPTY tables (corrupt ≠ absent), the host re-reads it per
-operation and polls (admission retries every 200 ms for ~20 s, so a grant present at boot or within the
-window flips admission without a restart; after a settled refusal a reload is needed); revoking the row
-disables the interception again. Without a grant nothing changes: the written fallback in
-`dsh-plugin.json`'s DecisionEvents requirement holds and the bundle stays fully usable.
+**The decision-events grant flow is no longer needed (TUI-admission wave).** This page carried the host's `<DATA_DIR>/extension-grants.json` flow as the way to activate the seam; the minimal-surface ruling removed the four `session.*.intercept` declarations, so there is nothing to grant and a grant row would activate nothing. The seam stays inactive by design (§6.1), the written fallback in `dsh-plugin.json`'s DecisionEvents requirement holds, and the bundle stays fully usable. If interception is ever wanted, re-declare the ONE permission that point needs WITH its reason and accept that admission returns to `waiting_authorization` until a grant row exists.
 
 **A live team with ZERO tasks renders as a team, not as "no team" (C6, the user-reported defect).**
 `dagPageOf` used to discard a resolved team's identity the moment its board was empty, so a live

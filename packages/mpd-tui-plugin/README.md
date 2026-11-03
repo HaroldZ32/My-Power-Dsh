@@ -656,9 +656,12 @@ string), so it follows a restart instead.
 
 ## Static assets
 
-- `themes/mpd-tui.json` — a dark TUI theme (a partial colour override). The
-  theme seam is a static asset by design: copy the file into
-  `~/.dsh-tui/themes/` to make it selectable. This row does **not** install it.
+- `themes/mpd-tui.json` — a dark TUI theme (a partial colour override). It reaches the host by TWO
+  paths, and the same palette is behind both (`theme.test.ts` asserts they never drift): the plugin
+  REGISTERS it at apply time through the adapter's `tuiThemes` seam, so it is selectable without a
+  copy and disappears with the activation; and a user may still copy the file into
+  `~/.dsh-tui/themes/` as the guide's zero-code path. The registration is reported as `requested`,
+  not `confirmed`, because the host's plugin face exposes no read-back.
 - `packages/mpd-tui-plugin/skills/mpd-tui/SKILL.md` — an asset only; see "What is NOT claimed" #4.
 
 ## Plugin contract
@@ -723,7 +726,10 @@ only when no logger exists to `stderr`, with `debug` gated behind
    treats the refusal as the expected outcome, warns **once**, and registers
    nothing. It never calls `admit`/`admitInternal`, never uses the test-only
    token, and never fakes an identity. **No input, rewind, session-switch or
-   compact interception is claimed.**
+   compact interception is claimed.** Since the TUI-admission wave the manifest
+   requests **no** intercept permission either, so the seam is inactive by design
+   rather than merely unreached; the manifest itself negotiates `compatible`
+   (measured with the host's own admission library, see `docs/tui.md` §4.1).
 2. **The `/settings` section's save is persisted by the HOST — NOT as a workspace `.mpd/mpd.jsonc`
    — and WHEN the new value takes effect is PER KNOB.** The fields declare the real mpd.jsonc knobs
    (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `autoproject.maxRounds`,
