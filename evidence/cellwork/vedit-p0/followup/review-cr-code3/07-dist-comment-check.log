@@ -1,0 +1,6 @@
+# MY OWN check: the dist carries no src comments, so a comment-only src edit cannot change dist bytes
+dist file: packages/mpd-team-core-plugin/dist/index.js
+occurrences of 'NEVER healed': 0
+occurrences of 'THE BOUND': 0
+occurrences of 'seat-blocked': 0
+(0 for each = comments are stripped from the build; the comment-only edit does not stale dist)

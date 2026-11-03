@@ -1,0 +1,19 @@
+# does the built dist carry source comments at all? (if not, a comment-only src edit cannot change dist bytes)
+dist files: index.js 
+occurrences of the src doc phrase 'NEVER healed' in dist: 0
+occurrences of the src doc phrase 'THE LONGEST MATCH WINS' in dist: 0
+block-comment markers '/**' in dist: 0
+line-comment markers '//' in dist: 36
+
+# what the 36 "//" markers in dist actually are (sampled)
+
+# the "//" occurrences are URL schemes, not comments:
+spaceless 'x://' count: 0
+
+# the 36 "//" markers in dist, WITH context (0-20 chars either side):
+// packages/mpd-team-c
+// packages/mpd-dsh-ad
+// packages/mpd-dsh-ad
+// packages/mpd-mcp-sh
+// packages/mpd-dsh-ad
+// packages/mpd-dsh-ad

@@ -1,0 +1,18 @@
+=== BEFORE snapshot hash (must equal the T28 tree-state 06edf44c...) ===
+06edf44c9872a06399c9e71a008d9b3885c3e0538b949a9b2ccb793a8261386f  evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts
+
+=== comment-only proof: changed lines that are NOT comment lines ===
+(nothing between = comment-only)
+
+=== current team-store hash ===
+46117455a2dd87644515da5ba2aa3a502eae019815ef4b6c42c7b0acc9167c8e  packages/mpd-team-core-plugin/src/team-store.ts
+
+=== src grep: old deferred-heal phrases (must be none) ===
+grep-exit=1
+
+=== the corrected doc block ===
+ * THE BOUND: a FORKED Lead's NEW id is recorded only when the churn heal runs, and the heal SKIPS any
+ * session this predicate names as a member — so a fork whose title names a seat is NEVER healed on that
+ * record: it stays identified as that seat (seat-blocked, fail-closed, borrowing no Lead ancestry) while
+ * its title keeps naming one. That is the T12 residual — a separate discriminator, not a fact this arm
+ * can decide.

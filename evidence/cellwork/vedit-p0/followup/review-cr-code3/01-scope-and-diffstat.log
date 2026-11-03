@@ -1,0 +1,12 @@
+# the files under judgement (sha256, byte sizes, mtimes)
+46117455a2dd87644515da5ba2aa3a502eae019815ef4b6c42c7b0acc9167c8e  packages/mpd-team-core-plugin/src/team-store.ts
+06edf44c9872a06399c9e71a008d9b3885c3e0538b949a9b2ccb793a8261386f  evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts
+ 99370 packages/mpd-team-core-plugin/src/team-store.ts
+ 99183 evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts
+198553 total
+-rw-rw-r-- 1 haroldzhao haroldzhao 99183 2026-11-03 16:21:00.165456816 +0800 evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts
+-rw-rw-r-- 1 haroldzhao haroldzhao 99370 2026-11-03 16:21:04.998021937 +0800 packages/mpd-team-core-plugin/src/team-store.ts
+
+# diffstat: the ONLY change between the snapshot and the current src
+diff: standard output: Broken pipe
+8

@@ -1,0 +1,32 @@
+=== verify-dist-fresh
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 762ms
+dist-exit=0
+=== verify-vendor
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+vendor-exit=0
+=== team-core tests
+ 603 pass
+ 0 fail
+ 2905 expect() calls
+Ran 603 tests across 42 files. [3.17s]
+pkg-exit=0
+=== typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+=== test:qa
+[mpd-ext] ok
+[test:qa] all self-tests passed
+testqa-exit=0
+=== verify:gates
+[verify-gates] member workflows: exit=0 PASS - 36ms
+[verify-gates] PASS - 9/9 member gate(s) green
+gates-exit=0
+=== pack
+[pack-mpd] modes normalized: 662 files (644: 646, 755: 16)
+[pack-mpd] staged package -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))
+pack-exit=0
+=== closure
+[verify-pack-closure] ok: 24 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 25 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (504 asset files); agent references 2/2; root files 9/9; declared packages 29/29 present in the artifact; content bytes: 649 file(s) compared, 649 identical, 0 drift, 0 expected-after-pack; completeness: 541 declared source file(s) compared, 540 present, 1 declared exemption(s), 0 absent; pack stamp 2026-11-03T08:27:27.686Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js
+closure-exit=0

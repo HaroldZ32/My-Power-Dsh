@@ -4219,6 +4219,8 @@ function memberIdentityOf(record, sessionId = "", title = "", lineage = []) {
   const ancestral = memberNamedBy(record, lineage);
   if (ancestral !== undefined)
     return { member: ancestral, named: true };
+  if (sessionId !== "" && recordNamesLead(record, [sessionId]))
+    return { named: false };
   if (String(title ?? "") === "")
     return { named: false };
   const scored = (Array.isArray(record.members) ? record.members : []).map((member) => ({ member, strength: titleMatchLength(member, String(title)) })).filter((entry) => entry.strength > 0);
@@ -6392,7 +6394,11 @@ async function endTeam(deps, caller, input) {
     if (outcome === undefined)
       return { ok: false, error: `no team record is named ${JSON.stringify(record.teamId)} in this workspace` };
     if (outcome.changed) {
-      appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") });
+      try {
+        appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") });
+      } catch (error) {
+        deps.log(`team ${outcome.record.teamId} ended but its journal row was not written: ${refusalOf(error)}`);
+      }
     }
     return {
       ok: true,

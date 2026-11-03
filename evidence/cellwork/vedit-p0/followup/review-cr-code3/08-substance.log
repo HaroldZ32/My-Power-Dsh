@@ -1,0 +1,38 @@
+# SUBSTANCE — what the corrected comment claims, and the code that carries each claim (cited by SYMBOL, T-55)
+
+## claim 1: "a FORKED Lead's NEW id is recorded only when the churn heal runs"
+  1339:    const ownLead = record.leadSessionId === sessionId || (record.leadHistory ?? []).includes(sessionId)
+  1340-    if (ownLead || delegated) return record
+  1341-    // A SESSION THE ROSTER NAMES IS NEVER A NEW LEAD (T12). Before the shared narrowing this guard was
+  1342-    // id-only, so a resumed member (new id, member's ancestor or persona title) was promoted into
+  1349:    const healed = rememberLead(record, [sessionId])
+
+## claim 2: "the heal SKIPS any session this predicate names as a member"
+  1342-    // id-only, so a resumed member (new id, member's ancestor or persona title) was promoted into
+  1343-    // `leadHistory` and could thereafter append to the live roster and end the team.
+  1344:    if (memberIdentityOf(record, sessionId, title, lineage).named) return record
+
+## claim 3: "stays identified as that seat (seat-blocked, fail-closed, borrowing no Lead ancestry)"
+  1696:  const identity = memberIdentityOf(record, caller.sessionId, caller.title ?? "", caller.lineage)
+  1697-  /** A roster-named caller borrows no ancestry; only a session the record cannot name keeps the lineage. */
+  1698-  const spellings = identity.named ? [caller.sessionId] : [caller.sessionId, ...caller.lineage].filter((id) => id !== "")
+  1699-  return { identity, lead: recordNamesLead(record, spellings) }
+  1700-}
+
+## claim 4: a title match still NAMES a seat (so the heal gate above really fires)
+    /** ARM 3: every seat the title names, scored by the length of its most specific match. */
+    const scored = (Array.isArray(record.members) ? record.members : [])
+      .map((member) => ({ member, strength: titleMatchLength(member, String(title)) }))
+      .filter((entry) => entry.strength > 0)
+    if (scored.length === 0) return { named: false }
+    /** The longest (most specific) match length this title achieves on the roster. */
+    const strongest = Math.max(...scored.map((entry) => entry.strength))
+    /** Every seat matched at that specificity: ONE names a seat, several are a genuine tie. */
+    const winners = scored.filter((entry) => entry.strength === strongest)
+    /** The only seat at the strongest specificity. */
+    const [only] = winners
+    return winners.length === 1 && only !== undefined ? { member: only.member, named: true } : { named: true }
+  }
+
+## claim 5: a RECORDED Lead answers "not named" BEFORE the title arm (so captaincy is never replaced)
+  1329:  if (sessionId !== "" && recordNamesLead(record, [sessionId])) return { named: false }

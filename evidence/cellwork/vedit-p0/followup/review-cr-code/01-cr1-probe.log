@@ -1,0 +1,47 @@
+{
+  "identity": {
+    "recordedLead": true,
+    "newReading": {
+      "named": false
+    },
+    "oldArmThreeWouldName": "M1",
+    "churnedLeadReading": {
+      "named": false
+    },
+    "controlMemberReading": {
+      "member": {
+        "id": "M1",
+        "name": "senior-engineer-1",
+        "description": "d",
+        "role": "Senior Engineer",
+        "status": "running",
+        "spawnedAt": "2026-11-03T00:00:00.000Z",
+        "executorRef": "child-1"
+      },
+      "named": true
+    }
+  },
+  "endJournal": {
+    "first": {
+      "ok": true,
+      "changed": true,
+      "reason": "the wave landed",
+      "endedAt": "2026-11-03T00:00:00.000Z"
+    },
+    "recordPhase": "ended",
+    "recordReason": "the wave landed",
+    "logLines": [
+      "team team-20261103000000000-6cb2-001 ended but its journal row was not written: EISDIR: illegal operation on a directory, open '/tmp/mpd-cr1-probe-DMmuxU/.mpd/team/journal.jsonl'"
+    ],
+    "retry": {
+      "ok": true,
+      "changed": false,
+      "reason": "the wave landed",
+      "endedAt": "2026-11-03T00:00:00.000Z"
+    }
+  },
+  "failures": [],
+  "pass": true
+}
+CR1 PROBE PASS
+EXIT:0

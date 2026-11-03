@@ -200,6 +200,21 @@ describe("memberIdentityOf — the ONE narrowing", () => {
     expect(memberIdentityOf(overlap, "member-resumed-77", "You are the Reviewer, ...").member?.id).toBe("M1")
   })
 
+  test("CR1: a RECORDED Lead's title never hands it a member row", () => {
+    // The captain's persona text is not ours to constrain; a roster role/seat name in it must never
+    // replace the captain identity (the mailbox would otherwise address the Lead by a MEMBER id).
+    /** The lead session named by the record's own `leadSessionId`. */
+    const current = memberIdentityOf(record, "sess-lead", PERSONA_TITLE)
+    expect(current.named).toBe(false)
+    expect(current.member).toBeUndefined()
+    /** A churned Lead recorded in `leadHistory` gets the same exclusion. */
+    const churned = memberIdentityOf({ ...record, leadHistory: ["lead-fork-2"] }, "lead-fork-2", PERSONA_TITLE)
+    expect(churned.named).toBe(false)
+    expect(churned.member).toBeUndefined()
+    // CONTROL: the same title on a non-Lead session still names the seat.
+    expect(memberIdentityOf(record, "member-resumed-77", PERSONA_TITLE).member?.id).toBe("M1")
+  })
+
   test("an AMBIGUOUS title names a member but picks no row, and a foreign title names none", () => {
     /** A second seat sharing the same role, so the title matches two rows. */
     const twin: TeamMemberRecord = { ...member, id: "M2", name: "senior-engineer-2", executorRef: "child-senior-engineer-2" }
@@ -262,6 +277,20 @@ describe("a RESUMED member is a member on every Lead-gated path", () => {
     expect(refusal).toContain("only the Lead")
     expect(refusal).toContain("is a member, not the Lead")
     expect(readTeam(h.workspace, team.teamId)?.phase).toBe("active")
+  })
+
+  test("CR1: the Lead's mailbox address stays the captain's when its title names a seat", async () => {
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    /** The live team the approval built. */
+    const team = await approvedWave(h)
+    // The Lead's persona title contains the roster role; before the CR1 guard `memberIdentityOf` handed
+    // it the member row, so `callerAddress` (and therefore the mailbox `memberName`) became the MEMBER's.
+    /** The Lead's own inbox reading, whose `memberName` is the durable address the tool acted under. */
+    const inbox = await h.callAs("agent_teams_mail", { action: "unread" }, h.leadSession, { title: PERSONA_TITLE })
+    expect(inbox.memberName).toBe(team.leadSessionId)
+    expect(inbox.memberName).not.toBe(String(team.members[0]?.name ?? ""))
   })
 
   test("T5: it cannot append to the live roster, and the churn heal does not promote it", async () => {

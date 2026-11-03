@@ -1,0 +1,8 @@
+### self-test
+exit=0
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+
+### static-only
+exit=0
+[tui-admission] static result ok=true
+[tui-admission] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-11-03T08-11-53.705Z

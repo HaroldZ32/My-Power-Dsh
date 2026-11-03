@@ -1290,6 +1290,16 @@ function titleMatchLength(member: TeamMemberRecord, title: string): number {
  *   3. the session TITLE naming a seat — ROLE first, then the seat's stored name ({@link titleMatchLength}).
  * An id match outranks the others; a title match is only used when neither id nor ancestry names a row.
  *
+ * A RECORDED LEAD IS NEVER A MEMBER BY TITLE (CodeRabbit CR1). The Lead's own session title may contain
+ * a roster role or a seat's stored name — the captain's persona text is not ours to constrain — and ARM 3
+ * would then hand it that member row, making the mailbox address the captain by a MEMBER id. The recorded
+ * Lead identity is checked BEFORE ARM 3 and answers "not named": the title must never replace captaincy.
+ * THE BOUND: a FORKED Lead's NEW id is recorded only when the churn heal runs, and the heal SKIPS any
+ * session this predicate names as a member — so a fork whose title names a seat is NEVER healed on that
+ * record: it stays identified as that seat (seat-blocked, fail-closed, borrowing no Lead ancestry) while
+ * its title keeps naming one. That is the T12 residual — a separate discriminator, not a fact this arm
+ * can decide.
+ *
  * THE LONGEST MATCH WINS (T16 N1). A roster holding both `Reviewer` and `Plan Reviewer` makes the Plan
  * Reviewer's own title contain both texts; the 13-character `plan reviewer` is more specific than the
  * 8-character `reviewer`, so the seat is named uniquely instead of being declared ambiguous. Only a
@@ -1314,6 +1324,9 @@ export function memberIdentityOf(record: TeamRecord, sessionId: string = "", tit
   /** ARM 2: a recorded ancestor that IS a member's handle — how a resumed member's own header names it. */
   const ancestral = memberNamedBy(record, lineage)
   if (ancestral !== undefined) return { member: ancestral, named: true }
+  // A RECORDED LEAD ANSWERS "NOT NAMED" BEFORE THE TITLE ARM (CodeRabbit CR1): its captain identity must
+  // never be replaced by a member row its persona text happens to name.
+  if (sessionId !== "" && recordNamesLead(record, [sessionId])) return { named: false }
   if (String(title ?? "") === "") return { named: false }
   /** ARM 3: every seat the title names, scored by the length of its most specific match. */
   const scored = (Array.isArray(record.members) ? record.members : [])

@@ -1,0 +1,1854 @@
+// The mpd-OWNED team record: this bundle's own team truth.
+//
+// WHY IT EXISTS (the 2026-09-30 separation). Until this module the bundle kept only a SIDECAR
+// around the official plane: the staged plan, the frozen contracts, the halt, the dispatch ledger
+// and the mailbox were ours, while the ROSTER and the BOARD stayed `ctx.agentTeams`'s. That made
+// the official plugin the system of record, and it cost three measured things:
+//
+//   • a `dsh-tui` composition cannot mount the official service at all (its `TeamService`
+//     constructor registers a session projection through a ROOT-bound `ctx.root.sessionProjections`
+//     proxy, and the dsh-tui host refuses `root.effect` from a plugin activation), so the TUI team
+//     scene had nothing to read and rendered `(none in this workspace)`;
+//   • the official board carries NO `kind`, `attempt`, `round` or `verdict`, so the requirement →
+//     work → review chain the captain's own rules call for could not be represented, let alone
+//     drawn;
+//   • `mpd-workmate-plugin`'s in-use gate scanned the RETIRED `<ws>/.mpd/team/<teamId>/team.json`
+//     layout and was therefore blind to every real teammate.
+//
+// WHAT THIS STORE IS. One JSON record per team, under `.mpd/team/teams/<teamId>.json`, owned and
+// written by mpd alone. It carries the whole team — roster, board, dependency edges, attempts,
+// verdicts and the executor handle of each member and task — so every surface (TUI, web, watchdog,
+// compact, workmate) reads ONE place, and the official plane becomes an interchangeable BACKEND
+// behind the adapter rather than the source of truth.
+//
+// WHAT IT IS NOT. It is not an executor: nothing here spawns an agent, sends a message or touches a
+// harness service. Spawning stays behind the adapter (W2's `TeamExecutor`); this module records
+// what that executor was asked to do and what it reported back, which is exactly why the record
+// survives an executor swap.
+//
+// Everything here is PURE filesystem + plain data — no ctx, no harness, no clock of its own (every
+// mutator takes the `Date` it should stamp) — so the whole state machine is unit-testable.
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+
+/** Where a team is in its lifecycle; `staged` means nothing has been spawned yet. */
+export type TeamPhase = "staged" | "active" | "idle" | "ended"
+
+/**
+ * What a task IS, which is what turns a flat board into the requirement chain the captain's rules
+ * ask for (`kind=repair` + `sourceTaskId` for finding-driven work, `coverageOf` naming the user
+ * clause a task serves).
+ */
+export type TaskKind = "requirement" | "work" | "review" | "repair" | "integration"
+
+/** Every kind a task may carry, as a runtime list so a tool boundary can refuse an unknown one. */
+export const TASK_KINDS: readonly TaskKind[] = ["requirement", "work", "review", "repair", "integration"]
+
+/** A task's own state; `blocked` is DERIVED from `blockedBy` and never stored. */
+export type TaskStatus = "pending" | "claimed" | "in_progress" | "completed" | "failed" | "cancelled"
+
+/** A member's own state, mirroring the vocabulary the official roster uses so a reader sees one set. */
+export type MemberStatus = "provisioning" | "running" | "inactive" | "failed"
+
+/**
+ * What a member's seat is FORCING right now.
+ *
+ * `member` is the ordinary open seat. `checkpoint` is the handoff window: the member wrote its handoff
+ * and must end its turn, so a dispatch pass must not wake it again until the barrier has compacted or
+ * reseeded it (the rule `packages/mpd-cellwork-plugin/src/dispatch.ts` learned from D4/D5: waking a
+ * checkpointed seat burns the retry budget on a claim its own guard refuses).
+ */
+export type TeamMemberMode = "member" | "checkpoint"
+
+/**
+ * HOW one seat was bound to the durable workmate library, as the workmate wave records it.
+ *
+ * DELIBERATELY NOT {@link TeamMemberMode}: `mode` is the SEAT the team plane enforces, and overloading
+ * it would make one field answer two unrelated questions. `none` is a real value HERE — it says the
+ * binding pass ran and left the seat plain — which is why an ABSENT field is not the same as one set to
+ * `none`: absence means the record predates the binding pass.
+ */
+export type WorkmateBindMode = "reuse" | "init" | "none"
+
+/** The handoff document one member wrote.
+ *
+ * Only the LAST one is kept on the record (the earlier documents stay on disk); the ordinal is what
+ * makes "the 3rd handoff of Senior Engineer" answerable without listing the directory.
+ */
+export interface TeamHandoffRecord {
+  /** Absolute path of the handoff document. */
+  path: string
+  /** 1-based ordinal: the Nth handoff this member has written. */
+  ordinal: number
+}
+
+/**
+ * The last context checkpoint the team plane injected into a member's session.
+ *
+ * The occupancy numbers are recorded VERBATIM from the observation that fired the checkpoint — nulls
+ * included — so a later reader can audit the decision instead of re-deriving it from a guessed window.
+ */
+export interface TeamContextCheckpoint {
+  /** ISO instant the checkpoint was injected. */
+  at: string
+  /** The observed occupancy that crossed the threshold; null when the meter reported none. */
+  usedTokens: number | null
+  /** The window those tokens were measured against; null when the meter reported none. */
+  windowTokens: number | null
+  /** `usedTokens / windowTokens`, or null when either side is unknown. */
+  ratio: number | null
+}
+
+/** One member of a team, as mpd records it. */
+export interface TeamMemberRecord {
+  /** mpd-minted, stable, short id (`M1`, `M2`, …); never reused inside a team. */
+  id: string
+  /** The display name the captain addresses; unique within the team. */
+  name: string
+  /** One-line role summary shown on the roster. */
+  description: string
+  /** Optional roster role label (`Senior Engineer`, `Reviewer`, …) for readability and routing. */
+  role?: string
+  /** `provider/model` when the roster resolved a team-model slot for this member. */
+  route?: string
+  /** This member's own state. */
+  status: MemberStatus
+  /** ISO instant the member was staged (or spawned, once status leaves `provisioning`). */
+  spawnedAt: string
+  /**
+   * The EXECUTOR's own handle for this member (an official teammate session id today), or absent
+   * while nothing has been spawned. mpd never mints it and never depends on its shape.
+   */
+  executorRef?: string
+  /** The seat mode the team plane enforces; ABSENT means the ordinary `member` seat. */
+  mode?: TeamMemberMode
+  /**
+   * True when the compaction barrier GAVE UP on this member.
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written: {@link MemberPatch} uses `false`
+   * to DELETE the key, so "not fenced" has exactly one spelling on disk (absence). A fenced member is
+   * never messaged — the dispatch pass reports it and the row is repaired with a reassignment.
+   */
+  fenced?: boolean
+  /** The one-sentence reason recorded when {@link fenced} was set. */
+  fencedReason?: string
+  /** The LAST handoff this member wrote, so a reader can continue from that document. */
+  handoff?: TeamHandoffRecord
+  /** The last context checkpoint the team plane injected into this member's session, for audit. */
+  contextCheckpoint?: TeamContextCheckpoint
+  /** The workmate instance bound to this seat (the workmate wave, W3-C, binds it). */
+  workmate?: string
+  /** HOW the seat was bound; ABSENT on a record written before the binding pass existed. */
+  workmateMode?: WorkmateBindMode
+  /** Why the seat was left plain, written beside {@link workmateMode} `none`. */
+  workmateReason?: string
+}
+
+/** One task of a team's board, as mpd records it. */
+export interface TeamTaskRecord {
+  /** mpd-minted, stable, short id (`T1`, `T2`, …); this is the id the graph draws and tools take. */
+  id: string
+  /** The task title. */
+  subject: string
+  /** The acceptance text: how the task is to be worked and what closes it. */
+  description: string
+  /** What the task is, in the chain vocabulary. */
+  kind: TaskKind
+  /** This task's own state. */
+  status: TaskStatus
+  /** Ids of mpd tasks that must close before this one is ready; the caller's own text is KEPT. */
+  blockedBy: string[]
+  /**
+   * The entries of {@link blockedBy} that matched NO task when they were accepted.
+   *
+   * `blockedBy` keeps the caller's text verbatim — an unresolvable reference is never deleted, because
+   * that text is the only record of what the writer meant — and on its own it cannot be told apart from
+   * "this task has no blockers": a reader that filters `blockedBy` against the live ids sees the same
+   * empty edge set either way. MEASURED 2026-10-06 on a live board: a plan whose `blockedBy` carried
+   * plan POSITIONS (`["2"]`, `["2","3","4","6"]`, `["7","8","9"]`) instead of ids or subjects was
+   * accepted silently and its whole dependency DAG flattened to one column with no warning anywhere.
+   * This field is that missing fact: non-empty exactly when some entry of `blockedBy` names nothing on
+   * this board. ABSENT means every entry resolved — so a reader can distinguish the two cases without
+   * guessing, and a page can say WHY it drew no edge.
+   */
+  unresolvedBlockers?: string[]
+  /** Paths the task is expected to touch, forwarded to the executor's write-scope check. */
+  writeScopes: string[]
+  /** Display name of the owning member, when one is assigned. */
+  owner?: string
+  /** Monotonic per task: the Nth time this task was claimed. Set by `agent_teams_task claim`. */
+  attempt?: number
+  /** Review round, set by a review task's own lifecycle. */
+  round?: number
+  /** Review verdict (`pass`/`fail`/`changes`), set by a review task's own lifecycle. */
+  verdict?: string
+  /** The requirement clause this task serves, for a coverage question. */
+  coverageOf?: string
+  /** The task a `repair` was opened from. */
+  sourceTaskId?: string
+  /**
+   * The closing note a terminal verb recorded (`complete` / `fail`), one line, optional.
+   *
+   * WHY IT LIVES ON THE RECORD and not only in the tool result: the closure is the moment a caller
+   * explains itself, and a result that is gone by the next turn leaves a reader of the board looking at
+   * a `failed` row with no reason. MEASURED 2026-10-07: the mpd-native plane had NO terminal verb at all
+   * (the official `team_task_*` tools are disabled in a dsh-tui boot), so rows could be opened and
+   * claimed but never closed and the DAG could not advance. This field carries that verb's note into
+   * the durable record; it is never required.
+   */
+  note?: string
+  /** ISO instant the task was added to the record. */
+  createdAt: string
+  /** ISO instant the task last changed. */
+  updatedAt: string
+  /**
+   * ISO-8601 UTC instant this task FIRST entered `in_progress`; ABSENT until it does.
+   *
+   * WRITTEN BY THE ONE SEAM (`updateTeamTask`), from the status transition rather than from a caller's
+   * own clock, so every claim path — the `agent_teams_task` claim, the dispatch compare-and-set and a
+   * reopen — stamps the same field. A reopen KEEPS it: the clock starts when the work began, and
+   * re-entering `in_progress` must not restart it.
+   */
+  startedAt?: string
+  /**
+   * ISO-8601 UTC instant this task entered `completed` or `failed`; ABSENT while it is not terminal.
+   *
+   * `updatedAt` IS NOT A FINISH STAMP — it moves on every patch, a note edit included — so a duration
+   * is `startedAt` -> `finishedAt` (or now, while the row is still running). Leaving a terminal state
+   * for a NON-terminal one (`pending`/`claimed`/`in_progress`) DELETES this field, so a reopened row
+   * never reads as finished; entering `cancelled` deletes it too, because a cancelled task never ran to
+   * a finish of its own and must not keep a prior one.
+   */
+  finishedAt?: string
+  /** The EXECUTOR's own handle for this task (an official board id today), or absent. */
+  executorRef?: string
+  /** Monotonic per task: bumped on every mpd-side mutation, so a CAS can name a revision. */
+  revision: number
+}
+
+/** The whole durable record of one team. */
+export interface TeamRecord {
+  /** Format version; a reader refuses a record whose version it does not know. */
+  version: 1
+  /** mpd-minted identity (`team-<UTC instant>`), also the record's file name. */
+  teamId: string
+  /** The team name the user reads. */
+  name: string
+  /** What the team is for. */
+  description: string
+  /** The Lead session this team belongs to; a workspace may hold several teams at once. */
+  leadSessionId: string
+  /**
+   * Every OTHER session id that has served as this team's Lead, oldest first — the C7-4 churn record.
+   *
+   * A captain session that FORKS or RESUMES gets a new id while the durable record keeps its original
+   * `leadSessionId`, so resolution used to break until a hand rebind rewrote both the record and
+   * `teams.json`. This list (written by the churn self-heal) is what lets the new session keep its
+   * captaincy instead. Bounded to the most recent few — it is an identity trail, not a log.
+   */
+  leadHistory?: string[]
+  /**
+   * The team this one is a SUBCELL of, or absent for a root team (cellwork wave 4).
+   *
+   * THE ONE TEAM-TOPOLOGY FIELD, and deliberately additive: a record written before this field
+   * existed — or by a caller that has no parent — carries no key at all, and every reader treats the
+   * absence as "root team". Nothing about the team's own board, roster or phase changes because it
+   * nests; this is the edge the graph projection turns into a box.
+   *
+   * A nested team's parent is always a LIVE record of the same workspace, and the chain it starts must
+   * terminate: `agent_teams_plan` validates existence, liveness and the absence of a cycle before a
+   * plan can carry the link, so a hand-edited record is the only way a bad chain reaches disk.
+   */
+  parentTeamId?: string
+  /** Where the team is in its lifecycle. */
+  phase: TeamPhase
+  /** ISO instant the record was created. */
+  createdAt: string
+  /** ISO instant the plan was approved (the moment anything could be spawned). */
+  approvedAt?: string
+  /**
+   * The identity of the PLAN this record was approved from (PR #42 review F-D).
+   *
+   * WHY IT EXISTS. `team-lifecycle.ts#isLiveTeam` treats an archived-but-never-approved plan as proof
+   * the team is terminal, and it used to key that evidence by Lead session + team NAME — so a discarded
+   * RETRY plan (staged with `replace:true` after an approval stopped partway, then deleted) archived an
+   * unapproved plan under the same lead+name and made the genuinely LIVE team terminal at the next
+   * dispatch or reap. The archive evidence is therefore keyed by the plan id this record records, and a
+   * record that predates the field is never archive-reaped (see `isLiveTeam`).
+   */
+  planId?: string
+  /** ISO instant the team was explicitly ended; absent while it is live. */
+  endedAt?: string
+  /**
+   * Why the record was marked terminal: the sentence an explicit end recorded, or the rule the C7-3
+   * consistency pass (`reapReapedTeams` in `team-lifecycle.ts`) caught when it reaped a ghost. Absent
+   * only on a team that never ended; informational, never read by a gate.
+   */
+  archivedReason?: string
+  /** The roster. */
+  members: TeamMemberRecord[]
+  /** The board. */
+  tasks: TeamTaskRecord[]
+  /** The next member number to mint; monotonic so an id is never reused after a removal. */
+  nextMemberNumber: number
+  /** The next task number to mint; monotonic for the same reason. */
+  nextTaskNumber: number
+}
+
+/** The per-workspace index: which team is ACTIVE for which Lead session. */
+export interface TeamsIndex {
+  /** Format version of the index; an unknown version reads as empty rather than throwing. */
+  version: 1
+  /** Lead session id → team id. A session with no entry has no active team. */
+  active: Record<string, string>
+}
+
+/** `.mpd/team` under the workspace: the bundle's own team root (shared with the sidecar files). */
+export function teamRoot(workspace: string): string {
+  return join(workspace, ".mpd", "team")
+}
+
+/** `<root>/teams`: one record file per team. */
+export function teamsDir(workspace: string): string {
+  return join(teamRoot(workspace), "teams")
+}
+
+/** The record file of ONE team. The id is sanitized by {@link sanitizeId} before it lands here. */
+export function teamRecordPath(workspace: string, teamId: string): string {
+  return join(teamsDir(workspace), sanitizeId(teamId) + ".json")
+}
+
+/** The per-workspace active-team index. */
+export function teamsIndexPath(workspace: string): string {
+  return join(teamRoot(workspace), "teams.json")
+}
+
+/**
+ * Reduce an id to something safe to use as a file name.
+ *
+ * Ids are minted here and never user-supplied in practice, but a record read back from disk (or a
+ * hand-written fixture) reaches {@link teamRecordPath}, and a path separator in an id would let a
+ * read escape `.mpd/team`. Anything outside `[A-Za-z0-9._-]` collapses to `-`.
+ * @param value - the candidate id.
+ * @returns the sanitized id, or `"unnamed"` when nothing usable is left.
+ */
+export function sanitizeId(value: string): string {
+  // Leading dots are stripped as well as separators: `.` and `..` are not names, and a leading dot
+  // would hide the record from a plain `ls` of the teams directory.
+  /** The collapsed form; every run of unusable characters becomes one dash. */
+  const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[.-]+/, "").replace(/-+$/, "")
+  return cleaned === "" ? "unnamed" : cleaned
+}
+
+/** Read one JSON file, or `undefined` when it is absent, unreadable or not an object. */
+function readJson<T>(path: string): T | undefined {
+  try {
+    /** The parsed value, accepted only when it is a plain object. */
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"))
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as T) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Write one JSON file, creating its directory. Throws only on a real write failure.
+ *
+ * ATOMIC (T2): the bytes land in a sibling temp file that is then renamed over the target, so a
+ * reader — including the dispatch pass re-reading before its own write — sees either the whole old
+ * document or the whole new one, never a half-written record. The temp file lives in the SAME
+ * directory, so the rename stays on one filesystem.
+ */
+function writeJson(path: string, value: unknown): void {
+  mkdirSync(join(path, ".."), { recursive: true })
+  /** The sibling temp file this write lands in before the rename. */
+  const temp = path + ".tmp-" + process.pid
+  writeFileSync(temp, JSON.stringify(value, null, 2) + "\n")
+  renameSync(temp, path)
+}
+
+/**
+ * Who wants to know that a workspace's team state moved — the `mpdTeams` change feed, in production.
+ *
+ * THE HOOK SITS ON THESE WRITERS, not on a poller, because the ONE thing every team mutation has in
+ * common is this module: {@link writeTeam}, {@link writeTeamsIndex} and {@link deleteTeam} are the
+ * choke point. It is a module-level registry rather than a parameter because those writers are called
+ * from ~40 places and threading a feed through every one of them would touch every call site to carry
+ * a value that exactly one consumer in the whole bundle reads.
+ */
+const teamStateObservers = new Set<(workspace: string) => void>()
+
+/**
+ * Subscribe to the team-state WRITES this process performs, in every workspace.
+ *
+ * An observer runs AFTER the bytes are in place, on the WRITER's stack, so it must be cheap and must
+ * be prepared to be called several times inside one change window — coalescing is the feed's job, not
+ * the writer's.
+ * @param observer - called with the workspace whose state was written.
+ * @returns the disposer; calling it twice is safe.
+ */
+export function onTeamStateWritten(observer: (workspace: string) => void): () => void {
+  teamStateObservers.add(observer)
+  return (): void => { teamStateObservers.delete(observer) }
+}
+
+/**
+ * Tell the observers that one workspace's team state moved.
+ *
+ * CONTAINMENT IS PART OF THE CONTRACT (change-feed §3.1.3): a throwing observer is swallowed for this
+ * call and never re-thrown into the writer, because a notification substrate must not be able to fail
+ * a team mutation. The list is snapshotted so an observer that unsubscribes from inside its own call
+ * cannot shorten the delivery for the rest.
+ * @param workspace - the workspace whose record or index was just written.
+ */
+function teamStateChanged(workspace: string): void {
+  for (const observer of [...teamStateObservers]) {
+    try { observer(workspace) } catch { /* a broken observer must not fail the write that fed it */ }
+  }
+}
+
+/**
+ * The per-process tag every mpd-minted id carries after its timestamp.
+ *
+ * WHY IT EXISTS (C7-4 F4). mpd ids used to be SECOND-precision, and the measured consequence was
+ * `.mpd/team/teams.json` carrying TWO session ids pointed at ONE `teamId` while one archive directory
+ * held two plans: two sessions minted inside the same second and the second write silently replaced the
+ * first. An in-process counter cannot see a second PROCESS, so the tag is randomised once per process
+ * and the monotonic counter below distinguishes two mints inside the same millisecond HERE.
+ */
+const PROCESS_ID_TAG = Math.random().toString(36).slice(2, 6)
+
+/** A monotonic per-process counter, so two mints in the SAME millisecond stay distinct. */
+let idCounter = 0
+
+/**
+ * The unique tail an mpd-minted id carries after its millisecond timestamp.
+ * @returns a short, path-safe suffix (`<process-tag>-<counter-base36>`).
+ */
+export function nextIdSuffix(): string {
+  idCounter += 1
+  return PROCESS_ID_TAG + "-" + idCounter.toString(36).padStart(3, "0")
+}
+
+/** A stable, sortable, COLLISION-RESISTANT identity for one team (millisecond timestamp + suffix). */
+export function newTeamId(now: Date): string {
+  return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 17) + "-" + nextIdSuffix()
+}
+
+/** The session key an index entry uses; a sessionless surface is keyed as `workspace`. */
+export function sessionKey(sessionId: string | undefined): string {
+  return typeof sessionId === "string" && sessionId !== "" ? sessionId : "workspace"
+}
+
+/** The index, or an empty one when the file is absent or unreadable. */
+export function readTeamsIndex(workspace: string): TeamsIndex {
+  /** The parsed index, accepted only when its version and its `active` map are both usable. */
+  const index = readJson<TeamsIndex>(teamsIndexPath(workspace))
+  // An ARRAY passes `typeof === "object"`, and a read of `active[session]` on one would answer
+  // undefined for every session while a write would silently attach to the array — so it is refused.
+  if (index === undefined || index.version !== 1 || index.active === null || typeof index.active !== "object" || Array.isArray(index.active)) {
+    return { version: 1, active: {} }
+  }
+  return index
+}
+
+/** Persist the index. */
+export function writeTeamsIndex(workspace: string, index: TeamsIndex): void {
+  writeJson(teamsIndexPath(workspace), index)
+  // The index is team state: `createTeam` binds the new team here, so a surface that only followed
+  // the records would miss "this session now has a team".
+  teamStateChanged(workspace)
+}
+
+/** The team id ACTIVE for one session, or `undefined` when that session has none. */
+export function activeTeamId(workspace: string, sessionId: string | undefined): string | undefined {
+  /** The index entry for this session, if any. */
+  const id = readTeamsIndex(workspace).active[sessionKey(sessionId)]
+  return typeof id === "string" && id !== "" ? id : undefined
+}
+
+/** Bind one session to a team; the previous binding, if any, is replaced. */
+export function bindActiveTeam(workspace: string, sessionId: string | undefined, teamId: string): void {
+  /** The index with this session pointed at the team. */
+  const index = readTeamsIndex(workspace)
+  index.active[sessionKey(sessionId)] = teamId
+  writeTeamsIndex(workspace, index)
+}
+
+/** Drop one session's binding. Returns whether a binding was there. */
+export function unbindActiveTeam(workspace: string, sessionId: string | undefined): boolean {
+  /** The index this call edits. */
+  const index = readTeamsIndex(workspace)
+  /** The key being dropped. */
+  const key = sessionKey(sessionId)
+  if (index.active[key] === undefined) return false
+  delete index.active[key]
+  writeTeamsIndex(workspace, index)
+  return true
+}
+
+/** One team record, or `undefined` when the file is absent or its version is unknown. */
+export function readTeam(workspace: string, teamId: string): TeamRecord | undefined {
+  /** The parsed record. */
+  const record = readJson<TeamRecord>(teamRecordPath(workspace, teamId))
+  if (record === undefined || record.version !== 1) return undefined
+  if (!Array.isArray(record.members) || !Array.isArray(record.tasks)) return undefined
+  return record
+}
+
+/** Persist one team record. */
+export function writeTeam(workspace: string, record: TeamRecord): void {
+  writeJson(teamRecordPath(workspace, record.teamId), record)
+  teamStateChanged(workspace)
+}
+
+/** Every readable team in this workspace, NEWEST FIRST (records carry no ordering of their own). */
+export function listTeams(workspace: string): TeamRecord[] {
+  /** The record file names, or an empty list when nothing was ever staged here. */
+  let names: string[] = []
+  try {
+    names = readdirSync(teamsDir(workspace))
+  } catch {
+    return []
+  }
+  /** Readable records, accumulated before the newest-first sort. */
+  const out: TeamRecord[] = []
+  for (const name of names) {
+    if (!name.endsWith(".json")) continue
+    /** The record in this file, skipped when unreadable or of an unknown version. */
+    const record = readTeam(workspace, name.slice(0, -".json".length))
+    if (record !== undefined) out.push(record)
+  }
+  return out.sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+}
+
+/** Delete one team's record file. Returns whether a file was there. */
+export function deleteTeam(workspace: string, teamId: string): boolean {
+  /** The record path; a missing file means the team was already gone. */
+  const path = teamRecordPath(workspace, teamId)
+  if (!existsSync(path)) return false
+  rmSync(path, { force: true })
+  // A DELETE is a change too, and it is the one a directory watch sees as a bare `rename` — which is
+  // why the feed is told here rather than being left to infer it from the record it can no longer read.
+  teamStateChanged(workspace)
+  return true
+}
+
+/**
+ * End one team for good: stamp the terminal phase, the instant and the audit reason, then persist the
+ * record through {@link writeTeam} — never a raw file write, so the change feed and the store's own
+ * observers see exactly the write every other mutation produces.
+ *
+ * IDEMPOTENT BY THE RECORD ITSELF. A team that already carries `endedAt` answers unchanged with
+ * `changed: false`: the FIRST ending owns the instant and the reason, and a repeated call (or a late
+ * retry from another surface) must never rewrite that history. The stamp is also what
+ * `team-lifecycle.ts#isLiveTeam` reads, so once this write lands the record can no longer resolve for
+ * any seat and no longer wins the bound-index arm — the binding needs no separate edit.
+ * @param workspace - the workspace holding the team.
+ * @param teamId - the team to end.
+ * @param reason - why it ended; an empty sentence is replaced by the default below, never stored empty.
+ * @param now - the instant stamped as `endedAt`.
+ * @returns the record as stored and whether THIS call changed it; undefined when no such team exists.
+ */
+export function endTeamRecord(workspace: string, teamId: string, reason: string, now: Date): { record: TeamRecord; changed: boolean } | undefined {
+  /** The record as it stands, or undefined for an unknown team. */
+  const record = readTeam(workspace, teamId)
+  if (record === undefined) return undefined
+  // A REPEAT IS A REPORTED NO-OP, not a second ending: `endedAt` and `archivedReason` keep the values
+  // the first call wrote, so a retry cannot quietly restamp the audit trail with a later clock.
+  if (record.endedAt !== undefined) return { record, changed: false }
+  /** The audit sentence: the caller's own, or the default that says the Lead ended it without one. */
+  const archivedReason = reason.trim() === "" ? "ended by the team Lead" : reason.trim()
+  /** The terminal record, assembled immutably so the stored one is only ever replaced whole. */
+  const ended: TeamRecord = { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason }
+  writeTeam(workspace, ended)
+  return { record: ended, changed: true }
+}
+
+/** What {@link createTeam} needs to mint a record. */
+export interface NewTeamInput {
+  /** The team name the user reads. */
+  name: string
+  /** What the team is for. */
+  description: string
+  /** The Lead session that owns it. */
+  leadSessionId: string
+  /**
+   * An explicit id to mint with, instead of {@link newTeamId}(now).
+   *
+   * A caller that already owns an id (a migration, a repair, or a test proving the collision guard)
+   * supplies it. An id already on disk is REFUSED rather than overwritten — see {@link createTeam}.
+   */
+  teamId?: string
+  /**
+   * The plan this team is being approved from, recorded so the lifecycle rules can key archive
+   * evidence by PLAN identity rather than by Lead + name (PR #42 review F-D).
+   */
+  planId?: string
+  /**
+   * The team this one nests under, when the approving plan named one (cellwork wave 4).
+   *
+   * Omitted means a ROOT team, which is what every creation path did before nested teams existed; the
+   * store writes no key in that case, so an ungrouped record stays byte-identical to the ones already
+   * on disk. The caller (`agent_teams_plan`) is the authority that validated the link against the
+   * live records; this store records what it was given.
+   */
+  parentTeamId?: string
+}
+
+/**
+ * Mint a team record and make it the ACTIVE team for its Lead session.
+ *
+ * `phase` starts at `staged`: creating a team spawns nothing. Only an approval moves it on, which
+ * is the review point the whole workflow exists for.
+ * @param workspace - the workspace the record belongs to.
+ * @param input - name, description and owning session.
+ * @param now - the instant to stamp, so a test can pin it.
+ * @returns the record as written.
+ */
+export function createTeam(workspace: string, input: NewTeamInput, now: Date): TeamRecord {
+  /** The id this team is minted under: the caller's when given, else a fresh timestamp+suffix id. */
+  const teamId = input.teamId ?? newTeamId(now)
+  // F4 BACKSTOP: a second mint that lands on an existing id would OVERWRITE a live team's whole record
+  // (roster, board, verdicts). Refusing loudly is the difference between a silently lost team and a red
+  // gate; with the millisecond+suffix mint above this is unreachable in normal use, which is the point.
+  if (existsSync(teamRecordPath(workspace, teamId))) {
+    throw new Error(`team id "${teamId}" already exists in this workspace — refusing to overwrite a team record`)
+  }
+  /** The record, assembled before it is persisted. */
+  const record: TeamRecord = {
+    version: 1,
+    teamId,
+    name: input.name,
+    description: input.description,
+    leadSessionId: sessionKey(input.leadSessionId),
+    // THE APPROVING PLAN'S IDENTITY (PR #42 review F-D): an approval is the one moment a record is born
+    // from a plan, so it is the one moment the link can be stamped. Omitted when the caller has no plan
+    // (a hand-built or migrated record), which `isLiveTeam` reads as "archive evidence cannot identify".
+    ...(input.planId === undefined || input.planId === "" ? {} : { planId: input.planId }),
+    // THE NESTING EDGE, written only when the approving plan carried one: a root team therefore keeps
+    // exactly the key set it had before nested teams existed, which is what makes the additive claim
+    // checkable rather than asserted.
+    ...(input.parentTeamId === undefined || input.parentTeamId === "" ? {} : { parentTeamId: input.parentTeamId }),
+    phase: "staged",
+    createdAt: now.toISOString(),
+    members: [],
+    tasks: [],
+    nextMemberNumber: 1,
+    nextTaskNumber: 1,
+  }
+  writeTeam(workspace, record)
+  bindActiveTeam(workspace, input.leadSessionId, record.teamId)
+  return record
+}
+
+/** What {@link addTeamMember} needs to append a member. */
+export interface NewMemberInput {
+  /** The display name the captain addresses. */
+  name: string
+  /** One-line role summary. */
+  description: string
+  /** Optional roster role label. */
+  role?: string
+  /** Optional `provider/model` the roster resolved for this member. */
+  route?: string
+}
+
+/**
+ * Append one member to a record (pure: the caller persists).
+ * @param record - the record to copy.
+ * @param input - the member to append.
+ * @param now - the instant to stamp as `spawnedAt`.
+ * @returns the new record, or the SAME record when the name is empty or already on the roster.
+ */
+export function addTeamMember(record: TeamRecord, input: NewMemberInput, now: Date): TeamRecord {
+  /** The trimmed name, which is both the duplicate key and the stored value. */
+  const name = input.name.trim()
+  if (name === "") return record
+  if (record.members.some((member) => member.name === name)) return record
+  /** The appended member, carrying the record's own monotonic id. */
+  const member: TeamMemberRecord = {
+    id: "M" + record.nextMemberNumber,
+    name,
+    description: input.description,
+    status: "provisioning",
+    spawnedAt: now.toISOString(),
+    ...(input.role === undefined ? {} : { role: input.role }),
+    ...(input.route === undefined ? {} : { route: input.route }),
+  }
+  return { ...record, members: [...record.members, member], nextMemberNumber: record.nextMemberNumber + 1 }
+}
+
+/** What {@link addTeamTask} needs to append a task. */
+export interface NewTaskInput {
+  /** The task title. */
+  subject: string
+  /** The acceptance text. */
+  description: string
+  /** What the task is; defaults to `work`. */
+  kind?: TaskKind
+  /**
+   * What this task is blocked by: a task id (`"T2"`), a task SUBJECT, or — on the plan-approval path —
+   * the plan's own 1-based position. A reference that names nothing is KEPT verbatim and REPORTED on
+   * the stored task ({@link TeamTaskRecord.unresolvedBlockers}), never dropped in silence.
+   */
+  blockedBy?: string[]
+  /** Paths the task is expected to touch. */
+  writeScopes?: string[]
+  /** Display name of the owning member. */
+  owner?: string
+  /** The requirement clause this task serves. */
+  coverageOf?: string
+  /** The task a repair was opened from. */
+  sourceTaskId?: string
+}
+
+/**
+ * Resolve one blocker reference to a task id: an exact id wins, else the first subject match.
+ *
+ * AN UNRESOLVED REFERENCE COMES BACK UNCHANGED, deliberately: the caller's text is the only record of
+ * what was meant, and DROPPING it is what made the 2026-10-06 flattening invisible. That also means this
+ * function alone cannot report the condition — every ACCEPTANCE point must split its references with
+ * {@link resolveBlockers} and store both halves, which is what makes the board able to say why an edge
+ * is missing.
+ * @param record - the record whose tasks are matched.
+ * @param reference - one reference, as the caller wrote it.
+ * @returns the matching task's id, else the reference unchanged.
+ */
+function resolveBlocker(record: TeamRecord, reference: string): string {
+  if (record.tasks.some((task) => task.id === reference)) return reference
+  /** The first task whose subject is the reference, which is how a staged plan writes blockers. */
+  const bySubject = record.tasks.find((task) => task.subject === reference)
+  return bySubject === undefined ? reference : bySubject.id
+}
+
+/** What a list of blocker references resolves to: the stored entries, and the ones nothing matched. */
+export interface BlockerResolution {
+  /** The entries to STORE in `blockedBy`: ids where a task matched, the caller's text where it did not. */
+  blockedBy: string[]
+  /** The subset of the input that named no task — the report a caller must carry into the record. */
+  unresolved: string[]
+}
+
+/**
+ * Split blocker references into the ids this record resolves and the entries it cannot.
+ *
+ * THE ONE PLACE THE SPLIT IS COMPUTED, so `addTeamTask` and `updateTeamTask` cannot disagree about what
+ * counts as unresolved, and a caller that needs the report (an approval path warning its captain, a tool
+ * answering with what it accepted) reads the same answer the record stores.
+ * @param record - the board the references are matched against.
+ * @param references - the references, as written.
+ * @returns the entries to store and the ones that resolved to nothing.
+ */
+export function resolveBlockers(record: TeamRecord, references: readonly string[]): BlockerResolution {
+  /** The stored entries, in the caller's order. */
+  const blockedBy: string[] = []
+  /** The entries that matched nothing, deduplicated so a repeated typo is reported once. */
+  const unresolved: string[] = []
+  for (const reference of references) {
+    /** What this one reference resolved to; equal to the input when nothing matched. */
+    const resolved = resolveBlocker(record, reference)
+    blockedBy.push(resolved)
+    // A reference that resolves to a task id (its own text matched) is NOT unresolved; one that merely
+    // LOOKS like an id but names no task is, which is exactly the case that used to be invisible.
+    if (!record.tasks.some((task) => task.id === resolved) && !unresolved.includes(reference)) unresolved.push(reference)
+  }
+  return { blockedBy, unresolved }
+}
+
+/**
+ * Append one task to a record (pure: the caller persists).
+ *
+ * The id is MINTED HERE (`T1`, `T2`, …) rather than taken from an executor, which is what lets the
+ * board survive an executor swap: `executorRef` carries the backend's own handle beside it.
+ * @param record - the record to copy.
+ * @param input - the task to append.
+ * @param now - the instant to stamp.
+ * @returns the new record, or the SAME record when the subject is empty.
+ */
+export function addTeamTask(record: TeamRecord, input: NewTaskInput, now: Date): TeamRecord {
+  /** The trimmed subject, which is what gets stored. */
+  const subject = input.subject.trim()
+  if (subject === "") return record
+  // The blockers are split HERE, at the moment the reference is accepted: the ids go to `blockedBy` and
+  // whatever named nothing is reported BESIDE it on the task, so the next reader can say why there is no
+  // edge instead of silently drawing a flat board (see `TeamTaskRecord.unresolvedBlockers`).
+  /** What this task's references resolved to. */
+  const blockers = resolveBlockers(record, input.blockedBy ?? [])
+  /** The appended task, carrying the record's own monotonic id. */
+  const task: TeamTaskRecord = {
+    id: "T" + record.nextTaskNumber,
+    subject,
+    description: input.description,
+    kind: input.kind ?? "work",
+    status: "pending",
+    blockedBy: blockers.blockedBy,
+    writeScopes: [...(input.writeScopes ?? [])],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    revision: 1,
+    ...(blockers.unresolved.length === 0 ? {} : { unresolvedBlockers: blockers.unresolved }),
+    ...(input.owner === undefined ? {} : { owner: input.owner }),
+    ...(input.coverageOf === undefined ? {} : { coverageOf: input.coverageOf }),
+    ...(input.sourceTaskId === undefined ? {} : { sourceTaskId: input.sourceTaskId }),
+  }
+  return { ...record, tasks: [...record.tasks, task], nextTaskNumber: record.nextTaskNumber + 1 }
+}
+
+/** The fields {@link updateTeamTask} may change; `revision` and `updatedAt` are always bumped. */
+export interface TaskPatch {
+  /** The task's new state. */
+  status?: TaskStatus
+  /** The owning member's display name; an empty string clears the owner. */
+  owner?: string
+  /** The attempt counter to record. */
+  attempt?: number
+  /** The review round to record. */
+  round?: number
+  /** The review verdict to record. */
+  verdict?: string
+  /** The executor's own handle for this task. */
+  executorRef?: string
+  /** The task's new blockers, resolved against this record. */
+  blockedBy?: string[]
+  /** The closing note a terminal verb records; an empty string clears it. */
+  note?: string
+  /**
+   * Delete `startedAt` as part of this patch.
+   *
+   * ONLY a task RELEASE sets this ({@link casReleaseTask}): abandoning a dispatch means the next claim
+   * is a NEW attempt whose clock must start at that claim, while a plain reopen keeps the original
+   * instant (`updateTeamTask`'s transition rule). A boolean rather than an instant, so no caller can
+   * hand-write a clock reading into the record.
+   */
+  resetStartedAt?: boolean
+}
+
+/**
+ * Apply a patch to one task (pure: the caller persists).
+ * @param record - the record to copy.
+ * @param taskId - the mpd task id to patch.
+ * @param patch - the fields to change.
+ * @param now - the instant to stamp as `updatedAt`.
+ * @returns a new record; the same record when the id is unknown or the patch is empty.
+ */
+export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPatch, now: Date): TeamRecord {
+  /** Whether any task matched, so an unknown id can return the same object. */
+  let touched = false
+  /** The board with the patch applied. */
+  const tasks = record.tasks.map((task) => {
+    if (task.id !== taskId) return task
+    touched = true
+    // A patched blocker list is split exactly like an appended one, so a re-edit can neither hide a
+    // dangling reference nor keep a stale report from an earlier edit.
+    /** What the patched references resolved to; untouched when the patch carries no blockers. */
+    const blockers = patch.blockedBy === undefined ? undefined : resolveBlockers(record, patch.blockedBy)
+    /** The patched task; every optional field is applied only when the patch carries it. */
+    const next: TeamTaskRecord = {
+      ...task,
+      updatedAt: now.toISOString(),
+      revision: task.revision + 1,
+      ...(patch.status === undefined ? {} : { status: patch.status }),
+      ...(patch.attempt === undefined ? {} : { attempt: patch.attempt }),
+      ...(patch.round === undefined ? {} : { round: patch.round }),
+      ...(patch.verdict === undefined ? {} : { verdict: patch.verdict }),
+      ...(patch.executorRef === undefined ? {} : { executorRef: patch.executorRef }),
+      ...(blockers === undefined ? {} : { blockedBy: blockers.blockedBy }),
+    }
+    // The report FOLLOWS the list: clearing it when every entry now resolves, setting it otherwise.
+    if (blockers !== undefined) {
+      if (blockers.unresolved.length === 0) delete next.unresolvedBlockers
+      else next.unresolvedBlockers = blockers.unresolved
+    }
+    if (patch.owner !== undefined) {
+      if (patch.owner === "") delete next.owner
+      else next.owner = patch.owner
+    }
+    // A closing note is a FIELD on the record, so clearing it is a deletion like the owner's — an
+    // empty patch value must not leave `note: ""` behind, which would read as "a note was written".
+    if (patch.note !== undefined) {
+      if (patch.note === "") delete next.note
+      else next.note = patch.note
+    }
+    // THE LIFECYCLE STAMPS ARE DERIVED FROM THE TRANSITION, in this ONE seam: the tool claim, the
+    // dispatch compare-and-set ({@link casClaimTask}) and every terminal verb ({@link casCloseTask})
+    // reach this function, so no caller can write a status and a start/finish instant that disagree.
+    // A patch with NO status touches neither field — a note or a blocker edit must not fabricate a
+    // finish, which is exactly what `updatedAt` alone could never tell a reader apart.
+    if (patch.status !== undefined) {
+      // Into `in_progress`: the FIRST entry starts the clock; a reopen keeps the original instant.
+      if (patch.status === "in_progress" && next.startedAt === undefined) next.startedAt = now.toISOString()
+      // Into a terminal state: the finish instant is the transition itself. `cancelled` is deliberately
+      // NOT stamped — only `completed` and `failed` close work, and `cancelled` means it never ran.
+      if (patch.status === "completed" || patch.status === "failed") next.finishedAt = now.toISOString()
+      // Leaving the finished state DELETES the finish: a row back on the board must not read as
+      // finished, and a CANCELLED row must not keep a finish from an earlier completion either — it
+      // never ran to one of its own. Deleting the key (rather than blanking it) keeps an explicit
+      // `undefined` out of the serialized record.
+      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled") delete next.finishedAt
+    }
+    // APPLIED LAST, so an explicit reset wins over any stamp the same patch just wrote. The release is
+    // the one caller: the row it reopens is a DIFFERENT attempt, so the next claim restarts the clock.
+    if (patch.resetStartedAt === true) delete next.startedAt
+    return next
+  })
+  return touched ? { ...record, tasks } : record
+}
+
+/**
+ * The outcome of a compare-and-set task mutation: either the record to persist, or the refusal.
+ *
+ * A refusal is a RESULT, not an error: the caller reports it (the dispatch pass puts it in
+ * `skipped`) so a lost update is visible, which is the whole point of the compare-and-set.
+ */
+export type CasTaskOutcome =
+  | { /** The fresh record with the patch applied; persist THIS one. */ applied: true; record: TeamRecord }
+  | { /** Why nothing was written; already a sentence a caller can show. */ applied: false; reason: string }
+
+/**
+ * Claim one task for dispatch against the FRESHEST on-disk record (T2's compare-and-set).
+ *
+ * WHY THIS EXISTS. The dispatch pass used to read the record ONCE and then rewrite the WHOLE FILE
+ * after every `await executor().send(...)`. A member's own `agent_teams_task {action:"claim"}` that
+ * landed during that await was erased by the next write, which restored the pass's stale snapshot:
+ * the board then showed an in-flight task as pending and its attempt counter regressed, so a later
+ * claim reused the same attempt number. `updateTeamTask` bumps `task.revision` on every mpd-side
+ * mutation, and that counter is what this compares.
+ *
+ * The rule: the patch is applied to `fresh` — never to the snapshot the caller opened with — and
+ * only when the task is EXACTLY as the caller decided on it. Anything else is refused loudly and
+ * carries the reason, so the caller can report it rather than silently reverting a concurrent write.
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param taskId - the mpd task id to claim.
+ * @param owner - the member name taking the task.
+ * @param expectedRevision - the revision the caller's decision was based on.
+ * @param now - the instant to stamp as `updatedAt`.
+ * @returns the record to persist, or the refusal with its reason.
+ */
+export function casClaimTask(
+  fresh: TeamRecord,
+  taskId: string,
+  owner: string,
+  expectedRevision: number,
+  now: Date,
+): CasTaskOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === taskId)
+  if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
+  if (task.revision !== expectedRevision) {
+    return { applied: false, reason: `task ${taskId} changed while the pass was in flight (revision ${expectedRevision} -> ${task.revision})` }
+  }
+  if (task.status !== "pending") return { applied: false, reason: `task ${taskId} is now "${task.status}"` }
+  // The OWNER is deliberately NOT a refusal: a plan may pre-assign one (`create_task owner=…`), and
+  // that is a plan-time intent, not a claim. A concurrent CLAIM is still caught by the revision
+  // above, because every mpd-side mutation — a claim included — bumps it.
+  return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) }
+}
+
+/**
+ * Decide one task RELEASE against the FRESHEST on-disk record.
+ *
+ * WHY THIS EXISTS (R3). `release` used to be LEDGER-ONLY: the dispatch row was deleted while the task
+ * stayed `in_progress`, and because `readyTasks`/`casClaimTask` are pending-only, the row could NEVER be
+ * dispatched again — a released task was lost to the board. A release now returns the row to `pending`
+ * and clears the owner and the started clock, so the next pass may pair it with a member again.
+ *
+ * THE RULES, each deliberate:
+ *   * `claimed | in_progress` is the only releasable state. A `pending` row holds no dispatch (a second
+ *     release is a no-op WITH a refusal, never a silent success), and a terminal row is refused.
+ *   * CAS on `expectedRevision`, when the caller supplies one: a stale release must not clobber a
+ *     concurrent claim.
+ *   * `startedAt` is DELETED (via `resetStartedAt`) rather than kept: the released attempt is abandoned,
+ *     so the later claim is a NEW attempt and its clock starts then.
+ *   * `attempt` is NOT reset (monotonic across claims, releases and closures) and `claimed` is NOT
+ *     written at dispatch time — no new task state is invented, and `in_progress` keeps its ONE meaning.
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param taskId - the mpd task id to reopen.
+ * @param expectedRevision - the revision the caller decided on; omitted means "whatever is there".
+ * @param now - the instant to stamp as `updatedAt`.
+ * @returns the record to persist, or the refusal with its reason.
+ */
+export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === taskId)
+  if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
+  if (expectedRevision !== undefined && task.revision !== expectedRevision) {
+    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
+  }
+  if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+    return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` }
+  }
+  if (task.status !== "claimed" && task.status !== "in_progress") {
+    return { applied: false, reason: `task ${taskId} is "${task.status}" and holds no dispatch to release` }
+  }
+  return { applied: true, record: updateTeamTask(fresh, taskId, { status: "pending", owner: "", resetStartedAt: true }, now) }
+}
+
+/**
+ * Decide whether one caller may RELEASE a task: this team's Lead, or the task's own owner.
+ *
+ * WHY THIS EXISTS (PR #60 review, F1/CWE-862). A release frees TWO things — the dispatch pairing in
+ * the ledger and the task's claim — and `releaseDispatchedTask` used to do both for ANY caller. A
+ * member resolves its team through the roster arm (`resolveTeamRecord` arm 3), so every teammate could
+ * reopen a row another member had claimed: the task went back to `pending` and the work was silently
+ * unbooked. The terminal verbs already gate ownership (`casCloseTask`); this is that same gate for the
+ * release, with the SAME rule and the SAME comparator, so the two verbs cannot disagree about who the
+ * caller is.
+ *
+ * The Lead is read from BOTH sources the close gate uses: the roster flag the caller's composition
+ * supplied (`lead`, which is `false` wherever the official service cannot mount) and the record's own
+ * durable Lead identity (`leadSessionId` plus the churn history). A task that is GONE is decided the
+ * same way: there is no owner to match, so only the Lead may free its stale pairing — the dispatch
+ * pass's own reconcile prunes such a row anyway — and a non-lead gets the store's standing sentence.
+ *
+ * @param record - the record the release was resolved against.
+ * @param taskId - the task the caller names.
+ * @param caller - every spelling that identifies the calling session.
+ * @param lead - true when the ROSTER says the caller leads this team.
+ * @returns undefined when the release may proceed; the sentence to refuse with otherwise.
+ */
+export function authorizeRelease(record: TeamRecord, taskId: string, caller: readonly string[], lead: boolean): string | undefined {
+  /** The task as the caller's board holds it, or undefined when it is gone. */
+  const task = record.tasks.find((candidate) => candidate.id === taskId)
+  /** Whether the caller leads this team: the roster's flag, or the record's own Lead identity. */
+  const isLead = lead || recordNamesLead(record, caller)
+  if (task === undefined) return isLead ? undefined : `task ${taskId} is no longer on the board`
+  /** Whether any of the caller's own spellings IS the recorded owner, through the ONE comparator. */
+  const isOwner = task.owner !== undefined && task.owner !== "" && caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  if (isOwner || isLead) return undefined
+  return task.owner === undefined || task.owner === ""
+    ? `task ${taskId} has no owner and this caller is not this team's lead`
+    : `task ${taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`
+}
+
+/** What one terminal-verb call decided, and what it unblocked. */
+export type CasCloseOutcome = {
+  /** True when the record was patched; persist {@link CasCloseOutcome.record}. */
+  applied: true
+  /** The fresh record carrying the closure. */
+  record: TeamRecord
+  /** The closed task, as the record now holds it. */
+  task: TeamTaskRecord
+  /** Whether the caller closed as the task's OWNER or through the Lead override. */
+  closedBy: "owner" | "lead"
+  /** The attempt counter as it stood, unchanged — a closure never resets it. */
+  attempt: number
+  /**
+   * Tasks whose blockers this closure satisfied (`ready`) or released by failure
+   * (`released-by-failure`, OPT-1), computed against the patched board.
+   */
+  dependents: Array<{ id: string; subject: string; became: "ready" | "released-by-failure" }>
+  /** The status written. */
+  status: "completed" | "failed"
+} | {
+  /** False when nothing was written. */
+  applied: false
+  /** Why nothing was written; already a sentence a caller can show. */
+  reason: string
+}
+
+/**
+ * Decide one terminal-verb call (`complete` / `fail`) against the FRESHEST on-disk record.
+ *
+ * WHY THIS EXISTS. The mpd-native plane could open a plan, add members and create tasks — and then
+ * nothing could ever close a row: the official `team_task_*` verbs are DISABLED in a dsh-tui boot (the
+ * host refuses the root-bound effect their activation needs), so `agent_teams_plan` / `agent_teams_task`
+ * are the only board surface, and `agent_teams_task` had no terminal action. Measured 2026-10-07 on a
+ * live board: every dependency edge stayed unsatisfied, so `agent_teams_dispatch` could never pair a
+ * blocked task and the whole DAG was frozen. This is that missing verb, decided purely so both
+ * directions are unit-testable.
+ *
+ * The four rules it honours:
+ *   * OWNERSHIP — only the task's own owner may close it (`task.owner` matched against the caller's
+ *     identity candidates: session id, session title, team display name). A task with NO owner is
+ *     refused, because nobody has claimed the work. The ONE override is the Lead: a stranded row
+ *     (its owner gone, its work abandoned) must be closable, and the outcome SAYS which rule applied
+ *     (`closedBy`) rather than blurring the two. THE LEAD IS READ FROM THE RECORD, not only from the
+ *     caller's flag (defect D5b): `leadSessionId` on this very record is the authority, so a Lead whose
+ *     official membership read is unavailable — every dsh-tui boot, where that service cannot mount —
+ *     still closes any task of its own team, and a member still cannot.
+ *   * COMPARE-AND-SET — `expectedRevision`, when supplied, must equal the task's revision on disk; a
+ *     stale caller is refused with both numbers instead of clobbering a concurrent write.
+ *   * ATTEMPT — reported, never reset: the counter is monotonic across claims and closures.
+ *   * OPT-1 — a FAILED closure does NOT pin its dependents: they are reported as
+ *     `released-by-failure` and stay dispatchable (see {@link taskVisual}).
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param input - the closure: who calls, which task, which status, the optional CAS revision and note.
+ * @returns the record to persist with its unblocked dependents, or the refusal with its reason.
+ */
+export function casCloseTask(fresh: TeamRecord, input: {
+  /** The mpd task id to close. */
+  taskId: string
+  /** The terminal status to write. */
+  status: "completed" | "failed"
+  /** Every spelling that identifies the caller, so an owner recorded as a name still matches. */
+  caller: readonly string[]
+  /**
+   * True when the ROSTER says the caller leads this team — the narrow stranded-row override.
+   * A caller whose membership read is unavailable is still recognised through the record's own
+   * `leadSessionId`, so this flag only ever ADDS a lead, it never withholds one.
+   */
+  lead: boolean
+  /** The revision the caller decided on; a mismatch is refused. */
+  expectedRevision?: number
+  /** The one-line closing note, stored on the record. */
+  note?: string
+  /** The instant to stamp as `updatedAt`. */
+  now: Date
+}): CasCloseOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === input.taskId)
+  if (task === undefined) return { applied: false, reason: `task ${input.taskId} is no longer on the board` }
+  if (input.expectedRevision !== undefined && task.revision !== input.expectedRevision) {
+    return { applied: false, reason: `task ${input.taskId} changed under you (revision ${input.expectedRevision} -> ${task.revision}); re-read it and retry` }
+  }
+  if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+    return { applied: false, reason: `task ${input.taskId} is already terminal ("${task.status}")` }
+  }
+  /** Whether any of the caller's own spellings IS the recorded owner. */
+  const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  // THE RECORD'S OWN LEAD (defect D5b, widened by C7-4 F5). `input.lead` is the OFFICIAL membership
+  // read, and in a dsh-tui boot that service cannot mount — measured on a live session where the
+  // captain's own close answered `... is owned by "Plan Reviewer" and this caller is neither that owner
+  // nor this team's lead` while `leadSessionId` on the record being closed named that very session. The
+  // record is already the authority this gate decides against (`fresh`), so the Lead arm is derived from
+  // it here, through the SAME comparator the owner arm uses rather than a second one — and it reads the
+  // record's whole Lead identity (`leadSessionId` plus the churn `leadHistory`), so a forked or resumed
+  // captain still closes its own team's rows.
+  /** Whether any of the caller's own spellings IS this team's recorded Lead identity. */
+  const isRecordLead = recordNamesLead(fresh, input.caller)
+  /** Whether the caller may override ownership: the roster's own lead role, or this team's Lead. */
+  const isLead = input.lead || isRecordLead
+  if (!isOwner && !isLead) {
+    return {
+      applied: false,
+      reason: task.owner === undefined
+        ? `task ${input.taskId} has no owner to close it — claim it first`
+        : `task ${input.taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`,
+    }
+  }
+  /** The patched record; `attempt` is deliberately absent from the patch, so it is carried unchanged. */
+  const record = updateTeamTask(fresh, input.taskId, {
+    status: input.status,
+    ...(input.note === undefined || input.note === "" ? {} : { note: input.note }),
+  }, input.now)
+  /** The closed task as the patched record holds it. */
+  const closed = record.tasks.find((candidate) => candidate.id === task.id) ?? task
+  /** The tasks this closure actually unblocked, computed against the PATCHED board. */
+  const dependents: Array<{ id: string; subject: string; became: "ready" | "released-by-failure" }> = []
+  for (const candidate of record.tasks) {
+    if (candidate.id === task.id) continue
+    if (!candidate.blockedBy.includes(task.id)) continue
+    // Only a row that was genuinely waiting is reported: a terminal row is not "unblocked" by this.
+    if (candidate.status !== "pending" && candidate.status !== "claimed" && candidate.status !== "in_progress") continue
+    if (blockingDependencies(record.tasks, candidate.blockedBy).blocking.length > 0) continue
+    dependents.push({
+      id: candidate.id,
+      subject: candidate.subject,
+      became: input.status === "failed" ? "released-by-failure" : "ready",
+    })
+  }
+  return {
+    applied: true,
+    record,
+    task: closed,
+    closedBy: isOwner ? "owner" : "lead",
+    attempt: closed.attempt ?? 0,
+    dependents,
+    status: input.status,
+  }
+}
+
+/**
+ * Whether two spellings name the same member: exact, or equal after the roster's own normalisation
+ * (lowercase, every run of non-alphanumerics collapsed to `-`).
+ *
+ * The board stores whatever the claim wrote — a session id on one path, a display name on another —
+ * while the caller can present either, so the comparison has to collapse both. The rule is the SAME
+ * one {@link import("./dispatch.ts").dispatchNameKey} applies, and `team-record.test.ts` pins the
+ * agreement by asserting the two functions on the same corpus.
+ */
+function nameMatches(a: string, b: string): boolean {
+  if (a === b) return true
+  /** Normalise one spelling: lowercase, runs of non-alphanumerics to `-`, trimmed. */
+  const key = (value: string): string => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+  /** The first spelling's normalised key. */
+  const left = key(a)
+  return left !== "" && left === key(b)
+}
+
+/**
+ * Whether one DURABLE record names this caller as its LEAD.
+ *
+ * The arm matches the record's current `leadSessionId` OR ANY id in its `leadHistory` (C7-4 F5): a
+ * session that FORKED or RESUMED carries a new id while the record keeps the original, so without the
+ * history the captain lost its own board until a hand rebind rewrote the file. The comparison is
+ * {@link nameMatches}, the SAME comparator the owner arm uses, so a spelling difference resolves too.
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns true when the record's Lead identity (current or historical) is one of them.
+ */
+export function recordNamesLead(record: TeamRecord, caller: readonly string[]): boolean {
+  /** Every id this record has recorded as its Lead, current first. */
+  const recorded = [String(record.leadSessionId ?? ""), ...(record.leadHistory ?? [])].filter((value) => value !== "")
+  return recorded.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+}
+
+/**
+ * Whether one seat is in the CHECKPOINT window — the plane's ONE spelling for "handed off, closed".
+ *
+ * THE MAPPING, STATED ONCE (wave W2-C): `packages/mpd-cellwork-plugin` keeps a `handoffReady` flag on its
+ * OWN cell row; that flag maps to this record's `mode: "checkpoint"` and NOTHING ELSE. A caller must ask
+ * this predicate rather than invent a second spelling, so the plane never grows a parallel `handoffReady`
+ * field, and the two rows cannot disagree about which seat is closed.
+ *
+ * WHY NOT KEY ON `handoff`: the LAST hand-off document STAYS on the row after the seat is reopened (an
+ * `unfence` clears `mode`, never the history), so a document existing means "wrote one once", not "is
+ * closed now". Only `mode` says which it is.
+ * @param record - the team record to read.
+ * @param key - the member id (`M1`) or its display name.
+ * @returns true when the seat is in the checkpoint window.
+ */
+export function memberIsCheckpoint(record: TeamRecord, key: string): boolean {
+  /** The roster row this key names, when the record holds one. */
+  const member = record.members.find((row) => row.id === key || row.name === key)
+  return member?.mode === "checkpoint"
+}
+
+/**
+ * The member this caller's spellings name on the record's roster, or `undefined`.
+ *
+ * The ONE roster lookup: {@link recordNamesMember} is this predicate's boolean form, and the terminal
+ * verbs use the member OBJECT (C7-4 F2) so a session whose id IS the recorded `executorRef` closes its
+ * own row under the member's NAME. Two implementations would be free to disagree about who the caller is.
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns the one matching member, or undefined when the roster names the caller not at all.
+ */
+export function memberNamedBy(record: TeamRecord, caller: readonly string[]): TeamMemberRecord | undefined {
+  if (!Array.isArray(record.members)) return undefined
+  return record.members.find((member) => {
+    /** Every spelling this member can be addressed by on the durable record. */
+    const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "")
+    return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+  })
+}
+
+/** The roster identity ONE session presents, as the plane's single narrowing (T12 / review B3 A1). */
+export interface MemberIdentity {
+  /**
+   * The unique roster row this session identifies as; absent when the record names it only AMBIGUOUSLY
+   * (two seats matched at the SAME specificity, e.g. two seats sharing one role) or not at all.
+   */
+  member?: TeamMemberRecord
+  /**
+   * Whether this record's roster NAMES the session at all — by its own id, by a recorded ancestor, or by
+   * the session TITLE matching a seat. Only a session the roster does NOT name may present a Lead's
+   * recorded ancestry.
+   */
+  named: boolean
+}
+
+/**
+ * How specifically a session TITLE names one roster seat: the length of the best text it matched, or 0.
+ *
+ * THE RULE, STATED ONCE (T12; corrected by T16 N2): **role first, then the seat's STORED name**. The
+ * member's `role` text is tried first; only when it does not occur does the seat's stored `name` count.
+ * For a W3-C-bound seat that stored name IS the workmate slug (`senior-engineer-1`), and a title that
+ * literally contains it DOES name the seat — the rule is "the stored name", NOT "never the slug".
+ *
+ * WHY THE COMPARISON IS CASE-INSENSITIVE TEXT: a RESUMED member session gets a NEW id while the record's
+ * durable handle (`executorRef`) is the OLD one, and the harness may record the LEAD as the resumed
+ * session's parent — so the persona title is the one remaining fact that says which seat this is. The
+ * LENGTH is returned because a shorter role can be a strict substring of a longer one (`Reviewer` inside
+ * `Plan Reviewer`): the caller keeps the LONGEST match as the most specific one.
+ * @param member - the roster row to ask about.
+ * @param title - the session title the harness gave the caller (the persona prompt prefix).
+ * @returns the length of the matched role, else of the matched stored name, else 0.
+ */
+function titleMatchLength(member: TeamMemberRecord, title: string): number {
+  /** The title folded once: the comparison is case-insensitive. */
+  const haystack = title.toLowerCase()
+  /** The seat's ROLE text, folded — the primary signal. */
+  const role = String(member.role ?? "").trim().toLowerCase()
+  if (role !== "" && haystack.includes(role)) return role.length
+  /** The seat's STORED name (the workmate slug for a W3-C-bound seat) — the fallback signal. */
+  const name = String(member.name ?? "").trim().toLowerCase()
+  return name !== "" && haystack.includes(name) ? name.length : 0
+}
+
+/**
+ * The roster identity ONE session presents — the ONE narrowing every Lead check and seat lookup consults.
+ *
+ * ARMS, IN PRECEDENCE ORDER (each is a DURABLE fact, never a guess):
+ *   1. the session's OWN id, matched by {@link memberNamedBy} against `name`/`executorRef`;
+ *   2. a RECORDED ANCESTOR — a resumed session whose parent is the member's old session (its
+ *      `executorRef`) is that member, because the harness recorded the link itself;
+ *   3. the session TITLE naming a seat — ROLE first, then the seat's stored name ({@link titleMatchLength}).
+ * An id match outranks the others; a title match is only used when neither id nor ancestry names a row.
+ *
+ * A RECORDED LEAD IS NEVER A MEMBER BY TITLE (CodeRabbit CR1). The Lead's own session title may contain
+ * a roster role or a seat's stored name — the captain's persona text is not ours to constrain — and ARM 3
+ * would then hand it that member row, making the mailbox address the captain by a MEMBER id. The recorded
+ * Lead identity is checked BEFORE ARM 3 and answers "not named": the title must never replace captaincy.
+ * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+ * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+ * not a fact this arm can decide.
+ *
+ * THE LONGEST MATCH WINS (T16 N1). A roster holding both `Reviewer` and `Plan Reviewer` makes the Plan
+ * Reviewer's own title contain both texts; the 13-character `plan reviewer` is more specific than the
+ * 8-character `reviewer`, so the seat is named uniquely instead of being declared ambiguous. Only a
+ * genuine tie at the SAME specificity stays fail-closed: when two seats match equally long (two seats
+ * sharing one role — the measured T12 shape), `named` is true — the session IS a member, so it must not
+ * borrow captaincy — but `member` is absent, so no caller may act as one particular seat.
+ *
+ * WHY `named` AND `member` ARE SEPARATE. Narrowing authority only needs "is this a member at all"; the
+ * owner/seat rules need "which row". A caller the roster names must never present the Lead's ancestry,
+ * even when the plane cannot pick its row — that is exactly the shape that let a resumed member end a
+ * team.
+ * @param record - the record whose roster is searched.
+ * @param sessionId - the caller's own session id.
+ * @param title - the session title the harness gave the caller; empty when it gave none.
+ * @param lineage - the ancestors the harness recorded for the caller.
+ * @returns the identity: the row (when unambiguous) and whether the roster names the session at all.
+ */
+export function memberIdentityOf(record: TeamRecord, sessionId: string = "", title: string = "", lineage: readonly string[] = []): MemberIdentity {
+  /** ARM 1: the session's own durable handle. */
+  const direct = memberNamedBy(record, [sessionId])
+  if (direct !== undefined) return { member: direct, named: true }
+  /** ARM 2: a recorded ancestor that IS a member's handle — how a resumed member's own header names it. */
+  const ancestral = memberNamedBy(record, lineage)
+  if (ancestral !== undefined) return { member: ancestral, named: true }
+  // A RECORDED LEAD ANSWERS "NOT NAMED" BEFORE THE TITLE ARM (CodeRabbit CR1): its captain identity must
+  // never be replaced by a member row its persona text happens to name.
+  if (sessionId !== "" && recordNamesLead(record, [sessionId])) return { named: false }
+  if (String(title ?? "") === "") return { named: false }
+  /** ARM 3: every seat the title names, scored by the length of its most specific match. */
+  const scored = (Array.isArray(record.members) ? record.members : [])
+    .map((member) => ({ member, strength: titleMatchLength(member, String(title)) }))
+    .filter((entry) => entry.strength > 0)
+  if (scored.length === 0) return { named: false }
+  /** The longest (most specific) match length this title achieves on the roster. */
+  const strongest = Math.max(...scored.map((entry) => entry.strength))
+  /** Every seat matched at that specificity: ONE names a seat, several are a genuine tie. */
+  const winners = scored.filter((entry) => entry.strength === strongest)
+  /** The only seat at the strongest specificity. */
+  const [only] = winners
+  return winners.length === 1 && only !== undefined ? { member: only.member, named: true } : { named: true }
+}
+
+/**
+ * Whether one DURABLE record names this caller on its roster.
+ *
+ * WHY A RECORD CAN NAME A MEMBER AT ALL. The record is what a MEMBER session has to resolve its team
+ * by: a teammate is neither the key of `teams.json`'s `active` map (that is written for the Lead
+ * session that approved the plan) nor any record's `leadSessionId`, so before this predicate existed a
+ * member resolved NOTHING and every board action answered `no team record in this workspace`. MEASURED
+ * on a real session during the tui-dag-highlight wave: a member could open a contract but never close
+ * its own row. The two spellings the record carries are the member's own HANDLE (`executorRef`, the
+ * durable child session id the executor reported at spawn, which is what a member's own session id IS)
+ * and its display `name`; both are compared through {@link nameMatches}, never a second comparator.
+ *
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns true when the roster names the caller at least once.
+ */
+export function recordNamesMember(record: TeamRecord, caller: readonly string[]): boolean {
+  return memberNamedBy(record, caller) !== undefined
+}
+
+/** How many historical Lead sessions a record keeps before the oldest is dropped. */
+const LEAD_HISTORY_LIMIT = 8
+
+/**
+ * Record one or more session ids as this team's Lead without changing `leadSessionId` (C7-4 F5).
+ *
+ * `leadSessionId` is deliberately LEFT ALONE: it is the record's durable identity, and
+ * `team-lifecycle.ts#isLiveTeam` derives the archive key from it (`plan-archive` evidence is keyed by
+ * the session that STAGED the plan), so rewriting it would blind the C7-3 archive rule. The new id is
+ * appended to `leadHistory` instead, and resolution accepts either. Bounded to the most recent
+ * {@link LEAD_HISTORY_LIMIT}, and PURE: nothing is written here.
+ * @param record - the record to copy.
+ * @param sessionIds - the session ids to remember, newest last.
+ * @returns the new record, or the SAME record when no id was new.
+ */
+export function rememberLead(record: TeamRecord, sessionIds: readonly string[]): TeamRecord {
+  /** The current history, copied so the input record is untouched. */
+  const history = [...(record.leadHistory ?? [])]
+  /** Whether this call actually learned an id. */
+  let changed = false
+  for (const id of sessionIds) {
+    if (id === "" || id === record.leadSessionId || history.includes(id)) continue
+    history.push(id)
+    changed = true
+  }
+  if (!changed) return record
+  return { ...record, leadHistory: history.slice(-LEAD_HISTORY_LIMIT) }
+}
+
+/** The fields {@link updateTeamMember} may change. */
+export interface MemberPatch {
+  /** The member's new state. */
+  status?: MemberStatus
+  /** The executor's own handle for this member. */
+  executorRef?: string
+  /** The `provider/model` the roster resolved. */
+  route?: string
+  /** The seat mode the team plane enforces (`member` | `checkpoint`). */
+  mode?: TeamMemberMode
+  /**
+   * `true` fences the seat; `false` CLEARS the fence.
+   *
+   * Clearing DELETES `fenced` and `fencedReason` instead of writing `false`, because absence is the one
+   * on-disk spelling of "not fenced" — a reader never has to treat two values as the same state.
+   */
+  fenced?: boolean
+  /** The one-sentence fence reason; written only beside `fenced: true`. */
+  fencedReason?: string
+  /** The last handoff document the member wrote. */
+  handoff?: TeamHandoffRecord
+  /** The last context checkpoint injected into the member's session. */
+  contextCheckpoint?: TeamContextCheckpoint
+  /** The workmate instance bound to this seat. */
+  workmate?: string
+  /** HOW the seat was bound (`reuse` | `init` | `none`). */
+  workmateMode?: WorkmateBindMode
+  /** Why the seat was left plain, written beside `workmateMode: "none"`. */
+  workmateReason?: string
+}
+
+/**
+ * Apply a patch to one member, addressed by id OR by name (a tool caller has the name).
+ * @param record - the record to copy.
+ * @param key - the member id (`M1`) or display name.
+ * @param patch - the fields to change.
+ * @returns a new record; the same record when nothing matched.
+ */
+export function updateTeamMember(record: TeamRecord, key: string, patch: MemberPatch): TeamRecord {
+  /** Whether any member matched. */
+  let touched = false
+  /** The roster with the patch applied. */
+  const members = record.members.map((member) => {
+    if (member.id !== key && member.name !== key) return member
+    touched = true
+    /** The patched row, built field by field so `fenced: false` can DELETE a key. */
+    const next: TeamMemberRecord = { ...member }
+    if (patch.status !== undefined) next.status = patch.status
+    if (patch.executorRef !== undefined) next.executorRef = patch.executorRef
+    if (patch.route !== undefined) next.route = patch.route
+    if (patch.mode !== undefined) next.mode = patch.mode
+    if (patch.fenced === true) next.fenced = true
+    if (patch.fenced === false) {
+      delete next.fenced
+      delete next.fencedReason
+    }
+    // The reason is only meaningful WITH a fence: a clearing patch never keeps a stale sentence.
+    if (patch.fencedReason !== undefined && patch.fenced !== false) next.fencedReason = patch.fencedReason
+    if (patch.handoff !== undefined) next.handoff = patch.handoff
+    if (patch.contextCheckpoint !== undefined) next.contextCheckpoint = patch.contextCheckpoint
+    if (patch.workmate !== undefined) next.workmate = patch.workmate
+    if (patch.workmateMode !== undefined) next.workmateMode = patch.workmateMode
+    // The reason is only meaningful when a binding pass ran: a plain member (no `workmateMode` at all)
+    // never gains a stale sentence, and a `reuse`/`init` patch never keeps a leftover `none` reason.
+    if (patch.workmateReason !== undefined) next.workmateReason = patch.workmateReason
+    else if (patch.workmateMode !== undefined && patch.workmateMode !== "none") delete next.workmateReason
+    return next
+  })
+  return touched ? { ...record, members } : record
+}
+
+/**
+ * Drop one member row from a roster — the FAILED-RAISE release.
+ *
+ * WHY REMOVAL RATHER THAN A STATUS (contract `.mpd/plans/agent-slot-hygiene.md`): a `failed` row is a
+ * member the harness never raised. Every consumer that counts or renders the roster treats it as a
+ * teammate, and the capacity accounting a fresh raise depends on counts it too, so a row nobody can
+ * reach is not history — it is a leak. The raise's failure is reported in the ANSWER (`stoppedAt`), and
+ * the record keeps no trace of a member that never existed.
+ *
+ * @param record - the record to read; it is never mutated.
+ * @param key - the member's id or its name.
+ * @returns a new record without that row; the SAME record when nothing matched, which is every store
+ *   mutation's own "nothing changed, do not write" signal.
+ */
+export function removeTeamMember(record: TeamRecord, key: string): TeamRecord {
+  /** The roster without the named row. */
+  const members = record.members.filter((member) => member.id !== key && member.name !== key)
+  return members.length === record.members.length ? record : { ...record, members }
+}
+
+/**
+ * Settle one member: mark it `inactive` once it owns no open task.
+ *
+ * WHY THIS EXISTS (R2). A member is written `running` when the executor reports its session, and
+ * NOTHING wrote it back: `derivePhase` read the ghost as activity forever, the finished-team predicate
+ * the compaction pass derives never fired, the TUI drew a team working forever, and the workmate
+ * in-use gate never released. Settlement is the missing write, and it is deliberately NARROW — a member
+ * that still owns an `in_progress`/`claimed` task KEEPS its `running` row.
+ *
+ * KEYED BY `executorRef` because that is the ONE durable handle the harness reports an event with (a
+ * session id). A member with no recorded handle, or a session that names no member, matches nothing and
+ * the SAME record comes back — identity is the caller's "nothing changed, do not write" signal.
+ *
+ * @param record - the record to read; it is never mutated.
+ * @param sessionId - the settling session, matched against the member's `executorRef`.
+ * @param now - the settlement instant, following the store's mutation convention: the caller settles
+ *   with the ONE clock reading it already took for the closure that released the member. The member row
+ *   has no per-transition stamp, so no instant reaches the record.
+ * @returns a new record with that member `inactive`; the SAME record when nothing settled.
+ */
+export function settleMember(record: TeamRecord, sessionId: string, now: Date): TeamRecord {
+  /** The member this session is, by the one handle the record keeps for it. */
+  const member = record.members.find((candidate) => candidate.executorRef === sessionId)
+  // A session that names no member (or a member with no recorded handle) settles nothing: absent
+  // evidence is not a settlement, and writing one would mark a member free that may be working.
+  if (member === undefined) return record
+  // A member already inactive (or failed) is not settled again; only a live `running` row is.
+  if (member.status !== "running") return record
+  /**
+   * Whether this member still owns work. BOTH spellings the board may have stamped are checked —
+   * its display name (a planned owner) and its executor handle (a session claim).
+   */
+  const ownsOpenTask = record.tasks.some((task) => (task.status === "in_progress" || task.status === "claimed")
+    && (task.owner === member.name || (member.executorRef !== undefined && task.owner === member.executorRef)))
+  if (ownsOpenTask) return record
+  // `now` is the store's mutation convention — the caller settles with the ONE clock reading it already
+  // took for the closure — not a value written to the record: a member row has `spawnedAt` and no
+  // per-transition stamp, and inventing one would be a schema change the frozen contract does not ask
+  // for. The phase is derived at WRITE time by the caller (`withDerivedPhase`), which needs no clock.
+  void now
+  return { ...record, members: record.members.map((candidate) => candidate.id === member.id ? { ...candidate, status: "inactive" as const } : candidate) }
+}
+
+/**
+ * Derive the phase from what the record actually shows, so a phase can never drift from it.
+ *
+ * `ended` is sticky (an explicit end outranks any leftover state), `staged` is the pre-approval
+ * state, `active` needs something actually in flight, and anything else that has been approved is
+ * `idle`. A record that was never approved never becomes `active`, however its members look.
+ *
+ * `provisioning` COUNTS as in flight: after approval a member sits in `provisioning` until the
+ * executor reports a session back, and that window is work happening, not an idle team. `inactive` is
+ * what {@link settleMember} writes once a member owns no open task, so the closure of the last task
+ * plus the settlement is exactly what turns an approved record `idle` (and only then can the
+ * compaction pass read a team as finished).
+ * @param record - the record to read.
+ * @returns the phase to store and to show.
+ */
+export function derivePhase(record: TeamRecord): TeamPhase {
+  if (record.endedAt !== undefined) return "ended"
+  if (record.approvedAt === undefined) return "staged"
+  /** Whether a member is doing something. */
+  const busyMember = record.members.some((member) => member.status === "running" || member.status === "provisioning")
+  /** Whether a task is doing something. */
+  const busyTask = record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed")
+  return busyMember || busyTask ? "active" : "idle"
+}
+
+/** The stored phase brought back in line with the record's own contents. */
+export function withDerivedPhase(record: TeamRecord): TeamRecord {
+  /** The derived phase; a stale stored value is replaced rather than trusted. */
+  const phase = derivePhase(record)
+  return phase === record.phase ? record : { ...record, phase }
+}
+
+/** A task's RENDERED state: `blocked` is computed from the blockers, never stored. */
+export type TaskVisual = "completed" | "failed" | "cancelled" | "running" | "blocked" | "open"
+
+/**
+ * The blockers that still block: neither completed nor cancelled.
+ * @param board - the tasks to resolve against.
+ * @param blockedBy - the blocker ids to classify.
+ * @returns the still-blocking ids and the ids that failed (which no later state can unblock).
+ */
+export function blockingDependencies(board: readonly TeamTaskRecord[], blockedBy: readonly string[]): { blocking: string[]; failed: string[] } {
+  /** Task lookup by id, the index every blocker walk uses. */
+  const byId = new Map(board.map((task) => [task.id, task]))
+  /** Blocker ids that still block. */
+  const blocking: string[] = []
+  /** Blocker ids that failed. */
+  const failed: string[] = []
+  for (const id of blockedBy) {
+    /** This blocker's status; an unknown id counts as pending, hence blocking. */
+    const status = byId.get(id)?.status
+    if (status === "completed" || status === "cancelled") continue
+    if (status === "failed") failed.push(id)
+    else blocking.push(id)
+  }
+  return { blocking, failed }
+}
+
+/**
+ * The visual state a renderer draws for one task.
+ *
+ * **OPT-1 (user decision, 2026-09-13) — DO NOT "FIX" THIS.** A FAILED blocker does NOT block its
+ * dependents: they stay `open` and dispatchable, and the failure is reported SEPARATELY (see
+ * {@link blockingDependencies}'s `failed` list and {@link TeamRecordSummary.releasedByFailure}) so a
+ * reader sees it and decides. The reasoning recorded with that decision: a failed dependency must not
+ * pin its dependents forever, and a cancelled one already does not. The retired vendored body carried
+ * the same three-state rule (`dependencyStates`), the Web panel and the TUI project it, and this store
+ * is its third implementation — the three must keep agreeing.
+ * @param task - the task to classify.
+ * @param board - the tasks its blockers resolve against.
+ * @returns the visual state, `blocked` being derived rather than stored.
+ */
+export function taskVisual(task: TeamTaskRecord, board: readonly TeamTaskRecord[]): TaskVisual {
+  if (task.status === "completed") return "completed"
+  if (task.status === "failed") return "failed"
+  if (task.status === "cancelled") return "cancelled"
+  if (task.status === "in_progress" || task.status === "claimed") return "running"
+  // OPT-1: only the still-UNSATISFIED blockers count here, which is why a failed one is absent.
+  return blockingDependencies(board, task.blockedBy).blocking.length > 0 ? "blocked" : "open"
+}
+
+/**
+ * Longest blocker-path depth per task: 0 for a root, which is the graph's RANK.
+ *
+ * A cycle resolves to 0 rather than recursing forever, so a malformed board degrades to a flat
+ * drawing instead of a hang.
+ * @param board - the tasks to measure.
+ * @returns depth per task id.
+ */
+export function taskDepths(board: readonly TeamTaskRecord[]): Map<string, number> {
+  /** Task lookup by id. */
+  const byId = new Map(board.map((task) => [task.id, task]))
+  /** Memoized depth per task id. */
+  const depths = new Map<string, number>()
+  /** Ids on the current path, so a cycle resolves instead of recursing. */
+  const visiting = new Set<string>()
+  /**
+   * Longest blocker path below one task.
+   * @param id - the task to measure.
+   * @returns the path length; 0 for a root, an unknown id or a revisited node.
+   */
+  const depthOf = (id: string): number => {
+    /** This task's memoized depth, when the walk already computed it. */
+    const cached = depths.get(id)
+    if (cached !== undefined) return cached
+    if (visiting.has(id)) return 0
+    /** This task's row, undefined when the id is not on the board. */
+    const task = byId.get(id)
+    if (task === undefined) return 0
+    visiting.add(id)
+    /** The task's known blockers, sorted so the walk is deterministic. */
+    const blockers = [...task.blockedBy].filter((candidate) => byId.has(candidate)).sort()
+    /** One plus the deepest blocker, or 0 when nothing blocks below this task. */
+    const depth = blockers.length === 0 ? 0 : 1 + Math.max(...blockers.map(depthOf))
+    visiting.delete(id)
+    depths.set(id, depth)
+    return depth
+  }
+  for (const task of board) depthOf(task.id)
+  return depths
+}
+
+/**
+ * Ids taking part in a blocker cycle, so a malformed board is REPORTED instead of drawn as if it
+ * were sound.
+ * @param board - the tasks to scan.
+ * @returns the ids on at least one cycle, sorted.
+ */
+export function cycleIds(board: readonly TeamTaskRecord[]): string[] {
+  /** Task lookup by id. */
+  const byId = new Map(board.map((task) => [task.id, task]))
+  /** Ids whose whole subtree was already visited. */
+  const done = new Set<string>()
+  /** The current DFS path, in visit order. */
+  const stack: string[] = []
+  /** Membership index of `stack`, so a back edge is recognised in constant time. */
+  const inStack = new Set<string>()
+  /** Ids proven to sit on a cycle. */
+  const cyclic = new Set<string>()
+  /**
+   * Walk one id's blockers, recording every node on a back edge as cyclic.
+   * @param id - the id to visit.
+   */
+  const visit = (id: string): void => {
+    if (done.has(id)) return
+    if (inStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id))) cyclic.add(entry)
+      return
+    }
+    /** This id's task, undefined when the board does not carry it. */
+    const task = byId.get(id)
+    if (task === undefined) return
+    inStack.add(id)
+    stack.push(id)
+    for (const blocker of task.blockedBy) if (byId.has(blocker)) visit(blocker)
+    stack.pop()
+    inStack.delete(id)
+    done.add(id)
+  }
+  for (const task of board) visit(task.id)
+  return [...cyclic].sort()
+}
+
+/** The tallies and edges every surface shows, computed once from the record. */
+export interface TeamRecordSummary {
+  /** Total tasks on the board. */
+  total: number
+  /** Tasks whose own state is `completed`. */
+  completed: number
+  /** Tasks actually running (in progress or claimed). */
+  running: number
+  /**
+   * Tasks genuinely ready to start: pending, with no unfinished blocker AND no failed one.
+   *
+   * OPT-1 keeps a task behind a FAILED blocker dispatchable, so those tasks are counted in
+   * {@link releasedByFailure} instead of here — the two must never be one number, or "N ready"
+   * would hide that N of them can only start because a prerequisite gave up.
+   */
+  ready: number
+  /** Tasks still waiting on an unfinished blocker. */
+  blocked: number
+  /** Tasks whose OWN state is `failed` — a failed TASK, which is not the same as a failed blocker. */
+  failed: number
+  /**
+   * Tasks OPT-1 releases: pending, with no unfinished blocker, but at least one blocker FAILED.
+   *
+   * These are dispatchable by decision, and a reader must be able to see that they are dispatchable
+   * ONLY because a prerequisite failed — the whole reason OPT-1 reports the failure beside the state
+   * rather than folding it into it.
+   */
+  releasedByFailure: number
+  /** Tasks cancelled or otherwise off the board. */
+  other: number
+  /** Dependency edges across the board. */
+  links: number
+  /** Ids on at least one blocker cycle; a non-empty list is a broken board, reported not hidden. */
+  cycles: string[]
+  /** Depth (rank) per task id, the graph's column index. */
+  depths: Map<string, number>
+}
+
+/**
+ * Summarise one record for the surfaces.
+ * @param record - the record to summarise.
+ * @returns the tallies, the edge count, the cycles and the per-task rank.
+ */
+export function summariseTeam(record: TeamRecord): TeamRecordSummary {
+  /** The board this summary counts. */
+  const board = record.tasks
+  /** The counts, accumulated in one pass over the board. */
+  const summary: TeamRecordSummary = { total: board.length, completed: 0, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0, other: 0, links: 0, cycles: cycleIds(board), depths: taskDepths(board) }
+  for (const task of board) {
+    /** This task's rendered state. */
+    const visual = taskVisual(task, board)
+    /** This task's blockers, split into "still waiting" and "gave up" (OPT-1). */
+    const { blocking, failed } = blockingDependencies(board, task.blockedBy)
+    if (visual === "completed") summary.completed += 1
+    else if (visual === "running") summary.running += 1
+    else if (visual === "blocked") summary.blocked += 1
+    else if (visual === "failed") summary.failed += 1
+    else if (visual === "open") {
+      // OPT-1: a task is still "ready" when a blocker FAILED, because the decision releases it — but
+      // it is counted apart, so "6 ready" can never hide "3 of them are only ready because a
+      // prerequisite failed".
+      if (failed.length > 0 && blocking.length === 0) summary.releasedByFailure += 1
+      else summary.ready += 1
+    } else summary.other += 1
+    summary.links += task.blockedBy.filter((id) => board.some((candidate) => candidate.id === id)).length
+  }
+  return summary
+}
+
+/**
+ * One team summary in the shape a TOOL RESULT may carry: identical counts, with `depths` as a plain
+ * id→depth RECORD instead of a Map.
+ *
+ * WHY IT EXISTS (measured 2026-10-02, defect 1): the harness runs its lossless-JSON snapshot over a
+ * tool body's value BEFORE it validates the declared output schema, and a `Map` is not lossless JSON
+ * — so `agent_teams_plan action:"status"` failed with "value is not lossless JSON" whenever a team
+ * record existed, and the whole status view was unreadable. The `mpdTeams` service keeps the Map
+ * (the Web and TUI planes index it by id), so the projection belongs at the tool boundary alone.
+ */
+export interface TeamRecordSummaryResult extends Omit<TeamRecordSummary, "depths"> {
+  /** Longest blocker path per task id, as a plain record keyed by task id. */
+  depths: Record<string, number>
+}
+
+/**
+ * Project a summary onto the lossless-JSON shape a tool result must carry.
+ *
+ * @param summary - the summary read from the store.
+ * @returns the same counts, with `depths` as a plain record.
+ */
+export function losslessSummary(summary: TeamRecordSummary): TeamRecordSummaryResult {
+  return { ...summary, depths: Object.fromEntries(summary.depths) }
+}
+
+/** The member's progress over the tasks it owns. */
+export interface MemberProgress {
+  /** Tasks owned by this member that are completed. */
+  done: number
+  /** Tasks owned by this member, in any state. */
+  total: number
+  /** The first unfinished task this member owns, when there is one. */
+  current?: string
+}
+
+/**
+ * One member's progress, matched by display name.
+ * @param record - the record to read.
+ * @param name - the member's display name.
+ * @returns the counts and the current task id.
+ */
+export function memberProgress(record: TeamRecord, name: string): MemberProgress {
+  // OWNERSHIP HAS TWO SPELLINGS. A declared owner carries the member's display NAME, while a member
+  // that CLAIMED its task stamps the claimer, which is its executor handle (the session id). Reading
+  // only the name made a member card say `0/0` beside a board it had just completed — measured
+  // 2026-10-19 on the Docker Web lane — so the row's own handles are collected and both match.
+  /** The executor handles the roster rows with this display name carry. */
+  const handles = new Set(record.members
+    .filter((member) => member.name === name && typeof member.executorRef === "string" && member.executorRef !== "")
+    .map((member) => member.executorRef as string))
+  /** Tasks this member owns, under either spelling, in board order. */
+  const owned = record.tasks.filter((task) => task.owner === name || (task.owner !== undefined && handles.has(task.owner)))
+  /** The first owned task that is not finished. */
+  const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled")
+  return {
+    done: owned.filter((task) => task.status === "completed").length,
+    total: owned.length,
+    ...(current === undefined ? {} : { current: current.id }),
+  }
+}
+
+/**
+ * The tasks ready to be dispatched: pending, and with no UNSATISFIED blocker (OPT-1).
+ *
+ * A blocker that FAILED does not hold a task back — see {@link taskVisual} for the decision and its
+ * reason. {@link summariseTeam} counts those tasks apart, so "ready" and "ready only because a
+ * prerequisite failed" are never the same number.
+ * @param record - the record to read.
+ * @returns the dispatchable tasks, in board order.
+ */
+export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
+  return record.tasks.filter((task) => task.status === "pending" && blockingDependencies(record.tasks, task.blockedBy).blocking.length === 0)
+}
+
+/**
+ * The members free to take work: no task in flight, and a status that is not a failure or a spawn.
+ *
+ * `inactive` IS FREE (R2). Settlement writes it when a member owns no open task, and before the
+ * settlement existed the pool was `running`-only — so settling a member would have emptied the very
+ * pool that must pick the next task up. `provisioning` stays busy (its spawn is in flight) and
+ * `failed` stays out (a dead member is not a candidate).
+ * @param record - the record to read.
+ * @returns the free members, in roster order.
+ */
+export function idleMembers(record: TeamRecord): TeamMemberRecord[] {
+  /** Every spelling a task in flight may have stamped: the member's name or its executor handle. */
+  const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner): owner is string => owner !== undefined))
+  // A FENCED SEAT IS NOT IDLE (R-W1A nit, closed by the derived stage): the compaction barrier gave up on
+  // it, the dispatch pass never messages it, and the web payload renders exactly this set — so counting it
+  // here made a dead seat read as available and let a reader expect work it cannot take.
+  return record.members.filter((member) => (member.status === "running" || member.status === "inactive")
+    && member.fenced !== true
+    && !busy.has(member.name)
+    // A member whose claim stamped its handle is BUSY; matching only the name would let dispatch book
+    // a second task onto it (the same two-spelling defect `memberProgress` documents).
+    && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)))
+}

@@ -1,0 +1,13 @@
+$ grep -n "until the heal records it" evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md
+exit=1
+
+$ grep -rn "until the heal records it" packages/ scripts/ docs/
+exit=1
+
+$ remaining occurrences of the phrase in the repo (historical review + the flagged src doc comment):
+evidence/cellwork/vedit-p0/followup/review-cr-code/REPORT.md:66:fork "is read as that seat until the heal records it", but the same paragraph (and the code) says the heal
+evidence/cellwork/vedit-p0/followup/review-cr-code/REPORT.md:69:comment states it correctly; only the sentence is loose. *Direction:* replace "until the heal records it"
+
+$ grep -n "until its heal\|until then" packages/mpd-team-core-plugin/src/team-store.ts (FLAGGED, not edited: T28 forbids src changes)
+1297: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+1298: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,

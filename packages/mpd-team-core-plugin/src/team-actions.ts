@@ -1800,7 +1800,15 @@ export async function endTeam(deps: TeamActionDeps, caller: TeamActionCaller, in
     // ONE JOURNAL ROW PER ACTUAL ENDING (T8 N1): the terminal transition is history the same way a
     // fence or a handoff is, and the idempotent repeat is a no-op that must not append a second row.
     if (outcome.changed) {
-      appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") })
+      // THE ENDING ALREADY LANDED, so a JOURNAL failure must never fail it (CodeRabbit CR1): the record
+      // is terminal on disk before this line runs, and a thrown refusal would report a failed end whose
+      // retry answers `changed:false` — the missing `team-ended` row could then never be written. The
+      // failure is reported on the row's diagnostic sink instead, and the reply still says what happened.
+      try {
+        appendTeamJournal(caller.workspace, { event: "team-ended", teamId: outcome.record.teamId, at: now.toISOString(), reason: String(outcome.record.archivedReason ?? "") })
+      } catch (error) {
+        deps.log(`team ${outcome.record.teamId} ended but its journal row was not written: ${refusalOf(error)}`)
+      }
     }
     return {
       ok: true,

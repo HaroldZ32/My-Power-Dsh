@@ -1,0 +1,7 @@
+# does a comment-only src edit STALE the committed dist? Rebuild with the PINNED toolchain into a temp file and compare bytes.
+lrwxrwxrwx 1 haroldzhao haroldzhao 67 Oct  2 23:35 .toolchain/node_modules/.bin/bun -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/bun/bin/bun
+  mut-rebuild.js  0.41 MB  (entry point)
+
+f26fdb3477d45fd695b8a3a19f58dc04a9fe37358e7a3090d5e5b482918726e9  /tmp/mut-rebuild.js
+5edab1584e8762df060210cccb25ca82738d453556e9ede5f9c64f38a7fc378e  packages/mpd-team-core-plugin/dist/index.js
+DIFFERENT — dist must be rebuilt by the integration lane

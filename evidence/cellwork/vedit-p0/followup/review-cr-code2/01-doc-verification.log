@@ -1,0 +1,44 @@
+=== current hashes vs fork-bound/05-tree-state.log ===
+3c088583e662d15fd1178ddcac43bb0952adcd464c1148fca683047a775f46b9  packages/mpd-team-core-plugin/src/team-actions.ts
+46117455a2dd87644515da5ba2aa3a502eae019815ef4b6c42c7b0acc9167c8e  packages/mpd-team-core-plugin/src/team-store.ts
+25b9eb60d6832af70eefa00ee4da74989d5295a83a5df82030484eadea82a75d  packages/mpd-team-core-plugin/test/identity-plane.test.ts
+f429b1de192bd9ad133b9ba8be5b6f6e2ff7dea325b253dc83aab06f511274f3  packages/mpd-team-core-plugin/test/codereview-cr1.test.ts
+
+=== mtimes (all should predate the T28 fix at ~16:18) ===
+2026-11-03 16:09:27.872814897 +0800 packages/mpd-team-core-plugin/src/team-actions.ts
+2026-11-03 16:21:04.998021937 +0800 packages/mpd-team-core-plugin/src/team-store.ts
+2026-11-03 16:10:18.096957081 +0800 packages/mpd-team-core-plugin/test/identity-plane.test.ts
+2026-11-03 16:10:02.399181567 +0800 packages/mpd-team-core-plugin/test/codereview-cr1.test.ts
+
+=== old phrase in the T22 REPORT (must be none) ===
+grep-exit=1
+
+=== old phrase across the codereview docs + package READMEs (excluding my T24 review) ===
+evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/diff.patch:34:+ * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/diff.patch:35:+ * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/02-after-grep-t22-report.log:1:$ grep -n "until the heal\|until its heal\|until then\|still read as that seat" evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/REPORT.md:11:The T22 REPORT's Bounds said a seat-naming fork "is read as that seat **until the heal records it**" — but
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/REPORT.md:34:writes `leadHistory` … still read as that seat"). Restated so the release docs can be copied verbatim:
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/REPORT.md:61:| `02-after-grep-t22-report.log` | `grep -n "until the heal\|until its heal\|until then\|still read as that seat"` on the T22 REPORT → **no matches, exit 1** |
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/REPORT.md:70:> THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/REPORT.md:71:> title names a seat is still read as that seat **until then** (the T12 residual) …
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/04-scoped-grep.log:1:$ grep -n "until the heal records it" evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/04-scoped-grep.log:4:$ grep -rn "until the heal records it" packages/ scripts/ docs/
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/04-scoped-grep.log:12:1297: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/04-scoped-grep.log:13:1298: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/01-before-grep.log:1:evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:110:FORKED Lead's new session id is not recorded until its heal writes `leadHistory`, so a fork whose title
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/01-before-grep.log:2:evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:111:names a seat is still read as that seat — the stated bound.)
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/01-before-grep.log:3:evidence/cellwork/vedit-p0/followup/codereview/t22-identity-and-journal/REPORT.md:133:  names a seat is read as that seat until the heal records it. That is the T12 residual, unchanged and
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/01-before-grep.log:4:packages/mpd-team-core-plugin/src/team-store.ts:1297: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound/01-before-grep.log:5:packages/mpd-team-core-plugin/src/team-store.ts:1298: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/05-after-grep.log:1:$ grep -rn "until its heal\|still read as that seat\|until then" packages/mpd-team-core-plugin/src/ (after)
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/REPORT.md:14: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/REPORT.md:15: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/REPORT.md:39:touched. `05-after-grep.log` shows the old phrases (`until its heal`, `still read as that seat`, `until
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-before.log:8: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-before.log:9: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts:1297: * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/00-team-store.before.ts:1298: * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/01-comment-diff.log:8:- * THE BOUND: a FORKED Lead's NEW id is not recorded until its heal writes `leadHistory`, so a fork whose
+evidence/cellwork/vedit-p0/followup/codereview/fork-bound-src/01-comment-diff.log:9:- * title names a seat is still read as that seat until then (the T12 residual) — a separate discriminator,
+(none above = clean)
