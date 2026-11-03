@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "track": "official",
+  "provider": "deepseek-official",
+  "durationMs": 11623,
+  "exit": 0,
+  "hasToolEvidence": true,
+  "toolEvidence": {
+    "succeeded": true,
+    "called": [
+      "bash"
+    ],
+    "reason": "",
+    "resultText": "/tmp/mpd-dsh-qa-qlaqMC/ws\nAGENT.md\n"
+  }
+}
