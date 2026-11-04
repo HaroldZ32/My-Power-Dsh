@@ -400,7 +400,9 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // no cell passes through, which is what makes the mode free while it is off.
   /** The guard's install outcome, reported on the mount line. */
   const guard = installCellworkGuard(dsh, {
-    seatOf: (exec) => callerContext(dsh, exec, { teams: () => teamsService(ctx) }).seat,
+    // READ-ONLY on purpose: this predicate runs on EVERY dispatch, including the ones it refuses, so it
+    // resolves the seat without adopting (`adopt: false`) — the cellwork verb that follows still does.
+    seatOf: (exec) => callerContext(dsh, exec, { teams: () => teamsService(ctx), adopt: false }).seat,
     warn,
   })
   if (guard.dispose !== undefined) disposers.push(guard.dispose)
@@ -408,7 +410,7 @@ export function apply(ctx: Ctx, config: CellworkRowConfig = {}): void {
   // ── cellwork_status ───────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_status",
-    description: "Report one cell: phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never mutates anything.",
+    description: "Report one cell: phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, the live team's member/task counts and the on-disk paths. Defaults to the workspace's ACTIVE cell; pass `cellId` to read another. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run is reportable.",
     parameters: {
       type: "object",
       properties: { cellId: { type: "string", description: "The cell to report; omitted reads the workspace's active cell." } },

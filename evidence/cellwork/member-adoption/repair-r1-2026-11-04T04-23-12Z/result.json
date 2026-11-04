@@ -1,0 +1,102 @@
+{
+  "wave": "cellwork-member-adoption",
+  "part": "REPAIR round 1 — the six Reviewer findings on B1/B2 (behaviour of B1/B2 unchanged)",
+  "capturedAt": "2026-11-04T04:24:58Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "bcbfdce4",
+  "findingFixes": [
+    {
+      "finding": 1,
+      "severity": "HIGH",
+      "anchor": "src/protocol.ts cellwork_handoff description",
+      "change": "the description now names adoption in one sentence, in the neighbours' register: a member known only to the LIVE team record is ADOPTED first (mirrored into the cell record by this call) and then gets the same channel"
+    },
+    {
+      "finding": 2,
+      "severity": "MEDIUM",
+      "anchor": "src/caller.ts#callerContext / src/caller.ts#adoptSeat / src/index.ts#apply / src/guard.ts#CellworkGuardOptions.seatOf",
+      "change": "new CallerDeps.adopt (default true) gates the ONLY writer; index.ts passes adopt:false to installCellworkGuard's seatOf, so the guard's lookup is READ-ONLY. adoptSeat re-reads the cell with readCell immediately before the transition, merges the row into THAT record (never into the callerContext snapshot) and writes nothing when the fresh record is unreadable; the guard.ts doc now states the READ-ONLY requirement."
+    },
+    {
+      "finding": 3,
+      "severity": "MEDIUM",
+      "anchor": "src/protocol-core.ts#memberAfterBarrier (+ src/staging.ts#planningMemberRow)",
+      "change": "memberAfterBarrier carries `adopted: true` explicitly on BOTH outcomes (refused -> fenced/checkpoint, promoted/reseeded -> subcaptain), and never grows the key for a row that lacked it. planningMemberRow, the other field-by-field rebuild that copies an existing row, carries it too."
+    },
+    {
+      "finding": 4,
+      "severity": "MEDIUM",
+      "anchor": "src/protocol.ts cellwork_supervise render + fenced output-schema description",
+      "change": "every fenced member renders BOTH levers — `cellwork_dispatch {reassign:[{task_id, owner}]}` only when it owns an open row, and always `cellwork_dispatch {unfence:[\"<name>\"]}`; the schema description and the tool description name unfence too"
+    },
+    {
+      "finding": 5,
+      "severity": "NIT",
+      "anchor": "src/protocol.ts cellwork_context description",
+      "change": "the 'Read-only' claim is gone; it mirrors cellwork_status: never transitions the cell, its ONE write is ADOPTING a live team seat the record never learned"
+    },
+    {
+      "finding": 6,
+      "severity": "NIT",
+      "anchor": "README.md, README.zh-CN.md, docs/cellwork.md, docs/cellwork.zh-CN.md",
+      "change": "three row sources (staging / activation / adoption) in all four files, with cross-references updated; the trigger list names the cellwork verbs, the agent/pre-step checkpoint listener and the agent/turn-stopping barrier listener, and says explicitly that the TOOL GUARD is NOT a trigger because its lookup is read-only"
+    }
+  ],
+  "tests": {
+    "added": [
+      {
+        "name": "B1 repair: the GUARD resolves the seat READ-ONLY — a permission check never adopts",
+        "file": "packages/mpd-cellwork-plugin/test/member-adoption.test.ts",
+        "pins": "finding 2 — a refused AND an allowed dispatch through the installed guard leave state.json byte-identical and insert no row; the verb that follows still adopts",
+        "negativeControl": "negative-control-guard.log — exit 1 with the fix reverted (state.json bytes differ)"
+      },
+      {
+        "name": "C7 × B1: an ADOPTED member's marker survives BOTH barrier outcomes, and absence stays absence",
+        "file": "packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts",
+        "pins": "finding 3 — adopted survives refused, promoted and reseeded; a staged row does not grow the key",
+        "negativeControl": "negative-control-barrier.log — exit 1 with the carry reverted"
+      },
+      {
+        "name": "C7 repair: a fenced member with NO open row still gets the unfence lever, not reassign advice",
+        "file": "packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts",
+        "pins": "finding 4 — the render names cellwork_dispatch {unfence:[\"<name>\"]} and no longer advises a reassignment of nothing"
+      }
+    ],
+    "extended": [
+      {
+        "name": "C7: cellwork_supervise lists every fenced member with the open rows it owns",
+        "file": "packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts",
+        "pins": "finding 4 — the rendered sweep names BOTH levers for a fenced member that owns an open row"
+      }
+    ]
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "212 pass / 0 fail / 2454 expect() calls across 26 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit — no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature (596 files, 52257 declarations)"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=55 failed=0 violations=0 links=500 dead=0 — PASS"
+    }
+  ],
+  "bounds": [
+    "dist/ was NOT rebuilt (the captain does it): packages/mpd-cellwork-plugin/dist/index.js predates this repair, so verify-dist-fresh is expected to redden until the pinned-toolchain rebuild.",
+    "Nothing was staged or committed.",
+    "The adoption re-read narrows the lost-update window (fresh read immediately before one transition) but is not a lock: a writer landing between that read and the atomic rename can still be overwritten.",
+    "bun run test:qa and the QA real cases were not run in this round (the captain's sweep owns them)."
+  ],
+  "gatesNote": "the four gate logs in this directory were regenerated on the FINAL tree (the docs rewrap is included)"
+}

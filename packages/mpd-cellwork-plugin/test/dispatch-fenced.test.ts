@@ -46,6 +46,8 @@ interface CapturedTool {
   name: string
   /** The runner, called with the harness-validated arguments and the dispatch. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
+  /** The result formatter, when the definition declares one — what a model actually reads. */
+  output?: { render?: (args: unknown, value: unknown) => unknown }
 }
 
 /** The fake harness one arm drives. */
@@ -246,6 +248,28 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
 }
 
 /**
+ * Run one captured tool's answer through the tool's OWN formatter.
+ *
+ * A structured answer and what a MODEL reads are two surfaces: the review of repair 4 is about the text a
+ * caller is handed, so the arms assert the rendered line rather than the result shape alone.
+ *
+ * @param harness - the harness that captured the definition.
+ * @param name - the tool name.
+ * @param answer - the structured answer to format.
+ * @returns the rendered text, one block per line.
+ */
+function renderTool(harness: Harness, name: string, answer: unknown): string {
+  /** The captured definition. */
+  const tool = harness.tools.get(name)
+  /** The formatter the definition declares. */
+  const render = tool?.output?.render
+  if (render === undefined) throw new Error("no renderer on " + name)
+  /** The formatter's answer. */
+  const blocks = render({}, answer)
+  return Array.isArray(blocks) ? blocks.map((block) => String((block as { text?: unknown }).text ?? "")).join("\n") : String(blocks)
+}
+
+/**
  * Every journal row of the harness's cell, in append order.
  *
  * @param harness - the harness whose cell is read.
@@ -401,6 +425,31 @@ test("C7: a given-up barrier fences the member row it persists, and a later succ
   expect(reseeded.executorRef).toBe("handle-fresh")
 })
 
+test("C7 × B1: an ADOPTED member's marker survives BOTH barrier outcomes, and absence stays absence", () => {
+  // An adopted member's FIRST handoff runs exactly this barrier, so a field-by-field rebuild that dropped
+  // `adopted` would make the record stop saying the row appeared after activation (contract B1).
+  /** An adopted row: the one additive marker that says the row appeared after activation. */
+  const adopted: CellMemberRecord = memberRow("rev-late", { adopted: true, handoffs: 1 })
+  // REFUSED (the fence) — the row is fenced, and it must still read as adopted.
+  /** The row a refused barrier leaves. */
+  const fenced = memberAfterBarrier(adopted, { outcome: "refused", attempts: 3, reason: "no-engine" })
+  expect(fenced.fenced).toBe(true)
+  expect(fenced.adopted).toBe(true)
+  // PROMOTED (a successful compaction) and RESEEDED (the fallback) — no fence, and the marker still there.
+  /** The row a promoted barrier leaves. */
+  const promoted = memberAfterBarrier(adopted, { outcome: "promoted", attempts: 1, reason: "compacted" })
+  expect("fenced" in promoted).toBe(false)
+  expect(promoted.adopted).toBe(true)
+  /** The row a reseed leaves, from the row the refused barrier fenced. */
+  const reseeded = memberAfterBarrier(fenced, { outcome: "reseeded", attempts: 2, reason: "busy", newHandle: "handle-fresh" })
+  expect(reseeded.mode).toBe("subcaptain")
+  expect(reseeded.adopted).toBe(true)
+  // A row activation created must NOT grow the marker: absence stays absence.
+  /** The row a barrier leaves for an activation-created seat. */
+  const staged = memberAfterBarrier(memberRow("Reviewer"), { outcome: "promoted", attempts: 1, reason: "compacted" })
+  expect("adopted" in staged).toBe(false)
+})
+
 test("C7: the given-up journal row names the member, the attempts and the repair verb", () => {
   /** The row a refused barrier writes. */
   const entry = checkpointUnrecoverableEntry("Deep Worker", { outcome: "refused", attempts: 3, reason: "no-engine" })
@@ -465,6 +514,31 @@ test("C7: cellwork_supervise lists every fenced member with the open rows it own
   expect(fenced[0].name).toBe("Senior Engineer")
   expect(String(fenced[0].reason)).toContain("barrier gave up")
   expect(fenced[0].tasks).toEqual(["T7"])
+  // BOTH LEVERS ARE RENDERED (repair 4): the fence is not a dead end any more — the model is told the verb
+  // that clears it beside the one that moves the rows.
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("cellwork_dispatch {reassign:[{task_id, owner}]}")
+  expect(text).toContain('clear the fence with cellwork_dispatch {unfence:["Senior Engineer"]}')
+})
+
+test("C7 repair: a fenced member with NO open row still gets the unfence lever, not reassign advice", async () => {
+  /** The harness with one fenced member owning nothing. */
+  const harness = makeHarness({ "Senior Engineer": memberRow("Senior Engineer", { fenced: true, fencedReason: "no-engine" }) })
+  harness.record = {
+    teamId: TEAM_ID,
+    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", fenced: true, fencedReason: "no-engine" }],
+    tasks: [],
+  }
+  /** The captain's read-only sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The text a model reads. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("owns no open row")
+  expect(text).toContain('clear the fence with cellwork_dispatch {unfence:["Senior Engineer"]}')
+  // The dead end this replaces: advising a reassignment of NOTHING is advice the member cannot act on.
+  expect(text).not.toContain("reassign:[{task_id, owner}]")
 })
 
 // ── the livelock's other half: a SECOND handoff ───────────────────────────

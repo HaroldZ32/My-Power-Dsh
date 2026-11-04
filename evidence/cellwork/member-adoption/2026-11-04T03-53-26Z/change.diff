@@ -1,0 +1,652 @@
+=== tracked diff: packages/mpd-cellwork-plugin/src/protocol.ts ===
+diff --git a/packages/mpd-cellwork-plugin/src/protocol.ts b/packages/mpd-cellwork-plugin/src/protocol.ts
+index 6da3d32d..f4e1d09c 100644
+--- a/packages/mpd-cellwork-plugin/src/protocol.ts
++++ b/packages/mpd-cellwork-plugin/src/protocol.ts
+@@ -404,10 +404,112 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+       ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" }
+       : undefined
+ 
++  /** One `unfence` name, resolved to the cell record's own spelling. */
++  interface UnfenceTarget {
++    /** The `cell.members` table key to rewrite. */
++    key: string
++    /** The member's recorded display name, which is what the answer's `member` field quotes. */
++    name: string
++  }
++
++  /** What one `unfence` list did: the record after the write, and one outcome per name. */
++  interface UnfenceResult {
++    /** The cell record after the cleared rows were persisted (the SAME record when none was fenced). */
++    cell: CellState
++    /** One outcome per named member, in the order the call named them. */
++    outcomes: Array<Record<string, unknown>>
++  }
++
++  /**
++   * Clear one or more members' compaction fences — the CELL row first, then the TEAM row through the
++   * plane's `unfence` seam when this composition exposes it.
++   *
++   * WHY BOTH RECORDS. The cell row's `handoffReady` is what `cellwork_handoff` refuses on (the "STILL
++   * WAITING for the compaction barrier" deadlock: a fenced row keeps the flag, while the only other
++   * clearer is another SUCCESSFUL barrier that a fenced member cannot start), and the TEAM row's
++   * `mode`/`fenced` is what a dispatch pass and the guard read. Clearing one alone leaves the member
++   * either unable to write its handoff or unmessageable, so the SAME call does both.
++   *
++   * NEVER `fenced: false`. The normalizer preserves only `fenced: true`, so a false key would vanish on
++   * the next read while this record claimed a state it never wrote — the keys are DELETED instead.
++   *
++   * ONLY THE EXPLICIT `fenced` MARKER IS CLEARED. An ordinary member whose handoff waits for its own
++   * barrier is not a give-up: reopening it would invite the second-handoff livelock D5 recorded, so it
++   * answers `not-fenced` and keeps waiting.
++   *
++   * The plane seam is OPTIONAL BY DECLARATION (`TeamActionsServiceView.unfence?`), and an absent or
++   * refusing plane does not undo the cell-row repair: the outcome names it (`plane: "absent"` /
++   * `"refused"`) rather than pretending both halves landed.
++   *
++   * @param caller - the caller's context; its workspace and session id authorize both writes.
++   * @param cell - the record the caller resolved.
++   * @param targets - the requested members, already resolved (no unknown name reaches here).
++   * @param now - the instant the journal rows are stamped with.
++   * @returns the record after the write, and one outcome per target.
++   */
++  const unfenceSeats = async (caller: CallerContext, cell: CellState, targets: readonly UnfenceTarget[], now: Date): Promise<UnfenceResult> => {
++    /** The plane's write surface, probed per call; `unfence` is the optional half. */
++    const plane = actions()
++    /** The members table this call rewrites ONCE, after every row has been decided. */
++    const members: Record<string, CellMemberRecord> = { ...cell.members }
++    /** One outcome per name, in the call's order. */
++    const outcomes: Array<Record<string, unknown>> = []
++    /** The members whose fence was actually cleared, for the journal. */
++    const cleared: Array<{ name: string; plane: string }> = []
++    for (const target of targets) {
++      /** The row as the record currently holds it. */
++      const row = members[target.key]
++      // NOT FENCED IS A FACT, NOT A SUCCESS: the answer says so and nothing is written for this member.
++      if (row === undefined || row.fenced !== true) {
++        outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" })
++        continue
++      }
++      /** The reopened row: the fence keys are REMOVED and the barrier's checkpoint window is reset. */
++      const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
++      delete reopened.fenced
++      delete reopened.fencedReason
++      members[target.key] = reopened
++      /** How the plane's half ended: `unfenced`, `absent` (no seam) or `refused` (the plane's sentence). */
++      let planeOutcome = "absent"
++      /** Why the plane's half did not land, when it did not; absent once the seam cleared it. */
++      let planeReason: string | undefined = "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row's fence was NOT cleared"
++      if (typeof plane?.unfence === "function") {
++        try {
++          /** The plane's answer — its own sentence when it refuses. */
++          const reply = await plane.unfence({ sessionId: caller.sessionId, member: target.name }) as Record<string, unknown>
++          if (reply?.ok === false) {
++            planeOutcome = "refused"
++            planeReason = String(reply.error ?? "the team plane refused the unfence")
++          } else {
++            planeOutcome = "unfenced"
++            planeReason = undefined
++          }
++        } catch (error) {
++          // A THROWING SEAM IS A REFUSED HALF, not a lost cell-row repair: the member is reopened below
++          // either way, and the sentence says which half failed so the captain can retry the plane verb.
++          planeOutcome = "refused"
++          planeReason = error instanceof Error ? error.message : String(error)
++        }
++      }
++      outcomes.push({ member: target.name, unfenced: true, plane: planeOutcome, ...(planeReason === undefined ? {} : { planeReason }) })
++      cleared.push({ name: target.name, plane: planeOutcome })
++    }
++    // NOTHING CLEARED: the record is untouched, so a `not-fenced` answer never rewrites the file.
++    if (cleared.length === 0) return { cell, outcomes }
++    /** The journal line count after the LAST append, so the record's cursor stays exact. */
++    let cursor = cell.journalCursor
++    for (const row of cleared) {
++      cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now)
++    }
++    /** The record with the reopened rows and the journal cursor this call established. */
++    const next: CellState = { ...cell, members, journalCursor: cursor > 0 ? cursor : cell.journalCursor }
++    return { cell: writeCell(caller.workspace, next), outcomes }
++  }
++
+   // ── cellwork_dispatch ────────────────────────────────────────────────────
+   disposers.push(dsh.registerTool({
+     name: "cellwork_dispatch",
+-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. Delivery goes through the team executor and is journaled.",
++    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. A cleared row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), and the TEAM row is cleared through the plane's `unfence` seam when this composition exposes one — when it does not, the answer says so instead of pretending. A member that is not fenced answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+     parameters: {
+       type: "object",
+       properties: {
+@@ -424,6 +526,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+             additionalProperties: false,
+           },
+         },
++        unfence: {
++          type: "array",
++          description: "Member names whose compaction fence this call CLEARS before the pass (captain-only, like the verb). Each fenced row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count; the TEAM row is cleared through the plane's `unfence` seam when this composition exposes one. A member that is not fenced is reported as not-fenced, never as a silent success; an unknown name refuses the call. May travel with `reassign`.",
++          items: { type: "string" },
++        },
+       },
+       additionalProperties: false,
+     },
+@@ -437,6 +544,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+           skipped: { type: "array", items: { type: "object" } },
+           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
+           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
++          unfenced: { type: "array", items: { type: "object" }, description: "One entry per `unfence` name: `{member, unfenced:true, plane, planeReason?}` for a cleared fence, `{member, unfenced:false, reason:\"not-fenced\"}` when there was nothing to clear. `plane` is `unfenced` (the TEAM row was cleared through the seam), `absent` (this composition exposes no `unfence` seam) or `refused` (with the plane's own sentence in `planeReason`)." },
+           refused: { type: "string" },
+         },
+         required: ["ok"],
+@@ -444,7 +552,17 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+       render: (_args: unknown, value: unknown): unknown => {
+         /** The result as a record. */
+         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
+-        if (result.ok === false) return render("cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"))
++        /** The unfence outcomes, reported first because they run first. */
++        const unfenced = Array.isArray(result.unfenced) ? result.unfenced as Array<Record<string, unknown>> : []
++        /** One line per `unfence` name: the CELL row's fact and, when it was asked, the plane's half. */
++        const clears = unfenced.map((row) => "unfence " + String(row.member) + ": " + (row.unfenced !== true
++          ? "not fenced"
++          : row.plane === "absent"
++            ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is still fenced"
++            : row.plane === "refused"
++              ? "cell row cleared, but the TEAM row was NOT: " + String(row.planeReason ?? "the team plane refused the unfence")
++              : "cell row cleared and the TEAM row unfenced through the plane"))
++        if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join("\n"))
+         /** The delivered pairs. */
+         const pairs = Array.isArray(result.pairs) ? result.pairs as Array<Record<string, unknown>> : []
+         /** The reported skips. */
+@@ -455,8 +573,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+         const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : []
+         /** One line per hand-over, claiming and delivery reported as the SEPARATE facts they are. */
+         const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")))
+-        if (typeof result.refused === "string") return render([...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
+-        return render([...handovers, ...invalid, ...(pairs.length === 0
++        if (typeof result.refused === "string") return render([...clears, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
++        return render([...clears, ...handovers, ...invalid, ...(pairs.length === 0
+           ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")]
+           : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...(skipped.length === 0 ? [] : ["reported: " + skipped.length])])].join("\n"))
+       },
+@@ -471,6 +589,27 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+       /** The active cell. */
+       const cell = caller.cell as CellState
+       if (cell.phase === "stopped") return { ok: false, error: "cellwork_dispatch: cell " + cell.cellId + " is stopped and archived" }
++      // THE UNFENCE ARGUMENT IS RESOLVED BEFORE ANYTHING IS WRITTEN (contract B2): an unknown name refuses
++      // the WHOLE call in the teaching style the other cellwork verbs use, so a typo never clears some
++      // fences and silently skips the rest.
++      /** The raw `unfence` argument, read defensively because a direct call bypasses the harness schema. */
++      const rawUnfence = readArgs(args)["unfence"]
++      if (rawUnfence !== undefined && !Array.isArray(rawUnfence)) return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names" }
++      /** The names this call asks to clear, trimmed, in the order it named them. */
++      const unfenceNames = (rawUnfence ?? []).map((entry) => typeof entry === "string" ? entry.trim() : "")
++      if (unfenceNames.some((name) => name === "")) return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" }
++      /** The recorded member each spelling resolves to, in the same order (the record is keyed by name). */
++      const unfenceTargets: UnfenceTarget[] = []
++      for (const name of unfenceNames) {
++        /** The recorded entry this spelling names, matched the way every cellwork name match works. */
++        const entry = Object.entries(cell.members).find(([key, member]) => nameKey(key) === nameKey(name) || nameKey(member.name) === nameKey(name))
++        if (entry === undefined) {
++          /** The recorded member names, which is what the refusal teaches (the `cellwork_send` style). */
++          const recorded = Object.keys(cell.members)
++          return { ok: false, error: "cellwork_dispatch: " + JSON.stringify(name) + " is not a member of cell " + cell.cellId + " (members: " + (recorded.length === 0 ? "none recorded" : recorded.join(", ")) + ")" }
++        }
++        unfenceTargets.push({ key: entry[0], name: entry[1].name })
++      }
+       // THE TEAM PLANE OWNS THE PAIRING (wave W2-D). This tool asks for ONE owner-only pass and MAPS the
+       // report back into the shape it has always answered; the private engine that used to live in
+       // `dispatch.ts` is DELETED, so the bundle has exactly one pairing rule. `reassign` goes down RAW:
+@@ -478,8 +617,16 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+       /** The team-plane write surface, probed per call. */
+       const plane = actions()
+       if (plane?.dispatch === undefined) return { ok: false, error: "cellwork_dispatch: this composition exposes no mpdTeamActions service, so the team plane cannot be asked to pair rows" }
+-      /** The instant this pass is stamped with. */
++      /** The instant this call is stamped with (the unfence journal and the pass share it). */
+       const now = new Date()
++      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
++      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
++      /** The record after the unfence, and one outcome per named member (nothing is written for none). */
++      const applied: UnfenceResult = unfenceTargets.length === 0 ? { cell, outcomes: [] } : await unfenceSeats(caller, cell, unfenceTargets, now)
++      /** The unfence outcomes; absent from the answer when the call named no member. */
++      const unfenced = applied.outcomes
++      /** The record the pass below reports against — the reopened one when this call cleared a fence. */
++      const current = applied.cell
+       /** The raw `reassign` argument, forwarded untouched. */
+       const rawReassign = readArgs(args)["reassign"]
+       /** The plane's answer. */
+@@ -489,8 +636,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+         ...(rawReassign === undefined ? {} : { reassign: rawReassign }),
+       })) as Record<string, unknown>
+       // A REFUSAL IS THE PLANE'S OWN SENTENCE (a malformed `reassign`, an unknown mode, no team), which is
+-      // what the tool's failure envelope reports — the same shape every other cellwork refusal uses.
+-      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass") }
++      // what the tool's failure envelope reports — the same shape every other cellwork refusal uses. A
++      // refusal AFTER an unfence still reports what the unfence changed, so the side effect is never silent.
++      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...(unfenced.length === 0 ? {} : { unfenced }) }
+       /** The delivered pairings, as this tool reports them. */
+       const pairs = Array.isArray(reply.pairs) ? reply.pairs as Array<Record<string, unknown>> : []
+       /** The hand-overs the plane performed, reported beside the pass. */
+@@ -514,7 +662,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+       // this cell also keeps its own `cancelledTasks` map for rows a PREVIOUS build abandoned before the
+       // plane knew them, and those must be reported rather than silently absent from the skip list.
+       /** The board ids this cell's own record abandoned. */
+-      const abandoned = new Set(Object.values(cell.cancelledTasks ?? {}).filter((id) => id !== ""))
++      const abandoned = new Set(Object.values(current.cancelledTasks ?? {}).filter((id) => id !== ""))
+       for (const taskId of abandoned) {
+         // ONE guard, and it is LIVE: the plane reports every row it considered, so an abandoned row the
+         // PLANE closed is already in `skipped` (as CANCELLED) and must not be listed twice. The old
+@@ -527,7 +675,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
+         appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed === true).length, delivered: reassigned.filter((row) => row.delivered === true).length, rejected: reassigned.filter((row) => row.claimed !== true).length }, now)
+       }
+       appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: pairs.length, skipped: skipped.length }, now)
+-      return { ok: true, pairs, skipped, ...(reassigned.length === 0 ? {} : { reassigned }) }
++      return { ok: true, pairs, skipped, ...(unfenced.length === 0 ? {} : { unfenced }), ...(reassigned.length === 0 ? {} : { reassigned }) }
+     },
+   }))
+ 
+
+=== new file: packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts ===
+diff --git a/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts b/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts
+new file mode 100644
+index 00000000..916a3c17
+--- /dev/null
++++ b/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts
+@@ -0,0 +1,399 @@
++// OFFLINE PROOF OF THE UNFENCE LEVER (contract B2, the VEdit deadlock of 2026-10-31 / 2026-11-02).
++//
++// A fenced member row keeps `handoffReady: true` — `memberAfterBarrier` sets it when the compaction
++// barrier GIVES UP — so `cellwork_handoff` refuses the member with "STILL WAITING for the compaction
++// barrier", while the only other clearer is another SUCCESSFUL barrier, which a fenced member cannot
++// start. `cellwork_dispatch {reassign}` moves board rows and clears no fence, so six members stayed
++// fenced in one cell's record with no verb able to reopen them.
++//
++// These arms pin the repair on the tool the captain already has: `cellwork_dispatch {unfence:[...]}`,
++// the CELL row's own spelling of "fenced" (removed, never `false`), the TEAM row's half through the
++// plane's declared `unfence` seam, and the two honest negatives — `not-fenced` and an unknown name.
++//
++// The harness is the SAME shared plane double `dispatch-reassign.test.ts` uses, extended to expose (or
++// hide) the optional `unfence` seam, so the arms assert the plugin's own calls rather than a bespoke
++// stub. Every workspace is a fresh temp dir; nothing reads this repository's state.
++import { test, expect } from "bun:test"
++import { mkdtempSync, readFileSync } from "node:fs"
++import { join } from "node:path"
++import { tmpdir } from "node:os"
++
++import { journalPath, newCellState, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
++import { installCellworkProtocol } from "../src/protocol.ts"
++import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
++import { createTeamActionsDouble, type DoubleMember, type DoubleTask, type DoubleTeamRecord, type TeamActionsDouble } from "./lib/team-actions-double.ts"
++import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
++
++/** The cell id every arm works in. */
++const CELL_ID = "cell-20261104T120000000Z"
++
++/** The team id the cell record names (the shared plane double answers for it). */
++const TEAM_ID = "team-unfence"
++
++/** The captain's session id, which is what makes `cellwork_dispatch` captain-only for it. */
++const CAPTAIN_SESSION = "session-captain"
++
++/** A handoff document satisfying all seven required sections, so only the SEAT can refuse the verb. */
++const HANDOFF_TEXT = ["## Task", "finish the widget", "## State", "half done", "## Decisions", "mirror the team row", "## Artifacts", "none yet", "## Verified facts", "the test pins it", "## Open questions", "none", "## Next step", "end the turn"].join("\n")
++
++/** One fake live agent: its session id and the workspace header the readers resolve from. */
++interface FakeAgent {
++  /** The agent id (the session-id readers fall back to it). */
++  id: string
++  /** The session the workspace root resolves from. */
++  session: { id: string; header: { cwd: string } }
++}
++
++/** One captured tool definition (the fake registry hands the runner back here). */
++interface CapturedTool {
++  /** The registered name. */
++  name: string
++  /** The description the model reads when it selects the tool. */
++  description?: string
++  /** The JSON-schema argument declaration. */
++  parameters?: { properties?: Record<string, unknown> }
++  /** The runner, called with the harness-validated arguments and the dispatch. */
++  execute: (args: unknown, exec: unknown) => Promise<unknown>
++}
++
++/** The fake harness one arm drives. */
++interface Harness {
++  /** The temp workspace every root resolves to. */
++  workspace: string
++  /** The captain's handle. */
++  captain: FakeAgent
++  /** Captured tool definitions by name. */
++  tools: Map<string, CapturedTool>
++  /** Every message the team executor delivered, in order. */
++  sends: Array<{ handle: string; text: string }>
++  /** The live team record the plane double mutates and `mpdTeams` answers. */
++  record: DoubleTeamRecord
++  /** The shared plane double, so an arm can read the seam calls the plugin made. */
++  plane: TeamActionsDouble
++}
++
++/**
++ * One member row as the CELL record stores it, already raised with a live handle.
++ *
++ * @param name - the member's board name.
++ * @param overrides - the fields this arm changes (mode, fenced, …).
++ * @returns the row.
++ */
++function memberRow(name: string, overrides: Partial<CellMemberRecord> = {}): CellMemberRecord {
++  return { name, role: name, sessionId: "session-" + name, executorRef: "handle-" + name, mode: "member", handoffReady: false, handoffs: 0, joinedAt: "2026-11-04T00:00:00.000Z", ...overrides }
++}
++
++/**
++ * One member row exactly as the compaction barrier leaves it when it GIVES UP: fenced, still
++ * `handoffReady`, and counting the handoff it never got compacted.
++ *
++ * @param name - the member's board name.
++ * @param overrides - the fields this arm changes.
++ * @returns the row.
++ */
++function fencedRow(name: string, overrides: Partial<CellMemberRecord> = {}): CellMemberRecord {
++  return memberRow(name, { mode: "checkpoint", handoffReady: true, handoffs: 2, fenced: true, fencedReason: "no-engine; the reseed failed", ...overrides })
++}
++
++/**
++ * A cell record with the given members, complete enough for the tools these arms call.
++ *
++ * @param members - the member table, keyed by the name the captain addresses.
++ * @returns the record.
++ */
++function cellWith(members: Record<string, CellMemberRecord>): CellState {
++  /** The fresh record, with this arm's members and the team the double answers for. */
++  const base = newCellState({ cellId: CELL_ID, objective: "ship the widget", captainSessionId: CAPTAIN_SESSION, now: new Date("2026-11-04T12:00:00.000Z") })
++  return { ...base, phase: "executing", teamId: TEAM_ID, members }
++}
++
++/**
++ * Every journal row of one cell, in append order.
++ *
++ * @param workspace - the workspace root.
++ * @param cellId - the cell.
++ * @returns the parsed rows; an unreadable journal answers an empty list.
++ */
++function journalRows(workspace: string, cellId: string): Array<Record<string, unknown>> {
++  /** The raw journal text. */
++  let text = ""
++  try {
++    text = readFileSync(journalPath(workspace, cellId), "utf8")
++  } catch {
++    return []
++  }
++  return text.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
++}
++
++/**
++ * The RAW member rows on disk — before the normalizer, so `"fenced" in row` is the assertion the
++ * contract's "never write `fenced: false`" needs (the reader drops a false key either way).
++ *
++ * @param workspace - the workspace root.
++ * @returns the persisted member table.
++ */
++function rawMembers(workspace: string): Record<string, Record<string, unknown>> {
++  /** The record as the file holds it. */
++  const parsed = JSON.parse(readFileSync(statePath(workspace, CELL_ID), "utf8")) as { members?: Record<string, Record<string, unknown>> }
++  return parsed.members ?? {}
++}
++
++/**
++ * Build the fake harness and install the protocol tools once.
++ *
++ * @param cell - the cell record to persist.
++ * @param members - the live team roster rows.
++ * @param tasks - the live board rows.
++ * @param options - `unfenceSeam: false` hides the plane's optional `unfence` half (an older team-core).
++ * @returns the harness.
++ */
++function makeHarness(cell: CellState, members: DoubleMember[], tasks: DoubleTask[], options: { unfenceSeam?: boolean } = {}): Harness {
++  /** The fresh temp workspace. */
++  const workspace = mkdtempSync(join(tmpdir(), "mpd-cellwork-unfence-"))
++  writeCell(workspace, cell)
++  /** The captain's handle. */
++  const captain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: workspace } } }
++  /** The live team record the double mutates. */
++  const record: DoubleTeamRecord = { teamId: TEAM_ID, members, tasks }
++  /** The shared plane double, bound to the SAME record `mpdTeams` answers. */
++  const plane = createTeamActionsDouble({ record: () => record, send: (handle: string, text: string): void => { harness.sends.push({ handle, text }) } })
++  /** The harness under construction, so the delivery seam can push into it at call time. */
++  const harness: Harness = { workspace, captain, tools: new Map<string, CapturedTool>(), sends: [], record, plane }
++  /** The plane surface this composition exposes: the optional `unfence` half is what an arm varies. */
++  const planeService = options.unfenceSeam === false ? { dispatch: plane.service.dispatch } : plane.service
++  /** The fake adapter: the registry, the root, the meter, the executor and the event registrations. */
++  const adapter = {
++    registerTool: (definition: CapturedTool): (() => void) => { harness.tools.set(definition.name, definition); return (): void => {} },
++    onAgentPreStep: (): undefined => undefined,
++    onEvent: (): (() => void) => (): void => {},
++    workspaceRoot: (): string => workspace,
++    contextPressure: (): Record<string, unknown> => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "no-window" }),
++    teamExecutor: (): Record<string, unknown> => ({
++      send: async (_captain: unknown, handle: string, text: string): Promise<void> => { harness.sends.push({ handle, text }) },
++    }),
++    executeTool: async (): Promise<Record<string, unknown>> => ({ ok: true, isError: false, value: {} }),
++  }
++  installCellworkProtocol({
++    dsh: adapter as unknown as DshAdapter,
++    ctx: {
++      get: (name: string): unknown => name === "mpdTeamActions"
++        ? planeService
++        : name === "mpdTeams" ? { get: (): unknown => record } : undefined,
++    },
++    config: DEFAULT_CELLWORK_CONFIG,
++    warn: (): void => {},
++  })
++  return harness
++}
++
++/**
++ * Run one captured tool.
++ *
++ * @param harness - the harness that captured it.
++ * @param name - the tool name.
++ * @param args - its arguments.
++ * @param agent - the calling agent (the captain unless an arm says otherwise).
++ * @returns the tool's structured answer.
++ */
++async function runTool(harness: Harness, name: string, args: Record<string, unknown>, agent?: FakeAgent): Promise<Record<string, unknown>> {
++  /** The captured definition. */
++  const tool = harness.tools.get(name)
++  if (tool === undefined) throw new Error("no captured tool named " + name)
++  /** The tool's answer, narrowed to a record. */
++  const answer = await tool.execute(args, { name, agent: agent ?? harness.captain })
++  return typeof answer === "object" && answer !== null ? answer as Record<string, unknown> : {}
++}
++
++test("B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs`", async () => {
++  /** The cell whose only member the barrier fenced. */
++  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
++  /** The harness whose TEAM row carries the same fence. */
++  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true, fencedReason: "no-engine; the reseed failed" }], [])
++  /** The captain's unfence. */
++  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
++  expect(answer.ok).toBe(true)
++  // THE ANSWER: one row per name, the cell row's fact and the plane's half as SEPARATE facts.
++  expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
++  // THE PLANE'S HALF: the declared seam was called with the captain's own session.
++  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Senior Engineer" }])
++  expect(harness.record.members[0].fenced).toBeUndefined()
++  expect(harness.record.members[0].fencedReason).toBeUndefined()
++  expect(harness.record.members[0].mode).toBe("member")
++  // THE CELL ROW: both keys are GONE from the file (removed, never `fenced: false`), the mode is back,
++  // the barrier's waiting flag is cleared, and the handoff count is untouched.
++  /** The raw persisted row. */
++  const row = rawMembers(harness.workspace)["Senior Engineer"]
++  expect("fenced" in row).toBe(false)
++  expect("fencedReason" in row).toBe(false)
++  expect(row.mode).toBe("member")
++  expect(row.handoffReady).toBe(false)
++  expect(row.handoffs).toBe(2)
++  // THE JOURNAL: the act is recorded, once, with the plane's half attached.
++  /** The unfence journal rows. */
++  const rows = journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")
++  expect(rows).toHaveLength(1)
++  expect(rows[0].member).toBe("Senior Engineer")
++  expect(rows[0].plane).toBe("unfenced")
++})
++
++test("B2: a member that is not fenced answers `not-fenced` and the record is never rewritten", async () => {
++  /** The cell whose member still waits for an ordinary barrier (no give-up marker). */
++  const cell = cellWith({ Reviewer: memberRow("Reviewer", { handoffReady: true, handoffs: 1 }) })
++  /** The harness with a healthy TEAM row. */
++  const harness = makeHarness(cell, [{ id: "M1", name: "Reviewer", status: "running", executorRef: "handle-Reviewer" }], [])
++  /** The record as it stood before the call, byte for byte. */
++  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
++  /** The captain's unfence of a member with nothing to clear. */
++  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Reviewer"] })
++  expect(answer.ok).toBe(true)
++  // HONEST, NOT A SILENT SUCCESS: the row says what happened and names the reason the contract fixes.
++  expect(answer.unfenced).toEqual([{ member: "Reviewer", unfenced: false, reason: "not-fenced" }])
++  // NOTHING WAS ASKED OF THE PLANE, and the cell record was not touched (its waiting handoff stays).
++  expect(harness.plane.fences).toHaveLength(0)
++  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
++  /** The persisted row, so the waiting flag is asserted where the next reader will see it. */
++  const row = rawMembers(harness.workspace).Reviewer
++  expect(row.handoffReady).toBe(true)
++  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")).toHaveLength(0)
++})
++
++test("B2: an unknown name is refused in the teaching style, naming the recorded members, and nothing changes", async () => {
++  /** The cell whose recorded members the refusal must name. */
++  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer"), Reviewer: memberRow("Reviewer") })
++  /** The harness. */
++  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [])
++  /** The record as it stood before the call. */
++  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
++  /** The captain's unfence of a name no row holds. */
++  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Ghost"] })
++  expect(answer.ok).toBe(false)
++  /** The refusal sentence: the name, then the members a reader can pick from. */
++  const error = String(answer.error)
++  expect(error).toContain("\"Ghost\"")
++  expect(error).toContain("(members: ")
++  expect(error).toContain("Senior Engineer")
++  expect(error).toContain("Reviewer")
++  // NOTHING RAN: no fence cleared, no pass asked of the plane, no record written.
++  expect(harness.plane.fences).toHaveLength(0)
++  expect(harness.plane.dispatches).toHaveLength(0)
++  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
++  expect(rawMembers(harness.workspace)["Senior Engineer"].fenced).toBe(true)
++})
++
++test("B2: the plane seam clears the TEAM row when present, and its ABSENCE is reported instead of pretended", async () => {
++  // ARM 1 — the seam is present: the TEAM row's fence is gone.
++  /** The cell whose member the barrier fenced. */
++  const withSeam = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
++  /** The harness whose composition exposes `unfence`. */
++  const cleared = makeHarness(withSeam, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [], { unfenceSeam: true })
++  /** The captain's unfence. */
++  const first = await runTool(cleared, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
++  expect(first.ok).toBe(true)
++  expect((first.unfenced as Array<Record<string, unknown>>)[0].plane).toBe("unfenced")
++  expect(cleared.record.members[0].fenced).toBeUndefined()
++  // ARM 2 — the seam is ABSENT (an older team-core): the cell row is still repaired, and the answer says
++  // what did NOT happen rather than reporting a success the TEAM row cannot back.
++  /** A fresh cell, so the second arm starts from a fenced row. */
++  const withoutSeam = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
++  /** The harness whose composition has `dispatch` but no `unfence`. */
++  const absent = makeHarness(withoutSeam, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [], { unfenceSeam: false })
++  /** The captain's unfence against the older plane. */
++  const second = await runTool(absent, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
++  expect(second.ok).toBe(true)
++  /** The absent-seam answer row. */
++  const outcome = (second.unfenced as Array<Record<string, unknown>>)[0]
++  expect(outcome.member).toBe("Senior Engineer")
++  expect(outcome.unfenced).toBe(true)
++  expect(outcome.plane).toBe("absent")
++  expect(String(outcome.planeReason)).toContain("no mpdTeamActions.unfence seam")
++  // THE HONEST HALF: the cell row reopened, the TEAM row still carries the fence.
++  expect(rawMembers(absent.workspace)["Senior Engineer"].handoffReady).toBe(false)
++  expect(absent.record.members[0].fenced).toBe(true)
++  expect(absent.record.members[0].mode).toBe("checkpoint")
++})
++
++test("B2: `unfence` and `reassign` travel in one call and both take effect", async () => {
++  /** The cell whose fenced owner still holds the row, beside a healthy member. */
++  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer"), Reviewer: memberRow("Reviewer") })
++  /** The harness whose board holds one pending row for the fenced owner. */
++  const harness = makeHarness(cell, [
++    { id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true },
++    { id: "M2", name: "Reviewer", status: "running", executorRef: "handle-Reviewer" },
++  ], [{ id: "T1", subject: "widget work", status: "pending", owner: "Senior Engineer", blockedBy: [] }])
++  /** The one call that both repairs the seat and moves its row. */
++  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"], reassign: [{ task_id: "T1", owner: "Reviewer" }] })
++  expect(answer.ok).toBe(true)
++  // BOTH HALVES LANDED: the fence is clear and the row moved to the member that can work it.
++  expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toEqual({ member: "Senior Engineer", unfenced: true, plane: "unfenced" })
++  /** The hand-over outcome the plane reported. */
++  const handover = (answer.reassigned as Array<Record<string, unknown>>)[0]
++  expect(handover.taskId).toBe("T1")
++  expect(handover.owner).toBe("Reviewer")
++  expect(handover.claimed).toBe(true)
++  expect(handover.delivered).toBe(true)
++  expect(harness.sends).toHaveLength(1)
++  expect(harness.sends[0].handle).toBe("handle-Reviewer")
++  expect(harness.sends[0].text).toContain("T1")
++  // NEITHER INTERFERED: the cell row is reopened and the journal carries BOTH acts.
++  expect(rawMembers(harness.workspace)["Senior Engineer"].mode).toBe("member")
++  expect("fenced" in rawMembers(harness.workspace)["Senior Engineer"]).toBe(false)
++  /** The journal's event names. */
++  const events = journalRows(harness.workspace, CELL_ID).map((entry) => String(entry.event))
++  expect(events).toContain("member-unfenced")
++  expect(events).toContain("dispatch-reassign")
++})
++
++test("B2: the unfence clears the exact refusal the deadlock produced, and the member can hand off again", async () => {
++  /** The cell whose member wrote a handoff the barrier then gave up on. */
++  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer", { sessionId: "session-senior", executorRef: "session-senior" }) })
++  /** The harness whose TEAM row the plane's own handoff verb resolves by `executorRef`. */
++  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "session-senior", mode: "checkpoint", fenced: true }], [])
++  /** The fenced member's own handle. */
++  const member: FakeAgent = { id: "session-senior", session: { id: "session-senior", header: { cwd: harness.workspace } } }
++  // BEFORE: the deadlock, named by the tool the member must call.
++  /** The handoff attempt the fence blocks. */
++  const blocked = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, member)
++  expect(blocked.ok).toBe(false)
++  expect(String(blocked.error)).toContain("STILL WAITING for the compaction barrier")
++  // THE REPAIR: one captain call, no barrier required.
++  /** The captain's unfence. */
++  const unfenced = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
++  expect(unfenced.ok).toBe(true)
++  // AFTER: the SAME call that was refused now records the handoff (ordinal 3 = the two it already wrote
++  // plus this one), which is what "the lever removes the deadlock" means for the member.
++  /** The handoff attempt after the unfence. */
++  const written = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, member)
++  expect(written.ok).toBe(true)
++  expect(written.ordinal).toBe(3)
++  // The CELL's own document is ordinal 3 (the count it kept through the unfence), and the plane's
++  // handoff seam was asked to close the seat — the two writes the verb documents.
++  expect(String(written.path).endsWith("Senior Engineer-3.md")).toBe(true)
++  expect(harness.plane.handoffs).toHaveLength(1)
++  /** The cell row's mirror, written only after the plane accepted the record. */
++  const row = rawMembers(harness.workspace)["Senior Engineer"]
++  expect(row.handoffReady).toBe(true)
++  expect(row.handoffs).toBe(3)
++})
++
++test("B2: refusal after an unfence still reports the act, and the tool DESCRIPTION declares the argument", async () => {
++  /** The cell whose fenced owner this call repairs before the pass is refused. */
++  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
++  /** The harness whose plane will reject the MALFORMED `reassign` this call carries. */
++  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [])
++  /** One call carrying a well-formed unfence and an unreadable hand-over. */
++  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"], reassign: [{ task_id: "T1", owner: "" }] })
++  // THE PASS IS REFUSED BY THE PLANE'S OWN SENTENCE …
++  expect(answer.ok).toBe(false)
++  expect(String(answer.error)).toContain("every `reassign` entry needs a non-empty `task_id` and `owner`")
++  // … AND THE SIDE EFFECT IS NOT SILENT: the unfence row rides the failure envelope, and the file agrees.
++  expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toEqual({ member: "Senior Engineer", unfenced: true, plane: "unfenced" })
++  expect("fenced" in rawMembers(harness.workspace)["Senior Engineer"]).toBe(false)
++  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")).toHaveLength(1)
++  // THE DISCLOSURE the model selects the tool by: the argument is in the schema, and the description
++  // names what it does (contract B2's tool-description requirement).
++  /** The registered definition. */
++  const tool = harness.tools.get("cellwork_dispatch")
++  expect(tool?.parameters?.properties?.unfence).toBeDefined()
++  expect(String(tool?.description)).toContain("`unfence` clears")
++  expect(String(tool?.description)).toContain("not-fenced")
++})

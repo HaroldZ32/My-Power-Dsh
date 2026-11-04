@@ -1,0 +1,119 @@
+{
+  "wave": "cellwork-member-adoption",
+  "part": "B2 (the unfence lever) — B1 untouched",
+  "capturedAt": "2026-11-04T03:56:00.000Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "bcbfdce4",
+  "symbols": {
+    "protocol.ts": [
+      "installCellworkProtocol — cellwork_dispatch description + `unfence` parameter + `unfenced` output field + render",
+      "installCellworkProtocol#execute(cellwork_dispatch) — unfence argument read, resolution, refusal, ordering",
+      "installCellworkProtocol#unfenceSeats (new closure helper) — cell-row clear + plane seam + journal",
+      "interface UnfenceTarget (new, closure-local)",
+      "interface UnfenceResult (new, closure-local)"
+    ]
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "209 pass / 0 fail / 2433 expect() calls across 26 files (202 pre-existing + 7 new)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit — no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 596 TS files, 52229 declarations"
+    },
+    {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed"
+    }
+  ],
+  "newTests": [
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs`",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: a member that is not fenced answers `not-fenced` and the record is never rewritten",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: an unknown name is refused in the teaching style, naming the recorded members, and nothing changes",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: the plane seam clears the TEAM row when present, and its ABSENCE is reported instead of pretended",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: `unfence` and `reassign` travel in one call and both take effect",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: the unfence clears the exact refusal the deadlock produced, and the member can hand off again",
+      "result": "pass"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "name": "B2: refusal after an unfence still reports the act, and the tool DESCRIPTION declares the argument",
+      "result": "pass"
+    }
+  ],
+  "negativeControl": "The fenced/not-fenced decision in unfenceSeats was inverted (`row.fenced !== true` -> `row.fenced === true`): 6 of the 7 arms FAILED (the unknown-name arm stays green because it refuses before the decision). The source was then restored and its sha256 re-measured as 9073ebd86cf12c67bd6a76bb7511ee2371a2bd474a8a24697c7cfd952e3d2e52, the same value measured before the mutation; the suite re-ran 7/7 green.",
+  "changedFiles": [
+    {
+      "path": "packages/mpd-cellwork-plugin/src/protocol.ts",
+      "state": "modified",
+      "sha256": "9073ebd86cf12c67bd6a76bb7511ee2371a2bd474a8a24697c7cfd952e3d2e52",
+      "lines": 1593,
+      "diffStat": "157 insertions(+), 9 deletions(-)"
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts",
+      "state": "new (untracked)",
+      "sha256": "f8a783a6aed079ea2f72ec447fcea88d89b0b39650c895527f38010ce36bfc05",
+      "lines": 399
+    }
+  ],
+  "notRun": [
+    "dist rebuild (explicitly out of scope this round; packages/mpd-cellwork-plugin/dist is therefore STALE against src)",
+    "node scripts/verify-dist-fresh.ts (would redden on the intentionally stale dist)",
+    "bun run verify:docs (explicitly out of scope: a separate bilingual docs round)",
+    "bun run verify:gates / verify:vendor / verify:rows (release-sweep gates; no patch/preset/skills change)",
+    "a live host/team boot (the proof is the offline tool harness plus the shared mpdTeamActions double)",
+    "commit/stage (captain-only)"
+  ],
+  "bounds": [
+    "Only the explicit `fenced: true` marker is cleared: a member whose handoff merely waits for its own barrier is NOT reopened (that would invite the second-handoff livelock D5) and answers not-fenced.",
+    "With no `mpdTeamActions.unfence` seam, the TEAM row stays fenced and the answer says `plane: \"absent\"`; the cell row is still repaired, so the member's own handoff channel reopens but a dispatch pass still sees it closed until the plane is upgraded or `agent_teams_control {action:\"unfence\"}` is used by the team Lead.",
+    "If the plane refuses the dispatch pass AFTER the unfence, the call returns the plane's refusal plus the `unfenced` rows; the unreported half is only the pass itself.",
+    "The unfence does not re-create a dead session (contract bound): it reopens the seat record, not the process."
+  ],
+  "toolchain": {
+    "bun": "1.4.2 (PATH bun; no dist build performed)",
+    "node": "v24.21.0"
+  },
+  "evidence": {
+    "dir": "evidence/cellwork/member-adoption/2026-11-04T03-53-26Z",
+    "files": [
+      "gates.log",
+      "negative-control.log",
+      "negative-control.md",
+      "change.diff",
+      "result.json"
+    ]
+  }
+}

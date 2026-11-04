@@ -471,6 +471,10 @@ export function checkpointUnrecoverableEntry(memberName: string, result: Promoti
  * through a later successful barrier and keep a healthy member out of dispatch — the exact livelock D5
  * cost, only in the other direction.
  *
+ * The additive markers that describe the row's HISTORY are carried EXPLICITLY, on BOTH outcomes: an
+ * adopted member's first handoff runs exactly this barrier, so dropping `adopted` here would make the
+ * record stop saying the row appeared after activation (contract B1).
+ *
  * @param previous - the member row as the record held it before this outcome.
  * @param result - the barrier's outcome (its classification is the fence's cause).
  * @returns the row to persist.
@@ -487,6 +491,7 @@ export function memberAfterBarrier(previous: CellMemberRecord, result: Promotion
     handoffReady: givenUp,
     handoffs: previous.handoffs,
     joinedAt: previous.joinedAt,
+    ...(previous.adopted === true ? { adopted: true } : {}),
     ...(givenUp ? { fenced: true, fencedReason: result.reason } : {}),
   }
 }
