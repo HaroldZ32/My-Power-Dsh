@@ -44,6 +44,8 @@ interface FakeAgent {
 interface CapturedTool {
   /** The registered name. */
   name: string
+  /** The description the model reads when it selects the tool. */
+  description?: string
   /** The runner, called with the harness-validated arguments and the dispatch. */
   execute: (args: unknown, exec: unknown) => Promise<unknown>
   /** The result formatter, when the definition declares one — what a model actually reads. */
@@ -514,6 +516,9 @@ test("C7: cellwork_supervise lists every fenced member with the open rows it own
   expect(fenced[0].name).toBe("Senior Engineer")
   expect(String(fenced[0].reason)).toContain("barrier gave up")
   expect(fenced[0].tasks).toEqual(["T7"])
+  // THE KIND IS EXPLICIT (repair round 3): an explicit marker on the CELL row is a give-up, not a
+  // barrier-owned window, so the sweep may offer the two levers for it.
+  expect(fenced[0].giveUp).toBe(true)
   // BOTH LEVERS ARE RENDERED (repair 4): the fence is not a dead end any more — the model is told the verb
   // that clears it beside the one that moves the rows.
   /** The text a model reads for the same sweep. */
@@ -539,6 +544,100 @@ test("C7 repair: a fenced member with NO open row still gets the unfence lever, 
   expect(text).toContain('clear the fence with cellwork_dispatch {unfence:["Senior Engineer"]}')
   // The dead end this replaces: advising a reassignment of NOTHING is advice the member cannot act on.
   expect(text).not.toContain("reassign:[{task_id, owner}]")
+})
+
+test("round 3: a BARRIER-PENDING seat gets NO unfence command — the compaction barrier owns it", async () => {
+  // THE PRODUCTION WINDOW EVERY HANDOFF OPENS: the CELL row waits with NO give-up marker (`mode:
+  // checkpoint`, `handoffReady:true`), and the TEAM row is the same checkpoint with no `fenced` key.
+  // Neither record authorizes a clear, so the sweep must not hand the captain `unfence` — the verb would
+  // answer `checkpoint-pending` and write nothing.
+  /** The harness with one barrier-owned seat that still owns an open row. */
+  const harness = makeHarness({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 1 }) })
+  harness.record = {
+    teamId: TEAM_ID,
+    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }],
+    tasks: [{ id: "T7", subject: "open work", status: "pending", owner: "Senior Engineer", blockedBy: [] }],
+  }
+  /** The captain's read-only sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The closed rows the sweep reports. */
+  const fenced = sweep.fenced as Array<Record<string, unknown>>
+  expect(fenced.length).toBe(1)
+  expect(fenced[0].name).toBe("Senior Engineer")
+  expect(fenced[0].giveUp).toBe(false)
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("BARRIER-OWNED")
+  expect(text).toContain("nothing for you to do")
+  expect(text).toContain("the compaction barrier owns this seat")
+  // NO LEVER AT ALL: neither the unfence command nor reassignment advice belongs to this seat.
+  expect(text).not.toContain("cellwork_dispatch {unfence")
+  expect(text).not.toContain("reassign:[{task_id, owner}]")
+  // THE DISTINCTION IS DISCLOSED, not hidden in a trailing parenthetical: the tool description names both
+  // kinds, so a model selecting the tool knows a barrier-owned seat needs no captain action.
+  const tool = harness.tools.get("cellwork_supervise")
+  expect(String(tool?.description)).toContain("GIVE-UP")
+  expect(String(tool?.description)).toContain("BARRIER-OWNED")
+})
+
+test("round 4: the PRODUCTION give-up reports the CELL row's recorded reason, never the derived barrier sentence", async () => {
+  // THE SHAPE THE BARRIER REALLY WRITES: `memberAfterBarrier` fences the CELL row (`mode:"checkpoint"`,
+  // `handoffReady:true`, `fenced:true`, `fencedReason`), while `writeMemberHandoff` leaves the TEAM row at
+  // `mode:"checkpoint"` and NOTHING else. Round 3 classified it as a give-up correctly, but let
+  // `recordSeat`'s DERIVED "…until the barrier reopens it" sentence outrank the recorded cause — so the
+  // same line that offered `unfence` also claimed the barrier owned the seat and hid the real failure.
+  /** The harness with the CELL half of a production give-up and the TEAM checkpoint half beside it. */
+  const harness = makeHarness({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 1, fenced: true, fencedReason: "no-engine; the reseed failed" }) })
+  harness.record = {
+    teamId: TEAM_ID,
+    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }],
+    tasks: [{ id: "T7", subject: "open work", status: "pending", owner: "Senior Engineer", blockedBy: [] }],
+  }
+  /** The captain's read-only sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The closed rows the sweep reports. */
+  const fenced = sweep.fenced as Array<Record<string, unknown>>
+  expect(fenced.length).toBe(1)
+  expect(fenced[0].name).toBe("Senior Engineer")
+  // THE GIVE-UP FACT AND THE RECORDED CAUSE reach the structured answer together.
+  expect(fenced[0].giveUp).toBe(true)
+  expect(String(fenced[0].reason)).toContain("no-engine; the reseed failed")
+  expect(String(fenced[0].reason)).not.toContain("until the barrier reopens it")
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("no-engine; the reseed failed")
+  expect(text).not.toContain("BARRIER-OWNED")
+  expect(text).toContain('clear the fence with cellwork_dispatch {unfence:["Senior Engineer"]}')
+})
+
+test("round 4: a TEAM-only explicit fence speaks with the plane's cause and still offers the unfence lever", async () => {
+  // THE TEAM-ONLY HALF (repair round 4): a HEALTHY CELL row and a TEAM row carrying `fenced:true` — no CELL
+  // marker, so the CELL branch cannot win. Every earlier shipped arm with a TEAM `fenced:true` also carried
+  // the CELL marker, leaving the plane branch proven only by a throwaway probe.
+  /** The harness whose CELL row is healthy while the PLANE records the fence. */
+  const harness = makeHarness({ "Senior Engineer": memberRow("Senior Engineer") })
+  harness.record = {
+    teamId: TEAM_ID,
+    members: [{ name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", fenced: true, fencedReason: "the plane lost the seat's engine" }],
+    tasks: [{ id: "T7", subject: "open work", status: "pending", owner: "Senior Engineer", blockedBy: [] }],
+  }
+  /** The captain's read-only sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  /** The closed rows the sweep reports. */
+  const fenced = sweep.fenced as Array<Record<string, unknown>>
+  expect(fenced.length).toBe(1)
+  expect(fenced[0].name).toBe("Senior Engineer")
+  // THE PLANE'S CAUSE, not a derived barrier sentence: the TEAM row's own `fencedReason` reaches the answer.
+  expect(String(fenced[0].reason)).toContain("the plane lost the seat's engine")
+  expect(fenced[0].giveUp).toBe(true)
+  /** The text a model reads for the same sweep. */
+  const text = renderTool(harness, "cellwork_supervise", sweep)
+  expect(text).toContain("the plane lost the seat's engine")
+  expect(text).toContain('clear the fence with cellwork_dispatch {unfence:["Senior Engineer"]}')
+  expect(text).not.toContain("BARRIER-OWNED")
 })
 
 // ── the livelock's other half: a SECOND handoff ───────────────────────────

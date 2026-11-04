@@ -139,8 +139,12 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
   一样。触发器就是这些动词本身、`agent/pre-step` 检查点监听器与 `agent/turn-stopping` 屏障监听器；
   **工具守卫刻意不是**其中之一——它的座位解析是只读的，一次仅被放行或拒绝的派发不写任何内容。镜像逐
   字段进行（`name`、`role`、`sessionId` = `executorRef` = team 行的 `executorRef`、`mode: "member"`、
-  `handoffReady: false`、`handoffs: 0`、`joinedAt` = 现在），并携带 `adopted: true`；它只持久化一次，
-  同时记一条 `member-adopted` journal 行。采纳是**幂等**的：第二次调用经 cell 行解析，不写任何内容。
+  `handoffReady: false`、`handoffs: 0`、`joinedAt` = 现在），并携带 `adopted: true`；它只持久化一次。
+  `member-adopted` journal 行只在记录写入**成功之后**才追加，因此失败的采纳不会为一行从未存在的成员留下历史。
+  采纳是**幂等**的：第二次调用经 cell 行解析，不写任何内容。
+  记录**无法持久化**的采纳会被如实报告，而不是默认成功：`cellwork_handoff` 在触碰团队平面**之前**就拒绝，
+  并点名**哪一半**失败——记录**读不出来**，还是写入没有落地——因此绝不会出现「有团队检查点、却没有被采纳的
+  cell 行」。
 
 三条不变量就是全部规则：被采纳的行以 `handoffReady: false` 开始（采纳打开检查点通道，绝不宣称已有
 检查点）；镜像绝不携带 `fenced`；采纳本身也**绝不**覆盖已存在的行——被围栏或处于 checkpoint 模式的行保持
@@ -159,8 +163,10 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
 或屏障在重试预算（`compactionRetries`）用完后放弃并把它标记为 `fenced: true` 加 `fencedReason`。**一个**谓词
 读取这三个信号，被围栏的成员绝不会被发消息。
 
-- **派发跳过被围栏的 owner，并让任务保持待派发。** 跳过原因点名成员、原因与修复方式（围栏是障碍时用
-  `unfence`，需要移动行时用 `reassign`）；绝不替换成别的成员。
+- **派发跳过被围栏的 owner，并让任务保持待派发。** 跳过原因是**团队平面自己的**那句话：点名成员、原因
+  以及平面建议的修复方式——把行 `reassign` 给另一个成员
+  （`agent_teams_dispatch {reassign:[{task_id, owner}]}`）。它**不**点名 `unfence`——那是 cellwork 自己
+  清除围栏的杠杆（见下）；绝不替换成别的成员。
 - **`cellwork_dispatch {reassign:[{task_id, owner}]}` 移动的是行。** 对每一对，在派发**之前**先把该行在
   看板上 claim 给那个成员、记 `task-reassigned`（from → to），然后把正常的派发消息投递给它。每个结果都会
   如实报告（`reassigned`，以及 `reassignInvalid` 里逐条无法读取的输入），绝不抛错。终态行绝不重开、未知
@@ -169,27 +175,42 @@ cell 的 `state.json` 维护一张 `members` 表：每个座位一行，携带 r
   handle，因此记录里为空的 `executorRef` 会回退到活跃名册的 handle。
 - **放弃的围栏有自己的杠杆：`cellwork_dispatch {unfence:[…]}`。** 被围栏的行仍带着 `handoffReady: true`，
   于是 `cellwork_handoff` 以 STILL WAITING for the compaction barrier 拒绝它；另一个清除方式只有又一次
-  **成功**的屏障，而被围栏的成员根本无法发起：成员无法靠自救恢复。队长的 `unfence` 列表在派发**之前**运行。
-  对每个名字，它**删除** `fenced`/`fencedReason`（键被移除，绝不写 `fenced: false`——normalizer 禁止这种
-  拼写）、把 `mode` 恢复为 `"member"`、把 `handoffReady` 设为 `false`、保持 `handoffs` 不变，并记
-  `member-unfenced`。答复对每个被清除的成员给一行 `{member, unfenced: true, plane, planeReason?}`。
-- **`not-fenced` 会被如实报告，绝不粉饰。** 没有围栏可清的成员答复
-  `{member, unfenced: false, reason: "not-fenced"}`，并且记录**不会**被重写——对一个只是让自己的交接等待
-  屏障的普通成员也一样，因为只有显式的放弃标记会被清除（重开那一行会招来「第二份交接」的活锁）。未知名字
-  拒绝**整个**调用，并点名已记录的成员；什么都不会被清除、写入或派发，因此拼错一个名字绝不会让清单只生效
-  一半。
-- **只有组合暴露接缝时，TEAM 行才会移动。** `mpdTeamActions.unfence` 会清掉 team 行，结果写
-  `plane: "unfenced"`；没有该接缝的组合答复 `plane: "absent"`，并在 `planeReason` 里说明 TEAM 行**仍然**
-  被围栏，因此 cell 行的修复照常成立、答复绝不假装两边都落地（`plane: "refused"` 会带上团队平面自己的
-  原话）。`unfence` 与 `reassign` 可以放在**同一次**调用里——解围先跑，因此这一趟可以把行交给它刚重开的
-  成员——两者互不干扰；解围之后的拒绝仍会报告解围改动了什么。杠杆只清记录；它不会重建一个已死的 session。
+  **成功**的屏障，而被围栏的成员根本无法发起：成员无法靠自救恢复。队长的 `unfence` 列表在派发**之前**运行，
+  判断按**记录**分别做出，因为压缩屏障只在一个地方写下放弃的围栏。CELL 行带 `fenced: true` **就是**放弃
+  （无论 TEAM 行怎么说）：它**删除** `fenced`/`fencedReason`（键被移除，绝不写 `fenced: false`——normalizer
+  禁止这种拼写）、把 `mode` 恢复为 `"member"`、把 `handoffReady` 设为 `false`、保持 `handoffs` 不变，并记
+  `member-unfenced`；同时通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（平面把 `mode: "checkpoint"` 也
+  视为关闭，该接缝会一并清除）。答复对每个被清除的 CELL 行给一行
+  `{member, unfenced: true, plane, planeReason?}`，并把平面那一半如实报告为 `unfenced`、`absent` 或
+  `refused`，绝不声称一次没有发生的重开。
+- **待处理的检查点不是放弃。** 每次交接都会把 TEAM 行设为 `mode: "checkpoint"`，而压缩屏障仍欠着重新打开，
+  这样的一行没有 `fenced` 键。CELL 行**也没有** `fenced: true` 时，对它执行 `unfence` 会答复
+  `{member, unfenced: false, reason: "checkpoint-pending", detail}`——那个状态归屏障所有——并且**两个记录
+  都不写**，接缝也**不会**被调用。上面的 CELL 标记优先：即使 TEAM 行仍写着 `mode: "checkpoint"`，真正的
+  放弃也会被恢复。只有屏障（或一个放弃围栏）才能移动那个座位。
+- **`not-fenced` 会被如实报告，绝不粉饰。** 两个记录都没有围栏的成员答复
+  `{member, unfenced: false, reason: "not-fenced"}`，并且记录**不会**被重写——对一个 CELL 行只带着
+  `handoffReady: true`、而两个记录都没有标记的成员也一样，因为只有显式的放弃标记会被清除（重开一个只是
+  等待的行会招来「第二份交接」的活锁）。名字必须
+  **无歧义地**解析——先精确的成员键、再精确的显示名、最后才是非空且**恰好只有一个**成员携带的规范化键；
+  其余情况（未知，或像 后端1/前端1 下的 `1` 那样有歧义）拒绝**整个**调用，并点名已记录的成员；什么都不会被
+  清除、写入或派发，因此拼错一个名字绝不会让清单只生效一半。
+- **只有组合暴露接缝时，TEAM 座位才会移动。** `mpdTeamActions.unfence` 会重新打开 team 座位，结果写
+  `plane: "unfenced"`（该接缝同时清掉显式围栏与 `mode: "checkpoint"` 窗口）；没有该接缝的组合答复
+  `plane: "absent"`，并在 `planeReason` 里说明 TEAM 座位**没有**被重新打开，因此 cell 行的修复照常成立、
+  答复绝不假装两边都落地（`plane: "refused"` 会带上团队平面自己的原话）。只存在于 TEAM 记录上的围栏是
+  另一种情况：接缝会清掉它，而 CELL 行保持原样，因此结果携带 `cellRow: "untouched"`，`unfenced` 只反映
+  平面的那一半。`unfence` 与 `reassign` 可以放在**同一次**调用里——解围先跑，因此这一趟可以把行交给它刚
+  重开的成员——两者互不干扰；解围之后的拒绝仍会报告解围改动了什么。杠杆只清记录；它不会重建一个已死的
+  session。
 - **一次改派会改变同一趟派发的报告。** 目标成员现在**拥有**一个在飞任务，所以同一趟会把它的**其它**就绪行
   报告为 BUSY（每个成员每趟只派一个任务），而不是排队。这是既有的派发规则，不是回归：稍后再跑一趟。
 - **第一份交接仍在等待屏障时，第二份会被拒绝。** `cellwork_handoff` 的答复是「结束本回合」：屏障只读最新的
   ordinal，因此第二份文档是在消耗连续性、而不是保住它（VEdit 的活锁在 7 分钟内写了三份）。
 - **屏障放弃时会记录后果。** 该成员得到 `fenced: true` + `fencedReason`，journal 得到一条点名修复方式的
-  `checkpoint-unrecoverable` 行，而 `cellwork_supervise` 会列出每个被围栏成员以及它仍然拥有的**未关闭**看板行。
-  上面的解围杠杆就是修复这条后果的方式。
+  `checkpoint-unrecoverable` 行，而 `cellwork_supervise` 会列出每个**关闭**座位以及它仍然拥有的**未关闭**
+  看板行，并标明它是**放弃围栏**（队长该修的）还是**归屏障所有**（待处理检查点窗口，队长无需动作）。
+  上面的解围杠杆就是修复放弃后果的方式。
 
 **通用 team 动词带着一个 cell 模式已经消除的危险。** `agent_teams_dispatch` 会把就绪任务配给声明的 owner，但当
 该 owner 忙时会**退回按名册顺序**配对。就在本波次里，它把一条 **REVIEW** 任务交给了**写过被审泳道**的成员；
@@ -209,8 +230,8 @@ owner**、绝不替换的；在 cell 模式之外，**等声明的 owner 空出�
 | `cellwork_recon` | 规划器、副队长 | 一次性**只读**咨询（Explorer/Researcher）：走直接启动路径，以角色名作为标签，并给出显式的绝对深度上限，因此这次咨询是一个只读叶子；报告会返回并记入 journal |
 | `cellwork_split` | 切分器 | `submit` 任务图让插件度量（每个任务可声明自己的看板 `member`），或 `show` 上一次的裁定；每次拒绝都把 findings 持久化到 `split/<修订>.refused.json`；一个**非致命**的 `warnings` 列表按切分键点名每个没有写作用域的 `work`/`repair`/`integration` 任务，且永不改变 `accepted` |
 | `cellwork_activate` | 队长 | 把被接受的切分物化到活跃 team 记录、写合约（同时点名 owner role 与成员）、对每个不同的 `member` 只拉起一个成员、打开验证循环、派发；中途失败的一轮会被检查点记录，同一个修订号可以续做，而更新的被接受修订号会取代更旧的在飞部分激活；返回的 `reused` 列出从 cell 记录或活跃名册解析（而不是新拉起）的成员名，而保留了任务的重切分还会返回 `notice`（合约不被重写、扩展作用域需要手工重新冻结加新的验证循环、就绪行按仅声明所有者派发）；成员行的**另外两种**出现方式是暂存与采纳（见「成员：暂存的、拉起的与采纳的」） |
-| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`；TEAM 行只在团队平面暴露 `unfence` 接缝时清除，没有接缝时报告 `plane: "absent"`）；`not-fenced` 如实回答，未知名字拒绝整个调用，两者可以放在同一次调用里 |
-| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个被围栏成员与其仍拥有的未关闭行；每个投影都是无损 JSON，没有 `undefined` 自有键 |
+| `cellwork_dispatch` | 队长 | 在 team 看板上做一次「仅声明所有者」的派发；owner 忙、缺席或被围栏时如实报告、任务保持待派发；`reassign` 先把点名的行交给另一个成员（看板 claim → `task-reassigned` journal → 投递），而 `unfence` 在派发**之前**清除点名成员**已放弃**的围栏：CELL 行的 `fenced: true` **就是**放弃（两个键被删除、`mode: member`、`handoffReady: false`、`handoffs` 保留、记 `member-unfenced`），并通过团队平面的 `unfence` 接缝重新打开 TEAM 座位（该接缝也清掉 `mode: checkpoint`；没有接缝时报告 `plane: "absent"` 且不声称已重开）；**待处理**的检查点（CELL 行无 `fenced: true`、TEAM 行 `mode: checkpoint` 且没有 `fenced` 标志）答复 `checkpoint-pending` 且什么都不写；`not-fenced` 如实回答，未知或有歧义的名字拒绝整个调用，两者可以放在同一次调用里 |
+| `cellwork_supervise` | 队长 | 只读巡检：待处理的检查点、压缩、晋升、过期切分、未读邮件、每一条**未投递**的邮件行，以及每个**关闭**座位与其仍拥有的未关闭行——每行标记 `giveUp:true`（任一记录上显式 `fenced:true`，用 `reassign` 加 `unfence` 修复）或 `giveUp:false`（归屏障所有的 `mode: checkpoint` 窗口，不提供任何杠杆）；每个投影都是无损 JSON，没有 `undefined` 自有键 |
 | `cellwork_context` | 成员 | 调用者自己的实时占用、度量所用的窗口，以及该窗口的来源 |
 | `cellwork_handoff` | 成员 | 写入并校验检查点交接文档；把检查点标记为就绪；第一份仍在等待屏障时，**第二份**会被拒绝；只被**活跃** team 记录认识的成员会先被采纳（见「成员：暂存的、拉起的与采纳的」），因此拿到同一条通道 |
 | `cellwork_subteam` | 已晋升的副队长 | 登记子 cell、执行深度上限、返回副队长指令 |
@@ -449,8 +470,9 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   绕过工具直接调用 service 的代码行。读不出来的 cell 记录会放行所有调用者：守卫无法执行一个它看不见的
   模式：此时拒绝会带着记录路径出现在命令与 `cellwork_status` 上。
 - **采纳与解围修复的是记录，不是过去。** 采纳只覆盖 TEAM 记录已经认识的成员；team 记录里没有的 session，
-  按设计仍然没有通道。`unfence` 清除 cell 行，并在组合暴露 `mpdTeamActions.unfence` 接缝时清除 TEAM 行；
-  它不重建已死的 session，而旧构建已经写下的 cell 行只能经采纳与解围修复：历史不会被改写。
+  按设计仍然没有通道。`unfence` 清除 cell 行上的**放弃**围栏，并在组合暴露 `mpdTeamActions.unfence` 接缝时
+  清除 TEAM 行——绝不碰待处理的检查点（那归屏障所有）；它不重建已死的 session，而旧构建已经写下的 cell 行
+  只能经采纳与解围修复：历史不会被改写。
 - **1/4 预算是估算**，带声明的英文 ±25% 误差界，且对 CJK 刻意从严；它不是对模型分词器的测量，因为部署里
   根本没有分词器。
 - **挂载由 overlay 证明。** 在这台机器上，普通的 link-profile 启动仍会解析到一个陈旧的 `@mpd-dsh/mpd` 包，

@@ -1,0 +1,145 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:
+214 |   const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [])
+215 |   /** The captain's unfence. */
+216 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+217 |   expect(answer.ok).toBe(true)
+218 |   // THE ANSWER: one row per name, the cell row's fact and the plane's half as SEPARATE facts.
+219 |   expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
+                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    {
++     "detail": "the TEAM row records a checkpoint for this seat (the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it) with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared",
+      "member": "Senior Engineer",
+-     "plane": "unfenced",
+-     "unfenced": true,
++     "reason": "checkpoint-pending",
++     "unfenced": false,
+    },
+  ]
+
+- Expected  - 2
++ Received  + 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:219:27)
+(fail) B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs` [2.86ms]
+258 |   expect(String(blocked.error)).toContain("STILL WAITING for the compaction barrier")
+259 |   // THE LEVER: the CELL row's marker is the give-up fact, whatever the TEAM row says.
+260 |   /** The captain's unfence. */
+261 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+262 |   expect(answer.ok).toBe(true)
+263 |   expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
+                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    {
++     "detail": "the TEAM row records a checkpoint for this seat (the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it) with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared",
+      "member": "Senior Engineer",
+-     "plane": "unfenced",
+-     "unfenced": true,
++     "reason": "checkpoint-pending",
++     "unfenced": false,
+    },
+  ]
+
+- Expected  - 2
++ Received  + 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:263:27)
+(fail) round 3: the PRODUCTION give-up shape — CELL `fenced:true`, TEAM `checkpoint` with NO `fenced` — is fully recovered [0.68ms]
+293 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+294 |   expect(answer.ok).toBe(true)
+295 |   /** The one outcome: the CELL half landed, the plane half is honestly absent. */
+296 |   const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+297 |   expect(outcome.member).toBe("Senior Engineer")
+298 |   expect(outcome.unfenced).toBe(true)
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:298:28)
+(fail) round 3: the production give-up clears the CELL row but never claims the TEAM seat was reopened without a seam [0.33ms]
+(pass) B2: a member that is not fenced answers `not-fenced` and the record is never rewritten [0.46ms]
+(pass) B2: an unknown name is refused in the teaching style, naming the recorded members, and nothing changes [0.41ms]
+(pass) B2: the plane seam clears the TEAM row when present, and its ABSENCE is reported instead of pretended [0.82ms]
+391 |   ], [{ id: "T1", subject: "widget work", status: "pending", owner: "Senior Engineer", blockedBy: [] }])
+392 |   /** The one call that both repairs the seat and moves its row. */
+393 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"], reassign: [{ task_id: "T1", owner: "Reviewer" }] })
+394 |   expect(answer.ok).toBe(true)
+395 |   // BOTH HALVES LANDED: the fence is clear and the row moved to the member that can work it.
+396 |   expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toEqual({ member: "Senior Engineer", unfenced: true, plane: "unfenced" })
+                                                                       ^
+error: expect(received).toEqual(expected)
+
+  {
++   "detail": "the TEAM row records a checkpoint for this seat (the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it) with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared",
+    "member": "Senior Engineer",
+-   "plane": "unfenced",
+-   "unfenced": true,
++   "reason": "checkpoint-pending",
++   "unfenced": false,
+  }
+
+- Expected  - 2
++ Received  + 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:396:66)
+(fail) B2: `unfence` and `reassign` travel in one call and both take effect [0.51ms]
+(pass) B2: the unfence clears the exact refusal the deadlock produced, and the member can hand off again [0.99ms]
+(pass) B2: refusal after an unfence still reports the act, and the tool DESCRIPTION declares the argument [0.43ms]
+(pass) finding 2: a fence recorded ONLY on the TEAM record is cleared through the seam, and the CELL row is untouched [0.31ms]
+(pass) finding 2: a team-only fence with NO seam is reported as still fenced, and the CELL row stays untouched [0.28ms]
+(pass) finding 3: a row written while the plane call is awaited survives the unfence write [0.52ms]
+(pass) finding 4: an exact name wins over the normalized key — two non-ASCII names never collide [0.47ms]
+(pass) finding A: a PENDING checkpoint is not a give-up — `checkpoint-pending`, and neither record is written [0.35ms]
+(pass) finding B: 后端1 and 前端1 both normalize to `1`, and the exact name clears only its own seat [0.41ms]
+(pass) finding B: an ambiguous normalized lookup refuses the WHOLE call instead of guessing [0.70ms]
+(pass) finding B: `unfence:["运维1"]` (absent) is refused and nothing is cleared [0.74ms]
+
+packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:
+(pass) C7: fenceReasonOf names each of the three signals and clears a working seat [0.07ms]
+(pass) C7: a member at its CONTEXT CHECKPOINT is FENCED, reported with the repair, and never messaged [0.72ms]
+(pass) C7: a written handoff waiting for the barrier FENCES the member (the D4 re-delivery defect) [0.35ms]
+(pass) C7: the barrier's explicit `fenced` marker fences a member whose mode still looks ordinary [0.31ms]
+(pass) C7: the fence comes from the TEAM RECORD even when the cell row looks healthy [0.28ms]
+(pass) C7 control: a promoted subcaptain and a healthy member are both paired [0.39ms]
+(pass) C7: fencing one owner does not stop another owner's ready row [0.40ms]
+(pass) C7: a given-up barrier fences the member row it persists, and a later success clears the marker [0.09ms]
+(pass) C7 × B1: an ADOPTED member's marker survives BOTH barrier outcomes, and absence stays absence [0.06ms]
+(pass) C7: the given-up journal row names the member, the attempts and the repair verb [0.04ms]
+(pass) C7: a refused barrier PERSISTS the fence and journals `checkpoint-unrecoverable` [11.81ms]
+(pass) C7: cellwork_supervise lists every fenced member with the open rows it owns [1.78ms]
+(pass) C7 repair: a fenced member with NO open row still gets the unfence lever, not reassign advice [0.28ms]
+566 |   expect(fenced.length).toBe(1)
+567 |   expect(fenced[0].name).toBe("Senior Engineer")
+568 |   expect(fenced[0].giveUp).toBe(false)
+569 |   /** The text a model reads for the same sweep. */
+570 |   const text = renderTool(harness, "cellwork_supervise", sweep)
+571 |   expect(text).toContain("BARRIER-OWNED")
+                     ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "BARRIER-OWNED"
+Received: "cell cell-20261031T000000000Z · phase executing · split none · requirements rev 0\nmembers: Senior Engineer[checkpoint,handoff-ready]\ntasks: T7 pending(Senior Engineer)\nfenced: Senior Engineer (the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it) owns T7 — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and clear the fence with cellwork_dispatch {unfence:[\"Senior Engineer\"]}\nunread mail: 0"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:571:16)
+(fail) round 3: a BARRIER-PENDING seat gets NO unfence command — the compaction barrier owns it [0.43ms]
+(pass) C7: a SECOND cellwork_handoff is refused while the first waits for the barrier [0.27ms]
+
+5 tests failed:
+(fail) B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs` [2.86ms]
+(fail) round 3: the PRODUCTION give-up shape — CELL `fenced:true`, TEAM `checkpoint` with NO `fenced` — is fully recovered [0.68ms]
+(fail) round 3: the production give-up clears the CELL row but never claims the TEAM seat was reopened without a seam [0.33ms]
+(fail) B2: `unfence` and `reassign` travel in one call and both take effect [0.51ms]
+(fail) round 3: a BARRIER-PENDING seat gets NO unfence command — the compaction barrier owns it [0.43ms]
+
+ 27 pass
+ 5 fail
+ 192 expect() calls
+Ran 32 tests across 2 files. [176.00ms]

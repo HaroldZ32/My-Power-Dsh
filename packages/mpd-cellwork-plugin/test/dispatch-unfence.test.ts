@@ -18,7 +18,7 @@ import { mkdtempSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
-import { journalPath, newCellState, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
+import { journalPath, newCellState, readCell, statePath, writeCell, type CellMemberRecord, type CellState } from "../src/state.ts"
 import { installCellworkProtocol } from "../src/protocol.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
 import { createTeamActionsDouble, type DoubleMember, type DoubleTask, type DoubleTeamRecord, type TeamActionsDouble } from "./lib/team-actions-double.ts"
@@ -207,8 +207,11 @@ async function runTool(harness: Harness, name: string, args: Record<string, unkn
 test("B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs`", async () => {
   /** The cell whose only member the barrier fenced. */
   const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
-  /** The harness whose TEAM row carries the same fence. */
-  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true, fencedReason: "no-engine; the reseed failed" }], [])
+  // THE TEAM ROW IS THE PRODUCTION HALF (repair round 3): the barrier never calls the plane's `fence`
+  // verb, so a real give-up leaves `mode:"checkpoint"` and NO `fenced` key here. The CELL marker is the
+  // give-up fact, and this arm pins that the clear does not depend on a manufactured TEAM flag.
+  /** The harness whose TEAM row is the checkpoint window the handoff left behind. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [])
   /** The captain's unfence. */
   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
   expect(answer.ok).toBe(true)
@@ -234,6 +237,72 @@ test("B2: unfence removes both fence keys, restores `mode: member` and `handoffR
   expect(rows).toHaveLength(1)
   expect(rows[0].member).toBe("Senior Engineer")
   expect(rows[0].plane).toBe("unfenced")
+})
+
+test("round 3: the PRODUCTION give-up shape — CELL `fenced:true`, TEAM `checkpoint` with NO `fenced` — is fully recovered", async () => {
+  // WHAT THE BARRIER REALLY WRITES: `memberAfterBarrier` fences the CELL row (mode `checkpoint`,
+  // `handoffReady:true`, `fenced:true`) and `writeMemberHandoff` leaves the TEAM row at
+  // `mode:"checkpoint"` and NOTHING else. Round 2 gated the clear on a TEAM `fenced` flag that no shipped
+  // code writes, so THIS state answered `checkpoint-pending` and the deadlock survived. This arm is the
+  // one that sees it: the CELL marker alone must authorize the repair.
+  /** The cell row exactly as the give-up leaves it. */
+  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer", { sessionId: "session-senior", executorRef: "session-senior" }) })
+  /** The TEAM half of the same give-up: a checkpoint window with NO explicit fence. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "session-senior", mode: "checkpoint" }], [])
+  /** The fenced member's own handle. */
+  const member: FakeAgent = { id: "session-senior", session: { id: "session-senior", header: { cwd: harness.workspace } } }
+  // BEFORE: the deadlock this wave removes — the fence blocks the member's own handoff.
+  /** The handoff attempt the fence blocks. */
+  const blocked = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, member)
+  expect(blocked.ok).toBe(false)
+  expect(String(blocked.error)).toContain("STILL WAITING for the compaction barrier")
+  // THE LEVER: the CELL row's marker is the give-up fact, whatever the TEAM row says.
+  /** The captain's unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Senior Engineer" }])
+  // THE PLANE HALF REOPENS THE TEAM SEAT: the plane treats `mode:"checkpoint"` as closed, so the seam
+  // must clear it too — a cleared CELL row alone would leave the member unmessageable.
+  expect(harness.record.members[0].mode).toBe("member")
+  expect(harness.record.members[0].fenced).toBeUndefined()
+  // THE CELL ROW: both keys deleted, the mode restored, the barrier's waiting flag cleared, count kept.
+  /** The raw persisted row. */
+  const row = rawMembers(harness.workspace)["Senior Engineer"]
+  expect("fenced" in row).toBe(false)
+  expect("fencedReason" in row).toBe(false)
+  expect(row.mode).toBe("member")
+  expect(row.handoffReady).toBe(false)
+  expect(row.handoffs).toBe(2)
+  // THE MEMBER CAN HAND OFF AGAIN: the call the deadlock refused now records ordinal 3.
+  /** The handoff attempt after the unfence. */
+  const written = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, member)
+  expect(written.ok).toBe(true)
+  expect(written.ordinal).toBe(3)
+  expect(String(written.path).endsWith("Senior Engineer-3.md")).toBe(true)
+  // THE DISCLOSURE: the description a model selects the tool by names the CELL marker as the give-up fact.
+  expect(String(harness.tools.get("cellwork_dispatch")?.description)).toContain("GIVE-UP FACT")
+})
+
+test("round 3: the production give-up clears the CELL row but never claims the TEAM seat was reopened without a seam", async () => {
+  /** The cell row exactly as the give-up leaves it. */
+  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
+  /** The production TEAM row (checkpoint, no fence) against an older team-core with no `unfence` seam. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [], { unfenceSeam: false })
+  /** The captain's unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome: the CELL half landed, the plane half is honestly absent. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.member).toBe("Senior Engineer")
+  expect(outcome.unfenced).toBe(true)
+  expect(outcome.plane).toBe("absent")
+  expect(String(outcome.planeReason)).toContain("no mpdTeamActions.unfence seam")
+  expect(String(outcome.planeReason)).toContain("NOT reopened")
+  // THE FACTS: the CELL row is repaired; the TEAM seat keeps the checkpoint the barrier owns.
+  expect(rawMembers(harness.workspace)["Senior Engineer"].handoffReady).toBe(false)
+  expect(harness.record.members[0].mode).toBe("checkpoint")
+  expect(harness.record.members[0].fenced).toBeUndefined()
 })
 
 test("B2: a member that is not fenced answers `not-fenced` and the record is never rewritten", async () => {
@@ -317,7 +386,7 @@ test("B2: `unfence` and `reassign` travel in one call and both take effect", asy
   const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer"), Reviewer: memberRow("Reviewer") })
   /** The harness whose board holds one pending row for the fenced owner. */
   const harness = makeHarness(cell, [
-    { id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true },
+    { id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" },
     { id: "M2", name: "Reviewer", status: "running", executorRef: "handle-Reviewer" },
   ], [{ id: "T1", subject: "widget work", status: "pending", owner: "Senior Engineer", blockedBy: [] }])
   /** The one call that both repairs the seat and moves its row. */
@@ -396,4 +465,208 @@ test("B2: refusal after an unfence still reports the act, and the tool DESCRIPTI
   expect(tool?.parameters?.properties?.unfence).toBeDefined()
   expect(String(tool?.description)).toContain("`unfence` clears")
   expect(String(tool?.description)).toContain("not-fenced")
+})
+
+test("finding 2: a fence recorded ONLY on the TEAM record is cleared through the seam, and the CELL row is untouched", async () => {
+  /** The cell whose row carries NO fence marker — the plane's fence was never mirrored into it. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer") })
+  /** The harness whose TEAM row is the only place the fence exists. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true, fencedReason: "no-engine" }], [])
+  /** The record as it stood before the call, so a rewritten row shows up byte for byte. */
+  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's unfence of a seat the CELL row never marked. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  // HONEST: the cell row was NOT rewritten, and the answer says so while reporting the plane's half.
+  expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, cellRow: "untouched", plane: "unfenced" }])
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "Senior Engineer" }])
+  expect(harness.record.members[0].fenced).toBeUndefined()
+  expect(harness.record.members[0].mode).toBe("member")
+  // THE CELL ROW: untouched — no marker existed to remove, and none was invented.
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
+})
+
+test("finding 2: a team-only fence with NO seam is reported as still fenced, and the CELL row stays untouched", async () => {
+  /** The cell whose row carries no fence marker. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer") })
+  /** The harness whose older team-core exposes `dispatch` but not `unfence`. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [], { unfenceSeam: false })
+  /** The record as it stood before the call. */
+  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's unfence against the older plane. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  /** The outcome: nothing was cleared, and the answer names the half that could not be. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.member).toBe("Senior Engineer")
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.cellRow).toBe("untouched")
+  expect(outcome.plane).toBe("absent")
+  expect(String(outcome.planeReason)).toContain("no mpdTeamActions.unfence seam")
+  // THE FACTS: the plane seam is absent, the TEAM row is still fenced, the CELL row was never rewritten.
+  expect(harness.record.members[0].fenced).toBe(true)
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
+})
+
+test("finding 3: a row written while the plane call is awaited survives the unfence write", async () => {
+  /** The cell whose fenced row is cleared by this call. */
+  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer") })
+  /** The harness whose plane seam will write a concurrent row WHILE the verb is suspended. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [])
+  /** The seam the plugin will call, wrapped so another writer lands during the await. */
+  const seam = harness.plane.service.unfence
+  harness.plane.service.unfence = async (input: Record<string, unknown>): Promise<Record<string, any>> => {
+    /** The record as the OTHER writer sees it mid-await. */
+    const live = readCell(harness.workspace, CELL_ID)
+    if (live.ok) writeCell(harness.workspace, { ...live.state, members: { ...live.state.members, Reviewer: memberRow("Reviewer", { handoffs: 4 }) } })
+    return await seam(input)
+  }
+  /** The captain's unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  // THE MERGE STARTED FROM A FRESH READ: the row written during the await is still there, with its data.
+  /** The persisted members after the call. */
+  const persisted = rawMembers(harness.workspace)
+  expect(persisted.Reviewer).toBeDefined()
+  expect(persisted.Reviewer.handoffs).toBe(4)
+  // … and the fence the call was asked to clear is gone from the same record.
+  expect("fenced" in persisted["Senior Engineer"]).toBe(false)
+  expect(persisted["Senior Engineer"].handoffReady).toBe(false)
+})
+
+test("finding 4: an exact name wins over the normalized key — two non-ASCII names never collide", async () => {
+  /** The cell whose two names both normalize to the EMPTY key (`nameKey` is ASCII-only). */
+  const cell = cellWith({ "工程师甲": fencedRow("工程师甲"), "工程师乙": fencedRow("工程师乙") })
+  /** The harness whose TEAM rows carry the same two fences. */
+  const harness = makeHarness(cell, [
+    { id: "M1", name: "工程师甲", status: "running", executorRef: "handle-工程师甲", mode: "checkpoint", fenced: true },
+    { id: "M2", name: "工程师乙", status: "running", executorRef: "handle-工程师乙", mode: "checkpoint", fenced: true },
+  ], [])
+  /** The captain's unfence of the SECOND name. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["工程师乙"] })
+  expect(answer.ok).toBe(true)
+  // THE EXACT ROW WAS CLEARED — not the first member whose key also normalizes to "".
+  expect(answer.unfenced).toEqual([{ member: "工程师乙", unfenced: true, plane: "unfenced" }])
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "工程师乙" }])
+  /** The persisted members after the call. */
+  const persisted = rawMembers(harness.workspace)
+  expect("fenced" in persisted["工程师乙"]).toBe(false)
+  expect(persisted["工程师甲"].fenced).toBe(true)
+  expect(harness.record.members[0].fenced).toBe(true)
+  expect(harness.record.members[1].fenced).toBeUndefined()
+})
+
+test("finding A: a PENDING checkpoint is not a give-up — `checkpoint-pending`, and neither record is written", async () => {
+  // THE STATE EVERY HANDOFF LEAVES: the real plane sets `mode:"checkpoint"` on each handoff while the
+  // compaction barrier still owes the reopen, and that row carries NO `fenced` key.
+  /** The cell row a handoff leaves behind: waiting for its barrier, no give-up marker. */
+  const cell = cellWith({ "Senior Engineer": memberRow("Senior Engineer", { mode: "checkpoint", handoffReady: true, handoffs: 1 }) })
+  /** The harness whose TEAM row is exactly that pending checkpoint. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint" }], [])
+  /** The record as it stood before the call, so any write shows up byte for byte. */
+  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's unfence of a seat whose barrier has not given up. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  /** The one outcome, read as a record so each fact is asserted separately. */
+  const outcome = (answer.unfenced as Array<Record<string, unknown>>)[0]
+  expect(outcome.member).toBe("Senior Engineer")
+  // HONEST AND DISTINCT: this is not `not-fenced` (a fence DOES exist) and not a success.
+  expect(outcome.unfenced).toBe(false)
+  expect(outcome.reason).toBe("checkpoint-pending")
+  expect(String(outcome.detail)).toContain("compaction barrier")
+  // NOTHING WAS ASKED OF THE PLANE, and NEITHER record was written.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(harness.record.members[0].mode).toBe("checkpoint")
+  expect(harness.record.members[0].fenced).toBeUndefined()
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
+  expect(journalRows(harness.workspace, CELL_ID).filter((entry) => entry.event === "member-unfenced")).toHaveLength(0)
+})
+
+test("finding B: 后端1 and 前端1 both normalize to `1`, and the exact name clears only its own seat", async () => {
+  /** The cell whose two CJK+digit names share one normalized key. */
+  const cell = cellWith({ "后端1": fencedRow("后端1"), "前端1": fencedRow("前端1") })
+  /** The harness whose TEAM rows carry the same two give-up fences. */
+  const harness = makeHarness(cell, [
+    { id: "M1", name: "后端1", status: "running", executorRef: "handle-后端1", mode: "checkpoint", fenced: true },
+    { id: "M2", name: "前端1", status: "running", executorRef: "handle-前端1", mode: "checkpoint", fenced: true },
+  ], [])
+  /** The captain's unfence of the SECOND name. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["前端1"] })
+  expect(answer.ok).toBe(true)
+  // THE EXACT ROW WAS CLEARED, and the plane was asked about that same seat only.
+  expect(answer.unfenced).toEqual([{ member: "前端1", unfenced: true, plane: "unfenced" }])
+  expect(harness.plane.fences).toEqual([{ sessionId: CAPTAIN_SESSION, member: "前端1" }])
+  /** The persisted members after the call. */
+  const persisted = rawMembers(harness.workspace)
+  expect("fenced" in persisted["前端1"]).toBe(false)
+  expect(persisted["后端1"].fenced).toBe(true)
+  expect(harness.record.members[0].fenced).toBe(true)
+  expect(harness.record.members[1].fenced).toBeUndefined()
+})
+
+test("finding B: an ambiguous normalized lookup refuses the WHOLE call instead of guessing", async () => {
+  /** The cell whose two names both normalize to `1`; `1` names neither exactly. */
+  const cell = cellWith({ "后端1": fencedRow("后端1"), "前端1": fencedRow("前端1") })
+  /** The harness whose TEAM rows carry both fences. */
+  const harness = makeHarness(cell, [
+    { id: "M1", name: "后端1", status: "running", executorRef: "handle-后端1", mode: "checkpoint", fenced: true },
+    { id: "M2", name: "前端1", status: "running", executorRef: "handle-前端1", mode: "checkpoint", fenced: true },
+  ], [])
+  /** The record as it stood before the call. */
+  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's ambiguous unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["1"] })
+  expect(answer.ok).toBe(false)
+  /** The refusal sentence, which must teach both candidate names. */
+  const error = String(answer.error)
+  expect(error).toContain("\"1\"")
+  expect(error).toContain("后端1")
+  expect(error).toContain("前端1")
+  // NOTHING RAN: no fence cleared, no pass asked of the plane, no record written.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(harness.plane.dispatches).toHaveLength(0)
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
+  expect(rawMembers(harness.workspace)["后端1"].fenced).toBe(true)
+  expect(rawMembers(harness.workspace)["前端1"].fenced).toBe(true)
+})
+
+test("finding B: `unfence:[\"运维1\"]` (absent) is refused and nothing is cleared", async () => {
+  /** The cell whose two names make the absent spelling normalize onto their shared key. */
+  const cell = cellWith({ "后端1": fencedRow("后端1"), "前端1": fencedRow("前端1") })
+  /** The harness whose TEAM rows carry both fences. */
+  const harness = makeHarness(cell, [
+    { id: "M1", name: "后端1", status: "running", executorRef: "handle-后端1", mode: "checkpoint", fenced: true },
+    { id: "M2", name: "前端1", status: "running", executorRef: "handle-前端1", mode: "checkpoint", fenced: true },
+  ], [])
+  /** The record as it stood before the call. */
+  const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+  /** The captain's unfence of a name NO member carries. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["运维1"] })
+  expect(answer.ok).toBe(false)
+  expect(String(answer.error)).toContain("\"运维1\"")
+  // A MISSING NAME IS NOT A REASON TO GUESS: neither collision is cleared and nothing is written.
+  expect(harness.plane.fences).toHaveLength(0)
+  expect(harness.plane.dispatches).toHaveLength(0)
+  expect(readFileSync(statePath(harness.workspace, CELL_ID), "utf8")).toBe(before)
+  expect(rawMembers(harness.workspace)["后端1"].fenced).toBe(true)
+  expect(rawMembers(harness.workspace)["前端1"].fenced).toBe(true)
+})
+
+test("round 4: a member named twice is unfenced ONCE — one outcome, one seam call, one journal row", async () => {
+  // THE PRODUCTION GIVE-UP SHAPE, named twice in one call: the resolution loop used to push a target per
+  // SPELLING, so the same recorded key produced two outcomes, two plane seam calls and two
+  // `member-unfenced` journal rows while the record write stayed deduped by `clearedRows` — a report that
+  // claimed to have cleared the same fence twice and a plane asked to reopen an already-open seat.
+  /** The cell whose only member the barrier fenced. */
+  const cell = cellWith({ "Senior Engineer": fencedRow("Senior Engineer", { sessionId: "session-senior", executorRef: "session-senior" }) })
+  /** The harness whose TEAM row is the checkpoint half of the same give-up. */
+  const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "session-senior", mode: "checkpoint" }], [])
+  /** The captain's duplicated unfence. */
+  const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer", "Senior Engineer"] })
+  expect(answer.ok).toBe(true)
+  expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
+  // ONE SEAM CALL, ONE JOURNAL ROW: the duplicate spelling is resolved away BEFORE anything is processed.
+  expect(harness.plane.fences).toHaveLength(1)
+  expect(journalRows(harness.workspace, CELL_ID).filter((row) => row.event === "member-unfenced")).toHaveLength(1)
 })

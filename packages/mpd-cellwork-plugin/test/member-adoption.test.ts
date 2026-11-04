@@ -9,11 +9,11 @@
 // plane write is the real contract rather than a stub: the arm proves the SEAT-RESOLUTION path, not the
 // staging flow that normally writes a row.
 import { test, expect } from "bun:test"
-import { mkdtempSync, readFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
-import { newCellState, readCell, statePath, type CellMemberRecord, writeCell } from "../src/state.ts"
+import { cellDir, CELL_SPLIT_DIR, journalPath, newCellState, readCell, statePath, type CellMemberRecord, writeCell } from "../src/state.ts"
 import { createTeamActionsDouble, type DoubleMember, type DoubleTeamRecord, type TeamActionsDouble } from "./lib/team-actions-double.ts"
 import type { DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
@@ -45,6 +45,8 @@ interface Harness {
   teams: Map<string, DoubleTeamRecord>
   /** The shared `mpdTeamActions` double, so an arm can see the plane calls a verb delegated. */
   plane: TeamActionsDouble
+  /** The hook that runs at the TEAM-record read, which is where an arm can break the cell row deterministically. */
+  teamReadHook: { run?: () => void }
   /** The tool-guard predicate the row really installed, so an arm can drive a dispatch through it. */
   guard: ((exec: DshToolExec) => string | undefined) | undefined
 }
@@ -92,6 +94,8 @@ function makeHarness(): Harness {
      */
     guard(predicate: (exec: DshToolExec) => string | undefined): () => void { guardSeat.predicate = predicate; return (): void => {} },
   }
+  /** The hook an arm installs to run at the TEAM-record read (the moment between the cell scan and adoption). */
+  const teamReadHook: { run?: () => void } = {}
   /** The services the fake context answers. */
   const services: Record<string, unknown> = {
     tools: toolsService,
@@ -103,7 +107,7 @@ function makeHarness(): Harness {
        * @param teamId - the team asked for.
        * @returns the record, or undefined.
        */
-      get: (_workspace: string, teamId: string): DoubleTeamRecord | undefined => teams.get(teamId),
+      get: (_workspace: string, teamId: string): DoubleTeamRecord | undefined => { teamReadHook.run?.(); return teams.get(teamId) },
     },
     mpdTeamActions: plane.service,
     mpdRoles: { list: (): Array<{ name: string }> => [], get: (): null => null },
@@ -124,7 +128,7 @@ function makeHarness(): Harness {
     get(service: string): unknown { return services[service] },
   } as Parameters<typeof apply>[0]
   apply(ctx, {})
-  return { workspace, captain, tools, teams, plane, guard: guardSeat.predicate }
+  return { workspace, captain, tools, teams, plane, teamReadHook, guard: guardSeat.predicate }
 }
 
 /**
@@ -335,4 +339,66 @@ test("B1 repair: the GUARD resolves the seat READ-ONLY — a permission check ne
   /** The record after the verb. */
   const afterVerb = readCell(harness.workspace, cellId)
   expect(afterVerb.ok ? afterVerb.state.members["cell-planner"]?.adopted : undefined).toBe(true)
+})
+
+test("B1 repair: an adoption the record cannot persist refuses BEFORE the team plane is touched", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = seedCell(harness, {})
+  seedTeam(harness, [lateMember()])
+  /** The mid-run member's handle; the cell record has no row naming it. */
+  const late = teammate(harness, "session-rev-late")
+  // THE RECORD BECOMES UNWRITABLE FOR EVERY PROCESS: `writeCell` prepares the cell's subdirectories, and a
+  // regular FILE where the split directory belongs makes that preparation throw. A chmod-based arm would
+  // be bypassed by a root process, so the trap is a file, not a permission bit — the adopted row then
+  // exists only in the caller's in-memory mirror, exactly the state finding 1 describes.
+  /** The cell directory this arm breaks. */
+  const dir = cellDir(harness.workspace, cellId)
+  rmSync(join(dir, CELL_SPLIT_DIR), { recursive: true, force: true })
+  writeFileSync(join(dir, CELL_SPLIT_DIR), "occupied")
+  /** The handoff attempt. */
+  const result = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, late)
+  // THE REFUSAL IS TEACHING, and it names the record that could not be written.
+  expect(result.ok).toBe(false)
+  expect(String(result.error)).toContain("the cell record could not be written")
+  expect(String(result.error)).toContain("NOT adopted")
+  // THE PLANE WAS NEVER TOUCHED: no team checkpoint without an adopted cell row.
+  expect(harness.plane.handoffs).toHaveLength(0)
+  /** The record as it persisted: the failed adoption left no row behind. */
+  const read = readCell(harness.workspace, cellId)
+  expect(read.ok).toBe(true)
+  expect(read.ok ? read.state.members["rev-late"] : undefined).toBeUndefined()
+  // AND NO HISTORY FOR A ROW THAT NEVER LANDED (repair round 2, finding C-i): the journal line follows
+  // the write, so a refused write leaves no `member-adopted` row claiming one.
+  /** The journal text, or "" when no journal exists yet. */
+  const journal = existsSync(journalPath(harness.workspace, cellId)) ? readFileSync(journalPath(harness.workspace, cellId), "utf8") : ""
+  expect(journal).not.toContain("member-adopted")
+})
+
+test("B1 repair: an adoption whose fresh READ fails refuses with the READ cause, not a write that never happened", async () => {
+  /** The harness. */
+  const harness = makeHarness()
+  /** The cell id. */
+  const cellId = seedCell(harness, {})
+  seedTeam(harness, [lateMember()])
+  /** The mid-run member's handle; the cell record has no row naming it. */
+  const late = teammate(harness, "session-rev-late")
+  // THE RECORD BECOMES UNREADABLE BETWEEN THE SCAN AND THE ADOPTION: the TEAM read is the one awaited
+  // step between them, so an arm that breaks the file there fails the adoption's FRESH read — the read
+  // branch the refusal must name honestly (repair round 2, finding C-ii).
+  harness.teamReadHook.run = (): void => { writeFileSync(statePath(harness.workspace, cellId), "{ not a cell record") }
+  /** The handoff attempt. */
+  const result = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, late)
+  expect(result.ok).toBe(false)
+  /** The refusal sentence, whose headline must name the READ that failed. */
+  const error = String(result.error)
+  expect(error).toContain("could not be read")
+  expect(error).not.toContain("could not be written")
+  expect(error).toContain("NOT adopted")
+  // THE PLANE WAS NEVER TOUCHED, and no adoption history exists for a row that was never recorded.
+  expect(harness.plane.handoffs).toHaveLength(0)
+  /** The journal text, or "" when no journal exists yet. */
+  const journal = existsSync(journalPath(harness.workspace, cellId)) ? readFileSync(journalPath(harness.workspace, cellId), "utf8") : ""
+  expect(journal).not.toContain("member-adopted")
 })

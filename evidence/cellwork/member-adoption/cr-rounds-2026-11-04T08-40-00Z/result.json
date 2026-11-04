@@ -1,0 +1,82 @@
+{
+  "wave": "cellwork member adoption + unfence lever — CodeRabbit round-1 reconciliation",
+  "branch": "fix/cellwork-member-adoption",
+  "pr": 95,
+  "findings": [
+    {
+      "id": "CR1-1",
+      "severity": "Major",
+      "where": "packages/mpd-cellwork-plugin/src/caller.ts (adoptSeat) + src/protocol.ts (cellwork_handoff)",
+      "claim": "an adoption that cannot be persisted still lets the verb call plane.handoff, so the TEAM row can reach mode=checkpoint with no cell row",
+      "status": "FIXED",
+      "how": "AdoptionFailure {kind:read|write, detail} surfaces through CallerContext.adoptionFailure; cellwork_handoff refuses before plane.handoff and says the TEAM checkpoint was NOT recorded",
+      "pin": "test/member-adoption.test.ts — an adoption the record cannot persist refuses BEFORE the team plane is touched (plane.handoffs length 0, no row persisted)"
+    },
+    {
+      "id": "CR1-2",
+      "severity": "Minor",
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts (unfenceSeats)",
+      "claim": "a fence that exists only on the TEAM record answered not-fenced and was never cleared",
+      "status": "FIXED",
+      "how": "decision table: CELL fenced:true = the give-up (clear the CELL row and reopen the TEAM seat through the seam); TEAM-only fenced:true = clear the plane, CELL untouched; bare TEAM mode=checkpoint = checkpoint-pending, nothing written; neither = not-fenced",
+      "pin": "test/dispatch-unfence.test.ts — TEAM-only explicit fence; checkpoint-pending; production-shape full recovery; no-seam honesty"
+    },
+    {
+      "id": "CR1-3",
+      "severity": "Minor",
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts (unfenceSeats)",
+      "claim": "the unfence write was built from a pre-await snapshot, so a concurrent write (e.g. a fresh adoption) could be reverted",
+      "status": "FIXED",
+      "how": "the record is re-read after the awaited plane calls and only the cleared rows are merged into the fresh record; the snapshot is used only when the read fails",
+      "pin": "test/dispatch-unfence.test.ts — a row written while the plane call is awaited survives the unfence write"
+    },
+    {
+      "id": "CR1-4",
+      "severity": "Minor",
+      "where": "packages/mpd-cellwork-plugin/src/protocol.ts + src/dispatch.ts (resolveMemberName)",
+      "claim": "the ASCII-only nameKey collapses non-ASCII names, so unfence could clear a different member (工程师乙 -> 工程师甲)",
+      "status": "FIXED",
+      "how": "one resolver: exact key, then exact display name, then the normalized key ONLY when non-empty AND unique; otherwise unknown/ambiguous and the whole call is refused. Used by unfence, cellwork_send's recipient lookup and its self guard",
+      "pin": "test/dispatch-unfence.test.ts + test/member-resolution.test.ts — exact CJK names, ambiguous and absent names refuse with no side effects"
+    },
+    {
+      "id": "CR1-5",
+      "severity": "Minor",
+      "where": "docs/cellwork.md + docs/cellwork.zh-CN.md (+ the cellwork README pair)",
+      "claim": "the fenced-owner skip reason was documented as naming unfence, while the producer names reassign",
+      "status": "FIXED",
+      "how": "both languages now state that the skip reason is the TEAM PLANE's own sentence naming reassign, and never unfence",
+      "pin": "bun run verify:docs (parity) + the corrected paragraphs"
+    }
+  ],
+  "repairRounds": [
+    "r1: the five findings above",
+    "r2: the unfence gate must not clear a pending checkpoint (a display predicate was authorising a destructive write)",
+    "r3: the give-up fence lives on the CELL row, not the TEAM row — the r2 gate made the lever a no-op against the production shape, and every clear-path test had manufactured a team flag",
+    "r4: supervise reported the derived barrier sentence for a production give-up and hid the recorded fencedReason; duplicate unfence names journaled twice"
+  ],
+  "verification": [
+    "verifier 1: FAIL on six findings (missing handoff description; adoption inside the guard predicate; the adopted marker dropped by memberAfterBarrier; supervise advising reassign; two description/doc claims)",
+    "verifier 2: PASS after the r1 repair",
+    "verifier 3: FAIL (the r2 gate disabled the lever for the production give-up; CJK send still mis-routes through seatKey — recorded as a separate defect)",
+    "verifier 4: PASS after the r3 repair (production give-up recovered on both records, probe-proven), with one Medium (supervise reason) and one Nit (duplicate names)",
+    "verifier 5: PASS after the r4 repair, three nits (one test gap, one stale wording, this evidence file)",
+    "final nits landed: a shipped arm for the TEAM-only supervise reason, and the two 'per name' sentences corrected to 'per distinct member'"
+  ],
+  "gates": [
+    {"gate": "bun test packages/mpd-cellwork-plugin", "exit": 0, "note": "232 pass / 0 fail / 2597 expect() / 27 files"},
+    {"gate": "bun run typecheck", "exit": 0},
+    {"gate": "node scripts/verify-dist-fresh.ts", "exit": 0, "note": "34/34 fresh under the pinned bun 1.4.0"},
+    {"gate": "bun run verify:docs", "exit": 0, "note": "55 pairs, 0 violations, 0 dead links"},
+    {"gate": "bun run verify:comments", "exit": 0, "note": "597 files, 52,401 declarations"},
+    {"gate": "bun run verify:gates", "exit": 0, "note": "9/9 members"},
+    {"gate": "bun run test:qa", "exit": 0}
+  ],
+  "bounds": [
+    "All proof is offline (tool harness + the shared team-plane double); no live dsh boot, no real compaction or reseed.",
+    "The adoption recovery only covers a session the live TEAM record already knows.",
+    "The unfence lever reopens the TEAM seat only through the mpdTeamActions.unfence seam; without it the plane half is reported absent and the seat stays closed.",
+    "The adoption re-read narrows, but does not eliminate, a cross-process lost-update window before the atomic rename.",
+    "KNOWN SEPARATE DEFECT, not fixed here: the mailbox identity (seatKey) still derives from the ASCII-only nameKey, so two CJK seat names can share one mailbox address — a message addressed to one may land in the other's inbox. Pre-existing, out of this wave's scope, recorded as its own follow-up."
+  ]
+}

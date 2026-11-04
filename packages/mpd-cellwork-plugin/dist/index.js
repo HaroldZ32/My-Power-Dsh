@@ -2548,8 +2548,8 @@ function callerContext(dsh, exec, deps = {}) {
   for (const candidate of ordered) {
     const held = seatIn(candidate.state, workspace, sessionId, deps);
     if (held !== undefined) {
-      const state = held.adopt === undefined || deps.adopt === false ? candidate.state : adoptSeat(workspace, candidate.state, held.adopt);
-      return { workspace, sessionId, member: held.member, seat: held.seat, cell: state, refusal: null };
+      const state = held.adopt === undefined || deps.adopt === false ? { state: candidate.state } : adoptSeat(workspace, candidate.state, held.adopt);
+      return { workspace, sessionId, member: held.member, seat: held.seat, cell: state.state, refusal: null, ...state.failure === undefined ? {} : { adoptionFailure: state.failure } };
     }
   }
   const oldest = [...scan.cells].sort((left, right) => compareIds(left.state.cellId, right.state.cellId))[0];
@@ -2633,14 +2633,16 @@ function adoptedSeat(name, row, sessionId) {
 function adoptSeat(workspace, cell, row) {
   const fresh = readCell(workspace, cell.cellId);
   if (!fresh.ok)
-    return withMember(cell, row);
+    return { state: withMember(cell, row), failure: { kind: "read", detail: "the cell record at " + fresh.path + " could not be read (" + fresh.detail + ")" } };
   if (fresh.state.members[row.name] !== undefined)
-    return fresh.state;
+    return { state: fresh.state };
   const next = withMember(fresh.state, row);
   try {
-    return recordTransition(workspace, next, { event: "member-adopted", member: row.name, role: row.role, sessionId: row.sessionId }, new Date);
-  } catch {
-    return next;
+    const written = writeCell(workspace, next);
+    const lines = appendJournal(workspace, cell.cellId, { event: "member-adopted", member: row.name, role: row.role, sessionId: row.sessionId }, new Date);
+    return { state: lines > 0 ? { ...written, journalCursor: lines } : written };
+  } catch (error) {
+    return { state: next, failure: { kind: "write", detail: "writing " + statePath(workspace, cell.cellId) + " failed (" + (error instanceof Error ? error.message : String(error)) + ")" } };
   }
 }
 function withMember(cell, row) {
@@ -3683,6 +3685,20 @@ import { existsSync as existsSync5, readFileSync as readFileSync4 } from "node:f
 // packages/mpd-cellwork-plugin/src/dispatch.ts
 function nameKey(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function resolveMemberName(members, name) {
+  const entries = Object.entries(members);
+  const byKey = entries.find(([key2]) => key2 === name);
+  if (byKey !== undefined)
+    return { key: byKey[0], member: byKey[1] };
+  const byName = entries.find(([, member]) => member.name === name);
+  if (byName !== undefined)
+    return { key: byName[0], member: byName[1] };
+  const key = nameKey(name);
+  if (key === "")
+    return;
+  const normalized = entries.filter(([entryKey, member]) => nameKey(entryKey) === key || nameKey(member.name) === key);
+  return normalized.length === 1 ? { key: normalized[0][0], member: normalized[0][1] } : undefined;
 }
 function fenceReasonOf(member) {
   if (member === undefined)
@@ -6343,11 +6359,12 @@ function installCellworkProtocol(deps) {
     if (row === undefined)
       return {};
     const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined;
-    const closed = row.mode === "checkpoint" || row.fenced === true;
+    const fenced = row.fenced === true;
+    const closed = row.mode === "checkpoint" || fenced;
     if (!closed)
       return mode === undefined ? {} : { mode };
-    const reason = row.fenced === true ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
-    return { mode: "checkpoint", checkpoint: true, fenceReason: reason };
+    const reason = fenced ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "") : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it";
+    return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason };
   };
   const transition = (workspace, next, entry, now) => {
     const lines = appendJournal(workspace, next.cellId, entry, now);
@@ -6358,51 +6375,64 @@ function installCellworkProtocol(deps) {
   const captainOnly = (caller, tool) => caller.sessionId === "" || caller.cell === null || caller.sessionId !== caller.cell.captainSessionId ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" } : undefined;
   const unfenceSeats = async (caller, cell, targets, now) => {
     const plane = actions();
-    const members = { ...cell.members };
+    const clearedRows = new Map;
     const outcomes = [];
     const cleared = [];
+    const reopenPlaneSeat = async (name) => {
+      if (typeof plane?.unfence !== "function")
+        return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" };
+      try {
+        const reply = await plane.unfence({ sessionId: caller.sessionId, member: name });
+        if (reply?.ok === false)
+          return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") };
+        return { plane: "unfenced" };
+      } catch (error) {
+        return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) };
+      }
+    };
     for (const target of targets) {
-      const row = members[target.key];
-      if (row === undefined || row.fenced !== true) {
-        outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" });
+      const row = cell.members[target.key];
+      const cellFenced = row !== undefined && row.fenced === true;
+      const seat = recordSeat(cell, caller.workspace, target.name);
+      const teamFenced = seat.fenced === true;
+      if (cellFenced) {
+        const half = await reopenPlaneSeat(target.name);
+        const reopened = { ...row, mode: "member", handoffReady: false };
+        delete reopened.fenced;
+        delete reopened.fencedReason;
+        clearedRows.set(target.key, reopened);
+        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        cleared.push({ name: target.name, plane: half.plane });
         continue;
       }
-      const reopened = { ...row, mode: "member", handoffReady: false };
-      delete reopened.fenced;
-      delete reopened.fencedReason;
-      members[target.key] = reopened;
-      let planeOutcome = "absent";
-      let planeReason = "this composition exposes no mpdTeamActions.unfence seam, so the TEAM row's fence was NOT cleared";
-      if (typeof plane?.unfence === "function") {
-        try {
-          const reply = await plane.unfence({ sessionId: caller.sessionId, member: target.name });
-          if (reply?.ok === false) {
-            planeOutcome = "refused";
-            planeReason = String(reply.error ?? "the team plane refused the unfence");
-          } else {
-            planeOutcome = "unfenced";
-            planeReason = undefined;
-          }
-        } catch (error) {
-          planeOutcome = "refused";
-          planeReason = error instanceof Error ? error.message : String(error);
-        }
+      if (teamFenced) {
+        const half = await reopenPlaneSeat(target.name);
+        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...half.planeReason === undefined ? {} : { planeReason: half.planeReason } });
+        continue;
       }
-      outcomes.push({ member: target.name, unfenced: true, plane: planeOutcome, ...planeReason === undefined ? {} : { planeReason } });
-      cleared.push({ name: target.name, plane: planeOutcome });
+      if (seat.checkpoint === true) {
+        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", detail: "the TEAM row records a checkpoint for this seat (" + String(seat.fenceReason ?? "mode `checkpoint`") + ") with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared" });
+        continue;
+      }
+      outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" });
     }
     if (cleared.length === 0)
       return { cell, outcomes };
-    let cursor = cell.journalCursor;
+    const fresh = readCell(caller.workspace, cell.cellId);
+    const base = fresh.ok ? fresh.state : cell;
+    const members = { ...base.members };
+    for (const [key, reopened] of clearedRows)
+      members[key] = reopened;
+    let cursor = base.journalCursor;
     for (const row of cleared) {
       cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now);
     }
-    const next = { ...cell, members, journalCursor: cursor > 0 ? cursor : cell.journalCursor };
+    const next = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor };
     return { cell: writeCell(caller.workspace, next), outcomes };
   };
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. A cleared row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), and the TEAM row is cleared through the plane's `unfence` seam when this composition exposes one — when it does not, the answer says so instead of pretending. A member that is not fenced answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
     parameters: {
       type: "object",
       properties: {
@@ -6421,7 +6451,7 @@ function installCellworkProtocol(deps) {
         },
         unfence: {
           type: "array",
-          description: "Member names whose compaction fence this call CLEARS before the pass (captain-only, like the verb). Each fenced row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count; the TEAM row is cleared through the plane's `unfence` seam when this composition exposes one. A member that is not fenced is reported as not-fenced, never as a silent success; an unknown name refuses the call. May travel with `reassign`.",
+          description: 'Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row\'s own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane\'s `unfence` seam when this composition exposes one (the plane\'s `mode:"checkpoint"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:"checkpoint"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:"checkpoint-pending"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. May travel with `reassign`.',
           items: { type: "string" }
         }
       },
@@ -6437,7 +6467,7 @@ function installCellworkProtocol(deps) {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
-          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per `unfence` name: `{member, unfenced:true, plane, planeReason?}` for a cleared fence, `{member, unfenced:false, reason:"not-fenced"}` when there was nothing to clear. `plane` is `unfenced` (the TEAM row was cleared through the seam), `absent` (this composition exposes no `unfence` seam) or `refused` (with the plane\'s own sentence in `planeReason`).' },
+          unfenced: { type: "array", items: { type: "object" }, description: 'One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row\'s `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:"not-fenced"}` when neither record reports a marker, `{member, unfenced:false, reason:"checkpoint-pending", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:"checkpoint"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:"untouched", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane\'s own sentence in `planeReason`).' },
           refused: { type: "string" }
         },
         required: ["ok"]
@@ -6445,7 +6475,7 @@ function installCellworkProtocol(deps) {
       render: (_args, value) => {
         const result = typeof value === "object" && value !== null ? value : {};
         const unfenced = Array.isArray(result.unfenced) ? result.unfenced : [];
-        const clears = unfenced.map((row) => "unfence " + String(row.member) + ": " + (row.unfenced !== true ? "not fenced" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is still fenced" : row.plane === "refused" ? "cell row cleared, but the TEAM row was NOT: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM row unfenced through the plane"));
+        const clears = unfenced.map((row) => row.cellRow === "untouched" ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced" ? "the TEAM row was unfenced through the plane" : row.plane === "absent" ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced" : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence")) : "unfence " + String(row.member) + ": " + (row.unfenced !== true ? row.reason === "checkpoint-pending" ? "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record" : "not fenced — nothing was written" : row.plane === "absent" ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)" : row.plane === "refused" ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence") : "cell row cleared and the TEAM seat reopened through the plane"));
         if (result.ok === false)
           return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join(`
 `));
@@ -6478,13 +6508,17 @@ function installCellworkProtocol(deps) {
       if (unfenceNames.some((name) => name === ""))
         return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" };
       const unfenceTargets = [];
+      const seenTargets = new Set;
       for (const name of unfenceNames) {
-        const entry = Object.entries(cell.members).find(([key, member]) => nameKey(key) === nameKey(name) || nameKey(member.name) === nameKey(name));
-        if (entry === undefined) {
+        const resolved = resolveMemberName(cell.members, name);
+        if (resolved === undefined) {
           const recorded = Object.keys(cell.members);
           return { ok: false, error: "cellwork_dispatch: " + JSON.stringify(name) + " is not a member of cell " + cell.cellId + " (members: " + (recorded.length === 0 ? "none recorded" : recorded.join(", ")) + ")" };
         }
-        unfenceTargets.push({ key: entry[0], name: entry[1].name });
+        if (seenTargets.has(resolved.key))
+          continue;
+        seenTargets.add(resolved.key);
+        unfenceTargets.push({ key: resolved.key, name: resolved.member.name });
       }
       const plane = actions();
       if (plane?.dispatch === undefined)
@@ -6519,7 +6553,7 @@ function installCellworkProtocol(deps) {
   }));
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the FENCED members together with the open rows they own (reassign those, and clear the fence with `cellwork_dispatch {unfence:[...]}`), and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN TWO KINDS and the sweep names which, because only ONE of them is the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) has NOTHING for the captain to do — the compaction barrier reopens it, so no lever is offered and nothing should be written. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." }
@@ -6538,7 +6572,7 @@ function installCellworkProtocol(deps) {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: "Every fenced member with the reason and the OPEN board rows it still owns — the rows a `reassign` pass repairs, and a fence `cellwork_dispatch {unfence:[name]}` clears." },
+          fenced: { type: "array", items: { type: "object" }, description: 'Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a seat the compaction barrier owns (a `mode:"checkpoint"` window with no fence marker), which needs no captain action and gets no unfence advice.' },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } }
         },
@@ -6555,7 +6589,14 @@ function installCellworkProtocol(deps) {
           "cell " + String(result.cellId ?? "") + " · phase " + String(result.phase ?? "") + " · split " + String(result.splitRevision ?? "none") + (result.staleSplit === true ? " (STALE)" : "") + " · requirements rev " + String(result.requirementsRevision ?? 0),
           "members: " + members.map((row) => String(row.name) + "[" + String(row.mode) + (row.handoffReady === true ? ",handoff-ready" : "") + (typeof row.ratio === "number" ? "," + Math.round(row.ratio * 100) + "%" : "") + "]").join(" "),
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
-          "fenced: " + (fenced.length === 0 ? "none" : fenced.map((row) => String(row.name) + " (" + String(row.reason) + ") owns " + (Array.isArray(row.tasks) && row.tasks.length > 0 ? row.tasks.map((id) => String(id)).join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(String(row.name)) + "]}").join("; ")),
+          "fenced: " + (fenced.length === 0 ? "none" : fenced.map((row) => {
+            const name = String(row.name);
+            const reason = String(row.reason);
+            const owned = Array.isArray(row.tasks) ? row.tasks.map((id) => String(id)) : [];
+            if (row.giveUp !== true)
+              return name + " (" + reason + ", BARRIER-OWNED) " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "nothing for you to do: the compaction barrier owns this seat and reopens it when it completes";
+            return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}";
+          }).join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String(result.wakeFailures.length) + " without a wake-up" : "")
         ].join(`
 `));
@@ -6580,14 +6621,15 @@ function installCellworkProtocol(deps) {
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId));
       const fenced = Object.values(cell.members).flatMap((member) => {
         const seat = recordSeat(cell, caller.workspace, member.name);
-        const reason = seat.fenceReason ?? fenceReasonOf(member);
+        const giveUp = member.fenced === true || seat.fenced === true;
+        const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member);
         if (reason === undefined)
           return [];
         const owned = tasks.filter((task) => {
           const status = String(task.status ?? "");
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name);
         }).map((task) => String(task.id ?? ""));
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned }];
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp }];
       });
       return {
         ok: true,
@@ -6703,6 +6745,10 @@ missing sections: ` + result.missing.join(", ") : ""));
       const member = caller.cell.members[caller.member];
       if (member === undefined)
         return { ok: false, error: "cellwork_handoff: " + JSON.stringify(caller.member) + " is not a recorded cell member" };
+      if (caller.adoptionFailure !== undefined) {
+        const failure = caller.adoptionFailure;
+        return { ok: false, error: "cellwork_handoff: this seat (" + JSON.stringify(caller.member) + ") was NOT adopted — " + (failure.kind === "read" ? "the cell record could not be read" : "the cell record could not be written") + ": " + failure.detail + ". The TEAM checkpoint was NOT recorded; retry once the cell record is " + (failure.kind === "read" ? "readable" : "writable") };
+      }
       if (caller.sessionId === caller.cell.captainSessionId)
         return { ok: false, error: "cellwork_handoff: the captain is never checkpointed (declared bound) — it dispatches, it does not hand off" };
       if (member.handoffReady) {
@@ -6940,14 +6986,15 @@ missing sections: ` + result.missing.join(", ") : ""));
           return { ok: false, error: "cellwork_send: a broadcast has no other seat to address in cell " + targetCellId };
       } else {
         const toCaptain = nameKey(requestedName) === "captain";
-        const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName));
-        if (!toCaptain && recipientMember === undefined) {
-          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" };
+        const recipient = toCaptain ? undefined : resolveMemberName(target.members, requestedName);
+        if (!toCaptain && recipient === undefined) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor an unambiguous member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" };
         }
-        const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName);
-        if (!crossCell && nameKey(to) === nameKey(caller.member))
+        const to = toCaptain ? "captain" : String(recipient?.member.name ?? requestedName);
+        const self = toCaptain ? caller.member === "captain" : recipient !== undefined && (recipient.key === caller.member || recipient.member.name === caller.member);
+        if (!crossCell && self)
           return { ok: false, error: "cellwork_send: a seat cannot message itself" };
-        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipientMember?.name ?? to))];
+        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipient?.member.name ?? to))];
       }
       const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name));
       const leadIds = [seatKey(target, "captain")];

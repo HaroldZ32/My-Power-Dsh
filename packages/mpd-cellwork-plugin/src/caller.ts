@@ -14,7 +14,7 @@
 // the approval answer exists.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { CellworkSeat, CellSeatMode } from "./guard"
-import { cellDir, listCellIds, readCell, recordTransition, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
+import { appendJournal, cellDir, listCellIds, readCell, statePath, writeCell, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
 
 /**
  * The slice of the `mpdTeams` service this module reads, declared STRUCTURALLY.
@@ -66,6 +66,21 @@ export interface TeamActionsServiceView {
   cancelTasks?: (input: { workspace: string; teamId: string; taskIds: readonly string[]; note?: string }) => Promise<unknown>
 }
 
+/**
+ * Why an attempted seat ADOPTION could not be persisted, and WHICH half failed.
+ *
+ * The two causes are kept apart because they are not the same sentence: a record that could not be READ
+ * was never rewritten (and may be readable on the next call), while a record that could not be WRITTEN
+ * had its row ready. A refusal that called both "could not be written" was dishonest (repair round 2,
+ * finding C-ii).
+ */
+export interface AdoptionFailure {
+  /** `read` when the fresh record could not be read; `write` when the record write did not land. */
+  kind: "read" | "write"
+  /** One sentence naming the path and the cause, for the refusal that reports it. */
+  detail: string
+}
+
 /** What one dispatch's caller is, as far as the cell is concerned. */
 export interface CallerContext {
   /** The absolute workspace root the adapter resolved for THIS call. */
@@ -80,6 +95,14 @@ export interface CallerContext {
   cell: CellState | null
   /** The refusal that stopped the cell scan (a corrupt record), so a tool can name its path. */
   refusal: CellReadFailure | null
+  /**
+   * Why a seat ADOPTION could not be PERSISTED, when this call attempted one and the write did not land.
+   *
+   * The context still carries the in-memory mirror, so a read-only verb answers as if the row existed; a
+   * verb that writes the TEAM plane must refuse instead, because it would otherwise record a checkpoint
+   * for a row the cell record never received.
+   */
+  adoptionFailure?: AdoptionFailure
 }
 
 /** What {@link callerContext} needs beyond the adapter: the team-service resolver. */
@@ -168,9 +191,9 @@ export function callerContext(
     if (held !== undefined) {
       // ADOPTION IS OFF THE GUARD'S PATH (contract B1, repair 2): a READ-ONLY resolution (`adopt: false`)
       // resolves exactly the same seat but writes nothing, so the guard can run it on every dispatch.
-      /** The record the verb reads: the stored one, with the adopted row when this resolution adopted one. */
-      const state = held.adopt === undefined || deps.adopt === false ? candidate.state : adoptSeat(workspace, candidate.state, held.adopt)
-      return { workspace, sessionId, member: held.member, seat: held.seat, cell: state, refusal: null }
+      /** The record the verb reads, plus the reason an attempted adoption could not be persisted. */
+      const state = held.adopt === undefined || deps.adopt === false ? { state: candidate.state } : adoptSeat(workspace, candidate.state, held.adopt)
+      return { workspace, sessionId, member: held.member, seat: held.seat, cell: state.state, refusal: null, ...(state.failure === undefined ? {} : { adoptionFailure: state.failure }) }
     }
   }
   // NO SEAT ANYWHERE: the workspace still has a cell (the OLDEST live one, as the mode has always
@@ -364,25 +387,35 @@ function adoptedSeat(name: string, row: Record<string, unknown>, sessionId: stri
  * (`state.ts`'s rule) — the mirror is returned without a write, and the next readable transition persists it.
  *
  * A write the workspace refuses must not break the caller — {@link callerContext} is documented total —
- * so the augmented record is returned either way: the verb behaves as if the row had always existed.
+ * so the augmented record is returned either way, and the refusal travels BESIDE it: a verb that writes
+ * the team plane refuses on `failure` instead of pretending the row was recorded.
+ *
+ * THE JOURNAL LINE FOLLOWS THE WRITE (repair round 2, finding C-i). `recordTransition` appends history
+ * first, which is right for a state transition but wrong here: a write that then FAILED left a
+ * `member-adopted` row in the journal for a member the record never received. The row is written first
+ * and only a landed write appends its history.
  *
  * @param workspace - the workspace root the adapter resolved for THIS call.
  * @param cell - the record the seat was resolved against, used only to name the cell.
  * @param row - the mirror row to record.
- * @returns the record the verb must read.
+ * @returns the record the verb must read, and why an attempted adoption could not be persisted.
  */
-function adoptSeat(workspace: string, cell: CellState, row: CellMemberRecord): CellState {
+function adoptSeat(workspace: string, cell: CellState, row: CellMemberRecord): { state: CellState; failure?: AdoptionFailure } {
   /** The record on disk at THIS instant, which is what the merge must start from. */
   const fresh = readCell(workspace, cell.cellId)
   // AN UNREADABLE RECORD IS NOT REWRITTEN: the mirror answers this call and a later transition persists it.
-  if (!fresh.ok) return withMember(cell, row)
-  if (fresh.state.members[row.name] !== undefined) return fresh.state
+  if (!fresh.ok) return { state: withMember(cell, row), failure: { kind: "read", detail: "the cell record at " + fresh.path + " could not be read (" + fresh.detail + ")" } }
+  if (fresh.state.members[row.name] !== undefined) return { state: fresh.state }
   /** The FRESH record carrying the adopted row. */
   const next: CellState = withMember(fresh.state, row)
   try {
-    return recordTransition(workspace, next, { event: "member-adopted", member: row.name, role: row.role, sessionId: row.sessionId }, new Date())
-  } catch {
-    return next
+    /** The record as persisted; the write is the commit point the journal may follow. */
+    const written = writeCell(workspace, next)
+    /** The journal line count after the append, or 0 when the append failed. */
+    const lines = appendJournal(workspace, cell.cellId, { event: "member-adopted", member: row.name, role: row.role, sessionId: row.sessionId }, new Date())
+    return { state: lines > 0 ? { ...written, journalCursor: lines } : written }
+  } catch (error) {
+    return { state: next, failure: { kind: "write", detail: "writing " + statePath(workspace, cell.cellId) + " failed (" + (error instanceof Error ? error.message : String(error)) + ")" } }
   }
 }
 
