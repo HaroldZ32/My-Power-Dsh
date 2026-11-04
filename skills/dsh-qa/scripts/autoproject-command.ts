@@ -71,7 +71,7 @@ export const COMMAND_SURFACE_MARKERS: readonly string[] = ["registerCommand", "A
 export const ADAPTER_SURFACE_MARKERS: readonly string[] = ["registerCommand", "submitUserTurn"]
 
 /** The injected activation directive's head (the marker that a rewrite really happened). */
-export const DIRECTIVE_HEAD_RE: RegExp = /ULTRAWORK ACTIVATION/
+export const DIRECTIVE_HEAD_RE: RegExp = /AUTOPROJECT ACTIVATION/
 
 /** The ONE registered spelling the frozen contract requires (`/autoproject`; the rename left no alias). */
 export const REQUIRED_COMMANDS: readonly string[] = ["autoproject"]

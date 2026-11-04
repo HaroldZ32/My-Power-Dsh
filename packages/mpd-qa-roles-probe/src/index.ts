@@ -1,7 +1,9 @@
 // QA-only preset+roster+skill-catalog probe plugin: asserts the mpd main preset
 // resolves, the mpdRoles roster answers with the full specialist roster (11 roles), and
-// the bundle's skill corpus is served by the skill registry (count + one loaded
-// skill + its resource base). Mounted ONLY by QA overlays (tests/overlays/
+// the bundle's skill corpus is served by the skill registry (bundle-only count, every
+// named fixture served, one loaded fixture body, no retired `ulw-*` name, and every
+// RENAMED `autoproject-*` skill loaded by name with a resource base under `skills/<name>`).
+// Mounted ONLY by QA overlays (tests/overlays/
 // roles-probe.yml template), never shipped in the bundle.
 // Harness seams (preset roster, skill registry) are read through the bundle's
 // shared adapter, so the probe exercises the same surface the plugins do.
@@ -61,8 +63,37 @@ const FIXTURE_SKILL = "svn-master"
  * presence of these stable, load-bearing cases instead of a bare corpus floor: the
  * extraction removed three `rtl-*` skill trees (22 -> 19 served), and a hard-coded
  * count would either break on every corpus change or silently stop meaning anything.
+ * The three `autoproject-*` entries pin the PR #94 rename: they fail the probe if a
+ * renamed workflow stops being served, so the rename cannot silently regress.
  */
-const FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"]
+const FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master", "autoproject-plan", "autoproject-execute", "autoproject-research"]
+/**
+ * The RETIRED skill-family spelling: `ulw-*` / `ultrawork*`, case-insensitive. PR #94 renamed the
+ * family to `autoproject-*`, so a served name still matching this pattern means an old tree is on
+ * the provider's path; the catalog guard below fails the probe and NAMES every offending entry
+ * instead of only lowering the served count.
+ */
+const RETIRED_SKILL_NAME = /^ulw[-_]|^ultrawork/i
+/**
+ * The three skills PR #94 RENAMED (`ulw-plan` / `ulw-execute` / `ulw-research` -> `autoproject-*`).
+ * They are asserted from TWO different questions: their PRESENCE in the served listing is part of
+ * `FIXTURE_SKILLS` above, and each one must also LOAD by name with a real body and a resource base
+ * under the corpus (`SKILL_LOAD`, PASS channel 6). A rename that only reached the directory names
+ * passes the first question and fails the second, which is exactly what the PR #94 reviewer asked
+ * for evidence of.
+ */
+const RENAMED_SKILLS = ["autoproject-plan", "autoproject-execute", "autoproject-research"]
+
+/**
+ * The bundle root this probe is served from — FOUR levels up from this module, which resolves to
+ * `<bundle>/packages/mpd-qa-roles-probe/dist/index.js` in BOTH layouts (a checkout install links
+ * the repo, a packed install copies the same tree). It is the ONE answer to "where is this bundle":
+ * the preset-path derivation and the renamed-skill base assertion below both read it, so the two
+ * cannot drift apart.
+ */
+function bundleRoot(): string {
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+}
 
 /**
  * WHERE the mpd preset is served from, in the row model.
@@ -76,15 +107,74 @@ const FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-
  * `system`/`user` root vocabulary.
  */
 export function presetPatchPath(): { path: string; trust: string } {
-  // FOUR levels up: this module is served as `<bundle>/packages/mpd-qa-roles-probe/dist/index.js`
-  // in BOTH layouts (a checkout install links the repo, a packed install copies the same tree).
-  const bundleRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
   // The SECOND patch layer of the manifest's `dsh.bundle.patch` array: the file that DECLARES the
   // `mpd` preset row, and therefore what serves the preset in the row model.
-  const patch = join(bundleRoot, "presets", "mpd.patch.yml")
+  const patch = join(bundleRoot(), "presets", "mpd.patch.yml")
   // Only a path this probe can SEE is reported: a layout that moved the patch (a re-pack
   // that renames it) answers `unknown` instead of a plausible-looking fiction.
   return existsSync(patch) ? { path: patch, trust: "bundle" } : { path: "unknown", trust: "unknown" }
+}
+
+/**
+ * The slice of a loaded skill record this probe reads: the body the registry served and the
+ * resource base relative references resolve against. Declared ONCE and used by both the fixture
+ * line and the renamed-skill assertions, so the two cannot read different shapes.
+ */
+type LoadedSkill = { name?: string; content?: string; resourceBase?: { path?: string } }
+
+/**
+ * Whether `candidate` is `expected` itself or sits UNDER it — the containment test the renamed
+ * skills' resource bases are held to. Separators are normalized to `/` and a trailing separator is
+ * dropped first, so a Windows path, a POSIX path and a base naming a file inside the directory
+ * (`<dir>/SKILL.md`) all answer the same question; a SIBLING whose name merely shares the prefix
+ * (`.../autoproject-plan-old`) does not.
+ */
+function pathUnder(candidate: string, expected: string): boolean {
+  /** The comparison form of one path: forward slashes, no trailing separator. */
+  const normalize = (p: string): string => p.split("\\").join("/").replace(/\/+$/, "")
+  /** The candidate in comparison form. */
+  const c = normalize(candidate)
+  /** The expected directory in comparison form. */
+  const e = normalize(expected)
+  return c === e || c.startsWith(e + "/")
+}
+
+/**
+ * The absolute `skills/<name>` directory a renamed skill's resource base must sit under.
+ *
+ * The corpus root is taken from the FIXTURE skill — the root that provably served a real body in
+ * THIS boot — and the probe's own `<bundle>/skills` is PREFERRED whenever the fixture came from it,
+ * so the ordinary checkout/packed boot pins the base to THIS repo's `skills/<name>`. The fallback
+ * covers the one layout where the probe module and the served corpus live in different roots (the
+ * `relocate-smoke` lane mounts the checkout's probe against a relocated pack's corpus): the same
+ * containment assertion then pins the base to the corpus the fixture load came from, which that
+ * lane separately asserts is the relocated pack.
+ */
+function expectedSkillBase(fixtureBase: string, skillName: string): string {
+  /** This bundle's own corpus root, the authority for a boot served out of this checkout. */
+  const probeSkills = join(bundleRoot(), "skills")
+  if (fixtureBase === "") return join(probeSkills, skillName)
+  /** The corpus root the fixture was served from: this bundle's, or else the fixture's own parent. */
+  const corpusRoot = pathUnder(fixtureBase, probeSkills) ? probeSkills : dirname(fixtureBase)
+  return join(corpusRoot, skillName)
+}
+
+/**
+ * Why a renamed skill's load result FAILS its assertion, or `""` when it passes. The reason is one
+ * TOKEN (no whitespace), so the `SKILL_LOAD=fail` line stays greppable: `absent` (listed but not
+ * loadable), `short-body:<n>` (fewer than 101 bytes, i.e. a stub), `base-absent` (the provider
+ * reported no resource base) or `base-outside:<path>` (a base that is not under the corpus's
+ * `skills/<name>`, e.g. a stale copy served from somewhere else).
+ */
+function skillLoadReason(loaded: LoadedSkill | undefined, expectedBase: string): string {
+  if (loaded === undefined) return "absent"
+  /** The served body's length in UTF-16 code units, the probe's `bytes=` measurement. */
+  const bodyBytes = loaded.content?.length ?? 0
+  if (bodyBytes <= 100) return "short-body:" + String(bodyBytes)
+  /** The reported resource base, `""` when the provider answered none. */
+  const base = String(loaded.resourceBase?.path ?? "")
+  if (base === "") return "base-absent"
+  return pathUnder(base, expectedBase) ? "" : "base-outside:" + base
 }
 
 /**
@@ -329,6 +419,11 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
   // Skill catalog: the corpus must be served by the bundle provider, and one
   // fixture skill must load with a resource base (relative references resolve).
   let catalogOk = false
+  // PASS channel 6 — every renamed `autoproject-*` skill loads by name with a real body and a
+  // resource base under the corpus. Separate from `catalogOk` (which asks what is LISTED) so a red
+  // boot names the question that failed; it starts false, so a throw earlier in the block cannot
+  // silently leave it green.
+  let skillLoadsOk = false
   try {
     // The served skill listing; its LENGTH is the SKILLS= count the skill-catalog case greps, so the
     // count comes from the registry rather than from a corpus path on disk.
@@ -337,11 +432,16 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     // leftover home-root copy or a partial serve reddens instead of silently inflating the count.
     const bundled = summaries.filter((summary: any) => summary.source === "bundled")
     // Served names as a Set, so the named-fixture check costs one lookup per fixture instead of one
-    // scan of the whole listing per fixture.
-    const servedNames = new Set(summaries.map((summary: any) => String(summary.name)))
+    // scan of the whole listing per fixture. The element type is SPELLED OUT: `listSkills()` is an
+    // `any`-typed seam here, so `new Set(<any>)` infers `Set<unknown>` and the retired-name filter
+    // below then fails the root `tsgo --noEmit` with TS2345 (a type-only fix — no emitted bytes).
+    const servedNames = new Set<string>(summaries.map((summary: any) => String(summary.name)))
     // The named fixtures ABSENT from the served listing; an empty array is PASS channel 4's second
     // clause and the MISSING= suffix names whichever fixture regressed.
     const missingFixtures = FIXTURE_SKILLS.filter((name) => !servedNames.has(name))
+    // Served names that still carry the RETIRED family spelling; an empty array is PASS channel 4's
+    // fourth clause and the NAMES= suffix below names every offender when a stale tree is served.
+    const retiredNames = [...servedNames].filter((name) => RETIRED_SKILL_NAME.test(name))
     console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length
       + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length
       + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : "")
@@ -349,9 +449,14 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
       // bundle, name it (measured need 2026-09-14: "SKILLS=24 BUNDLED=18" told the
       // reader nothing about WHICH six, so the gate failure could not be attributed).
       + (summaries.length === bundled.length ? "" : " NON_BUNDLED=" + summaries.filter((summary: any) => summary.source !== "bundled").map((summary: any) => String(summary.name) + ":" + String(summary.source)).join(",")))
+    // The retired-name guard's OWN line, so the boot log records the absence of `ulw-*` /
+    // `ultrawork*` names as a fact instead of an inference from the counts above; NAMES= pinpoints
+    // the stale tree when one is still served.
+    console.log("[roles-probe] SKILL_RETIRED=" + retiredNames.length
+      + (retiredNames.length > 0 ? " NAMES=" + retiredNames.join(",") : ""))
     // The loaded fixture skill: loading it proves the provider serves a real BODY and reports a
     // resource base for relative references. `undefined` — listed but not loadable — fails PASS.
-    const fixture = (await dsh.loadSkill(FIXTURE_SKILL)) as { name?: string; content?: string; resourceBase?: { path?: string } } | undefined
+    const fixture = (await dsh.loadSkill(FIXTURE_SKILL)) as LoadedSkill | undefined
     // The fixture's resource base path, `unknown` when it has none — reported for DIAGNOSIS only: it
     // is NOT one of the PASS conditions below, so a missing base alone does not redden the run.
     const base = fixture?.resourceBase?.path ?? "unknown"
@@ -359,21 +464,61 @@ export async function apply(ctx: { agentPresets: unknown; get?: (k: string) => a
     // channel 4 requires it to exceed 100, i.e. a real body rather than an empty stub.
     const bytes = fixture?.content?.length ?? 0
     console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes))
-    // Three independent failure channels, so the boot gate can really go red:
+    // PASS channel 6 — the three RENAMED skills must LOAD BY NAME, not merely appear in the catalog:
+    // a listing entry only says a directory is served, while a body over 100 bytes plus a resource
+    // base under the corpus's `skills/<name>` says the skill is actually usable. This is the PR #94
+    // reviewer's finding — a rename proven by a listing alone is not proven. The loads are caught
+    // PER SKILL so one broken rename cannot suppress the other two lines, the `SKILLS=` line or the
+    // `SKILL_FIXTURE=` line that the other QA cases parse.
+    /** The renamed skills whose load assertion failed; an empty array is this channel's PASS. */
+    const failedLoads: string[] = []
+    for (const skillName of RENAMED_SKILLS) {
+      try {
+        // The loaded record for THIS name; `undefined` means the provider lists it but cannot serve
+        // a body — the `absent` failure this channel exists to catch.
+        const loaded = (await dsh.loadSkill(skillName)) as LoadedSkill | undefined
+        // The resource base the provider reported, `""` when it reported none; printed on the OK
+        // line so the evidence records WHERE the body came from, exactly like the fixture line.
+        const loadedBase = String(loaded?.resourceBase?.path ?? "")
+        // Why this skill fails its assertion, `""` when it passes (see `skillLoadReason`).
+        const reason = skillLoadReason(loaded, expectedSkillBase(String(fixture?.resourceBase?.path ?? ""), skillName))
+        if (reason === "") {
+          console.log("[roles-probe] SKILL_LOAD=ok name=" + skillName + " base=" + loadedBase + " bytes=" + String(loaded?.content?.length ?? 0))
+        } else {
+          // The failure line NAMES the skill and the reason token, so the offender is attributable
+          // from the boot log alone instead of by reverse-engineering a count.
+          console.log("[roles-probe] SKILL_LOAD=fail name=" + skillName + " reason=" + reason)
+          failedLoads.push(skillName)
+        }
+      } catch (error) {
+        // A THROW is a load failure like any other, absorbed per skill: its text is flattened to
+        // one token so the line stays greppable, and truncated so a long message cannot flood the
+        // boot log.
+        const message = String((error as { message?: unknown })?.message ?? error).replace(/\s+/g, "_").slice(0, 160)
+        console.log("[roles-probe] SKILL_LOAD=fail name=" + skillName + " reason=error:" + message)
+        failedLoads.push(skillName)
+      }
+    }
+    skillLoadsOk = failedLoads.length === 0
+    // Four independent failure channels, so the boot gate can really go red:
     //   1. EVERY served skill must come from the bundle (no $DSH_HOME copy, no partial serve);
     //   2. every named fixture must be present in the served listing;
-    //   3. the loaded fixture must return a real body (>100 bytes).
+    //   3. the loaded fixture must return a real body (>100 bytes);
+    //   4. NO served name may still carry the retired `ulw-*` / `ultrawork*` spelling.
     catalogOk = fixture !== undefined && bytes > 100
       && summaries.length === bundled.length
       && missingFixtures.length === 0
+      && retiredNames.length === 0
   } catch (e: any) {
     console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e))
   }
   // The AND of every PASS channel: (1) the live preset resolve, (2) the adapter tool call, (3) the
   // roster count plus set membership, (4) the skill catalog — bundle-only listing, every named
   // fixture served, a real fixture body, (5) object-rooted parameter schemas for this bundle's own
-  // tools. One false channel fails the boot, and the per-subject lines above say WHICH.
-  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk && paramSchemasOk
+  // tools, (6) every RENAMED `autoproject-*` skill loads by name with a real body and a resource
+  // base under the corpus. One false channel fails the boot, and the per-subject lines above say
+  // WHICH.
+  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk && paramSchemasOk && skillLoadsOk
   console.log("[roles-probe] " + (ok ? "PASS" : "FAIL"))
   if (!ok) process.exitCode = 1
 }
