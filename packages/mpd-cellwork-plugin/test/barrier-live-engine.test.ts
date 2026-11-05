@@ -22,6 +22,7 @@ import { handoffPath, journalPath, newCellState, statePath, writeCell, type Cell
 import { installCellworkProtocol } from "../src/protocol.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
 /** The cell id every arm works in. */
 const CELL_ID = "cell-20261103T000000000Z"
@@ -89,6 +90,8 @@ interface Harness {
   directives: string[]
   /** The registered event handlers, by event name. */
   events: Map<string, (payload: unknown) => unknown>
+  /** Every `agentPresets.serviceFor` call the REAL adapter made (the preset-realm door's evidence). */
+  presetDoorCalls: Array<{ agent: unknown; key: string }>
   /** The adapter double, kept so an arm can read the seams it was handed. */
   adapter: Record<string, unknown>
 }
@@ -103,6 +106,16 @@ interface HarnessOptions {
   captainLive?: boolean
   /** Whether the live-handle engine seam exists (false = an older mounted adapter). */
   liveEngineSeam?: boolean
+  /**
+   * WHICH doors the member's engine is reachable through — the composition this arm models.
+   *
+   * `agent-scope` (the default) is the composition every pre-existing arm models: the engine sits on
+   * `agent.ctx`. `preset` is the REAL one under dsh-tui 0.18.0: the host's root `compaction-basic` row is
+   * disabled and this bundle's preset realm-isolates compaction, so `agent.ctx` serves NOTHING and the
+   * only door is `agentPresets.serviceFor(agent, "compaction")`. `none` mounts neither door, which is the
+   * `no-engine` case.
+   */
+  engineDoors?: "agent-scope" | "preset" | "none"
   /**
    * The engine the REGISTRY seam answers instead of the member's own.
    *
@@ -166,8 +179,12 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   const captain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: workspace } } }
   /** The member's original parent handle. */
   const parent: FakeAgent = { id: PARENT_SESSION, session: { id: PARENT_SESSION, header: { cwd: workspace } } }
+  /** Which doors serve the engine in the composition this arm models. */
+  const doors = options.engineDoors ?? "agent-scope"
+  /** The engine the member's OWN SCOPE serves: nothing when the preset realm isolates compaction. */
+  const scopedEngine = doors === "agent-scope" ? engine : undefined
   /** The stopping member's handle: still carrying its engine, even when the registry forgot it. */
-  const member: FakeAgent = { id: MEMBER_SESSION, session: { id: MEMBER_SESSION, header: { cwd: workspace, parentSession: PARENT_SESSION } }, ctx: { get: (name: string): unknown => (name === "compaction" ? engine : undefined) } }
+  const member: FakeAgent = { id: MEMBER_SESSION, session: { id: MEMBER_SESSION, header: { cwd: workspace, parentSession: PARENT_SESSION } }, ctx: { get: (name: string): unknown => (name === "compaction" ? scopedEngine : undefined) } }
   /** The live-session registry, which is what the adapter's lookups actually consult. */
   const registry = new Map<string, FakeAgent>()
   if (options.captainLive !== false) registry.set(CAPTAIN_SESSION, captain)
@@ -179,6 +196,8 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   const interrupts: string[] = []
   /** Every directive injected into the member. */
   const directives: string[] = []
+  /** Every `agentPresets.serviceFor` call the REAL adapter made. */
+  const presetDoorCalls: Array<{ agent: unknown; key: string }> = []
   /** The registered event handlers. */
   const events = new Map<string, (payload: unknown) => unknown>()
   /** The captured tool definitions. */
@@ -193,6 +212,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     workspaceRoot: (): string => workspace,
     contextPressure: (): Record<string, unknown> => ({ usedTokens: null, windowTokens: null, ratio: null, provenance: "no-window" }),
     liveAgent: (id: string): FakeAgent | undefined => registry.get(String(id ?? "")),
+    liveAgentExact: (id: string): FakeAgent | undefined => registry.get(String(id ?? "")),
     compactionEngineForAgent: (id: string): unknown => registryEngine(id),
     userMessage: (value: unknown): unknown => value,
     injectAgentMessage: (_agent: unknown, message: unknown): void => { directives.push(String((message as { text?: unknown }).text ?? "")) },
@@ -210,8 +230,32 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     },
     executeTool: async (): Promise<Record<string, unknown>> => ({ ok: true, isError: false, value: {} }),
   }
-  if (options.liveEngineSeam !== false) {
-    adapter.compactionEngineForLiveAgent = (agent: unknown): unknown => (agent as FakeAgent | undefined)?.ctx?.get("compaction")
+  if (doors === "agent-scope") {
+    // THE PRE-EXISTING COMPOSITION: the double answers the member's own scope, exactly as before.
+    if (options.liveEngineSeam !== false) {
+      adapter.compactionEngineForLiveAgent = (agent: unknown): unknown => (agent as FakeAgent | undefined)?.ctx?.get("compaction")
+    }
+  } else {
+    // THE REAL COMPOSITION: both engine seams come from the REAL adapter, built over a context that
+    // mounts (or, for `none`, deliberately does not mount) the host's preset roster.
+    /** The real adapter over this composition's services. */
+    const real = createDshAdapter({
+      get: (name: string): unknown => {
+        if (name === "agentPresets") {
+          if (doors !== "preset") return undefined
+          return {
+            serviceFor: (target: unknown, key: string): unknown => {
+              presetDoorCalls.push({ agent: target, key })
+              return key === "compaction" ? engine : undefined
+            },
+          }
+        }
+        if (name === "agents") return { get: (id: string): unknown => registry.get(String(id ?? "")) }
+        return undefined
+      },
+    } as never)
+    adapter.compactionEngineForLiveAgent = real.compactionEngineForLiveAgent
+    adapter.compactionEngineForAgent = real.compactionEngineForAgent
   }
   installCellworkProtocol({
     dsh: adapter as unknown as DshAdapter,
@@ -219,7 +263,7 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     config: { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 1, idleBarrierDelayMs: 0, ...options.knobs },
     warn: (): void => {},
   })
-  return { workspace, member, parent, captain, registry, engine, reseeds, interrupts, directives, events, adapter }
+  return { workspace, member, parent, captain, registry, engine, reseeds, interrupts, directives, events, presetDoorCalls, adapter }
 }
 
 /**
@@ -454,4 +498,137 @@ test("C2: the reseed parent ids are carried, and a host throw during the reseed 
   harness.adapter.startContinuableAgent = async (): Promise<never> => { throw new Error("the host is out of slots") }
   await stopListener(harness)({ agent: harness.member })
   expect(String(rawMember(harness).fencedReason)).toContain("the reseed failed: the host is out of slots")
+})
+
+// ── ROOT CAUSE 1: the engine lives in the preset's ISOLATE realm ───────────
+//
+// dsh-tui 0.18.0 disables the host's root `compaction-basic` row and this bundle's `mpd` preset mounts
+// compaction inside `isolate: { compaction: true, … }`. A realm-isolated service is NOT reachable from
+// `agent.ctx`, which is why every arm above stayed green while production answered `no-engine`: those
+// arms put the engine on `agent.ctx`. The two arms below hand the barrier the REAL adapter, so the
+// engine can only be reached through the host's own door `agentPresets.serviceFor(agent, "compaction")`.
+
+test("R1: the barrier compacts through the preset REALM door — agent.ctx serves no engine while agentPresets.serviceFor does", async () => {
+  /** The harness modelling the REAL composition: the engine sits ONLY in the preset isolate realm. */
+  const harness = makeHarness({ detached: true, engineDoors: "preset", answers: [{ shadowedTokenCount: 5 }] })
+  // THE COMPOSITION, asserted rather than assumed: the member's own scope answers NOTHING for compaction.
+  expect(harness.member.ctx?.get("compaction")).toBeUndefined()
+  await stopListener(harness)({ agent: harness.member })
+  // THE DOOR: the engine was reached through `agentPresets.serviceFor`, with THIS handle and that key.
+  expect(harness.presetDoorCalls.length).toBeGreaterThan(0)
+  expect(harness.presetDoorCalls[0].agent).toBe(harness.member)
+  expect(harness.presetDoorCalls[0].key).toBe("compaction")
+  // THE OUTCOME: compacted once with the member handle, then PROMOTED — never fenced as `no-engine`.
+  expect(harness.engine.calls.length).toBe(1)
+  expect(harness.engine.calls[0].agent).toBe(harness.member)
+  expect(harness.directives.length).toBe(1)
+  expect(harness.directives[0]).toContain("PROMOTED")
+  expect(harness.reseeds.length).toBe(0)
+  /** The persisted member row. */
+  const stored = rawMember(harness)
+  expect(String(stored.mode)).toBe("subcaptain")
+  expect("fenced" in stored).toBe(false)
+  expect(String(stored.fencedReason ?? "")).not.toContain("no-engine")
+})
+
+test("R1: with NO preset roster and no agent-scope engine the barrier keeps `no-engine` — never a fabricated engine", async () => {
+  /** The harness with NEITHER engine door mounted. */
+  const harness = makeHarness({ detached: true, engineDoors: "none", answers: [null] })
+  await stopListener(harness)({ agent: harness.member })
+  // NOTHING was driven: an absent engine is never invented, and no preset door was even offered.
+  expect(harness.engine.calls.length).toBe(0)
+  expect(harness.presetDoorCalls.length).toBe(0)
+  /** The compaction journal row: the classification is still the ORIGINAL `no-engine`. */
+  const row = journalRows(harness).find((entry) => entry.event === "compaction")
+  expect(String(row?.reason)).toBe("no-engine")
+  // The pre-existing reseed fallback still runs under the live parent, and the host never refuses it.
+  expect(harness.reseeds.length).toBe(1)
+  expect(harness.reseeds[0].parent).toBe(harness.parent)
+})
+
+// ── ROOT CAUSE 2: the reseed parent is proven against the registry ────────
+
+test("R2: a parent the registry answers with a DIFFERENT instance is refused `reseed-parent-unavailable` with ZERO spawn calls", async () => {
+  /** The harness whose engine has no safe range, so the reseed path runs. */
+  const harness = makeHarness({ detached: true, answers: [null] })
+  /** A registry whose identity lookup answers a FRESH handle for the parent — never the held instance. */
+  const freshParent = (id: string): FakeAgent | undefined => (id === PARENT_SESSION ? { ...harness.parent } : harness.registry.get(id))
+  // THE HOST'S CONDITION IS UNPROVABLE HERE: `get(parent.id) === parent` fails at call time.
+  harness.adapter.liveAgentExact = freshParent
+  await stopListener(harness)({ agent: harness.member })
+  // ZERO SPAWN calls: the barrier refused BEFORE `startContinuableAgent`, so nothing was let throw. The
+  // interrupt DOES fire (`interruptAgent` runs before the parent is resolved), so the claim this arm can
+  // carry is the spawn count, not a total host-call count — and the interrupt is asserted, not assumed.
+  expect(harness.reseeds.length).toBe(0)
+  expect(harness.interrupts.length).toBe(1)
+  /** The member row the refused barrier fenced. */
+  const stored = rawMember(harness)
+  expect(stored.fenced).toBe(true)
+  expect(String(stored.fencedReason)).toContain("reseed-parent-unavailable")
+  // The distinct reason REPLACES the host's sentence; the measured production string never appears.
+  expect(String(stored.fencedReason)).not.toContain("UNAUTHORIZED")
+})
+
+test("R2: a parent only the LIST-SCAN seam knows is NOT forwarded — the identity seam answers nothing and the barrier refuses", async () => {
+  /** The harness whose engine has no safe range, so the reseed path runs. */
+  const harness = makeHarness({ detached: true, answers: [null] })
+  // THE MEASURED ROOT CAUSE: `get` no longer holds either candidate while the LEGACY list-scan seam still
+  // answers a stale handle for both. A `liveAgent`-based reseed would forward the stale captain, and the
+  // host's identity check would throw the very UNAUTHORIZED sentence the journals carry.
+  harness.registry.delete(PARENT_SESSION)
+  harness.registry.delete(CAPTAIN_SESSION)
+  /** The stale handle the legacy seam would offer as the parent. */
+  const staleParent: FakeAgent = { id: PARENT_SESSION, session: { id: PARENT_SESSION, header: { cwd: harness.workspace } } }
+  /** The stale handle the legacy seam would offer as the captain. */
+  const staleCaptain: FakeAgent = { id: CAPTAIN_SESSION, session: { id: CAPTAIN_SESSION, header: { cwd: harness.workspace } } }
+  /** The legacy seam's answer: handles the registry's own `get` does NOT return. */
+  const legacyScan = (id: string): FakeAgent | undefined => (id === PARENT_SESSION ? staleParent : id === CAPTAIN_SESSION ? staleCaptain : undefined)
+  harness.adapter.liveAgent = legacyScan
+  await stopListener(harness)({ agent: harness.member })
+  // NO child under a stale handle: the barrier answered `reseed-parent-unavailable` instead.
+  expect(harness.reseeds.length).toBe(0)
+  /** The member row the refused barrier fenced. */
+  const stored = rawMember(harness)
+  expect(stored.fenced).toBe(true)
+  expect(String(stored.fencedReason)).toContain("reseed-parent-unavailable")
+  expect(String(stored.fencedReason)).not.toContain("UNAUTHORIZED")
+})
+
+test("N1: the legacy `liveAgent` seam's stale parent is never used — `liveSessionOf` resolves through `liveAgentExact`", async () => {
+  /** The harness whose engine has no safe range, whose parent session ended, and whose captain is live. */
+  const harness = makeHarness({ detached: true, answers: [null], parentLive: false })
+  /** The stale handle the legacy list-scan seam still offers for the parent session the registry dropped. */
+  const staleParent: FakeAgent = { id: PARENT_SESSION, session: { id: PARENT_SESSION, header: { cwd: harness.workspace } } }
+  /** The legacy seam: a stale parent handle for the dead session, the registry's own answer for every other id. */
+  const legacyScan = (id: string): FakeAgent | undefined => (String(id ?? "") === PARENT_SESSION ? staleParent : harness.registry.get(String(id ?? "")))
+  harness.adapter.liveAgent = legacyScan
+  // THE TWO SEAMS DISAGREE, which is the pair only a `liveSessionOf` back on `liveAgent` would consume: the
+  // legacy seam answers a stale parent for the id, while the identity seam answers NOTHING for it.
+  expect((harness.adapter.liveAgent as (id: string) => FakeAgent | undefined)(PARENT_SESSION)).toBe(staleParent)
+  expect((harness.adapter.liveAgentExact as (id: string) => FakeAgent | undefined)(PARENT_SESSION)).toBeUndefined()
+  await stopListener(harness)({ agent: harness.member })
+  // THE EXACT SEAM DECIDES: the stale parent is skipped, the LIVE captain becomes the parent, and a child is
+  // raised. A `liveAgent`-based resolver would have taken `staleParent`, failed the identity proof and refused
+  // with NO child — so this arm reddens the moment `liveSessionOf` goes back to the legacy seam.
+  expect(harness.reseeds.length).toBe(1)
+  expect(harness.reseeds[0].parent).toBe(harness.captain)
+  /** The lineage row the reseed wrote. */
+  const row = journalRows(harness).find((entry) => entry.event === "reseed-parent")
+  expect(row?.parentSource).toBe("captain")
+  expect(row?.originalParentSessionId).toBe(PARENT_SESSION)
+})
+
+test("R2: a parent the registry HOLDS is forwarded as that exact instance — the identity the host demands", async () => {
+  /** The harness whose engine has no safe range, so the reseed path runs under the live parent. */
+  const harness = makeHarness({ detached: true, answers: [null] })
+  /** The adapter's own identity answer, read before the barrier runs. */
+  const exact = harness.adapter.liveAgentExact as (id: string) => FakeAgent | undefined
+  // THE PARENT THE HOST WILL COMPARE: the registry's own instance, not a copy.
+  expect(exact(PARENT_SESSION)).toBe(harness.parent)
+  await stopListener(harness)({ agent: harness.member })
+  expect(harness.reseeds.length).toBe(1)
+  // IDENTITY, not deep equality — this is the object `agents.get(parent.id)` answers.
+  expect(harness.reseeds[0].parent).toBe(harness.parent)
+  expect(harness.registry.get(PARENT_SESSION)).toBe(harness.parent)
+  expect(String(rawMember(harness).mode)).toBe("subcaptain")
 })

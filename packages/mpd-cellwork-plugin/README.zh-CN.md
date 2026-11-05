@@ -58,6 +58,7 @@ cell 规划器位于深度 1、保留自己的路线，它发起的咨询落在�
 - `cellwork_status` —— 阶段、目标、队长、requirements/split 修订号、成员及其模式、已注入的检查点数、活跃
   team 的成员/任务计数、已记录的切分票看板 id（`splitTaskId`）、cell 记录与活跃名册的成员差异
   （`missingFromCell` / `missingFromTeam` / `inSync`，只报告不修改）、调用者自己的座位，以及磁盘路径。
+  它**唯一**的写入是**采纳**活跃 team 记录里本记录从未学到的座位（见「成员」）；它绝不推进阶段。
 - `cellwork_start` —— 打开**当前活跃 cell** 的 requirements 阶段（仅队长）：校验 cell 与调用者、写入
   `startedAt`、记入 journal。它绝不创建 cell；创建只属于命令。
 - `cellwork_stop` —— 归档 cell（不删除）、清除守卫、交还工具。只要还有看板任务处于 `claimed`/`in_progress`
@@ -67,14 +68,78 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `###` 留在父章节内）、`cellwork_recon`（规划器的一次性只读咨询）、`cellwork_split`（切分器的按度量图——每个
 任务可声明自己的看板 `member`，拒绝会把 findings 持久化到 `split/<rev>.refused.json`）、
 `cellwork_activate`（队长的物化；对每个不同的 `member` 只拉起一个成员，每份合约同时点名 owner role 与成员，
-其返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的成员名）。
+其返回的 `reused` 列出从 cell 记录或活跃名册解析、而不是新拉起的成员名；成员行的**另外两种**出现方式
+是暂存与采纳，见下文）。
 
-协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派）、`cellwork_supervise`（队长的
-只读巡检，含每个被围栏成员与其仍拥有的未关闭行）、`cellwork_context`（成员自己的占用）、`cellwork_handoff`
-（检查点交接文档；第一份仍在等待屏障时**第二份**被拒绝）、`cellwork_subteam`（子队长的子 cell 登记）、
+协议工具：`cellwork_dispatch`（一次仅声明所有者的派发，外加 `reassign` 改派与 `unfence` 解围）、
+`cellwork_supervise`（队长的只读巡检，含每个**关闭**座位——放弃围栏或归屏障所有的检查点——与其仍拥有的
+未关闭行）、`cellwork_context`
+（成员自己的占用）、`cellwork_handoff`（检查点交接文档；第一份仍在等待屏障时**第二份**被拒绝，而只被
+**活跃** team 记录认识的成员会先被采纳，因此拿到同一条通道）、`cellwork_subteam`（子队长的子 cell 登记）、
 `cellwork_send` / `cellwork_inbox`（持久的 cell 邮件，走 workspace 邮箱——`send` 通过共享存储铸造
 `message`/`question`/`answer` 记录，`send` 行先落盘，唤醒尝试是单独的 `wake` 记录；协议见
 [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md)）。它们落在本文档所述**同一份记录与同一个守卫**之上。
+
+## 成员：拉起、采纳与解围
+
+- **成员就是 CELL 记录上的一个座位。** `state.json` 的 `members` 表把名字映射到每个 cellwork 动词都会读的
+  那一行：role、session/executor handle、`mode`、交接计数，以及 `fenced`/`handoffReady` 标志。守卫、
+  `cellwork_dispatch`、`cellwork_handoff`、`cellwork_context` 与 `agent/pre-step` 检查点监听器读的都是
+  **同一行**。
+- **一行有三种进入方式。** 一是**暂存**：`/cellwork` 暂存规划团队时写下 `cell-planner`/`cell-splitter`
+  这两行（`planning-team-staged`）。二是**激活**：`cellwork_activate` 对每个不同的 `member` 只拉起一个
+  成员，续做的一趟则复用活跃名册已经认识的行。三是**采纳**：激活之后用
+  `agent_teams_plan {action:"add_member"}` 暂存的成员只有 TEAM 行、没有 cell 行，下一次**在 CELLWORK
+  动词路径上**的座位解析——任何动词、`agent/pre-step` 检查点监听器，或 `agent/turn-stopping` 屏障
+  监听器——会把这一行镜像进来，因此 `cellwork_handoff`、`cellwork_context` 与 `cellwork_status`
+  看到它，就像激活当初创建了它一样。**工具守卫不是**这些触发器之一：它的座位解析是只读的，一次仅被
+  放行或拒绝的派发不写任何内容。
+- **镜像逐字段进行：** `name`、`role`、`sessionId` = `executorRef` = team 行的 `executorRef`、
+  `mode: "member"`、`handoffReady: false`、`handoffs: 0`、`joinedAt` = 现在，外加 `adopted: true`。
+  它只**持久化一次**，`member-adopted` journal 行只在这次写入**成功之后**才追加——失败的采纳不会为一行
+  从未存在的成员留下历史；而且它是**幂等**的：第二次调用直接经 cell 行
+  解析，不写任何内容。`adopted` 标记是附加字段，读取时会被保留——连屏障自己的行重建也会带上——因此
+  **没有**它的行就是暂存或激活写的，两种历史始终可区分。记录**无法持久化**的采纳会被如实报告，而不是默认
+  成功：`cellwork_handoff` 在触碰团队平面**之前**就拒绝，并点名**哪一半**失败——记录**读不出来**，还是写入
+  没有落地——因此绝不会出现「有团队检查点、却没有被采纳的行」。
+- **值得写明的三条不变量。** 被采纳的行以 `handoffReady: false` 开始——采纳打开的是检查点通道，绝不宣称
+  已有检查点。镜像绝不携带 `fenced`、也绝不把 `handoffReady` 设为 `true`；采纳本身**绝不**覆盖已存在的行：
+  被围栏或处于 checkpoint 模式的行保持原样，动词的表现与采纳出现之前完全一致。采纳绝不改写历史。
+- **仍然存在的拒绝。** 解析不到本 cell team 任何座位的 session 仍按原样被拒绝——`cellwork_handoff` 的
+  答复是 `this session belongs to no active cell`——并且什么都不会被采纳。旧的
+  `"<name>" is not a recorded cell member` 只在「记录点名了座位、但那一行确实缺失」时保留（例如成员键的
+  拼写与记录的 `name` 不一致，如手工改过或更旧的记录）；它不再是运行中途成员的遭遇。**边界：** 采纳只覆盖
+  TEAM 记录已经认识的成员——team 记录里没有的 session，按设计仍然没有通道。
+- **围栏死锁。** 放弃的屏障会给行标记 `fenced: true` + `fencedReason`，却把 `handoffReady` 留在 `true`，
+  于是 `cellwork_handoff` 以 STILL WAITING for the compaction barrier 拒绝它；另一个清除方式只有又一次
+  **成功**的屏障，而被围栏的成员根本无法发起。成员无法靠自救恢复。
+- **`cellwork_dispatch {unfence:[…]}` 就是杠杆。** 仅队长、可选，并且在派发**之前**运行。判断按**记录**分别
+  做出，因为屏障只在一个地方写下放弃的围栏。CELL 行带 `fenced: true` **就是**放弃（无论 TEAM 行怎么说）：
+  该行**删除** `fenced`/`fencedReason`（normalizer 禁止 `fenced: false`）、把 `mode` 恢复为 `"member"`、
+  把 `handoffReady` 设为 `false`、保持 `handoffs` 不变，并记 `member-unfenced`；同时通过团队平面的
+  `unfence` 接缝重新打开 TEAM 座位（平面的 `mode: "checkpoint"` 同样算关闭拼写），答复携带
+  `{member, unfenced: true, plane, planeReason?}`，并把平面那一半如实报告为 `unfenced`、`absent` 或
+  `refused`，绝不声称一次没有发生的重开。
+- **待处理的检查点不是放弃。** 每次交接都会在 TEAM 行写下 `mode: "checkpoint"`，而压缩屏障仍拥有重新打开的
+  权力，这样的一行没有 `fenced` 键。CELL 行**也没有** `fenced: true` 时，对它执行解围会答复
+  `{member, unfenced: false, reason: "checkpoint-pending", detail}`，并且**两个记录都不写**——那个状态归
+  屏障所有。上面的 CELL 标记优先：即使 TEAM 行仍写着 `mode: "checkpoint"`，真正的放弃也会被恢复。
+- **`not-fenced` 是事实，不是失败。** 两个记录都没有围栏的成员答复
+  `{member, unfenced: false, reason: "not-fenced"}`；记录不被
+  重写，team 平面也不会被询问。对「CELL 行只带着 `handoffReady: true`、而两个记录都没有标记」的成员，
+  这也是诚实的答案：只有显式的放弃标记会被清除，因为重开一个只是等待的行会招来「第二份交接」的活锁。
+- **名字必须无歧义地解析。** 共享规则是：先精确的成员键，再精确的显示名，最后才是非空且**恰好只有一个**
+  成员携带的规范化键；未知或有歧义的拼写（例如 后端1/前端1 下的 `1`）拒绝整个 `unfence` 调用或
+  `cellwork_send` 收件人，并点名已记录的成员。什么都不会被清除、写入或投递——拼错一个名字绝不会让清单
+  只生效一半。
+- **TEAM 座位只能经团队平面的接缝移动。** 组合暴露 `mpdTeamActions.unfence` 时，同一次调用会重新打开 TEAM
+  座位，结果写 `plane: "unfenced"`（该接缝同时清掉显式围栏与 `mode: "checkpoint"` 窗口）。没有该接缝时，
+  结果写 `plane: "absent"`，并在 `planeReason` 里说明 TEAM 座位**没有**被重新打开——cell 行的修复照常成立，
+  答复绝不假装两边都落地；`plane: "refused"` 会带上团队平面自己的原话。只存在于 TEAM 记录上的围栏是另一种
+  情况：接缝会清掉它，而 CELL 行保持原样，因此结果携带 `cellRow: "untouched"`，`unfenced` 只反映平面的
+  那一半。`unfence` 与 `reassign` 可以放在**同一次**调用里（解围先跑，因此这一趟可以把行交给它刚重开的
+  成员），两者互不干扰；解围**之后**的拒绝仍会报告解围改动了什么。杠杆只清记录；它不会重建一个已死的
+  session。
 
 ## 配置
 
@@ -111,10 +176,12 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 - **B7 仅声明的所有者派发。** 就绪任务**只**配给它声明的所有者；所有者忙、缺席或**被围栏**时如实报告、
   任务保持待派发——绝不替换。成员在以下任一情况下**被围栏**：记录的 `mode` 是 `checkpoint`、它写下的交接
   仍在等待压缩屏障、或屏障放弃并记录了 `fenced: true` + `fencedReason`；被围栏的成员绝不被发消息。
-  `cellwork_dispatch {reassign:[{task_id, owner}]}` 就是修复：对每一对，在派发**之前**先把该行在看板上
-  claim 给那个成员、记 `task-reassigned`（from → to），然后投递——失败会报告在
-  `reassigned`/`reassignInvalid` 里、绝不抛错；终态行、未知成员或被围栏的**目标**一律拒绝；**启动失败**
-  （FAILED）或仍在**启动中**（PROVISIONING）的目标同样拒绝（为它 claim 的行永远不会被接手），投递 handle
+  两条修复杠杆：`cellwork_dispatch {reassign:[{task_id, owner}]}` 移动**行**，
+  `cellwork_dispatch {unfence:[…]}` 清除**已放弃**的围栏（见「成员」）。对每一对改派，在派发**之前**先把
+  该行在看板上 claim 给那个成员、记 `task-reassigned`（from → to），然后投递——失败会报告在
+  `reassigned`/`reassignInvalid` 里、绝不抛错；终态行、未知成员或被围栏的**目标**一律拒绝（先解围，或换
+  一个成员）；**启动失败**（FAILED）或仍在**启动中**（PROVISIONING）的目标同样拒绝（为它 claim 的行永远
+  不会被接手），投递 handle
   取最新的**非空**值——cell 记录的 `executorRef` 为空时回退到活跃名册的 handle。改派之后目标
   拥有一个在飞任务，因此同一趟会把它的**其它**就绪行报告为 BUSY（每个成员每趟一个任务）：这是已写明的
   规则，不是回归。每个代码任务的验证循环在派发之前打开。
@@ -246,8 +313,8 @@ flow 工具：`cellwork_requirements`（规划器的 finalize/update；章节正
 `bun test packages/mpd-cellwork-plugin` —— 离线、无 harness、无网络。每条用例都走宿主实际使用的 adapter 入
 口（`apply`、捕获到的命令定义、捕获到的工具定义，以及那**唯一一个**守卫谓词），并在全新的临时 workspace
 里运行。本波次的缺陷臂各自成文件：`activate-resume-e2e`（五个阶段**各自**失败一次，随后收敛且无重复）、
-`split-refused`、`requirements-subheadings`、`dispatch-fenced`、`dispatch-reassign`、`mail-order`、
-`planner-guard`、`band-parity` 与 `status-reconcile`。
+`split-refused`、`requirements-subheadings`、`dispatch-fenced`、`dispatch-reassign`、
+`member-adoption`、`dispatch-unfence`、`mail-order`、`planner-guard`、`band-parity` 与 `status-reconcile`。
 
 本包的接缝规则就是仓库的规则：所有对 harness 的接触都经 `resolveDshAdapter(ctx)`，设计背景见
 [插件编写参考](../../agent-references/plugin-authoring.md)。

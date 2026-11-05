@@ -751,12 +751,15 @@ export async function compactTeamPass(
       records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "no live Agent for this session id" })
       continue
     }
-    // THE HINGE: the engine comes from the member's OWN scoped context, memoized in ONE
-    // adapter helper. There is deliberately no `ctx.get("compaction")` fallback here —
-    // a host-plane engine would compact a different realm's history.
+    // THE HINGE: the engine comes from the member's OWN realm, memoized in ONE adapter helper.
+    // That helper tries the host's PRESET door first (`agentPresets.serviceFor(agent, "compaction")`)
+    // and the member's scoped `ctx.get("compaction")` second, so a composition that realm-isolates
+    // compaction (this bundle's `mpd` preset under dsh-tui 0.18.0) is DRIVEN here rather than skipped.
+    // There is deliberately no HOST-PLANE `ctx.get("compaction")` fallback: that engine serves a
+    // different realm and would compact the wrong history.
     const engine = dsh.compactionEngineForAgent(entry.member.id) as { compactNow?: (...args: unknown[]) => unknown } | undefined
     if (engine === undefined || typeof engine.compactNow !== "function") {
-      records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "the member's scoped context exposes no compaction engine" })
+      records.push({ member: entry.member.name, sessionId: entry.member.id, outcome: "skipped-not-live", reason: "neither the preset realm nor the member's scoped context exposes a compaction engine" })
       continue
     }
     // F9: `compactNow`'s FIRST statement is `signal.throwIfAborted()`, so its second argument is

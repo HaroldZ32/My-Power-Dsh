@@ -1,0 +1,23 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:
+432 |   const adopted: CellMemberRecord = memberRow("rev-late", { adopted: true, handoffs: 1 })
+433 |   // REFUSED (the fence) — the row is fenced, and it must still read as adopted.
+434 |   /** The row a refused barrier leaves. */
+435 |   const fenced = memberAfterBarrier(adopted, { outcome: "refused", attempts: 3, reason: "no-engine" })
+436 |   expect(fenced.fenced).toBe(true)
+437 |   expect(fenced.adopted).toBe(true)
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-fenced.test.ts:437:26)
+(fail) C7 × B1: an ADOPTED member's marker survives BOTH barrier outcomes, and absence stays absence [0.29ms]
+
+ 0 pass
+ 13 filtered out
+ 1 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [135.00ms]

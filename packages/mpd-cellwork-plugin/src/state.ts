@@ -86,6 +86,15 @@ export interface CellMemberRecord {
   fencedReason?: string
   /** ISO instant the member was added to the cell. */
   joinedAt: string
+  /**
+   * True when this row was ADOPTED from the live team record after activation (contract B1).
+   *
+   * OPTIONAL AND ADDITIVE, and `true` is the only value ever written — its ABSENCE is "activation (or
+   * staging) created this row". A member added mid-run with `agent_teams_plan {action:"add_member"}`
+   * is known to the team record but has no cell row, so the seat-resolution path mirrors that row in
+   * once; the marker is what lets a reader tell the two histories apart.
+   */
+  adopted?: boolean
 }
 
 /** One injected checkpoint, recorded so a second injection for the same turn is suppressed. */
@@ -586,6 +595,9 @@ function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
     ...(raw.fenced === true ? { fenced: true } : {}),
     ...(typeof raw.fencedReason === "string" ? { fencedReason: raw.fencedReason } : {}),
     joinedAt: typeof raw.joinedAt === "string" ? raw.joinedAt : "",
+    // ADDITIVE AND PRESERVED for the same reason as `fenced`: an adopted row must still read as adopted
+    // after a restart, and a row activation created must not grow `adopted: false`.
+    ...(raw.adopted === true ? { adopted: true } : {}),
   }
 }
 

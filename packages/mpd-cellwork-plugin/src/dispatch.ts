@@ -15,7 +15,7 @@
 // A FENCED SEAT IS NEVER MESSAGED (contract C7) — and the fence is the TEAM RECORD's fact
 // (`mode: "checkpoint"` or `fenced`), which is why `fenceReasonOf` is a predicate over one row and the
 // authority for filling that row lives in the plane.
-import { appendJournal, contractPath, type CellState } from "./state"
+import { appendJournal, contractPath, type CellMemberRecord, type CellState } from "./state"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index"
 import { cellDir } from "./state"
 
@@ -132,6 +132,44 @@ export interface DispatchReport {
  */
 export function nameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+/** One member a spelled name resolved to. */
+export interface ResolvedMember {
+  /** The member table key the cell record stores the row under. */
+  key: string
+  /** The recorded row; its `name` is the canonical spelling every answer must quote. */
+  member: CellMemberRecord
+}
+
+/**
+ * Resolve one spoken member name against a cell's member table, UNAMBIGUOUSLY.
+ *
+ * EXACT SPELLING FIRST (repair round 2, finding B). `nameKey` is ASCII-only, so two CJK names collide
+ * (`后端1` and `前端1` both normalize to `1`, and a name with no ASCII digits normalizes to `""`). A
+ * normalized-first search returns the FIRST of a collision and could clear the wrong seat. The
+ * normalized key is therefore the LAST resort and decides only when it is non-empty AND exactly one
+ * member carries it; anything else is an unknown name, which the caller refuses instead of guessing.
+ *
+ * @param members - the cell record's member table, keyed by the name staging wrote.
+ * @param name - the spelling a tool argument used.
+ * @returns the one member the name unambiguously names, or undefined.
+ */
+export function resolveMemberName(members: Record<string, CellMemberRecord>, name: string): ResolvedMember | undefined {
+  /** Every recorded row, with the table key it is stored under. */
+  const entries = Object.entries(members)
+  /** The row whose table key is EXACTLY this spelling. */
+  const byKey = entries.find(([key]) => key === name)
+  if (byKey !== undefined) return { key: byKey[0], member: byKey[1] }
+  /** The row whose recorded display name is EXACTLY this spelling. */
+  const byName = entries.find(([, member]) => member.name === name)
+  if (byName !== undefined) return { key: byName[0], member: byName[1] }
+  /** The ASCII-only comparison key, which may decide only a UNIQUE match. */
+  const key = nameKey(name)
+  if (key === "") return undefined
+  /** Every member carrying that key under either its table key or its displayed name. */
+  const normalized = entries.filter(([entryKey, member]) => nameKey(entryKey) === key || nameKey(member.name) === key)
+  return normalized.length === 1 ? { key: normalized[0][0], member: normalized[0][1] } : undefined
 }
 
 

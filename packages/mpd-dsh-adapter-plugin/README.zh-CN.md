@@ -28,8 +28,9 @@
 | `ctx.systemPrompt.section` | `registerPromptSection(section)` | disposer 透传；接缝缺失时在调用点抛错（调用方的 usage 段落是必需的） |
 | 活跃 agent 自有的 scoped ctx | `agentScope(agent)` | 由 `agent.ctx` 构造 `{ context, tools.restrict, on, effect }`；承诺的成员缺失时返回 `undefined`，调用方按次回退 |
 | `ctx.agents.get(id)` / `ctx.agents.list` | `liveAgent(agentId)` / `liveAgents()` | 活跃会话注册表：按 id 取一个 Agent（先问注册表自己的 `get`，再扫 `list`），或 `[]`；注册表缺失、读取抛错、答复不是数组时降级为「没有条目」；从不抛错 |
-| `agent.ctx.get("compaction")`（经注册表） | `compactionEngineForAgent(agentId)` | 该 id 所指活跃 Agent 的压缩引擎，按 Agent **对象**记忆化；没有活跃 Agent 拥有该 id、或其作用域没有引擎时为 `undefined` |
-| `agent.ctx.get("compaction")`（调用方已持有的 handle） | `compactionEngineForLiveAgent(agent)` | **同一段**记忆化实现，直接从调用方自己的 Agent handle 解析，**绝不查**活跃会话注册表 —— 这是压缩屏障的**首选**，因此一个在屏障运行前就已从 `ctx.agents` 脱离的成员仍能**原地**压缩，而不是被围栏；handle 没有引擎时为 `undefined`；从不抛错 |
+| `ctx.agents.get(id)`（**严格**） | `liveAgentExact(agentId)` | 只问活跃会话注册表**自己的** `get`，**绝不**扫 `list`、**绝不**回退；这是子代理启动路径所需的**同一性接缝**：宿主只有在 `agents.get(parent.id) === parent` 时才允许 spawn，所以仅被 `list` 顺带持有的 handle 仍会被拒。注册表缺失、不认该 id 或读取抛错时为 `undefined`；从不抛错。 |
+| `ctx.agentPresets.serviceFor(agent, "compaction")` **在先**、`agent.ctx.get("compaction")` **在后**（经注册表） | `compactionEngineForAgent(agentId)` | 该 id 所指活跃 Agent 的压缩引擎，按**两道门、此顺序**解析，并按 Agent **对象**记忆化；这个顺序就是 0.17.1 的修复：dsh-tui 0.18.0 关闭了宿主根部的压缩行，本 bundle 的 `mpd` preset 又把 compaction 放在 isolate realm 里 —— 该服务因此位于 preset 的隔离 realm，`agent.ctx.get` 够不到它，`ctx.agentPresets.serviceFor(agent, "compaction")` 能够到。没有活跃 Agent 拥有该 id、或**两道门都没有**引擎时为 `undefined`；从不抛错。 |
+| `ctx.agentPresets.serviceFor(agent, "compaction")` **在先**、`agent.ctx.get("compaction")` **在后**（调用方已持有的 handle） | `compactionEngineForLiveAgent(agent)` | **同一段**两道门、记忆化的实现，直接从调用方自己的 Agent handle 解析，**绝不查**活跃会话注册表 —— 这是压缩屏障的**首选**，因此一个在屏障运行前就已从 `ctx.agents` 脱离的成员仍能**原地**压缩，而不是被围栏；该 handle 的两道门都没有引擎时为 `undefined`；从不抛错。 |
 | `agent.followup` | `startAgentTurn(agent, message)` | **抛错**逐字节转发（绝不吞成布尔值或 `undefined`） |
 | `agent.cancel` | `cancelAgentTurn(agent, cause, options?)` | **抛错**逐字节转发 |
 | `agent.steer` | `steerAgentTurn(agent, message)` | **抛错**逐字节转发 —— 最近步（nearest-step）转向，区别于 `followup` 的新回合 |

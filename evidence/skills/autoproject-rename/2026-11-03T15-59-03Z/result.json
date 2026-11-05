@@ -1,0 +1,53 @@
+{
+  "wave": "autoproject skill rename (ulw-* -> autoproject-*)",
+  "branch": "feature/autoproject-skill-rename",
+  "base": "dev",
+  "contract": ".mpd/plans/autoproject-skill-rename.md (FROZEN 2026-11-03, gitignored runtime state)",
+  "writer": "Senior Engineer (single skills/** writer, one-shot consult)",
+  "verifier": "Reviewer (independent, worked from the frozen contract and re-ran its own gates)",
+  "verdict": "PASS (risk LOW, zero findings)",
+  "changes": {
+    "directoriesRenamed": [
+      "skills/ulw-plan -> skills/autoproject-plan",
+      "skills/ulw-execute -> skills/autoproject-execute",
+      "skills/ulw-research -> skills/autoproject-research"
+    ],
+    "identityRule": "the frontmatter `name:` is the served identity (packages/mpd-ext-plugin/src/registry.ts), so the directory rename and the `name:` edit landed together",
+    "filesEdited": 28,
+    "linesChanged": 130,
+    "runtimeSurfacesRenamed": [
+      ".mpd/autoproject-execute/ledger.jsonl",
+      ".mpd/autoproject-research/",
+      ".mpd/evidence/autoproject/",
+      "isAutoprojectArtifact",
+      "autoprojectSelectorPath",
+      "AUTOPROJECT-PLAN MODE ENABLED!",
+      "AUTOPROJECT-RESEARCH MODE ENABLED!",
+      "five autoproject-plan-review-*-contract anchors"
+    ],
+    "defectFixed": "skills/dsh-qa/scripts/autoproject-command.ts DIRECTIVE_HEAD_RE /ULTRAWORK ACTIVATION/ -> /AUTOPROJECT ACTIVATION/ (HEAD_PROBE untouched); the gesture arm previously could never match the shipped head, so it never gated the directive clauses and always emitted the false finding gesture-rewrite-never-fires",
+    "staleNamesCorrected": [
+      "skills/cordis-dev/SKILL.md + references/this-bundle.md: the deleted mpd-ulw row -> mpd-autoproject",
+      "agent-references/troubleshooting.md: skills/autoproject-research/scripts/*.mjs (the 19 .mjs count is unchanged)",
+      "LICENSE-NOTICES.md: the sixteen-skill MIT enumeration now names autoproject-*"
+    ],
+    "vendorRepin": "VENDOR_LOCK.json skills treeSha ed87dadc...b593 -> c70c8606...; fileCount 391 unchanged (the wave's single re-pin, captain step)"
+  },
+  "allowedResidue": "12 lines: three ATTRIBUTION upstream source paths (plugins/omo/skills/ulw-*), the surface-pin alias pins and their negative controls, the autoproject-command alias assertion, and the dsh-qa SKILL.md case-table row",
+  "gates": [
+    {"gate": "verify:gates", "exit": 0, "note": "9/9 members green, log: verify-gates.log"},
+    {"gate": "verify:vendor", "exit": 0, "note": "7 shipped assets fingerprinted; skills 391 files"},
+    {"gate": "verify:docs", "exit": 0, "note": "pairs=55 failed=0 violations=0 dead=0"},
+    {"gate": "verify:comments", "exit": 0, "note": "594 files, 52036 declarations"},
+    {"gate": "test:qa", "exit": 0, "note": "all self-tests passed (writer run, twice)"},
+    {"gate": "typecheck", "exit": 0, "note": "tsgo --noEmit, no diagnostics"},
+    {"gate": "autoproject-command --self-test", "exit": 0, "note": "log: autoproject-command-selftest.log"},
+    {"gate": "residual grep", "exit": 0, "note": "12 allowed lines, log: residual-grep.log"}
+  ],
+  "bounds": [
+    "No live DSH boot proves /skill:autoproject-* loads; A1 rests on the bootstrap parser reading the frontmatter name.",
+    "The A4 gesture-arm semantics change is a code-level fact read from evaluateGesture; the offline self-test does not exercise the gesture path.",
+    "No Docker lane, no package/root bun test, no dist rebuild (no packages/** change in this wave).",
+    "The vendored designpowers reference files were EDITED for reference integrity (38 lines); UPSTREAM.md and EVIDENCE.md were left byte-identical, and the corpus re-pin covers the change."
+  ]
+}

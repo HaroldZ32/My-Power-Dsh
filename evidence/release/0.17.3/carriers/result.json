@@ -1,0 +1,27 @@
+{
+  "release": "0.17.3",
+  "branch": "release/v0.17.3",
+  "base": "4f102eca",
+  "carriers": {
+    "package.json": "version 0.17.2 -> 0.17.3",
+    "dsh-plugin.json": "version 0.17.2 -> 0.17.3; self-description note -> 0.17.3",
+    "dsh-distribution.json": "distribution.version 0.17.2 -> 0.17.3; all six self-urn refs -> @0.17.3"
+  },
+  "docs": {
+    "README.md": "badge 0.17.3; new top row 0.17.3 current release; 0.17.2 previous; notes paragraph + current-release line -> 0.17.3",
+    "README.zh-CN.md": "same pair in zh (0.17.3 本次发布, 0.17.2 上一版本, 0.17.1 previous)",
+    "AGENTS.md": "section 8 install line -> @mpd-dsh/mpd@0.17.3",
+    "CHANGELOG.md": "new section 0.17.3 above an intact 0.17.2 (Changed: ulw-* -> autoproject-*; Fixed: cellwork adoption + unfence; Fixed: compaction barrier on dsh-tui 0.18.0)",
+    "docs/**": "searched; no current-release statement carries 0.17.2, so no docs file changed and no zh twin was owed"
+  },
+  "gates": [
+    { "command": "bun run verify:docs", "exit": 0, "log": "01-verify-docs.log", "verdict": "PASS pairs=55 failed=0 violations=0 dead=0" },
+    { "command": "bun run verify:manifest", "exit": 0, "log": "02-verify-manifest.log", "verdict": "PASS (version coherence 0.17.3, 6 refs 0 stale, packed-content 1223 files)" },
+    { "command": "node scripts/verify-manual-paths.ts", "exit": 0, "log": "03-verify-manual-paths.log", "verdict": "PASS resolved=153" }
+  ],
+  "not_run_here": ["Docker lanes", "verify:gates sweep", "verify:dist-fresh", "verify:vendor", "bun test", "verify:comments", "pack closure"],
+  "noticed_not_touched": [
+    "docs/market/dsh-go-entry.json names @mpd-dsh/mpd version 0.17.0 (stale since before 0.17.1; a market-listing manifest, no 0.17.2 literal)"
+  ],
+  "git_writes": "none (captain commits)"
+}

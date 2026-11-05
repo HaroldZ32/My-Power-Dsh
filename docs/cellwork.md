@@ -161,23 +161,108 @@ A revision is not a rewrite of the team; it is a delta applied to the live recor
 The team id and the cell id do not change, so the cell's journal, mail and board stay one continuous
 history.
 
-## Fenced members and reassignment
+## Members: staged, activated or adopted
+
+A cell's `state.json` keeps a `members` table: one row per seat, carrying the role, the session and
+executor handle, the mode (`member` | `checkpoint` | `subcaptain`), the handoff count and the
+`handoffReady` / `fenced` flags. The guard, `cellwork_dispatch`, `cellwork_handoff`, `cellwork_context`
+and the `agent/pre-step` checkpoint listener all read that ONE table.
+
+A row reaches it in one of THREE ways:
+
+- **Staging wrote it.** When `/cellwork` stages the planning team, the planner's and the splitter's own
+  rows are recorded with that team's approval (`planning-team-staged`), so both have a seat before any
+  split exists.
+- **Activation put it there.** `cellwork_activate` raises one member per distinct `member` — a resumed
+  pass reuses the rows the live roster already knows — which is what lets several tasks of one role run
+  in parallel instead of queueing behind one session.
+- **The live team record lends it.** A member staged with `agent_teams_plan {action:"add_member"}` after
+  activation — or a re-raised/reseeded seat the cell row never learned — is known to the TEAM record by
+  its `executorRef` but has no cell row. When such a session resolves to a seat of THIS cell's team on
+  the CELLWORK VERB PATH, the row is ADOPTED before the verb runs, so `cellwork_handoff`,
+  `cellwork_context`, `cellwork_status` and the checkpoint listener see the member as if activation had
+  created it. The triggers are the verbs themselves, the `agent/pre-step` checkpoint listener and the
+  `agent/turn-stopping` barrier listener; the TOOL GUARD is deliberately NOT one of them — its seat
+  lookup is read-only, so a dispatch it permits or refuses writes nothing. The mirror is field by field
+  (`name`, `role`, `sessionId` = `executorRef` = the team row's `executorRef`, `mode: "member"`,
+  `handoffReady: false`, `handoffs: 0`, `joinedAt` now) and carries `adopted: true`; it is persisted once
+  with a `member-adopted` journal row. Adoption is IDEMPOTENT: a second call resolves through the cell
+  row and writes nothing. The `member-adopted` journal row is written only AFTER the record write
+  lands, so a failed adoption leaves no history for a row that never existed. An adoption the record
+  cannot PERSIST is reported instead of silently assumed: `cellwork_handoff` refuses BEFORE the team
+  plane is touched and names WHICH half failed — the record could not be READ, or the write did not
+  land — so a team checkpoint never exists without an adopted cell row.
+
+Three invariants are the whole rule: an adopted row starts with `handoffReady: false` (adoption opens
+the checkpoint channel; it never claims a checkpoint); the mirror never carries `fenced`; and adoption
+NEVER creates it over an existing row — a fenced or checkpoint-mode row stays exactly as it is, and the
+verb behaves exactly as it did before adoption existed. `adopted` is additive and preserved across reads —
+including the barrier's own row rebuild — so a row that appeared after activation stays distinguishable
+from one staging or activation created (its absence means staging or activation wrote the row).
+**The refusal that remains:** a session that resolves to NO seat of this cell's team is refused exactly
+as before — `cellwork_handoff` answers `this session belongs to no active cell` — and nothing is adopted;
+the legacy `"<name>" is not a recorded cell member` survives only when the record names a seat whose row
+is genuinely absent (a member key whose spelling disagrees with the recorded `name`, as in a hand-edited
+or older record). The bound: adoption covers members the TEAM record already knows; a session the team
+record does not carry still has no channel, by design.
+
+## Fenced members, reassignment and the unfence lever
 
 A member can reach a state where it must not be woken: its recorded `mode` is `checkpoint`, or it wrote
 a handoff that is still waiting for the compaction barrier, or the barrier gave up after its retry
 budget (`compactionRetries`) and marked it `fenced: true` with a `fencedReason`. ONE predicate reads the
 three signals, and a fenced member is never messaged.
 
-- **Dispatch skips a fenced owner and leaves the row pending.** The skip reason names the member, the
-  cause and the repair; no other member is substituted.
-- **`cellwork_dispatch {reassign:[{task_id, owner}]}` is the repair.** For each pair, BEFORE the pass,
+- **Dispatch skips a fenced owner and leaves the row pending.** The skip reason is the TEAM PLANE's own
+  sentence: it names the member, the cause and the repair the plane recommends — `reassign` the row to
+  another member (`agent_teams_dispatch {reassign:[{task_id, owner}]}`). It does NOT name `unfence`,
+  which is cellwork's own lever for clearing the fence (below); no other member is substituted.
+- **`cellwork_dispatch {reassign:[{task_id, owner}]}` moves the ROW.** For each pair, BEFORE the pass,
   the row is claimed on the board for that member, journaled as `task-reassigned` (from → to), then
   delivered the normal dispatch message. Every outcome is reported (`reassigned` plus one line per
   unreadable entry in `reassignInvalid`) and nothing is thrown. A terminal row is never reopened, an
-  unknown member is never substituted, and a fenced TARGET is refused: pick an unfenced member. So is a
-  target that FAILED to start (a row claimed for it would never be picked up) or is still PROVISIONING
-  (retry once it is running); the delivery goes to the freshest NON-BLANK handle, so an empty recorded
-  `executorRef` falls through to the live roster's handle.
+  unknown member is never substituted, and a fenced TARGET is refused — unfence it first, or pick an
+  unfenced member. So is a target that FAILED to start (a row claimed for it would never be picked up)
+  or is still PROVISIONING (retry once it is running); the delivery goes to the freshest NON-BLANK
+  handle, so an empty recorded `executorRef` falls through to the live roster's handle.
+- **A give-up fence has its own lever: `cellwork_dispatch {unfence:[…]}`.** A fenced row keeps
+  `handoffReady: true`, so `cellwork_handoff` refuses it as STILL WAITING for the compaction barrier,
+  while the only other clearer is another SUCCESSFUL barrier that a fenced member cannot start: the
+  member cannot recover by itself. The captain's `unfence` list runs BEFORE the pass, and the decision
+  is made PER RECORD because the compaction barrier writes the give-up in exactly one place. A CELL row
+  with `fenced: true` IS the give-up, whatever the TEAM row says: it DELETES `fenced`/`fencedReason`
+  (the keys are removed, never `fenced: false` — the normalizer forbids that spelling), restores
+  `mode: "member"`, sets `handoffReady: false`, keeps `handoffs` unchanged and journals
+  `member-unfenced`, AND reopens the TEAM seat through the plane's `unfence` seam (the plane treats
+  `mode: "checkpoint"` as closed and that seam clears it too). The answer carries
+  `{member, unfenced: true, plane, planeReason?}` per cleared CELL row and reports the plane's half as
+  `unfenced`, `absent` or `refused`, never claiming a reopen that did not happen.
+- **A pending checkpoint is NOT a give-up.** Every handoff sets the TEAM row's `mode: "checkpoint"`
+  while the compaction barrier still owes the reopen, and that row carries no `fenced` key. When the
+  CELL row carries no `fenced: true` either, asking to unfence it answers
+  `{member, unfenced: false, reason: "checkpoint-pending", detail}` — the barrier owns that state — and
+  NEITHER record is written and the seam is NOT called. The CELL marker above outranks this: a real
+  give-up is recovered even while its TEAM row still reads `mode: "checkpoint"`. Only the barrier (or a
+  give-up fence) moves that seat.
+- **`not-fenced` is reported, never dressed up.** A member that NEITHER record fences answers
+  `{member, unfenced: false, reason: "not-fenced"}` and the record is NOT rewritten — including a member
+  whose CELL row merely carries `handoffReady: true` while neither record carries a marker, because only
+  an explicit give-up marker is cleared (reopening a bare waiting row would invite the second-handoff
+  livelock). A name resolves
+  UNAMBIGUOUSLY — exact member key, then exact display name, then the normalized key only when it is
+  non-empty and carried by EXACTLY ONE member; anything else (unknown, or ambiguous such as `1` against
+  后端1/前端1) refuses the WHOLE call and names the recorded members. Nothing is cleared, written or
+  dispatched, so a typo never half-applies a list.
+- **The TEAM seat moves only when the composition exposes the seam.** `mpdTeamActions.unfence` reopens
+  the team seat and the outcome says `plane: "unfenced"` (that seam clears both an explicit fence and
+  the `mode: "checkpoint"` window); a composition without it answers `plane: "absent"` with a
+  `planeReason` saying the TEAM seat was NOT reopened, so the cell-row repair stands and the answer does
+  not pretend both halves landed (`plane: "refused"` carries the plane's own sentence). A fence that
+  exists ONLY on the TEAM record is its own case: the seam clears it and the CELL row is left untouched,
+  so the outcome carries `cellRow: "untouched"` and `unfenced` reflects the plane's half alone. `unfence`
+  and `reassign` may travel in ONE call — the unfence runs first, so the pass may hand a row to the
+  member it just reopened — and neither interferes; a refusal after an unfence still reports what the
+  unfence changed. The lever clears records; it does not re-create a dead session.
 - **A reassignment changes what the same pass reports.** The target now OWNS an in-flight row, so its
   OTHER ready rows are reported BUSY by that pass (one task per member per pass) instead of being
   queued. That is the existing dispatch rule, not a regression: run another pass later.
@@ -186,7 +271,9 @@ three signals, and a fenced member is never messaged.
   instead of saving it (the VEdit livelock wrote three in seven minutes).
 - **A given-up barrier records its consequence.** The member gets `fenced: true` + `fencedReason`, the
   journal gets a `checkpoint-unrecoverable` row naming the repair, and `cellwork_supervise` lists every
-  fenced member together with the OPEN board rows it still owns.
+  CLOSED seat together with the OPEN board rows it still owns, marking each as a GIVE-UP fence (the
+  captain's to repair) or BARRIER-OWNED (the pending checkpoint window, which needs no captain action).
+  The unfence lever above is how the give-up consequence is repaired.
 
 **The generic team verb carries a hazard cell mode does not.** `agent_teams_dispatch` pairs a ready task
 with its declared owner but FALLS BACK TO ROSTER ORDER when that owner is busy. During this very wave
@@ -204,22 +291,24 @@ merely theoretical risk.
 |---|---|---|
 | (the `/cellwork` command) | you | writes the one cell record and submits the one activation directive |
 | `cellwork_start` | captain | opens the requirements phase of the active cell; validates cell and caller, stamps `startedAt`, journals it |
-| `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths |
+| `cellwork_status` | captain, member | phase, objective, captain, requirements/split revisions, members and their modes, injected checkpoints, live team counts, the recorded split-ticket board id, the cell-record vs live-roster divergence (`missingFromCell` / `missingFromTeam` / `inSync`), the caller's own seat and the on-disk paths — its ONE write is ADOPTING a live team seat the record never learned, never a phase transition |
 | `cellwork_requirements` | planner | `finalize` a requirements document, or `update` it: an update bumps the revision and marks the split stale; a section body runs to the next heading of the same or a higher level, so `###` subheadings stay inside their parent |
 | `cellwork_recon` | planner, subcaptain | one-shot READ-ONLY consult (Explorer/Researcher) raised through the direct start path with the role name as its label and an explicit absolute depth cap, so the consult is a read-only leaf; the report is returned and journaled |
 | `cellwork_split` | splitter | `submit` a graph so the plugin can measure it (each task may declare its board `member`), or `show` the last verdict; every refusal persists its findings at `split/<revision>.refused.json`; a NON-FATAL `warnings` list names every `work`/`repair`/`integration` task with no write scopes, by key, and never changes `accepted` |
-| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only) |
-| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), the repair for a fenced owner |
-| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every fenced member with the open rows it still owns; every projection is lossless JSON, with no `undefined` own key |
+| `cellwork_activate` | captain | materialise an accepted split on the live team record, write contracts (owner role AND member), raise one member per distinct `member`, open verify loops, dispatch; a failed pass is checkpointed and the SAME revision resumes it, while a newer accepted revision supersedes an older in-flight one; the answer's `reused` list names the members resolved from the cell record or the live roster instead of raised, and a re-split that kept tasks also returns a `notice` (contracts not rewritten, scope expansion needs a manual re-freeze plus a new verify loop, ready rows dispatched owner-only); the OTHER ways a member row appears are staging and adoption (see "Members: staged, activated or adopted") |
+| `cellwork_dispatch` | captain | one owner-only dispatch pass over the team board; a busy, absent or fenced owner is reported and the row left pending; `reassign` hands named rows to another member FIRST (board claim → `task-reassigned` journal → delivery), and `unfence` clears named members' GIVEN-UP fences BEFORE the pass (both keys deleted, `mode: member`, `handoffReady: false`, `handoffs` kept, `member-unfenced` journaled; the TEAM row only through the plane's `unfence` seam, with `plane: "absent"` reported when the composition exposes none); a PENDING checkpoint (`mode: checkpoint`, no `fenced` flag) answers `checkpoint-pending` and writes nothing; `not-fenced` is honest, an unknown or ambiguous name refuses the call, and the two may travel together |
+| `cellwork_supervise` | captain | read-only sweep: pending checkpoints, compactions, promotions, stale splits, unread mail, every UNDELIVERED mail row, and every CLOSED seat with the open rows it still owns — each marked `giveUp:true` (an explicit `fenced:true` on either record, repaired with `reassign` plus `unfence`) or `giveUp:false` (a barrier-owned `mode: checkpoint` window, which gets no lever); every projection is lossless JSON, with no `undefined` own key |
 | `cellwork_context` | member | the caller's own live occupancy, the window it was measured against, and that window's provenance |
-| `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier |
+| `cellwork_handoff` | member | write and validate the checkpoint handoff document; marks the checkpoint ready; a SECOND document is refused while the first still waits for the barrier; a member known only to the LIVE team record is adopted first (see "Members: staged, activated or adopted"), so it gets the same channel |
 | `cellwork_subteam` | promoted subcaptain | register a sub-cell, enforce the depth cap, return the sub-captain directive |
 | `cellwork_send` | any cell agent | cell-aware addressing (member, captain, another sub-cell) plus transport delivery and a journal row: the durable row lands first, and the wake-up attempt is appended after it as a separate `wake` record |
 | `cellwork_inbox` | any cell agent | read and acknowledge the caller's unread cell mail |
 | `cellwork_stop` | captain | end the mode: archive the cell (no deletion), clear the guard, give the tools back; REFUSED while a board task is `claimed`/`in_progress` unless `force:true`, and a forced stop is journaled as such |
 
-The one-call view for a bystander is `cellwork_status`; everything else either mutates the cell record
-or returns a verdict about it.
+The one-call view for a bystander is `cellwork_status`; it never transitions the cell, and its ONE
+write is the adoption described above (the first write `cellwork_context` or `cellwork_handoff` may
+perform for a member the record never learned is the same one). Every other verb either mutates the cell
+record or returns a verdict about it.
 
 ## The guard modes
 
@@ -449,8 +538,8 @@ Everything lives under the workspace, in gitignored runtime state:
 
 | Path | Content |
 |---|---|
-| `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason` marker), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
-| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign` and `checkpoint-unrecoverable` |
+| `state.json` | the cell record: phase, captain session, depth, parent cell, team id, planner/splitter handles, the staged split ticket's board id (`splitTaskId`), members and their modes (with the optional `fenced`/`fencedReason` and `adopted: true` markers), split revision, checkpoints, journal cursor, and the two optional in-flight activation fields: `activationInFlight` (the accepted revision whose materialisation is running) and `activatedLoops` (split key → verify-loop id) |
+| `journal.jsonl` | append-only transitions: phase, dispatch, checkpoint, compaction, promotion, refusal, and the supersession rows (`split-superseded`, `activation-in-flight-superseded`); an activation pass writes one compact `cell-activation-progress` row per artifact and a single full `cell-activation-partial` row on failure, and the repair rows are `task-reassigned`, `dispatch-reassign`, `checkpoint-unrecoverable`, `member-adopted` and `member-unfenced` |
 | `mail.jsonl` (legacy) | a PRE-unification per-cell mail log, still READ and merged into the cell view; new mail is NOT written here: it lives in the workspace store `<workspace>/.mpd/team/mailbox.jsonl`, stamped with this cell's `teamId` and `cellId` (plus `fromCell` on a cross-cell sender), read by `cellwork_inbox`, and followed there by a separate `wake` record stating what the wake-up attempt did; an acknowledgement of one of THESE legacy rows is appended back to this file, while a unified row is acknowledged in the store |
 | `requirements.md` | the validated requirements document, revisioned; a change bumps the revision and marks the split stale |
 | `split/<rev>.json` | the splitter's proposal plus the plugin's measured estimates and accept/refuse verdict |
@@ -494,6 +583,12 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   tool is not covered. A cell record that cannot be read releases every caller: a guard cannot
   enforce a mode it cannot see, and the refusal then surfaces on the command and `cellwork_status`
   with the record's path.
+- **Adoption and unfence repair the RECORD, not the past.** Adoption covers members the TEAM record
+  already knows; a session it does not carry still has no channel, by design. `unfence` clears a GIVE-UP
+  fence on the cell row and, when the composition exposes the `mpdTeamActions.unfence` seam, the TEAM
+  row — never a pending checkpoint, which the barrier owns; it does not re-create a dead session, and a
+  cell whose rows the old build already wrote is repaired only through adoption and unfence: its history
+  is not rewritten.
 - **The 1/4 budget is an estimate** with the declared ±25% English bound and deliberately punitive CJK
   pricing; it is not a measurement of the model's tokenizer, because the deployment ships none.
 - **The mount is proven by an overlay.** On this machine a plain link-profile boot still resolves a

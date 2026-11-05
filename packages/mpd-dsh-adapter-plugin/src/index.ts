@@ -1877,6 +1877,18 @@ export interface DshAdapter {
   /** One live Agent by id, or undefined. */
   liveAgent(agentId: string): DshLiveAgent | undefined
   /**
+   * One live Agent by id, from the registry's OWN `get` and NOTHING else — no list scan, no fallback.
+   *
+   * WHY THIS EXISTS BESIDE {@link DshAdapter.liveAgent} (VEdit P0, root cause 2): the subagent host
+   * refuses a spawn unless `ctx.get("agents").get(parent.id) === parent` — STRICT identity against its
+   * own registry — so a parent resolved through the list scan (`liveAgent`'s fallback) can be an object
+   * the host's `get` will never return, and the spawn then throws `UNAUTHORIZED: subagent creation
+   * requires the exact live parent agent`. A caller that must forward a parent therefore asks THIS seam:
+   * the answer is either the registry's own instance or `undefined`, which is the caller's cue to refuse
+   * with its own reason instead of letting the host throw.
+   */
+  liveAgentExact(agentId: string): DshLiveAgent | undefined
+  /**
    * OCCUPIED context of ONE live session, read from the harness `sessionProjections` unit
    * `contextPressure` — the SAME token-meter projection the host's own status display reads.
    *
@@ -1893,27 +1905,34 @@ export interface DshAdapter {
    */
   contextPressure(target: unknown): DshContextPressure
   /**
-   * The compaction engine THAT SERVES ONE AGENT, resolved through the agent's own
-   * scoped context. This is the ONLY correct engine to drive a member session: the
-   * host-plane `ctx.get("compaction")` is a different instance covering a different
-   * realm (measured `sameObject: false`), so using it would compact the wrong thing.
-   * Memoized per agent id, and dropped when the agent is gone so a recycled id cannot
-   * inherit a stale engine.
+   * The compaction engine THAT SERVES ONE AGENT, resolved through the same two doors as
+   * {@link DshAdapter.compactionEngineForLiveAgent}: the host's preset roster
+   * (`agentPresets.serviceFor(agent, "compaction")`) first, then the agent's own scoped
+   * `ctx.get("compaction")`. Both doors are the agent's OWN realm; the host-plane
+   * `ctx.get("compaction")` is a different instance covering a different realm (measured
+   * `sameObject: false`), so using it would compact the wrong thing. Memoized per live Agent,
+   * and dropped when the Agent is gone so a recycled id cannot inherit a stale engine.
    */
   compactionEngineForAgent(agentId: string): unknown
   /**
-   * The compaction engine of a LIVE AGENT HANDLE the caller already holds, read from `agent.ctx`
-   * WITHOUT consulting the live-session registry.
+   * The compaction engine of a LIVE AGENT HANDLE the caller already holds, read from the agent's OWN
+   * realm WITHOUT consulting the live-session registry.
    *
    * WHY THIS EXISTS BESIDE {@link DshAdapter.compactionEngineForAgent}: a member at its context checkpoint
    * is frequently already detached from `ctx.agents` by the time `agent/turn-stopping` fires, so the
-   * id-keyed seam answers nothing for a handle whose own scope still serves a working engine. The event
+   * id-keyed seam answers nothing for a handle whose own realm still serves a working engine. The event
    * carries that handle, and this seam resolves it directly, which is what lets a barrier compact IN
    * PLACE instead of fencing a live member (VEdit P0, defect D1).
    *
+   * THE ORDER IS THE 0.17.1 FIX (root cause of that release's miss): the host's preset door
+   * `agentPresets.serviceFor(agent, "compaction")` first, then `agent.ctx.get("compaction")`. On a
+   * composition whose preset realm-isolates compaction (this bundle's `mpd` preset under dsh-tui 0.18.0,
+   * which disables the host's root `compaction-basic` row) the agent-scope read answers NOTHING, so a
+   * scope-only resolver reported `no-engine` for every member.
+   *
    * Same memoization (keyed by the Agent OBJECT) and the same validity checks as the id-keyed seam, so
    * the two can never disagree about which realm owns an engine. Absent handle or absent engine answers
-   * `undefined`; never throws.
+   * `undefined`; never throws, and never fabricates an engine.
    */
   compactionEngineForLiveAgent(agent: unknown): unknown
   /** Subscribe to a harness event; returns a disposer, or undefined when unavailable. */
@@ -4140,15 +4159,42 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   }
 
   /**
-   * Per-agent compaction engines, memoized by agent id.
+   * One live Agent by id, from `agents.get` ONLY — the instance the host's own identity check compares.
    *
-   * The engine MUST come from `agent.ctx.get("compaction")`. The compact-hinge
-   * experiment measured the host-plane `ctx.get("compaction")` and the member-scoped
-   * lookup returning objects that are NOT the same (`sameObject: false`) while both
-   * report `name: "compaction"` — each realm has its own BasicCompactionEngine, so
-   * driving a member with the host instance would compact a different realm's history.
-   * Dispatching through this one memoized helper makes that mistake impossible to make
-   * per-call-site.
+   * NO LIST SCAN AND NO FALLBACK, deliberately: `@deepseek-ai/dsh-subagent` refuses a spawn unless
+   * `this.ctx.get("agents")?.get(spec.request.parent.id) === spec.request.parent`, so a handle the list
+   * happens to carry is still refused when `get` does not answer it. Returning `undefined` there is the
+   * signal a caller needs to refuse with its own reason (`reseed-parent-unavailable`) instead of
+   * forwarding a handle the host will reject with UNAUTHORIZED.
+   *
+   * @param agentId - the live session/agent id; "" names nothing.
+   * @returns the registry's own Agent instance, or undefined.
+   */
+  function liveAgentExact(agentId: string): DshLiveAgent | undefined {
+    /** The requested id, normalized so a non-string can never match a row. */
+    const id = String(agentId ?? "")
+    if (id === "") return undefined
+    /** The live-session registry; a composition without one cannot prove identity at all. */
+    const agents = service("agents")
+    if (agents === undefined || agents === null || typeof agents.get !== "function") return undefined
+    try {
+      /** The registry's own answer, never a rebuilt or scanned substitute. */
+      const found = agents.get(id)
+      return found === undefined || found === null ? undefined : found as DshLiveAgent
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Per-agent compaction engines, memoized by Agent OBJECT.
+   *
+   * The engine must be the one that serves THIS agent's realm. The compact-hinge experiment measured
+   * the host-plane `ctx.get("compaction")` and the member-scoped lookup returning objects that are NOT
+   * the same (`sameObject: false`) while both report `name: "compaction"` — each realm has its own
+   * BasicCompactionEngine, so driving a member with the host-plane instance would compact a different
+   * realm's history. {@link engineOfLiveHandle} is the ONE resolver, so no call site can get the
+   * precedence wrong on its own.
    *
    * The cache is keyed by the LIVE AGENT OBJECT, not by its id (S2): a `WeakMap` entry disappears
    * as soon as the registry stops holding that Agent, so a finished session can never hand out its
@@ -4156,26 +4202,62 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    */
   const engineCache = new WeakMap<DshLiveAgent, unknown>()
   /**
-   * The engine ONE AGENT OBJECT's own scope serves, memoized on that object.
+   * The engine a PRESET-ISOLATED realm serves for one agent, read through the host's own door.
+   *
+   * WHY THE PRESET DOOR EXISTS AT ALL (measured, root cause of the 0.17.1 miss): dsh-tui 0.18.0
+   * disables the host's root `compaction-basic` row (`- id: compaction-basic / disabled: true`) and
+   * this bundle's `presets/mpd.patch.yml` mounts compaction inside a group carrying
+   * `isolate: { compaction: true, toolResultPruner: true }`. A realm-isolated service is NOT reachable
+   * by name from `agent.ctx.get("compaction")`; the host's door into that realm is
+   * `agentPresets.serviceFor(agent, key)`, which is also what the installed TUI adapter reads
+   * (`agentPresets.serviceFor(agent, key) ?? ctx.get(key)`).
+   *
+   * @param handle - the live Agent handle, read structurally.
+   * @returns the realm's engine, or undefined when this composition serves none through presets.
+   */
+  function presetEngineOf(handle: DshLiveAgent): unknown {
+    /** The host's preset roster; its absence means this composition has no isolate realm door. */
+    const presets = service("agentPresets")
+    if (presets === undefined || presets === null || typeof presets.serviceFor !== "function") return undefined
+    try {
+      /** The realm-scoped service the preset isolate serves this agent. */
+      const engine = presets.serviceFor(handle, "compaction")
+      return engine === undefined || engine === null ? undefined : engine
+    } catch {
+      // A roster that refuses this handle answers nothing; the agent-scope door below is still tried.
+      return undefined
+    }
+  }
+  /**
+   * The engine ONE AGENT OBJECT's realm serves, memoized on that object.
    *
    * This is the shared body of both public seams: the ONLY difference between them is how the Agent is
-   * obtained (by id from the registry, or handed over directly by an event payload). Reading
-   * `agent.ctx.get("compaction")` is what makes the engine the member's own realm; the WeakMap key is the
-   * Agent OBJECT (never its id), so a recycled id cannot inherit a previous incarnation's engine.
+   * obtained (by id from the registry, or handed over directly by an event payload). TWO DOORS, IN THIS
+   * ORDER: the host's preset door (`agentPresets.serviceFor(agent, "compaction")`) first, because a
+   * realm-isolated engine is invisible to the agent scope; then `agent.ctx.get("compaction")`, which is
+   * what a composition that does NOT isolate compaction serves. Whichever answers is the member's own
+   * realm, and the WeakMap key is the Agent OBJECT (never its id), so a recycled id cannot inherit a
+   * previous incarnation's engine.
    *
    * @param agent - the live Agent handle, read structurally.
-   * @returns the memoized engine, or undefined when the handle carries none.
+   * @returns the memoized engine, or undefined when NEITHER door carries one (never a fabricated engine).
    */
   function engineOfLiveHandle(agent: unknown): unknown {
     if (agent === undefined || agent === null || typeof agent !== "object") return undefined
     // The handle is opaque (an event payload or a host Agent); the fields read below are the two the
     // compact-hinge experiment measured, and anything else is treated as "no engine".
-    /** The handle, narrowed to the shape the two reads below use. */
+    /** The handle, narrowed to the shape the two door reads use. */
     const handle = agent as DshLiveAgent
     /** The memoized engine, returned only while THIS Agent object is the one asked about. */
     const cached = engineCache.get(handle)
     if (cached !== undefined) return cached
-    /** The Agent's own scoped context, the only realm whose engine is correct. */
+    /** The preset realm's engine, which only the host's roster door can reach. */
+    const isolated = presetEngineOf(handle)
+    if (isolated !== undefined) {
+      engineCache.set(handle, isolated)
+      return isolated
+    }
+    /** The Agent's own scoped context, the second door. */
     const scoped = handle.ctx
     if (scoped === undefined || scoped === null) return undefined
     /** The engine resolved from the agent's own scope, before it is memoized. */
@@ -5085,6 +5167,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── live-session plane ──────────────────────────────────────────────────
     liveAgents,
     liveAgent,
+    liveAgentExact,
     contextPressure,
     compactionEngineForAgent,
     compactionEngineForLiveAgent,

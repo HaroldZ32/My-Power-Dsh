@@ -197,8 +197,10 @@ export interface CellworkGuardOptions {
   /**
    * Resolve ONE dispatch's seat, or undefined when the session is in no cell.
    *
-   * The implementation MUST be total (never throw) and MUST be cheap enough to run on every tool call;
-   * the row resolves it from the cell record, so the guard itself stays a pure predicate.
+   * The implementation MUST be total (never throw), MUST be cheap enough to run on every tool call and
+   * MUST be READ-ONLY: a permission predicate that wrote would mutate the record on calls it then refuses
+   * (member adoption belongs to the cellwork verbs, never to the guard). The row resolves it from the cell
+   * record, so the guard itself stays a pure predicate.
    */
   seatOf: (exec: DshToolExec | undefined) => CellworkSeat | undefined
   /** The row's own log sink, called once when the guard could not be installed. */

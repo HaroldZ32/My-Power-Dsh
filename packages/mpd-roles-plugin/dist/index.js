@@ -2345,7 +2345,32 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
+  function liveAgentExact(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agents = service("agents");
+    if (agents === undefined || agents === null || typeof agents.get !== "function")
+      return;
+    try {
+      const found = agents.get(id);
+      return found === undefined || found === null ? undefined : found;
+    } catch {
+      return;
+    }
+  }
   const engineCache = new WeakMap;
+  function presetEngineOf(handle) {
+    const presets = service("agentPresets");
+    if (presets === undefined || presets === null || typeof presets.serviceFor !== "function")
+      return;
+    try {
+      const engine = presets.serviceFor(handle, "compaction");
+      return engine === undefined || engine === null ? undefined : engine;
+    } catch {
+      return;
+    }
+  }
   function engineOfLiveHandle(agent) {
     if (agent === undefined || agent === null || typeof agent !== "object")
       return;
@@ -2353,6 +2378,11 @@ function createDshAdapter(ctx, config = {}) {
     const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
+    const isolated = presetEngineOf(handle);
+    if (isolated !== undefined) {
+      engineCache.set(handle, isolated);
+      return isolated;
+    }
     const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
@@ -2881,6 +2911,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    liveAgentExact,
     contextPressure,
     compactionEngineForAgent,
     compactionEngineForLiveAgent,

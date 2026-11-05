@@ -1,0 +1,7 @@
+interface:
+  display_name: "autoproject-plan (mpd)"
+  short_description: "Explore-first planning consultant that waits for your okay"
+  search_terms:
+    - "autoproject-plan"
+    - "plan"
+  default_prompt: "Use $autoproject-plan to explore the codebase, surface the open questions, and wait for my okay before producing a decision-complete plan."

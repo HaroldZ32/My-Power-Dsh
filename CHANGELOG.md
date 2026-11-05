@@ -14,6 +14,35 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.3 — the `ulw-*` skills become `autoproject-*`, cellwork adopts live members, and the compaction barrier holds on dsh-tui 0.18.0
+
+**Changed — the `ulw-*` skills are gone.** `skills/ulw-plan`, `skills/ulw-execute` and `skills/ulw-research`
+ship as `autoproject-plan`, `autoproject-execute` and `autoproject-research`, directory and frontmatter
+`name` both, with every cross-reference inside the corpus, the runtime surfaces those skills own, the stale
+`mpd-ulw` spellings and the `LICENSE-NOTICES.md` entry moved with them, and the skills corpus re-pinned
+once. The three workflows do what they did before; what changed is the name they answer to, so an
+invocation, a note or a habit that still spells `ulw-*` reaches nothing.
+
+**Fixed — a member the live team record knows is a member of its cell, and a give-up fence can be lifted.**
+Adoption reached the cell record only along the path a member had already walked, so a teammate known to
+the LIVE team record but never mirrored could fall out of seat resolution and become unreachable; the
+seat-resolution path now mirrors it, and the guard's own lookup stays read-only. `cellwork_dispatch` gains
+`unfence: [names]`, which clears a GIVE-UP fence on the CELL row and reopens the TEAM seat through the
+plane seam, while a bare team checkpoint stays barrier-owned — a checkpoint is the compaction barrier's to
+release, never a dispatch's. `cellwork_supervise` separates give-up from barrier-owned seats, so the list
+it prints is the list you can act on, and member resolution is exact-first: a CJK name can no longer
+resolve to a different member.
+
+**Fixed — the compaction fence holds in the dsh-tui 0.18.0 composition.** Three real cellwork runs were
+still fenced after 0.17.2 shipped its barrier fix, with `no-engine; the reseed failed: … exact live parent
+agent`, because the barrier asked a door that answers nothing in this composition and forwarded a parent it
+had never proved. dsh-tui 0.18.0 disables the host's root compaction row and this bundle mounts compaction
+inside a preset realm, so the engine is resolved through `ctx.agentPresets.serviceFor(agent, "compaction")`
+with `agent.ctx.get("compaction")` as the second door, and the reseed parent is proven by a new
+`liveAgentExact` identity seam whose pre-spawn assertion answers the distinct `reseed-parent-unavailable`
+instead of letting the host throw UNAUTHORIZED. A member that reaches its context checkpoint compacts in
+place again instead of leaving the team.
+
 ## 0.17.2 — the follow-up wave and the team-end verb
 
 **0.17.1's npm stage was never approved, and this release supersedes it.** Nothing was ever public under

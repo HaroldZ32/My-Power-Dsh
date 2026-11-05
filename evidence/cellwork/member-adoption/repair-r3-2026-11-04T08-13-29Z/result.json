@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-04T08-13-29Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "558bdeb9",
+  "repair": "round 3",
+  "scope": "unfence decision table against the production give-up shape; supervisor barrier-owned render; bilingual docs",
+  "gates": {
+    "tests": 0,
+    "typecheck": 0,
+    "comments": 0,
+    "docs": 0
+  },
+  "testTotals": {
+    "pass": 229,
+    "fail": 0,
+    "expectCalls": 2576,
+    "files": 27
+  },
+  "redProof": "red-proof.log — 5 arms fail against a temporary restore of the round-2 branch order; fixed source restored before the gate run",
+  "dist": "NOT rebuilt by instruction",
+  "commit": "none (captain owns git)",
+  "evidence": "evidence/cellwork/member-adoption/repair-r3-2026-11-04T08-13-29Z/"
+}

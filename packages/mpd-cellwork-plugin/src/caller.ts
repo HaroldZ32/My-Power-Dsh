@@ -14,7 +14,7 @@
 // the approval answer exists.
 import type { DshAdapter, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import type { CellworkSeat, CellSeatMode } from "./guard"
-import { cellDir, listCellIds, readCell, type CellMemberMode, type CellReadFailure, type CellState } from "./state"
+import { appendJournal, cellDir, listCellIds, readCell, statePath, writeCell, type CellMemberMode, type CellMemberRecord, type CellReadFailure, type CellState } from "./state"
 
 /**
  * The slice of the `mpdTeams` service this module reads, declared STRUCTURALLY.
@@ -66,6 +66,21 @@ export interface TeamActionsServiceView {
   cancelTasks?: (input: { workspace: string; teamId: string; taskIds: readonly string[]; note?: string }) => Promise<unknown>
 }
 
+/**
+ * Why an attempted seat ADOPTION could not be persisted, and WHICH half failed.
+ *
+ * The two causes are kept apart because they are not the same sentence: a record that could not be READ
+ * was never rewritten (and may be readable on the next call), while a record that could not be WRITTEN
+ * had its row ready. A refusal that called both "could not be written" was dishonest (repair round 2,
+ * finding C-ii).
+ */
+export interface AdoptionFailure {
+  /** `read` when the fresh record could not be read; `write` when the record write did not land. */
+  kind: "read" | "write"
+  /** One sentence naming the path and the cause, for the refusal that reports it. */
+  detail: string
+}
+
 /** What one dispatch's caller is, as far as the cell is concerned. */
 export interface CallerContext {
   /** The absolute workspace root the adapter resolved for THIS call. */
@@ -80,6 +95,14 @@ export interface CallerContext {
   cell: CellState | null
   /** The refusal that stopped the cell scan (a corrupt record), so a tool can name its path. */
   refusal: CellReadFailure | null
+  /**
+   * Why a seat ADOPTION could not be PERSISTED, when this call attempted one and the write did not land.
+   *
+   * The context still carries the in-memory mirror, so a read-only verb answers as if the row existed; a
+   * verb that writes the TEAM plane must refuse instead, because it would otherwise record a checkpoint
+   * for a row the cell record never received.
+   */
+  adoptionFailure?: AdoptionFailure
 }
 
 /** What {@link callerContext} needs beyond the adapter: the team-service resolver. */
@@ -91,6 +114,14 @@ export interface CallerDeps {
    * time would then be a permanent absence. Returning undefined is the documented degradation.
    */
   teams?: () => TeamsServiceView | undefined
+  /**
+   * Whether this resolution may ADOPT a live team seat into the cell record (contract B1).
+   *
+   * Defaults to `true`, because the cellwork VERBS are the adoption path. The tool guard passes `false`:
+   * it runs on EVERY dispatch — including the ones it then refuses — and a permission predicate must
+   * never write, so its seat lookup is READ-ONLY and the row is mirrored by the verb that follows.
+   */
+  adopt?: boolean
 }
 
 /**
@@ -157,7 +188,13 @@ export function callerContext(
   for (const candidate of ordered) {
     /** The seat this session holds in that cell, when it holds one. */
     const held = seatIn(candidate.state, workspace, sessionId, deps)
-    if (held !== undefined) return { workspace, sessionId, member: held.member, seat: held.seat, cell: candidate.state, refusal: null }
+    if (held !== undefined) {
+      // ADOPTION IS OFF THE GUARD'S PATH (contract B1, repair 2): a READ-ONLY resolution (`adopt: false`)
+      // resolves exactly the same seat but writes nothing, so the guard can run it on every dispatch.
+      /** The record the verb reads, plus the reason an attempted adoption could not be persisted. */
+      const state = held.adopt === undefined || deps.adopt === false ? { state: candidate.state } : adoptSeat(workspace, candidate.state, held.adopt)
+      return { workspace, sessionId, member: held.member, seat: held.seat, cell: state.state, refusal: null, ...(state.failure === undefined ? {} : { adoptionFailure: state.failure }) }
+    }
   }
   // NO SEAT ANYWHERE: the workspace still has a cell (the OLDEST live one, as the mode has always
   // reported), but this session holds no seat in it, so the guard has nothing to enforce.
@@ -238,6 +275,22 @@ function compareIds(left: string, right: string): number {
 }
 
 /**
+ * One resolved seat, plus the row the resolution must MIRROR into the cell record when it adopted one.
+ */
+interface SeatResolution {
+  /** The caller's name inside the cell. */
+  member: string
+  /** The enforced seat. */
+  seat: CellworkSeat
+  /**
+   * The member row to ADOPT, present only when the LIVE TEAM RECORD resolved this session and the cell
+   * record holds no row under that name (contract B1). Absent means the cell already knew the seat, so
+   * this resolution writes nothing.
+   */
+  adopt?: CellMemberRecord
+}
+
+/**
  * The seat one session holds in ONE cell, or undefined when it holds none.
  *
  * THE LIVE RECORD IS THE SECOND CHANCE: a member's session id is the executor's handle, which the
@@ -247,9 +300,10 @@ function compareIds(left: string, right: string): number {
  * @param workspace - the caller's workspace root.
  * @param sessionId - the caller's session id, `""` when the handle carried none.
  * @param deps - the team-service resolver.
- * @returns the member name and the seat, or undefined.
+ * @returns the member name, the seat and (when the cell never learned it) the row to adopt; undefined
+ *   when this session holds no seat.
  */
-function seatIn(cell: CellState, workspace: string, sessionId: string, deps: CallerDeps): { member: string; seat: CellworkSeat } | undefined {
+function seatIn(cell: CellState, workspace: string, sessionId: string, deps: CallerDeps): SeatResolution | undefined {
   if (sessionId === "") return undefined
   if (sessionId === cell.captainSessionId) return { member: "captain", seat: { cellId: cell.cellId, name: "captain", mode: "captain" } }
   // THE LIVE TEAM RECORD IS READ FIRST, because it is the AUTHORITY for a closed seat (wave W2-E): the
@@ -280,9 +334,100 @@ function seatIn(cell: CellState, workspace: string, sessionId: string, deps: Cal
     if (row.executorRef !== sessionId) continue
     /** The board name, which the cell record normally also holds. */
     const name = typeof row.name === "string" && row.name !== "" ? row.name : "member"
-    return { member: name, seat: { cellId: cell.cellId, name, mode: memberMode(planeFence(name) ?? cell.members[name]?.mode) } }
+    /** The cell row that name already owns, when it owns one. */
+    const known = cell.members[name]
+    return {
+      member: name,
+      seat: { cellId: cell.cellId, name, mode: memberMode(planeFence(name) ?? known?.mode) },
+      // ADOPTED ONLY WHEN THE CELL HAS NO ROW (B1). An existing row — fenced, checkpoint-mode, or simply
+      // carrying an older handle — is the record's truth and is never overwritten by a mirror.
+      ...(known === undefined ? { adopt: adoptedSeat(name, row, sessionId) } : {}),
+    }
   }
   return undefined
+}
+
+/**
+ * The cell row that MIRRORS one live team seat (contract B1).
+ *
+ * FIELD BY FIELD, NEVER BY SPREADING A ROW: a spread would carry `fenced`/`handoffReady` forward and
+ * livelock a healthy member (`protocol-core.ts` states that warning). The row is born OPEN — mode
+ * `member`, `handoffReady: false`, no `fenced` key — so an adopted member gets exactly the checkpoint
+ * channel a staged member has.
+ *
+ * @param name - the name the seat resolves to.
+ * @param row - the live team member row the session matched.
+ * @param sessionId - the caller's session id, which IS the matched `executorRef`.
+ * @returns the member record to adopt.
+ */
+function adoptedSeat(name: string, row: Record<string, unknown>, sessionId: string): CellMemberRecord {
+  return {
+    name,
+    role: typeof row.role === "string" ? row.role : "",
+    sessionId,
+    executorRef: sessionId,
+    mode: "member",
+    handoffReady: false,
+    handoffs: 0,
+    joinedAt: new Date().toISOString(),
+    adopted: true,
+  }
+}
+
+/**
+ * ADOPT one live team seat into the cell record, idempotently (contract B1).
+ *
+ * THE WRITE IS MERGED INTO A FRESH READ, never into the snapshot the seat was resolved against: that
+ * snapshot is taken at the START of the caller resolution, so a captain write landing in between would be
+ * clobbered by a `{...cell, members}` built from it. The record is therefore re-read HERE, the row is
+ * merged into THAT record, and the two travel through one transition.
+ *
+ * It NEVER overwrites: the fresh record's own `members` table decides, so a fenced or checkpoint-mode row
+ * written since the scan stays exactly as it is. A record this call cannot read is never rewritten either
+ * (`state.ts`'s rule) — the mirror is returned without a write, and the next readable transition persists it.
+ *
+ * A write the workspace refuses must not break the caller — {@link callerContext} is documented total —
+ * so the augmented record is returned either way, and the refusal travels BESIDE it: a verb that writes
+ * the team plane refuses on `failure` instead of pretending the row was recorded.
+ *
+ * THE JOURNAL LINE FOLLOWS THE WRITE (repair round 2, finding C-i). `recordTransition` appends history
+ * first, which is right for a state transition but wrong here: a write that then FAILED left a
+ * `member-adopted` row in the journal for a member the record never received. The row is written first
+ * and only a landed write appends its history.
+ *
+ * @param workspace - the workspace root the adapter resolved for THIS call.
+ * @param cell - the record the seat was resolved against, used only to name the cell.
+ * @param row - the mirror row to record.
+ * @returns the record the verb must read, and why an attempted adoption could not be persisted.
+ */
+function adoptSeat(workspace: string, cell: CellState, row: CellMemberRecord): { state: CellState; failure?: AdoptionFailure } {
+  /** The record on disk at THIS instant, which is what the merge must start from. */
+  const fresh = readCell(workspace, cell.cellId)
+  // AN UNREADABLE RECORD IS NOT REWRITTEN: the mirror answers this call and a later transition persists it.
+  if (!fresh.ok) return { state: withMember(cell, row), failure: { kind: "read", detail: "the cell record at " + fresh.path + " could not be read (" + fresh.detail + ")" } }
+  if (fresh.state.members[row.name] !== undefined) return { state: fresh.state }
+  /** The FRESH record carrying the adopted row. */
+  const next: CellState = withMember(fresh.state, row)
+  try {
+    /** The record as persisted; the write is the commit point the journal may follow. */
+    const written = writeCell(workspace, next)
+    /** The journal line count after the append, or 0 when the append failed. */
+    const lines = appendJournal(workspace, cell.cellId, { event: "member-adopted", member: row.name, role: row.role, sessionId: row.sessionId }, new Date())
+    return { state: lines > 0 ? { ...written, journalCursor: lines } : written }
+  } catch (error) {
+    return { state: next, failure: { kind: "write", detail: "writing " + statePath(workspace, cell.cellId) + " failed (" + (error instanceof Error ? error.message : String(error)) + ")" } }
+  }
+}
+
+/**
+ * The same cell record with one member row set, and every other row untouched.
+ *
+ * @param cell - the record to copy.
+ * @param row - the member row to set, keyed by its own name.
+ * @returns the augmented record.
+ */
+function withMember(cell: CellState, row: CellMemberRecord): CellState {
+  return { ...cell, members: { ...cell.members, [row.name]: row } }
 }
 
 /**

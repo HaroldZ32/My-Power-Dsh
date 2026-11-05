@@ -1,0 +1,69 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/member-adoption.test.ts:
+320 |   const before = readFileSync(statePath(harness.workspace, cellId), "utf8")
+321 |   // TWO dispatches through the predicate the row really installed: one it REFUSES (a source read) and one
+322 |   // it ALLOWS (the documentation band). Neither may write — including the refused one.
+323 |   expect(String(harness.guard?.({ name: "read", arguments: { file_path: "packages/x/src/y.ts" }, agent: late } as unknown as DshToolExec) ?? "")).toContain("CELL PLANNER")
+324 |   expect(harness.guard?.({ name: "read", arguments: { file_path: "docs/a.md" }, agent: late } as unknown as DshToolExec)).toBeUndefined()
+325 |   expect(readFileSync(statePath(harness.workspace, cellId), "utf8")).toBe(before)
+                                                                           ^
+error: expect(received).toBe(expected)
+
+  "{
+    "version": 1,
+    "cellId": "cell-member-adoption",
+    "phase": "executing",
+    "archived": false,
+    "objective": "adopt a live team seat",
+    "createdAt": "2026-11-04T04:23:31.055Z",
+-   "updatedAt": "2026-11-04T04:23:31.055Z",
++   "updatedAt": "2026-11-04T04:23:31.056Z",
+    "captainSessionId": "session-captain",
+    "depth": 0,
+    "parentCellId": null,
+    "teamId": "team-1",
+    "parentTeamId": "",
+    "subcellIds": [],
+    "requirementsRevision": 0,
+    "splitRevision": null,
+    "splitTaskId": "",
+    "activatedRevision": null,
+    "activatedTasks": {},
+    "activatedLoops": {},
+    "activationInFlight": null,
+    "cancelledTasks": {},
+    "splitStale": false,
+    "startedAt": "",
+    "stopReason": "",
+-   "members": {},
++   "members": {
++     "cell-planner": {
++       "name": "cell-planner",
++       "role": "Planner",
++       "sessionId": "session-planner-late",
++       "executorRef": "session-planner-late",
++       "mode": "member",
++       "handoffReady": false,
++       "handoffs": 0,
++       "joinedAt": "2026-11-04T04:23:31.056Z",
++       "adopted": true
++     }
++   },
+    "checkpoints": [],
+-   "journalCursor": 0
++   "journalCursor": 1
+  }
+  "
+
+- Expected  - 3
++ Received  + 15
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/member-adoption.test.ts:325:70)
+(fail) B1 repair: the GUARD resolves the seat READ-ONLY — a permission check never adopts [3.24ms]
+
+ 0 pass
+ 4 filtered out
+ 1 fail
+ 3 expect() calls
+Ran 1 test across 1 file. [152.00ms]

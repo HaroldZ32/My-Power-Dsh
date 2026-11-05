@@ -867,7 +867,32 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
+  function liveAgentExact(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agents = service("agents");
+    if (agents === undefined || agents === null || typeof agents.get !== "function")
+      return;
+    try {
+      const found = agents.get(id);
+      return found === undefined || found === null ? undefined : found;
+    } catch {
+      return;
+    }
+  }
   const engineCache = new WeakMap;
+  function presetEngineOf(handle) {
+    const presets = service("agentPresets");
+    if (presets === undefined || presets === null || typeof presets.serviceFor !== "function")
+      return;
+    try {
+      const engine = presets.serviceFor(handle, "compaction");
+      return engine === undefined || engine === null ? undefined : engine;
+    } catch {
+      return;
+    }
+  }
   function engineOfLiveHandle(agent) {
     if (agent === undefined || agent === null || typeof agent !== "object")
       return;
@@ -875,6 +900,11 @@ function createDshAdapter(ctx, config = {}) {
     const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
+    const isolated = presetEngineOf(handle);
+    if (isolated !== undefined) {
+      engineCache.set(handle, isolated);
+      return isolated;
+    }
     const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
@@ -1403,6 +1433,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    liveAgentExact,
     contextPressure,
     compactionEngineForAgent,
     compactionEngineForLiveAgent,
@@ -2261,11 +2292,39 @@ var PRESET_RESOLVE_STEP_MS = 100;
 var PRESET_NOT_FOUND = /agent-preset\/not-found|Unknown agent preset/i;
 var TOOL_POLL_BUDGET_MS = 600;
 var FIXTURE_SKILL = "svn-master";
-var FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master"];
+var FIXTURE_SKILLS = ["ast-grep", "dsh-qa", "git-master", "programming", "svn-master", "autoproject-plan", "autoproject-execute", "autoproject-research"];
+var RETIRED_SKILL_NAME = /^ulw[-_]|^ultrawork/i;
+var RENAMED_SKILLS = ["autoproject-plan", "autoproject-execute", "autoproject-research"];
+function bundleRoot() {
+  return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+}
 function presetPatchPath() {
-  const bundleRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
-  const patch = join2(bundleRoot, "presets", "mpd.patch.yml");
+  const patch = join2(bundleRoot(), "presets", "mpd.patch.yml");
   return existsSync(patch) ? { path: patch, trust: "bundle" } : { path: "unknown", trust: "unknown" };
+}
+function pathUnder(candidate, expected) {
+  const normalize = (p) => p.split("\\").join("/").replace(/\/+$/, "");
+  const c = normalize(candidate);
+  const e = normalize(expected);
+  return c === e || c.startsWith(e + "/");
+}
+function expectedSkillBase(fixtureBase, skillName) {
+  const probeSkills = join2(bundleRoot(), "skills");
+  if (fixtureBase === "")
+    return join2(probeSkills, skillName);
+  const corpusRoot = pathUnder(fixtureBase, probeSkills) ? probeSkills : dirname(fixtureBase);
+  return join2(corpusRoot, skillName);
+}
+function skillLoadReason(loaded, expectedBase) {
+  if (loaded === undefined)
+    return "absent";
+  const bodyBytes = loaded.content?.length ?? 0;
+  if (bodyBytes <= 100)
+    return "short-body:" + String(bodyBytes);
+  const base = String(loaded.resourceBase?.path ?? "");
+  if (base === "")
+    return "base-absent";
+  return pathUnder(base, expectedBase) ? "" : "base-outside:" + base;
 }
 async function resolveLivePreset(dsh, id) {
   const deadline = Date.now() + PRESET_RESOLVE_BUDGET_MS;
@@ -2382,21 +2441,43 @@ async function apply(ctx) {
     paramSchemasOk = false;
   }
   let catalogOk = false;
+  let skillLoadsOk = false;
   try {
     const summaries = await dsh.listSkills();
     const bundled = summaries.filter((summary) => summary.source === "bundled");
     const servedNames = new Set(summaries.map((summary) => String(summary.name)));
     const missingFixtures = FIXTURE_SKILLS.filter((name2) => !servedNames.has(name2));
+    const retiredNames = [...servedNames].filter((name2) => RETIRED_SKILL_NAME.test(name2));
     console.log("[roles-probe] SKILLS=" + summaries.length + " BUNDLED=" + bundled.length + " SKILL_FIXTURES=" + (FIXTURE_SKILLS.length - missingFixtures.length) + "/" + FIXTURE_SKILLS.length + (missingFixtures.length > 0 ? " MISSING=" + missingFixtures.join(",") : "") + (summaries.length === bundled.length ? "" : " NON_BUNDLED=" + summaries.filter((summary) => summary.source !== "bundled").map((summary) => String(summary.name) + ":" + String(summary.source)).join(",")));
+    console.log("[roles-probe] SKILL_RETIRED=" + retiredNames.length + (retiredNames.length > 0 ? " NAMES=" + retiredNames.join(",") : ""));
     const fixture = await dsh.loadSkill(FIXTURE_SKILL);
     const base = fixture?.resourceBase?.path ?? "unknown";
     const bytes = fixture?.content?.length ?? 0;
     console.log("[roles-probe] SKILL_FIXTURE=" + (fixture === undefined ? "missing" : "ok") + " name=" + String(fixture?.name ?? "-") + " base=" + base + " bytes=" + String(bytes));
-    catalogOk = fixture !== undefined && bytes > 100 && summaries.length === bundled.length && missingFixtures.length === 0;
+    const failedLoads = [];
+    for (const skillName of RENAMED_SKILLS) {
+      try {
+        const loaded = await dsh.loadSkill(skillName);
+        const loadedBase = String(loaded?.resourceBase?.path ?? "");
+        const reason = skillLoadReason(loaded, expectedSkillBase(String(fixture?.resourceBase?.path ?? ""), skillName));
+        if (reason === "") {
+          console.log("[roles-probe] SKILL_LOAD=ok name=" + skillName + " base=" + loadedBase + " bytes=" + String(loaded?.content?.length ?? 0));
+        } else {
+          console.log("[roles-probe] SKILL_LOAD=fail name=" + skillName + " reason=" + reason);
+          failedLoads.push(skillName);
+        }
+      } catch (error) {
+        const message = String(error?.message ?? error).replace(/\s+/g, "_").slice(0, 160);
+        console.log("[roles-probe] SKILL_LOAD=fail name=" + skillName + " reason=error:" + message);
+        failedLoads.push(skillName);
+      }
+    }
+    skillLoadsOk = failedLoads.length === 0;
+    catalogOk = fixture !== undefined && bytes > 100 && summaries.length === bundled.length && missingFixtures.length === 0 && retiredNames.length === 0;
   } catch (e) {
     console.log("[roles-probe] SKILLS=fail:" + String(e?.message ?? e));
   }
-  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk && paramSchemasOk;
+  const ok = presetOk && toolCallOk && ids.length === ROSTER_IDS.length && ROSTER_IDS.every((id) => ids.includes(id)) && catalogOk && paramSchemasOk && skillLoadsOk;
   console.log("[roles-probe] " + (ok ? "PASS" : "FAIL"));
   if (!ok)
     process.exitCode = 1;
