@@ -869,7 +869,7 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   const engine = { compactNow: async (_agent: unknown, signal: AbortSignal): Promise<unknown> => { engineSignal = signal; return { shadowedTokenCount: 10 } } }
   /** The promoted outcome. */
   const promoted = await promoteAfterHandoff({
-    dsh: { compactionEngineForAgent: () => engine, compactionEngineForLiveAgent: () => undefined, liveAgent: () => undefined, startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => {} },
+    dsh: { compactionEngineForAgent: () => engine, compactionEngineForLiveAgent: () => undefined, liveAgentExact: () => undefined, startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => {} },
     agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
     handoffText: "## Next step\nfinish B", nextStep: "finish B",
     injectDirective: (text) => { directives.push(text) }, sleep: async () => {},
@@ -889,7 +889,7 @@ test("B8: the barrier compacts with a REAL signal, promotes on success, and rese
   const liveCaptain = { id: "session-captain" }
   /** The reseed outcome. */
   const reseeded = await promoteAfterHandoff({
-    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), compactionEngineForLiveAgent: () => undefined, liveAgent: (id: string) => (id === "session-captain" ? liveCaptain : undefined), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
+    dsh: { compactionEngineForAgent: () => ({ compactNow: async () => null }), compactionEngineForLiveAgent: () => undefined, liveAgentExact: (id: string) => (id === "session-captain" ? liveCaptain : undefined), startContinuableAgent: async () => ({ childId: "handle-fresh" }), interruptAgent: () => { interrupted = true } },
     agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
     handoffText: "## Next step\nfinish B", nextStep: "finish B",
     injectDirective: () => {}, sleep: async () => {},
@@ -1413,7 +1413,7 @@ test("C2.1: the compaction barrier classifies busy, error and no-engine after th
   /** The one live session these arms offer: the captain. */
   const liveCaptain = { id: "session-captain" }
   /** The reseed, interrupt and engine seams, each arm overriding the engine it wants. */
-  const seams = { startContinuableAgent: async (): Promise<unknown> => ({ childId: "handle-fresh" }), interruptAgent: (): void => {}, compactionEngineForLiveAgent: (): undefined => undefined, liveAgent: (id: string): { id: string } | undefined => (id === "session-captain" ? liveCaptain : undefined) }
+  const seams = { startContinuableAgent: async (): Promise<unknown> => ({ childId: "handle-fresh" }), interruptAgent: (): void => {}, compactionEngineForLiveAgent: (): undefined => undefined, liveAgentExact: (id: string): { id: string } | undefined => (id === "session-captain" ? liveCaptain : undefined) }
   /** How many drives the BUSY engine was handed. */
   let busyAttempts = 0
   // A BUSY engine spends the whole retry budget and is classified as busy, not as an unexplained failure.

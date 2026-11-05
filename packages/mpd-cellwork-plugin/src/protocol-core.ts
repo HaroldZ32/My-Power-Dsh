@@ -294,7 +294,7 @@ interface CompactionEngine {
 /** What {@link promoteAfterHandoff} needs: the seams, the member and the handoff text. */
 export interface PromotionDeps {
   /** The adapter slices the barrier uses. */
-  dsh: Pick<DshAdapter, "compactionEngineForAgent" | "compactionEngineForLiveAgent" | "liveAgent" | "startContinuableAgent" | "interruptAgent">
+  dsh: Pick<DshAdapter, "compactionEngineForAgent" | "compactionEngineForLiveAgent" | "liveAgentExact" | "startContinuableAgent" | "interruptAgent">
   /** The member's live agent handle. */
   agent: unknown
   /** The member's board name. */
@@ -341,7 +341,12 @@ export interface PromotionResult {
 }
 
 /**
- * The live session one id names, read through the adapter's registry seam.
+ * The live session one id names, read through the adapter's IDENTITY seam.
+ *
+ * `liveAgentExact` and NOT `liveAgent` (root cause 2 of the VEdit fences): the host refuses a spawn
+ * unless `agents.get(parent.id) === parent`, so the parent this returns has to be the registry's OWN
+ * instance. `liveAgent`'s list-scan fallback can hand back an object the host's `get` never returns,
+ * and the spawn then throws `UNAUTHORIZED: subagent creation requires the exact live parent agent`.
  *
  * Total on purpose: the seam is absent in an older composition or a test double, and that absence means
  * "this composition cannot tell", which the caller treats exactly like a dead session.
@@ -351,13 +356,38 @@ export interface PromotionResult {
  * @returns the live Agent, or undefined.
  */
 function liveSessionOf(deps: PromotionDeps, sessionId: string): DshLiveAgent | undefined {
-  /** The adapter's own lookup, probed rather than assumed (older compositions lack it). */
-  const seam = deps.dsh.liveAgent
+  /** The adapter's own identity lookup, probed rather than assumed (older compositions lack it). */
+  const seam = deps.dsh.liveAgentExact
   if (typeof seam !== "function" || sessionId === "") return undefined
   try {
     return seam.call(deps.dsh, sessionId) ?? undefined
   } catch {
     return undefined
+  }
+}
+
+/**
+ * Whether the live registry STILL holds this exact Agent instance — the host's own spawn precondition.
+ *
+ * `@deepseek-ai/dsh-subagent` refuses a spawn unless `ctx.get("agents").get(request.parent.id) ===
+ * request.parent`. The barrier proves the same thing through the adapter's identity seam immediately
+ * before it calls the host, so an instance the registry has since dropped is refused with OUR reason
+ * instead of the host's UNAUTHORIZED. An absent seam, an absent handle and a different instance all
+ * answer false: an unproven parent is never forwarded.
+ *
+ * @param deps - the barrier's seams.
+ * @param parent - the Agent the reseed would forward as `request.parent`.
+ * @returns true only when the registry answers THAT object for its id.
+ */
+function parentHeldExactly(deps: PromotionDeps, parent: DshLiveAgent): boolean {
+  /** The adapter's identity seam; without it no identity can be proven. */
+  const seam = deps.dsh.liveAgentExact
+  if (typeof seam !== "function") return false
+  if (parent === undefined || parent === null || typeof parent !== "object") return false
+  try {
+    return seam.call(deps.dsh, parent.id) === parent
+  } catch {
+    return false
   }
 }
 
@@ -397,12 +427,14 @@ interface ReseedParent {
 /**
  * The LIVE session a reseed child is raised under: the member's durable parent, else the captain (C2).
  *
- * The dead member is NEVER a candidate: the host's `startActivation` refuses a parent it no longer holds
+ * Both candidates are resolved through `liveAgentExact` (the registry's OWN `get`), because the host
+ * compares `agents.get(parent.id) === parent` and a list-scan handle fails that comparison. The dead
+ * member is NEVER a candidate either: the host's `startActivation` refuses a parent it no longer holds
  * (`UNAUTHORIZED: subagent creation requires the exact live parent agent`), which is what turned every
  * checkpoint into a fence.
  *
  * @param deps - the barrier's seams.
- * @returns the live parent and its rule, or undefined when neither session is live.
+ * @returns the live parent and its rule, or undefined when neither session is held by the registry.
  */
 function reseedParentOf(deps: PromotionDeps): ReseedParent | undefined {
   /** The member's own durable parent session, when the header carried one. */
@@ -544,7 +576,18 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     return {
       outcome: "refused",
       attempts: deps.config.compactionRetries,
-      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent)",
+      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)",
+    }
+  }
+  // THE HOST'S OWN PRECONDITION, PROVEN BEFORE THE CALL (root cause 2): `@deepseek-ai/dsh-subagent`
+  // refuses a spawn unless `agents.get(request.parent.id) === request.parent`. A parent the registry no
+  // longer answers IDENTICALLY is refused HERE with our own reason, so a reseed can never surface as the
+  // host's UNAUTHORIZED throw instead of a classification the journal and the captain can act on.
+  if (!parentHeldExactly(deps, parent.parent)) {
+    return {
+      outcome: "refused",
+      attempts: deps.config.compactionRetries,
+      reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)",
     }
   }
   try {

@@ -862,7 +862,32 @@ function createDshAdapter(ctx, config = {}) {
     }
     return liveAgents().find((candidate) => candidate.id === id);
   }
+  function liveAgentExact(agentId) {
+    const id = String(agentId ?? "");
+    if (id === "")
+      return;
+    const agents = service("agents");
+    if (agents === undefined || agents === null || typeof agents.get !== "function")
+      return;
+    try {
+      const found = agents.get(id);
+      return found === undefined || found === null ? undefined : found;
+    } catch {
+      return;
+    }
+  }
   const engineCache = new WeakMap;
+  function presetEngineOf(handle) {
+    const presets = service("agentPresets");
+    if (presets === undefined || presets === null || typeof presets.serviceFor !== "function")
+      return;
+    try {
+      const engine = presets.serviceFor(handle, "compaction");
+      return engine === undefined || engine === null ? undefined : engine;
+    } catch {
+      return;
+    }
+  }
   function engineOfLiveHandle(agent) {
     if (agent === undefined || agent === null || typeof agent !== "object")
       return;
@@ -870,6 +895,11 @@ function createDshAdapter(ctx, config = {}) {
     const cached = engineCache.get(handle);
     if (cached !== undefined)
       return cached;
+    const isolated = presetEngineOf(handle);
+    if (isolated !== undefined) {
+      engineCache.set(handle, isolated);
+      return isolated;
+    }
     const scoped = handle.ctx;
     if (scoped === undefined || scoped === null)
       return;
@@ -1398,6 +1428,7 @@ function createDshAdapter(ctx, config = {}) {
     rowLog,
     liveAgents,
     liveAgent,
+    liveAgentExact,
     contextPressure,
     compactionEngineForAgent,
     compactionEngineForLiveAgent,
@@ -6026,13 +6057,25 @@ function compactionSignal(parent) {
   return { controller, signal: parent === undefined ? controller.signal : AbortSignal.any([parent, controller.signal]) };
 }
 function liveSessionOf(deps, sessionId) {
-  const seam = deps.dsh.liveAgent;
+  const seam = deps.dsh.liveAgentExact;
   if (typeof seam !== "function" || sessionId === "")
     return;
   try {
     return seam.call(deps.dsh, sessionId) ?? undefined;
   } catch {
     return;
+  }
+}
+function parentHeldExactly(deps, parent) {
+  const seam = deps.dsh.liveAgentExact;
+  if (typeof seam !== "function")
+    return false;
+  if (parent === undefined || parent === null || typeof parent !== "object")
+    return false;
+  try {
+    return seam.call(deps.dsh, parent.id) === parent;
+  } catch {
+    return false;
   }
 }
 function engineForBarrier(deps) {
@@ -6123,7 +6166,14 @@ async function promoteAfterHandoff(deps) {
     return {
       outcome: "refused",
       attempts: deps.config.compactionRetries,
-      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent)"
+      reason: lastReason + "; reseed-parent-unavailable (parent session " + JSON.stringify(deps.parentSessionId ?? "") + " and captain session " + JSON.stringify(deps.cell.captainSessionId) + " are neither one a live agent the registry holds)"
+    };
+  }
+  if (!parentHeldExactly(deps, parent.parent)) {
+    return {
+      outcome: "refused",
+      attempts: deps.config.compactionRetries,
+      reason: lastReason + "; reseed-parent-unavailable (the live registry no longer holds session " + JSON.stringify(parent.sessionId) + " as the exact instance the reseed would forward)"
     };
   }
   try {
