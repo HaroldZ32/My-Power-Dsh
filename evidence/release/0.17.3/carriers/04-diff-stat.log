@@ -1,0 +1,8 @@
+ AGENTS.md             |  2 +-
+ CHANGELOG.md          | 29 +++++++++++++++++++++++++++++
+ README.md             |  9 +++++----
+ README.zh-CN.md       | 11 ++++++-----
+ dsh-distribution.json | 14 +++++++-------
+ dsh-plugin.json       |  4 ++--
+ package.json          |  2 +-
+ 7 files changed, 51 insertions(+), 20 deletions(-)
