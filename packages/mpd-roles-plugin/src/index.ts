@@ -1095,8 +1095,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         }),
       })
       // The report shape is UNCHANGED except for the new `interrupted` status (§D0.1): the same
-      // role/summary/recommendation/details/evidence/stopReason fields two live consumers read.
-      return await consultSupervisor.settle(view.consultId)
+      // role/summary/recommendation/details/evidence/stopReason fields two live consumers read. The
+      // record is RELEASED here (CR repair): a blocking caller reads its report exactly once, so keeping
+      // `exec`, the agent handle, the task and the report for the process lifetime would grow the map
+      // with every autoproject/cellwork consult. A RUNNING consult stays listed until it settles, and
+      // `collect` is a no-op for a record that is not reported.
+      try {
+        return await consultSupervisor.settle(view.consultId)
+      } finally {
+        try { consultSupervisor.collect(view.consultId) } catch { /* already collected */ }
+      }
     }
   })
 
@@ -1167,7 +1175,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_consult",
-    description: "Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:\"running\" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult's child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults appear here too and can be collected once their caller finished.",
+    description: "Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:\"running\" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult's child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults are listed here WHILE they run; their own caller releases the settled record.",
     parameters: { type: "object", properties: { action: { type: "string", enum: ["list", "wait", "collect", "cancel"] }, consultId: { type: "string", description: "the id mpd_role_spawn_async returned (required except for list)" }, timeoutMs: { type: "integer", minimum: 1, maximum: 60000, description: "wait bound in ms (default 30000, clamped to 60000)" } }, required: ["action"], additionalProperties: false },
     output: { schema: { type: "object", properties: { action: { type: "string" }, consults: { type: "array", items: { type: "object" } }, consultId: { type: "string" }, role: { type: "string" }, state: { type: "string" }, startedAt: { type: "integer" }, elapsedMs: { type: "integer" }, report: { type: "object" }, error: { type: "string" } }, required: ["action"] }, render: (_a: unknown, v: any) => textBlock("consult " + v.action + (Array.isArray(v.consults) ? " (" + v.consults.length + "):\n" + v.consults.map((c: any) => "- " + c.consultId + " [" + c.role + "] " + c.state + " " + c.elapsedMs + "ms").join("\n") : "") + (v.report ? "\nreport (" + v.report.status + "): " + v.report.summary + (v.report.handoff ? "\nhandoff: " + v.report.handoff : "") : "") + (v.error ? "\nerror: " + v.error : "") + (!Array.isArray(v.consults) && !v.report ? "\nstate: " + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
     execute: async (args: any, _exec: any) => {

@@ -1562,7 +1562,7 @@ function normalizeSpawnResult(settled) {
     stopReason: typeof value.stopReason === "string" ? value.stopReason : null
   };
 }
-function activationHandleOf(raw, subagents) {
+function activationHandleOf(raw, subagents, parent) {
   const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
   let disposed = false;
   let interrupted = false;
@@ -1586,12 +1586,24 @@ function activationHandleOf(raw, subagents) {
       if (interrupted)
         return;
       interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
       try {
-        if (id !== "" && typeof subagents?.interrupt === "function")
-          subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" });
-        else if (typeof raw?.abort === "function")
-          raw.abort();
-      } catch {}
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
     }
   };
 }
@@ -2761,7 +2773,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        return activationHandleOf(activation, subagents);
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -2776,7 +2788,7 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      return activationHandleOf(run, subagents);
+      return activationHandleOf(run, subagents, spec.parent);
     },
     async spawnAgent(spec) {
       return (await adapter.spawnAgentAsync(spec)).result;
@@ -5181,7 +5193,7 @@ class WatchdogMachine {
       return true;
     }
     if (this.wedgeForced.has(key))
-      return true;
+      return false;
     this.wedgeForced.add(key);
     decisions.push({
       type: "wedged",

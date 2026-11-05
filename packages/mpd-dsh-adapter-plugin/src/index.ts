@@ -487,9 +487,10 @@ export interface DshSpawnResult {
  *
  * This is the shared handle every one-shot consult rides: the blocking `spawnAgent` is only its
  * `result` projection, and the background tools (`mpd_role_spawn_async`, `mpd_role_consult`) hold it
- * while the captain does other work. `result` never rejects because the CHILD failed — a child
- * failure is a resolved report whose own `stopReason` says why — and a teardown failure is swallowed,
- * so a consult that produced its report is never reported as a failed consult.
+ * while the captain does other work. A CHILD failure stays a REJECTION: `result` disposes the
+ * activation first and then rethrows, so the failure reaches the consult supervisor's `failRecord`
+ * and the consult settles `failed` with the failure text. Only a TEARDOWN failure is swallowed
+ * (`releaseActivation`), so a consult that produced its report is never reported as a failed consult.
  */
 export interface DshAsyncAgent {
   /** The child's session id the host minted (empty string when the host reports none). */
@@ -3771,12 +3772,16 @@ function normalizeSpawnResult(settled: unknown): DshSpawnResult {
  * The dispose is armed on the settle path, not before it: `result` has settled by then, so teardown
  * can no longer change the report, and a failed teardown is swallowed by `releaseActivation`. The
  * interrupt targets this child's session id only (the SAME seam `interruptAgent` delegates to) and
- * is idempotent; a host that reports no id degrades to the handle's own `abort()` when it has one.
+ * is idempotent; it presents the SPAWNING parent as the `ancestor` authority — the form the host
+ * validates for an ancestor lineage — and falls back to the handle's own `abort()` when the seam is
+ * absent, reports no child id, or REJECTS the interrupt, so a refused call never leaves the child
+ * running.
  * @param raw - the activation/run handle the host returned.
  * @param subagents - the subagent service THIS call resolved, used for the interrupt seam.
+ * @param parent - the parent Agent the spawn was authorized by (`spec.parent`), i.e. the interrupt authority.
  * @returns the handle the caller supervises.
  */
-function activationHandleOf(raw: any, subagents: any): DshAsyncAgent {
+function activationHandleOf(raw: any, subagents: any, parent: unknown): DshAsyncAgent {
   /** The child's session id: `childId` on 0.2.1+, `id` on the retired run, empty when unreported. */
   const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : ""
   /** Whether the activation was already released (the settle path releases exactly once). */
@@ -3807,14 +3812,35 @@ function activationHandleOf(raw: any, subagents: any): DshAsyncAgent {
     interrupt(): void {
       if (interrupted) return
       interrupted = true
+      /** Abort the raw handle when it offers one — the fallback for every refused interrupt. */
+      const abortRaw = (): void => {
+        try {
+          if (typeof raw?.abort === "function") raw.abort()
+        } catch {
+          // Best-effort: the handoff on disk is the durable notification even when nothing can stop
+          // the child.
+        }
+      }
       try {
         // The id guard is what keeps this from ever reaching the parent: a handle with no id has no
         // child to interrupt.
-        if (id !== "" && typeof subagents?.interrupt === "function") subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" })
-        else if (typeof raw?.abort === "function") raw.abort()
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          // The SPAWNING parent is the ancestor authority this seam validates — the same
+          // `{kind:"ancestor", agent:<caller>}` form the team executor sends, never a bare reason.
+          /** The host's answer; a promise on an async generation, otherwise the call's own result. */
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent })
+          // An ASYNC rejection is a failed interrupt too: fall back to the raw abort instead of
+          // leaving the child running behind an unhandled rejection.
+          if (outcome !== null && typeof outcome === "object" && typeof (outcome as { then?: unknown }).then === "function") {
+            void Promise.resolve(outcome).catch(abortRaw)
+          }
+        } else {
+          abortRaw()
+        }
       } catch {
-        // Best-effort: a refused interrupt must not take the supervisor down; the handoff on disk is
-        // the durable notification and the settled report still records the interruption.
+        // A REFUSED interrupt must not take the supervisor down, but it also must not leave the child
+        // running: fall back to the handle's own abort when it has one.
+        abortRaw()
       }
     },
   }
@@ -5867,7 +5893,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
      * This is the shared ACTIVATION arm: it resolves the route, assembles the same request
      * `spawnAgent` always sent, calls `startActivation` (or the retired `start`), and hands back the
      * non-blocking handle. The activation is disposed when `result` settles; a failure to START is a
-     * throw (the caller has no child to supervise), while a child's own failure is a resolved report.
+     * throw (the caller has no child to supervise), while a child's own failure is a REJECTED
+     * `result` — rethrown AFTER the activation was disposed, so the consult supervisor records it as a
+     * failed consult. Only a teardown failure is swallowed.
      */
     async spawnAgentAsync(spec: DshSpawnSpec): Promise<DshAsyncAgent> {
       /** The subagent service, or a THROW naming the child that could not be spawned. */
@@ -5910,7 +5938,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         })
         // NOT awaited here: the caller owns the child's lifetime now, and `result` normalizes and
         // releases the activation when it settles, whichever way it settles.
-        return activationHandleOf(activation, subagents)
+        return activationHandleOf(activation, subagents, spec.parent)
       }
       // The RETIRED generation: `start(mode, request)` returned a run whose `output` was already the
       // flattened string. Kept reachable so this adapter still boots an older host.
@@ -5927,7 +5955,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         ...(spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter }),
         ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
       })
-      return activationHandleOf(run, subagents)
+      return activationHandleOf(run, subagents, spec.parent)
     },
 
     /**

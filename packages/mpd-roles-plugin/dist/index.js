@@ -213,7 +213,8 @@ function readTargetPath(toolName, args) {
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, writeFile as writeFileFs } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, rename as renameFs, unlink as unlinkFs, writeFile as writeFileFs } from "node:fs/promises";
 import { join } from "node:path";
 
 // packages/mpd-roles-plugin/src/admission.ts
@@ -506,6 +507,7 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
     let liveFailure;
     let terminal;
     const terminalTeamIds = [];
+    const terminalEndedAt = [];
     const autoEndTeamIds = [];
     for (const entry of entries) {
       if (!String(entry).endsWith(".json"))
@@ -526,6 +528,8 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
         if (ended || board.cleanTerminal) {
           terminal = { teamId, members, ended };
           terminalTeamIds.push(teamId);
+          const endedAtMs = typeof fields.endedAt === "string" ? Date.parse(fields.endedAt) : Number.NaN;
+          terminalEndedAt.push(endedAtMs);
           if (!ended && board.cleanTerminal)
             autoEndTeamIds.push(teamId);
           continue;
@@ -552,6 +556,7 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
       members: terminal.members,
       ...terminal.ended ? { ended: true } : { cleanTerminal: true },
       terminalTeamIds,
+      terminalEndedAt,
       ...autoEndTeamIds.length === 0 ? {} : { autoEndTeamIds }
     };
   } catch {
@@ -630,8 +635,18 @@ async function writeReTeamState(workspace, sessionId, state, opts = {}) {
   try {
     const root = String(workspace ?? "");
     const write = opts.writeFile ?? (async (path, content) => {
-      await mkdirFs(join(root, SESSION_GATE_STATE_DIR), { recursive: true });
-      await writeFileFs(path, content, "utf8");
+      const dir = join(root, SESSION_GATE_STATE_DIR);
+      await mkdirFs(dir, { recursive: true });
+      const temp = path + "." + randomUUID() + ".tmp";
+      try {
+        await writeFileFs(temp, content, "utf8");
+        await renameFs(temp, path);
+      } catch (error) {
+        await unlinkFs(temp).catch(() => {
+          return;
+        });
+        throw error;
+      }
     });
     await write(sessionGateStatePath(workspace, sessionId), JSON.stringify(state));
     return true;
@@ -1575,7 +1590,7 @@ function installRosterSection(dsh, options) {
 }
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
@@ -1943,7 +1958,7 @@ function userMessage(input) {
   Object.freeze(content);
   const source = { kind: "user", ...input?.source ?? {} };
   Object.freeze(source);
-  const message = { id: randomUUID(), role: "user", content, source };
+  const message = { id: randomUUID2(), role: "user", content, source };
   return Object.freeze(message);
 }
 function sessionCwdOf(agent) {
@@ -2289,7 +2304,7 @@ function normalizeSpawnResult(settled) {
     stopReason: typeof value.stopReason === "string" ? value.stopReason : null
   };
 }
-function activationHandleOf(raw, subagents) {
+function activationHandleOf(raw, subagents, parent) {
   const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
   let disposed = false;
   let interrupted = false;
@@ -2313,12 +2328,24 @@ function activationHandleOf(raw, subagents) {
       if (interrupted)
         return;
       interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
       try {
-        if (id !== "" && typeof subagents?.interrupt === "function")
-          subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" });
-        else if (typeof raw?.abort === "function")
-          raw.abort();
-      } catch {}
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
     }
   };
 }
@@ -3488,7 +3515,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        return activationHandleOf(activation, subagents);
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -3503,7 +3530,7 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      return activationHandleOf(run, subagents);
+      return activationHandleOf(run, subagents, spec.parent);
     },
     async spawnAgent(spec) {
       return (await adapter.spawnAgentAsync(spec)).result;
@@ -4047,15 +4074,14 @@ function installSessionGate(dsh, options) {
     const cached = reTeamStates.get(key);
     if (cached !== undefined)
       return cached;
-    const loaded = await readReTeamState(workspace, sessionId, {
+    const pending = readReTeamState(workspace, sessionId, {
       ...options.stateReadFile === undefined ? {} : { readFile: options.stateReadFile }
-    });
-    const state = loaded ?? emptyReTeamState();
-    reTeamStates.set(key, state);
-    return state;
+    }).then((loaded) => loaded ?? emptyReTeamState());
+    reTeamStates.set(key, pending);
+    return pending;
   }
   async function saveReTeamState(workspace, sessionId, state) {
-    reTeamStates.set(reTeamKeyOf(workspace, sessionId), state);
+    reTeamStates.set(reTeamKeyOf(workspace, sessionId), Promise.resolve(state));
     await writeReTeamState(workspace, sessionId, state, {
       ...options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }
     });
@@ -4183,11 +4209,15 @@ function installSessionGate(dsh, options) {
     await saveReTeamState(workspace, sessionId, state);
   }
   async function fireReTeam(input) {
-    const state = await loadReTeamState(input.workspace, input.sessionId);
     const key = reTeamKeyOf(input.workspace, input.sessionId);
+    if (firing.has(key)) {
+      gateTrace("re-team fire in flight agent=" + input.agentId);
+      return;
+    }
     firing.add(key);
-    let outcome = { ok: false, planId: "", alreadyStaged: false };
     try {
+      const state = await loadReTeamState(input.workspace, input.sessionId);
+      let outcome = { ok: false, planId: "", alreadyStaged: false };
       if (input.mode === GATE_MODE_MECHANICAL) {
         outcome = await stagePlan({
           agent: input.agent,
@@ -4201,27 +4231,27 @@ function installSessionGate(dsh, options) {
           warn('re-team gate: staging degraded for agent "' + input.agentId + '" (' + String(outcome.error) + ")");
         }
       }
+      const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged;
+      const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged;
+      await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "");
+      if (input.agentId !== "")
+        acted.add(input.agentId);
+      report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold) + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      if (staged && outcome.planId === "") {
+        warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + input.agentId + '" — the shell is staged but cannot be approved');
+      }
+      gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged));
+      return reTeamNoticeText({
+        count: input.count,
+        threshold: input.threshold,
+        staged,
+        alreadyStaged,
+        planId: staged || alreadyStaged ? outcome.planId : "",
+        ...outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }
+      });
     } finally {
       firing.delete(key);
     }
-    const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged;
-    const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged;
-    await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "");
-    if (input.agentId !== "")
-      acted.add(input.agentId);
-    report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold) + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
-    if (staged && outcome.planId === "") {
-      warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + input.agentId + '" — the shell is staged but cannot be approved');
-    }
-    gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged));
-    return reTeamNoticeText({
-      count: input.count,
-      threshold: input.threshold,
-      staged,
-      alreadyStaged,
-      planId: staged || alreadyStaged ? outcome.planId : "",
-      ...outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }
-    });
   }
   const stepHandler = (bound) => async (payload, decision) => {
     try {
@@ -4283,7 +4313,7 @@ function installSessionGate(dsh, options) {
           await autoEndCleanTerminal(agent, target);
         }
         const settled = state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== "";
-        const bound2 = state.teamIdAtFire === "" || (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire);
+        const bound2 = state.teamIdAtFire !== "" && (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire) || state.lastFiredAt !== 0 && (leading.terminalEndedAt ?? []).some((endedAt) => endedAt > state.lastFiredAt);
         if (settled && bound2) {
           state.lastFiredAt = 0;
           state.planId = "";
@@ -4302,6 +4332,8 @@ function installSessionGate(dsh, options) {
         const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY));
         if (state.consultCount >= afterConsults) {
           const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults });
+          if (noticeText === undefined)
+            return;
           return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
             text: noticeText,
             source: { kind: "mpd-roles", reason: "re-team-trigger" }
@@ -4332,6 +4364,10 @@ function installSessionGate(dsh, options) {
       });
       if (verdict.trigger !== true) {
         gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
+        return;
+      }
+      if (firing.has(stateKey)) {
+        gateTrace("fire in flight agent=" + agentId);
         return;
       }
       firing.add(stateKey);
@@ -4854,7 +4890,7 @@ function createConsultSupervisor(deps) {
     done.catch(() => {
       return;
     });
-    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false };
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false };
   };
   const reportFrom = (record, result) => {
     const structured = result.structured ?? {};
@@ -4882,7 +4918,7 @@ function createConsultSupervisor(deps) {
       clearTimer(record.timer);
       record.timer = undefined;
     }
-    if (!record.released) {
+    if (record.held && !record.released) {
       record.released = true;
       release();
     }
@@ -4898,7 +4934,7 @@ function createConsultSupervisor(deps) {
       clearTimer(record.timer);
       record.timer = undefined;
     }
-    if (!record.released) {
+    if (record.held && !record.released) {
       record.released = true;
       release();
     }
@@ -5010,6 +5046,7 @@ function createConsultSupervisor(deps) {
     records.set(record.id, record);
     (async () => {
       await acquire();
+      record.held = true;
       if (record.reported) {
         if (!record.released) {
           record.released = true;
@@ -5045,7 +5082,7 @@ function createConsultSupervisor(deps) {
   const wait = async (consultId, timeoutMs) => {
     const record = requireRecord(consultId);
     if (record.reported)
-      return record.report ?? viewOf(record);
+      return record.report ?? { ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } };
     const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
     return await new Promise((resolve3) => {
       let timer;
@@ -5062,7 +5099,7 @@ function createConsultSupervisor(deps) {
       }, () => {
         if (timer !== undefined)
           clearTimer(timer);
-        resolve3(viewOf(record));
+        resolve3({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
       });
     });
   };
@@ -5605,7 +5642,13 @@ Work with the tools your role requires (read-only roles must never modify anythi
           ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         })
       });
-      return await consultSupervisor.settle(view.consultId);
+      try {
+        return await consultSupervisor.settle(view.consultId);
+      } finally {
+        try {
+          consultSupervisor.collect(view.consultId);
+        } catch {}
+      }
     }
   });
   async function raiseConsultAsync(args, exec) {
@@ -5661,7 +5704,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   });
   dsh.registerTool({
     name: "mpd_role_consult",
-    description: 'Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:"running" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult\'s child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults appear here too and can be collected once their caller finished.',
+    description: 'Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:"running" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult\'s child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults are listed here WHILE they run; their own caller releases the settled record.',
     parameters: { type: "object", properties: { action: { type: "string", enum: ["list", "wait", "collect", "cancel"] }, consultId: { type: "string", description: "the id mpd_role_spawn_async returned (required except for list)" }, timeoutMs: { type: "integer", minimum: 1, maximum: 60000, description: "wait bound in ms (default 30000, clamped to 60000)" } }, required: ["action"], additionalProperties: false },
     output: { schema: { type: "object", properties: { action: { type: "string" }, consults: { type: "array", items: { type: "object" } }, consultId: { type: "string" }, role: { type: "string" }, state: { type: "string" }, startedAt: { type: "integer" }, elapsedMs: { type: "integer" }, report: { type: "object" }, error: { type: "string" } }, required: ["action"] }, render: (_a, v) => textBlock("consult " + v.action + (Array.isArray(v.consults) ? " (" + v.consults.length + `):
 ` + v.consults.map((c) => "- " + c.consultId + " [" + c.role + "] " + c.state + " " + c.elapsedMs + "ms").join(`

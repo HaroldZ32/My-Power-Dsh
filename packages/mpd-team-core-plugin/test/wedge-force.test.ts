@@ -8,8 +8,9 @@
 //   d. the work is SPLIT: one row per declared write scope (>= 2 scopes) or ONE `[split]` continuation;
 //   e. the captain gets ONE mailbox row;
 //   f. the journal gets ONE `wedged-force` row.
-// Plus the two guards the incide11nts demanded: the CAPTAIN is never a force target, and a HANDOFF
-// WRITE failure aborts this attempt as retryable (nothing is interrupted).
+// Plus the guards the incidents demanded: only the team's LEAD may force, the CAPTAIN is never a force
+// target, a HANDOFF WRITE failure aborts this attempt as retryable (nothing is interrupted), and a
+// reassignment or a sibling write that lands MID-FORCE is refused or PRESERVED — never overwritten.
 //
 // Every arm reads the STORE FILES, not the reply: a reply can claim a requeue while the record on disk
 // still says `in_progress`.
@@ -46,6 +47,8 @@ interface Observed {
   interrupts: Array<{ handle: string; caller: unknown }>
   /** Set to make the executor's interrupt throw (the refusal arm). */
   interruptError: string | null
+  /** Runs INSIDE the interrupt seam, so an arm can land a concurrent write while the force awaits. */
+  onInterrupt?: () => void
 }
 
 /** One mounted fixture: the deps bundle, the caller and what the seams recorded. */
@@ -76,6 +79,8 @@ function fixture(): Fixture {
     send: async (): Promise<void> => {},
     interrupt: async (caller: unknown, handle: string): Promise<void> => {
       observed.interrupts.push({ handle, caller })
+      // A sibling writer landing MID-AWAIT, which the arms that check the post-await read script here.
+      observed.onInterrupt?.()
       if (observed.interruptError !== null) throw new Error(observed.interruptError)
     },
     membership: (): undefined => undefined,
@@ -127,11 +132,15 @@ describe("D3.4 — the force action", () => {
     const box = fixture()
     // The team, with TWO declared write scopes (so the split is per scope).
     const created = teamWith(box.workspace)
-    // The force, as the watchdog would issue it (attempt 1, elapsed just past the bound).
+    // The force, as the watchdog would issue it (attempt 1, elapsed just past the bound). The
+    // watchdog's `attemptId` IS the row's `revision`, which the claim above bumped to 2.
+    /** The row's own generation token, exactly as the watchdog projects it. */
+    const generation = String(created.tasks.find((task) => task.id === "T1")?.revision ?? "")
+    /** What the force answered. */
     const outcome = await forceWedgedTask(box.deps, box.caller, {
       teamId: created.teamId,
       taskId: "T1",
-      evidence: { attemptId: "1", elapsedMs: 901_000, lastToolCalls: ["bash", "edit"] },
+      evidence: { attemptId: generation, elapsedMs: 901_000, lastToolCalls: ["bash", "edit"] },
     })
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) throw new Error(outcome.error)
@@ -328,5 +337,86 @@ describe("D3.4 — the force action", () => {
     if (outcome.ok) throw new Error("a pending row must not be forced")
     expect(outcome.error).toContain('is "pending"')
     expect(handoffs(box.workspace)).toEqual([])
+  })
+
+  test("a NON-LEAD live session is refused before any write or interrupt", async () => {
+    // The fixture: the deps and the team, whose lead is `LEAD`.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // A LIVE session that is NOT this team's lead — the member's own executor handle.
+    const intruder: TeamActionCaller = { ...box.caller, sessionId: MEMBER }
+    // The force, issued by the foreign session.
+    const outcome = await forceWedgedTask(box.deps, intruder, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error("a non-lead caller must not force a member")
+    expect(outcome.error).toContain("is not the lead")
+    // NOTHING was interrupted, no handoff was written, and the board is untouched.
+    expect(box.observed.interrupts).toEqual([])
+    expect(handoffs(box.workspace)).toEqual([])
+    /** The record as the refusal left it: the row is still the member's, still in progress. */
+    const after = readTeam(box.workspace, created.teamId)
+    expect(after?.tasks.find((task) => task.id === "T1")?.status).toBe("in_progress")
+    expect(readTeamJournal(box.workspace).filter((entry) => entry.event === "wedged-force")).toEqual([])
+  })
+
+  test("a row REASSIGNED between the decision and the interrupt is not forced", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // The clock seam runs ONCE, before the read-again guard: this is exactly the window a sibling
+    // writer can land a reassignment in, with no other suspense in between.
+    let landed = false
+    box.deps.now = () => {
+      if (!landed) {
+        landed = true
+        /** The board as the reassigning writer read it. */
+        const fresh = readTeam(box.workspace, created.teamId)
+        if (fresh !== undefined) writeTeam(box.workspace, updateTeamTask(fresh, "T1", { owner: "another-member" }, NOW))
+      }
+      return NOW
+    }
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error("a reassigned row must not be forced")
+    expect(outcome.error).toContain("no longer owned by")
+    // Nobody was interrupted, no handoff was written, and the reassignment STANDS.
+    expect(box.observed.interrupts).toEqual([])
+    expect(handoffs(box.workspace)).toEqual([])
+    /** The record as the refusal left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    expect(after?.tasks.find((task) => task.id === "T1")?.owner).toBe("another-member")
+  })
+
+  test("a concurrent write that lands DURING the interrupt SURVIVES the force", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test (TWO declared scopes, so the split is per scope).
+    const created = teamWith(box.workspace)
+    // The sibling writer: while the force awaits the interrupt, another actor adds a row.
+    box.observed.onInterrupt = () => {
+      /** The board as the sibling writer read it. */
+      const fresh = readTeam(box.workspace, created.teamId)
+      if (fresh === undefined) throw new Error("the sibling writer must find the team")
+      writeTeam(box.workspace, addTeamTask(fresh, { subject: "a concurrent row", description: "landed mid-force", writeScopes: [] }, NOW))
+    }
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    /** The record as the force left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    if (after === undefined) throw new Error("the team record vanished")
+    // THE PIN: the requeue is built on the record read AFTER the await, so the sibling's row is still
+    // there — a snapshot taken before the interrupt would have silently dropped it.
+    expect(after.tasks.some((task) => task.subject === "a concurrent row")).toBe(true)
+    // ... and the force still did its own work: the requeue and the two split rows.
+    /** The requeued row, read back from disk. */
+    const row = after.tasks.find((task) => task.id === "T1")
+    expect(row?.status).toBe("pending")
+    expect(row?.attempt).toBe(2)
+    expect(after.tasks.filter((task) => task.subject.startsWith("[split]")).length).toBe(2)
   })
 })

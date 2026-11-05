@@ -45,6 +45,15 @@ import {
 
 /** The roster's ONE-SHOT consult tool: the only route a child of this engine is raised through. */
 export const ROLE_SPAWN_TOOL = "mpd_role_spawn"
+/**
+ * The roster's consult-registry tool, read for the supervision state the engine defers to.
+ *
+ * The roster's consult supervisor is the ONE deadline owner for a child: it is the only surface that
+ * can see the child's CURRENT tool call and therefore the only one that can honour the open-`bash`
+ * exemption (which has NO age bound). `mpd_role_consult {action:"list"}` is how the engine asks
+ * whether that supervisor is still supervising — see `consult`.
+ */
+export const ROLE_CONSULT_TOOL = "mpd_role_consult"
 /** The verify plane's loop opener. */
 export const VERIFY_OPEN_TOOL = "mpd_verify_open"
 /** The cellwork entry the escalation hand-off prefers when wave W2 has registered it. */
@@ -80,13 +89,19 @@ const ROW_LOG = "mpd-autoproject"
 /** The live config key naming how many children one autoproject run may hold in flight at once. */
 export const SLOTS_CONFIG_KEY = "autoproject.slots"
 
-/** The live config key naming the hard time bound on ONE child, in milliseconds. */
+/** The live config key naming the engine's BACKSTOP bound on one consult, in milliseconds. */
 export const SLOT_BOUND_CONFIG_KEY = "autoproject.slotBoundMs"
 
 /** How many children may be in flight when neither the live layer nor the row config speaks. */
 export const SLOTS_DEFAULT = 3
 
-/** The hard bound on one child when neither the live layer nor the row config speaks: 15 minutes — the SAME bound the consult deadman uses (§D0.2, one ledger not two timers). */
+/**
+ * The engine's BACKSTOP bound on one consult when neither the live layer nor the row config speaks:
+ * 15 minutes, the same order as the roster's consult deadman — but the VALUE is not what makes the
+ * two agree. The roster supervisor owns the child's deadline (it alone sees the open-`bash` exemption);
+ * this bound only decides when the engine CHECKS whether that supervision is still alive, so an
+ * override changes the check interval, never the child's deadline (§D0.2).
+ */
 export const SLOT_BOUND_DEFAULT_MS = 900_000
 
 /** The slice of the host context the engine reads: services only, resolved per call. */
@@ -219,7 +234,7 @@ interface GoalBridge {
   finish(exec: unknown, input: { outcome: "complete" | "blocked"; source: string; reason?: string }): Promise<{ ok: boolean; outcome: string; error?: string }>
 }
 
-/** ONE child the hard bound killed, as `state.json` records it. */
+/** ONE child the engine's backstop bound or the supervisor's deadman killed, as `state.json` records it. */
 export interface SlotKill {
   /** The roster role the killed child was raised as. */
   role: string
@@ -282,7 +297,7 @@ interface RunState {
   verifyLoopId?: string
   /** How many children this run may hold in flight at once (`autoproject.slots`). */
   slots?: number
-  /** The hard bound on ONE child (`autoproject.slotBoundMs`), in milliseconds. */
+  /** The engine's backstop bound on ONE consult (`autoproject.slotBoundMs`), in milliseconds. */
   slotBoundMs?: number
   /** The high-water mark of children in flight, so a reader can see the cap in force. */
   slotsPeak?: number
@@ -658,16 +673,21 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
   /** Criterion keys whose boulder timer is currently running. */
   const timersRunning = new Set<string>()
 
-  // ── THE SLOT LEDGER AND THE HARD BOUND (W4-A2, adopted from the superagent prototype) ──────────
+  // ── THE SLOT LEDGER AND THE DEFERRED BOUND (W4-A2, adopted from the superagent prototype) ─────
   // A run must never be able to IMPLY "still working" while a child has actually hung. Every child is
-  // held by a SLOT from launch to report, slots are capped (`autoproject.slots`, default 3, read from
-  // the LIVE config layer per run so a `.mpd/mpd.jsonc` edit applies to the next run), and a slot has a
-  // hard time bound (`autoproject.slotBoundMs`, default 1_800_000 ms = 30 min). A child past the bound
-  // is aborted through its AbortSignal, the kill is journaled and recorded in `state.json`, its slot is
+  // held by a SLOT from launch to report, and slots are capped (`autoproject.slots`, default 3, read
+  // from the LIVE config layer per run so a `.mpd/mpd.jsonc` edit applies to the next run).
+  // THE DEADLINE OWNER IS THE ROSTER'S CONSULT SUPERVISOR (CR r1): it alone can see the child's
+  // CURRENT tool call, so it alone can honour the open-`bash` exemption, which has NO age bound. The
+  // engine's `autoproject.slotBoundMs` (default `SLOT_BOUND_DEFAULT_MS`) is therefore a LIVENESS
+  // BACKSTOP, not a second deadline: when it fires the engine asks the supervisor
+  // (`mpd_role_consult {action:"list"}`) whether a consult of THIS role is still running, and while
+  // one is it re-arms instead of aborting the child. Only a consult the supervisor no longer reports (a broken
+  // or absent roster) is aborted at the bound, journaled and recorded in `state.json`, its slot is
   // released, and the run ends `blocked` — never `complete`, never "still running".
   /** How many children may be in flight at once, resolved per run (live layer, then row, then 3). */
   const slotCount = Math.max(1, Math.trunc(Number(liveConfigValue(ctx, SLOTS_CONFIG_KEY) ?? config.slots ?? SLOTS_DEFAULT) || SLOTS_DEFAULT))
-  /** The hard bound on one child, in milliseconds, resolved per run (live layer, row, then 30 min). */
+  /** The engine's backstop bound, in milliseconds, resolved per run (live layer, row, then the exported default). */
   const slotBoundMs = Math.max(1, Math.trunc(Number(liveConfigValue(ctx, SLOT_BOUND_CONFIG_KEY) ?? config.slotBoundMs ?? SLOT_BOUND_DEFAULT_MS) || SLOT_BOUND_DEFAULT_MS))
   /** Children currently holding a slot. */
   let slotsHeld = 0
@@ -725,11 +745,52 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
   }
 
   /**
-   * Raise ONE roster consult under the slot ledger and the hard bound.
+   * Whether the roster's consult supervisor still reports a RUNNING consult of this role.
+   *
+   * This is the ONE question the engine may ask before aborting a child at its backstop bound
+   * (`ROLE_CONSULT_TOOL`, action `list`). A running record means the supervisor still owns that
+   * consult's deadline — it is about to interrupt a wedged child itself, or it has exempted an OPEN
+   * `bash` call and re-armed its deadman, which has NO age bound. Anything else (the tool absent, the
+   * probe failing, no running consult of this role) reads as NOT supervised, which is the safe
+   * direction for a backstop: the engine then records its own kill exactly as before.
+   *
+   * The role filter keeps the deferral as narrow as the registry allows: a consult of ANOTHER role is
+   * not evidence about this child. A same-role SIBLING still defers the kill (the registry exposes no
+   * per-call identity), which only delays a backstop kill — it never aborts a supervised child.
+   * @param role - the roster role name this consult was raised as.
+   * @returns true when at least one consult of that role is reported `running`.
+   */
+  async function rosterStillSupervising(role: string): Promise<boolean> {
+    if (!dsh.hasTool(ROLE_CONSULT_TOOL, exec?.agent)) return false
+    try {
+      /** The supervisor's registry snapshot; the adapter normalizes failures to `isError`. */
+      const result = await dsh.executeTool({ name: ROLE_CONSULT_TOOL, arguments: { action: "list" }, agent: exec?.agent })
+      if (result?.ok !== true || result.isError === true) return false
+      /** The tool value, read field by field because a tool value is untyped. */
+      const value = (result.value ?? {}) as Record<string, unknown>
+      /** The listed consults, when the answer carries the documented array. */
+      const consults = Array.isArray(value.consults) ? value.consults : []
+      return consults.some((entry) => {
+        if (entry === null || typeof entry !== "object") return false
+        /** The listed consult, narrowed once for both fields. */
+        const view = entry as { state?: unknown; role?: unknown }
+        return view.state === "running" && view.role === role
+      })
+    } catch {
+      // A probe that throws must never take the run down: the backstop then behaves as it always did.
+      return false
+    }
+  }
+
+  /**
+   * Raise ONE roster consult under the slot ledger, deferring to the supervisor's deadline.
    *
    * A SLOT IS HELD FROM LAUNCH TO REPORT and released in a `finally`, so a throwing or refusing child
-   * cannot leak it. A child past `autoproject.slotBoundMs` is aborted, recorded as `late/killed:<role>`,
-   * and answered as `null` — the run's status is forced to `blocked` at the end.
+   * cannot leak it. The child is raised ONCE; when `autoproject.slotBoundMs` fires the engine does NOT
+   * abort it while the roster reports a running consult — the supervisor owns the deadline and may be
+   * exempting an open `bash` call. A consult the supervisor no longer reports is aborted, recorded as
+   * `late/killed:<role>`, and answered as `null`; an `interrupted` report (the supervisor's own kill)
+   * is recorded by `consultOnce`. Either way the run's status is forced to `blocked` at the end.
    *
    * @param role - the roster role name.
    * @param task - the task text handed to the consult.
@@ -746,26 +807,41 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
     const signal = composedSignalOf(exec?.signal, controller)
     /** The bound's timer, cleared on every exit path. */
     let timer: ReturnType<typeof setTimeout> | undefined
+    // THE CHILD IS RAISED ONCE: a deferred bound must never spawn a second child for the same consult.
+    /** The child's own settlement (its normalized report, or null when it could not be raised). */
+    const child = consultOnce(role, task, context, signal)
     try {
-      /** A promise that settles ONLY when the bound fires. */
-      const expired = new Promise<"timeout">((resolve) => {
-        timer = setTimeout(() => { try { controller.abort() } catch { /* already aborted */ } resolve("timeout") }, slotBoundMs)
-      })
-      /** Whichever finishes first: the child's report or the bound. */
-      const raced = await Promise.race([consultOnce(role, task, context, signal), expired])
-      if (raced !== "timeout") return raced
-      /** How long the killed child had been running. */
-      const elapsedMs = Date.now() - startedAt
-      /** The durable row this kill writes. */
-      const kill: SlotKill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave }
-      killed.push(kill)
-      state.kills = killed
-      state.slots = slotCount
-      state.slotBoundMs = slotBoundMs
-      writeJson(stateFile, state)
-      stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave)
-      dsh.rowLog?.(ROW_LOG, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)")
-      return null
+      for (;;) {
+        /** A promise that settles ONLY when the bound fires. */
+        const expired = new Promise<"timeout">((resolve) => {
+          timer = setTimeout(() => resolve("timeout"), slotBoundMs)
+        })
+        /** Whichever finishes first: the child's report or the bound. */
+        const raced = await Promise.race([child, expired])
+        if (raced !== "timeout") return raced
+        if (timer !== undefined) { clearTimeout(timer); timer = undefined }
+        // THE BOUND FIRED. The supervisor's settlement/exemption state decides, never the clock: while
+        // it reports a running consult it is still supervising this child, so aborting here would kill
+        // exactly the child the open-bash exemption protects.
+        if (await rosterStillSupervising(role)) {
+          dsh.rowLog?.(ROW_LOG, "consult " + role + " is still supervised by its roster deadman at the " + slotBoundMs + " ms slot bound — the engine re-armed instead of aborting the child")
+          continue
+        }
+        // NO LIVE SUPERVISION: this is the backstop the bound exists for (an absent or broken roster).
+        try { controller.abort() } catch { /* already aborted */ }
+        /** How long the killed child had been running. */
+        const elapsedMs = Date.now() - startedAt
+        /** The durable row this kill writes. */
+        const kill: SlotKill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave }
+        killed.push(kill)
+        state.kills = killed
+        state.slots = slotCount
+        state.slotBoundMs = slotBoundMs
+        writeJson(stateFile, state)
+        stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave)
+        dsh.rowLog?.(ROW_LOG, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)")
+        return null
+      }
     } finally {
       if (timer !== undefined) clearTimeout(timer)
       releaseSlot()

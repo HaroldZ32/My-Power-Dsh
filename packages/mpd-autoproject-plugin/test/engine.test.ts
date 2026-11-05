@@ -51,6 +51,8 @@ interface ExecutedCall {
   arguments: any
   /** The agent handle the call was attributed to. */
   agent?: unknown
+  /** The cancellation signal the engine handed the call, when it handed one. */
+  signal?: unknown
 }
 
 /** One seam tool: what the fake `executeTool` answers for a name it does not find in the registry. */
@@ -85,6 +87,10 @@ interface HarnessOptions {
   slotBoundMs?: number
   /** A role whose consult NEVER settles, which is how a hung child is simulated. */
   hangRole?: string
+  /** A role whose consult pends PAST the engine bound and then settles — an exempted (open-bash) child. */
+  slowRole?: { role: string; settleAfterMs: number }
+  /** The role the fake roster's consult registry reports as RUNNING until the slow child settles. */
+  supervisedRole?: string
   /** A role whose consult reports `status:"interrupted"` — the roster deadman's settlement (§D0.2). */
   interruptRole?: string
   /** Any further LIVE `mpd.jsonc` keys this arm sets, so a run can switch escalation off. */
@@ -159,6 +165,9 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     writeFileSync(join(dir, "rec-" + loopId + ".json"), JSON.stringify({ recordId: "rec-" + loopId, loopId, writerId: "w", verifierId: "v", verdict: "PASS", createdAt: new Date().toISOString() }))
   }
 
+  /** Whether the fake roster's consult registry still reports a RUNNING consult (what the engine probes). */
+  let supervisedLive = options.supervisedRole !== undefined
+
   /**
    * Answer one roster consult the way the roster would, keyed by role.
    *
@@ -176,8 +185,21 @@ function makeHarness(options: HarnessOptions = {}): Harness {
     if (options.interruptRole !== undefined && role === options.interruptRole) {
       return { role, status: "interrupted", summary: "consult interrupted by the 15-minute deadman", recommendation: "", details: "", evidence: [], stopReason: "interrupted", consultId: "consult-test", handoff: join(workspace, ".mpd", "handoff", "consult-test.md"), elapsedMs: 900_000 }
     }
-    // A HUNG CHILD: the promise never settles, which is exactly the failure the hard bound exists for.
+    // A HUNG CHILD: the promise never settles, which is exactly the failure the backstop bound exists for.
     if (options.hangRole !== undefined && role === options.hangRole) return new Promise<Record<string, unknown>>(() => {})
+    // AN EXEMPTED CHILD: it pends PAST the engine bound and then settles, which is how a child the
+    // roster is still supervising (an OPEN bash call, exempt with no age bound) looks from the engine.
+    /** The slow role this arm configured, if any. */
+    const slow = options.slowRole
+    if (slow !== undefined && role === slow.role) {
+      return new Promise<Record<string, unknown>>((resolve) => {
+        setTimeout(() => {
+          // The child settled, so the supervisor no longer reports it as running.
+          supervisedLive = false
+          resolve({ role, status: "complete", summary: "round done", recommendation: options.roundStatus ?? "STATUS: complete", details: "", evidence: criteria.map((label, index) => (index + 1) + ":: proven: " + label) })
+        }, slow.settleAfterMs)
+      })
+    }
     /** The task text, which is how these doubles tell the verify consult from a quality lane. */
     const task = String(args?.task ?? "")
     if (role === options.unconfiguredRole) {
@@ -219,6 +241,19 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   seam.set("mpd_role_spawn", { execute: (args: any) => roleReport(args) })
   seam.set("mpd_verify_open", { execute: () => ({ loopId: LOOP_ID, writer: { kind: "delegate" }, verifier: { id: "unbound" }, scope: [], expiresAt: new Date().toISOString() }) })
   if (options.cellwork === true) seam.set("cellwork_open", { execute: () => ({ cellId: "cell-test" }) })
+  // THE SUPERVISOR'S LIVENESS READ (CR r1): the engine defers its backstop bound while this reports a
+  // running consult — a child the roster's deadman is still supervising, e.g. an OPEN bash call it
+  // exempts with no age bound. A run with no live supervision reads as an empty registry.
+  if (options.supervisedRole !== undefined) {
+    seam.set("mpd_role_consult", {
+      execute: (args: any) => {
+        if (String(args?.action ?? "") !== "list") return { action: String(args?.action ?? "") }
+        /** The registry the fake supervisor would answer with: its one running consult, while it lives. */
+        const consults = supervisedLive ? [{ consultId: "consult-supervised", role: options.supervisedRole, state: "running", startedAt: Date.now(), elapsedMs: 0 }] : []
+        return { action: "list", consults }
+      },
+    })
+  }
 
   /** The tools registry: what `registerTool` writes, `hasTool` reads and `executeTool` drives. */
   const toolsService = {
@@ -233,10 +268,10 @@ function makeHarness(options: HarnessOptions = {}): Harness {
      * @param input - the harness's call description.
      * @returns the harness's `{value}` / `{isError}` result shape.
      */
-    async execute(input: { name?: unknown; arguments?: unknown; agent?: unknown }): Promise<unknown> {
+    async execute(input: { name?: unknown; arguments?: unknown; agent?: unknown; signal?: unknown }): Promise<unknown> {
       /** The name the caller asked for. */
       const name = String(input?.name ?? "")
-      calls.push({ name, arguments: input?.arguments, agent: input?.agent })
+      calls.push({ name, arguments: input?.arguments, agent: input?.agent, signal: input?.signal })
       /** The seam double of that name, when this arm holds one. */
       const doubled = seam.get(name)
       try {
@@ -858,4 +893,40 @@ test("(e) an interrupted consult records a SlotKill row and the ledger stamp, an
   /** The run's journal lines. */
   const journal = readFileSync(res.stateFile.replace(/state\.json$/, "ledger.jsonl"), "utf8")
   expect(journal).toContain("late/interrupted:Junior Engineer")
+})
+
+// CR r1: THE DEADLINE OWNER IS THE ROSTER'S CONSULT SUPERVISOR. A child it is still supervising — an
+// OPEN `bash` call is EXEMPT from its deadman with no age bound — must NOT be aborted by the engine's
+// own `autoproject.slotBoundMs`: the engine's timer is a liveness backstop, not a second deadline.
+test("(f) a child the supervisor still reports RUNNING is not aborted by the engine bound", async () => {
+  /** The fake harness: the execution consult pends PAST the 30 ms bound, then settles. */
+  const h = makeHarness({
+    slowRole: { role: "Junior Engineer", settleAfterMs: 110 },
+    supervisedRole: "Junior Engineer",
+    slots: 1,
+    slotBoundMs: 30,
+    recordPass: true,
+    criteria: ["create the file"],
+    liveConfig: { "autoproject.escalate.mode": "off" },
+  })
+  apply(h.ctx, rowConfig(h.workspace))
+  /** The registered autoproject tool. */
+  const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")!
+  /** The run's answer. */
+  const res = await tool.execute({ objective: "create the widget", tier: "light", plan: false, maxRounds: 2 }, { agent: h.agent }) as any
+  // THE CHILD SURVIVED: its report advanced the round, so the run was NOT blocked by the engine timer.
+  expect(res.status).not.toBe("blocked")
+  /** The run's state document, read from disk. */
+  const state = JSON.parse(readFileSync(res.stateFile, "utf8"))
+  expect(state.kills).toEqual([])
+  /** The execution consult the engine raised. */
+  const childCall = h.calls.find((call) => call.name === "mpd_role_spawn" && call.arguments?.role === "Junior Engineer")
+  // THE SIGNAL WAS NEVER ABORTED: that abort is what killed the child before the supervisor could
+  // apply its open-bash exemption.
+  expect((childCall?.signal as AbortSignal | undefined)?.aborted).not.toBe(true)
+  // THE DEFERRAL IS OBSERVABLE: the engine really asked the supervisor's registry before re-arming.
+  expect(h.calls.some((call) => call.name === "mpd_role_consult" && call.arguments?.action === "list")).toBe(true)
+  /** The run's journal lines. */
+  const journal = readFileSync(res.stateFile.replace(/state\.json$/, "ledger.jsonl"), "utf8")
+  expect(journal).not.toContain("late/killed:Junior Engineer")
 })

@@ -72,7 +72,7 @@
 
 ### 只读 teammate 会被机械地拒绝
 
-那八个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
+那十个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
 
 - **单次咨询路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
 - **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。
@@ -94,7 +94,7 @@
 诊断依据是 boot 行 —— 恢复的 guard 报 **mode**，撤销的那个报 absent：
 
 ```
-[mpd-roles] team plane: readOnlyGuard=installed deny=8 \
+[mpd-roles] team plane: readOnlyGuard=installed deny=10 \
   captainInvestigation=deny \
   delegationGate=deny \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
@@ -152,6 +152,10 @@ trigger = explicit flag OR (matchedSignals >= 1)
   `status:"interrupted"` 结算该 consult，携带 handoff 路径与最后一次观测到的活动。
 
 监督器**绝不**中断 captain，也不中断另一个 consult 的子 agent：它只会调用自身 handle 的 `interrupt()`。
+
+**记录生命周期。** 后台 consult 会一直留在 `list` 中，直到被 collect 或 cancel。阻塞式
+`mpd_role_spawn` consult 只在其运行期间出现在 `list` 中：报告（或失败）被读取后，记录立刻由它自己的
+调用方释放，因此长时间的 autoproject/cellwork 会话不会让登记表无限增长。
 
 **只读纪律。** 拒绝清单现为 **十个**名字：八个可写工具加上 `mpd_role_spawn_async` 与
 `mpd_role_consult`（`cancel` 会修改另一个 consult）。consult 仍是叶子：子 agent 自己的作用域内

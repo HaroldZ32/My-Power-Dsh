@@ -4,8 +4,8 @@
 // WHY THE SPLIT (P3, measured): `node skills/dsh-qa/scripts/session-start-team.ts --self-test`
 // imports the gate's SOURCE under plain `node`, and the wiring module imports the harness ADAPTER,
 // whose own chain uses extensionless relative specifiers that `node` refuses. This module is
-// therefore node-resolvable by construction: `node:fs/promises` + `node:path` ONLY, no adapter
-// import at all, so the QA case and the unit tests can drive the frozen predicate and the two
+// therefore node-resolvable by construction: `node:crypto`, `node:fs/promises` + `node:path` ONLY, no
+// adapter import at all, so the QA case and the unit tests can drive the frozen predicate and the two
 // notice builders without a boot.
 //
 // The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with six signals A–F,
@@ -34,7 +34,8 @@
 // What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the DEFAULT
 // again since 2026-10-20: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory`
 // (one notice, stage nothing) or `off` (the gate does nothing at all).
-import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, writeFile as writeFileFs } from "node:fs/promises"
+import { randomUUID } from "node:crypto"
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, rename as renameFs, unlink as unlinkFs, writeFile as writeFileFs } from "node:fs/promises"
 import { join } from "node:path"
 // THE ADMISSION LADDER (contract §10 A4): who may originate work, as a classification BESIDE the
 // complexity predicate. The two modules read each other on purpose — this one needs the rung, and the
@@ -705,6 +706,14 @@ export interface LeadingTeamRead {
   cleanTerminal?: boolean
   /** EVERY record naming this session that is terminal (ended OR clean-terminal), in scan order. */
   terminalTeamIds?: readonly string[]
+  /**
+   * Those records' `endedAt` as epoch ms, INDEX-ALIGNED with {@link terminalTeamIds}.
+   *
+   * `NaN` when that record carries no parsable stamp — the clean-terminal shape, whose `endedAt` is
+   * stamped later by the auto-end call (rule 3). The re-team gate compares these against the
+   * settlement's fire instant to decide whether a terminal record is one the settlement OWNS (CR r1 [8]).
+   */
+  terminalEndedAt?: readonly number[]
   /** The NON-ended clean-terminal team ids the gate may auto-end (rule 3), in scan order. */
   autoEndTeamIds?: readonly string[]
   /** The first FAILED task on a record this session still leads; it blocks end AND re-team (rule 2). */
@@ -838,6 +847,8 @@ export async function readLeadingTeam(
     let terminal: { teamId: string; members: number; ended: boolean } | undefined
     /** Every terminal record's team id, so a re-armed settlement can be matched by team identity. */
     const terminalTeamIds: string[] = []
+    /** Every terminal record's end stamp as epoch ms, INDEX-ALIGNED with {@link terminalTeamIds}. */
+    const terminalEndedAt: number[] = []
     /** The NON-ended clean-terminal team ids the gate may auto-end (rule 3), in scan order. */
     const autoEndTeamIds: string[] = []
     for (const entry of entries) {
@@ -863,6 +874,9 @@ export async function readLeadingTeam(
         if (ended || board.cleanTerminal) {
           terminal = { teamId, members, ended }
           terminalTeamIds.push(teamId)
+          /** The record's own end stamp in epoch ms; `NaN` when it carries none (a clean board). */
+          const endedAtMs = typeof fields.endedAt === "string" ? Date.parse(fields.endedAt) : Number.NaN
+          terminalEndedAt.push(endedAtMs)
           if (!ended && board.cleanTerminal) autoEndTeamIds.push(teamId)
           continue
         }
@@ -887,6 +901,7 @@ export async function readLeadingTeam(
       members: terminal.members,
       ...(terminal.ended ? { ended: true } : { cleanTerminal: true }),
       terminalTeamIds,
+      terminalEndedAt,
       ...(autoEndTeamIds.length === 0 ? {} : { autoEndTeamIds }),
     }
   } catch {
@@ -1106,8 +1121,25 @@ export async function writeReTeamState(
     const root = String(workspace ?? "")
     /** The writer: the injected seam in a test, `node:fs/promises` plus `mkdir` in a boot. */
     const write = opts.writeFile ?? (async (path: string, content: string): Promise<void> => {
-      await mkdirFs(join(root, SESSION_GATE_STATE_DIR), { recursive: true })
-      await writeFileFs(path, content, "utf8")
+      /** The state directory, created before either file below is written into it. */
+      const dir = join(root, SESSION_GATE_STATE_DIR)
+      await mkdirFs(dir, { recursive: true })
+      // ATOMIC REPLACE (CR r1 [5]): two `writeReTeamState` calls for one session can overlap (a
+      // completed consult's counter and a pre-step's settlement), and an in-place `writeFile` can
+      // then leave mixed or truncated bytes whose decode reads `undefined` — losing the counter and
+      // the settlement the restart guarantee rests on. The content therefore lands in a temp file
+      // FIRST and is renamed over the destination: the rename is atomic, and the temp name is
+      // UNIQUE (a UUID), so overlapping writes never collide on it either.
+      /** A uniquely named temp file in the DESTINATION directory, so the rename never crosses a filesystem. */
+      const temp = path + "." + randomUUID() + ".tmp"
+      try {
+        await writeFileFs(temp, content, "utf8")
+        await renameFs(temp, path)
+      } catch (error) {
+        // A failed write must not leave its partial temp file behind; the destination is untouched.
+        await unlinkFs(temp).catch(() => undefined)
+        throw error
+      }
     })
     await write(sessionGateStatePath(workspace, sessionId), JSON.stringify(state))
     return true

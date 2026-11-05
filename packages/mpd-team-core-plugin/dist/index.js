@@ -651,7 +651,7 @@ function normalizeSpawnResult(settled) {
     stopReason: typeof value.stopReason === "string" ? value.stopReason : null
   };
 }
-function activationHandleOf(raw, subagents) {
+function activationHandleOf(raw, subagents, parent) {
   const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
   let disposed = false;
   let interrupted = false;
@@ -675,12 +675,24 @@ function activationHandleOf(raw, subagents) {
       if (interrupted)
         return;
       interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
       try {
-        if (id !== "" && typeof subagents?.interrupt === "function")
-          subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" });
-        else if (typeof raw?.abort === "function")
-          raw.abort();
-      } catch {}
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
     }
   };
 }
@@ -1850,7 +1862,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        return activationHandleOf(activation, subagents);
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -1865,7 +1877,7 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      return activationHandleOf(run, subagents);
+      return activationHandleOf(run, subagents, spec.parent);
     },
     async spawnAgent(spec) {
       return (await adapter.spawnAgentAsync(spec)).result;
@@ -6567,6 +6579,9 @@ async function forceWedgedTask(deps, caller, input) {
     const record = input.teamId === undefined ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage).record : readTeam(caller.workspace, input.teamId);
     if (record === undefined)
       return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId ?? "")} in this workspace` };
+    if (!recordNamesLead(record, [caller.sessionId, ...caller.lineage])) {
+      return { ok: false, error: `session ${caller.sessionId} is not the lead of team ${record.teamId} — only the lead may force a member` };
+    }
     const task = record.tasks.find((candidate) => candidate.id === input.taskId);
     if (task === undefined)
       return { ok: false, error: `no board row is named ${JSON.stringify(input.taskId)} on team ${record.teamId}` };
@@ -6588,6 +6603,20 @@ async function forceWedgedTask(deps, caller, input) {
     const startedAtIso = task.startedAt;
     const startedAt = typeof startedAtIso === "string" && Number.isFinite(Date.parse(startedAtIso)) ? Date.parse(startedAtIso) : typeof input.evidence?.startedAt === "number" ? input.evidence.startedAt : null;
     const elapsedMs = typeof input.evidence?.elapsedMs === "number" && Number.isFinite(input.evidence.elapsedMs) ? input.evidence.elapsedMs : startedAt === null ? 0 : Math.max(0, now.getTime() - startedAt);
+    const live = readTeam(caller.workspace, record.teamId);
+    if (live === undefined)
+      return { ok: false, error: `team ${record.teamId} is no longer readable — nothing was forced` };
+    const liveTask = live.tasks.find((candidate) => candidate.id === task.id);
+    if (liveTask === undefined || liveTask.status !== "in_progress") {
+      return { ok: false, error: `task ${task.id} is no longer in_progress — the force was not applied` };
+    }
+    const liveOwner = liveTask.owner !== undefined && liveTask.owner !== "" ? liveTask.owner : input.evidence?.member ?? "";
+    if (liveOwner === "" || memberNamedBy(live, [liveOwner])?.name !== member.name) {
+      return { ok: false, error: `task ${task.id} is no longer owned by ${member.name} — the force was not applied` };
+    }
+    if (input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" && String(liveTask.revision) !== input.evidence.attemptId) {
+      return { ok: false, error: `task ${task.id} has moved to generation ${String(liveTask.revision)} — the force was not applied` };
+    }
     let handoff;
     try {
       handoff = writeForceHandoff(caller.workspace, member.name, task.id, now, renderForceHandoff({
@@ -6621,7 +6650,10 @@ async function forceWedgedTask(deps, caller, input) {
       }
     }
     const attempt = (task.attempt ?? 0) + 1;
-    let next = updateTeamTask(record, task.id, { status: "pending", owner: "", attempt, note: `forced (wedged): handoff ${handoff}`, resetStartedAt: true }, now);
+    const armed = readTeam(caller.workspace, record.teamId);
+    if (armed === undefined)
+      return { ok: false, error: `team ${record.teamId} disappeared during the interrupt — the row was not requeued` };
+    let next = updateTeamTask(armed, task.id, { status: "pending", owner: "", attempt, note: `forced (wedged): handoff ${handoff}`, resetStartedAt: true }, now);
     const split = [];
     const scopes = task.writeScopes;
     const continuation = `Continuation of ${task.id} (${task.subject}) after the force supervisor interrupted ${member.name}. Handoff: ${handoff}.`;

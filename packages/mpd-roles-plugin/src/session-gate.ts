@@ -284,8 +284,14 @@ export function installSessionGate(
   }
 
   // ── THE RE-TEAM GATE'S STATE (D1) ──────────────────────────────────────────
-  /** One session's re-team record, kept IN MEMORY between steps and mirrored to its state file. */
-  const reTeamStates = new Map<string, ReTeamState>()
+  /**
+   * One session's re-team record per process, mirrored to its state file.
+   *
+   * The value is the SHARED LOAD PROMISE (CR r1 [7]), not the record: two concurrent callers — the
+   * pre-step and a completed consult's counter — must resolve to the SAME mutable record, so an
+   * increment is never lost to a second, rival load whose `set` would replace it.
+   */
+  const reTeamStates = new Map<string, Promise<ReTeamState>>()
   /** Sessions whose staging call is IN FLIGHT — the synchronous guard against a second stage. */
   const firing = new Set<string>()
   /** Team ids whose failed-task notice was already injected (ONE notice per team per process). */
@@ -315,17 +321,17 @@ export function installSessionGate(
   async function loadReTeamState(workspace: string, sessionId: string): Promise<ReTeamState> {
     /** The key this session's record is cached under. */
     const key = reTeamKeyOf(workspace, sessionId)
-    /** The already-loaded record, or undefined on the first touch of this session. */
+    /** The already-cached load — settled or still IN FLIGHT — or undefined on the first touch. */
     const cached = reTeamStates.get(key)
     if (cached !== undefined) return cached
-    /** The persisted record, or the zero record when the file is absent or unreadable. */
-    const loaded = await readReTeamState(workspace, sessionId, {
+    // THE IN-FLIGHT LOAD IS THE CACHE ENTRY (CR r1 [7]): it is stored BEFORE the first await, so a
+    // concurrent caller awaits THIS record instead of missing the cache and building a rival one.
+    /** The ONE shared load every caller of this key awaits. */
+    const pending = readReTeamState(workspace, sessionId, {
       ...(options.stateReadFile === undefined ? {} : { readFile: options.stateReadFile }),
-    })
-    /** The record this process will keep mutating from now on. */
-    const state = loaded ?? emptyReTeamState()
-    reTeamStates.set(key, state)
-    return state
+    }).then((loaded) => loaded ?? emptyReTeamState())
+    reTeamStates.set(key, pending)
+    return pending
   }
 
   /**
@@ -336,7 +342,9 @@ export function installSessionGate(
    * @returns nothing; a failed write leaves the in-memory count in force (never a throw).
    */
   async function saveReTeamState(workspace: string, sessionId: string, state: ReTeamState): Promise<void> {
-    reTeamStates.set(reTeamKeyOf(workspace, sessionId), state)
+    // The cache stores LOADS only (CR r1 [7]): persisting the live record wraps it in the SAME
+    // representation, so a later load answers exactly this record instead of bypassing the share.
+    reTeamStates.set(reTeamKeyOf(workspace, sessionId), Promise.resolve(state))
     await writeReTeamState(workspace, sessionId, state, {
       ...(options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }),
     })
@@ -625,7 +633,8 @@ export function installSessionGate(
    * the shell's name/description (built by `gatePlanShell` from the volume, not from a goal). Nothing
    * else is written: no member, no task, no approval.
    * @param input - the bound agent, the resolved session, the mode and the counted volume.
-   * @returns the notice text to inject; never a throw.
+   * @returns the notice text to inject, or `undefined` when a concurrent step already owned the
+   * staging call (that step injects its own notice); never a throw.
    */
   async function fireReTeam(input: {
     /** The LIVE agent the listener is bound to. */
@@ -642,15 +651,19 @@ export function installSessionGate(
     count: number
     /** The threshold those consults crossed. */
     threshold: number
-  }): Promise<string> {
-    /** The session's record, mutated by the fire below. */
-    const state = await loadReTeamState(input.workspace, input.sessionId)
+  }): Promise<string | undefined> {
     /** The in-memory key the synchronous in-flight guard uses. */
     const key = reTeamKeyOf(input.workspace, input.sessionId)
+    // THE RE-ENTRY GUARD IS ACQUIRED BEFORE THE FIRST AWAIT (CR r1 [9]): a concurrent pre-step that
+    // already owns this session's staging call returns WITHOUT staging, so its `create` cannot ARCHIVE
+    // the plan the winner just staged. Synchronous up to the `add`, so exactly one caller wins.
+    if (firing.has(key)) { gateTrace("re-team fire in flight agent=" + input.agentId); return undefined }
     firing.add(key)
-    /** What the staging ladder did; the advisory route leaves the degraded default. */
-    let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
     try {
+      /** The session's record, mutated by the fire below. */
+      const state = await loadReTeamState(input.workspace, input.sessionId)
+      /** What the staging ladder did; the advisory route leaves the degraded default. */
+      let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
       if (input.mode === GATE_MODE_MECHANICAL) {
         outcome = await stagePlan({
           agent: input.agent,
@@ -664,29 +677,31 @@ export function installSessionGate(
           warn("re-team gate: staging degraded for agent \"" + input.agentId + "\" (" + String(outcome.error) + ")")
         }
       }
+      /** Whether THIS fire staged a shell (an already-staged plan is NOT a new shell). */
+      const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged
+      /** Whether the ladder found a plan already staged for this session. */
+      const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged
+      await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "")
+      if (input.agentId !== "") acted.add(input.agentId)
+      report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold)
+        + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
+      if (staged && outcome.planId === "") {
+        warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + input.agentId + "\" — the shell is staged but cannot be approved")
+      }
+      gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged))
+      return reTeamNoticeText({
+        count: input.count,
+        threshold: input.threshold,
+        staged,
+        alreadyStaged,
+        planId: staged || alreadyStaged ? outcome.planId : "",
+        ...(outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }),
+      })
     } finally {
+      // The guard covers the WHOLE fire (stage, settlement and notice): a concurrent step waits for
+      // the settled state rather than reading a half-applied one.
       firing.delete(key)
     }
-    /** Whether THIS fire staged a shell (an already-staged plan is NOT a new shell). */
-    const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged
-    /** Whether the ladder found a plan already staged for this session. */
-    const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged
-    await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "")
-    if (input.agentId !== "") acted.add(input.agentId)
-    report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold)
-      + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
-    if (staged && outcome.planId === "") {
-      warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + input.agentId + "\" — the shell is staged but cannot be approved")
-    }
-    gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged))
-    return reTeamNoticeText({
-      count: input.count,
-      threshold: input.threshold,
-      staged,
-      alreadyStaged,
-      planId: staged || alreadyStaged ? outcome.planId : "",
-      ...(outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }),
-    })
   }
 
   /** One step handler, bound to the agent whose scope registered it. */
@@ -773,12 +788,16 @@ export function installSessionGate(
           await autoEndCleanTerminal(agent, target)
         }
         // RULE 4, THE TEAM-ENDED HALF: the settlement is CLEARED, so a later volume trigger can fire
-        // again. Cleared only when the record is bound to one of the terminal teams (or bound to
-        // none), so an unrelated stale record ending cannot re-arm a settlement it never owned.
+        // again. Cleared ONLY when a terminal record is one this settlement OWNS (CR r1 [8]) — by team
+        // identity when the fire named that team, or by that record's `endedAt` falling AFTER the
+        // fire's instant (the plan was approved and its team finished between two pre-steps). An
+        // unrelated stale record ending must NOT re-arm a settlement it never produced: that let a
+        // session re-nag on every complex turn, which is the nagging the settlement exists to stop.
         /** Whether this session carried ANY settlement worth clearing. */
         const settled = state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== ""
         /** Whether the settlement is bound to a team this read just classified as terminal. */
-        const bound = state.teamIdAtFire === "" || (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire)
+        const bound = (state.teamIdAtFire !== "" && (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire))
+          || (state.lastFiredAt !== 0 && (leading.terminalEndedAt ?? []).some((endedAt) => endedAt > state.lastFiredAt))
         if (settled && bound) {
           state.lastFiredAt = 0
           state.planId = ""
@@ -801,8 +820,9 @@ export function installSessionGate(
         /** The completed-consult volume this trigger needs, resolved PER CALL from the config layer. */
         const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY))
         if (state.consultCount >= afterConsults) {
-          /** The notice text the fire produced; the fire stages through the shared ladder. */
+          /** The notice text the fire produced; `undefined` means a concurrent step already owned the staging call. */
           const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults })
+          if (noticeText === undefined) return undefined
           return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
             text: noticeText,
             source: { kind: "mpd-roles", reason: "re-team-trigger" },
@@ -854,8 +874,11 @@ export function installSessionGate(
       if (verdict.trigger !== true) { gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60))); return undefined }
       // THE RE-ENTRY GUARD, taken IMMEDIATELY BEFORE the async stage: the harness may dispatch the
       // next pre-step while the staging call is still in flight, and a second stage would ARCHIVE the
-      // plan the first one just staged. The guard is released in `finally`; the SETTLEMENT written
-      // below (`acted` + `state.lastFiredAt`) is what keeps the session quiet afterwards (rule 4).
+      // plan the first one just staged. RE-CHECKED HERE (CR r1 [9]) because several awaits ran since
+      // the entry check above; the winner is decided SYNCHRONOUSLY at this `add`, so exactly one step
+      // stages. The guard is released in `finally`; the SETTLEMENT written below (`acted` +
+      // `state.lastFiredAt`) is what keeps the session quiet afterwards (rule 4).
+      if (firing.has(stateKey)) { gateTrace("fire in flight agent=" + agentId); return undefined }
       firing.add(stateKey)
       /** What the mechanical route did; the advisory route leaves it at this degraded default. */
       let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }

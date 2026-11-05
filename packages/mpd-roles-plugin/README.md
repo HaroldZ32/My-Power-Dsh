@@ -192,7 +192,7 @@ the provider cannot accept — while a model that declares efforts keeps the con
 
 ### A read-only teammate is denied mechanically
 
-The eight-name deny list is enforced on BOTH paths, from ONE exported constant
+The ten-name deny list is enforced on BOTH paths, from ONE exported constant
 (`READONLY_DENY`), so the two can never drift:
 
 - **single-call consult** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);
@@ -264,7 +264,7 @@ agent's recorded verdict, which is a discipline, not a hook.
 The diagnostic is the boot line — the restored guards report their MODE, the withdrawn one its absence:
 
 ```
-[mpd-roles] team plane: readOnlyGuard=installed deny=8   captainInvestigation=deny   delegationGate=deny   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
+[mpd-roles] team plane: readOnlyGuard=installed deny=10   captainInvestigation=deny   delegationGate=deny   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
 ```
 
 The restore is recorded in `.mpd/plans/restore-guard-discipline.md`; the QA cases that assert it are
@@ -347,6 +347,11 @@ over-cap consult QUEUES and never throws. The cap is read per start.
 
 The supervisor never interrupts the captain or another consult's child: it only ever calls its own
 handle's `interrupt()`.
+
+**Record lifetime.** A BACKGROUND consult is listed until it is collected or cancelled. A BLOCKING
+`mpd_role_spawn` consult is listed while it runs and its record is released by its own caller the
+moment the report (or the failure) has been read, so a long autoproject/cellwork session cannot grow
+the registry.
 
 **Read-only discipline.** The deny list is now TEN names: the eight write-capable tools plus
 `mpd_role_spawn_async` and `mpd_role_consult` (`cancel` mutates another consult). A consult is still

@@ -1314,7 +1314,7 @@ function normalizeSpawnResult(settled) {
     stopReason: typeof value.stopReason === "string" ? value.stopReason : null
   };
 }
-function activationHandleOf(raw, subagents) {
+function activationHandleOf(raw, subagents, parent) {
   const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
   let disposed = false;
   let interrupted = false;
@@ -1338,12 +1338,24 @@ function activationHandleOf(raw, subagents) {
       if (interrupted)
         return;
       interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
       try {
-        if (id !== "" && typeof subagents?.interrupt === "function")
-          subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" });
-        else if (typeof raw?.abort === "function")
-          raw.abort();
-      } catch {}
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
     }
   };
 }
@@ -2513,7 +2525,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        return activationHandleOf(activation, subagents);
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -2528,7 +2540,7 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      return activationHandleOf(run, subagents);
+      return activationHandleOf(run, subagents, spec.parent);
     },
     async spawnAgent(spec) {
       return (await adapter.spawnAgentAsync(spec)).result;
@@ -3335,7 +3347,7 @@ function buildBoulderStatusCard(_args, value) {
 var BOULDER_STATUS_CARD = toolCard(buildBoulderStatusCard);
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, writeFile as writeFileFs } from "node:fs/promises";
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, rename as renameFs, unlink as unlinkFs, writeFile as writeFileFs } from "node:fs/promises";
 import { join as join5 } from "node:path";
 
 // packages/mpd-roles-plugin/src/admission.ts
@@ -3959,6 +3971,7 @@ function emitPlanMarkdown(plan, criteria) {
 
 // packages/mpd-autoproject-plugin/src/engine.ts
 var ROLE_SPAWN_TOOL = "mpd_role_spawn";
+var ROLE_CONSULT_TOOL = "mpd_role_consult";
 var VERIFY_OPEN_TOOL = "mpd_verify_open";
 var CELLWORK_OPEN_TOOL = "cellwork_open";
 var BOULDER_START_TOOL = "mpd_boulder_start";
@@ -4197,34 +4210,62 @@ async function runAutoproject(args, exec, deps) {
     } catch {}
     return own.signal;
   }
+  async function rosterStillSupervising(role) {
+    if (!dsh.hasTool(ROLE_CONSULT_TOOL, exec?.agent))
+      return false;
+    try {
+      const result = await dsh.executeTool({ name: ROLE_CONSULT_TOOL, arguments: { action: "list" }, agent: exec?.agent });
+      if (result?.ok !== true || result.isError === true)
+        return false;
+      const value = result.value ?? {};
+      const consults = Array.isArray(value.consults) ? value.consults : [];
+      return consults.some((entry) => {
+        if (entry === null || typeof entry !== "object")
+          return false;
+        const view = entry;
+        return view.state === "running" && view.role === role;
+      });
+    } catch {
+      return false;
+    }
+  }
   async function consult(role, task, context) {
     await acquireSlot();
     const startedAt = Date.now();
     const controller = new AbortController;
     const signal = composedSignalOf(exec?.signal, controller);
     let timer;
+    const child = consultOnce(role, task, context, signal);
     try {
-      const expired = new Promise((resolve5) => {
-        timer = setTimeout(() => {
-          try {
-            controller.abort();
-          } catch {}
-          resolve5("timeout");
-        }, slotBoundMs);
-      });
-      const raced = await Promise.race([consultOnce(role, task, context, signal), expired]);
-      if (raced !== "timeout")
-        return raced;
-      const elapsedMs = Date.now() - startedAt;
-      const kill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave };
-      killed.push(kill);
-      state.kills = killed;
-      state.slots = slotCount;
-      state.slotBoundMs = slotBoundMs;
-      writeJson(stateFile, state);
-      stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave);
-      dsh.rowLog?.(ROW_LOG2, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)");
-      return null;
+      for (;; ) {
+        const expired = new Promise((resolve5) => {
+          timer = setTimeout(() => resolve5("timeout"), slotBoundMs);
+        });
+        const raced = await Promise.race([child, expired]);
+        if (raced !== "timeout")
+          return raced;
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        if (await rosterStillSupervising(role)) {
+          dsh.rowLog?.(ROW_LOG2, "consult " + role + " is still supervised by its roster deadman at the " + slotBoundMs + " ms slot bound — the engine re-armed instead of aborting the child");
+          continue;
+        }
+        try {
+          controller.abort();
+        } catch {}
+        const elapsedMs = Date.now() - startedAt;
+        const kill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave };
+        killed.push(kill);
+        state.kills = killed;
+        state.slots = slotCount;
+        state.slotBoundMs = slotBoundMs;
+        writeJson(stateFile, state);
+        stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave);
+        dsh.rowLog?.(ROW_LOG2, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)");
+        return null;
+      }
     } finally {
       if (timer !== undefined)
         clearTimeout(timer);

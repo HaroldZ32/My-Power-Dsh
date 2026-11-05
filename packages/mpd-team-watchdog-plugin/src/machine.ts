@@ -496,6 +496,8 @@ export class WatchdogMachine {
    *
    * The engine RE-ARMS a key through {@link rearmWedge} when the force action aborted for a
    * retryable reason (a handoff write failure), which is what makes "retry next tick" possible.
+   * A key that survives (a NON-retryable refusal, or no team plane to act on) keeps blocking a
+   * second force, and {@link observeWedge} hands the candidate to the silence ladder instead.
    */
   private readonly wedgeForced = new Set<string>()
   /** D3 keys already reported as exempt (`long-bash`): one incident per generation, at the boundary. */
@@ -677,8 +679,15 @@ export class WatchdogMachine {
       }
       return true
     }
-    // 5. One force per generation; a re-armed key (a retryable failure) is decided again.
-    if (this.wedgeForced.has(key)) return true
+    // 5. One force per generation. A key that is ALREADY here got its `wedged` decision on an EARLIER
+    //    tick and came back with the same revision, so that force produced NO new attempt: it failed
+    //    (a NON-retryable refusal leaves the key in place; a retryable one re-arms through
+    //    `rearmWedge`) or it never reached the team plane at all. The candidate must then fall through
+    //    to the silence ladder — a watchdog that goes silent for a task whose force failed is the one
+    //    failure this rule must not cause. NOTHING is re-decided: the `add` below is the only place a
+    //    `wedged` decision is emitted, and a SUCCESSFUL force bumps the row's revision, so the old key
+    //    is never observed again.
+    if (this.wedgeForced.has(key)) return false
     this.wedgeForced.add(key)
     decisions.push({
       type: "wedged",

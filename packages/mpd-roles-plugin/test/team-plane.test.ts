@@ -6,7 +6,7 @@
 // captured, and the team-mutation seams THROW, so "a fired soft signal stages nothing" is
 // proven by the test failing loudly if the gate ever reached for one.
 import { afterAll, describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -2028,6 +2028,108 @@ describe("D1: the re-team gate — ended-aware leading, clean-terminal auto-end,
     // The clean-terminal record was closed exactly once on the way through.
     expect(harness.toolCalls.filter((call) => call.name === CONTROL_TOOL_NAME)).toHaveLength(1)
     expect(second.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+  })
+
+  test("a STALE terminal record never clears a fresh settlement (CR r1 [8])", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    // `recordFire` always leaves `teamIdAtFire` EMPTY, and the old `bound` check read "" as bound —
+    // so ANY terminal record for this session re-armed a fresh settlement, and the session then
+    // re-nagged on the next complex user turn. This record was ended YEARS before the fire.
+    /** One ended record for this session, stamped long BEFORE the fire. */
+    const stale = teamRecord({ tasks: [{ status: "completed" }], endedAt: "2020-01-01T00:00:00.000Z" })
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      ...recordSeams(stale),
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    /** The FIRE: one shell staged, the settlement armed with an empty `teamIdAtFire`. */
+    const fired: any = await step(harness)
+    expect(fired.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    expect(harness.toolCalls).toHaveLength(1)
+    // THE NEXT STEP claims a turn the session-start predicate WOULD fire on: because the settlement
+    // is not owned by the stale record it HOLDS — nothing is re-armed, staged or injected.
+    /** The complex user turn a wrongly re-armed session would answer with a second shell. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    expect(await step(harness, [claimed])).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+  })
+
+  test("a team that ended AFTER the fire still clears the settlement (CR r1 [8] recovery case)", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** The team-record file the session's directory holds; stays empty until the post-fire flip. */
+    let current: string | null = null
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => (current === null ? [] : ["team-1.json"]),
+      readFile: async (): Promise<string> => current ?? "{}",
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    /** The FIRE: nothing live and nothing terminal yet, so the shell is staged with an empty binding. */
+    const fired: any = await step(harness)
+    expect(fired.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    // THE APPROVED-AND-FINISHED-BETWEEN-STEPS CASE: a record that ended AFTER `lastFiredAt` IS owned
+    // by the settlement, so it re-arms the session and the next complex turn stages again.
+    current = teamRecord({ tasks: [{ status: "completed" }], endedAt: "2999-01-01T00:00:00.000Z" })
+    /** The complex user turn a RE-ARMED session must answer with a second shell. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    expect(await step(harness, [claimed])).not.toBeUndefined()
+    expect(harness.toolCalls.filter((call) => call.name === STAGING_TOOL_NAME)).toHaveLength(2)
+  })
+
+  test("concurrent pre-steps SHARE one in-flight state load (CR r1 [7])", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** How many times the state FILE is read: the shared promise must make this exactly one. */
+    let stateReads = 0
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: async (path: string): Promise<string> => { stateReads += 1; return store.readFile(path) },
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    // TWO overlapping pre-steps for ONE session: both reach the state load before either can stage.
+    await Promise.all([step(harness), step(harness)])
+    // ONE load, shared by both callers: the second never builds a rival record over the first.
+    expect(stateReads).toBe(1)
+  })
+
+  test("the DEFAULT state writer replaces atomically and leaves no temp file (CR r1 [5])", async () => {
+    /** A private workspace under the harness root, removed by this file's `afterAll`. */
+    const dir = mkdtempSync(join(HARNESS_ROOT, "reteam-atomic-"))
+    /** The first of two overlapping writes for ONE session. */
+    const first = { consultCount: 1, lastFiredAt: 0, planId: "", teamIdAtFire: "" }
+    /** The second overlapping write, racing the first on the same destination. */
+    const second = { consultCount: 2, lastFiredAt: 0, planId: "plan-x", teamIdAtFire: "" }
+    // TWO writers race on ONE destination — the overlap the temp+rename replace must survive.
+    expect(await Promise.all([writeReTeamState(dir, "s", first), writeReTeamState(dir, "s", second)])).toEqual([true, true])
+    /** The ONE state file both writers target. */
+    const path = sessionGateStatePath(dir, "s")
+    // A COMPLETE record won the atomic replace: mixed or truncated bytes would fail this decode.
+    expect([first, second]).toContainEqual(JSON.parse(readFileSync(path, "utf8")))
+    // Nothing else survives in the directory: no `.tmp` residue from either writer.
+    expect(readdirSync(dirname(path))).toEqual(["s.json"])
   })
 
   test("team.reteam.enabled=false turns ONLY the volume trigger off; the auto-end still runs", async () => {

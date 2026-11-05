@@ -557,3 +557,75 @@ describe("D3.5 — the captain is never a force target", () => {
     }
   })
 })
+
+describe("D3.6 — a force that produced NO new revision must not silence the ladder", () => {
+  test("MACHINE: the SAME generation gets no second force, and the silence ladder resumes", () => {
+    // The machine, driven directly: this is the branch a NON-retryable refusal leaves behind.
+    const machine = new WatchdogMachine()
+    // A wedged row whose owner's request has been OUTSTANDING past the warn bound as well.
+    const candidate: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - FORCE_MS - 900_000,
+      lastKind: "step",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: null,
+      channelState: "OUTSTANDING",
+      outstandingSince: NOW - FORCE_MS - 900_000,
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 1_000,
+    }
+    // The knobs the engine resolves for this rule.
+    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS }
+    // Tick 1: the wedge CONSUMES the candidate — ONE force decision and no WARN in the same tick.
+    expect(machine.observe([candidate], NOW, knobs).map((decision) => decision.type)).toEqual(["wedged"])
+    // Tick 2, the SAME generation (the force produced no new revision): no second force ...
+    /** The second observation past the bound. */
+    const second = machine.observe([candidate], NOW + 15_000, knobs)
+    expect(second.filter((decision) => decision.type === "wedged")).toEqual([])
+    // ... and the silence ladder is NOT suppressed any more.
+    expect(second.map((decision) => decision.type)).toEqual(["warn"])
+  })
+
+  test("ENGINE: a NON-retryable refusal is recorded ONCE, and the ladder resumes on the next tick", async () => {
+    // A sandboxed workspace, cleaned up even when an assertion fails.
+    const box = sandbox()
+    try {
+      // The wedged record, which the refused force leaves untouched.
+      const record = mpdRecord()
+      // The recording seam, scripted to refuse WITHOUT a retry (a stale owner, a moved generation).
+      const recorder = seamRecorder()
+      recorder.answer({ ok: false, error: "task T1 is no longer owned by Senior Engineer", retryable: false })
+      // The engine under test.
+      const { stub, engine, dispose } = mount(box, record, recorder.seam)
+      try {
+        // A member whose request went OUTSTANDING long before the force bound.
+        openOutstandingChannel(stub, MEMBER, NOW - FORCE_MS - 900_000)
+        writeStamps(box, MEMBER_NAME, [stamp(NOW - FORCE_MS - 900_000)])
+        // Tick 1: the FORCE is decided and refused — the deciding tick carries no WARN.
+        /** The first tick's result. */
+        const first = await engine.tickOnce(NOW)
+        expect(recorder.calls.length).toBe(1)
+        expect(first.decisions.filter((decision) => decision.type === "warn")).toEqual([])
+        // The refusal is on the durable record, once.
+        expect(readIncidents(box.workspace, box.stateDir).filter((entry) => entry.kind === "wedged-force").length).toBe(1)
+        // Tick 2: NO second force for the same generation ...
+        /** The second tick's result. */
+        const second = await engine.tickOnce(NOW + 15_000)
+        expect(recorder.calls.length).toBe(1)
+        // ... and the task is no longer silenced: the WARN ladder names it.
+        expect(second.decisions.map((decision) => decision.type)).toEqual(["warn"])
+        expect(second.decisions[0]).toMatchObject({ taskId: "T1", attemptId: "1" })
+        expect(engine.getStats().forceFailures).toBe(1)
+      } finally {
+        dispose()
+      }
+    } finally {
+      box.cleanup()
+    }
+  })
+})

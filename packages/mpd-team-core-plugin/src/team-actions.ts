@@ -2075,6 +2075,16 @@ function writeForceHandoff(workspace: string, member: string, taskId: string, at
  * THE CAPTAIN IS NEVER A FORCE TARGET (rule 5): a row owned by the record's lead is refused here, and
  * the watchdog refuses it again before it ever asks.
  *
+ * ONLY THE LEAD MAY AUTHORISE IT, and that is ENFORCED, not assumed: the caller's session id plus its
+ * recorded lineage must name the record's Lead (current or historical) before the first write or the
+ * interrupt. `fence`, `unfence` and `dispatch` demand the same authority, and the watchdog always
+ * presents the record's own lead session, so the supervisor's path is unchanged.
+ *
+ * TWO RE-READS BRACKET THE INTERRUPT (data integrity): the record is read again BEFORE the first write
+ * and the force proceeds only while the row is still `in_progress`, still held by the same member and
+ * still at the generation the watchdog decided on; then it is read AGAIN after the await so the
+ * requeue is built on the current record instead of a pre-interrupt snapshot.
+ *
  * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
  * @param caller - the authorising caller (the team's lead session, with a live agent).
  * @param input - the team, the row and the watchdog's evidence.
@@ -2092,6 +2102,14 @@ export async function forceWedgedTask(
     /** The team the row belongs to: the named id, else the caller's own resolved team. */
     const record = input.teamId === undefined ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage).record : readTeam(caller.workspace, input.teamId)
     if (record === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId ?? "")} in this workspace` }
+    // ONLY THE LEAD MAY FORCE — refused BEFORE the first write and the interrupt, the same authority
+    // `fence` / `unfence` / `dispatch` demand. The force service accepts any live session id, so
+    // without this check ANY session in the process could stop another team's member and write a
+    // handoff into a workspace it merely names. The watchdog always presents the record's own lead
+    // session, so the supervisor's path is unchanged.
+    if (!recordNamesLead(record, [caller.sessionId, ...caller.lineage])) {
+      return { ok: false, error: `session ${caller.sessionId} is not the lead of team ${record.teamId} — only the lead may force a member` }
+    }
     // ── THE ROW ─────────────────────────────────────────────────────────────────────────────
     /** The board row this force is about. */
     const task = record.tasks.find((candidate) => candidate.id === input.taskId)
@@ -2126,6 +2144,32 @@ export async function forceWedgedTask(
       : startedAt === null
         ? 0
         : Math.max(0, now.getTime() - startedAt)
+    // ── THE READ-AGAIN GUARD — the force acts on the record as it stands NOW ──────────────
+    // THE READ AT THE TOP IS ONLY A CHEAP REFUSAL. Everything below WRITES (the handoff, the
+    // interrupt, the requeue), and the board may have moved since that read: a reassigned row belongs
+    // to a NEW owner, and interrupting the previous handle while requeueing the new generation would
+    // destroy the reassignment. So the record is read again here, BEFORE the first write, and the
+    // force proceeds only while it is still the SAME row, held by the SAME member, in the SAME
+    // generation.
+    /** The team as it stands now: the record the guards below read. */
+    const live = readTeam(caller.workspace, record.teamId)
+    if (live === undefined) return { ok: false, error: `team ${record.teamId} is no longer readable — nothing was forced` }
+    /** The row as the fresh record holds it. */
+    const liveTask = live.tasks.find((candidate) => candidate.id === task.id)
+    if (liveTask === undefined || liveTask.status !== "in_progress") {
+      return { ok: false, error: `task ${task.id} is no longer in_progress — the force was not applied` }
+    }
+    /** The owner as the fresh row spells it, with the watchdog's evidence as the same fallback. */
+    const liveOwner = liveTask.owner !== undefined && liveTask.owner !== "" ? liveTask.owner : input.evidence?.member ?? ""
+    // THE SAME MEMBER, by either spelling: a reassignment is a refusal, never an interrupt of the
+    // previous holder. `memberNamedBy` is the plane's own lookup, so a name and a session id compare.
+    if (liveOwner === "" || memberNamedBy(live, [liveOwner])?.name !== member.name) {
+      return { ok: false, error: `task ${task.id} is no longer owned by ${member.name} — the force was not applied` }
+    }
+    // THE SAME GENERATION: the attempt the watchdog decided on must still be the row's revision.
+    if (input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" && String(liveTask.revision) !== input.evidence.attemptId) {
+      return { ok: false, error: `task ${task.id} has moved to generation ${String(liveTask.revision)} — the force was not applied` }
+    }
     // ── (a) THE HANDOFF — its failure aborts this attempt and is retryable ────────────────
     /** The absolute handoff path, or the retryable refusal the write produced. */
     let handoff: string
@@ -2172,9 +2216,15 @@ export async function forceWedgedTask(
     // ── (c) THE REQUEUE — pending, owner cleared, attempt bumped, note naming the handoff ──
     /** The attempt counter the requeued row carries (monotonic, never reset). */
     const attempt = (task.attempt ?? 0) + 1
+    // THE BASE IS READ AFTER THE AWAIT: `executor().interrupt` is the ONE suspension in this body, and
+    // a sibling writer (a fence, a reassignment, a concurrent force) may have landed during it. A
+    // requeue built from the pre-await snapshot would silently drop that write.
+    /** The team as it stands after the interrupt, or undefined when the record vanished meanwhile. */
+    const armed = readTeam(caller.workspace, record.teamId)
+    if (armed === undefined) return { ok: false, error: `team ${record.teamId} disappeared during the interrupt — the row was not requeued` }
     /** The record with the row requeued. */
     let next: TeamRecord = updateTeamTask(
-      record,
+      armed,
       task.id,
       { status: "pending", owner: "", attempt, note: `forced (wedged): handoff ${handoff}`, resetStartedAt: true },
       now,

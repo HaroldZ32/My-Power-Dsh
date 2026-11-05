@@ -145,13 +145,27 @@ actions, measured before publication against the app's 8 KiB / 40 nodes / depth-
 A card that cannot be built returns `{}`, so the app falls back to its generic tool row. The text
 `render` and the output schema are unchanged.
 
-## The slot bound and interrupted consults (2026-11-05)
+## The slot ledger and the ONE timeout owner (2026-11-05, CR r1)
 
-`autoproject.slotBoundMs` now defaults to `900000` ms (15 minutes) — the SAME bound the one-shot
-consult deadman uses, so the two mechanisms do not race with different timers. The slot ledger stays
-the ONLY accounting: `state.json` carries `slotBoundMs` and the `kills` array.
+The **deadline owner** for every child is the roster's consult supervisor (inside `mpd_role_spawn`):
+it is the only surface that sees the child's CURRENT tool call, so it is the only one that can honour
+the open-`bash` exemption — which has NO age bound (its deadman re-arms instead of interrupting). The
+deadman's default is 15 minutes.
 
-A consult that reports `status:"interrupted"` (its deadman fired) is recorded as a `SlotKill` row with
-the roster's reported `elapsedMs` at the run's current `boundMs`, stamped in the journal as
-`late/interrupted:<role>` (including the handoff path), and answered as `null` — exactly like a
-hard-bound kill, which forces the run to `blocked`. It is never a silent `null`.
+`autoproject.slotBoundMs` (default `SLOT_BOUND_DEFAULT_MS = 900000`, and overridable per run through
+the live layer or the row config) is therefore a **liveness backstop**, not a second deadline, and the
+two defaults being equal is NOT what makes them agree. When it fires the engine asks the supervisor's
+registry (`mpd_role_consult {action:"list"}`):
+
+- a consult of that role still reported `running` → the supervisor is still supervising that child (it may be
+  exempting an open `bash` call), so the engine does NOT abort it: it logs the deferral and re-arms its
+  own bound. An override changes this CHECK INTERVAL, never the child's deadline.
+- no running consult of that role (an absent or broken roster) → the engine aborts the child through its
+  AbortSignal, records `late/killed:<role>` and forces the run `blocked`. This is the only path that
+  writes a kill for a timeout.
+
+The slot ledger stays the ONLY accounting: `state.json` carries `slotBoundMs` and the `kills` array.
+A consult that reports `status:"interrupted"` (the supervisor's own deadman kill) is recorded as a
+`SlotKill` row with the roster's reported `elapsedMs` at the run's current `boundMs`, stamped in the
+journal as `late/interrupted:<role>` (including the handoff path), and answered as `null` — exactly
+like a backstop kill, which forces the run to `blocked`. It is never a silent `null`.

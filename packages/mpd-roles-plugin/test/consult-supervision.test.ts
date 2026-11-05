@@ -182,6 +182,57 @@ describe("consult supervisor (§D2)", () => {
   test("the default deadman is the user's 15-minute rule", () => {
     expect(CONSULT_FORCE_AFTER_MS).toBe(900_000)
   })
+
+  test("cancelling a QUEUED consult releases no slot and starts no child (cap 1)", async () => {
+    /** How many children were raised. */
+    let raised = 0
+    /** The first child's settlement, which holds the only slot until it resolves. */
+    const first = deferred()
+    /** The supervisor under test with a cap of ONE. */
+    const supervisor = createConsultSupervisor({ handoffDir, log: () => undefined, activityOf: () => undefined, maxConcurrent: () => 1 })
+    /** Raise one child: the first holds its slot, every later one settles at once. */
+    const raise = async (): Promise<any> => {
+      raised += 1
+      /** The handle's settlement. */
+      const settled = raised === 1 ? first : deferred()
+      if (raised > 1) settled.resolve(CHILD_REPORT)
+      return { id: "child-" + raised, result: settled.promise, interrupt: () => undefined }
+    }
+    /** The consult that owns the only slot. */
+    const running = supervisor.start({ role: "Reviewer", task: "running", exec: {}, raise })
+    /** The FIRST queued consult (never cancelled): it must start once the slot frees. */
+    const queued = supervisor.start({ role: "Reviewer", task: "queued", exec: {}, raise })
+    /** The SECOND queued consult, cancelled while it waits in `acquire()`. */
+    const cancelled = supervisor.start({ role: "Reviewer", task: "cancelled", exec: {}, raise })
+    await tick()
+    expect(raised).toBe(1)
+    // Cancelling a consult that never held a slot must NOT admit another child: the cap is still 1.
+    supervisor.cancel(cancelled.consultId)
+    await tick()
+    expect(raised).toBe(1)
+    // The cancelled consult settled `interrupted` without a child and without a slot.
+    expect(supervisor.list().find((view) => view.consultId === cancelled.consultId)?.state).toBe("interrupted")
+    // Only when the HOLDER settles does the queue move: exactly ONE more child starts.
+    first.resolve(CHILD_REPORT)
+    await tick()
+    expect(raised).toBe(2)
+    expect((await supervisor.settle(queued.consultId)).status).toBe("complete")
+    expect(supervisor.list().some((view) => view.consultId === cancelled.consultId)).toBe(true)
+  })
+
+  test("wait reports the failure text of a consult whose child rejected", async () => {
+    /** The supervisor under test. */
+    const supervisor = createConsultSupervisor({ handoffDir, log: () => undefined, activityOf: () => undefined })
+    /** The started consult, whose child REJECTS (the roster routes that to `failRecord`). */
+    const view = supervisor.start({ role: "Researcher", task: "explode", exec: {}, raise: async () => ({ id: "c5", result: Promise.reject(new Error("the child blew up")), interrupt: () => undefined }) })
+    await tick()
+    /** The wait answer, which must carry the failure the output schema declares as `error`. */
+    const waited = await supervisor.wait(view.consultId, 100) as any
+    expect(waited.state).toBe("failed")
+    expect(waited.error).toBe("the child blew up")
+    // The same text `collect` answers, so the two read surfaces never disagree.
+    expect(supervisor.collect(view.consultId).error).toBe("the child blew up")
+  })
 })
 
 describe("activity keying (F1 repair)", () => {

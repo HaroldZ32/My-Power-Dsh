@@ -82,6 +82,65 @@ describe("spawnAgentAsync (§D2.1)", () => {
     expect((await handle.result).stopReason).toBe("interrupted")
   })
 
+  test("interrupt presents the SPAWNING parent as the ancestor authority", async () => {
+    /** The activation's report settlement (never resolved: only the interrupt is asserted here). */
+    const settled = deferred()
+    /** The calls the fake service recorded. */
+    const calls: Array<{ seam: string; args: unknown[] }> = []
+    /** The activation handle the service hands out. */
+    const activation = { childId: "child-4", result: settled.promise, dispose: (): Promise<void> => Promise.resolve() }
+    /** The adapter under test. */
+    const adapter = createDshAdapter(ctxWith(serviceWith(activation, calls)))
+    /** The parent Agent the spawn is authorized by — the authority the interrupt must carry. */
+    const parent = { session: { id: "captain" } }
+    /** The started handle, spawned AS that parent. */
+    const handle = await adapter.spawnAgentAsync({ label: "look", prompt: "go", parent })
+    handle.interrupt()
+    /** The interrupt call the seam saw. */
+    const interruptCall = calls.find((call) => call.seam === "interrupt")
+    expect(interruptCall?.args[0]).toBe("child-4")
+    expect(interruptCall?.args[1]).toEqual({ kind: "ancestor", agent: parent })
+  })
+
+  test("a THROWN interrupt falls back to the raw handle's abort()", async () => {
+    /** How many times the raw handle was aborted. */
+    let aborts = 0
+    /** The activation: a child that never settles, with its own abort fallback. */
+    const activation: any = { childId: "child-5", result: new Promise<any>(() => undefined), dispose: (): Promise<void> => Promise.resolve(), abort: (): void => { aborts += 1 } }
+    /** The service whose interrupt REFUSES the call. */
+    const service = {
+      startActivation: async (): Promise<any> => activation,
+      interrupt: (): void => { throw new Error("the authority was refused") },
+    }
+    /** The adapter under test. */
+    const adapter = createDshAdapter(ctxWith(service))
+    /** The started handle. */
+    const handle = await adapter.spawnAgentAsync({ label: "look", prompt: "go", parent: {} })
+    handle.interrupt()
+    // A refused interrupt must not leave the child running: the raw abort is the fallback.
+    expect(aborts).toBe(1)
+  })
+
+  test("an ASYNCHRONOUSLY REJECTED interrupt also falls back to abort()", async () => {
+    /** How many times the raw handle was aborted. */
+    let aborts = 0
+    /** The activation: a child that never settles, with its own abort fallback. */
+    const activation: any = { childId: "child-6", result: new Promise<any>(() => undefined), dispose: (): Promise<void> => Promise.resolve(), abort: (): void => { aborts += 1 } }
+    /** The service whose interrupt returns a REJECTED promise (an async host generation). */
+    const service = {
+      startActivation: async (): Promise<any> => activation,
+      interrupt: async (): Promise<void> => { throw new Error("the authority was refused") },
+    }
+    /** The adapter under test. */
+    const adapter = createDshAdapter(ctxWith(service))
+    /** The started handle. */
+    const handle = await adapter.spawnAgentAsync({ label: "look", prompt: "go", parent: {} })
+    handle.interrupt()
+    // The rejection settles on the microtask queue, so the fallback lands one tick later.
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(aborts).toBe(1)
+  })
+
   test("spawnAgent remains the BLOCKING projection with the unchanged shape", async () => {
     /** The activation's report settlement. */
     const settled = deferred()

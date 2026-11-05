@@ -172,8 +172,8 @@ export interface ConsultSupervisor {
   start(input: ConsultStartInput): ConsultView
   /** Wait for one consult's settlement and return its report (the blocking tool's await). */
   settle(consultId: string): Promise<ConsultReport>
-  /** Block up to `timeoutMs` (clamped to {@link CONSULT_WAIT_MAX_MS}) for a report or a view. */
-  wait(consultId: string, timeoutMs: number): Promise<ConsultView | ConsultReport>
+  /** Block up to `timeoutMs` (clamped to {@link CONSULT_WAIT_MAX_MS}) for a report, a view, or a failure. */
+  wait(consultId: string, timeoutMs: number): Promise<ConsultView | ConsultReport | ConsultOutcome>
   /** Return the settled report and RELEASE the record (a running consult answers its view). */
   collect(consultId: string): ConsultOutcome
   /** Interrupt this consult's child and settle it `interrupted` (a caller-initiated stop). */
@@ -216,6 +216,8 @@ interface ConsultRecord {
   handoff?: string
   /** Whether the concurrency slot was returned. */
   released: boolean
+  /** Whether this record HOLDS a slot granted by `acquire()` (a queued consult holds none). */
+  held: boolean
 }
 
 /**
@@ -289,7 +291,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     // A consult nobody collected must not surface as an unhandled rejection; the report stays
     // readable through the record, and `settle` still observes the original rejection.
     void done.catch(() => undefined)
-    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle, reject: fail, reported: false, released: false }
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle, reject: fail, reported: false, released: false, held: false }
   }
 
   /** Project a settled handle onto the report shape every consumer reads (§D0.1). */
@@ -320,7 +322,10 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       clearTimer(record.timer)
       record.timer = undefined
     }
-    if (!record.released) {
+    // A QUEUED consult holds no slot, so settlement must not release one (CR repair: cancelling a
+    // queued consult used to admit one extra child). The waiter that is later woken releases the slot
+    // it was granted in `start`'s early-return branch.
+    if (record.held && !record.released) {
       record.released = true
       release()
     }
@@ -337,7 +342,7 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       clearTimer(record.timer)
       record.timer = undefined
     }
-    if (!record.released) {
+    if (record.held && !record.released) {
       record.released = true
       release()
     }
@@ -481,7 +486,11 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     records.set(record.id, record)
     void (async (): Promise<void> => {
       await acquire()
-      // A cancel that landed while this consult was QUEUED never starts a child.
+      // The slot is GRANTED from here on, so settlement may release it; before this line a queued
+      // consult owns nothing.
+      record.held = true
+      // A cancel that landed while this consult was QUEUED never starts a child. Its waiter was just
+      // granted a slot, so THIS branch still releases that granted slot.
       if (record.reported) {
         if (!record.released) {
           record.released = true
@@ -516,14 +525,16 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     return await record.done
   }
 
-  /** Block up to `timeoutMs` for a report, or answer the running view when the bound wins. */
-  const wait = async (consultId: string, timeoutMs: number): Promise<ConsultView | ConsultReport> => {
+  /** Block up to `timeoutMs` for a report, or answer the running/failed view when the bound wins. */
+  const wait = async (consultId: string, timeoutMs: number): Promise<ConsultView | ConsultReport | ConsultOutcome> => {
     /** The record being awaited. */
     const record = requireRecord(consultId)
-    if (record.reported) return record.report ?? viewOf(record)
+    // A consult that already SETTLED answers at once; a FAILED one carries its failure text, exactly
+    // as `collect` would, so the two read surfaces never disagree about why it failed (CR repair).
+    if (record.reported) return record.report ?? { ...viewOf(record), ...(record.failure === undefined ? {} : { error: record.failure }) }
     /** The bound in force: 1..CONSULT_WAIT_MAX_MS, defaulting when unstated or invalid. */
     const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(timeoutMs)) || CONSULT_WAIT_DEFAULT_MS))
-    return await new Promise<ConsultView | ConsultReport>((resolve) => {
+    return await new Promise<ConsultView | ConsultReport | ConsultOutcome>((resolve) => {
       /** The timeout's timer handle. */
       let timer: unknown
       /** Answer with the current view (the consult is still running). */
@@ -539,7 +550,9 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
         },
         (): void => {
           if (timer !== undefined) clearTimer(timer)
-          resolve(viewOf(record))
+          // A FAILED settlement carries the failure text: the output schema already has `error`, and
+          // `collect` answers it too — `wait` used to drop it (CR repair).
+          resolve({ ...viewOf(record), ...(record.failure === undefined ? {} : { error: record.failure }) })
         },
       )
     })
