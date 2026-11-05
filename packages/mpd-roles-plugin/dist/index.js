@@ -4789,6 +4789,19 @@ var CONSULT_MAX_DEFAULT = 8;
 var CONSULT_WAIT_MAX_MS = 60000;
 var CONSULT_WAIT_DEFAULT_MS = 30000;
 var CONSULT_ACTIVITY_HISTORY = 5;
+var CONSULT_LABEL_KEY_PREFIX = "label:";
+function consultActivityKeyOf(agent, labelOf) {
+  if (agent === null || typeof agent !== "object")
+    return;
+  const session = agent.session;
+  if (typeof session?.id === "string" && session.id !== "")
+    return session.id;
+  const label = labelOf(agent);
+  return typeof label === "string" && label !== "" ? CONSULT_LABEL_KEY_PREFIX + label : undefined;
+}
+function consultLabelKey(role) {
+  return CONSULT_LABEL_KEY_PREFIX + role;
+}
 function consultMaxFromEnv() {
   const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_CONSULT_MAX : undefined;
   const parsed = typeof raw === "string" && raw.trim() !== "" ? Math.trunc(Number(raw)) : Number.NaN;
@@ -4937,7 +4950,7 @@ function createConsultSupervisor(deps) {
   const onDeadman = (record) => {
     if (record.reported)
       return;
-    const activity = deps.activityOf?.(record.role);
+    const activity = deps.activityOf?.(record.handle?.id, record.role);
     const elapsedMs = now() - record.startedAt;
     if (activity?.current?.name === "bash") {
       deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed");
@@ -5471,26 +5484,22 @@ function apply(ctx, config = {}) {
     }
   });
   const toolActivity = new Map;
-  const activityLabel = (exec) => {
-    const agent = exec?.agent;
-    const label = dsh.subagentLabelOf(agent);
-    return typeof label === "string" && label !== "" ? label : undefined;
-  };
+  const activityKey = (exec) => consultActivityKeyOf(exec?.agent, (agent) => dsh.subagentLabelOf(agent));
   const noteToolStart = (exec) => {
-    const label = activityLabel(exec);
-    if (label === undefined)
+    const key = activityKey(exec);
+    if (key === undefined)
       return;
     const name2 = typeof exec?.name === "string" ? String(exec.name) : "tool";
     const rawArgs = exec?.arguments;
-    const bucket = toolActivity.get(label) ?? { history: [] };
+    const bucket = toolActivity.get(key) ?? { history: [] };
     bucket.current = { name: name2, startedAt: Date.now(), ...rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs } : {} };
-    toolActivity.set(label, bucket);
+    toolActivity.set(key, bucket);
   };
   const noteToolEnd = (exec) => {
-    const label = activityLabel(exec);
-    if (label === undefined)
+    const key = activityKey(exec);
+    if (key === undefined)
       return;
-    const bucket = toolActivity.get(label);
+    const bucket = toolActivity.get(key);
     if (bucket?.current === undefined)
       return;
     bucket.history.push(bucket.current);
@@ -5515,7 +5524,7 @@ function apply(ctx, config = {}) {
   const consultSupervisor = createConsultSupervisor({
     handoffDir: (target) => join4(dsh.workspaceRoot(target), ".mpd", "handoff"),
     log: (line) => warn(line),
-    activityOf: (role) => toolActivity.get(role),
+    activityOf: (childId, role) => childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId),
     maxConcurrent: () => consultMaxFromEnv(),
     forceAfterMs: () => CONSULT_FORCE_AFTER_MS
   });

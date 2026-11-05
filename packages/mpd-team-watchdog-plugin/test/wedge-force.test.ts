@@ -17,6 +17,7 @@ import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 import type { TaskStatus, TeamRecord as MpdTeamRecord } from "../../mpd-team-core-plugin/src/team-store"
 import { WatchdogEngine, type EngineContext, type WedgeForceOutcome, type WedgeForceRequest, type WedgeForceSeam } from "../src/engine"
+import { WATCHDOG_DEFAULTS, WatchdogMachine, type SilenceCandidate } from "../src/machine"
 import { heartbeatPath } from "../src/paths"
 import { readIncidents } from "../src/sidecars"
 import type { HeartbeatStamp } from "../src/store"
@@ -471,6 +472,60 @@ describe("D3.4 — the decider/actor seam (`mpdTeamActions`)", () => {
     // A service whose force member refuses with a sentence.
     const refusing = { get: (id: string) => (id === "mpdTeamActions" ? { force: async (): Promise<unknown> => ({ ok: false, error: "the lead is not live", retryable: false }) } : undefined) }
     await expect(forceSeamOf(refusing).forceWedged(request)).resolves.toMatchObject({ ok: false, error: "the lead is not live" })
+  })
+})
+
+describe("D3.3 (review F3) — the tool NAME is the exemption, never a clock", () => {
+  test("an OPEN bash with NO start stamp is still EXEMPT (and reports inFlightMs 0)", () => {
+    // The machine, driven directly: this is the shape the engine cannot always clock.
+    const machine = new WatchdogMachine()
+    // A wedged task whose owner has an open `bash` that carried no start instant at all.
+    const candidate: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - 60_000,
+      lastKind: "tool-start",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: "bash",
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 1_000,
+    }
+    // One observation past the bound: the exemption applies and NOTHING is forced.
+    const decisions = machine.observe([candidate], NOW, { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS })
+    expect(decisions.map((decision) => decision.type)).toEqual(["long-bash"])
+    expect(decisions[0]).toMatchObject({ inFlightMs: 0, tool: "bash" })
+  })
+
+  test("... and the SAME holds when only the FOLD names the tool and states no start instantly", () => {
+    // The machine, driven directly.
+    const machine = new WatchdogMachine()
+    // The shape a `session/event` fold produces when it saw the call but not its start instant:
+    // the tool name lives on the fold's fields, and the candidate's own stamp fields are null.
+    const candidate: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - 60_000,
+      lastKind: "tool-start",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: null,
+      channelState: "IN-FLIGHT",
+      channelInFlightSince: null,
+      channelInFlightTool: "bash",
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 1_000,
+    }
+    // One observation past the bound.
+    const decisions = machine.observe([candidate], NOW, { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS })
+    expect(decisions.map((decision) => decision.type)).toEqual(["long-bash"])
+    expect(decisions[0]).toMatchObject({ inFlightMs: 0, tool: "bash" })
   })
 })
 

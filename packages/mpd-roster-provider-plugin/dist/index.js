@@ -3283,7 +3283,8 @@ var SettingsSchema = Schema.object({
     warnStreakToEscalate: Schema.number().default(6),
     actionOnEscalate: Schema.union([Schema.const("pause"), Schema.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: Schema.number().default(900000),
-    holdTtlMs: Schema.number().default(900000)
+    holdTtlMs: Schema.number().default(900000),
+    forceAfterMs: Schema.number().default(900000)
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });

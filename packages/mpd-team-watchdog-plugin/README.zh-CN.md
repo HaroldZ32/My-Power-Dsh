@@ -220,14 +220,16 @@ streak 以 `<teamId>\0<taskId>\0<attemptId>` 为键，其中 `attemptId` 是**�
 | `watchdog.enabled` | `true` | 总开关（`MPD_DSH_TEAM_WATCHDOG=off` 可强制关闭） |
 | `watchdog.toolInFlightMaxMs` | `900000` | 未关闭的工具调用最多能解释多久的静默；`0` 关闭该上界（r6） |
 | `watchdog.holdTtlMs` | `900000` | 已写入的 hold 在此上界后自动释放，并留下持久的 `hold-auto-released` 事件记录；`0` = 永不过期 |
+| `watchdog.forceAfterMs` | `900000` | 任务停留在 `in_progress` 多久后成为强制目标：强制监督器会中断其属主、写出交接文档、把任务重新排队并拆分工作；唯一豁免是未关闭的 `bash` 调用，`0` 关闭该规则（D3） |
 
 这些数字就是冻结的 §3 表：它们同时出现在 `machine.ts` 的 `WATCHDOG_DEFAULTS`、本行自身的
-`Config` schema 以及 bundle patch 的行配置中，三层必须完全一致。前五项在 `mpd-config` schema
-与 Web 卡片自身 `FIELDS` 列表中的声明属于**那些包**，不在本包 —— 而且它管的是**前门**，不是本行
-能不能看见某个值：在该声明落地之前，旋钮照旧可以从本行配置（默认层）以及从 `config-file.ts` 每次
-重读都解析的工作区 `.mpd/mpd.jsonc` 文件层读取和设置。在仍然提供旧 `mpd` 命名空间的宿主上，命名空间
-也一样可以读取（其 schemastery schema 保留未知键）；而在被钉住的 harness 上没有任何东西注册该命名
-空间，因此真正存在的“声明前”入口就是本行配置与那个文件。`holdTtlMs` 已在本行声明、解析，并由 T-17 的自动释放路径消费：由 `pause` 升级写下的 hold 携带
+`Config` schema 以及 bundle patch 的行配置中，三层必须完全一致。其中七个旋钮**还**声明在
+`mpd-config` 的 `SettingsSchema.watchdog` 与两道前门共同绘制的共享 `FIELDS` 渲染列表中——
+`forceAfterMs` 是唯一的例外，作为一项**点名的前门残留**（见下文“未声明项”）。这项区分管的是
+**前门**，不是本行能不能看见某个值：旋钮可以从本行配置（默认层）以及从 `config-file.ts` 每次重读
+都解析的工作区 `.mpd/mpd.jsonc` 文件层读取和设置。在仍然提供旧 `mpd` 命名空间的宿主上，命名空间
+也一样可以读取（其 schemastery schema 保留未知键）；而在被钉住的 harness 上没有任何东西注册该
+命名空间，因此真正能改变运行中 watchdog 的入口就是本行配置与那个文件。`holdTtlMs` 已在本行声明、解析，并由 T-17 的自动释放路径消费：由 `pause` 升级写下的 hold 携带
 该值，到期（或该团队出现晚于 `since` 的心跳）即自行释放并留下 `hold-auto-released` 事件记录；手工
 hold 同样可以 `session-watchdog-resume` 立即清除（或从 hold sidecar 手工删除）。
 
@@ -401,19 +403,28 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
   宿主模块中没有被修改。
 * **不做通知界面。** Web 横幅/活动记录与 TUI 状态行、对话框属于后续任务。这里的“记录即通知”
   就是持久事件记录，供那三个读取者消费。
-* **不检测“卡在工具内部”的卡死。** r6 的在途规则会把长时间调用解释掉；真正卡在工具**内部**的
-  成员只会被上报（超过上界后写一条 `tool-expired` 事件记录），绝不被升级或暂停。这一点已在上文
-  的上界一节写明，也是“不为正常干活的团队误暂停”所付出的代价。
-* **`toolInFlightMaxMs` 尚未进入前端声明。** 它与其他旋钮一样经由本行配置（默认层）与
-  `.mpd/mpd.jsonc` 文件层读取 —— 在仍然提供它的宿主上还有旧 `mpd` 命名空间 —— 但 `mpd-config` 的
-  schema/`FIELDS` 属于那个包，因此在该声明落地之前两个前端不会渲染它。
-* **不中止正在进行的回合。** hold 只阻止新派发；只有真正的聊天打断才能结束卡死的回合。ESCALATE
-  之后恢复过来的成员会发现团队处于 hold、无法推进——这正是预期结果。
+* **对卡在非 `bash` 工具内部的成员不提供豁免。** r6 的在途规则在调用未满 `toolInFlightMaxMs`
+  时把长时间调用解释掉；而一旦超过 `forceAfterMs`，未关闭的工具**不是** `bash` 的成员就是强制
+  目标：强制监督器（见下文）会中断它、写出交接文档、把任务重新排队并拆分工作。**唯一**豁免是
+  未关闭的 `bash` 调用——不限时长、也不需要时间戳——只在边界处记录一条 `long-bash` 事件，绝不中断。
+* **`forceAfterMs` 已声明在 schema 中，但尚未进入共享的渲染列表。** 它已出现在 `machine.ts` 的
+  `WATCHDOG_DEFAULTS`、本行的 `Config` schema、bundle patch 行配置以及 `mpd-config` 的
+  `SettingsSchema.watchdog` 中，并与其他旋钮一样经由本行配置与 `.mpd/mpd.jsonc` 文件层在每个 tick
+  被重读。尚未落地的是两道前门绘制的共享 `FIELDS` 行：Web 设置卡片在
+  `packages/mpd-bundle-plugin/src/settings-card.ts` 中保有该列表的**镜像**副本，因此只在
+  `mpd-config` 里加行会让那个包的无漂移校验变红。两处改动都属于那个包；在它们落地之前，
+  `/settings` 与 TUI 只渲染其余七个旋钮，`forceAfterMs` 通过行配置或工作区 `.mpd/mpd.jsonc` 设置。
+* **进行中的回合**会**被中止——由强制监督器中止，与 hold 无关**。ESCALATE 的 hold 仍然只阻止
+  **新**派发；而任务达到 `forceAfterMs` 的成员会经 adapter 的中断缝被中断（仅限团队成员——captain
+  永远不是强制目标），卡死的回合就此结束，其任务行回到看板。ESCALATE 之后恢复过来的成员仍然会发现
+  团队处于 hold、无法推进——这正是预期结果。
 * **这里不做真实卡死验证。** 单元测试用注入时钟与 stub adapter 驱动机器；故障注入与真实卡死
   通道属于其他任务。
 * `parkedAttempts` 是上文所述的投影；`unread` 按构造恒为 `null`（官方信箱无法经 adapter 观测）。
-* **按构造不改动团队状态。** 观察名单来自 MPD 团队记录（经 `mpdTeams` 服务读取），并以宿主自己的实时
-  读数（`dsh.teamLiveTeams()`）兜底——两者都只**读**；它写下的每个文件都在 `<stateDir>/watchdog/` 之下。
+* **本行不写任何团队文件——看板变更由本行“指挥”完成。** 观察名单来自 MPD 团队记录（经
+  `mpdTeams` 服务读取），并以宿主自己的实时读数（`dsh.teamLiveTeams()`）兜底——两者都只**读**。
+  强制动作同样不写团队字节：它调用 `mpd-team-core` 的 `mpdTeamActions` 服务，由后者执行重新排队、
+  拆分与 captain 信箱行（以及交接文档）。本行自己写下的每个文件仍在 `<stateDir>/watchdog/` 之下。
 
 ## 验证
 

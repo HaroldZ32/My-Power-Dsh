@@ -5162,7 +5162,7 @@ class WatchdogMachine {
       return false;
     const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null;
     const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null;
-    if (tool === "bash" && typeof inFlightSince === "number") {
+    if (tool === "bash") {
       if (!this.longBashReported.has(key)) {
         this.longBashReported.add(key);
         decisions.push({
@@ -5174,7 +5174,7 @@ class WatchdogMachine {
           memberKey: candidate.memberKey,
           startedAt,
           elapsedMs,
-          inFlightMs: now - inFlightSince,
+          inFlightMs: typeof inFlightSince === "number" ? now - inFlightSince : 0,
           tool
         });
       }

@@ -25,6 +25,39 @@ export const CONSULT_WAIT_DEFAULT_MS = 30_000
 /** How many completed tool calls the handoff document may quote (name + a ≤400-character excerpt). */
 export const CONSULT_ACTIVITY_HISTORY = 5
 
+/** Prefix that keeps a LABEL-keyed bucket distinct from a child-id bucket (the no-id fallback). */
+export const CONSULT_LABEL_KEY_PREFIX = "label:"
+
+/**
+ * Key one tool-activity bucket by the CHILD's immutable identity — the fix for F1 (§D2.6).
+ *
+ * The subject of the bash exemption is THE CHILD, never its role: two concurrent consults of one role
+ * must not share (or clear) each other's open-call stamp. The identity read is the child agent's own
+ * session id — the SAME field the adapter's `sessionIdOfAgent` reads, and the SAME value `DshAsyncAgent.id`
+ * reports, which is what `ConsultSupervisorDeps.activityOf` receives from `onDeadman`.
+ * @param agent - the tool execution's calling agent.
+ * @param labelOf - the row's adapter-backed label reader, used ONLY when no id exists (display fallback).
+ * @returns the child session id, `label:<role>` for an id-less child, or undefined when neither exists.
+ */
+export function consultActivityKeyOf(agent: unknown, labelOf: (agent: unknown) => string | undefined): string | undefined {
+  if (agent === null || typeof agent !== "object") return undefined
+  /** The child agent's session id, read defensively: a stub or a stale handle may carry none. */
+  const session = (agent as { session?: { id?: unknown } }).session
+  if (typeof session?.id === "string" && session.id !== "") return session.id
+  /** The display fallback: the roster label, which is all an id-less composition can offer. */
+  const label = labelOf(agent)
+  return typeof label === "string" && label !== "" ? CONSULT_LABEL_KEY_PREFIX + label : undefined
+}
+
+/**
+ * The fallback bucket key for a consult whose child reported no id (§D2.6 display fallback).
+ * @param role - the roster role name (the child label).
+ * @returns the label-keyed bucket name.
+ */
+export function consultLabelKey(role: string): string {
+  return CONSULT_LABEL_KEY_PREFIX + role
+}
+
 /** One observed tool call of a child — the unit the deadman's bash exemption reads. */
 export interface ConsultActivity {
   /** The registered tool name (`bash` is the only name the deadman exempts). */
@@ -118,8 +151,13 @@ export interface ConsultSupervisorDeps {
   maxConcurrent?: () => number
   /** The deadman bound, milliseconds; defaults to {@link CONSULT_FORCE_AFTER_MS}. */
   forceAfterMs?: () => number
-  /** The child's current/last tool activity, keyed by its label (the role name). */
-  activityOf?: (role: string) => ConsultToolActivity | undefined
+  /**
+   * The child's current/last tool activity, keyed by the CHILD's id (F1 repair).
+   *
+   * The first argument is `record.handle?.id` — `DshAsyncAgent.id`, available from the moment `arm()`
+   * runs; `role` is the display fallback used only when no id exists.
+   */
+  activityOf?: (childId: string | undefined, role: string) => ConsultToolActivity | undefined
   /** Clock, epoch milliseconds. */
   now?: () => number
   /** Timer arming, injectable. */
@@ -362,8 +400,10 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
   /** The deadman: exempt an OPEN bash, otherwise write the handoff and interrupt (§D2.6). */
   const onDeadman = (record: ConsultRecord): void => {
     if (record.reported) return
+    // THE SUBJECT IS THE CHILD (F1 repair): ask for THIS consult's own child id, so a same-role
+    // sibling's tool start/end can never overwrite or clear this child's open-call stamp.
     /** The child's activity, when the row observes tool calls. */
-    const activity = deps.activityOf?.(record.role)
+    const activity = deps.activityOf?.(record.handle?.id, record.role)
     /** The elapsed time at expiry, milliseconds. */
     const elapsedMs = now() - record.startedAt
     if (activity?.current?.name === "bash") {

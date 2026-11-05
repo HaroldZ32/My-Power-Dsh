@@ -649,10 +649,16 @@ export class WatchdogMachine {
     if (elapsedMs < knobs.forceAfterMs) return false
     // 4. THE ONLY EXEMPTION: an OPEN bash call. No age bound — the call being open IS the evidence
     // that work is happening, and the incident is the audit trail that the bound was crossed.
+    //
+    // THE TOOL NAME IS THE EXEMPTION, never the presence of a start instant (§D3.3, review F3): a
+    // stamp stream that names the tool but carries no usable clock (a harness that skips `at`, or a
+    // fold that saw the call without its start) is still an OPEN BASH, and interrupting that member
+    // would be the exact false positive the exemption exists to prevent. With no clock the reported
+    // age is 0 — stated, not invented.
     const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null
-    /** When that call started: the stamp's own clock first, the fold's second. */
+    /** When that call started: the stamp's own clock first, the fold's second, `null` when neither states one. */
     const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null
-    if (tool === "bash" && typeof inFlightSince === "number") {
+    if (tool === "bash") {
       if (!this.longBashReported.has(key)) {
         this.longBashReported.add(key)
         decisions.push({
@@ -664,7 +670,8 @@ export class WatchdogMachine {
           memberKey: candidate.memberKey,
           startedAt,
           elapsedMs,
-          inFlightMs: now - inFlightSince,
+          // A call whose start nobody stamped has no measurable age; 0 is the honest reading.
+          inFlightMs: typeof inFlightSince === "number" ? now - inFlightSince : 0,
           tool,
         })
       }

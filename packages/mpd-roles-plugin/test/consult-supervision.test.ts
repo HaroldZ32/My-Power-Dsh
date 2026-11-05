@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, readdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, test } from "bun:test"
-import { CONSULT_FORCE_AFTER_MS, createConsultSupervisor, type ConsultToolActivity } from "../src/spawn-async.ts"
+import { CONSULT_FORCE_AFTER_MS, consultActivityKeyOf, consultLabelKey, createConsultSupervisor, type ConsultToolActivity } from "../src/spawn-async.ts"
 
 /** One externally-settled promise, the handle's `result` in every case below. */
 function deferred(): { promise: Promise<any>; resolve: (value: any) => void; reject: (error: unknown) => void } {
@@ -119,8 +119,8 @@ describe("consult supervisor (§D2)", () => {
     const settled = deferred()
     /** An activity record whose current call is an OPEN bash. */
     const activity: ConsultToolActivity = { current: { name: "bash", startedAt: Date.now(), arguments: { command: "bun test" } }, history: [] }
-    /** The supervisor under test. */
-    const supervisor = createConsultSupervisor({ handoffDir, log: (line) => lines.push(line), activityOf: () => activity, forceAfterMs: () => 10 })
+    /** The supervisor under test, whose activity is keyed by the child id (F1 repair). */
+    const supervisor = createConsultSupervisor({ handoffDir, log: (line) => lines.push(line), activityOf: (childId) => (childId === "c3" ? activity : undefined), forceAfterMs: () => 10 })
     /** The started consult. */
     const view = supervisor.start({ role: "Senior Engineer", task: "run the gates", exec: {}, raise: async () => ({ id: "c3", result: settled.promise, interrupt: () => { interrupted += 1 } }) })
     await tick(60)
@@ -181,5 +181,43 @@ describe("consult supervisor (§D2)", () => {
 
   test("the default deadman is the user's 15-minute rule", () => {
     expect(CONSULT_FORCE_AFTER_MS).toBe(900_000)
+  })
+})
+
+describe("activity keying (F1 repair)", () => {
+  test("the activity key is the CHILD's session id, with the label only as a no-id fallback", () => {
+    /** The adapter-backed label reader these assertions feed. */
+    const labelOf = (): string => "Senior Engineer"
+    expect(consultActivityKeyOf({ session: { id: "child-1" } }, labelOf)).toBe("child-1")
+    expect(consultActivityKeyOf({ session: {} }, labelOf)).toBe(consultLabelKey("Senior Engineer"))
+    expect(consultActivityKeyOf({}, () => undefined)).toBeUndefined()
+    expect(consultActivityKeyOf(undefined, labelOf)).toBeUndefined()
+    expect(consultLabelKey("Reviewer")).toBe("label:Reviewer")
+  })
+
+  test("two consults of ONE role: only the WEDGED one is interrupted, the bash-holding twin is untouched", async () => {
+    /** The child ids the supervisor interrupted, in order. */
+    const interrupts: string[] = []
+    /** Build one never-settling handle for a given child id. */
+    const handleFor = (id: string): any => {
+      /** That child's settlement (never resolved in this arm). */
+      const settled = deferred()
+      return { id, result: settled.promise, interrupt: () => { interrupts.push(id) } }
+    }
+    /** The activity reader: ONLY the child named "bash-child" has an OPEN bash call. */
+    const activityOf = (childId: string | undefined, _role: string): ConsultToolActivity | undefined => childId === "bash-child" ? { current: { name: "bash", startedAt: Date.now() }, history: [] } : undefined
+    /** The supervisor under test. */
+    const supervisor = createConsultSupervisor({ handoffDir, log: () => undefined, activityOf, forceAfterMs: () => 10 })
+    /** A consult that holds an OPEN bash call — it must NOT be interrupted. */
+    const bashHolder = supervisor.start({ role: "Senior Engineer", task: "run the verification suite", exec: {}, raise: async () => handleFor("bash-child") })
+    /** A same-role sibling with NO open call — it MUST be interrupted at the bound. */
+    const wedged = supervisor.start({ role: "Senior Engineer", task: "write the report", exec: {}, raise: async () => handleFor("wedged-child") })
+    await tick(40)
+    expect(interrupts).toEqual(["wedged-child"])
+    /** The consulted views, keyed by id. */
+    const states = new Map(supervisor.list().map((view) => [view.consultId, view.state]))
+    expect(states.get(bashHolder.consultId)).toBe("running")
+    expect(states.get(wedged.consultId)).toBe("interrupted")
+    expect((await supervisor.settle(wedged.consultId)).status).toBe("interrupted")
   })
 })

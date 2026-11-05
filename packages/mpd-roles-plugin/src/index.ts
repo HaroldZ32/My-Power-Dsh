@@ -39,7 +39,7 @@ import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // The ONE consult supervisor (§D2): blocking and async consults share the record, the concurrency
 // cap, the 15-minute deadman and the handoff writer. Kept in its own module so its tests need no boot.
-import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -939,37 +939,35 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // The child's tool activity, keyed by the child's OWN label (its role name — the identity the
   // sanctioned adapter helper `subagentLabelOf` exposes). The deadman needs the CURRENT call: an
   // OPEN `bash` is the only exemption from the 15-minute rule, and it has NO age bound.
-  /** The label-keyed activity every consult shares. */
+  // PER-CHILD (F1 repair): the bucket key is the CHILD's session id — the same value
+  // `DshAsyncAgent.id` reports — never the role label, because two concurrent consults of ONE role
+  // must not share one `current` slot. The label is a display fallback for an id-less composition.
+  /** The activity buckets every consult shares, keyed by child id (or the label fallback key). */
   const toolActivity = new Map<string, ConsultToolActivity>()
-  /** The child label of one tool execution, or undefined when it is not a child this row raised. */
-  const activityLabel = (exec: unknown): string | undefined => {
-    /** The harness tool exec's calling agent. */
-    const agent = (exec as { agent?: unknown } | undefined)?.agent
-    /** The child's own delegation label. */
-    const label = dsh.subagentLabelOf(agent)
-    return typeof label === "string" && label !== "" ? label : undefined
-  }
+  /** The bucket key of one tool execution: the child's id, label fallback only when it has none. */
+  const activityKey = (exec: unknown): string | undefined =>
+    consultActivityKeyOf((exec as { agent?: unknown } | undefined)?.agent, (agent) => dsh.subagentLabelOf(agent))
   /** Record one tool call's START — the in-flight half the bash exemption reads. */
   const noteToolStart = (exec: unknown): void => {
-    /** The child label this call belongs to, when it is one of ours. */
-    const label = activityLabel(exec)
-    if (label === undefined) return
+    /** The child-id bucket this call belongs to, when it is one of ours. */
+    const key = activityKey(exec)
+    if (key === undefined) return
     /** The registered tool name. */
     const name = typeof (exec as { name?: unknown } | undefined)?.name === "string" ? String((exec as { name: string }).name) : "tool"
     /** The call's argument object, quoted by the handoff writer. */
     const rawArgs = (exec as { arguments?: unknown } | undefined)?.arguments
-    /** The activity bucket for this child label. */
-    const bucket = toolActivity.get(label) ?? { history: [] }
+    /** The activity bucket for this child. */
+    const bucket = toolActivity.get(key) ?? { history: [] }
     bucket.current = { name, startedAt: Date.now(), ...(rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs as Record<string, unknown> } : {}) }
-    toolActivity.set(label, bucket)
+    toolActivity.set(key, bucket)
   }
   /** Record one tool call's COMPLETION: close the in-flight slot and keep a bounded history. */
   const noteToolEnd = (exec: unknown): void => {
-    /** The child label this call belongs to, when it is one of ours. */
-    const label = activityLabel(exec)
-    if (label === undefined) return
-    /** The activity bucket for this child label. */
-    const bucket = toolActivity.get(label)
+    /** The child-id bucket this call belongs to, when it is one of ours. */
+    const key = activityKey(exec)
+    if (key === undefined) return
+    /** The activity bucket for this child. */
+    const bucket = toolActivity.get(key)
     if (bucket?.current === undefined) return
     bucket.history.push(bucket.current)
     if (bucket.history.length > CONSULT_ACTIVITY_HISTORY) bucket.history.splice(0, bucket.history.length - CONSULT_ACTIVITY_HISTORY)
@@ -995,7 +993,9 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // handoff directory is created by the supervisor when the deadman actually fires.
     handoffDir: (target) => join(dsh.workspaceRoot(target as DshToolExec | undefined), ".mpd", "handoff"),
     log: (line) => warn(line),
-    activityOf: (role) => toolActivity.get(role),
+    // The deadman asks for THIS consult's child id (F1 repair). The label is read only when the
+    // child reported no id at all — never as a second chance for an id-bearing child.
+    activityOf: (childId, role) => (childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId)),
     maxConcurrent: () => consultMaxFromEnv(),
     forceAfterMs: () => CONSULT_FORCE_AFTER_MS,
   })
