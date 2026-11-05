@@ -4,7 +4,7 @@
 
 官方 Agent Teams 运行时之外的**工作流**。Harness 0.1.7-rc.2 的官方插件只管团队本身——名册、共享看板、信箱、
 可续接的队友——别的都没有。而被退役的自研体还带有队长真正要用的那些评审点：一支在**任何人存在之前**就能被阅读、
-编辑、批准的暂存计划，认领时冻结的任务契约，暂停，以及归档。这些东西现在住在这里。
+编辑、批准的暂存计划，认领时冻结的任务契约，暂停、结束，以及归档。这些东西现在住在这里。
 
 **mpd 记录才是团队的权威真相。** 名册与看板存放在 `<workspace>/.mpd/team/teams/<teamId>.json`，由本插件读写；
 官方 Agent Teams 服务只是运行官方执行器的组合里的**回退**，且只经 `mpd-dsh-adapter` 访问——这里没有任何界面把
@@ -19,7 +19,7 @@
 | `agent_teams_task` | `claim`、`contract`、`release`、`complete`、`fail`、`depend` | 在 mpd 记录上认领任务**并**冻结契约（单调 `attempt`）；读回契约；`release` 释放配对并把任务行退回 `pending`；`complete`/`fail` 是终结动词（仅所有者或队长可用，可带 `note`/`expected_revision`，`FAIL` 会释放其依赖方）；`depend` 只向**既有**行**追加** `blocked_by` 依赖边——重复添加是幂等空操作（会如实报告），已终结的行、未知的 `task_id`、既非该行所有者又非队长的调用者、以及**自环**或**任何环**（双节点或传递环）都会被**拒绝**；所有拒绝都在**任何写入之前**返回，`blockedBy` 与 `revision` 保持原样——成环的边永远无法满足就绪规则，而 `depend` 只会追加、永不删边，任务行会因此永久 not-ready——并报告点名不到任何任务的引用：按原文保留在 `blockedBy`、在结果里点名、并持久化为该行的 `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并在**按团队分键的台账**里记录配对；`release` 释放配对并重开任务行 |
 | `agent_teams_mail` | `send`、`unread`、`read`、`summary`、`permit`、`wait` | 团队信箱：**一条** durable 流，承载 `message`/`question`/`answer` 记录，且带官方**给不了**的已读状态；`permit` 签发等待授权（仅本队 Lead），`wait` 在该授权内阻塞——完整协议见 [`docs/mail.zh-CN.md`](../../docs/mail.zh-CN.md) |
-| `agent_teams_control` | `halt`、`resume` | 只停派工、别的什么都不做的暂停 |
+| `agent_teams_control` | `halt`、`resume`、`fence`、`unfence`、`end` | 只停派工、别的什么都不做的暂停；`fence`/`unfence` 只关闭一个席位；`end` 彻底结束团队（仅 Lead、幂等） |
 
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
 
@@ -162,14 +162,23 @@ data: {"rev":8}
   与两条路由都会退回到 `liveAgents()` 扫描并匹配 `session.id` —— 这正是 `workspaceRootForSessionOf`
   与 TUI 适配器已有的回退。宿主给 agent 的 id 与它所属会话的 id 不同时，所有界面都认为它活着；拒绝句子
   仍是 `session <id> is not live`，保持不变。
-- **caller 就是工具路径的 caller。** 工作区、会话 id 与 `lineage` 都完全按 `where(exec)` 的推导方式、
+- **caller 就是工具路径的 caller。** 工作区、会话 id、`lineage` 与会话 TITLE 都完全按 `where(exec)` 的推导方式、
   从解析出的活 agent 得出：恢复或被 fork 的 Lead 会带上 harness 记录的父会话，因此服务（以及两条路由）
   解析到与它自己的工具调用**相同**的团队；被记录的**委派子会话**贡献**空** lineage，绝不继承其队长的团队。
+- **名册席位由 RECORD 识别，绝不靠猜。** `team-store.ts#memberIdentityOf` 是所有 Lead 校验共用的**唯一**收窄：
+  先看会话自己的 id（成员的 `name`/`executorRef`），再看**记录中的祖先**（恢复的会话以成员旧会话为父），最后看
+  persona TITLE 是否命中席位的 **role**，其次才是席位的**存储名**（W3-C 绑定的席位里，这个存储名就是 workmate slug，
+  所以标题若原样包含它，就认作该席位）。**最长匹配优先**——`Plan Reviewer` 的标题会认作 Plan Reviewer，而不会与
+  `Reviewer` 撞车；长度相同的真正歧义仍会判为"是成员、但认不出具体席位"，因此既不借 Lead 祖先、也不能冒充某个席位。
+- **被记录的 Lead 绝不会因为标题而被当作成员解析：** 队长身份在标题分支之前判定，所以队长人设里即使出现 roster role，
+  也绝不可能被用成员 id 寻址。（被 fork 的 Lead 的新 session id 只有在 churn heal 运行时才会被记录——而 heal 会跳过
+  身份面认定为成员的会话，所以标题点名席位的 fork 在该记录上**永远不会**被 heal，会一直按该席位处理（fail-closed），
+  只要标题还点名该席位。这是已声明的边界。）
 
 **这两个函数是免 exec 的。** `approveTeam(deps, caller)` 与 `runDispatch(deps, caller, input)`
 不读取任何 cordis 上下文、也不读取工具 exec：时钟、执行器、批准副作用、团队解析器、watchdog 读数、
 服务查找、行日志、空闲守卫的派发窗口，以及两道批准期守卫，全部经 `TeamActionDeps` 显式传入。
-caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signal? }`。动作面带来的差异之一是 agent
+caller 同样是显式值 —— `{ workspace, sessionId, lineage, title?, agent?, signal? }`。动作面带来的差异之一是 agent
 缺失：当 `caller.agent` 缺席时，两个函数都在**第一次写存储之前**回答
 `{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` —— 不写记录、
 不 spawn、不跑批准副作用、不开派发窗口。工具调用方永远带着 agent，因此其行为不变。这道拒绝也正是
@@ -237,7 +246,11 @@ caller 同样是显式值 —— `{ workspace, sessionId, lineage, agent?, signa
   也就不会清掉队长已有的清单。
 - **契约是任务被认领那一刻的"含义"。** `attempt` 按任务单调递增，是"这是 t4 的第几次尝试"唯一的答案：官方看板的
   `revision` 会因任何改动而前进，因此不能替代 attempt。
-- **暂停不是结束。** 它只记录一次 hold；不打断任何成员，也不归档任何东西。
+- **暂停不是结束，`end` 才是。** `halt` 只记录一次 hold：不打断任何成员，也不归档任何东西，因此名册、看板与绑定都还在，`resume`
+  可以撤销。`end`（`agent_teams_control {action:"end", team_id?, reason?}`，仅 Lead 可调用）是终局动词：它**经由 store**
+  （`endTeamRecord`，即 `writeTeam`）在 mpd 记录上盖下 `phase: "ended"`、`endedAt` 与 `archivedReason`，此后这个团队对所有席位都不再解析——
+  派工、认领与邮件都再触不到它，而记录本身作为历史留在磁盘上。重复调用 `end` 是会被报告的 no-op（`changed: false`），
+  保留首次结束的时刻与原因。
 - **信箱是我们自己的**，因为官方那个答不了队长真正要问的问题。它持久化的只有 `messages` 和 `delivered`，
   "已读"在它那里**无处可观测**，所以"对方到底**看见**没有"没有答案。`agent_teams_mail` 自己拥有
   `sent → delivered → read` 全生命周期：记录写在 `<workspace>/.mpd/team/mailbox.jsonl`（**只追加**，所以崩溃最多丢最后一行、

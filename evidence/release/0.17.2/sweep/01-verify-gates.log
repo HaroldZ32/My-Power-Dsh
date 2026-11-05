@@ -1,0 +1,4 @@
+=== verify:gates
+[verify-gates] member workflows: exit=0 PASS - 33ms
+[verify-gates] PASS - 9/9 member gate(s) green
+gates-exit=0

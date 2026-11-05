@@ -1,0 +1,4 @@
+=== no-host-override
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 214 host-declared row ids)
+nohost-exit=0

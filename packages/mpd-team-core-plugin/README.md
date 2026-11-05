@@ -5,8 +5,8 @@
 The **workflow** around the official Agent Teams runtime. Harness 0.1.7-rc.2's official plugin owns the
 team itself — roster, shared board, mailbox, continuable teammates — and nothing else. The retired
 vendored body also carried the review points a captain actually works with: a team staged as a plan the
-user can read and approve *before* anybody exists, a task contract frozen at claim time, a halt, and an
-archive. Those live here.
+user can read and approve *before* anybody exists, a task contract frozen at claim time, a halt, an end,
+and an archive. Those live here.
 
 **The mpd record is the authoritative team truth.** The roster and the board live in
 `<workspace>/.mpd/team/teams/<teamId>.json`, written and read by this plugin; the official Agent Teams
@@ -22,7 +22,7 @@ service is the **fallback** for a composition that runs the official executor, r
 | `agent_teams_task` | `claim`, `contract`, `release`, `complete`, `fail`, `depend` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending`; `complete`/`fail` are the terminal verbs (owner-only, optional `note`/`expected_revision`, a `FAIL` releases its dependents); `depend` APPENDS `blocked_by` edges to an EXISTING row — idempotent (a re-added reference is a reported no-op), refused for a terminal row, for an unknown `task_id`, for a caller who is neither the row's owner nor the team's Lead, and for a SELF-EDGE or ANY CYCLE (2-node or transitive); every refusal returns BEFORE any write, so `blockedBy` and `revision` are unchanged — a cyclic edge could never satisfy the readiness rule, and `depend` appends only, so the row would be permanently not-ready — and it reports a reference that names no task: kept verbatim in `blockedBy`, named in the answer, and persisted on the row as `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing in the TEAM-SCOPED ledger; `release` frees it and reopens the row |
 | `agent_teams_mail` | `send`, `unread`, `read`, `summary`, `permit`, `wait` | the team mailbox: ONE durable stream carrying `message`/`question`/`answer` rows, with a read state the official one cannot provide; `permit` issues a wait grant (this team's Lead only) and `wait` blocks inside it — the whole protocol is in [`docs/mail.md`](../../docs/mail.md) |
-| `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
+| `agent_teams_control` | `halt`, `resume`, `fence`, `unfence`, `end` | a hold that stops new dispatch and nothing else; `fence`/`unfence` close one seat; `end` closes the team for good (Lead only, idempotent) |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 
@@ -207,18 +207,32 @@ instead of forwarding it.
   so the service AND the routes fall back to a `liveAgents()` scan matching `session.id` — the same
   fallback `workspaceRootForSessionOf` and the TUI adapter already make. A host that gives an agent an id
   different from its session id is therefore live to every surface, and the refusal sentence is unchanged.
-- **The caller is the TOOL path's caller.** The workspace, session id and `lineage` are derived exactly
-  as `where(exec)` derives them, from the resolved live agent: a resumed or forked Lead contributes the
-  parent session the harness recorded, so the service (and both routes) resolves the SAME team its own
-  tool calls resolve; a recorded DELEGATION CHILD contributes an EMPTY lineage and never inherits its
-  captain's team.
+- **The caller is the TOOL path's caller.** The workspace, session id, `lineage` and the session TITLE are
+  derived exactly as `where(exec)` derives them, from the resolved live agent: a resumed or forked Lead
+  contributes the parent session the harness recorded, so the service (and both routes) resolves the SAME
+  team its own tool calls resolve; a recorded DELEGATION CHILD contributes an EMPTY lineage and never
+  inherits its captain's team.
+- **A roster seat is identified by the RECORD, never by a guess.** `team-store.ts#memberIdentityOf` is the
+  ONE narrowing every Lead check uses: the session's own id (a member's `name`/`executorRef`), then a
+  recorded ANCESTOR (a resumed session whose parent is the member's old session), then the persona TITLE
+  matched against the seat's ROLE first and then the seat's STORED name (for a W3-C-bound seat that stored
+  name is the workmate slug, so a title that literally contains it names that seat). The LONGEST match
+  wins — a `Plan Reviewer` title names the Plan Reviewer rather than colliding with `Reviewer` — and a
+  genuine equal-length tie names a member but picks no seat, so it can borrow no Lead ancestry and cannot
+  act as one seat.
+- **A RECORDED Lead is never read as a member by its title:** the captain identity is checked before the
+  title arm, so a Lead persona that happens to contain a roster role can never be addressed by a member id.
+  (A FORKED Lead's new session id is recorded only when the churn heal runs — and the heal SKIPS any
+  session the identity plane names as a member, so a fork whose title names a seat is NEVER healed on that
+  record and stays identified as that seat, fail-closed, while its title keeps naming one. That is the
+  stated bound.)
 
 **The functions are exec-free.** `approveTeam(deps, caller)` and `runDispatch(deps, caller, input)`
 read no cordis context and no tool exec: the clock, the executor, the approval effects, the team
 resolver, the watchdog reading, the service lookup, the row log, the idle guard's dispatch window and
 the two approval-time guards all arrive on `TeamActionDeps`. The caller is explicit too —
-`{ workspace, sessionId, lineage, agent?, signal? }`. The surface-driven difference from the tool body
-is the missing agent: with `caller.agent` absent both functions answer
+`{ workspace, sessionId, lineage, title?, agent?, signal? }`. The surface-driven difference from the tool
+body is the missing agent: with `caller.agent` absent both functions answer
 `{ ok: false, error: "approve needs a live agent" }` / `"dispatch needs a live agent"` **before the
 first store write** — no record, no spawn, no approval effect, no dispatch window. A tool caller always
 carries an agent, so its behaviour is unchanged. That refusal is what makes a route safe: a route has no
@@ -299,7 +313,13 @@ that can only fail, and a read-only composition mounts the read routes alone.
 - **A contract is what a task MEANT when it was claimed.** `attempt` is monotonic per task and is the
   only place "the Nth attempt at t4" is answerable: the official board's `revision` moves for every
   mutation, so it cannot stand in for an attempt.
-- **A halt is not an ending.** It records a hold; no member is interrupted and nothing is archived.
+- **A halt is not an ending; `end` is.** `halt` records a hold: no member is interrupted and nothing is
+  archived, so the roster, board and bindings stay and `resume` lifts it. `end`
+  (`agent_teams_control {action:"end", team_id?, reason?}`, Lead only) is the terminal verb: it stamps
+  `phase: "ended"`, `endedAt` and `archivedReason` on the mpd record THROUGH THE STORE (`endTeamRecord`,
+  which calls `writeTeam`), so the team stops resolving for every seat — dispatch, claim and mailbox
+  writes can no longer reach it — while the record itself stays on disk as history. A repeated `end` is a
+  reported no-op (`changed: false`) that keeps the first ending's instant and reason.
 - **THE MAILBOX IS OURS**, because the official one cannot answer the question a captain asks. Its
   durable state is `messages` + `delivered`, and "read" is not observable anywhere in it, so "did they
   SEE it?" has no answer there. `agent_teams_mail` owns `sent → delivered → read`: the record lives in
