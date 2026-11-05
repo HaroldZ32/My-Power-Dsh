@@ -14,6 +14,45 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.17.4 — the supervision wave: re-team after an ended team, parallel one-shot consults, and a 15-minute force supervisor
+
+**Fixed — a session can build the next team again.** `readLeadingTeam` treated a team record as
+"leading" from `leadSessionId` plus a non-empty member list and never read `endedAt` or the board's
+terminality, while settlement never re-armed and no mid-session volume trigger existed. "Leading" is now
+ended-aware: an explicit end, or a CLEAN-TERMINAL board (at least one task, every task
+completed/cancelled, none failed) which the gate ends itself through `agent_teams_control end`. A
+`failed` task blocks BOTH the auto-end and any re-team and asks for a `kind=repair` row, so a wave whose
+verification failed is never closed silently. With no live team and `team.reteam.afterConsults` (default
+4) completed consults by this agent, the gate stages one empty plan shell under
+`[AgentTeams] Re-team rule`, once per record in `.mpd/session-gate/<sessionId>.json`.
+
+**Added — one-shot consults run in parallel, and every consult has a 15-minute deadman.** The adapter
+gains `spawnAgentAsync` (it returns a handle without awaiting the report and disposes the activation on
+settle), while `spawnAgent` stays the blocking projection with an unchanged `{output, structured,
+stopReason}` shape. `mpd_role_spawn_async` and `mpd_role_consult` (list / wait ≤ 60 s / collect / cancel)
+let several consults overlap, with `MPD_DSH_CONSULT_MAX` (default 8) queueing over the cap. Every consult
+— blocking or async — carries a 15-minute deadman: an OPEN `bash` call exempts it with no age bound and
+is recorded as a `consult-long-bash` line; otherwise the supervisor writes
+`.mpd/handoff/consult-<id>-<UTC>.md`, interrupts the child and answers `status:"interrupted"`. The
+roster supervisor is the ONE deadline owner for a roster consult: autoproject's `slotBoundMs` defers to
+it instead of racing it, and an interrupted consult becomes a `SlotKill` row rather than a silent null.
+
+**Added — the team watchdog can force a wedged member.** A task owner now resolves by NAME **and**
+`executorRef`/session id — the mismatch that degraded the engine to `PREDICATE FALLBACK (§4)`
+report-only — the projection carries `startedAt`, and a `wedged` decision fires at `forceAfterMs`
+(default 900 000, live-read, 0 disables). The force action runs through `mpdTeamActions` with the lead's
+authority and only after the caller is proven to BE the lead: write the handoff, interrupt that member
+only, requeue the task with the attempt bumped, split it (one unowned row per declared write scope, a
+`[split]` continuation otherwise), message the captain and journal `wedged-force`. An in-flight `bash`
+call is the only exemption and is recorded; the captain is never a target, and a cell seat is a target
+through its team member identity while team-core never writes the cell record.
+
+**Docs and QA.** Eight package README pairs, `docs/design` and `docs/cellwork` (both languages),
+`agent-references/supervision.md` (new, registered in the on-demand index) and the manual's §1/§13
+wording; the read-only deny list is now TEN names and the leaf list FOUR, with
+`skills/dsh-qa/scripts/readonly-deny.ts` pinning the shipped shape and the skills corpus re-pinned once
+in the same commit.
+
 ## 0.17.3 — the `ulw-*` skills become `autoproject-*`, cellwork adopts live members, and the compaction barrier holds on dsh-tui 0.18.0
 
 **Changed — the `ulw-*` skills are gone.** `skills/ulw-plan`, `skills/ulw-execute` and `skills/ulw-research`
