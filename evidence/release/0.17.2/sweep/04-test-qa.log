@@ -1,0 +1,4 @@
+=== test:qa
+[mpd-ext] ok
+[test:qa] all self-tests passed
+testqa-exit=0

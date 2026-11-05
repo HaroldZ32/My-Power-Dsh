@@ -1,0 +1,127 @@
+{
+  "wave": "compaction-host-api",
+  "contract": ".mpd/plans/compaction-host-api.md",
+  "branch": "fix/compaction-engine-scope",
+  "baseCommit": "27473f02",
+  "writer": "Senior Engineer (delegated subagent)",
+  "utc": "2026-11-05T02:15:46Z",
+  "treeState": "dirty — sources + tests edited, NOT built, NOT staged, NOT committed (by instruction)",
+  "filesChanged": [
+    "packages/mpd-dsh-adapter-plugin/src/index.ts",
+    "packages/mpd-cellwork-plugin/src/protocol-core.ts",
+    "packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts",
+    "packages/mpd-dsh-adapter-plugin/test/adapter-live-agent-exact.test.ts (new)",
+    "packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts",
+    "packages/mpd-cellwork-plugin/test/flow.test.ts (doubles: liveAgent -> liveAgentExact)"
+  ],
+  "symbolsTouched": {
+    "adapter": [
+      "DshAdapter.liveAgentExact (new interface member)",
+      "liveAgentExact (new implementation, service(\"agents\").get(id) only)",
+      "presetEngineOf (new helper: service(\"agentPresets\").serviceFor(handle, \"compaction\"))",
+      "engineOfLiveHandle (preset door first, then agent.ctx)",
+      "compactionEngineForAgent / compactionEngineForLiveAgent (both still route through engineOfLiveHandle; names unchanged)",
+      "createDshAdapter return object (adds liveAgentExact)"
+    ],
+    "cellwork": [
+      "PromotionDeps.dsh Pick (liveAgent -> liveAgentExact)",
+      "liveSessionOf (resolves through liveAgentExact)",
+      "parentHeldExactly (new: liveAgentExact(parent.id) === parent)",
+      "reseedParentOf (doc: candidates come from the identity seam; behaviour unchanged otherwise)",
+      "promoteAfterHandoff (pre-spawn identity assertion + distinct reseed-parent-unavailable reason)"
+    ],
+    "unchanged": [
+      "compactNow(agent, signal) call site keeps the live Agent as its first argument",
+      "liveAgent itself (list-scan fallback retained for its other consumers)"
+    ]
+  },
+  "newTests": [
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/test/adapter-live-engine-seam.test.ts",
+      "names": [
+        "R1: the PRESET-REALM door answers while the agent scope has no engine — the arm the fences needed",
+        "R1: with BOTH doors answering, the PRESET REALM's engine wins — the order, not just the fallback",
+        "R1: with NO preset roster and no agent-scope engine both seams answer undefined — never a fabricated engine"
+      ],
+      "observed": "pass (3/3)"
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/test/adapter-live-agent-exact.test.ts (new)",
+      "names": [
+        "R2: liveAgentExact answers the registry's OWN instance",
+        "R2: liveAgentExact does NOT scan the list — a handle only the list carries answers undefined",
+        "R2: liveAgentExact answers undefined for an unknown id, an empty id, a missing registry and a throwing lookup"
+      ],
+      "observed": "pass (3/3)"
+    },
+    {
+      "file": "packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts",
+      "names": [
+        "R1: the barrier compacts through the preset REALM door — agent.ctx serves no engine while agentPresets.serviceFor does",
+        "R1: with NO preset roster and no agent-scope engine the barrier keeps `no-engine` — never a fabricated engine",
+        "R2: a parent the registry answers with a DIFFERENT instance is refused `reseed-parent-unavailable` with ZERO host calls",
+        "R2: a parent only the LIST-SCAN seam knows is NOT forwarded — the identity seam answers nothing and the barrier refuses",
+        "R2: a parent the registry HOLDS is forwarded as that exact instance — the identity the host demands"
+      ],
+      "observed": "pass (5/5)"
+    }
+  ],
+  "gates": [
+    {
+      "command": "bun test packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "result": "371 pass, 0 fail, 25 files"
+    },
+    {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "result": "203 pass, 0 fail, 24 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "result": "tsgo --noEmit: no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "result": "595 files / 52112 declarations scanned — PASS"
+    },
+    {
+      "command": "bun test packages/mpd-team-compact-plugin",
+      "exit": 0,
+      "result": "28 pass, 0 fail (consumer spot-check, not a contract gate)"
+    },
+    {
+      "command": "bun test packages",
+      "exit": 1,
+      "result": "3491 pass, 6 skip, 2 fail — both failures are the dist byte-identity arms (verify-dist-fresh: packages/mpd-roles-plugin/dist STALE); expected because src changed and dist was NOT rebuilt by instruction"
+    }
+  ],
+  "falsification": [
+    {
+      "mutation": "engineOfLiveHandle skips the preset door (pre-fix lookup)",
+      "expectedFails": "adapter R1 preset-door arm + R1 order arm; cellwork R1 preset-realm arm",
+      "observed": "adapter: 2 fail; cellwork barrier: 1 fail (the R1 preset-realm arm); restored -> all green"
+    },
+    {
+      "mutation": "liveSessionOf resolves through liveAgent and the pre-spawn parentHeldExactly assertion is removed (full pre-fix reseed path)",
+      "expectedFails": "cellwork R2 different-instance arm + R2 list-scan arm",
+      "observed": "2 fail (13 pass) — reseeds.length became 1 and the host double threw UNAUTHORIZED; restored -> 15/15 pass"
+    },
+    {
+      "mutation": "liveAgentExact falls back to the list scan",
+      "expectedFails": "adapter 'does NOT scan the list' arm",
+      "observed": "1 fail (2 pass); restored -> 3/3 pass"
+    }
+  ],
+  "bounds": [
+    "No live compaction was executed in this environment; the runtime evidence remains the three VEdit cellwork journals named in the contract.",
+    "I did not boot a real dsh composition, so whether the adapter row's ROOT ctx can see `agentPresets` in the installed 0.18.0 host is argued from the installed TUI's own usage and from this adapter's pre-existing `requireService(\"agentPresets\")` path — not measured here.",
+    "dist/ was NOT rebuilt (instruction). Every dependent dist stays stale until the captain runs the pinned-toolchain fan-out; verify:dist will redden until then.",
+    "A composition running an adapter OLDER than this change (no liveAgentExact) now answers reseed-parent-unavailable instead of attempting a reseed; impossible inside one bun-build fan-out, but it is the declared behaviour change for a mixed checkout.",
+    "Out of scope, reported not fixed: capabilities().compactionForAgent still samples the FIRST live agent's `agent.ctx.get(\"compaction\")`, so it reports false under the preset-isolate composition even though the engine is now reachable through the preset door.",
+    "Out of scope, unchanged: liveAgent keeps its list-scan fallback for its other consumers (team-compact, team-core, tui).",
+    "The broad `bun test packages` run exits 1 on exactly two dist byte-identity arms (verify-dist-fresh reports packages/mpd-roles-plugin/dist STALE). That is the declared fan-out consequence of the no-build instruction, not a behavioural regression; it clears only after the captain's pinned-toolchain rebuild."
+  ]
+}

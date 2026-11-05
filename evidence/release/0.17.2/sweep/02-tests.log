@@ -1,0 +1,6 @@
+=== bun test packages
+ 6 skip
+ 0 fail
+ 49520 expect() calls
+Ran 3488 tests across 232 files. [34.45s]
+tests-exit=0

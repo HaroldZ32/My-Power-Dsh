@@ -73,3 +73,97 @@ test("C1: a handle with no usable scope answers undefined and never throws", () 
   // A scope that serves no engine at all is absent too.
   expect(dsh.compactionEngineForLiveAgent({ id: "agent-empty", ctx: { get: (): undefined => undefined } })).toBeUndefined()
 })
+
+// ── ROOT CAUSE 1: the engine lives in the preset's ISOLATE realm ───────────
+//
+// dsh-tui 0.18.0 disables the host's root `compaction-basic` row, and this bundle's `mpd` preset mounts
+// compaction inside `isolate: { compaction: true, … }`. A realm-isolated service is NOT visible to
+// `agent.ctx.get("compaction")`; the host's door is `agentPresets.serviceFor(agent, "compaction")` — the
+// same order the installed TUI adapter uses (`agentPresets.serviceFor(agent, key) ?? ctx.get(key)`).
+// The arms above all answer on `agent.ctx`, which is exactly why this suite was green while every real
+// checkpoint answered `no-engine`. The arms below mount the preset door instead.
+
+/** One recorded `agentPresets.serviceFor` call: the handle it was asked for and the key it was asked for. */
+interface PresetDoorCall {
+  /** The Agent handle the adapter forwarded. */
+  agent: unknown
+  /** The service key the adapter asked the roster for. */
+  key: string
+}
+
+/**
+ * The REAL composition dsh-tui 0.18.0 mounts: `agentPresets` answers (or, for the no-engine arm,
+ * deliberately does not), and the live registry holds the member.
+ *
+ * @param agent - the member's handle; its own scope is whatever the caller put there.
+ * @param engine - the realm engine the preset door serves, or undefined when no roster is mounted.
+ * @param calls - the recorded `serviceFor` calls, so an arm can prove which door ran.
+ * @returns the adapter over that composition.
+ */
+function adapterWithPresetDoor(agent: { id: string }, engine: unknown, calls: PresetDoorCall[]): ReturnType<typeof createDshAdapter> {
+  /** The ctx: the preset roster's realm door and the live registry, nothing else. */
+  const ctx = {
+    get: (name: string): unknown => {
+      if (name === "agentPresets") {
+        return {
+          serviceFor: (target: unknown, key: string): unknown => {
+            calls.push({ agent: target, key })
+            return key === "compaction" ? engine : undefined
+          },
+        }
+      }
+      if (name === "agents") return { get: (id: string): unknown => (id === agent.id ? agent : undefined), list: (): unknown[] => [agent] }
+      return undefined
+    },
+  }
+  return createDshAdapter(ctx as never)
+}
+
+test("R1: the PRESET-REALM door answers while the agent scope has no engine — the arm the fences needed", () => {
+  /** The realm engine, told apart by identity. */
+  const engine = { realm: "preset-isolate" }
+  /** The member's handle: its own scope serves NO compaction service in this composition. */
+  const agent = { id: "agent-realm", ctx: { get: (_name: string): undefined => undefined } }
+  /** Every `serviceFor` call the adapter made. */
+  const calls: PresetDoorCall[] = []
+  /** The adapter over the REAL composition. */
+  const dsh = adapterWithPresetDoor(agent, engine, calls)
+  // THE HANDLE DOOR (what the barrier uses) and the ID-KEYED door both reach the realm.
+  expect(dsh.compactionEngineForLiveAgent(agent)).toBe(engine)
+  expect(dsh.compactionEngineForAgent("agent-realm")).toBe(engine)
+  // …and the realm was reached through the host's door, asked for THIS agent and the compaction key.
+  expect(calls.length).toBeGreaterThan(0)
+  expect(calls[0].agent).toBe(agent)
+  expect(calls[0].key).toBe("compaction")
+})
+
+test("R1: with BOTH doors answering, the PRESET REALM's engine wins — the order, not just the fallback", () => {
+  /** The realm engine the preset door serves: the only correct one for an isolated composition. */
+  const realmEngine = { realm: "preset-isolate" }
+  /** The engine the agent's own scope would serve: a DIFFERENT object, so the order is observable. */
+  const scopeEngine = { realm: "agent-scope" }
+  /** The member's handle, whose scope also carries an engine. */
+  const agent = { id: "agent-both", ctx: { get: (name: string): unknown => (name === "compaction" ? scopeEngine : undefined) } }
+  /** The adapter over a composition whose preset roster answers. */
+  const dsh = adapterWithPresetDoor(agent, realmEngine, [])
+  // A scope-first resolver would answer `scopeEngine` here; the host's own order answers the realm's.
+  expect(dsh.compactionEngineForLiveAgent(agent)).toBe(realmEngine)
+  expect(dsh.compactionEngineForAgent("agent-both")).toBe(realmEngine)
+})
+
+test("R1: with NO preset roster and no agent-scope engine both seams answer undefined — never a fabricated engine", () => {
+  /** The member's handle: no engine in its own scope. */
+  const agent = { id: "agent-none", ctx: { get: (_name: string): undefined => undefined } }
+  /** The adapter over a composition whose ctx mounts neither a roster nor a scope engine. */
+  const dsh = adapterWithoutRegistryEntries()
+  expect(dsh.compactionEngineForLiveAgent(agent)).toBeUndefined()
+  expect(dsh.compactionEngineForAgent("agent-none")).toBeUndefined()
+  // A roster that THROWS is still "no engine": the agent-scope door is tried and it answers nothing.
+  /** The adapter over a roster whose `serviceFor` refuses the handle by throwing. */
+  const throwing = createDshAdapter({
+    get: (name: string): unknown => (name === "agentPresets"
+      ? { serviceFor: (): never => { throw new Error("the realm is gone") } }
+      : undefined),
+  } as never)
+  expect(throwing.compactionEngineForLiveAgent(agent)).toBeUndefined()
+})

@@ -1,0 +1,95 @@
+{
+  "wave": "compaction-host-api — reviewer follow-up (M1, N1, N2, N3)",
+  "contract": ".mpd/plans/compaction-host-api.md",
+  "branch": "fix/compaction-engine-scope",
+  "baseCommit": "27473f02",
+  "writer": "Senior Engineer (delegated subagent)",
+  "utc": "2026-11-05T02:30:51Z",
+  "treeState": "dirty — four files edited, NOT built, NOT staged, NOT committed (by instruction)",
+  "filesChanged": [
+    "packages/mpd-dsh-adapter-plugin/README.md (3 table rows: liveAgentExact added; the two compaction rows state the two-door order and why)",
+    "packages/mpd-dsh-adapter-plugin/README.zh-CN.md (the same 3 rows, 简体中文; heading tree + language-switch link untouched)",
+    "packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts (N1 arm added; R2 test name/comment narrowed to ZERO spawn calls + one interrupt assertion)",
+    "packages/mpd-team-compact-plugin/src/index.ts (N3 comment + skipped-not-live reason reworded; no behaviour change)"
+  ],
+  "symbolsTouched": {
+    "docs": [
+      "mpd-dsh-adapter-plugin README rows: `liveAgentExact` (new row), `compactionEngineForAgent`, `compactionEngineForLiveAgent`"
+    ],
+    "tests": [
+      "barrier-live-engine.test.ts: new arm `N1: the legacy liveAgent seam's stale parent is never used — liveSessionOf resolves through liveAgentExact`",
+      "barrier-live-engine.test.ts: renamed arm `R2: … ZERO spawn calls` + `expect(harness.interrupts.length).toBe(1)`",
+      "barrier-live-engine.test.ts: no production seam is touched; `harness.adapter.liveAgent` is overridden inside the N1 arm only"
+    ],
+    "source": [
+      "mpd-team-compact-plugin `compactTeamPass`: the THE HINGE comment block and the no-engine `skipped-not-live` reason string"
+    ],
+    "unchanged": [
+      "no behaviour changed; the `skipped-not-live` outcome token is kept",
+      "packages/mpd-cellwork-plugin/src/protocol-core.ts is byte-identical to its pre-experiment state (sha256 d010b7e9…) — the revert check below restored it"
+    ]
+  },
+  "newTests": [
+    {
+      "file": "packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts",
+      "names": [
+        "N1: the legacy `liveAgent` seam's stale parent is never used — `liveSessionOf` resolves through `liveAgentExact`"
+      ],
+      "observed": "pass (16/16 in the barrier file; 204/204 in the package)"
+    }
+  ],
+  "renamedTests": [
+    {
+      "file": "packages/mpd-cellwork-plugin/test/barrier-live-engine.test.ts",
+      "from": "R2: a parent the registry answers with a DIFFERENT instance is refused `reseed-parent-unavailable` with ZERO host calls",
+      "to": "R2: a parent the registry answers with a DIFFERENT instance is refused `reseed-parent-unavailable` with ZERO spawn calls",
+      "observed": "pass"
+    }
+  ],
+  "gates": [
+    {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "result": "204 pass, 0 fail, 2361 expect() calls, 24 files"
+    },
+    {
+      "command": "bun test packages/mpd-team-compact-plugin",
+      "exit": 0,
+      "result": "28 pass, 0 fail, 136 expect() calls, 1 file"
+    },
+    {
+      "command": "bun test packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "result": "371 pass, 0 fail, 1477 expect() calls, 25 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "result": "tsgo --noEmit: no diagnostics (empty output)"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "result": "595 TypeScript files / 52116 declarations scanned — VERDICT: PASS"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "result": "pairs=55 failed=0 violations=0 links=500 dead=0 — PASS"
+    }
+  ],
+  "falsification": [
+    {
+      "mutation": "ONLY `liveSessionOf` (protocol-core.ts) reverted to `deps.dsh.liveAgent`; `parentHeldExactly` left on `liveAgentExact`; every other file untouched",
+      "expectedFails": "the new N1 arm (a stale parent would be taken, fail the identity proof and refuse with no child)",
+      "observed": "exactly 1 fail (the N1 arm) / 15 pass, bun exit 1; `liveSessionOf` restored and the file hash returned to d010b7e9… (see revert-provability.log)"
+    }
+  ],
+  "bounds": [
+    "No dist was built and nothing was staged/committed (by instruction); the dist files in the working tree are the captain's earlier rebuild, not this wave's.",
+    "No real dsh composition was booted: the README rows and the N1 arm are verified at the source/test level, not against an installed 0.18.0 host.",
+    "The `skipped-not-live` OUTCOME token in mpd-team-compact-plugin is unchanged (N3 asked for the comment and the reason string only); only the reason text now names both doors.",
+    "FINDING outside N3's letter, NOT edited: packages/mpd-team-compact-plugin/README.md (Design constraints, 'The engine is resolved PER MEMBER through the member's own scoped context') and README.zh-CN.md carry the same single-door premise M1 corrected in the adapter READMEs; the captain must decide whether to reword them in this PR.",
+    "`bun run verify:gates` / `verify-dist-fresh` were not run: they would redden on the intentionally unrebuilt dist and were not in the requested gate list."
+  ]
+}

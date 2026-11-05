@@ -1,0 +1,52 @@
+# compaction-host-api — gate run 2026-11-05T02:15:46Z (UTC)
+# branch: fix/compaction-engine-scope  head: 27473f02  tree: dirty (unstaged, uncommitted by design)
+
+=== $ bun test packages/mpd-dsh-adapter-plugin
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a composition without mpdDsh warns once, naming the identity, and still falls back [0.05ms]
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a registered-but-not-ACTIVE provider is diagnosed as pending, never as a missing row [0.01ms]
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a mounted adapter is used as-is, with NO fallback line at all (negative control)
+
+ 371 pass
+ 0 fail
+ 1477 expect() calls
+Ran 371 tests across 25 files. [2.62s]
+[exit: 0]
+
+=== $ bun test packages/mpd-cellwork-plugin
+(pass) F2: a newer accepted revision supersedes an older in-flight partial and journals it [2.55ms]
+(pass) F2: a LOWER accepted revision still cannot supersede an in-flight one [1.47ms]
+(pass) F3: the cellwork_activate schema DECLARES `reused` and the description names the new behaviours [0.18ms]
+
+ 203 pass
+ 0 fail
+ 2354 expect() calls
+Ran 203 tests across 24 files. [369.00ms]
+[exit: 0]
+
+=== $ bun run typecheck
+$ tsgo --noEmit
+[exit: 0]
+
+=== $ bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 595 TypeScript file(s) of 595 in the source set; inspected 52112 declaration(s); skipped 25382 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]
+
+=== $ bun test packages   (broad regression, NOT a contract gate)
+3491 pass, 6 skip, 2 fail, 233 files, 34.11s
+[exit: 1]
+the 2 failures are the dist byte-identity arms, both delegating to verify-dist-fresh:
+  1. packages/mpd-roles-plugin/test/adapter-identity.test.ts:289
+     'the committed dist is the byte-identical product of a canonical build (T-62)'
+  2. packages/mpd-ext-plugin/test/adapter-identity.test.ts:345
+     'the committed dists are the byte-identical products of a canonical build (T-62)'
+observed reason: STALE packages/mpd-roles-plugin/dist/index.js — committed 207380 B (2d7bacaf…)
+!= fresh build of packages/mpd-roles-plugin/src/index.ts 208326 B (291d7fcc…); mpd-ext-plugin/dist
+depends on the same inlined adapter bytes.
+EXPECTED: src changed and dist was intentionally NOT rebuilt (captain's pinned-toolchain fan-out).
+NO behavioural test failed: the other 3491 pass, and these two reds clear with the rebuild.
+
