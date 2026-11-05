@@ -7,7 +7,7 @@
 import { appendJournal, freeCellId, handoffPath, newCellState, readCell, writeCell, type CellMemberRecord, type CellState } from "./state"
 import { callerContext, type CallerContext, type TeamActionsServiceView, type TeamsServiceView } from "./caller"
 import type { CellworkConfig } from "./config"
-import { fenceReasonOf, nameKey, sendThroughExecutor } from "./dispatch"
+import { fenceReasonOf, nameKey, resolveMemberName, sendThroughExecutor } from "./dispatch"
 import { validateHandoffText, writeHandoff } from "./handoff"
 import { acknowledgeCellMail, appendCellMail, deliverCellMail, findWorkspaceMailById, foldCellMail, nextCellMailId, pageCellMail, readCellMail, truncateCellMailBody, unreadFor, wakeFailures, type CellMailMessage } from "./mail"
 import { mailMaxUndeliveredOf, sendMany } from "../../mpd-team-core-plugin/src/mailbox-store"
@@ -354,13 +354,23 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
    * The team record is the authority for a closed seat (wave W2-E): `mode:"checkpoint"` and the fence
    * flag are ITS facts, and the cell row's own `mode` is a mirror. A reader that asked the cell row alone
    * could report a seat open one turn after the plane closed it, which is the divergence this ends.
+   *
+   * THE DISPLAY DERIVATION IS NOT A GIVE-UP FACT (repair round 2 finding A, corrected in round 3). The
+   * production give-up fence is written ONLY on the CELL row (`protocol-core.ts#memberAfterBarrier` writes
+   * `mode:"checkpoint"`, `handoffReady:true`, `fenced:true`, `fencedReason`), while
+   * `team-actions.ts#writeMemberHandoff` sets this TEAM row to `mode:"checkpoint"` and NOTHING else. So a
+   * TEAM checkpoint is BOTH the pending-barrier window AND the TEAM half of every real give-up: it can
+   * never be read as the give-up by itself. The row's EXPLICIT `fenced` flag is returned separately as
+   * `fenced` for the caller that needs the plane-only case; `cellwork_dispatch {unfence}` decides its CELL
+   * half from the CELL row's own marker and treats a bare `checkpoint` as barrier-owned.
    * @param cell - the cell whose team is asked.
    * @param workspace - the caller's workspace root.
    * @param name - the member's display name (its record id is accepted too).
-   * @returns `{mode}` for a live seat, `{mode:"checkpoint", checkpoint:true, fenceReason}` for a closed
-   * one, and `{}` when the record does not name it.
+   * @returns `{mode}` for a live seat, `{mode:"checkpoint", checkpoint:true, fenced, fenceReason}` for a
+   * closed one (the display derivation plus the row's own explicit give-up flag), and `{}` when the
+   * record does not name it.
    */
-  const recordSeat = (cell: CellState, workspace: string, name: string): { mode?: string; checkpoint?: boolean; fenceReason?: string } => {
+  const recordSeat = (cell: CellState, workspace: string, name: string): { mode?: string; checkpoint?: boolean; fenced?: boolean; fenceReason?: string } => {
     /** The live team record for this cell. */
     const record = recordOf(workspace, cell.teamId)
     if (record === undefined) return {}
@@ -371,14 +381,16 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
     if (row === undefined) return {}
     /** The plane's mode for the seat, when it states one. */
     const mode = typeof row.mode === "string" && row.mode !== "" ? row.mode : undefined
+    /** Whether the plane's row carries its EXPLICIT give-up marker (never the `checkpoint` derivation). */
+    const fenced = row.fenced === true
     /** Whether the plane reports the seat CLOSED, by either of its two spellings. */
-    const closed = row.mode === "checkpoint" || row.fenced === true
+    const closed = row.mode === "checkpoint" || fenced
     if (!closed) return mode === undefined ? {} : { mode }
     /** Why the plane closed it, in the plane's own vocabulary. */
-    const reason = row.fenced === true
+    const reason = fenced
       ? "the plane fenced this seat" + (typeof row.fencedReason === "string" && row.fencedReason !== "" ? " (" + row.fencedReason + ")" : "")
       : "the plane recorded a checkpoint for this seat (mode `checkpoint`), so it is fenced until the barrier reopens it"
-    return { mode: "checkpoint", checkpoint: true, fenceReason: reason }
+    return { mode: "checkpoint", checkpoint: true, fenced, fenceReason: reason }
   }
 
   /**
@@ -404,10 +416,174 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       ? { ok: false, error: tool + " is CAPTAIN-ONLY: the captain of this cell is session " + String(caller.cell?.captainSessionId ?? "none") + ", which is not this caller" }
       : undefined
 
+  /** One `unfence` name, resolved to the cell record's own spelling. */
+  interface UnfenceTarget {
+    /** The `cell.members` table key to rewrite. */
+    key: string
+    /** The member's recorded display name, which is what the answer's `member` field quotes. */
+    name: string
+  }
+
+  /** What one `unfence` list did: the record after the write, and one outcome per name. */
+  interface UnfenceResult {
+    /** The cell record after the cleared rows were persisted (the SAME record when none was fenced). */
+    cell: CellState
+    /** One outcome per named member, in the order the call named them. */
+    outcomes: Array<Record<string, unknown>>
+  }
+
+  /**
+   * Clear one or more members' compaction fences — the CELL row first, then the TEAM row through the
+   * plane's `unfence` seam when this composition exposes it.
+   *
+   * WHY BOTH RECORDS. The cell row's `handoffReady` is what `cellwork_handoff` refuses on (the "STILL
+   * WAITING for the compaction barrier" deadlock: a fenced row keeps the flag, while the only other
+   * clearer is another SUCCESSFUL barrier that a fenced member cannot start), and the TEAM row's
+   * `mode`/`fenced` is what a dispatch pass and the guard read. Clearing one alone leaves the member
+   * either unable to write its handoff or unmessageable, so the SAME call does both.
+   *
+   * NEVER `fenced: false`. The normalizer preserves only `fenced: true`, so a false key would vanish on
+   * the next read while this record claimed a state it never wrote — the keys are DELETED instead.
+   *
+   * THE DECISION TABLE IS PER RECORD (repair round 3), because the barrier writes the give-up in exactly
+   * one place:
+   *   1. CELL row `fenced:true` — the GIVE-UP, whatever the TEAM row says — clears that row AND asks the
+   *      plane seam to reopen the TEAM seat (the plane's `mode:"checkpoint"` is a CLOSED spelling too, and
+   *      `mpdTeamActions.unfence` clears it). The plane's half is reported as `unfenced`, `absent` or
+   *      `refused`; an absent seam never claims the member was reopened.
+   *   2. CELL row NOT fenced + TEAM row `fenced:true` (the plane's own fence) → clear through the seam and
+   *      leave the CELL row untouched.
+   *   3. CELL row NOT fenced + TEAM row `mode:"checkpoint"` with no `fenced` → barrier-owned
+   *      (`checkpoint-pending`): NEITHER record is written and the seam is NOT called.
+   *   4. Neither marker → `not-fenced`.
+   *
+   * WHY THE CELL MARKER DECIDES THE GIVE-UP (the production shape). `memberAfterBarrier` writes the fence
+   * ONLY on the CELL row, and `writeMemberHandoff` sets the TEAM row to `mode:"checkpoint"` and nothing
+   * else; the only writer of a TEAM `fenced:true` is the plane's own `fence` action, which nothing in this
+   * bundle calls. A real give-up therefore looks exactly like case 1 — and gating it on the TEAM flag
+   * (repair round 2) answered `checkpoint-pending` for every real give-up, restoring the deadlock this
+   * lever exists to remove.
+   *
+   * A FENCE THAT EXISTS ONLY ON THE TEAM RECORD IS CLEARED THERE (CodeRabbit round 1, finding 2).
+   * `cellwork_supervise` already reports such a seat as fenced because the plane is the authority for a
+   * closed seat, so answering `not-fenced` and leaving the plane's fence in place was the divergence this
+   * ends: the plane seam is called, the CELL row carries no marker to rewrite and is left untouched, and
+   * the outcome names which half was actually cleared (`cellRow: "untouched"`).
+   *
+   * THE WRITE IS MERGED INTO A FRESH READ TAKEN AFTER EVERY AWAITED PLANE CALL (CodeRabbit round 1,
+   * finding 3). This call's snapshot predates those awaits, so writing `{...snapshot, members}` would
+   * revert a change another writer made meanwhile — including an adopted member, which would silently
+   * disappear from the record again. Only the rows THIS call cleared are written over the fresh record;
+   * an unreadable record falls back to the pre-await snapshot, exactly as `adoptSeat` does.
+   *
+   * The plane seam is OPTIONAL BY DECLARATION (`TeamActionsServiceView.unfence?`), and an absent or
+   * refusing plane does not undo the cell-row repair: the outcome names it (`plane: "absent"` /
+   * `"refused"`) rather than pretending both halves landed.
+   *
+   * @param caller - the caller's context; its workspace and session id authorize both writes.
+   * @param cell - the record the caller resolved.
+   * @param targets - the requested members, already resolved (no unknown name reaches here).
+   * @param now - the instant the journal rows are stamped with.
+   * @returns the record after the write, and one outcome per target.
+   */
+  const unfenceSeats = async (caller: CallerContext, cell: CellState, targets: readonly UnfenceTarget[], now: Date): Promise<UnfenceResult> => {
+    /** The plane's write surface, probed per call; `unfence` is the optional half. */
+    const plane = actions()
+    /** The rows whose CELL fence this call cleared, keyed by the record's own key; merged after every await. */
+    const clearedRows = new Map<string, CellMemberRecord>()
+    /** One outcome per distinct member (duplicates collapse to one), in the call's order. */
+    const outcomes: Array<Record<string, unknown>> = []
+    /** The members whose CELL fence was actually cleared, for the journal. */
+    const cleared: Array<{ name: string; plane: string }> = []
+    /**
+     * Ask the plane seam to reopen one seat, reporting which of the three outcomes happened.
+     *
+     * @param name - the member's recorded display name.
+     * @returns `unfenced` when the seam accepted it, `absent` when this composition exposes no seam, and
+     * `refused` with the plane's own sentence when the seam said no or threw.
+     */
+    const reopenPlaneSeat = async (name: string): Promise<{ plane: string; planeReason?: string }> => {
+      if (typeof plane?.unfence !== "function") return { plane: "absent", planeReason: "this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened" }
+      try {
+        /** The plane's answer — its own sentence when it refuses. */
+        const reply = await plane.unfence({ sessionId: caller.sessionId, member: name }) as Record<string, unknown>
+        if (reply?.ok === false) return { plane: "refused", planeReason: String(reply.error ?? "the team plane refused the unfence") }
+        return { plane: "unfenced" }
+      } catch (error) {
+        // A THROWING SEAM IS A REFUSED HALF, not a lost cell-row repair: the member is reopened below
+        // either way, and the sentence says which half failed so the captain can retry the plane verb.
+        return { plane: "refused", planeReason: error instanceof Error ? error.message : String(error) }
+      }
+    }
+    for (const target of targets) {
+      /** The row as the PRE-AWAIT snapshot holds it; only its fence MARKER is read, never merged back whole. */
+      const row = cell.members[target.key]
+      /** Whether the CELL row itself carries the barrier's give-up marker — THE give-up fact (round 3). */
+      const cellFenced = row !== undefined && row.fenced === true
+      /** The plane's reading of the same seat, which is the authority for a fence the cell row never mirrored. */
+      const seat = recordSeat(cell, caller.workspace, target.name)
+      /** Whether the TEAM row carries the plane's EXPLICIT fence, the only thing the plane-only half clears. */
+      const teamFenced = seat.fenced === true
+      // 1. THE CELL MARKER IS THE GIVE-UP, WHATEVER THE TEAM ROW SAYS (repair round 3). The barrier writes
+      // `fenced:true` ONLY on the CELL row, so requiring the TEAM flag here would leave every real give-up
+      // deadlocked. Clearing the CELL row AND asking the plane to reopen the seat is the whole repair; the
+      // plane's half is reported exactly as it ended, never assumed.
+      if (cellFenced) {
+        /** How the plane's half ended. */
+        const half = await reopenPlaneSeat(target.name)
+        /** The reopened CELL row: the fence keys are REMOVED and the barrier's checkpoint window is reset. */
+        const reopened: CellMemberRecord = { ...row, mode: "member", handoffReady: false }
+        delete reopened.fenced
+        delete reopened.fencedReason
+        clearedRows.set(target.key, reopened)
+        outcomes.push({ member: target.name, unfenced: true, plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }) })
+        cleared.push({ name: target.name, plane: half.plane })
+        continue
+      }
+      // 2. A FENCE THAT EXISTS ONLY ON THE TEAM RECORD IS CLEARED THERE (CodeRabbit round 1, finding 2):
+      // the CELL row carries no marker this call may rewrite, so it is LEFT UNTOUCHED and the answer
+      // reports the plane's half as the only half that could be acted on.
+      if (teamFenced) {
+        /** How the plane's half ended. */
+        const half = await reopenPlaneSeat(target.name)
+        outcomes.push({ member: target.name, unfenced: half.plane === "unfenced", cellRow: "untouched", plane: half.plane, ...(half.planeReason === undefined ? {} : { planeReason: half.planeReason }) })
+        continue
+      }
+      // 3. A PENDING CHECKPOINT IS THE BARRIER'S, NOT A GIVE-UP: `mode:"checkpoint"` without `fenced` is
+      // the state EVERY handoff leaves behind (and the TEAM half of every real give-up, which the CELL
+      // marker above already handled). Nothing is written anywhere and the seam is NOT called.
+      if (seat.checkpoint === true) {
+        outcomes.push({ member: target.name, unfenced: false, reason: "checkpoint-pending", detail: "the TEAM row records a checkpoint for this seat (" + String(seat.fenceReason ?? "mode `checkpoint`") + ") with no `fenced` marker, so the compaction barrier owns that state and nothing was cleared" })
+        continue
+      }
+      // 4. NOT FENCED IN EITHER RECORD IS A FACT, NOT A SUCCESS: the answer says so and nothing is written.
+      outcomes.push({ member: target.name, unfenced: false, reason: "not-fenced" })
+    }
+    // NOTHING CLEARED ON THE CELL SIDE: the record is untouched, so a `not-fenced` answer — or a team-only
+    // unfence — never rewrites the file.
+    if (cleared.length === 0) return { cell, outcomes }
+    // THE MERGE STARTS FROM THE RECORD ON DISK NOW, after every awaited plane call above (finding 3).
+    /** The record as it stands once every plane call settled. */
+    const fresh = readCell(caller.workspace, cell.cellId)
+    /** The merge base: the FRESH record, or this call's pre-await snapshot when the read failed. */
+    const base = fresh.ok ? fresh.state : cell
+    /** The members table the merge writes: only THIS call's cleared rows are replaced. */
+    const members: Record<string, CellMemberRecord> = { ...base.members }
+    for (const [key, reopened] of clearedRows) members[key] = reopened
+    /** The journal line count after the LAST append, so the record's cursor stays exact. */
+    let cursor = base.journalCursor
+    for (const row of cleared) {
+      cursor = appendJournal(caller.workspace, cell.cellId, { event: "member-unfenced", member: row.name, plane: row.plane }, now)
+    }
+    /** The record with the reopened rows and the journal cursor this call established. */
+    const next: CellState = { ...base, members, journalCursor: cursor > 0 ? cursor : base.journalCursor }
+    return { cell: writeCell(caller.workspace, next), outcomes }
+  }
+
   // ── cellwork_dispatch ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_dispatch",
-    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. Delivery goes through the team executor and is journaled.",
+    description: "CAPTAIN only: one owner-only dispatch pass over the live board. A ready task is paired ONLY with its declared owner; a busy, absent, FENCED or failed owner is REPORTED and the task left pending — never substituted (a fenced member is never messaged). `reassign` hands named rows to another member FIRST: each row is claimed for that member through the board, journaled as `task-reassigned`, then delivered — the repair for a fenced owner. `unfence` clears named members' compaction GIVE-UP fences BEFORE the pass — the repair for the other deadlock: a fenced row keeps `handoffReady:true`, so `cellwork_handoff` refuses it as STILL WAITING while only another SUCCESSFUL barrier could clear it, which a fenced member cannot start. THE CELL ROW'S OWN `fenced:true` IS THE GIVE-UP FACT (the compaction barrier writes the fence on the CELL row and nowhere else): that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false` (its `handoffs` count is unchanged), AND the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one — the plane's `mode:\"checkpoint\"` counts as a closed seat and that seam clears it too. The answer reports the plane's half honestly as `unfenced`, `absent` or `refused` and never claims the member was reopened when no seam exists. A TEAM row at `mode:\"checkpoint\"` with NO `fenced` flag is a PENDING compaction, not a give-up — UNLESS the CELL row carries the marker above, in which case the CELL marker decides; on its own that pending checkpoint answers `{member, unfenced:false, reason:\"checkpoint-pending\"}` and NEITHER record is written, because the barrier owns it. An explicit `fenced:true` recorded ONLY on the TEAM record is cleared through that seam while the CELL row is left untouched, and the outcome says which half was cleared. A member that is not fenced in either record answers `{member, unfenced:false, reason: not-fenced}` (never a silent success), and an unknown name refuses the whole call with the recorded members named. `unfence` and `reassign` may travel in ONE call and neither interferes with the other. Delivery goes through the team executor and is journaled.",
     parameters: {
       type: "object",
       properties: {
@@ -424,6 +600,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
             additionalProperties: false,
           },
         },
+        unfence: {
+          type: "array",
+          description: "Member names whose compaction GIVE-UP fence this call CLEARS before the pass (captain-only, like the verb). The CELL row's own `fenced:true` is the give-up fact: that row loses `fenced`/`fencedReason`, returns to `mode: member` with `handoffReady:false`, and keeps its `handoffs` count, while the TEAM seat is reopened through the plane's `unfence` seam when this composition exposes one (the plane's `mode:\"checkpoint\"` is a closed spelling and that seam clears it too). A give-up fence recorded ONLY on the TEAM record (an explicit `fenced:true`) is cleared there while the CELL row is left untouched. A TEAM row at `mode:\"checkpoint\"` with no `fenced` marker is barrier-owned and, on its own, answers `reason:\"checkpoint-pending\"` and writes nothing — the CELL marker above outranks it. A member that is not fenced in either record is reported as not-fenced, never as a silent success; a name that matches no single member (unknown, or ambiguous once normalized) refuses the whole call. May travel with `reassign`.",
+          items: { type: "string" },
+        },
       },
       additionalProperties: false,
     },
@@ -437,6 +618,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           skipped: { type: "array", items: { type: "object" } },
           reassigned: { type: "array", items: { type: "object" }, description: "One entry per readable `reassign` pair: whether the board claim landed and whether the message was delivered." },
           reassignInvalid: { type: "array", items: { type: "string" }, description: "One sentence per `reassign` entry this call refused to read." },
+          unfenced: { type: "array", items: { type: "object" }, description: "One entry per distinct `unfence` member (duplicates collapse to one): `{member, unfenced:true, plane, planeReason?}` for a cleared CELL give-up fence (the CELL row's `fenced:true`, whatever the TEAM row says), `{member, unfenced:false, reason:\"not-fenced\"}` when neither record reports a marker, `{member, unfenced:false, reason:\"checkpoint-pending\", detail}` only when the CELL row carries no `fenced:true` AND the TEAM row is at `mode:\"checkpoint\"` with no `fenced` flag (the compaction barrier owns it, nothing was written), and `{member, unfenced, cellRow:\"untouched\", plane, planeReason?}` when an explicit TEAM-only fence was cleared while the CELL row was left untouched. `plane` is `unfenced` (the TEAM seat was reopened through the seam), `absent` (this composition exposes no `unfence` seam, so no reopen is claimed) or `refused` (with the plane's own sentence in `planeReason`)." },
           refused: { type: "string" },
         },
         required: ["ok"],
@@ -444,7 +626,25 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       render: (_args: unknown, value: unknown): unknown => {
         /** The result as a record. */
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
-        if (result.ok === false) return render("cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"))
+        /** The unfence outcomes, reported first because they run first. */
+        const unfenced = Array.isArray(result.unfenced) ? result.unfenced as Array<Record<string, unknown>> : []
+        /** One line per `unfence` name: the CELL row's fact and, when it was asked, the plane's half. */
+        const clears = unfenced.map((row) => row.cellRow === "untouched"
+          ? "unfence " + String(row.member) + ": the CELL row carried no fence marker, so it was left untouched — " + (row.plane === "unfenced"
+            ? "the TEAM row was unfenced through the plane"
+            : row.plane === "absent"
+              ? "the TEAM record reports the seat fenced, but this composition exposes no mpdTeamActions.unfence seam, so the TEAM row is STILL fenced"
+              : "the TEAM row was NOT cleared: " + String(row.planeReason ?? "the team plane refused the unfence"))
+          : "unfence " + String(row.member) + ": " + (row.unfenced !== true
+            ? row.reason === "checkpoint-pending"
+              ? "checkpoint pending — the compaction barrier owns this seat, so nothing was cleared in either record"
+              : "not fenced — nothing was written"
+            : row.plane === "absent"
+              ? "cell row cleared — this composition exposes no mpdTeamActions.unfence seam, so the TEAM seat was NOT reopened (it stays closed until the barrier or the plane reopens it)"
+              : row.plane === "refused"
+                ? "cell row cleared, but the TEAM seat was NOT reopened: " + String(row.planeReason ?? "the team plane refused the unfence")
+                : "cell row cleared and the TEAM seat reopened through the plane"))
+        if (result.ok === false) return render(["cellwork_dispatch refused: " + String(result.error ?? "unknown refusal"), ...clears].join("\n"))
         /** The delivered pairs. */
         const pairs = Array.isArray(result.pairs) ? result.pairs as Array<Record<string, unknown>> : []
         /** The reported skips. */
@@ -455,8 +655,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         const invalid = Array.isArray(result.reassignInvalid) ? result.reassignInvalid.map((entry) => String(entry)) : []
         /** One line per hand-over, claiming and delivery reported as the SEPARATE facts they are. */
         const handovers = reassigned.map((row) => "reassign " + String(row.taskId) + " -> " + String(row.owner) + ": " + (row.delivered === true ? "claimed on the board and delivered" : row.claimed === true ? "CLAIMED, delivery failed: " + String(row.reason ?? "unknown") : "not claimed: " + String(row.reason ?? "unknown")))
-        if (typeof result.refused === "string") return render([...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
-        return render([...handovers, ...invalid, ...(pairs.length === 0
+        if (typeof result.refused === "string") return render([...clears, ...handovers, ...invalid, "cellwork_dispatch refused: " + result.refused].join("\n"))
+        return render([...clears, ...handovers, ...invalid, ...(pairs.length === 0
           ? ["nothing else dispatched" + (skipped.length === 0 ? "" : " (" + skipped.map((row) => String(row.subject) + ": " + String(row.reason)).join("; ") + ")")]
           : [...pairs.map((row) => String(row.subject) + " -> " + String(row.memberName)), ...(skipped.length === 0 ? [] : ["reported: " + skipped.length])])].join("\n"))
       },
@@ -471,6 +671,35 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The active cell. */
       const cell = caller.cell as CellState
       if (cell.phase === "stopped") return { ok: false, error: "cellwork_dispatch: cell " + cell.cellId + " is stopped and archived" }
+      // THE UNFENCE ARGUMENT IS RESOLVED BEFORE ANYTHING IS WRITTEN (contract B2): an unknown name refuses
+      // the WHOLE call in the teaching style the other cellwork verbs use, so a typo never clears some
+      // fences and silently skips the rest.
+      /** The raw `unfence` argument, read defensively because a direct call bypasses the harness schema. */
+      const rawUnfence = readArgs(args)["unfence"]
+      if (rawUnfence !== undefined && !Array.isArray(rawUnfence)) return { ok: false, error: "cellwork_dispatch: `unfence` must be an array of member names" }
+      /** The names this call asks to clear, trimmed, in the order it named them. */
+      const unfenceNames = (rawUnfence ?? []).map((entry) => typeof entry === "string" ? entry.trim() : "")
+      if (unfenceNames.some((name) => name === "")) return { ok: false, error: "cellwork_dispatch: every `unfence` entry must be a non-empty member name" }
+      /** The recorded member each spelling resolves to, in the same order (the record is keyed by name). */
+      const unfenceTargets: UnfenceTarget[] = []
+      /** The record keys already resolved, so ONE member named twice yields ONE outcome, seam call and journal row. */
+      const seenTargets = new Set<string>()
+      for (const name of unfenceNames) {
+        // ONE RESOLUTION RULE, SHARED WITH `cellwork_send` (repair round 2, finding B): exact table key,
+        // then exact display name, then the normalized key ONLY when it is non-empty and unique. An
+        // ambiguous normalized key is an UNKNOWN name here, never a guess — `unfence:["运维1"]` must not
+        // clear 后端1 because both normalize to `1`.
+        /** The member this spelling unambiguously names, or undefined. */
+        const resolved = resolveMemberName(cell.members, name)
+        if (resolved === undefined) {
+          /** The recorded member names, which is what the refusal teaches (the `cellwork_send` style). */
+          const recorded = Object.keys(cell.members)
+          return { ok: false, error: "cellwork_dispatch: " + JSON.stringify(name) + " is not a member of cell " + cell.cellId + " (members: " + (recorded.length === 0 ? "none recorded" : recorded.join(", ")) + ")" }
+        }
+        if (seenTargets.has(resolved.key)) continue
+        seenTargets.add(resolved.key)
+        unfenceTargets.push({ key: resolved.key, name: resolved.member.name })
+      }
       // THE TEAM PLANE OWNS THE PAIRING (wave W2-D). This tool asks for ONE owner-only pass and MAPS the
       // report back into the shape it has always answered; the private engine that used to live in
       // `dispatch.ts` is DELETED, so the bundle has exactly one pairing rule. `reassign` goes down RAW:
@@ -478,8 +707,16 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The team-plane write surface, probed per call. */
       const plane = actions()
       if (plane?.dispatch === undefined) return { ok: false, error: "cellwork_dispatch: this composition exposes no mpdTeamActions service, so the team plane cannot be asked to pair rows" }
-      /** The instant this pass is stamped with. */
+      /** The instant this call is stamped with (the unfence journal and the pass share it). */
       const now = new Date()
+      // THE UNFENCE RUNS BEFORE THE PASS, so `reassign` may hand a row to a member this SAME call just
+      // reopened: the plane reads the TEAM row, and a fence cleared after the pass would have skipped it.
+      /** The record after the unfence, and one outcome per named member (nothing is written for none). */
+      const applied: UnfenceResult = unfenceTargets.length === 0 ? { cell, outcomes: [] } : await unfenceSeats(caller, cell, unfenceTargets, now)
+      /** The unfence outcomes; absent from the answer when the call named no member. */
+      const unfenced = applied.outcomes
+      /** The record the pass below reports against — the reopened one when this call cleared a fence. */
+      const current = applied.cell
       /** The raw `reassign` argument, forwarded untouched. */
       const rawReassign = readArgs(args)["reassign"]
       /** The plane's answer. */
@@ -489,8 +726,9 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         ...(rawReassign === undefined ? {} : { reassign: rawReassign }),
       })) as Record<string, unknown>
       // A REFUSAL IS THE PLANE'S OWN SENTENCE (a malformed `reassign`, an unknown mode, no team), which is
-      // what the tool's failure envelope reports — the same shape every other cellwork refusal uses.
-      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass") }
+      // what the tool's failure envelope reports — the same shape every other cellwork refusal uses. A
+      // refusal AFTER an unfence still reports what the unfence changed, so the side effect is never silent.
+      if (reply?.ok === false) return { ok: false, error: String(reply.error ?? "the team plane refused the pass"), ...(unfenced.length === 0 ? {} : { unfenced }) }
       /** The delivered pairings, as this tool reports them. */
       const pairs = Array.isArray(reply.pairs) ? reply.pairs as Array<Record<string, unknown>> : []
       /** The hand-overs the plane performed, reported beside the pass. */
@@ -514,7 +752,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       // this cell also keeps its own `cancelledTasks` map for rows a PREVIOUS build abandoned before the
       // plane knew them, and those must be reported rather than silently absent from the skip list.
       /** The board ids this cell's own record abandoned. */
-      const abandoned = new Set(Object.values(cell.cancelledTasks ?? {}).filter((id) => id !== ""))
+      const abandoned = new Set(Object.values(current.cancelledTasks ?? {}).filter((id) => id !== ""))
       for (const taskId of abandoned) {
         // ONE guard, and it is LIVE: the plane reports every row it considered, so an abandoned row the
         // PLANE closed is already in `skipped` (as CANCELLED) and must not be listed twice. The old
@@ -527,14 +765,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         appendJournal(caller.workspace, cell.cellId, { event: "dispatch-reassign", claimed: reassigned.filter((row) => row.claimed === true).length, delivered: reassigned.filter((row) => row.delivered === true).length, rejected: reassigned.filter((row) => row.claimed !== true).length }, now)
       }
       appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: pairs.length, skipped: skipped.length }, now)
-      return { ok: true, pairs, skipped, ...(reassigned.length === 0 ? {} : { reassigned }) }
+      return { ok: true, pairs, skipped, ...(unfenced.length === 0 ? {} : { unfenced }), ...(reassigned.length === 0 ? {} : { reassigned }) }
     },
   }))
 
   // ── cellwork_supervise ───────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_supervise",
-    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the FENCED members together with the open rows they own (reassign those), and the unread mail (including rows whose wake-up never went out). Call it on every wake-up; it mutates nothing.",
+    description: "CAPTAIN only: one READ-ONLY sweep of the cell — every member's mode / handoff state / live context ratio, the pending board tasks, the stale-split flags, the CLOSED seats together with the open rows they own, and the unread mail (including rows whose wake-up never went out). CLOSED SEATS COME IN TWO KINDS and the sweep names which, because only ONE of them is the captain's to repair: a GIVE-UP fence (an explicit `fenced:true` on EITHER record) gets the two levers — `reassign` its open rows with `cellwork_dispatch {reassign:[...]}`, and clear the fence with `cellwork_dispatch {unfence:[...]}`; a BARRIER-OWNED seat (the TEAM row at `mode:\"checkpoint\"` with NO `fenced` marker, the window every handoff opens) has NOTHING for the captain to do — the compaction barrier reopens it, so no lever is offered and nothing should be written. Call it on every wake-up; it mutates nothing.",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." },
@@ -553,7 +791,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           splitRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           requirementsRevision: { type: "number" },
           handoffReady: { type: "array", items: { type: "string" } },
-          fenced: { type: "array", items: { type: "object" }, description: "Every fenced member with the reason and the OPEN board rows it still owns — the rows a `reassign` pass repairs." },
+          fenced: { type: "array", items: { type: "object" }, description: "Every CLOSED member with the reason and the OPEN board rows it still owns. Each row carries `giveUp:true` for a real GIVE-UP fence (an explicit `fenced:true` on either record) — the rows a `reassign` pass repairs and `cellwork_dispatch {unfence:[name]}` clears — or `giveUp:false` for a seat the compaction barrier owns (a `mode:\"checkpoint\"` window with no fence marker), which needs no captain action and gets no unfence advice." },
           unreadMail: { type: "number" },
           wakeFailures: { type: "array", items: { type: "object" } },
         },
@@ -575,7 +813,20 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           "tasks: " + (tasks.length === 0 ? "none" : tasks.map((row) => String(row.id) + " " + String(row.status) + (row.owner === undefined ? "" : "(" + String(row.owner) + ")")).join(" ")),
           "fenced: " + (fenced.length === 0
             ? "none"
-            : fenced.map((row) => String(row.name) + " (" + String(row.reason) + ") owns " + (Array.isArray(row.tasks) && row.tasks.length > 0 ? (row.tasks as unknown[]).map((id) => String(id)).join(", ") : "no open row") + " — repair with cellwork_dispatch {reassign:[{task_id, owner}]}").join("; ")),
+            : fenced.map((row) => {
+              /** The member's name, quoted back exactly as the record spells it. */
+              const name = String(row.name)
+              /** The record's own sentence for why the seat is closed. */
+              const reason = String(row.reason)
+              /** The open board rows this seat still owns, if any. */
+              const owned = Array.isArray(row.tasks) ? (row.tasks as unknown[]).map((id) => String(id)) : []
+              // BARRIER-OWNED SEATS GET NO LEVER (repair round 3): `mode:"checkpoint"` with no `fenced`
+              // marker is the window every handoff opens, and only the compaction barrier reopens it.
+              // Advising `unfence` there would invite clearing a pending compaction — and the verb answers
+              // `checkpoint-pending` on its own anyway.
+              if (row.giveUp !== true) return name + " (" + reason + ", BARRIER-OWNED) " + (owned.length > 0 ? "owns " + owned.join(", ") + " — " : "") + "nothing for you to do: the compaction barrier owns this seat and reopens it when it completes"
+              return name + " (" + reason + ") owns " + (owned.length > 0 ? owned.join(", ") + " — reassign those with cellwork_dispatch {reassign:[{task_id, owner}]}, and" : "no open row —") + " clear the fence with cellwork_dispatch {unfence:[" + JSON.stringify(name) + "]}"
+            }).join("; ")),
           "unread mail: " + String(result.unreadMail ?? 0) + (Array.isArray(result.wakeFailures) && result.wakeFailures.length > 0 ? " · " + String((result.wakeFailures as unknown[]).length) + " without a wake-up" : ""),
         ].join("\n"))
       },
@@ -611,16 +862,27 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       })
       /** The folded mail. */
       const messages = foldCellMail(readCellMail(caller.workspace, cell.cellId))
-      // THE FENCED MEMBERS AND THEIR OPEN ROWS (C7): a fenced seat cannot claim, so the captain reads the
+      // THE CLOSED SEATS AND THEIR OPEN ROWS (C7): a closed seat cannot claim, so the captain reads the
       // rows to reassign HERE, from the read-only sweep, instead of reconstructing them from the journal.
-      /** Every fenced member, with the reason and the open board rows it still owns. */
+      /** Every closed seat, with the reason, its open board rows, and whether it is a real give-up fence. */
       const fenced = Object.values(cell.members).flatMap((member) => {
         /** The seat as the PLANE reads it, when the record names this member. */
         const seat = recordSeat(cell, caller.workspace, member.name)
-        // WHY THE PLANE WINS: a fence written by `mpdTeamActions.fence` is the fact; the cell row's own
-        // `mode` can lag it by a turn. When the record says the seat is closed, that reason is reported.
-        /** Why this member is fenced, or undefined when it can work. */
-        const reason = seat.fenceReason ?? fenceReasonOf(member)
+        // WHY THE PLANE WINS: an explicit fence written by `mpdTeamActions.fence` is a fact; the cell row's
+        // own `mode` can lag it by a turn. When the record says the seat is closed, that reason is reported.
+        // GIVE-UP vs BARRIER-OWNED (repair round 3): only an EXPLICIT `fenced:true` on either record is a
+        // give-up the captain may clear. A `mode:"checkpoint"` window on its own is the compaction
+        // barrier's, and the render offers no lever for it.
+        /** Whether this is a real give-up fence rather than the barrier's pending checkpoint window. */
+        const giveUp = member.fenced === true || seat.fenced === true
+        // THE REASON FOLLOWS THE SAME SPLIT (repair round 4). The barrier records the CAUSE on the CELL row
+        // (`fencedReason`), while the TEAM row carries only the checkpoint half of that same event — so a
+        // give-up speaks with the CELL row's own sentence, and a fence that exists only on the TEAM row
+        // speaks in the plane's vocabulary. `recordSeat`'s DERIVED "…until the barrier reopens it" sentence
+        // describes the barrier-owned window alone; printing it beside an `unfence` lever hid the cause and
+        // contradicted `giveUp:true` on the same line.
+        /** Why this member is closed, or undefined when it can work. */
+        const reason = member.fenced === true ? fenceReasonOf(member) : seat.fenceReason ?? fenceReasonOf(member)
         if (reason === undefined) return []
         /** The open rows credited to this member — the ones a `reassign` pass could move. */
         const owned = tasks.filter((task) => {
@@ -628,7 +890,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           const status = String(task.status ?? "")
           return status !== "completed" && status !== "failed" && nameKey(String(task.owner ?? "")) === nameKey(member.name)
         }).map((task) => String(task.id ?? ""))
-        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned }]
+        return [{ name: member.name, mode: seat.mode ?? member.mode, reason, tasks: owned, giveUp }]
       })
       return {
         ok: true,
@@ -650,7 +912,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_context ─────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_context",
-    description: "Any cell seat: the caller's OWN live context occupancy — used tokens, the observed window and its provenance, the ratio, the checkpoint threshold in force, and whether a checkpoint would fire at this step. Read-only; never guesses a window (provenance `no-window`/`unavailable` answers null).",
+    description: "Any cell seat: the caller's OWN live context occupancy — used tokens, the observed window and its provenance, the ratio, the checkpoint threshold in force, and whether a checkpoint would fire at this step. Never transitions the cell: its ONE write is ADOPTING a live team seat the record never learned, so a member added mid-run becomes a seat. Never guesses a window (provenance `no-window`/`unavailable` answers null).",
     parameters: { type: "object", properties: {
       limit: { type: "integer", description: "Rows to render (default 20, clamped 1..100)." },
       offset: { type: "integer", description: "First row of the page (default 0)." },
@@ -713,7 +975,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_handoff ─────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_handoff",
-    description: "A MEMBER's checkpoint duty: validate a handoff document (task, state, decisions, artifacts, verified facts, open questions, next step), write `handoff/<member>-<n>.md`, mark the member handoff-ready and journal it. The result tells the agent to END ITS TURN; the plugin then compacts and promotes (or reseeds) it.",
+    description: "A MEMBER's checkpoint duty: validate a handoff document (task, state, decisions, artifacts, verified facts, open questions, next step), write `handoff/<member>-<n>.md`, mark the member handoff-ready and journal it. A member known only to the LIVE team record is ADOPTED first — mirrored into the cell record by this call — and then gets the same channel. The result tells the agent to END ITS TURN; the plugin then compacts and promotes (or reseeds) it.",
     parameters: {
       type: "object",
       properties: {
@@ -752,6 +1014,14 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       /** The member row. */
       const member = caller.cell.members[caller.member]
       if (member === undefined) return { ok: false, error: "cellwork_handoff: " + JSON.stringify(caller.member) + " is not a recorded cell member" }
+      // AN ADOPTION THAT COULD NOT BE PERSISTED IS NOT A SEAT (CodeRabbit round 1, finding 1). The caller
+      // resolved against an in-memory mirror, so recording the checkpoint on the plane now would leave a
+      // team checkpoint with no adopted cell row. The plane is NOT touched until the record has the row.
+      if (caller.adoptionFailure !== undefined) {
+        /** Which half of the adoption failed; the headline must name THAT, not a write that never happened. */
+        const failure = caller.adoptionFailure
+        return { ok: false, error: "cellwork_handoff: this seat (" + JSON.stringify(caller.member) + ") was NOT adopted — " + (failure.kind === "read" ? "the cell record could not be read" : "the cell record could not be written") + ": " + failure.detail + ". The TEAM checkpoint was NOT recorded; retry once the cell record is " + (failure.kind === "read" ? "readable" : "writable") }
+      }
       if (caller.sessionId === caller.cell.captainSessionId) return { ok: false, error: "cellwork_handoff: the captain is never checkpointed (declared bound) — it dispatches, it does not hand off" }
       // ONE HANDOFF PER CHECKPOINT (C7): a second document while the first still waits for the barrier is
       // the 3-handoffs-in-7-minutes livelock D5 recorded, and the barrier reads only the LATEST ordinal —
@@ -1077,15 +1347,23 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       } else {
         /** Whether the recipient is the target cell's captain. */
         const toCaptain = nameKey(requestedName) === "captain"
-        /** The member row the recipient names, when it is a member of the target cell. */
-        const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName))
-        if (!toCaptain && recipientMember === undefined) {
-          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
+        // ONE RESOLUTION RULE, THE SAME ONE `unfence` USES (repair round 2, finding B): exact table key,
+        // exact display name, then the normalized key only when it is non-empty and unique. An ambiguous
+        // or absent spelling refuses the recipient instead of delivering to the first collision.
+        /** The member this spelling unambiguously names, or undefined. */
+        const recipient = toCaptain ? undefined : resolveMemberName(target.members, requestedName)
+        if (!toCaptain && recipient === undefined) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor an unambiguous member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
         }
         /** The canonical recipient name. */
-        const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName)
-        if (!crossCell && nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
-        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipientMember?.name ?? to))]
+        const to = toCaptain ? "captain" : String(recipient?.member.name ?? requestedName)
+        // SELF IS AN EXACT NAME, NOT A NORMALIZED ONE: `nameKey` maps 后端1 and 前端1 to the same `1`, so
+        // the old comparison refused a CJK member's message to a DIFFERENT colleague as self. The resolved
+        // row is canonical, so its table key and display name are this seat's two exact spellings.
+        /** Whether this send addresses the caller's own seat. */
+        const self = toCaptain ? caller.member === "captain" : recipient !== undefined && (recipient.key === caller.member || recipient.member.name === caller.member)
+        if (!crossCell && self) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
+        outbound = [toCaptain ? seatAddress(target, "captain") : seatAddress(target, String(recipient?.member.name ?? to))]
       }
       /** The roster the store validates the recipients against. */
       const memberIds = Object.values(target.members).map((member) => seatKey(target, member.name))

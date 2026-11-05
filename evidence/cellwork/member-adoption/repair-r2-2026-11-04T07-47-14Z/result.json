@@ -1,0 +1,22 @@
+{
+  "at": "2026-11-04T07-47-14Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "558bdeb9",
+  "repair": "round 2",
+  "findings": {
+    "A": "unfence gates on the TEAM row's explicit fenced flag; pending checkpoint answers checkpoint-pending and writes nothing",
+    "B": "one resolveMemberName helper (exact key, exact name, unique non-empty normalized key) used by unfence and cellwork_send",
+    "C": "adoption journal follows the record write; adoption refusal distinguishes read from write"
+  },
+  "tests": 0,
+  "typecheck": 0,
+  "comments": 0,
+  "docs": 0,
+  "test_counts": {
+    "pass": 226,
+    "fail": 0,
+    "files": 27
+  },
+  "dist_rebuilt": false,
+  "staged": false
+}

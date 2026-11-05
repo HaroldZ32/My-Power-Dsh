@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-04T07-25-02Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "558bdeb9",
+  "findings": 5,
+  "tests": 0,
+  "typecheck": 0,
+  "comments": 0,
+  "docs": 0
+}

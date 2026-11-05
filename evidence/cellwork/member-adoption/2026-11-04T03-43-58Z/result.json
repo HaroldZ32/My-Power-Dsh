@@ -1,0 +1,94 @@
+{
+  "wave": "cellwork-member-adoption",
+  "part": "B1 (member adoption) — B2 untouched",
+  "capturedAt": "2026-11-04T03:44:27.500Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "bcbfdce4",
+  "gates": [
+    {
+      "command": "bun test packages/mpd-cellwork-plugin",
+      "exit": 0,
+      "observed": "202 pass / 0 fail / 2363 expect() calls across 25 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit — no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 595 TS files, 52125 declarations"
+    },
+    {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "all self-tests passed"
+    }
+  ],
+  "newTests": [
+    {
+      "name": "B1: a member known ONLY to the team record is adopted and can hand off",
+      "result": "pass"
+    },
+    {
+      "name": "B1: a session that resolves to NO seat of this cell's team is still refused, and nothing is adopted",
+      "result": "pass"
+    },
+    {
+      "name": "B1: an existing fenced row is NOT adopted over — it stays fenced and the verb refuses as today",
+      "result": "pass"
+    },
+    {
+      "name": "B1: adoption itself leaves handoffReady false (and context/status see the member)",
+      "result": "pass"
+    }
+  ],
+  "negativeControl": "adoptSeat() bypassed (resolution returned the stored record): 2 of the 4 arms failed (adoption + handoff; adopted row absent), then the source was restored byte-for-byte and the suite re-ran green.",
+  "changedFiles": [
+    {
+      "path": "packages/mpd-cellwork-plugin/src/caller.ts",
+      "sha256": "a815af4b57e553d071521bfd9432de3ecf2afe1eddb86e58283ce79327792f3f",
+      "lines": 400
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/src/index.ts",
+      "sha256": "1d81d77d2c6022bacffc76784c54cb85f5731e30225f7c1c9fd310cfd572caf7",
+      "lines": 857
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/src/state.ts",
+      "sha256": "2878605eff221116e925973fb4c58a024030f0857e0ded220c4c8987f63a7dd3",
+      "lines": 691
+    },
+    {
+      "path": "packages/mpd-cellwork-plugin/test/member-adoption.test.ts",
+      "sha256": "ff3205c97fdc9f84b83d912518c8d1ee2a3cc5accfcdf5fbe55471bb6eb65c81",
+      "lines": 297
+    }
+  ],
+  "notRun": [
+    "dist rebuild (captain does the pinned-toolchain rebuild; packages/mpd-cellwork-plugin/dist is therefore STALE against src)",
+    "node scripts/verify-dist-fresh.ts (would redden on the intentionally stale dist)",
+    "bun run verify:docs (no doc touched in this round)",
+    "bun run verify:gates / verify:vendor (release-sweep gates; skills untouched)",
+    "committed/staged anything (captain-only)"
+  ],
+  "bounds": [
+    "Adoption covers members the TEAM record already knows; a session absent from both records stays refused by design.",
+    "Persistence of the adopted row is best-effort by contract of callerContext (NEVER throws): a refused write still yields the in-memory row, and the next successful cell write persists it.",
+    "No end-to-end run against a live host/team was performed; the proof is the offline tool harness plus the shared team-plane double."
+  ],
+  "toolchain": {
+    "bun": "1.4.2 (PATH bun used for the test/QA commands; the pinned buildToolchain bun@1.4.0 applies to the dist rebuild the captain runs)",
+    "node": "v24.21.0"
+  },
+  "evidence": {
+    "dir": "evidence/cellwork/member-adoption/2026-11-04T03-43-58Z",
+    "files": [
+      "gates.log (full output of the four gates)",
+      "change.diff (tracked src diff + the new test file)",
+      "result.json (this record)"
+    ]
+  }
+}

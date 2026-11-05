@@ -1,0 +1,39 @@
+{
+  "wave": "cellwork-member-adoption",
+  "part": "docs — the member-adoption rule and the unfence lever, in BOTH languages",
+  "capturedAt": "2026-11-04T04:04:50Z",
+  "branch": "fix/cellwork-member-adoption",
+  "head": "bcbfdce4",
+  "files": [
+    "packages/mpd-cellwork-plugin/README.md",
+    "packages/mpd-cellwork-plugin/README.zh-CN.md",
+    "docs/cellwork.md",
+    "docs/cellwork.zh-CN.md"
+  ],
+  "headingsAdded": [
+    "packages/mpd-cellwork-plugin/README.md: ## Members: staged, adopted, unfenced",
+    "packages/mpd-cellwork-plugin/README.zh-CN.md: ## 成员：拉起、采纳与解围",
+    "docs/cellwork.md: ## Members: staged or adopted",
+    "docs/cellwork.zh-CN.md: ## 成员：拉起的与采纳的"
+  ],
+  "headingsChanged": [
+    "docs/cellwork.md: ## Fenced members and reassignment -> ## Fenced members, reassignment and the unfence lever",
+    "docs/cellwork.zh-CN.md: ## 被围栏的成员与改派 -> ## 被围栏的成员、改派与解围杠杆"
+  ],
+  "headingCounts": {
+    "packages/mpd-cellwork-plugin/README.md": 12,
+    "packages/mpd-cellwork-plugin/README.zh-CN.md": 12,
+    "docs/cellwork.md": 22,
+    "docs/cellwork.zh-CN.md": 22
+  },
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=55 failed=0 violations=0 exempt=24 derived=3 links=500 dead=0 — PASS"
+  },
+  "notTouched": [
+    "code (src/**)",
+    "tests (test/**)",
+    "dist/**"
+  ]
+}

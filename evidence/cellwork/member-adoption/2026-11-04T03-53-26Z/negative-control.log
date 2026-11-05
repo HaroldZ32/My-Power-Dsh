@@ -1,0 +1,129 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:
+211 |   const harness = makeHarness(cell, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true, fencedReason: "no-engine; the reseed failed" }], [])
+212 |   /** The captain's unfence. */
+213 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+214 |   expect(answer.ok).toBe(true)
+215 |   // THE ANSWER: one row per name, the cell row's fact and the plane's half as SEPARATE facts.
+216 |   expect(answer.unfenced).toEqual([{ member: "Senior Engineer", unfenced: true, plane: "unfenced" }])
+                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    {
+      "member": "Senior Engineer",
+-     "plane": "unfenced",
+-     "unfenced": true,
++     "reason": "not-fenced",
++     "unfenced": false,
+    },
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:216:27)
+(fail) B2: unfence removes both fence keys, restores `mode: member` and `handoffReady: false`, and keeps `handoffs` [3.48ms]
+245 |   const before = readFileSync(statePath(harness.workspace, CELL_ID), "utf8")
+246 |   /** The captain's unfence of a member with nothing to clear. */
+247 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Reviewer"] })
+248 |   expect(answer.ok).toBe(true)
+249 |   // HONEST, NOT A SILENT SUCCESS: the row says what happened and names the reason the contract fixes.
+250 |   expect(answer.unfenced).toEqual([{ member: "Reviewer", unfenced: false, reason: "not-fenced" }])
+                                ^
+error: expect(received).toEqual(expected)
+
+  [
+    {
+      "member": "Reviewer",
+-     "reason": "not-fenced",
+-     "unfenced": false,
++     "plane": "unfenced",
++     "unfenced": true,
+    },
+  ]
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:250:27)
+(fail) B2: a member that is not fenced answers `not-fenced` and the record is never rewritten [0.57ms]
+(pass) B2: an unknown name is refused in the teaching style, naming the recorded members, and nothing changes [0.33ms]
+287 |   /** The harness whose composition exposes `unfence`. */
+288 |   const cleared = makeHarness(withSeam, [{ id: "M1", name: "Senior Engineer", status: "running", executorRef: "handle-Senior Engineer", mode: "checkpoint", fenced: true }], [], { unfenceSeam: true })
+289 |   /** The captain's unfence. */
+290 |   const first = await runTool(cleared, "cellwork_dispatch", { unfence: ["Senior Engineer"] })
+291 |   expect(first.ok).toBe(true)
+292 |   expect((first.unfenced as Array<Record<string, unknown>>)[0].plane).toBe("unfenced")
+                                                                            ^
+error: expect(received).toBe(expected)
+
+Expected: "unfenced"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:292:71)
+(fail) B2: the plane seam clears the TEAM row when present, and its ABSENCE is reported instead of pretended [0.55ms]
+322 |   ], [{ id: "T1", subject: "widget work", status: "pending", owner: "Senior Engineer", blockedBy: [] }])
+323 |   /** The one call that both repairs the seat and moves its row. */
+324 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"], reassign: [{ task_id: "T1", owner: "Reviewer" }] })
+325 |   expect(answer.ok).toBe(true)
+326 |   // BOTH HALVES LANDED: the fence is clear and the row moved to the member that can work it.
+327 |   expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toEqual({ member: "Senior Engineer", unfenced: true, plane: "unfenced" })
+                                                                       ^
+error: expect(received).toEqual(expected)
+
+  {
+    "member": "Senior Engineer",
+-   "plane": "unfenced",
+-   "unfenced": true,
++   "reason": "not-fenced",
++   "unfenced": false,
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:327:66)
+(fail) B2: `unfence` and `reassign` travel in one call and both take effect [0.61ms]
+361 |   expect(unfenced.ok).toBe(true)
+362 |   // AFTER: the SAME call that was refused now records the handoff (ordinal 3 = the two it already wrote
+363 |   // plus this one), which is what "the lever removes the deadlock" means for the member.
+364 |   /** The handoff attempt after the unfence. */
+365 |   const written = await runTool(harness, "cellwork_handoff", { content: HANDOFF_TEXT }, member)
+366 |   expect(written.ok).toBe(true)
+                           ^
+error: expect(received).toBe(expected)
+
+Expected: true
+Received: false
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:366:22)
+(fail) B2: the unfence clears the exact refusal the deadlock produced, and the member can hand off again [0.68ms]
+384 |   const answer = await runTool(harness, "cellwork_dispatch", { unfence: ["Senior Engineer"], reassign: [{ task_id: "T1", owner: "" }] })
+385 |   // THE PASS IS REFUSED BY THE PLANE'S OWN SENTENCE …
+386 |   expect(answer.ok).toBe(false)
+387 |   expect(String(answer.error)).toContain("every `reassign` entry needs a non-empty `task_id` and `owner`")
+388 |   // … AND THE SIDE EFFECT IS NOT SILENT: the unfence row rides the failure envelope, and the file agrees.
+389 |   expect((answer.unfenced as Array<Record<string, unknown>>)[0]).toEqual({ member: "Senior Engineer", unfenced: true, plane: "unfenced" })
+                                                                       ^
+error: expect(received).toEqual(expected)
+
+  {
+    "member": "Senior Engineer",
+-   "plane": "unfenced",
+-   "unfenced": true,
++   "reason": "not-fenced",
++   "unfenced": false,
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/test/dispatch-unfence.test.ts:389:66)
+(fail) B2: refusal after an unfence still reports the act, and the tool DESCRIPTION declares the argument [0.31ms]
+
+ 1 pass
+ 6 fail
+ 24 expect() calls
+Ran 7 tests across 1 file. [138.00ms]

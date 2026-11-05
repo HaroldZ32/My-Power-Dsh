@@ -490,6 +490,9 @@ function livePlanningMemberRow(name: string, role: string, handle: string, cell:
 /**
  * Build one planning member row whose executor handle is not known yet (the idempotent start arm).
  *
+ * The row is rebuilt field by field from the one the cell already carries, so the additive `adopted`
+ * marker (contract B1) is carried EXPLICITLY — a rebuild must never make an adopted row read as staged.
+ *
  * @param name - the member's board name.
  * @param role - its roster role label.
  * @param cell - the cell being started.
@@ -497,7 +500,9 @@ function livePlanningMemberRow(name: string, role: string, handle: string, cell:
  * @returns the member row with empty handles, which `callerContext` fills from the live record.
  */
 function planningMemberRow(name: string, role: string, cell: CellState, now: Date): CellMemberRecord {
-  return { name, role, sessionId: cell.members[name]?.sessionId ?? "", executorRef: cell.members[name]?.executorRef ?? "", mode: "member", handoffReady: cell.members[name]?.handoffReady ?? false, handoffs: cell.members[name]?.handoffs ?? 0, joinedAt: cell.members[name]?.joinedAt ?? now.toISOString() }
+  /** The row the cell already carries under this name, whose additive markers must survive the rebuild. */
+  const known = cell.members[name]
+  return { name, role, sessionId: known?.sessionId ?? "", executorRef: known?.executorRef ?? "", mode: "member", handoffReady: known?.handoffReady ?? false, handoffs: known?.handoffs ?? 0, joinedAt: known?.joinedAt ?? now.toISOString(), ...(known?.adopted === true ? { adopted: true } : {}) }
 }
 
 /**
