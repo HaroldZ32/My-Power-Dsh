@@ -42,9 +42,16 @@
   },
   "process": {
     "team": "team-20261105111659546-zbxi-002",
-    "workTasks": ["T1", "T2", "T3"],
+    "workTasks": [
+      "T1",
+      "T2",
+      "T3"
+    ],
     "docsTask": "T5",
-    "qaSyncTasks": ["T6", "T7"],
+    "qaSyncTasks": [
+      "T6",
+      "T7"
+    ],
     "reviewTask": "T4",
     "independentVerifier": "reviewer-1"
   },
@@ -55,5 +62,36 @@
     "The Docker real-machine lane was NOT run (this is not a release sweep); the wave changes no install path, patch row id, or packed file layout.",
     "The three defects are committed in one code commit because packages/mpd-roles-plugin/src/index.ts hosts both D1's config keys and D2's tool registrations; a per-defect split would produce a non-building intermediate commit. The contract's 'three atomic commits' is therefore DECLARED DEVIATED here.",
     "The captain edited AGENTS.md, agent-references/supervision.md and the incident evidence directly; those are agent-facing documentation, not implementation, and the reviewer was asked to check the manual claims against the shipped code."
-  ]
+  ],
+  "verification": {
+    "seat": "reviewer-1",
+    "pass1": {
+      "verdict": "REQUEST CHANGES (FAIL)",
+      "artifact": "verdict-pass1-FAIL.md",
+      "basis": "verdict-pass1-basis.md",
+      "blocking": [
+        "F1 HIGH: consult bash exemption keyed by role label, so a same-role sibling could clear an open bash and the deadman would interrupt a child whose bash was in flight",
+        "F2 MEDIUM: watchdog package README kept the pre-D3 posture and forceAfterMs was outside the front doors"
+      ],
+      "nonBlocking": [
+        "F3 LOW: bash exemption required an observable start stamp",
+        "F4-F7 NITs"
+      ]
+    },
+    "repairCommit": "f383c7ec",
+    "pass2": {
+      "verdict": "PASS (risk LOW)",
+      "artifact": "verdict-pass2-PASS.md",
+      "basis": "verdict-pass2-basis.md",
+      "notes": [
+        "F1 fixed per child id with a behavioural same-role test",
+        "F2 fixed in README + knob table + patch row + SettingsSchema, with the shared FIELDS render list declared as a named residual",
+        "F3 fixed on the tool name alone with inFlightMs 0"
+      ],
+      "newNonBlocking": [
+        "N1 LOW: a superseded comment in mpd-roles-plugin/src/index.ts still described label keying (fixed in a follow-up nit commit)",
+        "N2 LOW: fallback asymmetry when an activation has no id but has a session id; unreachable on the pinned harness"
+      ]
+    }
+  }
 }

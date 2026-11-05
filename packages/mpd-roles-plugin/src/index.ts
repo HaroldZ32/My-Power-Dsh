@@ -936,12 +936,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   // ── consult supervision (§D2.5–§D2.6) ──────────────────────────────────────
-  // The child's tool activity, keyed by the child's OWN label (its role name — the identity the
-  // sanctioned adapter helper `subagentLabelOf` exposes). The deadman needs the CURRENT call: an
-  // OPEN `bash` is the only exemption from the 15-minute rule, and it has NO age bound.
-  // PER-CHILD (F1 repair): the bucket key is the CHILD's session id — the same value
-  // `DshAsyncAgent.id` reports — never the role label, because two concurrent consults of ONE role
-  // must not share one `current` slot. The label is a display fallback for an id-less composition.
+  // The child's tool activity is keyed by the CHILD's session id (F1 repair): `activityKey` reads the
+  // id the child agent carries — the same value `DshAsyncAgent.id` reports — and falls back to
+  // `label:<role>` ONLY when the child has no id, so two concurrent consults of one role never share
+  // a `current` slot. The deadman needs the CURRENT call: an OPEN `bash` is the only exemption from
+  // the 15-minute rule, and it has NO age bound.
   /** The activity buckets every consult shares, keyed by child id (or the label fallback key). */
   const toolActivity = new Map<string, ConsultToolActivity>()
   /** The bucket key of one tool execution: the child's id, label fallback only when it has none. */
