@@ -86,8 +86,8 @@ export const SLOT_BOUND_CONFIG_KEY = "autoproject.slotBoundMs"
 /** How many children may be in flight when neither the live layer nor the row config speaks. */
 export const SLOTS_DEFAULT = 3
 
-/** The hard bound on one child when neither the live layer nor the row config speaks: 30 minutes. */
-export const SLOT_BOUND_DEFAULT_MS = 1_800_000
+/** The hard bound on one child when neither the live layer nor the row config speaks: 15 minutes — the SAME bound the consult deadman uses (§D0.2, one ledger not two timers). */
+export const SLOT_BOUND_DEFAULT_MS = 900_000
 
 /** The slice of the host context the engine reads: services only, resolved per call. */
 export interface EngineCtx {
@@ -795,6 +795,25 @@ export async function runAutoproject(args: AutoprojectArgs, exec: any, deps: Eng
     }
     /** The roster's report, read field by field because a tool value is untyped. */
     const value = (result.value ?? {}) as Record<string, unknown>
+    // AN INTERRUPTED CONSULT IS A KILLED SLOT, NEVER A SILENT NULL (§D0.2): the roster already wrote
+    // the handoff before it interrupted the child, so this records the durable SlotKill row and the
+    // ledger stamp, then answers null exactly like a bound kill — the run's status is forced to
+    // `blocked` at the end by the existing `kills` accounting, which stays the ONLY accounting.
+    if (value.status === "interrupted") {
+      /** The handoff path the roster wrote, when it reported one. */
+      const handoff = typeof value.handoff === "string" ? value.handoff : ""
+      /** The child's runtime the roster measured, when it reported one. */
+      const elapsedMs = typeof value.elapsedMs === "number" ? value.elapsedMs : 0
+      /** The durable row this interruption writes. */
+      const kill: SlotKill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave }
+      killed.push(kill)
+      state.kills = killed
+      state.slotBoundMs = slotBoundMs
+      writeJson(stateFile, state)
+      stamp("late/interrupted:" + role, "killed", "elapsed=" + elapsedMs + "ms handoff=" + (handoff === "" ? "<none>" : handoff))
+      dsh.rowLog?.(ROW_LOG, "consult " + role + " was interrupted by its deadman (elapsed " + elapsedMs + " ms)" + (handoff === "" ? "" : " — handoff " + handoff))
+      return null
+    }
     return {
       role: typeof value.role === "string" && value.role !== "" ? value.role : role,
       status: typeof value.status === "string" ? value.status : "",

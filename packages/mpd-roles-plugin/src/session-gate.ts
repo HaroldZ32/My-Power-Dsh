@@ -27,34 +27,47 @@
 // records with a parent link but delegation depth 0) whose preset is `mpd` OR absent/null. A child
 // session (a recorded `origin: "subagent"` or a `delegationDepth >= 1`) never gets its own gate, and a
 // session that NAMES another preset is not gated.
-import type { DshAdapter, DshAgentPreStep, DshPreStepDecision } from "../../mpd-dsh-adapter-plugin/src/index"
+import type { DshAdapter, DshAgentPreStep, DshPostResult, DshPreStepDecision, DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
   advisoryNoticeText,
   BOULDER_DIR_CONFIG_KEY,
   consumeExplicitFlag,
   consumeFlagFromMessage,
+  CONTROL_TOOL_NAME,
   DEFAULT_GATE_PRESETS,
+  emptyReTeamState,
   evaluateComplexityGate,
   GATE_CONFIG_KEY,
   GATE_MODE_MECHANICAL,
   GATE_MODE_OFF,
   gatePlanShell,
+  isConsultToolName,
   latestUserMessage,
   mechanicalNoticeText,
   MISSING_PLAN_ID_PHRASE,
   readBoulderGate,
   readLeadingTeam,
+  readReTeamState,
   readWorkspaceScale,
+  RETEAM_AFTER_CONSULTS_CONFIG_KEY,
+  RETEAM_AUTO_END_REASON,
+  RETEAM_ENABLED_CONFIG_KEY,
+  reTeamNoticeText,
+  reTeamRepairNoticeText,
   resolveBoulderDir,
   resolveGateMode,
+  resolveReTeamAfterConsults,
+  resolveReTeamEnabled,
   resolveSensitivity,
   SENSITIVITY_CONFIG_KEY,
   SENSITIVITY_THRESHOLDS,
   sessionQualifies,
   STAGING_TOOL_NAME,
+  writeReTeamState,
   type GateMode,
   type GateSensitivity,
+  type ReTeamState,
 } from "./complexity-gate.ts"
 
 /** How long ONE staging call may take before the mechanical route degrades, in milliseconds. */
@@ -163,6 +176,18 @@ export interface SessionGateOptions {
   stagedPlan?: (workspace: string, sessionId: string) => unknown
   /** The staging call's timeout in milliseconds (default {@link STAGING_TIMEOUT_MS}). */
   stageTimeoutMs?: number
+  /**
+   * The RE-TEAM state reader (`<ws>/.mpd/session-gate/<sessionId>.json`, `node:fs/promises` by
+   * default), for tests and the QA case. A double that does not inject it reads the real file, so a
+   * unit test should pass a workspace of its own (or an in-memory reader) to stay isolated.
+   */
+  stateReadFile?: (path: string) => Promise<string>
+  /**
+   * The RE-TEAM state writer (`node:fs/promises` plus `mkdir` by default). A partial double that
+   * omits it keeps the counter IN MEMORY: the gate degrades, it never throws, and a restart then
+   * starts the count again.
+   */
+  stateWriteFile?: (path: string, content: string) => Promise<void>
 }
 
 /** The gate's install outcome, exposed so a mount lane can assert it. */
@@ -170,9 +195,10 @@ export interface SessionGateInstall {
   /** Always true: the gate degrades per agent rather than failing as a whole. */
   installed: boolean
   /**
-   * Agent ids that have already FIRED their ONE notice. An id is written IMMEDIATELY BEFORE the
-   * async staging call, so a re-entrant step can never stage a second plan; a step whose predicate
-   * did NOT fire leaves the session unregistered and is judged again on the next user turn.
+   * Agent ids whose re-team settlement is ARMED (a fire happened since the last re-arm). An id is
+   * written IMMEDIATELY BEFORE the async staging call, so a re-entrant step can never stage a second
+   * plan, and it is DELETED when the led team ends or its plan was seen approved — the D1 re-arming
+   * that replaced the permanent settlement. A session that has not fired is absent and judged again.
    */
   acted: Set<string>
   /** One disposer per agent whose scope carries a gate listener. */
@@ -223,22 +249,24 @@ interface StageOutcome {
  *
  * The handler then reads the agent from the REGISTRATION rather than from the payload, so it
  * cannot be misled by a payload that omits `agent`; the payload's own `agent` stays a
- * fallback. The notice is injected ONCE per agent, and the acted entry is recorded BEFORE the
- * async staging call so a re-entrant step can never stage twice.
+ * fallback. A fire is settled ONCE per session until the team it produced ends (D1 rule 4), and
+ * the in-flight guard is taken BEFORE the async staging call so a re-entrant step can never stage
+ * twice. ONE per-tool hook is subscribed beside the listeners: the COMPLETED consult counter that
+ * feeds the mid-session volume trigger (D1 rule 5).
  *
  * @param dsh - the adapter slice this row uses: the agent-scoped listener, the live agents, the
- *   event bus, the notice factory, the workspace resolver, and the two tool seams the staging call
- *   needs (`hasTool` / `executeTool`).
+ *   event bus, the notice factory, the workspace resolver, the per-tool observation hook and the two
+ *   tool seams the staging call needs (`hasTool` / `executeTool`).
  * @param options - the covered presets, the reporters and the per-call seams (see the interface).
- * @returns the install outcome: the acted registry, the disposers and the resolved mode.
+ * @returns the install outcome: the settled registry, the disposers and the resolved mode.
  */
 export function installSessionGate(
-  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot" | "hasTool" | "executeTool">,
+  dsh: Pick<DshAdapter, "registerAgentPreStep" | "liveAgents" | "onEvent" | "userMessage" | "workspaceRoot" | "hasTool" | "executeTool" | "onPostToolExecute">,
   options: SessionGateOptions,
 ): SessionGateInstall {
   /** The presets whose top-level sessions are covered. */
   const presets = options.presets ?? DEFAULT_GATE_PRESETS
-  /** Agent ids that have already fired their ONE notice. */
+  /** Agent ids whose re-team settlement is ARMED (a fire happened since the last re-arm). */
   const acted = new Set<string>()
   /** One disposer per agent whose scope carries a gate listener. */
   const disposers = new Map<unknown, () => void>()
@@ -253,6 +281,65 @@ export function installSessionGate(
     try {
       options.warn(line)
     } catch { /* warning must never take the gate down */ }
+  }
+
+  // ── THE RE-TEAM GATE'S STATE (D1) ──────────────────────────────────────────
+  /** One session's re-team record, kept IN MEMORY between steps and mirrored to its state file. */
+  const reTeamStates = new Map<string, ReTeamState>()
+  /** Sessions whose staging call is IN FLIGHT — the synchronous guard against a second stage. */
+  const firing = new Set<string>()
+  /** Team ids whose failed-task notice was already injected (ONE notice per team per process). */
+  const repairNoticed = new Set<string>()
+  /** Team ids whose auto-end was already attempted (ONE attempt per team per process). */
+  const autoEndAttempted = new Set<string>()
+
+  /**
+   * The in-memory key of one session's state: the workspace AND the session id.
+   * @param workspace - the session workspace the state file resolves under.
+   * @param sessionId - the session key inside that workspace.
+   * @returns a key no two distinct state files can share.
+   */
+  function reTeamKeyOf(workspace: string, sessionId: string): string {
+    return workspace + "\u0000" + sessionId
+  }
+
+  /**
+   * One session's re-team record, loaded ONCE per process and thereafter served from memory.
+   *
+   * The file is read lazily so a boot that never needs the counter pays nothing; an unreadable file
+   * (a fresh workspace, a read-only mount) reads as {@link emptyReTeamState}, never a throw.
+   * @param workspace - the session workspace the state file resolves under.
+   * @param sessionId - the session key inside that workspace.
+   * @returns the live record object; the caller may mutate it and persist with {@link saveReTeamState}.
+   */
+  async function loadReTeamState(workspace: string, sessionId: string): Promise<ReTeamState> {
+    /** The key this session's record is cached under. */
+    const key = reTeamKeyOf(workspace, sessionId)
+    /** The already-loaded record, or undefined on the first touch of this session. */
+    const cached = reTeamStates.get(key)
+    if (cached !== undefined) return cached
+    /** The persisted record, or the zero record when the file is absent or unreadable. */
+    const loaded = await readReTeamState(workspace, sessionId, {
+      ...(options.stateReadFile === undefined ? {} : { readFile: options.stateReadFile }),
+    })
+    /** The record this process will keep mutating from now on. */
+    const state = loaded ?? emptyReTeamState()
+    reTeamStates.set(key, state)
+    return state
+  }
+
+  /**
+   * Persist one session's record; the IN-MEMORY copy is authoritative for the process.
+   * @param workspace - the session workspace the state file resolves under.
+   * @param sessionId - the session key inside that workspace.
+   * @param state - the record to store.
+   * @returns nothing; a failed write leaves the in-memory count in force (never a throw).
+   */
+  async function saveReTeamState(workspace: string, sessionId: string, state: ReTeamState): Promise<void> {
+    reTeamStates.set(reTeamKeyOf(workspace, sessionId), state)
+    await writeReTeamState(workspace, sessionId, state, {
+      ...(options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }),
+    })
   }
 
   /**
@@ -349,6 +436,8 @@ export function installSessionGate(
     signals: readonly string[]
     /** The active work's plan path, echoed into the description when signal D fired. */
     planPath?: string
+    /** The mid-session trigger's volume, when the RE-TEAM gate (not the session-start row) stages. */
+    reteam?: { count: number; threshold: number }
   }): Promise<StageOutcome> {
     // (b) A plan is ALREADY staged for this session: the tool's `create` ARCHIVES it — the plan is
     // copied to `.mpd/team/archive/<planId>/plan.json` BEFORE the staging slot is cleared — so the
@@ -378,6 +467,7 @@ export function installSessionGate(
         signals: input.signals,
         goal: input.goal,
         ...(input.planPath === undefined ? {} : { planPath: input.planPath }),
+        ...(input.reteam === undefined ? {} : { reteam: input.reteam }),
       })
       /** The tool result, normalized by the adapter (`{ok, isError, value, error}`). */
       const result = await dsh.executeTool({
@@ -397,6 +487,208 @@ export function installSessionGate(
     }
   }
 
+  /**
+   * Count ONE COMPLETED consult this session's agent executed (D1 rule 5).
+   *
+   * The hook is the adapter's EXISTING `onPostToolExecute`; this function only reads it. "Completed"
+   * means the call returned WITHOUT an error verdict (`AGENT_UNCONFIGURED` and every other failed
+   * spawn are skipped), and the counter only moves for a session that would qualify for the gate at
+   * all, so a child's consults never inflate its parent's volume.
+   * @param exec - the observed tool execution, of any shape.
+   * @param result - the harness's post-execute result, whose `isError` is the verdict this reads.
+   * @returns nothing; every failure is contained so a tool call is never broken by accounting.
+   */
+  async function countCompletedConsult(exec: DshToolExec | undefined, result: DshPostResult | undefined): Promise<void> {
+    try {
+      if (exec === undefined || exec === null || !isConsultToolName(exec.name)) return
+      if (result?.isError === true) return
+      /** The agent the call ran as; a call with no agent cannot be attributed to a session. */
+      const agent = exec.agent
+      if (agent === undefined || agent === null) return
+      if (!sessionQualifies(agent, presets)) return
+      /** The session workspace the counter file resolves under. */
+      const workspace = dsh.workspaceRoot({ agent } as never)
+      /** The session key the counter is filed under. */
+      const sessionId = sessionIdOf(agent)
+      /** The session's record, incremented in place and then persisted. */
+      const state = await loadReTeamState(workspace, sessionId)
+      state.consultCount += 1
+      await saveReTeamState(workspace, sessionId, state)
+      gateTrace("consult counted session=" + sessionId + " count=" + String(state.consultCount) + " tool=" + String(exec.name))
+    } catch { /* accounting must never break a tool call */ }
+  }
+
+  /**
+   * Subscribe the ONE per-tool hook the consult count rides (D1 rule 5).
+   *
+   * `onPostToolExecute` is the adapter's existing observation seam; the contract forbids a second
+   * observation path (the `session/event` stream belongs to the watchdog). A composition whose
+   * adapter exposes no such seam leaves the count at zero, which makes the volume trigger unable to
+   * fire rather than taking the boot down.
+   * @returns nothing; a failed subscription is swallowed because a gate is an assistant.
+   */
+  function subscribeConsultCounter(): void {
+    if (typeof dsh.onPostToolExecute !== "function") return
+    try {
+      dsh.onPostToolExecute(async (exec: DshToolExec, result: DshPostResult): Promise<undefined> => {
+        await countCompletedConsult(exec, result)
+        return undefined
+      })
+    } catch { /* a missing bus leaves the volume trigger unable to fire, never a boot failure */ }
+  }
+
+  /**
+   * Close ONE clean-terminal team through the Lead-authority CONTROL tool (D1 rule 3).
+   *
+   * The roles plugin never writes a team record itself: the `end` action does, idempotently and with
+   * a journal row. The call runs as the SESSION'S OWN agent, which is what grants it Lead authority
+   * over the record it led. Failure is NON-FATAL — one warning and the gate continues.
+   * @param agent - the LIVE agent the listener is bound to.
+   * @param teamId - the team the record named as clean-terminal.
+   * @returns whether the team was really closed.
+   */
+  async function autoEndCleanTerminal(agent: unknown, teamId: string): Promise<boolean> {
+    try {
+      /** The control call's normalized answer: `{ok, isError, value, error}`. */
+      const result = await dsh.executeTool({
+        name: CONTROL_TOOL_NAME,
+        arguments: { action: "end", team_id: teamId, reason: RETEAM_AUTO_END_REASON },
+        agent,
+        timeoutMs: options.stageTimeoutMs ?? STAGING_TIMEOUT_MS,
+      })
+      if (result?.ok !== true || result.isError === true) {
+        warn("re-team gate: the clean-terminal team \"" + teamId + "\" was NOT auto-ended ("
+          + (result?.error === undefined ? "the control call did not report ok" : String(result.error)) + ") — the gate continues")
+        return false
+      }
+      report('re-team gate: auto-ended clean-terminal team "' + teamId + '" through ' + CONTROL_TOOL_NAME)
+      return true
+    } catch (error) {
+      warn("re-team gate: the clean-terminal team \"" + teamId + "\" was NOT auto-ended (" + errorText(error) + ") — the gate continues")
+      return false
+    }
+  }
+
+  /**
+   * Splice ONE notice into the step's decision, right after the LAST still-claimed message.
+   *
+   * `toSpliced`/`findLastIndex` semantics without the ES2023 lib: the notice lands where the retired
+   * implementation placed it. The optional `rewrite` runs over every decision message first, which is
+   * how the session-start route consumes the explicit `team:` marker from the user's own turn.
+   * @param decision - the downstream decision the step will run with.
+   * @param decisionMessages - the decision's current message list.
+   * @param rawClaimed - the messages the step still claims, used to find the splice point.
+   * @param notice - the injected user-role message.
+   * @param rewrite - an optional per-message transform applied before splicing.
+   * @returns the amended decision.
+   */
+  function spliceNotice(
+    decision: DshPreStepDecision,
+    decisionMessages: readonly unknown[],
+    rawClaimed: readonly unknown[],
+    notice: unknown,
+    rewrite?: (message: unknown) => unknown,
+  ): DshPreStepDecision {
+    /** The decision's messages, rewritten only when the caller asked for it. */
+    const messages = [...(decisionMessages.length > 0 ? decisionMessages : rawClaimed)].map((message) => (rewrite === undefined ? message : rewrite(message)))
+    /** Index of the LAST message the step still claims, or -1 when none is left. */
+    let lastClaimed = -1
+    for (let at = 0; at < messages.length; at += 1) if (rawClaimed.includes(messages[at])) lastClaimed = at
+    /** Index the notice is spliced at: right after the last still-claimed message. */
+    const at = lastClaimed < 0 ? messages.length : lastClaimed + 1
+    /** The amended message list the step continues with. */
+    const amended = [...messages.slice(0, at), notice, ...messages.slice(at)]
+    return { ...decision, kind: decision?.kind ?? "enter", messages: amended }
+  }
+
+  /**
+   * Stamp ONE fire into a session's record (D1 rule 4): reset the counter, remember what was staged.
+   * @param workspace - the session workspace the state file resolves under.
+   * @param sessionId - the session key inside that workspace.
+   * @param state - the session's live record, mutated in place.
+   * @param planId - the plan the fire staged, or the empty string when nothing was staged.
+   * @returns nothing; a failed write leaves the in-memory settlement in force.
+   */
+  async function recordFire(workspace: string, sessionId: string, state: ReTeamState, planId: string): Promise<void> {
+    state.consultCount = 0
+    state.lastFiredAt = Date.now()
+    state.planId = planId
+    state.teamIdAtFire = ""
+    await saveReTeamState(workspace, sessionId, state)
+  }
+
+  /**
+   * Run ONE mid-session RE-TEAM fire (D1 rules 5–6): stage the shell, settle, return the notice text.
+   *
+   * The shell goes through the SAME {@link stagePlan} ladder the session-start route uses, so the
+   * idempotence probe, the timeout and the degradation ladder are shared, and the only difference is
+   * the shell's name/description (built by `gatePlanShell` from the volume, not from a goal). Nothing
+   * else is written: no member, no task, no approval.
+   * @param input - the bound agent, the resolved session, the mode and the counted volume.
+   * @returns the notice text to inject; never a throw.
+   */
+  async function fireReTeam(input: {
+    /** The LIVE agent the listener is bound to. */
+    agent: unknown
+    /** The bound agent's id, quoted by the report/warning lines. */
+    agentId: string
+    /** The session workspace the staging call writes under. */
+    workspace: string
+    /** The session the staging call is attributed to. */
+    sessionId: string
+    /** The resolved `team.gate` mode; `advisory` never stages. */
+    mode: GateMode
+    /** The COMPLETED consults the trigger counted. */
+    count: number
+    /** The threshold those consults crossed. */
+    threshold: number
+  }): Promise<string> {
+    /** The session's record, mutated by the fire below. */
+    const state = await loadReTeamState(input.workspace, input.sessionId)
+    /** The in-memory key the synchronous in-flight guard uses. */
+    const key = reTeamKeyOf(input.workspace, input.sessionId)
+    firing.add(key)
+    /** What the staging ladder did; the advisory route leaves the degraded default. */
+    let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
+    try {
+      if (input.mode === GATE_MODE_MECHANICAL) {
+        outcome = await stagePlan({
+          agent: input.agent,
+          workspace: input.workspace,
+          sessionId: input.sessionId,
+          goal: "",
+          signals: [],
+          reteam: { count: input.count, threshold: input.threshold },
+        })
+        if (!outcome.ok) {
+          warn("re-team gate: staging degraded for agent \"" + input.agentId + "\" (" + String(outcome.error) + ")")
+        }
+      }
+    } finally {
+      firing.delete(key)
+    }
+    /** Whether THIS fire staged a shell (an already-staged plan is NOT a new shell). */
+    const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged
+    /** Whether the ladder found a plan already staged for this session. */
+    const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged
+    await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "")
+    if (input.agentId !== "") acted.add(input.agentId)
+    report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold)
+      + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
+    if (staged && outcome.planId === "") {
+      warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + input.agentId + "\" — the shell is staged but cannot be approved")
+    }
+    gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged))
+    return reTeamNoticeText({
+      count: input.count,
+      threshold: input.threshold,
+      staged,
+      alreadyStaged,
+      planId: staged || alreadyStaged ? outcome.planId : "",
+      ...(outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }),
+    })
+  }
+
   /** One step handler, bound to the agent whose scope registered it. */
   const stepHandler = (bound: unknown): (payload: DshAgentPreStep, decision: DshPreStepDecision) => Promise<DshPreStepDecision | undefined> => async (payload: DshAgentPreStep, decision: DshPreStepDecision) => {
     try {
@@ -413,9 +705,8 @@ export function installSessionGate(
       if (!sessionQualifies(agent, presets)) { gateTrace("not qualified agent=" + String((agent as { id?: unknown }).id ?? "?")); return undefined }
       /** The bound agent's id; an empty one cannot be marked acted and is judged on every step. */
       const agentId = String((agent as { id?: unknown }).id ?? "")
-      if (agentId !== "" && acted.has(agentId)) return undefined
       // THE MODE IS RESOLVED PER CALL (never cached): a `.mpd/mpd.jsonc` edit takes effect on the
-      // next step, and `off` returns BEFORE the goal is even read.
+      // next step, and `off` returns BEFORE any record is read.
       const mode: GateMode = resolveGateMode(configValue(GATE_CONFIG_KEY))
       if (mode === GATE_MODE_OFF) { gateTrace("mode off agent=" + agentId); return undefined }
       // THE GOAL COMES FROM THE RAW CLAIMED LIST (the payload), never from the decision:
@@ -424,32 +715,107 @@ export function installSessionGate(
       const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : []
       /** The step's raw claimed messages, or the decision's list when the payload carries none. */
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages
+      /** The workspace every probe below reads and every staged plan is written under. */
+      const workspace = dsh.workspaceRoot({ agent } as never)
+      /** The session key the team records are read by, the sticky probe mirrors and the counter files under. */
+      const sessionId = sessionIdOf(agent)
+      /** The in-memory key of this session's re-team record. */
+      const stateKey = reTeamKeyOf(workspace, sessionId)
+      // A staging call IN FLIGHT already owns this session: the harness may dispatch the next
+      // pre-step before it resolves, and a second stage would ARCHIVE the plan the first one staged.
+      if (firing.has(stateKey)) { gateTrace("fire in flight agent=" + agentId); return undefined }
+      // C7 + D1 RULE 1 — A SESSION THAT LEADS A LIVE TEAM IS NEVER SENT TO STAGE ONE, and a team is
+      // live only while its record says so: an `endedAt` record, or a board that is CLEAN-TERMINAL
+      // (every task completed/cancelled, none failed, at least one task), is FINISHED. Decided from
+      // the team RECORD — positive structural evidence — never from a "did the gate fire before"
+      // flag: MEASURED 2026-10-07, an inbound teammate report fired the gate on a session already
+      // leading a team and staged a spurious 0-member shell (plan-20261007102357, archived).
+      /** What THIS session's own team records say, read fresh on every step. */
+      const leading = await readLeadingTeam(workspace, sessionId, {
+        ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
+        ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
+      })
+      /** This session's re-team record, loaded once per process and mutated in place (rules 4–5). */
+      const state = await loadReTeamState(workspace, sessionId)
+      if (leading.leading) {
+        // RULE 4, THE PLAN-APPROVED HALF: a live team whose record this session leads means the plan
+        // the last fire staged WAS approved, so the settlement is cleared and BOUND to that team.
+        // The consult count keeps accruing while the team works; the team's END is what re-arms.
+        if (state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== (leading.teamId ?? "")) {
+          state.lastFiredAt = 0
+          state.planId = ""
+          state.teamIdAtFire = leading.teamId ?? ""
+          await saveReTeamState(workspace, sessionId, state)
+          if (agentId !== "") acted.delete(agentId)
+        }
+        // RULE 2 — A FAILED TASK BLOCKS AUTO-END **AND** RE-TEAM. The one notice names the team and
+        // the failed row; nothing is ended, staged or retried. ONE notice per team per process, so a
+        // long session is not nagged on every turn.
+        if (leading.failedTaskId !== undefined && leading.failedTeamId !== undefined && !repairNoticed.has(leading.failedTeamId)) {
+          repairNoticed.add(leading.failedTeamId)
+          report('re-team gate: team "' + leading.failedTeamId + '" has an unrepaired failed task; no auto-end and no re-stage')
+          return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
+            text: reTeamRepairNoticeText(leading.failedTeamId, leading.failedTaskId),
+            source: { kind: "mpd-roles", reason: "re-team-repair" },
+          }))
+        }
+        gateTrace("already leading team=" + String(leading.teamId ?? "(id not read)") + " members=" + String(leading.members) + " agent=" + agentId)
+        return undefined
+      }
+      // D1 RULE 1, THE FINISHED-TEAM HALF — an ENDED or CLEAN-TERMINAL record is NOT a live team.
+      if (leading.ended === true || leading.cleanTerminal === true) {
+        // RULE 3: close every clean-terminal board this session led, through the CONTROL tool, as the
+        // session's OWN agent. ONE attempt per team per process: the tool is idempotent, but a failed
+        // call must not turn every following pre-step into a retry loop.
+        for (const target of leading.autoEndTeamIds ?? []) {
+          if (target === "" || autoEndAttempted.has(target)) continue
+          autoEndAttempted.add(target)
+          await autoEndCleanTerminal(agent, target)
+        }
+        // RULE 4, THE TEAM-ENDED HALF: the settlement is CLEARED, so a later volume trigger can fire
+        // again. Cleared only when the record is bound to one of the terminal teams (or bound to
+        // none), so an unrelated stale record ending cannot re-arm a settlement it never owned.
+        /** Whether this session carried ANY settlement worth clearing. */
+        const settled = state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== ""
+        /** Whether the settlement is bound to a team this read just classified as terminal. */
+        const bound = state.teamIdAtFire === "" || (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire)
+        if (settled && bound) {
+          state.lastFiredAt = 0
+          state.planId = ""
+          state.teamIdAtFire = ""
+          await saveReTeamState(workspace, sessionId, state)
+          if (agentId !== "") acted.delete(agentId)
+          report('re-team gate: re-armed after team "' + String(leading.teamId ?? "(id not read)") + '" ended')
+        }
+      }
+      // RULE 4, THE SETTLEMENT: a fire happened since the last re-arm, and nothing fires until the
+      // team it produced ends (or its plan is seen approved above). The counter keeps accruing.
+      if (state.lastFiredAt !== 0 || state.planId !== "") {
+        gateTrace("re-team settled agent=" + agentId + " plan=" + String(state.planId))
+        return undefined
+      }
+      // RULES 5/6 — THE MID-SESSION VOLUME TRIGGER, evaluated on EVERY pre-step (no user turn is
+      // needed: the subject is the session's own consult volume). `team.reteam.enabled` gates ONLY
+      // this trigger; the ended-aware leading check and the auto-end above stay in force regardless.
+      if (resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY))) {
+        /** The completed-consult volume this trigger needs, resolved PER CALL from the config layer. */
+        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY))
+        if (state.consultCount >= afterConsults) {
+          /** The notice text the fire produced; the fire stages through the shared ladder. */
+          const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults })
+          return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
+            text: noticeText,
+            source: { kind: "mpd-roles", reason: "re-team-trigger" },
+          }))
+        }
+      }
+      // THE SESSION-START COMPLEXITY TRIGGER (unchanged below): it judges the user's own turn, so it
+      // needs one, and a step with no user text leaves the session judged again next turn.
       /** The user's own turn, preferring the payload's raw list over the spliced decision. */
       const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages)
       // NOTHING TO JUDGE YET: the session stays unregistered, so the first REAL user turn is still
       // evaluated instead of a pre-step with no user text spending the one evaluation.
       if (user === undefined) { gateTrace("no user text yet agent=" + agentId); return undefined }
-      /** The workspace the boulder probe reads and the staging call writes under. */
-      const workspace = dsh.workspaceRoot({ agent } as never)
-      // C7 — A SESSION THAT IS ALREADY LEADING A TEAM IS NEVER SENT TO STAGE ONE. Decided from the
-      // team RECORD (positive structural evidence: this session's `leadSessionId` in
-      // `.mpd/team/teams/*.json` with at least one member), never from a "did the gate fire before"
-      // flag — MEASURED 2026-10-07, an inbound teammate report fired the gate on a session that was
-      // already leading team-20261007102205 and staged a spurious 0-member shell
-      // (plan-20261007102357, archived). NO notice is injected on this path either, in ANY mode: the
-      // session needs no instruction to stage a team it already has, and the advisory text's "stage
-      // a team yourself" would contradict the very rule that forbids a second team. The session is
-      // NOT marked acted, so the record is re-read on the next step and a session whose team has
-      // ended is judged again rather than silenced for good.
-      /** What THIS session's own team record says, read fresh on every step. */
-      const leading = await readLeadingTeam(workspace, sessionIdOf(agent), {
-        ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
-        ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
-      })
-      if (leading.leading) {
-        gateTrace("already leading team=" + String(leading.teamId ?? "(id not read)") + " members=" + String(leading.members) + " agent=" + agentId)
-        return undefined
-      }
       /** The goal text with the explicit marker removed, plus whether it was there. */
       const consumed = consumeExplicitFlag(user.text)
       // Signal D's state root, resolved PER CALL from `boulder.dir` (never cached) and normalized by
@@ -486,26 +852,31 @@ export function installSessionGate(
       // NO TRIGGER = NO SETTLEMENT: the session is judged again on its next user turn, so a trivial
       // first turn can never spend the one evaluation on the complex turn that follows it.
       if (verdict.trigger !== true) { gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60))); return undefined }
-      // THE RE-ENTRY GUARD, written IMMEDIATELY BEFORE the async stage: the harness may dispatch the
+      // THE RE-ENTRY GUARD, taken IMMEDIATELY BEFORE the async stage: the harness may dispatch the
       // next pre-step while the staging call is still in flight, and a second stage would ARCHIVE the
-      // plan the first one just staged. This agent is never judged again.
-      if (agentId !== "") acted.add(agentId)
+      // plan the first one just staged. The guard is released in `finally`; the SETTLEMENT written
+      // below (`acted` + `state.lastFiredAt`) is what keeps the session quiet afterwards (rule 4).
+      firing.add(stateKey)
       /** What the mechanical route did; the advisory route leaves it at this degraded default. */
       let outcome: StageOutcome = { ok: false, planId: "", alreadyStaged: false }
-      if (mode === GATE_MODE_MECHANICAL) {
-        outcome = await stagePlan({
-          agent,
-          workspace,
-          sessionId: sessionIdOf(agent),
-          goal: consumed.text,
-          signals: verdict.signals,
-          ...(boulder.planPath === undefined ? {} : { planPath: boulder.planPath }),
-        })
-        if (!outcome.ok) {
-          // Ladder step (d): the call failed, threw or timed out — ONE warning carrying the error,
-          // and the step continues with the ADVISORY notice (never a claimed staged plan).
-          warn("session-start gate: staging degraded to the advisory notice for agent \"" + agentId + "\" (" + String(outcome.error) + ")")
+      try {
+        if (mode === GATE_MODE_MECHANICAL) {
+          outcome = await stagePlan({
+            agent,
+            workspace,
+            sessionId,
+            goal: consumed.text,
+            signals: verdict.signals,
+            ...(boulder.planPath === undefined ? {} : { planPath: boulder.planPath }),
+          })
+          if (!outcome.ok) {
+            // Ladder step (d): the call failed, threw or timed out — ONE warning carrying the error,
+            // and the step continues with the ADVISORY notice (never a claimed staged plan).
+            warn("session-start gate: staging degraded to the advisory notice for agent \"" + agentId + "\" (" + String(outcome.error) + ")")
+          }
         }
+      } finally {
+        firing.delete(stateKey)
       }
       /** Whether a plan is staged in this session as a result of this fire. */
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok
@@ -519,6 +890,11 @@ export function installSessionGate(
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + agentId + "\" — the shell is staged but cannot be approved")
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity)
+      // THE SETTLEMENT (rule 4): the counter resets, the instant is stamped and a really staged plan
+      // is remembered, so a restart neither re-nags nor loses the volume. `acted` is the settled VIEW
+      // the install outcome exposes; `state.lastFiredAt` is what the gate itself reads.
+      await recordFire(workspace, sessionId, state, staged ? outcome.planId : "")
+      if (agentId !== "") acted.add(agentId)
       /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
       const notice = dsh.userMessage({
         text: staged
@@ -537,18 +913,8 @@ export function installSessionGate(
         // already accepted, and the notice TEXT is what distinguishes the two routes.
         source: { kind: "mpd-roles", reason: "session-start-advisory" },
       })
-      /** The decision's messages with the explicit marker consumed from the user's own turn. */
-      const messages = [...(decisionMessages.length > 0 ? decisionMessages : rawClaimed)]
-        .map((message) => (message === user.message ? consumeFlagFromMessage(message, user.text) : message))
-      // `toSpliced`/`findLastIndex` semantics without the ES2023 lib: the notice lands right
-      // after the LAST claimed message, exactly where the retired implementation placed it.
-      let lastClaimed = -1
-      for (let at = 0; at < messages.length; at += 1) if (rawClaimed.includes(messages[at])) lastClaimed = at
-      /** Index the notice is spliced at: right after the last still-claimed message. */
-      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1
-      /** The amended message list the step continues with. */
-      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)]
-      return { ...decision, kind: decision?.kind ?? "enter", messages: amended }
+      // The explicit `team:` marker is CONSUMED from the user's own turn on the way through.
+      return spliceNotice(decision, decisionMessages, rawClaimed, notice, (message) => (message === user.message ? consumeFlagFromMessage(message, user.text) : message))
     } catch (error) {
       // A gate failure never breaks a step: the harness's own decision stands.
       warn("session-start gate failed (" + errorText(error) + ") — the step runs unchanged")
@@ -592,6 +958,9 @@ export function installSessionGate(
     }
   }
 
+  // THE CONSULT COUNTER FIRST: the volume trigger must see a consult that completes before the
+  // session's first counted pre-step, so the ONE per-tool subscription is armed before any listener.
+  subscribeConsultCounter()
   for (const agent of dsh.liveAgents()) register(agent)
   /** Subscribe to an agent lifecycle event, degrading silently when the bus is absent. */
   const subscribe = (event: string, handler: (payload: unknown) => void): void => {

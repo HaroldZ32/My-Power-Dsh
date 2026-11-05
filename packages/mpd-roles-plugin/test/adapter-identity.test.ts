@@ -17,7 +17,7 @@ import { join } from "node:path"
 import { ADAPTER_IDENTITY_FALLBACK, ADAPTER_IDENTITY_MOUNTED, apply } from "../src/index.ts"
 
 /** The three roster tools this package must register, named once for every arm below. */
-const EXPECTED_TOOLS = ["mpd_roles_list", "mpd_role_spawn", "mpd_role_persona"]
+const EXPECTED_TOOLS = ["mpd_roles_list", "mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_role_persona"]
 
 /** Sandbox HOME directories created per test, drained by afterEach so none leaks. */
 const created: string[] = []
@@ -255,7 +255,7 @@ describe("F1 healthy arm: a mounted mpdDsh", () => {
     }
   })
 
-  test("the three tools are registered THROUGH the mounted adapter, not beside it", () => {
+  test("the roster's five tools are registered THROUGH the mounted adapter, not beside it", () => {
     /** Captured stdout for the tool-registration arm. */
     const stdout = captureStdout()
     /** The mounted stand-in that must receive all three registrations. */

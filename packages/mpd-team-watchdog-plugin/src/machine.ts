@@ -28,7 +28,7 @@
 // — a claimed task that never stamped is reported `never-started`, a dispatch
 // observation that never escalates.
 import type { HeartbeatKind, HeartbeatStamp } from "./store.js"
-import { TERMINAL_STATUSES } from "./team.js"
+import { CAPTAIN_KEY, TERMINAL_STATUSES } from "./team.js"
 
 /**
  * The four channel states of frozen contract §1.
@@ -67,6 +67,14 @@ export interface WatchdogKnobs {
    * expire. Read by the hold registry; the machine itself never holds a team by itself.
    */
   holdTtlMs: number
+  /**
+   * D3 — THE FORCE BOUND: how long a task may stay `in_progress` before its owner is treated as
+   * WEDGED and the force supervisor interrupts it, writes the handoff, requeues the row and splits
+   * the work. `0` DISABLES the whole rule (the falsifier: the pre-D3 behaviour).
+   *
+   * Read LIVE per tick, like every other knob, so lowering it reaches a running watchdog.
+   */
+  forceAfterMs: number
 }
 
 /** The frozen defaults (frozen contract §3, T-48/D3). */
@@ -89,6 +97,11 @@ export const WATCHDOG_DEFAULTS: WatchdogKnobs = {
   toolInFlightMaxMs: 900_000,
   // 15 minutes: a hold that nobody resumed releases itself and leaves a durable record.
   holdTtlMs: 900_000,
+  // 15 minutes (D3): the user's own bound for ONE piece of work. A task still `in_progress` at
+  // this age is not being worked, it is stuck — the force supervisor interrupts, hands off,
+  // requeues and splits. An OPEN `bash` call is the only exemption (§D3.3) and it has NO age
+  // bound, so this number is never also a tool deadline.
+  forceAfterMs: 900_000,
 }
 
 /**
@@ -122,7 +135,7 @@ export function knobReadings(live: WatchdogKnobs, fileSection: unknown): KnobRea
   // The file's `watchdog` section as a plain object; anything else reads as "states nothing".
   const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
   // Knob names in the frozen contract order the status view prints them in.
-  const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "enabled"]
+  const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "enabled"]
   return knobs.map((knob) => {
     // The value this process runs with, cast because a keyed read cannot narrow the knob union.
     const liveValue = live[knob] as number | boolean | string
@@ -288,6 +301,10 @@ export function readKnobs(
   // T-17's hold TTL (§3). 0 is likewise meaningful (`never expire`).
   const holdTtlMs = number("holdTtlMs", 0)
 
+  // D3's force bound. 0 is MEANINGFUL again (`the rule is off`), so the floor is 0 and a disabled
+  // rule cannot be confused with a missing one.
+  const forceAfterMs = number("forceAfterMs", 0)
+
   // The kill switch: defaults first, the environment override applied last.
   let enabled = defaults.enabled
   if (section.enabled !== undefined) {
@@ -300,7 +317,7 @@ export function readKnobs(
     enabled = false
   }
 
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, issues }
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, issues }
 }
 
 /** One silence candidate: a live task whose owner is expected to be stepping. */
@@ -372,6 +389,36 @@ export interface SilenceCandidate {
    * escalate. The engine sets it exactly when the fold cannot answer for the member.
    */
   heartbeatFallback?: boolean
+  /**
+   * D3: the board status VERBATIM (`in_progress`, `pending`, …).
+   *
+   * Only `in_progress` can be WEDGED: a `pending` row is waiting for a dispatch, not being worked,
+   * and forcing it would interrupt a member for work it never started. ABSENT means the caller did
+   * not state a status (an older fixture), and an absent status is NEVER forced — the fail-safe
+   * direction is "do not interrupt on a guess".
+   */
+  status?: string
+  /**
+   * D3: epoch ms at which the task entered `in_progress` (the record's own `startedAt`), or null
+   * when the board carries none. `null`/absent disables the force rule for this candidate: with no
+   * clock there is no duration, and a duration is the whole trigger.
+   */
+  startedAt?: number | null
+  /**
+   * D3: the tool names of this task's newest stamps, oldest first (at most five).
+   *
+   * HISTORY, not a decision input: the force handoff document quotes them so the next owner can see
+   * what the interrupted member was doing. Never used by the machine to decide anything.
+   */
+  recentTools?: readonly string[]
+  /**
+   * D3: whether this candidate's owner IS the team's LEAD (the captain).
+   *
+   * The engine resolves it (the owner may be stored as the lead's session id, which the machine cannot
+   * recognise on its own), and it gates the FORCE rule only: the captain is NEVER interrupted by D3.
+   * The silence ladder still applies — the captain's own seat can be watched and warned about.
+   */
+  lead?: boolean
 }
 
 /** What one observation concluded about one candidate. */
@@ -386,6 +433,23 @@ export type Decision =
    * construction, so the conservative action (report, do not pause) is the only honest one.
    */
   | { type: "tool-expired"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; inFlightMs: number; since: number; tool: string | null }
+  /**
+   * D3's decision: a task has sat `in_progress` for at least `forceAfterMs`, so its owner is WEDGED
+   * and the force supervisor must interrupt it, write the handoff, requeue the row and split the work.
+   *
+   * `elapsedMs` is measured from the record's own `startedAt` — never from a stamp — because the
+   * trigger is the TASK's age, not the member's silence: a member that keeps stamping but never
+   * finishes a task is exactly the case the silence ladder cannot see.
+   */
+  | { type: "wedged"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; startedAt: number; elapsedMs: number; lastToolCalls: readonly string[] }
+  /**
+   * D3's EXEMPTION report: the task crossed `forceAfterMs` while its owner had a `bash` call open.
+   *
+   * The member is WORKING (a verification run may legitimately take an hour), so nothing is
+   * interrupted; the incident is the audit trail that the bound was crossed and the exemption was
+   * taken. Recorded ONCE per task+attempt generation, at the boundary.
+   */
+  | { type: "long-bash"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; startedAt: number; elapsedMs: number; inFlightMs: number; tool: string | null }
 
 /**
  * The streak key: per TEAM, per task AND per attempt.
@@ -426,6 +490,16 @@ export class WatchdogMachine {
   private readonly reportedFallback = new Set<string>()
   /** How many observations the in-flight rule explained away (r6 evidence). */
   private inFlightSuppressed = 0
+  /**
+   * D3 keys already FORCED: one `wedged` decision per task+attempt generation, so a task that the
+   * supervisor could not requeue this tick cannot interrupt its owner twice.
+   *
+   * The engine RE-ARMS a key through {@link rearmWedge} when the force action aborted for a
+   * retryable reason (a handoff write failure), which is what makes "retry next tick" possible.
+   */
+  private readonly wedgeForced = new Set<string>()
+  /** D3 keys already reported as exempt (`long-bash`): one incident per generation, at the boundary. */
+  private readonly longBashReported = new Set<string>()
 
   /**
    * Observe every candidate once.
@@ -442,6 +516,12 @@ export class WatchdogMachine {
     for (const candidate of candidates) {
       // This candidate's streak and escalation key.
       const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId)
+      // ── D3: THE 15-MINUTE FORCE RULE ─────────────────────────────────────────────────
+      // Evaluated BEFORE every channel question and BEFORE the silence ladder: the trigger is the
+      // TASK's age, not the member's silence, so a member that keeps stamping inside one unfinished
+      // task is exactly the case this rule exists for. It consumes the candidate when it produces a
+      // decision (or takes the bash exemption), and falls through untouched otherwise.
+      if (this.observeWedge(candidate, key, now, knobs, decisions)) continue
       if (this.escalated.has(key)) continue
 
       // ── THE CHANNEL PREDICATE (contract §1 / T-48 D1) ────────────────────────────
@@ -524,6 +604,103 @@ export class WatchdogMachine {
       this.observeSilence(candidate, key, now - candidate.lastSeen, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions)
     }
     return decisions
+  }
+
+  /**
+   * D3: decide whether ONE candidate has crossed the force bound, and record what that means.
+   *
+   * The rule, in the order the contract states it:
+   *   1. `forceAfterMs <= 0` disables it (the falsifier: the pre-D3 behaviour).
+   *   2. Only an `in_progress` task with a recorded `startedAt` can be wedged.
+   *   3. THE CAPTAIN IS NEVER A FORCE TARGET (rule 5): the Lead's own seat is skipped here, and the
+   *      action refuses it again on the record — two independent guards, because interrupting the
+   *      session that authorised the team would take the whole wave down.
+   *   4. Past the bound, an OPEN `bash` call exempts the member with NO age bound (a legitimate
+   *      verification run may take an hour): one `long-bash` incident at the boundary, nothing
+   *      interrupted, and the next tick re-evaluates.
+   *   5. Otherwise exactly ONE `wedged` decision per task+attempt generation.
+   *
+   * @param candidate - the candidate under observation.
+   * @param key - its team+task+attempt key (the dedupe key).
+   * @param now - the tick's clock (injectable).
+   * @param knobs - the resolved knobs (`forceAfterMs` is read live).
+   * @param decisions - the decisions of this pass, appended to in place.
+   * @returns true when the candidate was CONSUMED (do not run the silence ladder for it).
+   */
+  private observeWedge(
+    candidate: SilenceCandidate,
+    key: string,
+    now: number,
+    knobs: WatchdogKnobs,
+    decisions: Decision[],
+  ): boolean {
+    // 1. The rule is off; every other decision path stays as it was.
+    if (knobs.forceAfterMs <= 0) return false
+    // 2. A task that is not being worked cannot be wedged, and neither can one with no clock.
+    if (candidate.status !== "in_progress") return false
+    // THE CAPTAIN IS NEVER A FORCE TARGET (rule 5): `lead` is the engine's resolution (the owner may be
+    // the lead's session id), and `CAPTAIN_KEY` covers a fixture that spells it the short way.
+    if (candidate.assignee === CAPTAIN_KEY || candidate.lead === true) return false
+    // The task's own start instant; null/absent means no duration exists (fail-safe: no force).
+    const startedAt = candidate.startedAt
+    if (typeof startedAt !== "number" || !Number.isFinite(startedAt)) return false
+    // How long the task has been in progress, in ms.
+    const elapsedMs = now - startedAt
+    if (elapsedMs < knobs.forceAfterMs) return false
+    // 4. THE ONLY EXEMPTION: an OPEN bash call. No age bound — the call being open IS the evidence
+    // that work is happening, and the incident is the audit trail that the bound was crossed.
+    const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null
+    /** When that call started: the stamp's own clock first, the fold's second. */
+    const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null
+    if (tool === "bash" && typeof inFlightSince === "number") {
+      if (!this.longBashReported.has(key)) {
+        this.longBashReported.add(key)
+        decisions.push({
+          type: "long-bash",
+          teamId: candidate.teamId,
+          taskId: candidate.taskId,
+          attemptId: candidate.attemptId,
+          assignee: candidate.assignee,
+          memberKey: candidate.memberKey,
+          startedAt,
+          elapsedMs,
+          inFlightMs: now - inFlightSince,
+          tool,
+        })
+      }
+      return true
+    }
+    // 5. One force per generation; a re-armed key (a retryable failure) is decided again.
+    if (this.wedgeForced.has(key)) return true
+    this.wedgeForced.add(key)
+    decisions.push({
+      type: "wedged",
+      teamId: candidate.teamId,
+      taskId: candidate.taskId,
+      attemptId: candidate.attemptId,
+      assignee: candidate.assignee,
+      memberKey: candidate.memberKey,
+      startedAt,
+      elapsedMs,
+      lastToolCalls: [...(candidate.recentTools ?? [])],
+    })
+    return true
+  }
+
+  /**
+   * D3: allow ONE task+attempt generation to be decided again after a retryable force abort.
+   *
+   * WHY THIS IS NOT `clear`: `clear` is the STAMP path (a member reported progress), which resets
+   * every per-generation report. A handoff WRITE failure is not progress — the task is still wedged —
+   * so only the force flag is re-armed and the incident dedupe stays spent, which is what "retry next
+   * tick, at most once per attempt [recorded]" means.
+   *
+   * @param teamId - the team the task belongs to.
+   * @param taskId - the board row that stays wedged.
+   * @param attemptId - its generation token.
+   */
+  rearmWedge(teamId: string, taskId: string, attemptId: string): void {
+    this.wedgeForced.delete(streakKey(teamId, taskId, attemptId))
   }
 
   /**
@@ -636,6 +813,10 @@ export class WatchdogMachine {
     this.neverStarted.delete(key)
     this.toolExpired.delete(key)
     this.reportedFallback.delete(key)
+    // D3: a stamp for this task+attempt is EVIDENCE of progress, so the force and exemption reports
+    // are forgotten with the rest — the next time the task crosses the bound it is decided afresh.
+    this.wedgeForced.delete(key)
+    this.longBashReported.delete(key)
   }
 
   /** Whether a TEAM's task+attempt already escalated (the tick's idempotence check). */
@@ -644,12 +825,14 @@ export class WatchdogMachine {
   }
 
   /** The current streak map, for diagnostics and assertions. */
-  snapshot(): { streaks: Record<string, number>; escalated: string[]; toolExpired: string[]; inFlightSuppressed: number } {
+  snapshot(): { streaks: Record<string, number>; escalated: string[]; toolExpired: string[]; inFlightSuppressed: number; wedged: string[]; longBash: string[] } {
     return {
       streaks: Object.fromEntries(this.streaks),
       escalated: [...this.escalated].sort(),
       toolExpired: [...this.toolExpired].sort(),
       inFlightSuppressed: this.inFlightSuppressed,
+      wedged: [...this.wedgeForced].sort(),
+      longBash: [...this.longBashReported].sort(),
     }
   }
 }
@@ -719,7 +902,15 @@ export function generationFloorOf(team: { createdAt?: number | null; approvedAt?
 export function candidateFor(
   team: {
     id: string
-    tasks: readonly { id: string; status: string; assignee?: string; attemptId?: string; dispatched?: boolean }[]
+    tasks: readonly {
+      id: string
+      status: string
+      assignee?: string
+      attemptId?: string
+      dispatched?: boolean
+      /** D3: epoch ms the task entered `in_progress`, when the projection could read one. */
+      startedAt?: number
+    }[]
     /** T-16's generation bound; absent/null leaves the slice PERMISSIVE (§0/A3). */
     createdAt?: number | null
     approvedAt?: number | null
@@ -807,6 +998,11 @@ export function candidateFor(
     if (!dispatched && !workedOn) continue
     // The newest stamp of the generation-scoped slice, or undefined when it is empty.
     const newest = forTask.reduce<HeartbeatStamp | undefined>((best, stamp) => (best === undefined || stamp.at >= best.at ? stamp : best), undefined)
+    // D3's handoff evidence: the tool names this task's stamps recorded, oldest first, last five.
+    const recentTools = forTask
+      .filter((stamp): stamp is HeartbeatStamp & { tool: string } => typeof stamp.tool === "string" && stamp.tool !== "")
+      .slice(-5)
+      .map((stamp) => stamp.tool)
     // r6: the SAME filtered slice answers the in-flight question, so a start recorded
     // against another team/attempt can never explain THIS candidate's silence away.
     const inFlight = inFlightFor(forTask)
@@ -821,6 +1017,10 @@ export function candidateFor(
       everStampedForTask: forTask.length > 0,
       inFlightSince: inFlight === null ? null : inFlight.since,
       inFlightTool: inFlight === null ? null : inFlight.tool,
+      // D3: the wedge clock and the handoff's tool history ride the same candidate.
+      status: task.status,
+      startedAt: typeof task.startedAt === "number" && Number.isFinite(task.startedAt) ? task.startedAt : null,
+      recentTools,
     })
   }
   return candidates

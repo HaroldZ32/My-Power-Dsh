@@ -39,7 +39,7 @@ import z from "../../mpd-schemastery"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { registerWatchdogWeb, WATCHDOG_ROUTES, type WatchdogEffect } from "./web.js"
-import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats } from "./engine.js"
+import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats, type WedgeForceOutcome, type WedgeForceRequest, type WedgeForceSeam } from "./engine.js"
 import type { MpdTeamsRead } from "./team.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
 import { readKnobs, WATCHDOG_DEFAULTS, type ResolvedKnobs } from "./machine.js"
@@ -96,6 +96,11 @@ export type Config = {
    * long, with a durable `hold-auto-released` incident. `0` = never expire.
    */
   holdTtlMs?: number
+  /**
+   * D3's force bound: how long a task may stay `in_progress` before its owner is treated as wedged
+   * and the force supervisor interrupts it (handoff, requeue, split). `0` disables the rule.
+   */
+  forceAfterMs?: number
   /** Print skipped-team reasons to the console as well as the debug channel (default false). */
   verboseSkips?: boolean
   /** Diagnostic prefix. */
@@ -115,6 +120,7 @@ export const Config: Schemastery<Config> = z.object({
   deadTeamGraceMs: z.number().default(86_400_000),
   toolInFlightMaxMs: z.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   holdTtlMs: z.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
+  forceAfterMs: z.number().default(WATCHDOG_DEFAULTS.forceAfterMs),
   verboseSkips: z.boolean().default(false),
   logPrefix: z.string().default("mpd-team-watchdog"),
 })
@@ -162,6 +168,7 @@ export function resolveConfig(config: Config = {}): EngineConfig {
     deadTeamGraceMs: num(config.deadTeamGraceMs, 86_400_000, 0),
     toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     holdTtlMs: num(config.holdTtlMs, WATCHDOG_DEFAULTS.holdTtlMs, 0),
+    forceAfterMs: num(config.forceAfterMs, WATCHDOG_DEFAULTS.forceAfterMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog",
   }
@@ -189,6 +196,94 @@ function mpdTeamsOf(ctx: unknown): MpdTeamsRead | undefined {
     return typeof (service as MpdTeamsRead).list === "function" ? (service as MpdTeamsRead) : undefined
   } catch {
     return undefined
+  }
+}
+
+/**
+ * The service id team-core publishes its team ACTIONS under.
+ *
+ * Spelled as a literal rather than imported: the cross-package coupling inventory is FROZEN and may
+ * only shrink, so the watchdog resolves the service at runtime (the same rule `mpdTeams` follows).
+ * The string is `TEAM_ACTIONS_SERVICE` in `mpd-team-core-plugin/src/team-actions.ts`.
+ */
+const TEAM_ACTIONS_SERVICE_ID = "mpdTeamActions"
+
+/**
+ * Normalise the team plane's force answer onto {@link WedgeForceOutcome}.
+ *
+ * The answer crosses a service boundary the watchdog does not type, so EVERY field is read
+ * structurally: an unknown shape reads as a refusal, never as a success.
+ *
+ * @param answer - whatever the service's `force` member returned.
+ * @returns the outcome the engine records and logs.
+ */
+function normaliseForceOutcome(answer: unknown): WedgeForceOutcome {
+  // The answer as a plain record, the only shape a foreign service can be read through.
+  const record = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {}
+  if (record.ok !== true) {
+    return {
+      ok: false,
+      error: typeof record.error === "string" && record.error !== "" ? record.error : "the force action answered without a reason",
+      ...(record.retryable === true ? { retryable: true } : {}),
+    }
+  }
+  // The requeued row, when the answer names one.
+  const requeued = record.requeued !== null && typeof record.requeued === "object" ? (record.requeued as Record<string, unknown>) : undefined
+  return {
+    ok: true,
+    ...(typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {}),
+    ...(requeued === undefined || typeof requeued.taskId !== "string"
+      ? {}
+      : { requeued: { taskId: requeued.taskId, attempt: typeof requeued.attempt === "number" ? requeued.attempt : 0 } }),
+    ...(Array.isArray(record.split) ? { split: record.split.filter((id: unknown): id is string => typeof id === "string") } : {}),
+  }
+}
+
+/**
+ * D3's FORCE SEAM: resolve `mpdTeamActions` at CALL time and adapt its force member.
+ *
+ * Resolved per call, never captured at apply: team-core may mount after this row, and a composition
+ * without it must report and record the wedge instead of failing the tick. The authorising session
+ * is the team's own recorded lead, which is the ONLY session the action will build a caller from.
+ *
+ * @param ctx - the row's cordis context.
+ * @returns the seam the engine calls; it never throws (every failure is an `{ ok:false }` answer).
+ */
+export function forceSeamOf(ctx: unknown): WedgeForceSeam {
+  return {
+    forceWedged: async (request: WedgeForceRequest): Promise<WedgeForceOutcome> => {
+      try {
+        // The context's soft service probe; a minimal test context may not carry one.
+        const get = (ctx as { get?: (id: string, strict?: boolean) => unknown })?.get
+        if (typeof get !== "function") return { ok: false, error: "the plugin context exposes no service lookup" }
+        /** The team plane's action surface, or undefined when that row is not mounted. */
+        const service = get.call(ctx, TEAM_ACTIONS_SERVICE_ID, false)
+        /** The force member, read structurally because the service is another package's value. */
+        const force = (service as { force?: unknown } | undefined)?.force
+        if (typeof force !== "function") return { ok: false, error: "the `mpdTeamActions` service is absent or exposes no force()" }
+        // The evidence the team plane cannot read for itself: the watchdog's own clocks and the
+        // handoff's tool history. Everything else (the board, the roster, the interrupt) is team-core's.
+        /** The request as the service's force member takes it. */
+        const input = {
+          sessionId: request.sessionId,
+          teamId: request.teamId,
+          taskId: request.taskId,
+          workspace: request.workspace,
+          evidence: {
+            member: request.member,
+            attemptId: request.attemptId,
+            startedAt: request.startedAt,
+            elapsedMs: request.elapsedMs,
+            lastToolCalls: request.lastToolCalls,
+          },
+        }
+        /** The service's raw answer, normalised below. */
+        const answer = await (force as (value: unknown) => Promise<unknown>).call(service, input)
+        return normaliseForceOutcome(answer)
+      } catch (error) {
+        return { ok: false, error: message(error) }
+      }
+    },
   }
 }
 
@@ -250,7 +345,10 @@ export function apply(ctx: unknown, config: Config = {}): ApplyReport {
   // The engine handle, assigned once construction succeeds; the catch below returns inert.
   let engine: WatchdogEngine
   try {
-    engine = new WatchdogEngine(dsh, context, resolved, registry)
+    // D3: the fifth seam is the team plane's force action, resolved per call inside `forceSeamOf`, so
+    // a row that mounts later (or never) degrades to "report the wedge, act on nothing" — never to a
+    // failed boot and never to a thrown tick.
+    engine = new WatchdogEngine(dsh, context, resolved, registry, forceSeamOf(context))
   } catch (error) {
     warn(resolved.logPrefix, "engine construction failed — the row is inert: " + message(error))
     return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds, error: message(error) }

@@ -27,8 +27,12 @@ import { teamRoot } from "./team-store"
  * member's handoff), journaled here because they change what a later dispatch pass may do with that seat;
  * `team-ended` is the TERMINAL transition of the whole team (`agent_teams_control {action:"end"}`), the
  * one row that says when and why the wave closed — written once, never on the idempotent repeat.
+ *
+ * `wedged-force` is D3's supervisor event: a member was interrupted at the force bound, its row
+ * requeued and the work split. It is written whatever the captain's mailbox did, which is what makes
+ * the journal — not the mailbox — the DURABLE notification of a force.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {

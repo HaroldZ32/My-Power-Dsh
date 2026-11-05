@@ -229,7 +229,9 @@ describe("r6 — the predicate: explained activity, the bound, and the falsifier
   })
   // The machine knobs these cases run with, on a 90 s silence bound. `holdTtlMs` is the frozen
   // default (900_000): the machine's own `observe` never reads it — the hold registry does.
-  const knobs = { enabled: true, warnSilenceMs: 90_000, tickIntervalMs: 15_000, warnStreakToEscalate: 3, actionOnEscalate: "pause" as const, toolInFlightMaxMs: 900_000, holdTtlMs: 900_000 }
+  // D3's `forceAfterMs` is carried for the TYPE only: every candidate here has no `status`/`startedAt`,
+  // so the wedge rule cannot fire and these arms stay exactly what they were.
+  const knobs = { enabled: true, warnSilenceMs: 90_000, tickIntervalMs: 15_000, warnStreakToEscalate: 3, actionOnEscalate: "pause" as const, toolInFlightMaxMs: 900_000, holdTtlMs: 900_000, forceAfterMs: 900_000 }
 
   test("3x the threshold inside ONE call produces NO warn, NO escalate and NO hold", () => {
     // A machine with no prior observations.

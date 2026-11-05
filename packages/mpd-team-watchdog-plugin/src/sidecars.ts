@@ -36,7 +36,7 @@ export interface HoldRecord {
 }
 
 /** The durable incident vocabulary (ONE definition, shared with the scene's incident rows). */
-export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired" | "hold-auto-released"
+export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "long-bash"
 
 /**
  * Why an incident was recorded; `ms` is the silence window, the in-flight age or 0.
@@ -46,7 +46,7 @@ export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired
  * fold concluded OUTSTANDING) or `silence-heartbeat` (§4's report-only degradation).
  */
 export type IncidentCause = {
-  kind: "silence" | "silence-channel" | "silence-heartbeat" | "never-started" | "tool-expired" | "hold-auto-released"
+  kind: "silence" | "silence-channel" | "silence-heartbeat" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "long-bash"
   ms: number
   tool?: string
   /**
@@ -84,6 +84,17 @@ export interface IncidentRecord {
   scene: string | null
   /** Whether the hold was persisted (`not-applied` is the honest failure state). */
   hold: "applied" | "not-applied" | "not-requested"
+  /**
+   * D3: what the force supervisor did for a `wedged-force` record — `applied` when the member was
+   * interrupted and the board was requeued, `not-applied` when the action refused or was absent.
+   *
+   * ABSENT on every other incident kind, and absent on a `long-bash` record (nothing was forced).
+   */
+  force?: "applied" | "not-applied"
+  /** D3: the handoff document a `wedged-force` record names, when one was written. */
+  handoff?: string
+  /** D3: the `[split]` rows the force created, when it created any. */
+  split?: readonly string[]
   /** Readers that have acknowledged this incident. */
   acknowledgedBy: string[]
 }

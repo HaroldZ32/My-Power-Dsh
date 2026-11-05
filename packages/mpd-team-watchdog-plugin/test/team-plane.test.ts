@@ -97,8 +97,11 @@ describe("the watchdog's team universe (T3)", () => {
       expect(team.members).toEqual([{ id: "sess-m1", name: "Senior Engineer", status: "running" }])
       // The board's generation token is the task's own mpd revision, which is what scopes a stamp.
       // `dispatched` is ABSENT for an unowned row, exactly as the official projection leaves it.
+      // D3 (§D3 rule 2): the projection now ALSO carries the task's own `updatedAt` — and `startedAt`
+      // when the record has one — because the force rule measures the TASK's age, and dropping those
+      // fields is what left the supervisor with no duration to read.
       expect(team.tasks).toEqual([
-        { id: "T1", status: "pending", attempt: 3, attemptId: "3", dependencies: [] },
+        { id: "T1", status: "pending", attempt: 3, attemptId: "3", dependencies: [], updatedAt: Date.parse("2026-10-06T12:00:02.000Z") },
       ])
       expect(team.captainSessionId).toBe(OFFICIAL_TEAM_ID)
       expect(team.phase).toBe("active")

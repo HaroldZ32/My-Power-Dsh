@@ -69,7 +69,8 @@ export const VERIFIER_DENY_TOOLS: readonly string[] = [
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
-  "mcp__lsp__rename_symbol_strict",
+  "mcp__lsp__rename_symbol_strict",  "mpd_role_spawn_async",
+  "mpd_role_consult",
 ]
 
 /** The ONLY tools a checkpointed member may call, so ignoring the directive cannot continue the work. */
@@ -118,7 +119,7 @@ export const PLANNER_RECON_TOOLS: readonly string[] = ["read", "grep", "glob"]
  * verifier keeps every reading tool, `bash`, the gates and the five `mpd_verify_*` calls, and loses only the
  * two names that would let it hand the judgement to somebody else.
  */
-export const VERIFIER_NO_DELEGATION: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
+export const VERIFIER_NO_DELEGATION: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"]
 
 /** The cell member name that carries the planner's rule; the cell record and the team board use it verbatim. */
 export const PLANNER_SEAT_NAME = "cell-planner"
@@ -453,7 +454,7 @@ export function cellworkGuardDecision(seat: CellworkSeat | undefined, toolName: 
   // THE VERIFIER: never writes (the eight names) and NEVER DELEGATES (CR repair E) — a verdict is the seat's
   // own work, so the two bundle spawn tools are refused with their own sentence rather than the write one.
   if (seat.mode === "verifier") {
-    if (VERIFIER_DENY_TOOLS.includes(toolName)) return verifierRefusal(toolName)
+    if (VERIFIER_DENY_TOOLS.includes(toolName) && !VERIFIER_NO_DELEGATION.includes(toolName)) return verifierRefusal(toolName)
     if (VERIFIER_NO_DELEGATION.includes(toolName)) return verifierDelegationRefusal(toolName)
     return undefined
   }

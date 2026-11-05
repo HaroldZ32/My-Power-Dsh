@@ -34,7 +34,7 @@
 // What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the DEFAULT
 // again since 2026-10-20: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory`
 // (one notice, stage nothing) or `off` (the gate does nothing at all).
-import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, writeFile as writeFileFs } from "node:fs/promises"
 import { join } from "node:path"
 // THE ADMISSION LADDER (contract §10 A4): who may originate work, as a classification BESIDE the
 // complexity predicate. The two modules read each other on purpose — this one needs the rung, and the
@@ -691,14 +691,87 @@ export async function readWorkspaceScale(workspace: string, opts: WorkspaceScale
 /** Where a workspace's live team records live, relative to the workspace root (C7's only subject). */
 export const TEAM_RECORDS_DIR = join(".mpd", "team", "teams")
 
-/** What one workspace's team records say about a session ALREADY LEADING a team (C7's only input). */
+/** What one workspace's team records say about a session's OWN teams (C7 + the re-team gate's input). */
 export interface LeadingTeamRead {
-  /** Whether THIS session's own team record names at least one member. */
+  /** Whether THIS session's own team record names at least one member and is still LIVE. */
   leading: boolean
   /** The team id of the record that decided the verdict, when one was found. */
   teamId?: string
   /** How many members that record named; `0` when no record for this session was found. */
   members: number
+  /** The deciding record carries `endedAt`, so the team is OVER however many members it still lists. */
+  ended?: boolean
+  /** The deciding record's board is CLEAN-TERMINAL (rule 2's predicate) though `endedAt` is absent. */
+  cleanTerminal?: boolean
+  /** EVERY record naming this session that is terminal (ended OR clean-terminal), in scan order. */
+  terminalTeamIds?: readonly string[]
+  /** The NON-ended clean-terminal team ids the gate may auto-end (rule 3), in scan order. */
+  autoEndTeamIds?: readonly string[]
+  /** The first FAILED task on a record this session still leads; it blocks end AND re-team (rule 2). */
+  failedTaskId?: string
+  /** The team {@link failedTaskId} belongs to. */
+  failedTeamId?: string
+}
+
+/** One record's board classified for the re-team gate: clean-terminal, or the first failed task. */
+interface TeamBoardRead {
+  /** Rule 2's `hasTasks && allTerminal && noFailure` over ONE record's `tasks[]`. */
+  cleanTerminal: boolean
+  /** The first task whose status is `failed`; its presence BLOCKS auto-end and re-team. */
+  failedTaskId?: string
+}
+
+/** The task-status vocabulary a CLEAN board may carry (a `failed` row makes a board unclean). */
+const CLEAN_TASK_STATUSES: readonly string[] = ["completed", "cancelled"]
+/** The task status that blocks both auto-end and re-team (rule 2's `noFailure`). */
+const FAILED_TASK_STATUS = "failed"
+
+/**
+ * Classify ONE team record's board with rule 2's predicate, `tasks.length > 0` included.
+ *
+ * `hasTasks` is NOT optional: `every` over an empty array is vacuously true, so a MEMBERS-ONLY team
+ * (a legal `approveTeam` result today — it refuses only "0 members AND 0 tasks") would read
+ * clean-terminal and be auto-ended on the next pre-step. `skills/dsh-qa/scripts/session-start-team.ts`
+ * c7 asserts exactly that shape (members 7, `tasks: []`) reads `leading: true`.
+ *
+ * @param tasks - the record's `tasks` field, of any shape.
+ * @returns the clean-terminal verdict and the first failed task, never a throw.
+ */
+function readTeamBoard(tasks: unknown): TeamBoardRead {
+  /** The board rows, normalized to an array so a partial record cannot throw here. */
+  const rows: readonly unknown[] = Array.isArray(tasks) ? tasks : []
+  /** Rule 2's `hasTasks`: an EMPTY board is not evidence of completion. */
+  const hasTasks = rows.length > 0
+  /** Rule 2's `allTerminal`, initialized from `hasTasks` so an empty board stays unclean. */
+  let allTerminal = hasTasks
+  /** The first task a verification left `failed`; its presence blocks end AND re-team. */
+  let failedTaskId: string | undefined
+  for (const row of rows) {
+    /** One task row as the record spells it; the writer's field for the id is `id`. */
+    const task = row as { status?: unknown; id?: unknown; taskId?: unknown } | undefined
+    /** The row's status, stringified so a non-string can only miss, never match. */
+    const status = String(task?.status ?? "")
+    if (status === FAILED_TASK_STATUS) {
+      if (failedTaskId === undefined) failedTaskId = String(task?.id ?? task?.taskId ?? "")
+      allTerminal = false
+      continue
+    }
+    if (!CLEAN_TASK_STATUSES.includes(status)) allTerminal = false
+  }
+  return {
+    cleanTerminal: hasTasks && allTerminal && failedTaskId === undefined,
+    ...(failedTaskId === undefined ? {} : { failedTaskId }),
+  }
+}
+
+/**
+ * Whether a record field is a STAMPED value (present and non-empty), which is how `endedAt` is
+ * written by `endTeamRecord` (`now.toISOString()`); an absent, null or empty field is NOT a stamp.
+ * @param value - the raw record field, of any type.
+ * @returns whether the field carries a stamp.
+ */
+function isStamped(value: unknown): boolean {
+  return value !== undefined && value !== null && String(value) !== ""
 }
 
 /** The seams {@link readLeadingTeam} accepts: the two readers (tests and the QA case only). */
@@ -710,12 +783,22 @@ export interface LeadingTeamOptions {
 }
 
 /**
- * Whether THIS session already LEADS a team — C7's guard, decided from positive structural evidence.
+ * Whether THIS session still LEADS a live team — C7's guard plus the re-team gate's terminality read.
  *
  * The subject is the team record itself (`<workspace>/.mpd/team/teams/<id>.json`, written by
  * `mpd-team-core`): a record whose `leadSessionId` equals this session's id AND that names at least
  * one member is a team this session is leading. A record with ZERO members is NOT one — that is a
  * staged 0-member plan shell, exactly the thing this guard must still allow to be staged.
+ *
+ * A FINISHED TEAM IS NOT A LEADING TEAM (D1, the VEdit incident): `endTeamRecord` PRESERVES
+ * `members`, so a record that was closed — or whose board finished without anyone calling
+ * `agent_teams_control {action:"end"}` — used to read as leading forever and a session could never
+ * build its next team. The verdict is therefore `leading: false` when the record carries `endedAt`
+ * OR its board is CLEAN-TERMINAL (every task `completed`/`cancelled`, none `failed`, and at least one
+ * task — see {@link readTeamBoard} for why `hasTasks` is load-bearing). A `failed` task leaves the
+ * record LEADING and reports its id, because a wave whose verification failed must be repaired, never
+ * silently closed. When several records name this session, ONE live record wins; otherwise the last
+ * terminal record is reported together with every terminal/auto-end team id.
  *
  * WHY NOT the `acted` set, a "did we fire before" flag, or a notice scan (C7's rejection of
  * heuristics): each of those answers a question about the GATE, not about the session, so a session
@@ -747,6 +830,16 @@ export async function readLeadingTeam(
     const list = opts.readDir ?? ((path: string): Promise<readonly string[]> => readDirFs(path, { encoding: "utf8", withFileTypes: false }))
     /** The record file names this workspace holds; a missing directory throws into the catch below. */
     const entries = await list(join(String(workspace ?? ""), TEAM_RECORDS_DIR))
+    /** The FIRST live record for this session; one live team outranks any number of terminal siblings. */
+    let live: { teamId: string; members: number } | undefined
+    /** The first FAILED task found on a live record, which blocks auto-end and re-team (rule 2). */
+    let liveFailure: { teamId: string; taskId: string } | undefined
+    /** The LAST terminal record for this session, reported only when nothing is live. */
+    let terminal: { teamId: string; members: number; ended: boolean } | undefined
+    /** Every terminal record's team id, so a re-armed settlement can be matched by team identity. */
+    const terminalTeamIds: string[] = []
+    /** The NON-ended clean-terminal team ids the gate may auto-end (rule 3), in scan order. */
+    const autoEndTeamIds: string[] = []
     for (const entry of entries) {
       if (!String(entry).endsWith(".json")) continue
       try {
@@ -761,15 +854,331 @@ export async function readLeadingTeam(
         /** How many members the record names; a non-array reads as none. */
         const members = Array.isArray(fields.members) ? fields.members.length : 0
         if (members === 0) continue
-        return { leading: true, teamId: String(fields.teamId ?? ""), members }
+        /** The record's own id, quoted by the auto-end call and by the repair notice. */
+        const teamId = String(fields.teamId ?? "")
+        /** Whether the record is OVER by its own field (rule 1's first half). */
+        const ended = isStamped(fields.endedAt)
+        /** The board's classification: clean-terminal (`hasTasks` included) and the first failed task. */
+        const board = readTeamBoard(fields.tasks)
+        if (ended || board.cleanTerminal) {
+          terminal = { teamId, members, ended }
+          terminalTeamIds.push(teamId)
+          if (!ended && board.cleanTerminal) autoEndTeamIds.push(teamId)
+          continue
+        }
+        if (live === undefined) live = { teamId, members }
+        if (liveFailure === undefined && board.failedTaskId !== undefined) liveFailure = { teamId, taskId: board.failedTaskId }
       } catch {
         // ONE unreadable record never hides the others: keep scanning.
       }
     }
+    if (live !== undefined) {
+      return {
+        leading: true,
+        teamId: live.teamId,
+        members: live.members,
+        ...(liveFailure === undefined ? {} : { failedTaskId: liveFailure.taskId, failedTeamId: liveFailure.teamId }),
+      }
+    }
+    if (terminal === undefined) return nothing
+    return {
+      leading: false,
+      teamId: terminal.teamId,
+      members: terminal.members,
+      ...(terminal.ended ? { ended: true } : { cleanTerminal: true }),
+      terminalTeamIds,
+      ...(autoEndTeamIds.length === 0 ? {} : { autoEndTeamIds }),
+    }
   } catch {
     return nothing
   }
-  return nothing
+}
+
+/** The Lead-authority control tool the gate closes a clean-terminal team through (D1 rule 3). */
+export const CONTROL_TOOL_NAME = "agent_teams_control"
+
+/** The reason the auto-end call stamps into the record and its journal row (D1 rule 3, verbatim). */
+export const RETEAM_AUTO_END_REASON = "board clean-terminal — auto-ended by re-team gate"
+
+/** The marker the re-team notices carry (D1 rule 6); deliberately distinct from the session-start one. */
+export const RETEAM_NOTICE_MARKER = "[AgentTeams] Re-team rule"
+
+/** The `team.reteam.enabled` key; `false` turns ONLY rules 5–6 off, never the auto-end rules (rule 7). */
+export const RETEAM_ENABLED_CONFIG_KEY = "team.reteam.enabled"
+/** The `team.reteam.afterConsults` key: how many COMPLETED consults fire the mid-session trigger. */
+export const RETEAM_AFTER_CONSULTS_CONFIG_KEY = "team.reteam.afterConsults"
+/** The shipped threshold for {@link RETEAM_AFTER_CONSULTS_CONFIG_KEY} (D1 rule 5). */
+export const RETEAM_DEFAULT_AFTER_CONSULTS = 4
+/** The plan name a re-team fire stages; the session-start shell takes the goal's first line instead. */
+export const RETEAM_PLAN_NAME = "re-team gate plan shell"
+
+/**
+ * The `team.reteam.enabled` resolver: TOTAL and fail-safe in the ENABLED direction.
+ *
+ * `false` and its explicit spellings (`"false"`, `"off"`, `"no"`, `0`) disable the volume trigger;
+ * EVERY other value — absent, `true`, a typo, an object — keeps it on, so a stray value can never
+ * silently switch the re-team rule off (the same fail-safe direction as {@link resolveGateMode}).
+ * @param value - the raw config value, of any type.
+ * @returns whether the mid-session volume trigger may fire.
+ */
+export function resolveReTeamEnabled(value: unknown): boolean {
+  if (value === false || value === 0) return false
+  if (typeof value === "string") {
+    /** The spelling this value compares as, lower-cased so `"OFF"` counts the same as `"off"`. */
+    const spelling = value.trim().toLowerCase()
+    return spelling !== "false" && spelling !== "off" && spelling !== "no"
+  }
+  return true
+}
+
+/**
+ * The `team.reteam.afterConsults` resolver: a positive INTEGER, else the shipped default.
+ *
+ * A numeric string is honoured (`"6"`), a fractional number is floored, and anything unusable
+ * (`0`, `-1`, `NaN`, `"many"`, an object) reads {@link RETEAM_DEFAULT_AFTER_CONSULTS} — a threshold
+ * of zero would fire the trigger on every pre-step, which is the nagging the count exists to stop.
+ * @param value - the raw config value, of any type.
+ * @returns the completed-consult volume the trigger needs.
+ */
+export function resolveReTeamAfterConsults(value: unknown): number {
+  /** The value as a number, or NaN when it is neither a finite number nor a numeric string. */
+  const numeric = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : Number.NaN
+  return Number.isFinite(numeric) && numeric >= 1 ? Math.floor(numeric) : RETEAM_DEFAULT_AFTER_CONSULTS
+}
+
+/** The workspace-relative directory one session's re-team counter persists under (D1 rule 5). */
+export const SESSION_GATE_STATE_DIR = join(".mpd", "session-gate")
+
+/** The prefix every counted roster consult tool shares (`mpd_role_spawn` and its async sibling). */
+export const CONSULT_TOOL_PREFIX = "mpd_role_spawn"
+/** The workmate one-shot consult tool, counted beside the roster's own spawn tools. */
+export const WORKMATE_SPAWN_TOOL_NAME = "mpd_workmate_spawn"
+
+/**
+ * Whether one tool NAME is a counted consult (D1 rule 5: `mpd_role_spawn*` + `mpd_workmate_spawn`).
+ *
+ * The roster half is matched by PREFIX on purpose: `mpd_role_spawn_async` (the async consult) shares
+ * the blocking tool's prefix, so a name this build does not know yet is counted instead of dropped.
+ * @param name - the tool name the per-tool hook observed, of any type.
+ * @returns whether a COMPLETED call of this name counts toward the volume trigger.
+ */
+export function isConsultToolName(name: unknown): boolean {
+  if (typeof name !== "string" || name === "") return false
+  return name === WORKMATE_SPAWN_TOOL_NAME || name.startsWith(CONSULT_TOOL_PREFIX)
+}
+
+/**
+ * One session's persisted re-team record — D1 rule 5's four fields, exactly.
+ *
+ * It is ALSO the in-memory FIRE RECORD rule 4 asks for: `lastFiredAt` is that record's `firedAt`,
+ * and `planId` / `teamIdAtFire` are its other two fields. The record lives in memory for the life of
+ * the process and is mirrored here so a restart can RE-EVALUATE the settlement against the real team
+ * records (a team that ended while the process was down clears it) instead of re-nagging blindly.
+ */
+export interface ReTeamState {
+  /** COMPLETED consults since the last fire; every fire resets it to 0. */
+  consultCount: number
+  /** The epoch-ms instant of the last fire; `0` means the settlement is CLEARED (re-armed). */
+  lastFiredAt: number
+  /** The plan id the last fire STAGED (empty when nothing was staged). */
+  planId: string
+  /** The team the settlement is bound to once the staged plan was seen approved; empty otherwise. */
+  teamIdAtFire: string
+}
+
+/**
+ * The zero state a session with no readable state file starts from.
+ * @returns a fresh mutable record; every read path must treat a missing file as THIS value.
+ */
+export function emptyReTeamState(): ReTeamState {
+  return { consultCount: 0, lastFiredAt: 0, planId: "", teamIdAtFire: "" }
+}
+
+/**
+ * One session id reduced to a single safe FILE NAME.
+ *
+ * The harness ids are UUIDs, but the id is spliced into a path, so anything outside the portable
+ * set is replaced rather than trusted: a stray separator must never escape
+ * {@link SESSION_GATE_STATE_DIR}. The extension is fixed so the directory listing stays predictable.
+ * @param sessionId - the session key {@link readReTeamState} writes under.
+ * @returns a file name (never a path) ending in `.json`.
+ */
+function sessionStateFileName(sessionId: string): string {
+  /** The id with every character outside the portable set replaced, capped so a huge id is harmless. */
+  const safe = String(sessionId ?? "").replace(/[^A-Za-z0-9._-]/gu, "_").slice(0, 120)
+  return (safe === "" ? "session" : safe) + ".json"
+}
+
+/**
+ * The state file one session's counter persists in (D1 rule 5's path).
+ * @param workspace - the session workspace the `.mpd` root resolves from.
+ * @param sessionId - the session key, sanitized by {@link sessionStateFileName}.
+ * @returns the absolute path of that session's state file.
+ */
+export function sessionGateStatePath(workspace: string, sessionId: string): string {
+  return join(String(workspace ?? ""), SESSION_GATE_STATE_DIR, sessionStateFileName(sessionId))
+}
+
+/**
+ * Decode one state file's text, defensively.
+ *
+ * A file that is not JSON, or not a plain object, reads `undefined` (the caller then starts from
+ * {@link emptyReTeamState}); a field of the wrong type is coerced to its zero so ONE corrupted leaf
+ * cannot poison the whole record.
+ * @param raw - the file's exact text.
+ * @returns the decoded record, or `undefined` when the text is not a state object.
+ */
+export function parseReTeamState(raw: string): ReTeamState | undefined {
+  try {
+    /** The decoded value, accepted only when it is a plain object. */
+    const value: unknown = JSON.parse(String(raw ?? ""))
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined
+    /** The decoded object as a bag of fields, each read defensively below. */
+    const fields = value as Record<string, unknown>
+    /** The record itself, filled field by field so a bad leaf falls back to its zero. */
+    const state = emptyReTeamState()
+    if (typeof fields.consultCount === "number" && Number.isFinite(fields.consultCount) && fields.consultCount > 0) {
+      state.consultCount = Math.floor(fields.consultCount)
+    }
+    if (typeof fields.lastFiredAt === "number" && Number.isFinite(fields.lastFiredAt) && fields.lastFiredAt > 0) {
+      state.lastFiredAt = Math.floor(fields.lastFiredAt)
+    }
+    if (typeof fields.planId === "string") state.planId = fields.planId
+    if (typeof fields.teamIdAtFire === "string") state.teamIdAtFire = fields.teamIdAtFire
+    return state
+  } catch {
+    return undefined
+  }
+}
+
+/** The seams the state readers and writers accept: one file access each (tests and the QA case). */
+export interface ReTeamStateOptions {
+  /** The file reader; defaults to `node:fs/promises`' `readFile` in utf8 mode. */
+  readFile?: (path: string) => Promise<string>
+  /** The file writer; defaults to `node:fs/promises`' `writeFile` with the directory created. */
+  writeFile?: (path: string, content: string) => Promise<void>
+}
+
+/**
+ * Read one session's persisted re-team state (D1 rule 5).
+ *
+ * NON-THROWING BY CONTRACT: a missing file, a permission error or a malformed body all read
+ * `undefined`, which every caller treats as {@link emptyReTeamState}. A counter that cannot be read
+ * must never block the session, and a restart then simply starts the count again.
+ * @param workspace - the session workspace the `.mpd` root resolves from.
+ * @param sessionId - the session key the state file is named after.
+ * @param opts - the injectable file reader.
+ * @returns the decoded state, or `undefined` when nothing usable could be read.
+ */
+export async function readReTeamState(
+  workspace: string,
+  sessionId: string,
+  opts: Pick<ReTeamStateOptions, "readFile"> = {},
+): Promise<ReTeamState | undefined> {
+  try {
+    /** The file reader: the injected seam in a test, `node:fs/promises` in a boot. */
+    const read = opts.readFile ?? ((path: string) => readFileFs(path, "utf8"))
+    return parseReTeamState(await read(sessionGateStatePath(workspace, sessionId)))
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Persist one session's re-team state (D1 rule 5), creating the state directory when needed.
+ *
+ * NON-THROWING BY CONTRACT: a failed write answers `false` and the gate keeps its IN-MEMORY count,
+ * so a read-only workspace degrades to a per-process counter instead of breaking the step.
+ * @param workspace - the session workspace the `.mpd` root resolves from.
+ * @param sessionId - the session key the state file is named after.
+ * @param state - the record to store; the four fields are written as-is.
+ * @param opts - the injectable file writer.
+ * @returns whether the file was written.
+ */
+export async function writeReTeamState(
+  workspace: string,
+  sessionId: string,
+  state: ReTeamState,
+  opts: Pick<ReTeamStateOptions, "writeFile"> = {},
+): Promise<boolean> {
+  try {
+    /** The workspace root, coerced so a non-string can never throw a path operation. */
+    const root = String(workspace ?? "")
+    /** The writer: the injected seam in a test, `node:fs/promises` plus `mkdir` in a boot. */
+    const write = opts.writeFile ?? (async (path: string, content: string): Promise<void> => {
+      await mkdirFs(join(root, SESSION_GATE_STATE_DIR), { recursive: true })
+      await writeFileFs(path, content, "utf8")
+    })
+    await write(sessionGateStatePath(workspace, sessionId), JSON.stringify(state))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The RE-TEAM notice (D1 rule 6): the trigger, the count, the staged plan id and the inertness rule.
+ *
+ * The notice must never claim more than the fire really did. A staged shell names the id the call
+ * RETURNED (an unreadable id is the LOUD {@link MISSING_PLAN_ID_PHRASE}, because a shell without an
+ * id cannot be approved); an ALREADY-STAGED plan says no second shell was staged, so the captain
+ * learns the in-progress plan survived; a degraded route says {@link NO_TEAM_STAGED_PHRASE} with the
+ * reason instead of inventing a plan. It also names the knob that turns ONLY this trigger off, so the
+ * re-team rule is never a trap.
+ * @param input - the counted volume, the threshold, and what the staging ladder really did.
+ * @returns the notice text, always carrying {@link RETEAM_NOTICE_MARKER}.
+ */
+export function reTeamNoticeText(input: {
+  /** COMPLETED consults the trigger counted. */
+  count: number
+  /** The configured threshold those consults crossed. */
+  threshold: number
+  /** Whether THIS fire staged a shell. */
+  staged: boolean
+  /** Whether a plan was ALREADY staged for the session, so this fire staged nothing. */
+  alreadyStaged: boolean
+  /** The plan id the staging call returned (or the already-staged plan's id); empty when unreadable. */
+  planId: string
+  /** Why the staging route degraded, when it did. */
+  error?: string
+}): string {
+  /** The trigger sentence: the volume, the threshold, and the absence of a live team. */
+  const trigger = String(input.count) + " COMPLETED consult calls (`" + CONSULT_TOOL_PREFIX + "*` / `" + WORKMATE_SPAWN_TOOL_NAME + "`)"
+    + " since the last team fire (threshold `" + RETEAM_AFTER_CONSULTS_CONFIG_KEY + "` = " + String(input.threshold) + ")"
+    + ", with NO live team in this session — the re-team trigger fired."
+  /** The plan sentence: exactly what happened, and what the captain can do with it. */
+  const plan = input.staged
+    ? "\n- " + STAGED_PLAN_PHRASE + " as " + (input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell CANNOT be approved, so report this failure" : input.planId) + ". " + INERT_PLAN_PHRASE + "."
+    : input.alreadyStaged
+      ? "\n- " + ALREADY_STAGED_PLAN_PHRASE + " as " + (input.planId === "" ? MISSING_PLAN_ID_PHRASE : input.planId) + " — this fire did NOT stage a second shell (a second stage would ARCHIVE the in-progress plan). " + INERT_PLAN_PHRASE + "."
+      : "\n- " + NO_TEAM_STAGED_PHRASE + (input.error === undefined || input.error === "" ? "" : " (" + input.error + ")") + "."
+  /** The next-step sentence: how to extend/approve a staged shell, or how to stage one by hand. */
+  const next = input.staged || input.alreadyStaged
+    ? "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
+      + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`),"
+      + " then approve it with `" + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members."
+    : "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + "` {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}"
+      + " → {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"} → {action:\"approve\"}; or continue solo and say so in one line."
+  return RETEAM_NOTICE_MARKER + ": " + trigger + plan + next
+    + "\n- Set `" + RETEAM_ENABLED_CONFIG_KEY + ": false` to turn THIS trigger off; the ended-aware leading check and the clean-terminal auto-end stay in force."
+}
+
+/**
+ * The REPAIR notice (D1 rule 2): a failed task blocks both the auto-end and the re-team.
+ *
+ * The exact quoted sentence the contract fixes leads the text — `team <id> has an unrepaired failed
+ * task; create a kind=repair task` — and the failed row's id follows it so the captain does not have
+ * to re-read the record. Nothing here stages, ends or retries: the notice is the whole action.
+ * @param teamId - the team whose board holds the failure; empty renders a readable placeholder.
+ * @param taskId - the failed task's id, when the record names one.
+ * @returns the notice text, carrying {@link RETEAM_NOTICE_MARKER}.
+ */
+export function reTeamRepairNoticeText(teamId: string, taskId?: string): string {
+  /** The team id as quoted, with a readable placeholder when the record carried none. */
+  const named = teamId === "" ? "(team id not read)" : teamId
+  return RETEAM_NOTICE_MARKER + ": team " + named + " has an unrepaired failed task; create a kind=repair task"
+    + (taskId === undefined || taskId === "" ? "" : " — the failed row is `" + taskId + "`")
+    + ". A wave whose verification failed is NEVER auto-ended and no new shell is staged until it is repaired."
 }
 
 /**
@@ -814,10 +1223,17 @@ export interface GatePlanShell {
  * stay empty and the description says so outright. Keyword->specialist selection would be the
  * "invent a team" defect the manual forbids, so this builder never guesses one.
  *
- * @param input - the fired signals, the (flag-consumed) goal text, and the D plan path when it fired.
+ * @param input - the fired signals, the (flag-consumed) goal text, the D plan path when it fired, and
+ *   the re-team volume when the mid-session trigger is the caller.
  * @returns the three fields the staging call's `create` action receives.
  */
-export function gatePlanShell(input: { signals: readonly string[]; goal: string; planPath?: string }): GatePlanShell {
+export function gatePlanShell(input: {
+  signals: readonly string[]
+  goal: string
+  planPath?: string
+  /** The mid-session trigger's volume, when the re-team gate (not the session-start row) stages. */
+  reteam?: { count: number; threshold: number }
+}): GatePlanShell {
   /** The goal text as given, coerced so a non-string can never throw here. */
   const goal = String(input.goal ?? "")
   /** The goal's FIRST line, whitespace-collapsed — a plan name is one line by construction. */
@@ -826,11 +1242,22 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX)
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
+  /** The first description sentence: the session-start row's signals, or the re-team volume. */
+  const lead = input.reteam === undefined
+    ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "."
+    : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire"
+      + " (threshold " + String(input.reteam.threshold) + ") and no live team."
+  /** The plan name: the goal's first line for the session-start row, the fixed re-team name otherwise. */
+  const name = input.reteam === undefined
+    ? (firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX))
+    : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX)
   return {
-    name: firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX),
-    description: "Staged mechanically by the mpd session-start complexity gate on " + matched + "."
+    name,
+    description: lead
       + "\nThis is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet."
-      + "\nGoal excerpt: " + (excerpt === "" ? "(empty)" : excerpt)
+      + (input.reteam === undefined
+        ? "\nGoal excerpt: " + (excerpt === "" ? "(empty)" : excerpt)
+        : "\nNo user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.")
       + "\nExtend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
       + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`,"
       + " then approve it with `" + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members."

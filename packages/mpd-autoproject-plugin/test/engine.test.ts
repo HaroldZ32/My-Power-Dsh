@@ -85,6 +85,8 @@ interface HarnessOptions {
   slotBoundMs?: number
   /** A role whose consult NEVER settles, which is how a hung child is simulated. */
   hangRole?: string
+  /** A role whose consult reports `status:"interrupted"` — the roster deadman's settlement (§D0.2). */
+  interruptRole?: string
   /** Any further LIVE `mpd.jsonc` keys this arm sets, so a run can switch escalation off. */
   liveConfig?: Record<string, unknown>
 }
@@ -169,6 +171,11 @@ function makeHarness(options: HarnessOptions = {}): Harness {
   function roleReport(args: any): Record<string, unknown> | Promise<Record<string, unknown>> {
     /** The role the engine asked for. */
     const role = String(args?.role ?? "")
+    // AN INTERRUPTED CONSULT — the roster's deadman already wrote the handoff and interrupted the
+    // child (§D2.6), so the engine must see a KILLED slot, never a silent null (§D0.2).
+    if (options.interruptRole !== undefined && role === options.interruptRole) {
+      return { role, status: "interrupted", summary: "consult interrupted by the 15-minute deadman", recommendation: "", details: "", evidence: [], stopReason: "interrupted", consultId: "consult-test", handoff: join(workspace, ".mpd", "handoff", "consult-test.md"), elapsedMs: 900_000 }
+    }
     // A HUNG CHILD: the promise never settles, which is exactly the failure the hard bound exists for.
     if (options.hangRole !== undefined && role === options.hangRole) return new Promise<Record<string, unknown>>(() => {})
     /** The task text, which is how these doubles tell the verify consult from a quality lane. */
@@ -830,4 +837,25 @@ test("(d) a run that stays UNDER the bound reports complete exactly as before", 
   expect(state.slots).toBe(3)
   expect(state.slotBoundMs).toBe(5_000)
   expect(state.slotsPeak).toBeGreaterThanOrEqual(1)
+})
+
+// §D0.2: an INTERRUPTED consult is a killed slot record, never a silent null — the existing `kills`
+// ledger stays the only accounting, and the run is blocked exactly as a hard-bound kill blocks it.
+test("(e) an interrupted consult records a SlotKill row and the ledger stamp, and blocks the run", async () => {
+  /** The fake harness, whose Junior Engineer consult reports `interrupted`. */
+  const h = makeHarness({ interruptRole: "Junior Engineer", recordPass: true, criteria: ["create the file"], slotBoundMs: 5_000, liveConfig: { "autoproject.escalate.mode": "off" } })
+  apply(h.ctx, rowConfig(h.workspace))
+  /** The registered autoproject tool. */
+  const tool = h.tools.find((entry) => entry.name === "mpd_autoproject")!
+  /** The run's answer. */
+  const res = await tool.execute({ objective: "create the widget", tier: "light", plan: false, maxRounds: 2 }, { agent: h.agent }) as any
+  expect(res.status).toBe("blocked")
+  /** The run's state document, read from disk. */
+  const state = JSON.parse(readFileSync(res.stateFile, "utf8"))
+  expect(Array.isArray(state.kills)).toBe(true)
+  expect(state.kills.length).toBeGreaterThanOrEqual(1)
+  expect(state.kills[0]).toMatchObject({ role: "Junior Engineer", elapsedMs: 900_000, boundMs: 5_000 })
+  /** The run's journal lines. */
+  const journal = readFileSync(res.stateFile.replace(/state\.json$/, "ledger.jsonl"), "utf8")
+  expect(journal).toContain("late/interrupted:Junior Engineer")
 })

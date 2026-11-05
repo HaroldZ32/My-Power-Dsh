@@ -482,6 +482,24 @@ export interface DshSpawnResult {
   stopReason: string | null
 }
 
+/**
+ * A STARTED one-shot child, before its report exists (§D2 of the throughput contract).
+ *
+ * This is the shared handle every one-shot consult rides: the blocking `spawnAgent` is only its
+ * `result` projection, and the background tools (`mpd_role_spawn_async`, `mpd_role_consult`) hold it
+ * while the captain does other work. `result` never rejects because the CHILD failed — a child
+ * failure is a resolved report whose own `stopReason` says why — and a teardown failure is swallowed,
+ * so a consult that produced its report is never reported as a failed consult.
+ */
+export interface DshAsyncAgent {
+  /** The child's session id the host minted (empty string when the host reports none). */
+  id: string
+  /** The normalized report, settling ONCE, after the activation was released. */
+  result: Promise<DshSpawnResult>
+  /** Cancel exactly this child through the harness interrupt seam; idempotent and best-effort. */
+  interrupt(): void
+}
+
 // ── the official Agent Teams plane ──────────────────────────────────────────
 // The shapes below are the INSTALLED harness's own public team types
 // (`@deepseek-ai/dsh-experimental-agent-team/lib/types/{roster,types}.d.ts`),
@@ -2402,6 +2420,16 @@ export interface DshAdapter {
    */
   spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult>
   /**
+   * Start one ONE-SHOT child and return its handle WITHOUT waiting for the child to finish (§D2).
+   *
+   * It reuses the SAME activation arm {@link DshAdapter.spawnAgent} has always used
+   * (`startActivation`, with the retired `start` generation as the fallback), so team, cellwork and
+   * autoproject inherit it without a second spawn path. The activation is disposed when `result`
+   * settles — success, failure or interrupt — and `interrupt()` targets THIS child's session id
+   * only, never the parent.
+   */
+  spawnAgentAsync(spec: DshSpawnSpec): Promise<DshAsyncAgent>
+  /**
    * The subagent DELIVERY RUNTIME itself (identity-preserving), or `undefined` when
    * the service is absent.
    *
@@ -3710,6 +3738,87 @@ function registerAgentSection(agent: unknown, section: DshPromptSection): () => 
 // manager mints one when it is absent, and returns it on the activation). The retired members are
 // still reached when present, so one adapter boots either host; the probes below are the ONE place
 // that decides which generation is in front of it, so no call site can disagree with another.
+
+// ── the async one-shot handle (§D2) ─────────────────────────────────────────
+//
+// The ACTIVATION arm is the ONE place a one-shot child is raised. `spawnAgentAsync` creates the
+// handle there and every caller inherits it (roles, workmate, cellwork_recon, autoproject through
+// `mpd_role_spawn`); `spawnAgent` is its blocking projection, so both paths share the supervision
+// and the documented `{output, structured, stopReason}` shape. This is the §D0 rule: a per-plane
+// re-implementation of the handle would be a defect.
+
+/**
+ * Normalize one settled activation/run onto {@link DshSpawnResult}.
+ *
+ * `result` is a promise on one harness generation and a plain object on another; the caller resolves
+ * it first and this function only projects, so an absent answer reads as an empty report.
+ * @param settled - the host's own settled answer, of unknown shape.
+ * @returns the normalized report every consumer already reads.
+ */
+function normalizeSpawnResult(settled: unknown): DshSpawnResult {
+  /** The host answer as the three fields every generation carries. */
+  const value = (settled ?? {}) as { output?: unknown; structured?: unknown; stopReason?: unknown }
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null,
+  }
+}
+
+/**
+ * Wrap one STARTED activation (or retired run) in the non-blocking {@link DshAsyncAgent}.
+ *
+ * The dispose is armed on the settle path, not before it: `result` has settled by then, so teardown
+ * can no longer change the report, and a failed teardown is swallowed by `releaseActivation`. The
+ * interrupt targets this child's session id only (the SAME seam `interruptAgent` delegates to) and
+ * is idempotent; a host that reports no id degrades to the handle's own `abort()` when it has one.
+ * @param raw - the activation/run handle the host returned.
+ * @param subagents - the subagent service THIS call resolved, used for the interrupt seam.
+ * @returns the handle the caller supervises.
+ */
+function activationHandleOf(raw: any, subagents: any): DshAsyncAgent {
+  /** The child's session id: `childId` on 0.2.1+, `id` on the retired run, empty when unreported. */
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : ""
+  /** Whether the activation was already released (the settle path releases exactly once). */
+  let disposed = false
+  /** Whether this handle already asked the host to interrupt (the call is idempotent). */
+  let interrupted = false
+  /** Release the activation exactly once, best-effort. */
+  const disposeOnce = async (): Promise<void> => {
+    if (disposed) return
+    disposed = true
+    await releaseActivation(raw)
+  }
+  /** The normalized report; teardown runs first on BOTH settle paths. */
+  const result: Promise<DshSpawnResult> = Promise.resolve(raw?.result).then(
+    async (settled: unknown): Promise<DshSpawnResult> => {
+      await disposeOnce()
+      return normalizeSpawnResult(settled)
+    },
+    async (error: unknown): Promise<never> => {
+      await disposeOnce()
+      throw error
+    },
+  )
+  return {
+    id,
+    result,
+    /** Cancel exactly this child through the harness interrupt seam; idempotent and best-effort. */
+    interrupt(): void {
+      if (interrupted) return
+      interrupted = true
+      try {
+        // The id guard is what keeps this from ever reaching the parent: a handle with no id has no
+        // child to interrupt.
+        if (id !== "" && typeof subagents?.interrupt === "function") subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" })
+        else if (typeof raw?.abort === "function") raw.abort()
+      } catch {
+        // Best-effort: a refused interrupt must not take the supervisor down; the handoff on disk is
+        // the durable notification and the settled report still records the interruption.
+      }
+    },
+  }
+}
 
 /** The members that can raise a durable child, NEWEST generation first. */
 const CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"] as const
@@ -5752,7 +5861,15 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     },
 
     // ── agent plane ─────────────────────────────────────────────────────────
-    async spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult> {
+    /**
+     * Start ONE one-shot child and return its handle WITHOUT awaiting the child (§D2).
+     *
+     * This is the shared ACTIVATION arm: it resolves the route, assembles the same request
+     * `spawnAgent` always sent, calls `startActivation` (or the retired `start`), and hands back the
+     * non-blocking handle. The activation is disposed when `result` settles; a failure to START is a
+     * throw (the caller has no child to supervise), while a child's own failure is a resolved report.
+     */
+    async spawnAgentAsync(spec: DshSpawnSpec): Promise<DshAsyncAgent> {
       /** The subagent service, or a THROW naming the child that could not be spawned. */
       const subagents = requireService("subagents", "cannot spawn subagent \"" + String(spec?.label) + "\"")
       /** The flat route merged with `agentOptions`, whose keys win on a collision. */
@@ -5765,9 +5882,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       const provider = spec.mode ?? "spawn"
       /** The child's task as content blocks, the shape every generation of the seam takes. */
       const prompt = typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt
-      // 0.2.1-rc.2 removed `start(mode, request)` and made `signal` a REQUIRED spec field, so the
-      // caller's own cancellation is forwarded and an absent one becomes a never-aborting signal
-      // rather than a fabricated deadline this method never promised.
+      // 0.2.1-rc.2 made `signal` a REQUIRED spec field, so the caller's own cancellation is
+      // forwarded and an absent one becomes a never-aborting signal rather than a fabricated
+      // deadline this method never promised.
       /** The spawn's cancellation channel. */
       const signal = spec.signal ?? neverAborted()
       if (typeof subagents.startActivation === "function") {
@@ -5791,22 +5908,14 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           // is the spelling this seam is given rather than one invented here.
           delivery: "parent",
         })
-        /** The settled result; a child FAILURE still resolves here, only teardown rejects. */
-        const settled = (await (activation?.result ?? {})) as { output?: unknown; structured?: unknown; stopReason?: unknown }
-        // ONE-SHOT (R2): the report is captured, so release the exact activation ONCE. This is
-        // best-effort and cannot change the projection below; `startContinuableAgent` stays the
-        // durable seam, so team continuity is untouched.
-        await releaseActivation(activation)
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null,
-        }
+        // NOT awaited here: the caller owns the child's lifetime now, and `result` normalizes and
+        // releases the activation when it settles, whichever way it settles.
+        return activationHandleOf(activation, subagents)
       }
-      // The RETIRED generation: `start(mode, request)` returned a run whose `output` was already
-      // the flattened string. Kept reachable so this adapter still boots an older host.
+      // The RETIRED generation: `start(mode, request)` returned a run whose `output` was already the
+      // flattened string. Kept reachable so this adapter still boots an older host.
       if (typeof subagents.start !== "function") throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()")
-      /** The host's run handle, whose `result` is awaited below. */
+      /** The host's run handle, whose `result` the returned handle consumes. */
       const run = await subagents.start(provider, {
         label: spec.label,
         prompt,
@@ -5818,14 +5927,19 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         ...(spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter }),
         ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
       })
-      // `run.result` is a promise in some harness builds and a plain object in
-      // others; awaiting both keeps the normalized shape stable.
-      const result = (await (run?.result ?? {})) as { output?: unknown; structured?: unknown; stopReason?: unknown }
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null,
-      }
+      return activationHandleOf(run, subagents)
+    },
+
+    /**
+     * Run one ONE-SHOT consult and resolve with its normalized report (the BLOCKING contract).
+     *
+     * Unchanged in arguments and shape (§D0.1): it is the `result` projection of
+     * {@link DshAdapter.spawnAgentAsync}, so a caller that awaits it keeps exactly the
+     * `{output, structured, stopReason}` answer it always had — workmate and cellwork_recon depend on
+     * that shape and therefore ride the same seam without changing themselves.
+     */
+    async spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult> {
+      return (await adapter.spawnAgentAsync(spec)).result
     },
 
     // ── subagent plane: the delivery runtime and its provider catalogue ──────

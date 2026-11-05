@@ -51,6 +51,10 @@ export const READONLY_DENY = [
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict",
+  // The two consult surfaces (§D2.7): a read-only workmate must not delegate its question again,
+  // and `mpd_role_consult` can cancel another consult (a mutation).
+  "mpd_role_spawn_async",
+  "mpd_role_consult",
 ]
 
 /**
@@ -63,10 +67,10 @@ export const READONLY_DENY = [
  * write-capable role.
  *
  * It is a SEPARATE list from {@link READONLY_DENY} on purpose: that list is the read-only guarantee, exactly
- * eight names and asserted equal to the roles plugin's copy; this one applies to EVERY child. The roles row
+ * ten names and asserted equal to the roles plugin's copy; this one applies to EVERY child. The roles row
  * keeps its own copy (no runtime cross-package import) and `test/leaf-boundary.test.ts` pins the two equal.
  */
-export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
+export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"]
 
 /** A refused mutation, carrying the wire reason of the shared protocol (contract §D) so the HTTP
  * layer maps it verbatim and the GUI can branch on it. It EXTENDS the adapter's shared home-guard

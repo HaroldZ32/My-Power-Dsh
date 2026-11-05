@@ -1554,6 +1554,47 @@ function registerAgentSection(agent, section) {
   const registered = systemPrompt.section(section);
   return typeof registered === "function" ? registered : noop;
 }
+function normalizeSpawnResult(settled) {
+  const value = settled ?? {};
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null
+  };
+}
+function activationHandleOf(raw, subagents) {
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
+  let disposed = false;
+  let interrupted = false;
+  const disposeOnce = async () => {
+    if (disposed)
+      return;
+    disposed = true;
+    await releaseActivation(raw);
+  };
+  const result = Promise.resolve(raw?.result).then(async (settled) => {
+    await disposeOnce();
+    return normalizeSpawnResult(settled);
+  }, async (error) => {
+    await disposeOnce();
+    throw error;
+  });
+  return {
+    id,
+    result,
+    interrupt() {
+      if (interrupted)
+        return;
+      interrupted = true;
+      try {
+        if (id !== "" && typeof subagents?.interrupt === "function")
+          subagents.interrupt.call(subagents, id, { reason: "one-shot consult interrupted" });
+        else if (typeof raw?.abort === "function")
+          raw.abort();
+      } catch {}
+    }
+  };
+}
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
   return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
@@ -2694,7 +2735,7 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
-    async spawnAgent(spec) {
+    async spawnAgentAsync(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
@@ -2720,13 +2761,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        const settled = await (activation?.result ?? {});
-        await releaseActivation(activation);
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
-        };
+        return activationHandleOf(activation, subagents);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -2741,12 +2776,10 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      const result = await (run?.result ?? {});
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
-      };
+      return activationHandleOf(run, subagents);
+    },
+    async spawnAgent(spec) {
+      return (await adapter.spawnAgentAsync(spec)).result;
     },
     subagentRuntime() {
       return service("subagents");
@@ -3878,11 +3911,15 @@ function projectMpdTeam(record) {
   const tasks = (Array.isArray(record.tasks) ? record.tasks : []).map((task) => {
     const revision = typeof task.revision === "number" && Number.isFinite(task.revision) ? task.revision : undefined;
     const owner = typeof task.owner === "string" && task.owner !== "" ? task.owner : undefined;
+    const startedAt = epochOf(task.startedAt);
+    const updatedAt = epochOf(task.updatedAt);
     return {
       id: String(task.id ?? ""),
       status: String(task.status ?? ""),
       ...owner === undefined ? {} : { assignee: owner, dispatched: true },
       ...revision === undefined ? {} : { attempt: revision, attemptId: String(revision) },
+      ...startedAt === null ? {} : { startedAt },
+      ...updatedAt === null ? {} : { updatedAt },
       ...Array.isArray(task.blockedBy) ? { dependencies: task.blockedBy.filter((id) => typeof id === "string") } : {}
     };
   });
@@ -4952,11 +4989,12 @@ var WATCHDOG_DEFAULTS = {
   warnStreakToEscalate: 6,
   actionOnEscalate: "warn-only",
   toolInFlightMaxMs: 900000,
-  holdTtlMs: 900000
+  holdTtlMs: 900000,
+  forceAfterMs: 900000
 };
 function knobReadings(live, fileSection) {
   const file = fileSection !== null && typeof fileSection === "object" ? fileSection : {};
-  const knobs = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "enabled"];
+  const knobs = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "enabled"];
   return knobs.map((knob) => {
     const liveValue = live[knob];
     const raw = file[knob];
@@ -5027,6 +5065,7 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   }
   const toolInFlightMaxMs = number("toolInFlightMaxMs", 0);
   const holdTtlMs = number("holdTtlMs", 0);
+  const forceAfterMs = number("forceAfterMs", 0);
   let enabled = defaults.enabled;
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean")
@@ -5038,7 +5077,7 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   if (env.MPD_DSH_TEAM_WATCHDOG === "off" || env.MPD_DSH_TEAM_WATCHDOG === "0" || env.MPD_DSH_TEAM_WATCHDOG === "false") {
     enabled = false;
   }
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, issues };
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, issues };
 }
 function streakKey(teamId, taskId, attemptId) {
   return teamId + "\x00" + taskId + "\x00" + attemptId;
@@ -5051,12 +5090,16 @@ class WatchdogMachine {
   toolExpired = new Set;
   reportedFallback = new Set;
   inFlightSuppressed = 0;
+  wedgeForced = new Set;
+  longBashReported = new Set;
   observe(candidates, now, knobs) {
     if (!knobs.enabled)
       return [];
     const decisions = [];
     for (const candidate of candidates) {
       const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId);
+      if (this.observeWedge(candidate, key, now, knobs, decisions))
+        continue;
       if (this.escalated.has(key))
         continue;
       const channel = candidate.channelState;
@@ -5103,6 +5146,58 @@ class WatchdogMachine {
       this.observeSilence(candidate, key, now - candidate.lastSeen, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions);
     }
     return decisions;
+  }
+  observeWedge(candidate, key, now, knobs, decisions) {
+    if (knobs.forceAfterMs <= 0)
+      return false;
+    if (candidate.status !== "in_progress")
+      return false;
+    if (candidate.assignee === CAPTAIN_KEY || candidate.lead === true)
+      return false;
+    const startedAt = candidate.startedAt;
+    if (typeof startedAt !== "number" || !Number.isFinite(startedAt))
+      return false;
+    const elapsedMs = now - startedAt;
+    if (elapsedMs < knobs.forceAfterMs)
+      return false;
+    const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null;
+    const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null;
+    if (tool === "bash" && typeof inFlightSince === "number") {
+      if (!this.longBashReported.has(key)) {
+        this.longBashReported.add(key);
+        decisions.push({
+          type: "long-bash",
+          teamId: candidate.teamId,
+          taskId: candidate.taskId,
+          attemptId: candidate.attemptId,
+          assignee: candidate.assignee,
+          memberKey: candidate.memberKey,
+          startedAt,
+          elapsedMs,
+          inFlightMs: now - inFlightSince,
+          tool
+        });
+      }
+      return true;
+    }
+    if (this.wedgeForced.has(key))
+      return true;
+    this.wedgeForced.add(key);
+    decisions.push({
+      type: "wedged",
+      teamId: candidate.teamId,
+      taskId: candidate.taskId,
+      attemptId: candidate.attemptId,
+      assignee: candidate.assignee,
+      memberKey: candidate.memberKey,
+      startedAt,
+      elapsedMs,
+      lastToolCalls: [...candidate.recentTools ?? []]
+    });
+    return true;
+  }
+  rearmWedge(teamId, taskId, attemptId) {
+    this.wedgeForced.delete(streakKey(teamId, taskId, attemptId));
   }
   observeInFlight(candidate, key, now, knobs, decisions) {
     this.streaks.delete(key);
@@ -5169,6 +5264,8 @@ class WatchdogMachine {
     this.neverStarted.delete(key);
     this.toolExpired.delete(key);
     this.reportedFallback.delete(key);
+    this.wedgeForced.delete(key);
+    this.longBashReported.delete(key);
   }
   hasEscalated(teamId, taskId, attemptId) {
     return this.escalated.has(streakKey(teamId, taskId, attemptId));
@@ -5178,7 +5275,9 @@ class WatchdogMachine {
       streaks: Object.fromEntries(this.streaks),
       escalated: [...this.escalated].sort(),
       toolExpired: [...this.toolExpired].sort(),
-      inFlightSuppressed: this.inFlightSuppressed
+      inFlightSuppressed: this.inFlightSuppressed,
+      wedged: [...this.wedgeForced].sort(),
+      longBash: [...this.longBashReported].sort()
     };
   }
 }
@@ -5243,6 +5342,7 @@ function candidateFor(team, stampSource, memberKeyOf) {
     if (!dispatched && !workedOn)
       continue;
     const newest = forTask.reduce((best, stamp) => best === undefined || stamp.at >= best.at ? stamp : best, undefined);
+    const recentTools = forTask.filter((stamp) => typeof stamp.tool === "string" && stamp.tool !== "").slice(-5).map((stamp) => stamp.tool);
     const inFlight = inFlightFor(forTask);
     candidates.push({
       teamId: team.id,
@@ -5254,7 +5354,10 @@ function candidateFor(team, stampSource, memberKeyOf) {
       lastKind: newest === undefined ? null : newest.kind,
       everStampedForTask: forTask.length > 0,
       inFlightSince: inFlight === null ? null : inFlight.since,
-      inFlightTool: inFlight === null ? null : inFlight.tool
+      inFlightTool: inFlight === null ? null : inFlight.tool,
+      status: task.status,
+      startedAt: typeof task.startedAt === "number" && Number.isFinite(task.startedAt) ? task.startedAt : null,
+      recentTools
     });
   }
   return candidates;
@@ -5453,6 +5556,8 @@ class WatchdogEngine {
   config;
   machine = new WatchdogMachine;
   registry;
+  forceSeam;
+  forceRecorded = new Set;
   roots = new Set;
   teamCache = new Map;
   knobs;
@@ -5503,13 +5608,17 @@ class WatchdogEngine {
     channelDependencyBlocked: 0,
     holdsAutoReleased: 0,
     holdsAutoReleaseFailures: 0,
+    forced: 0,
+    forceFailures: 0,
+    longBash: 0,
     lastError: null
   };
-  constructor(dsh, ctx, config, registry) {
+  constructor(dsh, ctx, config, registry, forceSeam) {
     this.dsh = dsh;
     this.ctx = ctx;
     this.config = config;
     this.registry = registry;
+    this.forceSeam = forceSeam;
     this.knobs = readNamespaceKnobs(dsh, process.env, this.knobDefaults());
     this.remember(this.workspaceOf(undefined));
   }
@@ -5581,7 +5690,8 @@ class WatchdogEngine {
       warnStreakToEscalate: this.config.warnStreakToEscalate,
       actionOnEscalate: this.config.actionOnEscalate,
       toolInFlightMaxMs: this.config.toolInFlightMaxMs,
-      holdTtlMs: this.config.holdTtlMs
+      holdTtlMs: this.config.holdTtlMs,
+      forceAfterMs: this.config.forceAfterMs
     };
   }
   noteFallback(reason) {
@@ -5843,6 +5953,14 @@ class WatchdogEngine {
               await this.recordToolExpired(workspace, team, decision, now);
               continue;
             }
+            if (decision.type === "wedged") {
+              await this.forceWedge(workspace, team, decision, now);
+              continue;
+            }
+            if (decision.type === "long-bash") {
+              await this.recordLongBash(workspace, team, decision, now);
+              continue;
+            }
             decisions.push(decision);
             const outcome = await this.act(workspace, team, decision, now);
             if (outcome.scene !== null)
@@ -6006,15 +6124,22 @@ class WatchdogEngine {
       cache.set(memberKey, stamps);
       return stamps;
     };
-    const base = candidateFor({ id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt }, stampsOf, (assignee) => assignee);
+    const memberSessions = new Map;
+    const memberNames = new Map;
+    for (const member of team.members) {
+      if (member.id === "" || member.name === "")
+        continue;
+      memberSessions.set(member.name, member.id);
+      memberSessions.set(member.id, member.id);
+      memberNames.set(member.name, member.name);
+      memberNames.set(member.id, member.name);
+    }
+    const base = candidateFor({ id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt }, stampsOf, (assignee) => memberNames.get(assignee) ?? assignee);
     const live = this.liveIds();
     const blockedOf = new Map;
-    const memberSessions = new Map;
-    for (const member of team.members)
-      if (member.id !== "" && member.name !== "")
-        memberSessions.set(member.name, member.id);
     const registryKnowsTeam = live.known && team.members.some((member) => member.id !== "" && live.ids.has(member.id));
     return base.map((candidate) => {
+      const isLead = candidate.assignee === CAPTAIN_KEY || team.captainSessionId !== undefined && team.captainSessionId !== "" && candidate.assignee === team.captainSessionId;
       let blocked = blockedOf.get(candidate.assignee);
       if (blocked === undefined) {
         blocked = dependencyBlocked(team, candidate.assignee);
@@ -6028,18 +6153,20 @@ class WatchdogEngine {
           outstandingSince: null,
           channelInFlightSince: null,
           channelInFlightTool: null,
-          heartbeatFallback: false
+          heartbeatFallback: false,
+          lead: isLead
         };
       }
-      const sessionId = candidate.assignee === CAPTAIN_KEY ? team.captainSessionId ?? null : memberSessions.get(candidate.assignee) ?? null;
+      const owner = candidate.assignee;
+      const sessionId = owner === CAPTAIN_KEY || team.captainSessionId !== undefined && team.captainSessionId !== "" && owner === team.captainSessionId ? team.captainSessionId ?? null : memberSessions.get(owner) ?? null;
       if (sessionId === null) {
         this.noteFallback("team " + team.id + " carries no session id for task owner " + candidate.assignee);
-        return { ...candidate, channelState: null, heartbeatFallback: true };
+        return { ...candidate, channelState: null, heartbeatFallback: true, lead: isLead };
       }
       const view = this.fold.view(sessionId);
       if (view === null) {
         this.noteFallback("no session/event fold data for member " + candidate.assignee + " (session " + sessionId + ")");
-        return { ...candidate, channelState: null, heartbeatFallback: true };
+        return { ...candidate, channelState: null, heartbeatFallback: true, lead: isLead };
       }
       const channelState = registryKnowsTeam && view.state !== "PARKED" && !live.ids.has(sessionId) ? "PARKED" : view.state;
       if (channelState !== view.state)
@@ -6050,7 +6177,8 @@ class WatchdogEngine {
         outstandingSince: view.outstandingSince,
         channelInFlightSince: view.inFlightSince,
         channelInFlightTool: view.inFlightTool,
-        heartbeatFallback: false
+        heartbeatFallback: false,
+        lead: isLead
       };
     });
   }
@@ -6168,6 +6296,103 @@ class WatchdogEngine {
     }
     this.info("TOOL-EXPIRED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " tool=" + (decision.tool ?? "(unnamed)") + " inFlight=" + decision.inFlightMs + "ms (since " + decision.since + ", bound=" + this.knobs.toolInFlightMaxMs + "ms)" + " — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone" + (logged.ok ? " record=" + logged.path : " record=FAILED"));
   }
+  async forceWedge(workspace, team, decision, now) {
+    const sessionId = team.captainSessionId ?? "";
+    if (sessionId === "") {
+      this.failForce(workspace, team, decision, now, "the team record names no lead session — the force supervisor is skipped", false);
+      return;
+    }
+    if (this.forceSeam === undefined) {
+      this.failForce(workspace, team, decision, now, "no team plane is mounted (`mpdTeamActions` absent) — the wedge is reported and not forced", false);
+      return;
+    }
+    let outcome;
+    try {
+      outcome = await this.forceSeam.forceWedged({
+        workspace,
+        teamId: team.id,
+        taskId: decision.taskId,
+        attemptId: decision.attemptId,
+        member: decision.assignee,
+        sessionId,
+        startedAt: decision.startedAt,
+        elapsedMs: decision.elapsedMs,
+        lastToolCalls: decision.lastToolCalls
+      });
+    } catch (error) {
+      outcome = { ok: false, error: errorMessage(error), retryable: false };
+    }
+    if (!outcome.ok) {
+      this.failForce(workspace, team, decision, now, outcome.error ?? "the force action refused", outcome.retryable === true);
+      return;
+    }
+    this.stats.forced += 1;
+    this.forceRecorded.add(streakKey(team.id, decision.taskId, decision.attemptId));
+    this.appendForceIncident(workspace, team, decision, now, "applied", outcome);
+    this.info("WEDGED-FORCE " + team.id + " task=" + decision.taskId + " attempt=" + decision.attemptId + " member=" + decision.assignee + " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" + " handoff=" + (outcome.handoff ?? "none") + " requeued=" + (outcome.requeued === undefined ? "no" : outcome.requeued.taskId + "/" + outcome.requeued.attempt) + " split=" + (outcome.split === undefined || outcome.split.length === 0 ? "none" : outcome.split.join(",")) + " — the member was interrupted, the row requeued and the work split");
+  }
+  failForce(workspace, team, decision, now, reason, retryable) {
+    this.stats.forceFailures += 1;
+    if (retryable)
+      this.machine.rearmWedge(team.id, decision.taskId, decision.attemptId);
+    const key = streakKey(team.id, decision.taskId, decision.attemptId);
+    if (this.forceRecorded.has(key))
+      return;
+    this.forceRecorded.add(key);
+    this.appendForceIncident(workspace, team, decision, now, "not-applied", {});
+    this.warn("WEDGED-FORCE NOT APPLIED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " elapsed=" + decision.elapsedMs + "ms: " + reason + (retryable ? " (retryable: the next tick decides this task again)" : " (final for this attempt)"));
+  }
+  appendForceIncident(workspace, team, decision, now, force, outcome) {
+    const incident = {
+      id: decision.taskId + "@" + decision.attemptId + "#wedged-force#" + now,
+      teamId: team.id,
+      kind: "wedged-force",
+      at: now,
+      cause: { kind: "wedged-force", ms: decision.elapsedMs },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      force,
+      ...outcome.handoff === undefined ? {} : { handoff: outcome.handoff },
+      ...outcome.split === undefined || outcome.split.length === 0 ? {} : { split: outcome.split },
+      acknowledgedBy: []
+    };
+    const logged = appendIncident(workspace, this.config.stateDir, incident);
+    if (logged.ok)
+      this.stats.incidents += 1;
+    else {
+      this.stats.incidentFailures += 1;
+      this.warn("wedged-force record append failed at " + logged.path + ": " + String(logged.error));
+    }
+  }
+  async recordLongBash(workspace, team, decision, now) {
+    this.stats.longBash += 1;
+    const incident = {
+      id: decision.taskId + "@" + decision.attemptId + "#long-bash#" + now,
+      teamId: team.id,
+      kind: "long-bash",
+      at: now,
+      cause: {
+        kind: "long-bash",
+        ms: decision.elapsedMs,
+        ...decision.tool === null ? {} : { tool: decision.tool }
+      },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      acknowledgedBy: []
+    };
+    const logged = appendIncident(workspace, this.config.stateDir, incident);
+    if (logged.ok)
+      this.stats.incidents += 1;
+    else {
+      this.stats.incidentFailures += 1;
+      this.warn("long-bash record append failed at " + logged.path + ": " + String(logged.error));
+    }
+    this.info("LONG-BASH " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" + " bashOpenFor=" + decision.inFlightMs + "ms" + " — EXEMPT from the force rule while the bash call is open; nothing interrupted, re-evaluated when it returns");
+  }
   async performHold(workspace, teamId, decision, now) {
     const args = {
       team_id: teamId,
@@ -6233,6 +6458,7 @@ var Config = Schema.object({
   deadTeamGraceMs: Schema.number().default(86400000),
   toolInFlightMaxMs: Schema.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   holdTtlMs: Schema.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
+  forceAfterMs: Schema.number().default(WATCHDOG_DEFAULTS.forceAfterMs),
   verboseSkips: Schema.boolean().default(false),
   logPrefix: Schema.string().default("mpd-team-watchdog")
 });
@@ -6251,6 +6477,7 @@ function resolveConfig(config = {}) {
     deadTeamGraceMs: num(config.deadTeamGraceMs, 86400000, 0),
     toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     holdTtlMs: num(config.holdTtlMs, WATCHDOG_DEFAULTS.holdTtlMs, 0),
+    forceAfterMs: num(config.forceAfterMs, WATCHDOG_DEFAULTS.forceAfterMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
@@ -6267,6 +6494,56 @@ function mpdTeamsOf(ctx) {
   } catch {
     return;
   }
+}
+var TEAM_ACTIONS_SERVICE_ID = "mpdTeamActions";
+function normaliseForceOutcome(answer) {
+  const record = answer !== null && typeof answer === "object" ? answer : {};
+  if (record.ok !== true) {
+    return {
+      ok: false,
+      error: typeof record.error === "string" && record.error !== "" ? record.error : "the force action answered without a reason",
+      ...record.retryable === true ? { retryable: true } : {}
+    };
+  }
+  const requeued = record.requeued !== null && typeof record.requeued === "object" ? record.requeued : undefined;
+  return {
+    ok: true,
+    ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...requeued === undefined || typeof requeued.taskId !== "string" ? {} : { requeued: { taskId: requeued.taskId, attempt: typeof requeued.attempt === "number" ? requeued.attempt : 0 } },
+    ...Array.isArray(record.split) ? { split: record.split.filter((id) => typeof id === "string") } : {}
+  };
+}
+function forceSeamOf(ctx) {
+  return {
+    forceWedged: async (request) => {
+      try {
+        const get = ctx?.get;
+        if (typeof get !== "function")
+          return { ok: false, error: "the plugin context exposes no service lookup" };
+        const service = get.call(ctx, TEAM_ACTIONS_SERVICE_ID, false);
+        const force = service?.force;
+        if (typeof force !== "function")
+          return { ok: false, error: "the `mpdTeamActions` service is absent or exposes no force()" };
+        const input = {
+          sessionId: request.sessionId,
+          teamId: request.teamId,
+          taskId: request.taskId,
+          workspace: request.workspace,
+          evidence: {
+            member: request.member,
+            attemptId: request.attemptId,
+            startedAt: request.startedAt,
+            elapsedMs: request.elapsedMs,
+            lastToolCalls: request.lastToolCalls
+          }
+        };
+        const answer = await force.call(service, input);
+        return normaliseForceOutcome(answer);
+      } catch (error) {
+        return { ok: false, error: errorMessage(error) };
+      }
+    }
+  };
 }
 function warn(prefix, text) {
   try {
@@ -6300,7 +6577,7 @@ function apply(ctx, config = {}) {
   }
   let engine;
   try {
-    engine = new WatchdogEngine(dsh, context, resolved, registry);
+    engine = new WatchdogEngine(dsh, context, resolved, registry, forceSeamOf(context));
   } catch (error) {
     warn(resolved.logPrefix, "engine construction failed — the row is inert: " + errorMessage(error));
     return { applied: false, engine: null, knobs: readKnobs(undefined), intervalMs: 0, disposers: 0, holdService: null, hydratedHolds, error: errorMessage(error) };
@@ -6410,6 +6687,7 @@ function apply(ctx, config = {}) {
 export {
   Config,
   apply,
+  forceSeamOf,
   inject,
   name,
   resolveConfig
