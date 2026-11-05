@@ -37,10 +37,15 @@ function decide(seat: CellworkSeat, toolName: string): string | undefined {
 }
 
 test("the no-delegation list is the two bundle spawn tools, and it is NOT the write deny", () => {
-  expect([...VERIFIER_NO_DELEGATION]).toEqual(["mpd_role_spawn", "mpd_workmate_spawn"])
+  expect([...VERIFIER_NO_DELEGATION]).toEqual(["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"])
   // The write deny is a SEPARATE list and stays exactly the write-capable names: one list per reason, so a
   // refusal always teaches the one repair that matches what it refused.
-  for (const name of VERIFIER_NO_DELEGATION) expect(VERIFIER_DENY_TOOLS).not.toContain(name)
+  // The TWO CONSULT surfaces are ALSO on the read-only deny list (§D2.7: ten names); the guard
+  // checks the delegation arm FIRST, so their refusal still explains the channel.
+  expect(VERIFIER_DENY_TOOLS).toContain("mpd_role_spawn_async")
+  expect(VERIFIER_DENY_TOOLS).toContain("mpd_role_consult")
+  expect(VERIFIER_DENY_TOOLS).not.toContain("mpd_role_spawn")
+  expect(VERIFIER_DENY_TOOLS).not.toContain("mpd_workmate_spawn")
   expect(VERIFIER_DENY_TOOLS).toContain("write")
   // `bash` stays available to a verifier BY DESIGN (a gate run needs a shell), so it is in neither list.
   expect(VERIFIER_DENY_TOOLS).not.toContain("bash")

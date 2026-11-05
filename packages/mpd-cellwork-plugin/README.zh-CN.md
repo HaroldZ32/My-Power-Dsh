@@ -335,3 +335,11 @@ budget）留在本包：它们是**写**看板的工作流层。
 
 **磁盘状态不变且向后可读：** `.mpd/cellwork/**` 仍是 version 1（无迁移），保留每 cell 的 journal 与邮件。
 一个波次的**冻结契约**存放在看板任务描述里，因此 owner claim 的那一行就带着它被评判的验收文本。
+
+## consult 工具、强制目标与 CELL 记录（2026-11-05）
+
+verifier 的只读拒绝清单现为 **十个**名字（新增 `mpd_role_spawn_async` 与 `mpd_role_consult`），
+no-delegation 清单为四个（两个 spawn 工具加两个 consult 工具）：verifier 席位既不能委派，也不能
+取消另一个 consult。cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器通过该团队成员身份
+将其作为强制目标（handoff、interrupt、requeue、split），而 `mpd-team-core` **绝不**写 CELL 记录
+—— 席位事后通过既有的 `cellwork_dispatch` / `cellwork_split` 动词修复自身。

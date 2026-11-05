@@ -483,6 +483,8 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     logPrefix: "mpd-team-watchdog-test",
     toolInFlightMaxMs: 900_000,
     holdTtlMs: 900_000,
+    // D3 rides the same 15-minute bound as the tool window; an arm that wants the rule OFF passes 0.
+    forceAfterMs: 900_000,
     // Skipped-team reasons stay off the console here: `false` is the engine's own resolved
     // default (index.ts), so the suite's output is the pre-typing output.
     verboseSkips: false,

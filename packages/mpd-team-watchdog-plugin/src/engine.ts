@@ -39,6 +39,7 @@ import {
   overlayWatchdogSection,
   readKnobs,
   sectionDigest,
+  streakKey,
   WatchdogMachine,
   watchdogSectionOf,
   type ChannelState,
@@ -54,6 +55,67 @@ import { buildScene, mailboxUnreadObservable, writeScene, type SceneIncident } f
 import { appendIncident, readHold, readIncidents, readWatermarks, type IncidentRecord } from "./sidecars.js"
 import { appendHeartbeat, listHeartbeatKeys, message, readHeartbeats, rotateHeartbeats, type HeartbeatKind, type HeartbeatStamp } from "./store.js"
 import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resolveIdentity, teamOf, type MpdTeamsRead, type TeamRecord } from "./team.js"
+
+/**
+ * D3's force seam: what the watchdog asks the TEAM PLANE to do about one wedged member.
+ *
+ * The decider and the actor are different rows on purpose (§D3.4): the watchdog resolves `mpdTeams`
+ * only and holds NO caller agent, while team-core publishes `mpdTeamActions` and is the surface that
+ * owns the board, the mailbox and the adapter's interrupt seam. This interface is the whole contract
+ * between them — a plain method on a value, so the watchdog needs no compile-time dependency on
+ * team-core (the cross-package coupling inventory is frozen).
+ */
+export interface WedgeForceSeam {
+  /**
+   * Force one wedged member: handoff, interrupt, requeue and split.
+   *
+   * MUST NOT THROW for a refusal (an absent member, a captain target, a closed team): a refusal is
+   * an `{ ok:false }` answer. A throw is treated as an unexpected failure and never takes the tick
+   * down.
+   */
+  forceWedged: (request: WedgeForceRequest) => Promise<WedgeForceOutcome>
+}
+
+/** One force request, as the watchdog states it from the record it already read. */
+export interface WedgeForceRequest {
+  /** The workspace whose team record holds the row. */
+  workspace: string
+  /** The team the wedged task belongs to (mpd's own `teamId`). */
+  teamId: string
+  /** The board row that crossed the bound. */
+  taskId: string
+  /** That row's generation token. */
+  attemptId: string
+  /** The owning member exactly as the board spells it (a NAME or a session id). */
+  member: string
+  /** The AUTHORISING session: the team's own recorded lead, never the interrupted member. */
+  sessionId: string
+  /** Epoch ms at which the task entered `in_progress`. */
+  startedAt: number
+  /** How long it had been in progress at the tick's clock. */
+  elapsedMs: number
+  /** The tool names this task's stamps recorded, oldest first (handoff evidence). */
+  lastToolCalls: readonly string[]
+}
+
+/** What the team plane answered, normalised so the engine needs no team-core types. */
+export interface WedgeForceOutcome {
+  /** Whether the member was interrupted AND the board requeued. */
+  ok: boolean
+  /** The refusal or failure sentence, for the incident and the log line. */
+  error?: string
+  /**
+   * Whether THIS attempt may be decided again on the next tick (`handoff-error` is the one
+   * retryable case: nothing was interrupted, so the wedge is still there to act on).
+   */
+  retryable?: boolean
+  /** The handoff document the action wrote, when it did. */
+  handoff?: string
+  /** The board row after the requeue, when one happened. */
+  requeued?: { taskId: string; attempt: number }
+  /** The `[split]` rows the action created, in creation order. */
+  split?: readonly string[]
+}
 
 /** Fully-resolved engine configuration (no optional key left). */
 export interface EngineConfig {
@@ -89,6 +151,11 @@ export interface EngineConfig {
    * auto-released with a durable incident. `0` = never expire.
    */
   holdTtlMs: number
+  /**
+   * D3's force bound: how long a task may stay `in_progress` before its owner is treated as wedged.
+   * `0` DISABLES the rule; read live per tick like every other knob.
+   */
+  forceAfterMs: number
   /** Print skipped-team reasons to the console as well as the debug channel. */
   verboseSkips: boolean
   /** Prefix of every console and logger line this engine writes. */
@@ -143,6 +210,12 @@ export interface EngineStats {
   holdsAutoReleased: number
   /** T-17: auto-release attempts that could not clear the hold (reported, never silent). */
   holdsAutoReleaseFailures: number
+  /** D3: wedged members the force supervisor interrupted and requeued. */
+  forced: number
+  /** D3: force attempts that did not land (an absent seam, no lead session, or a refusal). */
+  forceFailures: number
+  /** D3: `long-bash` exemptions recorded (a task past the bound with a `bash` call open). */
+  longBash: number
   /** `Error#message` of the newest contained failure, or null. */
   lastError: string | null
 }
@@ -167,7 +240,7 @@ export interface PredicateStatus {
 
 /** The result of one tick. */
 export interface TickResult {
-  /** WARN and ESCALATE decisions this tick produced (the report-only kinds are not decisions). */
+  /** WARN and ESCALATE decisions this tick produced (the report-only kinds and D3's force kinds write no scene and hold nothing, and are counted in `EngineStats`). */
   decisions: Decision[]
   /** Paths of the scene files this tick wrote. */
   scenes: string[]
@@ -322,6 +395,21 @@ export class WatchdogEngine {
   private readonly machine = new WatchdogMachine()
   /** The synchronous hold reader, when the row published one. */
   private readonly registry: HoldRegistry | undefined
+  /**
+   * D3's FORCE SEAM: the team plane's action, or undefined when that row is not mounted.
+   *
+   * Resolved by `apply` through `mpdTeamActions`, never imported: the watchdog decides and records,
+   * team-core acts. Absent means every wedge is REPORTED (`force: "not-applied"`) and never acted on,
+   * which is the pre-D3 behaviour with an honest audit trail.
+   */
+  private readonly forceSeam: WedgeForceSeam | undefined
+  /**
+   * D3: force failures already recorded, keyed team+task+attempt.
+   *
+   * The machine re-arms a retryable failure so the next tick can act again; this set keeps the
+   * INCIDENT at most one per attempt, so a retry loop cannot append a per-tick incident stream.
+   */
+  private readonly forceRecorded = new Set<string>()
   /** Workspace roots seen so far, taught by stamps and by reads. */
   private readonly roots = new Set<string>()
   /** Live team readout per workspace key, bounded by `teamCacheMs`. */
@@ -404,6 +492,9 @@ export class WatchdogEngine {
     channelDependencyBlocked: 0,
     holdsAutoReleased: 0,
     holdsAutoReleaseFailures: 0,
+    forced: 0,
+    forceFailures: 0,
+    longBash: 0,
     lastError: null,
   }
 
@@ -411,12 +502,15 @@ export class WatchdogEngine {
    * @param dsh - the adapter (the ONE harness contact surface).
    * @param ctx - the cordis plugin context (events, cleanup, logger).
    * @param config - the resolved engine configuration.
+   * @param registry - the row's synchronous hold reader, when it published one.
+   * @param forceSeam - D3's team-plane force action, or undefined when that row is absent.
    */
-  constructor(dsh: DshAdapter, ctx: EngineContext, config: EngineConfig, registry?: HoldRegistry) {
+  constructor(dsh: DshAdapter, ctx: EngineContext, config: EngineConfig, registry?: HoldRegistry, forceSeam?: WedgeForceSeam) {
     this.dsh = dsh
     this.ctx = ctx
     this.config = config
     this.registry = registry
+    this.forceSeam = forceSeam
     this.knobs = readNamespaceKnobs(dsh, process.env, this.knobDefaults())
     this.remember(this.workspaceOf(undefined))
   }
@@ -546,6 +640,7 @@ export class WatchdogEngine {
       actionOnEscalate: this.config.actionOnEscalate,
       toolInFlightMaxMs: this.config.toolInFlightMaxMs,
       holdTtlMs: this.config.holdTtlMs,
+      forceAfterMs: this.config.forceAfterMs,
     }
   }
 
@@ -994,6 +1089,17 @@ export class WatchdogEngine {
               await this.recordToolExpired(workspace, team, decision, now)
               continue
             }
+            // D3: the two FORCE decisions. They are decided and recorded HERE, but ACTED on by the
+            // team plane (the force action needs a live caller agent the watchdog does not hold), so
+            // neither ever reaches the scene/hold path below.
+            if (decision.type === "wedged") {
+              await this.forceWedge(workspace, team, decision, now)
+              continue
+            }
+            if (decision.type === "long-bash") {
+              await this.recordLongBash(workspace, team, decision, now)
+              continue
+            }
             decisions.push(decision)
             // What acting on the decision produced: a scene path and/or a hold.
             const outcome = await this.act(workspace, team, decision, now)
@@ -1275,18 +1381,41 @@ export class WatchdogEngine {
       cache.set(memberKey, stamps)
       return stamps
     }
+    // ── THE OWNER-IDENTITY INDEX (D3 rule 1) ────────────────────────────────────────────────
+    // A task owner is stored in ONE of TWO spellings: the member NAME (a plan-time assignment) or
+    // the member's SESSION ID (what a member's own `claim` writes). Indexing only by name was the
+    // exact VEdit failure: every claim wrote the session id, the lookup missed, `noteFallback` fired
+    // and the watchdog degraded to REPORT-ONLY — a state that can never hold or escalate. Both
+    // spellings now resolve to the same session, and the id spelling indexes to ITSELF so an owner
+    // that is a session id is answered without any roster match at all.
+    /** Owner spelling (name OR session id) to that member's session id. */
+    const memberSessions = new Map<string, string>()
+    /** Owner spelling to the member's NAME, the heartbeat file's key (never the session id). */
+    const memberNames = new Map<string, string>()
+    for (const member of team.members) {
+      if (member.id === "" || member.name === "") continue
+      memberSessions.set(member.name, member.id)
+      memberSessions.set(member.id, member.id)
+      memberNames.set(member.name, member.name)
+      memberNames.set(member.id, member.name)
+    }
     // T-16 (§6): the projection carries the record's own generation floor, so a stamp from a
     // PREVIOUS generation of this team can never make a task silent (and therefore never hold).
-    const base = candidateFor({ id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt }, stampsOf, (assignee) => assignee)
+    //
+    // The stamp key is the member NAME (the heartbeat FILE is keyed by name), so an owner stored as a
+    // session id is translated back before its stamps are read — otherwise that member's candidates
+    // would read an empty file and every one of them would report `never-started`.
+    const base = candidateFor(
+      { id: team.id, tasks: team.tasks, createdAt: team.createdAt, approvedAt: team.approvedAt },
+      stampsOf,
+      (assignee) => memberNames.get(assignee) ?? assignee,
+    )
     // The live agent ids, which decide §1's detached-session PARKED row.
     const live = this.liveIds()
     // T-20 (§8): a member whose ONLY open tasks wait on unfinished dependencies has nothing
     // claimable — it is PARKED, not silent, and the silence rule is suppressed for it. Derived
     // from the record alone; no new member-facing wait tool exists.
     const blockedOf = new Map<string, { blocked: boolean; waiting: string[] }>()
-    // Member name to Session id, which is how the fold is addressed per member.
-    const memberSessions = new Map<string, string>()
-    for (const member of team.members) if (member.id !== "" && member.name !== "") memberSessions.set(member.name, member.id)
     // §1's PARKED row ("member session not attached") may only be applied by a registry that
     // demonstrably knows THIS team's sessions — one of its own member ids is in it. An
     // absent/empty registry answers nothing, and "no answer" must never read as "not
@@ -1294,6 +1423,11 @@ export class WatchdogEngine {
     const registryKnowsTeam = live.known && team.members.some((member) => member.id !== "" && live.ids.has(member.id))
 
     return base.map((candidate) => {
+      // D3 (rule 5): whether this candidate's owner IS the team's lead. Resolved HERE because the
+      // board may spell the owner with the lead's session id, which the machine cannot recognise; the
+      // force rule is the only thing it gates, so the captain's own silence is still watched.
+      /** Whether the owner of this candidate is the team's captain. */
+      const isLead = candidate.assignee === CAPTAIN_KEY || (team.captainSessionId !== undefined && team.captainSessionId !== "" && candidate.assignee === team.captainSessionId)
       // T-20 runs BEFORE every channel question: a blocked member is PARKED whether or not the
       // fold has data for it, and never falls into the §4 report-only path that could warn.
       let blocked = blockedOf.get(candidate.assignee)
@@ -1310,19 +1444,26 @@ export class WatchdogEngine {
           channelInFlightSince: null,
           channelInFlightTool: null,
           heartbeatFallback: false,
+          lead: isLead,
         }
       }
-      // The owner's session id, or null when the record cannot name one.
-      const sessionId = candidate.assignee === CAPTAIN_KEY ? team.captainSessionId ?? null : memberSessions.get(candidate.assignee) ?? null
+      // The owner's session id, or null when the record cannot name one. The CAPTAIN is addressed by
+      // its own key AND by its session id (a claim made by the Lead writes the id).
+      const owner = candidate.assignee
+      /** The owner's session id, or null when neither spelling resolves. */
+      const sessionId =
+        owner === CAPTAIN_KEY || (team.captainSessionId !== undefined && team.captainSessionId !== "" && owner === team.captainSessionId)
+          ? team.captainSessionId ?? null
+          : memberSessions.get(owner) ?? null
       if (sessionId === null) {
         this.noteFallback("team " + team.id + " carries no session id for task owner " + candidate.assignee)
-        return { ...candidate, channelState: null, heartbeatFallback: true }
+        return { ...candidate, channelState: null, heartbeatFallback: true, lead: isLead }
       }
       // The fold's conclusion for that session, or null with no fold data.
       const view = this.fold.view(sessionId)
       if (view === null) {
         this.noteFallback("no session/event fold data for member " + candidate.assignee + " (session " + sessionId + ")")
-        return { ...candidate, channelState: null, heartbeatFallback: true }
+        return { ...candidate, channelState: null, heartbeatFallback: true, lead: isLead }
       }
       // The fold's state, narrowed to PARKED when the session is not attached.
       const channelState: ChannelState =
@@ -1335,6 +1476,7 @@ export class WatchdogEngine {
         channelInFlightSince: view.inFlightSince,
         channelInFlightTool: view.inFlightTool,
         heartbeatFallback: false,
+        lead: isLead,
       }
     })
   }
@@ -1343,7 +1485,7 @@ export class WatchdogEngine {
   private async act(
     workspace: string,
     team: TeamRecord,
-    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" }>,
     now: number,
   ): Promise<{ scene: string | null; held: boolean }> {
     // The team's hold as it stands on disk, before this decision acts.
@@ -1553,11 +1695,216 @@ export class WatchdogEngine {
     )
   }
 
+  /**
+   * D3: hand ONE wedged task to the team plane's force action, and record what it answered.
+   *
+   * THE DECIDER/ACTOR SPLIT (§D3.4): this engine reads the record and holds NO caller agent, so it
+   * cannot interrupt anybody itself. It calls the `mpdTeamActions` seam with the team's OWN recorded
+   * lead as the authorising session; team-core owns the board, the mailbox and the adapter's
+   * interrupt seam. An absent seam, an absent lead session, a throw or a refusal are ALL recorded and
+   * NONE is fatal — the tick never throws.
+   *
+   * FAILURE SEMANTICS: a `retryable` refusal (the handoff could not be written) re-arms the task so
+   * the next tick decides again, while the incident stays at most ONE per task+attempt.
+   *
+   * @param workspace - the workspace whose team record holds the row.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `wedged` decision.
+   * @param now - the tick's clock.
+   */
+  private async forceWedge(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "wedged" }>,
+    now: number,
+  ): Promise<void> {
+    // The authorising session: the LEAD the record names, never the member being interrupted.
+    const sessionId = team.captainSessionId ?? ""
+    if (sessionId === "") {
+      this.failForce(workspace, team, decision, now, "the team record names no lead session — the force supervisor is skipped", false)
+      return
+    }
+    if (this.forceSeam === undefined) {
+      this.failForce(workspace, team, decision, now, "no team plane is mounted (`mpdTeamActions` absent) — the wedge is reported and not forced", false)
+      return
+    }
+    // What the team plane answered; a throw is normalised so the tick survives it.
+    let outcome: WedgeForceOutcome
+    try {
+      outcome = await this.forceSeam.forceWedged({
+        workspace,
+        teamId: team.id,
+        taskId: decision.taskId,
+        attemptId: decision.attemptId,
+        member: decision.assignee,
+        sessionId,
+        startedAt: decision.startedAt,
+        elapsedMs: decision.elapsedMs,
+        lastToolCalls: decision.lastToolCalls,
+      })
+    } catch (error) {
+      outcome = { ok: false, error: message(error), retryable: false }
+    }
+    if (!outcome.ok) {
+      this.failForce(workspace, team, decision, now, outcome.error ?? "the force action refused", outcome.retryable === true)
+      return
+    }
+    this.stats.forced += 1
+    this.forceRecorded.add(streakKey(team.id, decision.taskId, decision.attemptId))
+    // The applied record: the ONE durable statement that a member was stopped.
+    this.appendForceIncident(workspace, team, decision, now, "applied", outcome)
+    this.info(
+      "WEDGED-FORCE " + team.id +
+        " task=" + decision.taskId +
+        " attempt=" + decision.attemptId +
+        " member=" + decision.assignee +
+        " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" +
+        " handoff=" + (outcome.handoff ?? "none") +
+        " requeued=" + (outcome.requeued === undefined ? "no" : outcome.requeued.taskId + "/" + outcome.requeued.attempt) +
+        " split=" + (outcome.split === undefined || outcome.split.length === 0 ? "none" : outcome.split.join(",")) +
+        " — the member was interrupted, the row requeued and the work split",
+    )
+  }
+
+  /**
+   * Record ONE failed force and decide whether the next tick may try again.
+   *
+   * The incident is written at most once per task+attempt; a retryable failure re-arms the machine so
+   * the task is decided again next tick, while the LATER failures are counted and logged but not
+   * appended again — a per-tick incident stream is exactly the noise this bundle keeps removing.
+   *
+   * @param workspace - the workspace whose watchdog store is written.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `wedged` decision.
+   * @param now - the tick's clock.
+   * @param reason - the sentence the record and the log carry.
+   * @param retryable - whether the next tick may decide the same task again.
+   */
+  private failForce(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "wedged" }>,
+    now: number,
+    reason: string,
+    retryable: boolean,
+  ): void {
+    this.stats.forceFailures += 1
+    if (retryable) this.machine.rearmWedge(team.id, decision.taskId, decision.attemptId)
+    /** The one-per-attempt record key, which the retry loop must not re-append. */
+    const key = streakKey(team.id, decision.taskId, decision.attemptId)
+    if (this.forceRecorded.has(key)) return
+    this.forceRecorded.add(key)
+    this.appendForceIncident(workspace, team, decision, now, "not-applied", {})
+    this.warn(
+      "WEDGED-FORCE NOT APPLIED " + team.id +
+        " task=" + decision.taskId +
+        " member=" + decision.assignee +
+        " elapsed=" + decision.elapsedMs + "ms: " + reason +
+        (retryable ? " (retryable: the next tick decides this task again)" : " (final for this attempt)"),
+    )
+  }
+
+  /**
+   * Append the durable `wedged-force` incident for one force attempt.
+   *
+   * @param workspace - the workspace whose watchdog store is written.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `wedged` decision.
+   * @param now - the tick's clock.
+   * @param force - whether the force landed.
+   * @param outcome - the action's answer (its handoff and split rows when it produced any).
+   */
+  private appendForceIncident(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "wedged" }>,
+    now: number,
+    force: "applied" | "not-applied",
+    outcome: { handoff?: string; split?: readonly string[] },
+  ): void {
+    // The durable `wedged-force` record for this attempt.
+    const incident: IncidentRecord = {
+      id: decision.taskId + "@" + decision.attemptId + "#wedged-force#" + now,
+      teamId: team.id,
+      kind: "wedged-force",
+      at: now,
+      cause: { kind: "wedged-force", ms: decision.elapsedMs },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      force,
+      ...(outcome.handoff === undefined ? {} : { handoff: outcome.handoff }),
+      ...(outcome.split === undefined || outcome.split.length === 0 ? {} : { split: outcome.split }),
+      acknowledgedBy: [],
+    }
+    // The append outcome of that record.
+    const logged = appendIncident(workspace, this.config.stateDir, incident)
+    if (logged.ok) this.stats.incidents += 1
+    else {
+      this.stats.incidentFailures += 1
+      this.warn("wedged-force record append failed at " + logged.path + ": " + String(logged.error))
+    }
+  }
+
+  /**
+   * Record D3's ONLY exemption: a task past the force bound whose owner has a `bash` call open.
+   *
+   * Nothing is interrupted — a legitimate verification run may take an hour — and the record is the
+   * audit trail that the bound was crossed while the member was demonstrably working. The machine
+   * already reports it ONCE per task+attempt, so this method appends exactly one record.
+   *
+   * @param workspace - the workspace whose watchdog store is written.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `long-bash` decision.
+   * @param now - the tick's clock.
+   */
+  private async recordLongBash(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "long-bash" }>,
+    now: number,
+  ): Promise<void> {
+    this.stats.longBash += 1
+    // The durable `long-bash` exemption record.
+    const incident: IncidentRecord = {
+      id: decision.taskId + "@" + decision.attemptId + "#long-bash#" + now,
+      teamId: team.id,
+      kind: "long-bash",
+      at: now,
+      cause: {
+        kind: "long-bash",
+        ms: decision.elapsedMs,
+        ...(decision.tool === null ? {} : { tool: decision.tool }),
+      },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      acknowledgedBy: [],
+    }
+    // The append outcome of that record.
+    const logged = appendIncident(workspace, this.config.stateDir, incident)
+    if (logged.ok) this.stats.incidents += 1
+    else {
+      this.stats.incidentFailures += 1
+      this.warn("long-bash record append failed at " + logged.path + ": " + String(logged.error))
+    }
+    this.info(
+      "LONG-BASH " + team.id +
+        " task=" + decision.taskId +
+        " member=" + decision.assignee +
+        " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" +
+        " bashOpenFor=" + decision.inFlightMs + "ms" +
+        " — EXEMPT from the force rule while the bash call is open; nothing interrupted, re-evaluated when it returns",
+    )
+  }
+
   /** Persist the hold through the plugin's own action, preferring the tool seam. */
   private async performHold(
     workspace: string,
     teamId: string,
-    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" }>,
     now: number,
   ): Promise<{ applied: boolean; via: string; error?: string }> {
     // The hold arguments, carrying the resolved TTL snapshot.

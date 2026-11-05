@@ -82,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, cancelTasks, endTeam, fenceMember, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, endTeam, fenceMember, forceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -1760,6 +1760,22 @@ export function apply(ctx: any): void {
       const resolved = callerForSession(sessionId)
       if (!resolved.ok) return resolved
       return writeMemberHandoff(teamActionsDeps, resolved.caller, { content })
+    },
+    // D3's FORCE action. Addressed by the LEAD session the watchdog read off the record, and by the
+    // record's own team + task ids: the watchdog decides, this plane acts, and neither has to import
+    // the other. A lead that is not live answers `{ ok:false }` (nothing interrupted, nothing written)
+    // and the watchdog records it as `force: "not-applied"`.
+    force: async ({ sessionId, teamId, taskId, workspace: requestedWorkspace, evidence }) => {
+      /** The session's caller, or the refusal this member answers instead of acting. */
+      const resolved = callerForSession(sessionId)
+      if (!resolved.ok) return resolved
+      // The watchdog ticks SEVERAL workspaces, so the record it decided on is the authority for where
+      // the handoff and the journal land — never the agent's inherited cwd.
+      return forceWedgedTask(
+        teamActionsDeps,
+        requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace },
+        { teamId, taskId, ...(evidence === undefined ? {} : { evidence }) },
+      )
     },
     // ADDRESSED BY WORKSPACE + TEAM, unlike its neighbours: the caller that abandons rows already holds
     // both (cellwork's activation), and the service plane is the row-to-row one where a session binding

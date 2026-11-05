@@ -798,6 +798,59 @@ function registerAgentSection(agent, section) {
   const registered = systemPrompt.section(section);
   return typeof registered === "function" ? registered : noop;
 }
+function normalizeSpawnResult(settled) {
+  const value = settled ?? {};
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null
+  };
+}
+function activationHandleOf(raw, subagents, parent) {
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
+  let disposed = false;
+  let interrupted = false;
+  const disposeOnce = async () => {
+    if (disposed)
+      return;
+    disposed = true;
+    await releaseActivation(raw);
+  };
+  const result = Promise.resolve(raw?.result).then(async (settled) => {
+    await disposeOnce();
+    return normalizeSpawnResult(settled);
+  }, async (error) => {
+    await disposeOnce();
+    throw error;
+  });
+  return {
+    id,
+    result,
+    interrupt() {
+      if (interrupted)
+        return;
+      interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
+      try {
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
+    }
+  };
+}
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
   return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
@@ -1938,7 +1991,7 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
-    async spawnAgent(spec) {
+    async spawnAgentAsync(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
@@ -1964,13 +2017,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        const settled = await (activation?.result ?? {});
-        await releaseActivation(activation);
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
-        };
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -1985,12 +2032,10 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      const result = await (run?.result ?? {});
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
-      };
+      return activationHandleOf(run, subagents, spec.parent);
+    },
+    async spawnAgent(spec) {
+      return (await adapter.spawnAgentAsync(spec)).result;
     },
     subagentRuntime() {
       return service("subagents");

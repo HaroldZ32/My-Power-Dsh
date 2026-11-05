@@ -412,6 +412,9 @@
         actionOnEscalate: warn-only
         toolInFlightMaxMs: 900000
         holdTtlMs: 900000
+        # D3's force bound (mirrors WATCHDOG_DEFAULTS and mpd-config's SettingsSchema.watchdog):
+        # a task `in_progress` this long is handed to the force supervisor; 0 disables the rule.
+        forceAfterMs: 900000
     - id: mpd-tools
       name: '@mpd-dsh/mpd/packages/mpd-tools-plugin/dist/index.js'
       config:

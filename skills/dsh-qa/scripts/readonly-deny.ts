@@ -91,16 +91,20 @@ const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.me
 /** The case slug, which prefixes every failure banner and names the evidence slug. */
 const SLUG: string = "readonly-deny"
 
-// The eight names every deny list must carry: live-registered AND write-capable.
-const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
+// The TEN names every read-only deny list must carry: live-registered AND write-capable. The last two
+// are the ASYNC/consult surfaces (§D2.7): a read-only consult must not hand its question to somebody
+// else, and `mpd_role_consult` can CANCEL another consult, which is a mutation.
+const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict", "mpd_role_spawn_async", "mpd_role_consult"]
 /**
- * The LEAF boundary's own pair (CR repair E), denied in the SAME child-scope restriction as the
- * canonical eight: a consult that could raise another consult is not the leaf the depth cap exists to
- * draw. The host treats `maxDepth` as an absolute cap, so relying on it alone would let a consult at
- * depth 1 raise a child that then fails — the pair makes every consult a leaf BY CONSTRUCTION.
+ * The LEAF boundary's own four names (CR repair E + §D2.7), denied in the SAME child-scope restriction
+ * as the canonical ten: a consult that could raise another consult — blocking OR async — is not the
+ * leaf the depth cap exists to draw. The host treats `maxDepth` as an absolute cap, so relying on it
+ * alone would let a consult at depth 1 raise a child that then fails — the four make every consult a
+ * leaf BY CONSTRUCTION, and the two consult names are what stop a depth-1 child from opening an async
+ * consult that sidesteps the boundary.
  */
-const EXPECTED_LEAF_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
-/** Every name ONE read-only child's scope must end up denying: the canonical eight PLUS the leaf pair. */
+const EXPECTED_LEAF_DENY: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"]
+/** Every name ONE read-only child's scope must end up denying: the canonical ten PLUS the leaf four. */
 const EXPECTED_CHILD_DENY: readonly string[] = [...EXPECTED_DENY, ...EXPECTED_LEAF_DENY]
 // The LSP row's DECLARED dependency (`packages/mpd-mcp-lsp/src/launch.ts` resolves this name). Two of
 // the eight names above are cclsp's own tools, and the row exposes ZERO tools without it, so the
@@ -536,14 +540,14 @@ function selfTest(): void {
   const srcDeny = parseToolArray(rolesSrc, "READONLY_DENY", "roles src")
   // The deny list extracted from the roles plugin's built row.
   const distDeny = parseToolArray(rolesDist, "READONLY_DENY", "roles dist")
-  checks.push(["roles src carries exactly the expected eight names", JSON.stringify(srcDeny) === JSON.stringify(EXPECTED_DENY)])
-  checks.push(["roles dist carries exactly the expected eight names", JSON.stringify(distDeny) === JSON.stringify(EXPECTED_DENY)])
+  checks.push(["roles src carries exactly the expected ten names", JSON.stringify(srcDeny) === JSON.stringify(EXPECTED_DENY)])
+  checks.push(["roles dist carries exactly the expected ten names", JSON.stringify(distDeny) === JSON.stringify(EXPECTED_DENY)])
   checks.push(["roles src === roles dist (dist is not stale)", JSON.stringify(srcDeny) === JSON.stringify(distDeny)])
   // CR repair E (the leaf boundary): the CANONICAL eight is no longer the whole child deny. The pair is
   // declared beside it in BOTH files, and the pre-leaf state — the eight alone — is exactly what made a
   // read-only consult able to raise another consult, so a missing or drifted leaf list reddens here.
-  checks.push(["roles src declares exactly the leaf spawn pair", JSON.stringify(parseToolArray(rolesSrc, "LEAF_SPAWN_DENY", "roles src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
-  checks.push(["roles dist declares the same leaf spawn pair (dist is not stale)", JSON.stringify(parseToolArray(rolesDist, "LEAF_SPAWN_DENY", "roles dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+  checks.push(["roles src declares exactly the leaf spawn four", JSON.stringify(parseToolArray(rolesSrc, "LEAF_SPAWN_DENY", "roles src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+  checks.push(["roles dist declares the same leaf spawn four (dist is not stale)", JSON.stringify(parseToolArray(rolesDist, "LEAF_SPAWN_DENY", "roles dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
   checks.push(["the child's ONE restriction is the canonical eight PLUS the leaf pair (no second layer)", rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY, ...LEAF_SPAWN_DENY])")])
   for (const dead of DEAD_NAMES) {
     checks.push(["roles src has no dead name " + dead, !rolesSrc.includes(dead)])
@@ -554,16 +558,16 @@ function selfTest(): void {
   if (existsSync(wmDistPath)) {
     // The deny list extracted from the workmate plugin's built row.
     const wmDeny = parseToolArray(readFileSync(wmDistPath, "utf8"), "READONLY_DENY", "workmate dist")
-    checks.push(["workmate dist is rebuilt and denies exactly the eight names", JSON.stringify(wmDeny) === JSON.stringify(EXPECTED_DENY)])
+    checks.push(["workmate dist is rebuilt and denies exactly the ten names", JSON.stringify(wmDeny) === JSON.stringify(EXPECTED_DENY)])
     // THE LEAF PAIR IS A CROSS-ROW INVARIANT (CR repair E): the two rows keep their OWN copy of it (no
     // runtime cross-package import) while `test/leaf-boundary.test.ts` pins them equal, so this case
     // reads the built bytes of BOTH — a row that dropped its copy would leave a delegating consult.
-    checks.push(["workmate dist declares the same leaf spawn pair", JSON.stringify(parseToolArray(readFileSync(wmDistPath, "utf8"), "LEAF_SPAWN_DENY", "workmate dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+    checks.push(["workmate dist declares the same leaf spawn four", JSON.stringify(parseToolArray(readFileSync(wmDistPath, "utf8"), "LEAF_SPAWN_DENY", "workmate dist")) === JSON.stringify(EXPECTED_LEAF_DENY)])
   } else {
     checks.push(["workmate dist exists", false])
   }
   checks.push(["workmate src still declares a deny list", /READONLY_DENY\s*=\s*\[/.test(wmSrc)])
-  checks.push(["workmate src declares the same leaf spawn pair", JSON.stringify(parseToolArray(wmSrc, "LEAF_SPAWN_DENY", "workmate src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
+  checks.push(["workmate src declares the same leaf spawn four", JSON.stringify(parseToolArray(wmSrc, "LEAF_SPAWN_DENY", "workmate src")) === JSON.stringify(EXPECTED_LEAF_DENY)])
 
   // The three MCP write-tools in the list must be names the shipped MCP servers really expose.
   // The built ast_grep MCP server, whose own tool names the deny list must match.

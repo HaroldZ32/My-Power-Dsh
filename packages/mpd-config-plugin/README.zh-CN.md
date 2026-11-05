@@ -19,6 +19,12 @@
 - `team.stateDir`、`hashline.guardEditTools/maxDiffChars/registryFile`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `autoproject.maxRounds`。
+- `team.reteam.enabled`（默认 `true`）：只控制**会话中途的 volume 触发器**；感知 ended 与
+  clean-terminal 的自动结束规则始终有效。
+- `team.reteam.afterConsults`（默认 `4`）：自上次触发以来，本 agent **已完成**的
+  `mpd_role_spawn` / `mpd_role_spawn_async` / `mpd_workmate_spawn` 调用数达到该值后，gate 会在
+  `[AgentTeams] Re-team rule` 标记下 stage 一个新的空 plan shell。失败的或
+  `AGENT_UNCONFIGURED` 的 spawn 不计入；计数持久化在 `<ws>/.mpd/session-gate/<sessionId>.json`。
 
 ## Agent 路由（`agentRoutes`）
 

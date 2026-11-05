@@ -31,12 +31,15 @@ import { QUESTION_ROUTES, installQuestionRelay, registerQuestionWeb, type Pendin
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter, type DshQuestionAnswer } from "../../mpd-dsh-adapter-plugin/src/index"
+import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, RETEAM_AFTER_CONSULTS_CONFIG_KEY, RETEAM_ENABLED_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, agentUnconfiguredRefusal, type DshAdapter, type DshAsyncAgent, type DshQuestionAnswer, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE dsh-Go TOOL CARDS: the kit's `toolCard()` wrapper plus the two pure builders the roster tools'
 // `presentationMeta` carries (unit-tested in `test/tool-cards.test.ts`).
 import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
+// The ONE consult supervisor (§D2): blocking and async consults share the record, the concurrency
+// cap, the 15-minute deadman and the handoff writer. Kept in its own module so its tests need no boot.
+import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -54,7 +57,7 @@ type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: an
  * still pin them in the patch. Every knob is read PER CALL through the same config layer, so a
  * `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -74,6 +77,11 @@ export const READONLY_DENY = [
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict",
+  // The TWO consult surfaces are denied for the same reason the write tools are: a read-only
+  // consult must not hand its question to somebody else, and `mpd_role_consult` can CANCEL another
+  // consult, which is a mutation. Ten names, identical to the workmate copy (roles.test.ts pins it).
+  "mpd_role_spawn_async",
+  "mpd_role_consult",
 ]
 
 /**
@@ -87,11 +95,11 @@ export const READONLY_DENY = [
  * CR named: a READ-ONLY child could otherwise pick a write-capable role and have that child do the writing.
  *
  * It is a SEPARATE list from {@link READONLY_DENY} on purpose: that list is the roster's read-only
- * guarantee, exactly eight names and asserted equal to the workmate plugin's copy; this one applies to
+ * guarantee, exactly ten names and asserted equal to the workmate plugin's copy; this one applies to
  * every child, read-only or not. The workmate row keeps its own copy (no runtime cross-package import) and
  * `test/leaf-boundary.test.ts` pins the two equal.
  */
-export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_workmate_spawn"]
+export const LEAF_SPAWN_DENY: readonly string[] = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"]
 
 /**
  * Why a withdrawn guard reports `absent` on the team-plane boot line, naming the knob that used to
@@ -927,6 +935,70 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
+  // ── consult supervision (§D2.5–§D2.6) ──────────────────────────────────────
+  // The child's tool activity is keyed by the CHILD's session id (F1 repair): `activityKey` reads the
+  // id the child agent carries — the same value `DshAsyncAgent.id` reports — and falls back to
+  // `label:<role>` ONLY when the child has no id, so two concurrent consults of one role never share
+  // a `current` slot. The deadman needs the CURRENT call: an OPEN `bash` is the only exemption from
+  // the 15-minute rule, and it has NO age bound.
+  /** The activity buckets every consult shares, keyed by child id (or the label fallback key). */
+  const toolActivity = new Map<string, ConsultToolActivity>()
+  /** The bucket key of one tool execution: the child's id, label fallback only when it has none. */
+  const activityKey = (exec: unknown): string | undefined =>
+    consultActivityKeyOf((exec as { agent?: unknown } | undefined)?.agent, (agent) => dsh.subagentLabelOf(agent))
+  /** Record one tool call's START — the in-flight half the bash exemption reads. */
+  const noteToolStart = (exec: unknown): void => {
+    /** The child-id bucket this call belongs to, when it is one of ours. */
+    const key = activityKey(exec)
+    if (key === undefined) return
+    /** The registered tool name. */
+    const name = typeof (exec as { name?: unknown } | undefined)?.name === "string" ? String((exec as { name: string }).name) : "tool"
+    /** The call's argument object, quoted by the handoff writer. */
+    const rawArgs = (exec as { arguments?: unknown } | undefined)?.arguments
+    /** The activity bucket for this child. */
+    const bucket = toolActivity.get(key) ?? { history: [] }
+    bucket.current = { name, startedAt: Date.now(), ...(rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs as Record<string, unknown> } : {}) }
+    toolActivity.set(key, bucket)
+  }
+  /** Record one tool call's COMPLETION: close the in-flight slot and keep a bounded history. */
+  const noteToolEnd = (exec: unknown): void => {
+    /** The child-id bucket this call belongs to, when it is one of ours. */
+    const key = activityKey(exec)
+    if (key === undefined) return
+    /** The activity bucket for this child. */
+    const bucket = toolActivity.get(key)
+    if (bucket?.current === undefined) return
+    bucket.history.push(bucket.current)
+    if (bucket.history.length > CONSULT_ACTIVITY_HISTORY) bucket.history.splice(0, bucket.history.length - CONSULT_ACTIVITY_HISTORY)
+    bucket.current = undefined
+  }
+  // Both hooks are EXISTING adapter seams; the PRE half is what marks a call IN FLIGHT (a POST-only
+  // observer cannot see an open bash), and the POST half closes it. A composition without them
+  // degrades to "no activity": the deadman then never exempts anything, which is the safe direction.
+  if (typeof dsh.onPreToolExecute === "function") {
+    dsh.onPreToolExecute((exec: unknown): void => {
+      try { noteToolStart(exec) } catch { /* observation must never fail a tool call */ }
+    })
+  }
+  if (typeof dsh.onPostToolExecute === "function") {
+    dsh.onPostToolExecute((exec: unknown): undefined => {
+      try { noteToolEnd(exec) } catch { /* observation must never fail a tool call */ }
+    })
+  }
+
+  /** The one supervisor every consult — blocking and async — is registered with (§D2). */
+  const consultSupervisor = createConsultSupervisor({
+    // The workspace root is resolved PER CALL through the ONE adapter helper (AGENTS.md §6); the
+    // handoff directory is created by the supervisor when the deadman actually fires.
+    handoffDir: (target) => join(dsh.workspaceRoot(target as DshToolExec | undefined), ".mpd", "handoff"),
+    log: (line) => warn(line),
+    // The deadman asks for THIS consult's child id (F1 repair). The label is read only when the
+    // child reported no id at all — never as a second chance for an id-bearing child.
+    activityOf: (childId, role) => (childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId)),
+    maxConcurrent: () => consultMaxFromEnv(),
+    forceAfterMs: () => CONSULT_FORCE_AFTER_MS,
+  })
+
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -945,7 +1017,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     name: "mpd_role_spawn",
     description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright — a depth-1 caller (the cell planner) may still raise its one consult.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
-    output: { presentationMeta: toolCard(roleSpawnCard), schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
+    output: { presentationMeta: toolCard(roleSpawnCard), schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "interrupted"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" }, consultId: { type: "string" }, handoff: { type: "string" }, lastActivity: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "") + (v.handoff ? "\nhandoff: " + v.handoff : "") + (v.lastActivity ? "\nlast activity: " + v.lastActivity : "")) },
     execute: async (args: any, exec: any) => {
       // THE LEAF BOUNDARY, ENFORCED AT THE TOOL (CR repair E): a session at depth 2 or deeper may not raise a
       // consult, whatever its own tool scope looks like (a composition without the `agent/created` bus, a
@@ -992,30 +1064,135 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       const model = run.route.model
       /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
-      /** The spawn result, whose structured report is echoed into this tool's output. */
-      const result = await dsh.spawnAgent({
-        label: spec.name,
-        prompt,
-        parent: exec.agent,
-        signal: exec.signal,
-        provider,
-        model,
-        persona,
-        outputSchema: REPORT_SCHEMA,
-        // AN EXPLICIT LEAF BOUND (C5, D15) — see `spawnMaxDepthOf`: the caller's own recorded depth plus
-        // one, forwarded by the adapter on BOTH harness generations, so a NESTED caller's one-shot consult
-        // is never refused by the host's depth default it cannot see.
-        maxDepth: spawnMaxDepthOf(exec.agent),
-        // The slot's OWN effort keyword rides along when its resolved route states one — AFTER the
-        // fallback consumption and the effort adaptation above. The contract still forbids clamping
-        // or inventing an effort, so an absent keyword passes nothing and the harness keeps its own
-        // resolution.
-        ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
-        ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+      // THE SHARED SUPERVISED CONSULT (§D2.1): the blocking surface and the background one raise the
+      // child through the SAME activation handle and are armed by the SAME 15-minute deadman. This
+      // call used to await `dsh.spawnAgent` directly, which is exactly what serialized the captain's
+      // consults behind the previous child's full runtime.
+      /** The started consult; this surface only waits for its settlement. */
+      const view = consultSupervisor.start({
+        role: spec.name,
+        task,
+        exec,
+        raise: () => dsh.spawnAgentAsync({
+          label: spec.name,
+          prompt,
+          parent: exec.agent,
+          signal: exec.signal,
+          provider,
+          model,
+          persona,
+          outputSchema: REPORT_SCHEMA,
+          // AN EXPLICIT LEAF BOUND (C5, D15) — see `spawnMaxDepthOf`: the caller's own recorded depth plus
+          // one, forwarded by the adapter on BOTH harness generations, so a NESTED caller's one-shot consult
+          // is never refused by the host's depth default it cannot see.
+          maxDepth: spawnMaxDepthOf(exec.agent),
+          // The slot's OWN effort keyword rides along when its resolved route states one — AFTER the
+          // fallback consumption and the effort adaptation above. The contract still forbids clamping
+          // or inventing an effort, so an absent keyword passes nothing and the harness keeps its own
+          // resolution.
+          ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
+          ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+        }),
       })
-      /** The structured report, or an empty object when the subagent answered none. */
-      const st = result.structured ?? {}
-      return { role: spec.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null }
+      // The report shape is UNCHANGED except for the new `interrupted` status (§D0.1): the same
+      // role/summary/recommendation/details/evidence/stopReason fields two live consumers read. The
+      // record is RELEASED here (CR repair): a blocking caller reads its report exactly once, so keeping
+      // `exec`, the agent handle, the task and the report for the process lifetime would grow the map
+      // with every autoproject/cellwork consult. A RUNNING consult stays listed until it settles, and
+      // `collect` is a no-op for a record that is not reported.
+      try {
+        return await consultSupervisor.settle(view.consultId)
+      } finally {
+        try { consultSupervisor.collect(view.consultId) } catch { /* already collected */ }
+      }
+    }
+  })
+
+  /**
+   * Raise ONE consult child for the ASYNC surface, with the same role, route and persona resolution
+   * the blocking path performs.
+   *
+   * @param args - the tool arguments (`role`, `task`, optional `context`).
+   * @param exec - the invoking tool execution, whose agent and signal ride the spawn.
+   * @returns the started handle the consult supervisor owns.
+   */
+  async function raiseConsultAsync(args: any, exec: any): Promise<DshAsyncAgent> {
+    /** The roster as this call sees it: base specialists plus extension roles. */
+    const surface = roleSurface(exec)
+    /** The resolved role, or null — in which case the error lists every addressable name. */
+    const spec = roleOfToolInput(surface, String(args?.role ?? ""))
+    if (spec === null) throw new Error("mpd_role_spawn_async: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface))
+    /** The task text; empty is a caller error and must not spawn an empty prompt. */
+    const task = String(args?.task ?? "").trim()
+    if (!task) throw new Error("mpd_role_spawn_async: task required")
+    /** The TOTAL agent-route resolution for this member — the ONE route source a roster agent has. */
+    const resolution = agentRouteResolution(spec.name)
+    // An unusable route refuses the spawn with the SAME structured AGENT_UNCONFIGURED failure the
+    // blocking path uses; nothing is written and no child is started.
+    if (!resolution.ok && resolution.reason !== "unrouted") throwAgentUnconfigured(resolution)
+    /** The primary route: the agent's own when usable, the extension role's declared chain otherwise. */
+    const primary: LiveRoute | undefined = resolution.ok
+      ? resolution.route
+      : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model }
+    if (primary === undefined) {
+      throw new Error("mpd_role_spawn_async: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster agent needs its agentRoutes entry configured (/mpd-model)")
+    }
+    /** The route this spawn actually sends (fallbacks consumed once, effort adapted). */
+    const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : [])
+    /** The assembled prompt, identical to the blocking path's. */
+    const prompt = spec.persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
+    return dsh.spawnAgentAsync({
+      label: spec.name,
+      prompt,
+      parent: exec.agent,
+      signal: exec.signal,
+      provider: run.route.provider,
+      model: run.route.model,
+      persona: spec.persona,
+      outputSchema: REPORT_SCHEMA,
+      maxDepth: spawnMaxDepthOf(exec.agent),
+      ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
+      ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
+    })
+  }
+
+  dsh.registerTool({
+    name: "mpd_role_spawn_async",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and is supervised by the SAME 15-minute deadman: on expiry the child is interrupted and a handoff document is written under .mpd/handoff/, unless its current tool call is an OPEN `bash` (the only exemption, with no age bound). Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a: unknown, v: any) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + " — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"" + v.consultId + "\"}") },
+    execute: async (args: any, exec: any) => {
+      // The SAME leaf boundary the blocking tool enforces: a session at depth 2 or deeper may not
+      // raise a consult, whatever its own tool scope looks like.
+      /** The refusal for a caller that is already too deep, or undefined when it may still spawn. */
+      const tooDeep = consultDepthRefusal(exec?.agent)
+      if (tooDeep !== undefined) throw new Error(tooDeep)
+      /** The started consult view; the spawn itself is supervised in the background. */
+      const view = consultSupervisor.start({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...(args?.context === undefined ? {} : { context: String(args.context) }), exec, raise: () => raiseConsultAsync(args, exec) })
+      return { consultId: view.consultId, role: view.role, state: "running" as const, startedAt: view.startedAt }
+    }
+  })
+
+  dsh.registerTool({
+    name: "mpd_role_consult",
+    description: "Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:\"running\" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult's child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults are listed here WHILE they run; their own caller releases the settled record.",
+    parameters: { type: "object", properties: { action: { type: "string", enum: ["list", "wait", "collect", "cancel"] }, consultId: { type: "string", description: "the id mpd_role_spawn_async returned (required except for list)" }, timeoutMs: { type: "integer", minimum: 1, maximum: 60000, description: "wait bound in ms (default 30000, clamped to 60000)" } }, required: ["action"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { action: { type: "string" }, consults: { type: "array", items: { type: "object" } }, consultId: { type: "string" }, role: { type: "string" }, state: { type: "string" }, startedAt: { type: "integer" }, elapsedMs: { type: "integer" }, report: { type: "object" }, error: { type: "string" } }, required: ["action"] }, render: (_a: unknown, v: any) => textBlock("consult " + v.action + (Array.isArray(v.consults) ? " (" + v.consults.length + "):\n" + v.consults.map((c: any) => "- " + c.consultId + " [" + c.role + "] " + c.state + " " + c.elapsedMs + "ms").join("\n") : "") + (v.report ? "\nreport (" + v.report.status + "): " + v.report.summary + (v.report.handoff ? "\nhandoff: " + v.report.handoff : "") : "") + (v.error ? "\nerror: " + v.error : "") + (!Array.isArray(v.consults) && !v.report ? "\nstate: " + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
+    execute: async (args: any, _exec: any) => {
+      /** The requested action, normalized. */
+      const action = String(args?.action ?? "").trim()
+      if (action === "list") return { action, consults: consultSupervisor.list() }
+      /** The consult id; required for every action except list. */
+      const consultId = String(args?.consultId ?? "").trim()
+      if (consultId === "") throw new Error("mpd_role_consult: consultId required for action \"" + action + "\"")
+      if (action === "wait") {
+        /** The wait bound in ms (the supervisor clamps it to CONSULT_WAIT_MAX_MS). */
+        const timeoutMs = Number(args?.timeoutMs ?? 30000)
+        return { action, ...(await consultSupervisor.wait(consultId, timeoutMs)) }
+      }
+      if (action === "collect") return { action, ...consultSupervisor.collect(consultId) }
+      if (action === "cancel") return { action, ...consultSupervisor.cancel(consultId) }
+      throw new Error("mpd_role_consult: action must be list | wait | collect | cancel")
     }
   })
 
@@ -1081,6 +1258,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === SENSITIVITY_CONFIG_KEY) return config.team?.sensitivity
+    if (key === RETEAM_ENABLED_CONFIG_KEY) return config.team?.reteam?.enabled
+    if (key === RETEAM_AFTER_CONSULTS_CONFIG_KEY) return config.team?.reteam?.afterConsults
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
     if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate

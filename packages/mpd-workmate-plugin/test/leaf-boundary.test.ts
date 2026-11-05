@@ -157,7 +157,7 @@ function emitCreated(listeners: Array<(payload: unknown) => unknown>, agent: Rec
 }
 
 test("the two rows' copies agree, and the depth sentence is identical (source-level parity)", () => {
-  expect([...LEAF_SPAWN_DENY]).toEqual(["mpd_role_spawn", "mpd_workmate_spawn"])
+  expect([...LEAF_SPAWN_DENY]).toEqual(["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"])
   // PARITY, pinned from source (test-only import): each row ships its own copy on purpose.
   expect([...ROLE_LEAF_SPAWN_DENY]).toEqual([...LEAF_SPAWN_DENY])
   /** One depth-2 caller header, the shape both rows must judge the same way. */
@@ -166,8 +166,8 @@ test("the two rows' copies agree, and the depth sentence is identical (source-le
   // And the boundary itself: depth 1 open (the cell planner's shape), depth 2 refused.
   expect(consultDepthRefusal({ session: { header: { delegationDepth: 1 } } })).toBeUndefined()
   expect(String(consultDepthRefusal(deep))).toContain("mpd_workmate_spawn")
-  // THE SEPARATION IS INTENTIONAL: the read-only guarantee is untouched at exactly eight names.
-  expect(READONLY_DENY).toHaveLength(8)
+  // THE SEPARATION IS INTENTIONAL: the read-only guarantee is exactly ten names (§D2.7).
+  expect(READONLY_DENY).toHaveLength(10)
 })
 
 test("THE WIRING: mpd_workmate_spawn refuses a depth-2 caller and starts NO child, while depth 1 still spawns", async () => {

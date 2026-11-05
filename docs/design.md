@@ -718,3 +718,43 @@ carried forward here instead of being dropped:
   comment. The shape has since moved to per-agent routes (`agentRoutes.<Agent>`: one three-leaf row per
   roster agent); the legacy `teamModels` block is a permissive, migrated-once node that is never read
   for routing, and no slot is persisted, so any leaf total written here would rot again.
+
+## 9. Supervision: re-team, async consults and force (2026-11-05)
+
+### Re-team
+
+A team is LIVE only until it ends: an explicit `agent_teams_control end`, or a clean-terminal board
+(≥ 1 task, every task completed/cancelled, none failed) which the complexity gate ends itself. A
+`failed` task blocks both the auto-end and any re-team and asks for a `kind=repair` row. With no live
+team and `team.reteam.afterConsults` (default 4) completed one-shot spawns by this session, the gate
+stages one empty plan shell under `[AgentTeams] Re-team rule`; `team.reteam.enabled` (default true)
+gates only this volume trigger. All three planes count: autoproject and cellwork spawn as the same
+session.
+
+### Async consults and the deadman
+
+`mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
+cancels; concurrency is capped by `MPD_DSH_CONSULT_MAX` (default 8, over-cap queues). Every consult,
+blocking or async, is armed with a 900 000 ms deadman that writes a handoff and interrupts the child,
+except while its CURRENT call is an OPEN `bash` (no age bound). The handle lives on the adapter's
+shared activation seam (`spawnAgentAsync`); `spawnAgent` is its blocking projection, so workmate and
+cellwork_recon keep their shapes. Read-only members deny the two consult tools (ten names) and every
+consult remains a leaf.
+
+### Force supervisor
+
+A team member whose `in_progress` task reaches `forceAfterMs` (default 900 000 ms; 0 disables; read
+live per tick) triggers the watchdog's `wedged` decision, resolved by owner identity (name AND
+`executorRef`/session id). Its action lives in team-core (`mpdTeamActions`): handoff → interrupt →
+requeue → split → captain mailbox → `wedged-force` journal. An OPEN `bash` is the only exemption, the
+captain is never a target, and one-shot consults are covered by the deadman instead.
+
+### Plane coverage
+
+| Plane | Re-team | Async consults | 15-minute force |
+|---|---|---|---|
+| Agent Teams | yes (same session) | — | yes (watchdog) |
+| cellwork seats | yes (same session) | — | yes (watchdog, seat identity) |
+| cellwork reseed / `cellwork_recon` | yes | yes (same seam) | yes (deadman) |
+| autoproject | yes (same session) | yes (inherited) | yes (deadman, `slotBoundMs` aligned) |
+| workmate | — | yes (same seam) | yes (deadman) |
