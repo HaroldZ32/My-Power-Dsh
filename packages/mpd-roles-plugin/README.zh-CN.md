@@ -72,7 +72,7 @@
 
 ### 只读 teammate 会被机械地拒绝
 
-那八个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
+那十个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
 
 - **单次咨询路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
 - **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。
@@ -94,7 +94,7 @@
 诊断依据是 boot 行 —— 恢复的 guard 报 **mode**，撤销的那个报 absent：
 
 ```
-[mpd-roles] team plane: readOnlyGuard=installed deny=8 \
+[mpd-roles] team plane: readOnlyGuard=installed deny=10 \
   captainInvestigation=deny \
   delegationGate=deny \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
@@ -128,3 +128,35 @@ trigger = explicit flag OR (matchedSignals >= 1)
 - **off** —— 监听器直接返回。
 
 显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径：在 `mechanical` 下同样会 stage 该 shell，且标记会从目标文本中被**消费**。它只作用于顶层 `mpd` session（子 session —— subagent、teammate、workflow worker —— 以及其它 preset 的 session 都不会收到），每个 session 只结算一次，且其内部失败不会影响该 step。
+
+## 异步 consult 与 15 分钟 deadman（2026-11-05）
+
+`mpd_role_spawn` 的参数与报告形状不变，但 `status` 现在还可能为 `"interrupted"`：每个 consult
+（阻塞式或后台式）都受同一套监督。
+
+| 工具 | 行为 |
+|---|---|
+| `mpd_role_spawn_async` | `{role, task, context?}` 立即返回 `{consultId, role, state:"running"}`；子 agent 继续在后台运行。 |
+| `mpd_role_consult` | `list`（id、role、state、startedAt、elapsedMs）；`wait`（`consultId`、`timeoutMs` ≤ 60 000 —— 已结算则返回报告，否则返回 `state:"running"`）；`collect`（返回已结算报告并释放记录）；`cancel`（中断该 consult 的子 agent）。 |
+
+并发上限由 `MPD_DSH_CONSULT_MAX`（默认 `8`，即宿主的活跃子 agent 上限）控制：超限的 consult 会
+**排队**，绝不抛错。上限在每次启动时读取。
+
+**Deadman。** 每个 consult 都武装一个 15 分钟上限（900 000 ms）。到期时：
+
+- 如果子 agent **当前**的工具调用是 `bash` 且仍在执行中，则**不**中断：记录一条
+  `consult-long-bash` 警告（含已用时间）并重新武装。该豁免**没有时长上限** —— 合法的验证运行可能
+  持续一小时。
+- 否则监督器写入 `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md`（task、role、started、
+  elapsed、最近工具调用及 ≤ 400 字符的参数摘录、next step），中断子 agent，并以
+  `status:"interrupted"` 结算该 consult，携带 handoff 路径与最后一次观测到的活动。
+
+监督器**绝不**中断 captain，也不中断另一个 consult 的子 agent：它只会调用自身 handle 的 `interrupt()`。
+
+**记录生命周期。** 后台 consult 会一直留在 `list` 中，直到被 collect 或 cancel。阻塞式
+`mpd_role_spawn` consult 只在其运行期间出现在 `list` 中：报告（或失败）被读取后，记录立刻由它自己的
+调用方释放，因此长时间的 autoproject/cellwork 会话不会让登记表无限增长。
+
+**只读纪律。** 拒绝清单现为 **十个**名字：八个可写工具加上 `mpd_role_spawn_async` 与
+`mpd_role_consult`（`cancel` 会修改另一个 consult）。consult 仍是叶子：子 agent 自己的作用域内
+禁用了本 bundle 的 spawn 工具。

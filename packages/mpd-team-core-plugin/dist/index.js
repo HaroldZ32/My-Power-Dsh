@@ -1,6 +1,6 @@
 // packages/mpd-team-core-plugin/src/index.ts
 import { existsSync as existsSync7, readdirSync as readdirSync6 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -642,6 +642,59 @@ function registerAgentSection(agent, section) {
   }
   const registered = systemPrompt.section(section);
   return typeof registered === "function" ? registered : noop;
+}
+function normalizeSpawnResult(settled) {
+  const value = settled ?? {};
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null
+  };
+}
+function activationHandleOf(raw, subagents, parent) {
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
+  let disposed = false;
+  let interrupted = false;
+  const disposeOnce = async () => {
+    if (disposed)
+      return;
+    disposed = true;
+    await releaseActivation(raw);
+  };
+  const result = Promise.resolve(raw?.result).then(async (settled) => {
+    await disposeOnce();
+    return normalizeSpawnResult(settled);
+  }, async (error) => {
+    await disposeOnce();
+    throw error;
+  });
+  return {
+    id,
+    result,
+    interrupt() {
+      if (interrupted)
+        return;
+      interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
+      try {
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
+    }
+  };
 }
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
@@ -1783,7 +1836,7 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
-    async spawnAgent(spec) {
+    async spawnAgentAsync(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
@@ -1809,13 +1862,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        const settled = await (activation?.result ?? {});
-        await releaseActivation(activation);
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
-        };
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -1830,12 +1877,10 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      const result = await (run?.result ?? {});
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
-      };
+      return activationHandleOf(run, subagents, spec.parent);
+    },
+    async spawnAgent(spec) {
+      return (await adapter.spawnAgentAsync(spec)).result;
     },
     subagentRuntime() {
       return service("subagents");
@@ -3277,6 +3322,13 @@ function resolveRecipients(directory, to) {
     return { ok: false, reason: "unknown-recipient", detail: `"${spelling}" is not a member of this team (members: ${names || "none"})` };
   }
   return { ok: true, targets: [{ id: member.id, name: member.name }], broadcast: false };
+}
+function send(workspace, input, now) {
+  const result = sendMany(workspace, input, [{ id: input.toId, name: input.toName }], now);
+  if (!result.ok)
+    return result;
+  const message = result.messages[0];
+  return { ok: true, message };
 }
 function problemsSentence(check2) {
   return check2.problems.map((problem2) => problem2.labels === undefined ? problem2.message : `${problem2.message} (valid labels: ${problem2.labels.join(", ")})`).join("; ");
@@ -5378,7 +5430,8 @@ data: ${JSON.stringify({ rev: revisionNow() })}
 }
 
 // packages/mpd-team-core-plugin/src/team-actions.ts
-import { existsSync as existsSync6 } from "node:fs";
+import { existsSync as existsSync6, mkdirSync as mkdirSync9, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join10 } from "node:path";
 
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
 import { readFileSync as readFileSync5, readdirSync as readdirSync3 } from "node:fs";
@@ -5767,6 +5820,8 @@ function handoffWrittenDirective(path) {
 
 // packages/mpd-team-core-plugin/src/team-actions.ts
 var TEAM_ACTIONS_SERVICE = "mpdTeamActions";
+var FORCE_SENDER_ID = "mpd-force-supervisor";
+var FORCE_SENDER_NAME = "mpd force supervisor";
 function refusalOf(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -6464,6 +6519,215 @@ async function writeMemberHandoff(deps, caller, input) {
     return unexpectedRefusalOf(error);
   }
 }
+function forceHandoffDir(workspace) {
+  return join10(workspace, ".mpd", "handoff");
+}
+function renderForceHandoff(input) {
+  const startedIso = input.startedAt === null ? "unknown" : new Date(input.startedAt).toISOString();
+  const tools = input.lastToolCalls.length === 0 ? "- (none recorded)" : input.lastToolCalls.map((name) => "- `" + name + "`").join(`
+`);
+  return [
+    "# Force handoff — " + input.member + " / " + input.taskId,
+    "",
+    "## Task",
+    "- Task: " + input.taskId + " — " + input.subject,
+    "- Team: " + input.teamId,
+    "- Attempt: " + input.attempt + " (generation " + (input.attemptId === "" ? "unrecorded" : input.attemptId) + ")",
+    "",
+    "## Member",
+    "- Member: " + input.member,
+    "- Session: " + (input.memberSession === "" ? "(no executor handle)" : input.memberSession),
+    "",
+    "## Timing",
+    "- Started: " + startedIso + (input.startedAt === null ? "" : " (" + input.startedAt + ")"),
+    "- Elapsed: " + input.elapsedMs + " ms",
+    "",
+    "## Last tool calls",
+    tools,
+    "",
+    "## Review state",
+    "- Board status at the interrupt: " + input.taskStatus,
+    "- Review round: " + input.round,
+    "- Verdict: " + (input.verdict === "" ? "(none recorded)" : input.verdict),
+    "",
+    "## Why this document exists",
+    "The watchdog's force supervisor found this task `in_progress` past its force bound and interrupted",
+    "the owning member. The row was requeued (`pending`, attempt bumped) and the work was split into",
+    "continuation rows; this document is the account the next owner continues from.",
+    "",
+    "## Next step",
+    "Read the task description and the rows named by the system message, narrow the scope if the",
+    "subject carries no declared scope, then claim the row and continue from the last tool call above.",
+    ""
+  ].join(`
+`);
+}
+function writeForceHandoff(workspace, member, taskId, at, text2) {
+  const dir = forceHandoffDir(workspace);
+  mkdirSync9(dir, { recursive: true });
+  const instant = at.toISOString().replace(/[:.]/g, "-");
+  const path = join10(dir, sanitizeId(member) + "-" + sanitizeId(taskId) + "-" + instant + ".md");
+  writeFileSync5(path, text2.endsWith(`
+`) ? text2 : text2 + `
+`);
+  return path;
+}
+async function forceWedgedTask(deps, caller, input) {
+  if (caller.agent === undefined)
+    return { ok: false, error: "force needs a live agent" };
+  try {
+    const record = input.teamId === undefined ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage).record : readTeam(caller.workspace, input.teamId);
+    if (record === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId ?? "")} in this workspace` };
+    if (!recordNamesLead(record, [caller.sessionId, ...caller.lineage])) {
+      return { ok: false, error: `session ${caller.sessionId} is not the lead of team ${record.teamId} — only the lead may force a member` };
+    }
+    const task = record.tasks.find((candidate) => candidate.id === input.taskId);
+    if (task === undefined)
+      return { ok: false, error: `no board row is named ${JSON.stringify(input.taskId)} on team ${record.teamId}` };
+    if (task.status !== "in_progress")
+      return { ok: false, error: `task ${task.id} is "${task.status}" — only an in_progress row can be forced` };
+    const owner = task.owner !== undefined && task.owner !== "" ? task.owner : input.evidence?.member ?? "";
+    if (owner === "")
+      return { ok: false, error: `task ${task.id} has no owner — there is no member to interrupt` };
+    if (recordNamesLead(record, [owner]))
+      return { ok: false, error: `task ${task.id} is owned by the team's lead — the captain is never a force target` };
+    const member = memberNamedBy(record, [owner]);
+    if (member === undefined)
+      return { ok: false, error: `owner ${JSON.stringify(owner)} names no member on team ${record.teamId}` };
+    if (recordNamesLead(record, [member.name, member.executorRef ?? ""])) {
+      return { ok: false, error: `member ${member.name} is the team's lead — the captain is never a force target` };
+    }
+    const handle = member.executorRef ?? "";
+    const now = deps.now();
+    const startedAtIso = task.startedAt;
+    const startedAt = typeof startedAtIso === "string" && Number.isFinite(Date.parse(startedAtIso)) ? Date.parse(startedAtIso) : typeof input.evidence?.startedAt === "number" ? input.evidence.startedAt : null;
+    const elapsedMs = typeof input.evidence?.elapsedMs === "number" && Number.isFinite(input.evidence.elapsedMs) ? input.evidence.elapsedMs : startedAt === null ? 0 : Math.max(0, now.getTime() - startedAt);
+    const live = readTeam(caller.workspace, record.teamId);
+    if (live === undefined)
+      return { ok: false, error: `team ${record.teamId} is no longer readable — nothing was forced` };
+    const liveTask = live.tasks.find((candidate) => candidate.id === task.id);
+    if (liveTask === undefined || liveTask.status !== "in_progress") {
+      return { ok: false, error: `task ${task.id} is no longer in_progress — the force was not applied` };
+    }
+    const liveOwner = liveTask.owner !== undefined && liveTask.owner !== "" ? liveTask.owner : input.evidence?.member ?? "";
+    if (liveOwner === "" || memberNamedBy(live, [liveOwner])?.name !== member.name) {
+      return { ok: false, error: `task ${task.id} is no longer owned by ${member.name} — the force was not applied` };
+    }
+    if (input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" && String(liveTask.revision) !== input.evidence.attemptId) {
+      return { ok: false, error: `task ${task.id} has moved to generation ${String(liveTask.revision)} — the force was not applied` };
+    }
+    let handoff;
+    try {
+      handoff = writeForceHandoff(caller.workspace, member.name, task.id, now, renderForceHandoff({
+        teamId: record.teamId,
+        taskId: task.id,
+        subject: task.subject,
+        attempt: (task.attempt ?? 0) + 1,
+        attemptId: input.evidence?.attemptId ?? "",
+        member: member.name,
+        memberSession: handle,
+        startedAt,
+        elapsedMs,
+        lastToolCalls: input.evidence?.lastToolCalls ?? [],
+        taskStatus: task.status,
+        round: task.round ?? 0,
+        verdict: task.verdict ?? ""
+      }));
+    } catch (error) {
+      return { ok: false, error: `handoff write failed for task ${task.id}: ${refusalOf(error)}`, retryable: true };
+    }
+    let interrupted = false;
+    let interruptError;
+    if (handle === "") {
+      interruptError = `member ${member.name} has no executor handle — nothing to interrupt`;
+    } else {
+      try {
+        await deps.executor().interrupt(caller.agent, handle);
+        interrupted = true;
+      } catch (error) {
+        interruptError = refusalOf(error);
+      }
+    }
+    const attempt = (task.attempt ?? 0) + 1;
+    const armed = readTeam(caller.workspace, record.teamId);
+    if (armed === undefined)
+      return { ok: false, error: `team ${record.teamId} disappeared during the interrupt — the row was not requeued` };
+    let next = updateTeamTask(armed, task.id, { status: "pending", owner: "", attempt, note: `forced (wedged): handoff ${handoff}`, resetStartedAt: true }, now);
+    const split = [];
+    const scopes = task.writeScopes;
+    const continuation = `Continuation of ${task.id} (${task.subject}) after the force supervisor interrupted ${member.name}. Handoff: ${handoff}.`;
+    if (scopes.length >= 2) {
+      for (const scope of scopes) {
+        const subject = `[split] ${task.subject} — ${scope}`;
+        next = addTeamTask(next, { subject, description: `${continuation} This row owns exactly one write scope: ${scope}.`, writeScopes: [scope], ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
+        split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
+      }
+    } else {
+      const subject = `[split] ${task.subject}`;
+      next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
+      split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
+    }
+    writeTeam(caller.workspace, next);
+    let mail;
+    let mailError;
+    const leadSession = record.leadSessionId;
+    if (leadSession === undefined || leadSession === "") {
+      mailError = "the team record names no lead session to notify";
+    } else {
+      try {
+        const result = send(caller.workspace, {
+          fromId: FORCE_SENDER_ID,
+          fromName: FORCE_SENDER_NAME,
+          toId: leadSession,
+          toName: "captain",
+          subject: `force: ${member.name} interrupted on ${task.id} (${record.teamId})`,
+          body: [
+            `team ${record.teamId} task ${task.id} (${task.subject}) was in_progress for ${elapsedMs} ms and the watchdog's force supervisor stopped member ${member.name}.`,
+            `handoff: ${handoff}`,
+            `requeued: ${task.id} as pending, attempt ${attempt}`,
+            `split: ${split.length === 0 ? "(none)" : split.join(", ")}`,
+            `interrupt: ${interrupted ? "applied" : "not applied — " + (interruptError ?? "unknown")}`
+          ].join(`
+`),
+          memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
+          teamId: record.teamId,
+          leadIds: [leadSession]
+        }, now);
+        if (result.ok)
+          mail = result.message.id;
+        else
+          mailError = `mailbox refused the row (${result.reason}): ${result.detail}`;
+      } catch (error) {
+        mailError = refusalOf(error);
+      }
+    }
+    appendTeamJournal(caller.workspace, {
+      event: "wedged-force",
+      teamId: record.teamId,
+      at: now.toISOString(),
+      taskId: task.id,
+      member: member.name,
+      path: handoff,
+      reason: `elapsed=${elapsedMs}ms interrupted=${interrupted}${interruptError === undefined ? "" : " (" + interruptError + ")"} split=${split.join(",") || "none"}`
+    });
+    return {
+      ok: true,
+      teamId: record.teamId,
+      taskId: task.id,
+      member: member.name,
+      handoff,
+      interrupted,
+      ...interruptError === undefined ? {} : { interruptError },
+      requeued: { taskId: task.id, attempt },
+      split,
+      ...mail === undefined ? {} : { mail },
+      ...mailError === undefined ? {} : { mailError }
+    };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
+}
 async function cancelTasks(deps, input) {
   try {
     const record = readTeam(input.workspace, input.teamId);
@@ -7152,9 +7416,9 @@ function groupRecords(frames, level) {
 }
 // packages/mpd-graph-core/src/resolve.ts
 import { readFileSync as readFileSync8, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
-import { isAbsolute as isAbsolute2, join as join10, resolve as resolve3 } from "node:path";
-var LEDGER_PATH = join10(".mpd", "boulder.json");
-var PLANS_DIR = join10(".mpd", "plans");
+import { isAbsolute as isAbsolute2, join as join11, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join11(".mpd", "boulder.json");
+var PLANS_DIR = join11(".mpd", "plans");
 var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
 function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -7166,7 +7430,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync8(join10(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync8(join11(root, LEDGER_PATH), "utf8"));
     return isRecord4(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -7198,7 +7462,7 @@ function newestPlan(root) {
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join10(directory, entry.name);
+      const path = join11(directory, entry.name);
       const stats = statSync3(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
@@ -7211,7 +7475,7 @@ function newestPlan(root) {
   return candidates[0]?.path;
 }
 function plansDirectory(workspaceRoot) {
-  return join10(workspaceRoot, PLANS_DIR);
+  return join11(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -7230,7 +7494,7 @@ function readPlanFile(path) {
 }
 // packages/mpd-graph-core/src/watch.ts
 import { readdirSync as readdirSync5, statSync as statSync4, watch } from "node:fs";
-import { basename, dirname, join as join11 } from "node:path";
+import { basename, dirname, join as join12 } from "node:path";
 var REARM_DELAYS_MS = [25, 100, 400];
 function defaultCreateWatch(path, listener) {
   return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
@@ -7274,7 +7538,7 @@ function directorySignature(directory, accept) {
   for (const name of names.sort()) {
     if (!accept(name))
       continue;
-    const stats = statOrUndefined(join11(directory, name));
+    const stats = statOrUndefined(join12(directory, name));
     if (stats === undefined)
       continue;
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
@@ -7659,7 +7923,7 @@ class GraphModels {
 }
 
 // packages/mpd-team-core-plugin/src/change-feed.ts
-import { mkdirSync as mkdirSync9, watch as watch2 } from "node:fs";
+import { mkdirSync as mkdirSync10, watch as watch2 } from "node:fs";
 var watchDirectory = (dir, onEvent) => watch2(dir, { persistent: false }, onEvent);
 function detachTimer(timer) {
   const unref = timer.unref;
@@ -7782,7 +8046,7 @@ class ChangeFeed {
         if (state.armed.has(dir))
           continue;
         try {
-          mkdirSync9(dir, { recursive: true });
+          mkdirSync10(dir, { recursive: true });
         } catch {}
       }
       for (const dir of dirs) {
@@ -8422,6 +8686,12 @@ function apply(ctx) {
       if (!resolved.ok)
         return resolved;
       return writeMemberHandoff(teamActionsDeps, resolved.caller, { content });
+    },
+    force: async ({ sessionId, teamId, taskId, workspace: requestedWorkspace, evidence }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return forceWedgedTask(teamActionsDeps, requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace }, { teamId, taskId, ...evidence === undefined ? {} : { evidence } });
     },
     cancelTasks: async (input) => cancelTasks(teamActionsDeps, input)
   };
@@ -9456,7 +9726,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join12(root, ".mpd", "team", "staging");
+      const staging = join13(root, ".mpd", "team", "staging");
       const pending = existsSync7(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {

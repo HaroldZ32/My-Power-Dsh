@@ -1021,7 +1021,7 @@ test("the OLD return shape is rejected by the harness validator, so this lock ca
 
 // ── deny list (A2) ─────────────────────────────────────────────────────────────────────────────
 test("the workmate deny list denies bash and the write-capable MCP tools, and carries no dead name", async () => {
-  expect(READONLY_DENY).toEqual(["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"])
+  expect(READONLY_DENY).toEqual(["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict", "mpd_role_spawn_async", "mpd_role_consult"])
   for (const dead of ["str_replace" + "_editor", "apply" + "_patch"]) expect(READONLY_DENY).not.toContain(dead)
 
   /** The harness this arm drives. */

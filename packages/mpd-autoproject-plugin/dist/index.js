@@ -1306,6 +1306,59 @@ function registerAgentSection(agent, section) {
   const registered = systemPrompt.section(section);
   return typeof registered === "function" ? registered : noop;
 }
+function normalizeSpawnResult(settled) {
+  const value = settled ?? {};
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null
+  };
+}
+function activationHandleOf(raw, subagents, parent) {
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
+  let disposed = false;
+  let interrupted = false;
+  const disposeOnce = async () => {
+    if (disposed)
+      return;
+    disposed = true;
+    await releaseActivation(raw);
+  };
+  const result = Promise.resolve(raw?.result).then(async (settled) => {
+    await disposeOnce();
+    return normalizeSpawnResult(settled);
+  }, async (error) => {
+    await disposeOnce();
+    throw error;
+  });
+  return {
+    id,
+    result,
+    interrupt() {
+      if (interrupted)
+        return;
+      interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
+      try {
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
+    }
+  };
+}
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
   return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
@@ -2446,7 +2499,7 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
-    async spawnAgent(spec) {
+    async spawnAgentAsync(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
@@ -2472,13 +2525,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        const settled = await (activation?.result ?? {});
-        await releaseActivation(activation);
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
-        };
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -2493,12 +2540,10 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      const result = await (run?.result ?? {});
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
-      };
+      return activationHandleOf(run, subagents, spec.parent);
+    },
+    async spawnAgent(spec) {
+      return (await adapter.spawnAgentAsync(spec)).result;
     },
     subagentRuntime() {
       return service("subagents");
@@ -3302,7 +3347,7 @@ function buildBoulderStatusCard(_args, value) {
 var BOULDER_STATUS_CARD = toolCard(buildBoulderStatusCard);
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, rename as renameFs, unlink as unlinkFs, writeFile as writeFileFs } from "node:fs/promises";
 import { join as join5 } from "node:path";
 
 // packages/mpd-roles-plugin/src/admission.ts
@@ -3549,6 +3594,8 @@ async function readWorkspaceScale(workspace, opts = {}) {
   }
 }
 var TEAM_RECORDS_DIR = join5(".mpd", "team", "teams");
+var RETEAM_PLAN_NAME = "re-team gate plan shell";
+var SESSION_GATE_STATE_DIR = join5(".mpd", "session-gate");
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
     return GATE_MODE_ADVISORY;
@@ -3564,11 +3611,14 @@ function gatePlanShell(input) {
   const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
+  const lead = input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
+  const name = input.reteam === undefined ? firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX) : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX);
   return {
-    name: firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX),
-    description: "Staged mechanically by the mpd session-start complexity gate on " + matched + "." + `
-This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + `
-Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
+    name,
+    description: lead + `
+This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + (input.reteam === undefined ? `
+Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) : `
+No user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.`) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
 ` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
 Active plan artifact (signal D): ` + input.planPath),
     approval: "required"
@@ -3921,6 +3971,7 @@ function emitPlanMarkdown(plan, criteria) {
 
 // packages/mpd-autoproject-plugin/src/engine.ts
 var ROLE_SPAWN_TOOL = "mpd_role_spawn";
+var ROLE_CONSULT_TOOL = "mpd_role_consult";
 var VERIFY_OPEN_TOOL = "mpd_verify_open";
 var CELLWORK_OPEN_TOOL = "cellwork_open";
 var BOULDER_START_TOOL = "mpd_boulder_start";
@@ -3938,7 +3989,7 @@ var ROW_LOG2 = "mpd-autoproject";
 var SLOTS_CONFIG_KEY = "autoproject.slots";
 var SLOT_BOUND_CONFIG_KEY = "autoproject.slotBoundMs";
 var SLOTS_DEFAULT = 3;
-var SLOT_BOUND_DEFAULT_MS = 1800000;
+var SLOT_BOUND_DEFAULT_MS = 900000;
 function planRoot(config, dsh, exec) {
   return config.planDir ?? join7(dsh.workspaceRoot(exec), ".mpd", "plans");
 }
@@ -4159,34 +4210,62 @@ async function runAutoproject(args, exec, deps) {
     } catch {}
     return own.signal;
   }
+  async function rosterStillSupervising(role) {
+    if (!dsh.hasTool(ROLE_CONSULT_TOOL, exec?.agent))
+      return false;
+    try {
+      const result = await dsh.executeTool({ name: ROLE_CONSULT_TOOL, arguments: { action: "list" }, agent: exec?.agent });
+      if (result?.ok !== true || result.isError === true)
+        return false;
+      const value = result.value ?? {};
+      const consults = Array.isArray(value.consults) ? value.consults : [];
+      return consults.some((entry) => {
+        if (entry === null || typeof entry !== "object")
+          return false;
+        const view = entry;
+        return view.state === "running" && view.role === role;
+      });
+    } catch {
+      return false;
+    }
+  }
   async function consult(role, task, context) {
     await acquireSlot();
     const startedAt = Date.now();
     const controller = new AbortController;
     const signal = composedSignalOf(exec?.signal, controller);
     let timer;
+    const child = consultOnce(role, task, context, signal);
     try {
-      const expired = new Promise((resolve5) => {
-        timer = setTimeout(() => {
-          try {
-            controller.abort();
-          } catch {}
-          resolve5("timeout");
-        }, slotBoundMs);
-      });
-      const raced = await Promise.race([consultOnce(role, task, context, signal), expired]);
-      if (raced !== "timeout")
-        return raced;
-      const elapsedMs = Date.now() - startedAt;
-      const kill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave };
-      killed.push(kill);
-      state.kills = killed;
-      state.slots = slotCount;
-      state.slotBoundMs = slotBoundMs;
-      writeJson(stateFile, state);
-      stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave);
-      dsh.rowLog?.(ROW_LOG2, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)");
-      return null;
+      for (;; ) {
+        const expired = new Promise((resolve5) => {
+          timer = setTimeout(() => resolve5("timeout"), slotBoundMs);
+        });
+        const raced = await Promise.race([child, expired]);
+        if (raced !== "timeout")
+          return raced;
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        if (await rosterStillSupervising(role)) {
+          dsh.rowLog?.(ROW_LOG2, "consult " + role + " is still supervised by its roster deadman at the " + slotBoundMs + " ms slot bound — the engine re-armed instead of aborting the child");
+          continue;
+        }
+        try {
+          controller.abort();
+        } catch {}
+        const elapsedMs = Date.now() - startedAt;
+        const kill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave };
+        killed.push(kill);
+        state.kills = killed;
+        state.slots = slotCount;
+        state.slotBoundMs = slotBoundMs;
+        writeJson(stateFile, state);
+        stamp("late/killed:" + role, "killed", "elapsed=" + elapsedMs + "ms bound=" + slotBoundMs + "ms round=" + state.wave);
+        dsh.rowLog?.(ROW_LOG2, "killed " + role + " at the " + slotBoundMs + " ms slot bound (elapsed " + elapsedMs + " ms)");
+        return null;
+      }
     } finally {
       if (timer !== undefined)
         clearTimeout(timer);
@@ -4202,6 +4281,18 @@ async function runAutoproject(args, exec, deps) {
       return null;
     }
     const value = result.value ?? {};
+    if (value.status === "interrupted") {
+      const handoff = typeof value.handoff === "string" ? value.handoff : "";
+      const elapsedMs = typeof value.elapsedMs === "number" ? value.elapsedMs : 0;
+      const kill = { role, at: new Date().toISOString(), elapsedMs, boundMs: slotBoundMs, round: state.wave };
+      killed.push(kill);
+      state.kills = killed;
+      state.slotBoundMs = slotBoundMs;
+      writeJson(stateFile, state);
+      stamp("late/interrupted:" + role, "killed", "elapsed=" + elapsedMs + "ms handoff=" + (handoff === "" ? "<none>" : handoff));
+      dsh.rowLog?.(ROW_LOG2, "consult " + role + " was interrupted by its deadman (elapsed " + elapsedMs + " ms)" + (handoff === "" ? "" : " — handoff " + handoff));
+      return null;
+    }
     return {
       role: typeof value.role === "string" && value.role !== "" ? value.role : role,
       status: typeof value.status === "string" ? value.status : "",

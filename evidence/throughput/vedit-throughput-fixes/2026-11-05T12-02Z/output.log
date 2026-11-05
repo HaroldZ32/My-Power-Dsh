@@ -1,0 +1,34 @@
+### verify:vendor
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+### verify:dist-fresh
+[verify-dist-fresh] ok: 34/34 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 735ms
+### verify:rows
+[verify-rows-parity] ok: 36 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-autoproject, mpd-better-sidebar, mpd-bootstrap, mpd-cellwork, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-project-init, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+### verify:docs
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=55 failed=0 violations=0 exempt=24 derived=3 links=500 dead=0 — PASS
+### verify:manifest
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+### verify:comments
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### no-host-override
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 214 host-declared row ids)
+### manual-paths
+[verify-manual-paths] PASS resolved=157 over-report=72 under-report=82 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)
+### preset-conformance self-test
+[preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-7y5RS5 (temp); live mtime 1793879689539.2869 -> 1793879689539.2869
+[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (7 row(s) declare no schema), persona prefix=true, mpd preset 29 child rows, row parity 27/27 (negative controls: 4/4 reddened)
+### bun test packages
+ 6 skip
+ 0 fail
+ 50156 expect() calls
+Ran 3588 tests across 240 files. [37.27s]
+### typecheck
+$ tsgo --noEmit
+### test:qa
+[mpd-ext] ok
+[test:qa] all self-tests passed
+### verify:gates
+[verify-gates] workflows out| [verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 37ms
+[verify-gates] PASS - 9/9 member gate(s) green

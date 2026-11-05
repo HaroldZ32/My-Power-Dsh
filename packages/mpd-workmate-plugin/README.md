@@ -261,3 +261,11 @@ shared library shows which workspaces drove it.
 data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
 depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
 generic tool row. The text `render` and the output schema are unchanged.
+
+## Consult-tool deny surface (2026-11-05)
+
+The read-only deny list now carries TEN names (adding `mpd_role_spawn_async` and `mpd_role_consult`),
+and the leaf list carries BOTH names in addition to the two spawn tools. Consequence: a read-only
+workmate cannot start a background consult, cancel another consult, or delegate again. The blocking
+`mpd_workmate_spawn` itself is unchanged — it rides the same async spawn seam and keeps its report
+shape.

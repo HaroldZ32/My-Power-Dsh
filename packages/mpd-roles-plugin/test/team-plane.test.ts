@@ -5,8 +5,8 @@
 // The fixtures below are a RECORDING adapter double: every seam the three installers use is
 // captured, and the team-mutation seams THROW, so "a fired soft signal stages nothing" is
 // proven by the test failing loudly if the gate ever reached for one.
-import { describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { afterAll, describe, expect, test } from "bun:test"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -39,12 +39,29 @@ import {
   latestUserMessage,
   mechanicalNoticeText,
   MISSING_PLAN_ID_PHRASE,
+  NO_TEAM_STAGED_PHRASE,
   PLAN_EXTEND_ACTIONS,
+  CONTROL_TOOL_NAME,
+  isConsultToolName,
   readBoulderGate,
   readLeadingTeam,
+  readReTeamState,
   readWorkspaceScale,
+  RETEAM_AFTER_CONSULTS_CONFIG_KEY,
+  RETEAM_AUTO_END_REASON,
+  RETEAM_DEFAULT_AFTER_CONSULTS,
+  RETEAM_ENABLED_CONFIG_KEY,
+  RETEAM_NOTICE_MARKER,
+  RETEAM_PLAN_NAME,
+  reTeamNoticeText,
+  reTeamRepairNoticeText,
   resolveGateMode,
+  resolveReTeamAfterConsults,
+  resolveReTeamEnabled,
   resolveSensitivity,
+  SESSION_GATE_STATE_DIR,
+  sessionGateStatePath,
+  writeReTeamState,
   SENSITIVITY_CONFIG_KEY,
   SENSITIVITY_THRESHOLDS,
   sessionQualifies,
@@ -55,8 +72,25 @@ import {
 import { installSessionGate } from "../src/session-gate.ts"
 import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "../src/roster-section.ts"
 
-/** The sandbox workspace every fixture session reports as its cwd. */
+/** The sandbox workspace the PURE fixtures report as their cwd (never a gate's runtime root). */
 const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
+
+/**
+ * The parent directory every ADAPTER DOUBLE's own workspace is created under, removed after the file.
+ *
+ * A harness double needs a DISTINCT workspace per instance since D1: the re-team gate persists a
+ * per-session counter at `<workspace>/.mpd/session-gate/<sessionId>.json`, so two doubles sharing one
+ * root would read each other's settled state — the exact "a fired session never fires again" leak the
+ * production path must not have and a test must not inherit. Each harness therefore models its own
+ * workspace, exactly as a real boot's session header does.
+ */
+const HARNESS_ROOT = mkdtempSync(join(tmpdir(), "mpd-team-plane-harness-"))
+/** Monotonic counter giving each harness double its own workspace directory name. */
+let harnessSeq = 0
+
+afterAll(() => {
+  rmSync(HARNESS_ROOT, { recursive: true, force: true })
+})
 
 /**
  * The EXPLICIT `team.gate: "mechanical"` opt-in every arm whose SUBJECT is the staging route drives,
@@ -74,12 +108,12 @@ const MECHANICAL_OPT_IN = (key: string): unknown => (key === GATE_CONFIG_KEY
   ? GATE_MODE_MECHANICAL
   : key === SENSITIVITY_CONFIG_KEY ? "normal" : undefined)
 
-/** A qualifying mpd top-level session. */
-function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {
+/** A qualifying mpd top-level session, whose header cwd is the workspace the gate must use. */
+function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}, cwd: string = WORKSPACE): {
   id: string
   session: { header: Record<string, unknown> }
 } {
-  return { id, session: { header: { cwd: WORKSPACE, agentPreset: "mpd", ...header } } }
+  return { id, session: { header: { cwd, agentPreset: "mpd", ...header } } }
 }
 
 /** A user-role message fixture: one text block, tagged as a real user turn. */
@@ -100,6 +134,8 @@ function planeHarness(options: {
   tools?: string[]
   /** The answer one `executeTool` call returns; defaults to a successful `create` payload. */
   toolResult?: unknown
+  /** The workspace this double reports; defaults to a fresh directory of its own (see {@link HARNESS_ROOT}). */
+  workspace?: string
 } = {}): {
   dsh: unknown
   calls: Array<{ seam: string; args: unknown[] }>
@@ -111,8 +147,16 @@ function planeHarness(options: {
   agents: unknown[]
   /** Every `executeTool` call the gate made, in order — the mechanical route's proof. */
   toolCalls: Array<{ name: string; arguments: unknown; agent: unknown; timeoutMs?: number }>
+  /** Every per-tool observer the gate subscribed through `onPostToolExecute`, in order. */
+  toolObservers: Array<(exec: unknown, result: unknown) => unknown>
+  /** The workspace this double reports as the session's own. */
+  workspace: string
   emit: (event: string, payload: unknown) => void
+  /** Drive the ONE per-tool hook with a completed call (the consult counter's only input). */
+  emitToolResult: (exec: unknown, result: unknown) => Promise<void>
 } {
+  /** This double's own workspace, distinct from every other double's (the re-team state is per session). */
+  const workspace = options.workspace ?? join(HARNESS_ROOT, "ws-" + String((harnessSeq += 1)))
   /** Every adapter seam call the double recorded, in call order. */
   const calls: Array<{ seam: string; args: unknown[] }> = []
   /** Append one seam invocation, so an arm can prove a seam was never reached. */
@@ -128,10 +172,12 @@ function planeHarness(options: {
   const steps: Array<{ agent: unknown; listener: (payload: any, decision: any) => unknown }> = []
   /** Host-plane event listeners by event name (the agent/created and disposed seam). */
   const listeners = new Map<string, Array<(...args: unknown[]) => unknown>>()
-  /** The live agents the double reports; one qualifying lead unless overridden. */
-  const agents = options.agents ?? [mpdAgent()]
+  /** The live agents the double reports; one qualifying lead in THIS workspace unless overridden. */
+  const agents = options.agents ?? [mpdAgent("lead-1", {}, workspace)]
   /** Every internal tool call the gate issued, which is how "staged" is proven. */
   const toolCalls: Array<{ name: string; arguments: unknown; agent: unknown; timeoutMs?: number }> = []
+  /** Every per-tool observer the gate subscribed; D1's consult counter is the only user. */
+  const toolObservers: Array<(exec: unknown, result: unknown) => unknown> = []
   /** Monotonic counter keeping each injected notice id unique within a test. */
   let messageSeq = 0
 
@@ -169,7 +215,7 @@ function planeHarness(options: {
       sections.push({ agent, section })
       return () => { released.push(section.name) }
     },
-    workspaceRoot: () => WORKSPACE,
+    workspaceRoot: () => workspace,
     // ── the two INTERNAL-TOOL seams the MECHANICAL gate stages through ──
     // `tools` is EMPTY unless an arm asks for the staging tool, so every other arm exercises the
     // ladder's advisory step (a composition without mpd-team-core) by default. The probe RECORDS
@@ -180,6 +226,14 @@ function planeHarness(options: {
       record("executeTool", input.name, input.arguments)
       toolCalls.push({ name: input.name, arguments: input.arguments, agent: input.agent, ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }) })
       return options.toolResult ?? { ok: true, isError: false, value: { plan: { planId: "plan-staged-1", name: "shell" } } }
+    },
+    // THE ONE PER-TOOL OBSERVATION SEAM (D1 rule 5): the consult counter subscribes here and uses
+    // NO second path — the `session/event` stream belongs to the watchdog. The listener is returned
+    // as-is, so `emitToolResult` can await the accounting it performs.
+    onPostToolExecute: (listener: (exec: unknown, result: unknown) => unknown) => {
+      record("onPostToolExecute")
+      toolObservers.push(listener)
+      return () => { /* unregistered */ }
     },
     // ── the seams the gate must NEVER reach DIRECTLY (staging goes through the tool) ──
     teamSpawnTeammate: () => { record("teamSpawnTeammate"); throw new Error("the gate staged a teammate") },
@@ -196,7 +250,10 @@ function planeHarness(options: {
     listeners,
     agents,
     toolCalls,
+    toolObservers,
+    workspace,
     emit: (event: string, payload: unknown) => { for (const handler of listeners.get(event) ?? []) handler(payload) },
+    emitToolResult: async (exec: unknown, result: unknown) => { for (const listener of toolObservers) await listener(exec, result) },
   }
 }
 
@@ -206,9 +263,9 @@ const memberFixtures = ROLES.map((role) => ({ name: role.name, description: role
 const readonlyNames = ROLES.filter((role) => role.readonly).map((role) => role.name)
 
 describe("read-only discipline: the guard denies exactly the roster's read-only members", () => {
-  test("the guard's deny list IS the one-shot path's list (one constant, eight names)", () => {
-    expect(READONLY_DENY).toHaveLength(8)
-    expect(new Set(READONLY_DENY).size).toBe(8)
+  test("the guard's deny list IS the one-shot path's list (one constant, ten names)", () => {
+    expect(READONLY_DENY).toHaveLength(10)
+    expect(new Set(READONLY_DENY).size).toBe(10)
     /** The double, with a read-only Explorer teammate as the calling membership. */
     const harness = planeHarness({ membership: { teamId: "team-1", role: "teammate", name: "Explorer" } })
     /** The guard installation result, whose recorded guard is invoked below. */
@@ -707,7 +764,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const decided: any = await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     // NO second staging call: the captain's in-progress plan survives.
     expect(harness.toolCalls).toEqual([])
-    expect(probes).toEqual([{ workspace: WORKSPACE, sessionId: "lead-1" }])
+    expect(probes).toEqual([{ workspace: harness.workspace, sessionId: "lead-1" }])
     // The notice names the plan that IS staged and says the gate did not stage again.
     expect(decided.messages[1].content[0].text).toContain(ALREADY_STAGED_PLAN_PHRASE)
     expect(decided.messages[1].content[0].text).toContain("plan-already-there")
@@ -882,7 +939,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const claimed = userMessage("fix the typo")
     /** The decision for the active-work case, carrying the D notice. */
     const decided: any = await active.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
-    expect(seen[0]).toBe(join(WORKSPACE, ".mpd", "boulder.json"))
+    expect(seen[0]).toBe(join(active.workspace, ".mpd", "boulder.json"))
     expect(decided.messages[1].content[0].text).toContain("complexity signals D")
 
     // The `boulder.dir` override replaces the workspace as the STATE ROOT (resolved per call).
@@ -1132,7 +1189,9 @@ describe("gate registration through the REAL adapter (the mounted-but-silent reg
     /** The live agent the adapter discovers through the agents service. */
     const lead = {
       id: "lead-1",
-      session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } },
+      // A workspace of THIS process's own: the gate now persists its re-team settlement under the
+      // session workspace, so a shared root would let one test run settle another's gate.
+      session: { header: { cwd: join(HARNESS_ROOT, "real-adapter-ws"), agentPreset: "mpd" } },
       // The agent's OWN scope — the only site whose delivery the scope filter admits.
       ctx: { on: (event: string, listener: any) => { captured.push({ event, listener }); return () => { /* unregistered */ } } },
     }
@@ -1448,10 +1507,10 @@ describe("team.sensitivity and signal F: the eager default, with `normal` pinned
     // default row, with F as the fired signal — and the SAME prompt/listing stays silent on `normal`.
     /** The large root listing the F probe reads (`readLeadingTeam` gets an empty answer). */
     const largeRoot = ["package.json", "packages", "src", "docs", "scripts", "skills", "tests", "AGENTS.md", ".git", ".mpd"]
-    /** A reader that answers the workspace ROOT with the large listing and every other path empty. */
-    const readDir = async (path: string): Promise<readonly string[]> => (path === WORKSPACE ? largeRoot : [])
     /** The eager harness: the shipped default, nothing pinned. */
     const eager = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** A reader that answers THIS harness's workspace ROOT with the large listing and every other path empty. */
+    const readDir = async (path: string): Promise<readonly string[]> => (path === eager.workspace ? largeRoot : [])
     installSessionGate(eager.dsh as never, { warn: () => {}, readDir })
     /** The trivial greeting the gate must judge. */
     const hello = userMessage("Reply with exactly: hello-ok")
@@ -1607,5 +1666,608 @@ describe("C7: a session already LEADING a team is never sent to stage one", () =
     } finally {
       rmSync(probe, { recursive: true, force: true })
     }
+  })
+})
+
+// ── D1: THE RE-TEAM GATE ────────────────────────────────────────────────────
+// The wave that must let a session build its NEXT team: ended-aware leading, the clean-terminal
+// auto-end, the failed-task block, the re-armable settlement and the mid-session volume trigger.
+describe("D1: the re-team gate — ended-aware leading, clean-terminal auto-end, re-arming", () => {
+  /** One team record carrying exactly the fields this gate reads, as `mpd-team-core` writes them. */
+  const teamRecord = (input: {
+    lead?: string
+    teamId?: string
+    members?: number
+    tasks?: ReadonlyArray<{ id?: string; status: string }>
+    endedAt?: string
+  } = {}): string => JSON.stringify({
+    version: 1,
+    teamId: input.teamId ?? "team-1",
+    leadSessionId: input.lead ?? "lead-1",
+    members: Array.from({ length: input.members ?? 2 }, (_, index) => ({ id: "M" + String(index + 1) })),
+    tasks: (input.tasks ?? []).map((task, index) => ({ id: task.id ?? "task-" + String(index + 1), status: task.status })),
+    ...(input.endedAt === undefined ? {} : { endedAt: input.endedAt }),
+  })
+
+  /** The team-record seams: one fixed directory listing and one reader keyed by file name. */
+  const recordSeams = (record: string | null): {
+    readDir: (path: string) => Promise<readonly string[]>
+    readFile: (path: string) => Promise<string>
+  } => ({
+    readDir: async (): Promise<readonly string[]> => (record === null ? [] : ["team-1.json"]),
+    readFile: async (): Promise<string> => record ?? "{}",
+  })
+
+  /** An in-memory re-team state store: the counter file's boundary, asserted without touching disk. */
+  const stateStore = (): {
+    files: Map<string, string>
+    readFile: (path: string) => Promise<string>
+    writeFile: (path: string, content: string) => Promise<void>
+    at: (path: string) => Record<string, unknown> | undefined
+  } => {
+    /** The exact bytes written per path. */
+    const files = new Map<string, string>()
+    return {
+      files,
+      readFile: async (path: string): Promise<string> => {
+        /** The bytes at one path, or undefined when nothing was written there. */
+        const content = files.get(path)
+        if (content === undefined) throw new Error("ENOENT " + path)
+        return content
+      },
+      writeFile: async (path: string, content: string): Promise<void> => { files.set(path, content) },
+      at: (path: string): Record<string, unknown> | undefined => {
+        /** The bytes at one path, or undefined when nothing was written there. */
+        const content = files.get(path)
+        return content === undefined ? undefined : JSON.parse(content) as Record<string, unknown>
+      },
+    }
+  }
+
+  /** A completed consult of one counted spelling, executed by one agent. */
+  const consultOf = (name: string, agent: unknown): { name: string; agent: unknown } => ({ name, agent })
+  /** The harness's per-tool completion verdict: a call that returned without an error. */
+  const completed = (): { isError: boolean } => ({ isError: false })
+
+  /** Drive ONE pre-step of a harness, with the messages it claims and an `enter` decision to amend. */
+  const step = async (harness: ReturnType<typeof planeHarness>, messages: unknown[] = []): Promise<any> => harness.steps[0].listener(
+    { messages, turn: 1, step: 1, signal: new AbortController().signal },
+    { kind: "enter", messages },
+  )
+
+  test("readLeadingTeam: an ENDED record is not leading, however many members it still lists", async () => {
+    /** The read for a record `endTeamRecord` closed but did not empty (members are preserved). */
+    const read = await readLeadingTeam("/ws", "lead-1", recordSeams(teamRecord({ tasks: [{ status: "in_progress" }], endedAt: "2026-11-05T00:00:00.000Z" })))
+    expect(read.leading).toBe(false)
+    expect(read.ended).toBe(true)
+    expect(read.teamId).toBe("team-1")
+    expect(read.members).toBe(2)
+  })
+
+  test("readLeadingTeam: a CLEAN-TERMINAL board is not leading even with NO endedAt (rule 2)", async () => {
+    /** The record: every task completed or cancelled, none failed, no `endedAt` — the VEdit shape. */
+    const record = teamRecord({ tasks: [{ status: "completed" }, { status: "cancelled" }] })
+    /** The read for a board that finished with no failure and no `endedAt`. */
+    const read = await readLeadingTeam("/ws", "lead-1", recordSeams(record))
+    expect(read.leading).toBe(false)
+    expect(read.cleanTerminal).toBe(true)
+    expect(read.ended).toBeUndefined()
+    expect(read.autoEndTeamIds).toEqual(["team-1"])
+    expect(read.terminalTeamIds).toEqual(["team-1"])
+    // FALSIFIABILITY: the SAME board with ONE row still in flight is a LIVE team again.
+    const live = await readLeadingTeam("/ws", "lead-1", recordSeams(teamRecord({ tasks: [{ status: "completed" }, { status: "in_progress" }] })))
+    expect(live.leading).toBe(true)
+    expect(live.cleanTerminal).toBeUndefined()
+  })
+
+  test("readLeadingTeam: an EMPTY board is NOT clean-terminal — a members-only team stays leading", async () => {
+    // `hasTasks` is load-bearing: without it `every` is vacuously true and an approved MEMBERS-ONLY
+    // team would be auto-ended on the next pre-step. The QA fixture c7 asserts this exact shape.
+    const read = await readLeadingTeam("/ws", "lead-1", recordSeams(teamRecord({ members: 7, tasks: [] })))
+    expect(read).toEqual({ leading: true, teamId: "team-1", members: 7 })
+  })
+
+  test("readLeadingTeam: a FAILED task keeps the team leading and names the failed row", async () => {
+    /** The read for a board whose verification left one row `failed`. */
+    const read = await readLeadingTeam("/ws", "lead-1", recordSeams(teamRecord({ tasks: [{ status: "completed" }, { id: "task-9", status: "failed" }] })))
+    expect(read.leading).toBe(true)
+    expect(read.failedTaskId).toBe("task-9")
+    expect(read.failedTeamId).toBe("team-1")
+    // Nothing is auto-ended on a failed board: the auto-end list exists only for CLEAN terminals.
+    expect(read.autoEndTeamIds).toBeUndefined()
+  })
+
+  test("readLeadingTeam: one LIVE record outranks terminal siblings; all-terminal reads not leading", async () => {
+    /** A workspace holding one ended record and one live record for the same session. */
+    const mixed = async (): Promise<readonly string[]> => ["team-ended.json", "team-live.json"]
+    /** A reader answering each record by file name. */
+    const readFile = async (path: string): Promise<string> => (path.endsWith("team-ended.json")
+      ? teamRecord({ teamId: "team-old", tasks: [{ status: "completed" }], endedAt: "2026-11-05T00:00:00.000Z" })
+      : teamRecord({ teamId: "team-live", tasks: [{ status: "in_progress" }] }))
+    /** The read that must prefer the live record over the ended one. */
+    const read = await readLeadingTeam("/ws", "lead-1", { readDir: mixed, readFile })
+    expect(read.leading).toBe(true)
+    expect(read.teamId).toBe("team-live")
+    /** The every-record-terminal twin: two finished records and nothing live. */
+    const allDone = await readLeadingTeam("/ws", "lead-1", {
+      readDir: async (): Promise<readonly string[]> => ["a.json", "b.json"],
+      readFile: async (path: string): Promise<string> => (path.endsWith("a.json")
+        ? teamRecord({ teamId: "team-a", tasks: [{ status: "completed" }] })
+        : teamRecord({ teamId: "team-b", tasks: [{ status: "completed" }], endedAt: "2026-11-05T00:00:00.000Z" })),
+    })
+    expect(allDone.leading).toBe(false)
+    expect(allDone.terminalTeamIds).toEqual(["team-a", "team-b"])
+    expect(allDone.autoEndTeamIds).toEqual(["team-a"])
+  })
+
+  test("resolvers: the enabled flag is fail-safe ON; the threshold is a positive integer or 4", () => {
+    expect(resolveReTeamEnabled(undefined)).toBe(true)
+    expect(resolveReTeamEnabled(true)).toBe(true)
+    expect(resolveReTeamEnabled("bogus")).toBe(true)
+    expect(resolveReTeamEnabled(false)).toBe(false)
+    expect(resolveReTeamEnabled("off")).toBe(false)
+    expect(resolveReTeamEnabled(0)).toBe(false)
+    expect(resolveReTeamAfterConsults(undefined)).toBe(RETEAM_DEFAULT_AFTER_CONSULTS)
+    expect(resolveReTeamAfterConsults(6)).toBe(6)
+    expect(resolveReTeamAfterConsults("2")).toBe(2)
+    expect(resolveReTeamAfterConsults(0)).toBe(4)
+    expect(resolveReTeamAfterConsults(-1)).toBe(4)
+    expect(resolveReTeamAfterConsults(2.9)).toBe(2)
+    expect(resolveReTeamAfterConsults("many")).toBe(4)
+  })
+
+  test("isConsultToolName counts the three completed spawn spellings and nothing else", () => {
+    expect(isConsultToolName("mpd_role_spawn")).toBe(true)
+    expect(isConsultToolName("mpd_role_spawn_async")).toBe(true)
+    expect(isConsultToolName("mpd_workmate_spawn")).toBe(true)
+    expect(isConsultToolName("mpd_role_persona")).toBe(false)
+    expect(isConsultToolName("agent_teams_plan")).toBe(false)
+    expect(isConsultToolName(undefined)).toBe(false)
+    expect(isConsultToolName("")).toBe(false)
+  })
+
+  test("the re-team notice states the trigger, the count, the plan id and the inertness rule", () => {
+    /** The staged-shell notice, the positive shape. */
+    const staged = reTeamNoticeText({ count: 4, threshold: 4, staged: true, alreadyStaged: false, planId: "plan-9" })
+    expect(staged.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    expect(staged).toContain("4 COMPLETED consult calls")
+    expect(staged).toContain("plan-9")
+    expect(staged).toContain(INERT_PLAN_PHRASE)
+    expect(staged).toContain(RETEAM_ENABLED_CONFIG_KEY)
+    // The degraded route must NOT claim a staged shell.
+    /** The notice a route with no staging tool produces. */
+    const degraded = reTeamNoticeText({ count: 4, threshold: 4, staged: false, alreadyStaged: false, planId: "", error: "no tool" })
+    expect(degraded).toContain(NO_TEAM_STAGED_PHRASE)
+    expect(degraded).toContain("no tool")
+    // An already-staged plan is named, and a SECOND shell is explicitly not claimed.
+    /** The notice the idempotence probe's "staged" answer produces. */
+    const already = reTeamNoticeText({ count: 4, threshold: 4, staged: false, alreadyStaged: true, planId: "plan-old" })
+    expect(already).toContain(ALREADY_STAGED_PLAN_PHRASE)
+    expect(already).toContain("plan-old")
+    // A staged shell without an id is LOUD, exactly like the session-start notice.
+    expect(reTeamNoticeText({ count: 4, threshold: 4, staged: true, alreadyStaged: false, planId: "" })).toContain(MISSING_PLAN_ID_PHRASE)
+  })
+
+  test("the repair notice keeps the contract's sentence and names the failed row", () => {
+    /** The notice a failed board produces. */
+    const text = reTeamRepairNoticeText("team-9", "task-3")
+    expect(text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    expect(text).toContain("team team-9 has an unrepaired failed task; create a kind=repair task")
+    expect(text).toContain("task-3")
+    expect(reTeamRepairNoticeText("team-9")).not.toContain("the failed row is")
+  })
+
+  test("readReTeamState/writeReTeamState are total: a missing file and a failing writer never throw", async () => {
+    expect(await readReTeamState("/ws", "s", { readFile: async () => { throw new Error("ENOENT") } })).toBeUndefined()
+    expect(await readReTeamState("/ws", "s", { readFile: async () => "{ not json" })).toBeUndefined()
+    /** The full round trip of the four persisted fields. */
+    const decoded = await readReTeamState("/ws", "s", { readFile: async () => JSON.stringify({ consultCount: 3, lastFiredAt: 7, planId: "p", teamIdAtFire: "t" }) })
+    expect(decoded).toEqual({ consultCount: 3, lastFiredAt: 7, planId: "p", teamIdAtFire: "t" })
+    expect(await writeReTeamState("/ws", "s", { consultCount: 0, lastFiredAt: 0, planId: "", teamIdAtFire: "" }, { writeFile: async () => { throw new Error("EACCES") } })).toBe(false)
+    // A hostile session id becomes ONE file name under the state directory, never a nested path.
+    expect(sessionGateStatePath("/ws", "../../etc/passwd")).toBe(join("/ws", SESSION_GATE_STATE_DIR, ".._.._etc_passwd.json"))
+  })
+
+  test("auto-end: a clean-terminal record is closed ONCE through agent_teams_control, as this agent", async () => {
+    /** The record: every task terminal, none failed, and NO `endedAt` yet (the VEdit shape). */
+    const record = teamRecord({ tasks: [{ status: "completed" }, { status: "cancelled" }] })
+    /** The double whose composition REGISTERS the staging tool, so a wrong fire would be visible. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter, so this arm never touches the disk. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      ...recordSeams(record),
+    })
+    expect(await step(harness)).toBeUndefined()
+    // EXACTLY ONE control call, with the contract's action/team/reason and the LIVE agent.
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(harness.toolCalls[0].name).toBe(CONTROL_TOOL_NAME)
+    expect(harness.toolCalls[0].agent).toBe(harness.agents[0])
+    expect(harness.toolCalls[0].arguments).toEqual({ action: "end", team_id: "team-1", reason: RETEAM_AUTO_END_REASON })
+    // ONE attempt per team: a second pre-step does not repeat the call.
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+    // The roles plugin wrote NO team record itself: the CONTROL tool is the only writer.
+    expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
+  })
+
+  test("an ENDED record is not re-ended and, with no user text, stages nothing", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      ...recordSeams(teamRecord({ tasks: [{ status: "in_progress" }], endedAt: "2026-11-05T00:00:00.000Z" })),
+    })
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toEqual([])
+  })
+
+  test("a FAILED task blocks both actions: no auto-end, no re-stage, ONE repair notice", async () => {
+    /** The record whose board carries the failed verification row. */
+    const record = teamRecord({ tasks: [{ status: "completed" }, { id: "task-9", status: "failed" }] })
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      ...recordSeams(record),
+    })
+    // Even a STRONG human prompt stages nothing: the failed wave is never closed silently.
+    /** The complex turn that would otherwise fire the session-start predicate. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    /** The decision the repair notice must ride: TWO messages, the notice second. */
+    const decided: any = await step(harness, [claimed])
+    expect(harness.toolCalls).toEqual([])
+    expect(decided.messages).toHaveLength(2)
+    expect(decided.messages[1].content[0].text).toBe(reTeamRepairNoticeText("team-1", "task-9"))
+    expect(decided.messages[1].content[0].text).toContain("has an unrepaired failed task; create a kind=repair task")
+    // ONE notice per team per process: the next pre-step injects nothing.
+    expect(await step(harness, [claimed])).toBeUndefined()
+  })
+
+  test("the volume trigger: below the threshold nothing fires; at it ONE shell and ONE notice", async () => {
+    /** The double whose composition registers the staging tool and answers the empty "no staged plan". */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      // NO team record at all: the trigger's "no live team" half.
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    // THREE completed consults — all three counted spellings — stay below the shipped threshold of 4.
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    await harness.emitToolResult(consultOf("mpd_workmate_spawn", harness.agents[0]), completed())
+    await harness.emitToolResult(consultOf("mpd_role_spawn_async", harness.agents[0]), completed())
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toEqual([])
+    // The FOURTH crosses it: ONE shell staged, ONE notice, and NO user turn is needed.
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    /** The decision carrying the ONE re-team notice, with NO user turn claimed. */
+    const decided: any = await step(harness)
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(harness.toolCalls[0].name).toBe(STAGING_TOOL_NAME)
+    /** The staging call's arguments, asserted field by field. */
+    const args = harness.toolCalls[0].arguments as { action: string; name: string; description: string; approval: string }
+    expect(args.action).toBe("create")
+    expect(args.approval).toBe("required")
+    expect(args.name).toBe(RETEAM_PLAN_NAME)
+    expect(args.description).toContain("re-team gate")
+    expect(args.description).toContain("0 members and 0 tasks")
+    // EXACTLY ONE notice, carrying the marker, the count, the returned plan id and the inertness rule.
+    expect(decided.messages).toHaveLength(1)
+    /** The ONE injected re-team notice. */
+    const notice = decided.messages[0]
+    expect(notice.role).toBe("user")
+    expect(notice.content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    expect(notice.content[0].text).toContain("4 COMPLETED consult calls")
+    expect(notice.content[0].text).toContain("plan-staged-1")
+    expect(notice.content[0].text).toContain(INERT_PLAN_PHRASE)
+    // NO member and NO task was created: the gate reached neither mutation seam.
+    expect(harness.calls.filter((call) => call.seam.startsWith("team"))).toEqual([])
+    // THE SECOND PRE-STEP: the settlement holds, so no second staging and no second notice.
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+  })
+
+  test("re-arming: the plan's approval binds the settlement, and the team's END fires the next shell", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** The team record the session's own directory currently holds (mutable, per arm). */
+    let current: string | null = null
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => (current === null ? [] : ["team-1.json"]),
+      readFile: async (): Promise<string> => current ?? "{}",
+    })
+    /** Emit ONE completed consult for this session's agent. */
+    const consultOnce = async (): Promise<void> => { await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed()) }
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) await consultOnce()
+    /** The FIRST fire: one shell staged, the settlement armed. */
+    const first: any = await step(harness)
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(first.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    // THE PLAN-APPROVED HALF OF RULE 4: the session now LEADS the team that plan spawned, so the
+    // settlement is cleared and bound to that team. Nothing is staged while the team is live.
+    current = teamRecord({ tasks: [{ status: "in_progress" }] })
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+    // FOUR consults accumulate WHILE the team works — they are the next fire's volume.
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) await consultOnce()
+    expect(await step(harness)).toBeUndefined()
+    // THE TEAM ENDS by its board finishing cleanly (nobody called `end`) — the VEdit shape.
+    current = teamRecord({ tasks: [{ status: "completed" }] })
+    /** The SECOND fire: the re-armed session stages the NEXT shell in the same step. */
+    const second: any = await step(harness)
+    /** Every staging call the gate made, in order. */
+    const staging = harness.toolCalls.filter((call) => call.name === STAGING_TOOL_NAME)
+    expect(staging).toHaveLength(2)
+    // The clean-terminal record was closed exactly once on the way through.
+    expect(harness.toolCalls.filter((call) => call.name === CONTROL_TOOL_NAME)).toHaveLength(1)
+    expect(second.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+  })
+
+  test("a STALE terminal record never clears a fresh settlement (CR r1 [8])", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    // `recordFire` always leaves `teamIdAtFire` EMPTY, and the old `bound` check read "" as bound —
+    // so ANY terminal record for this session re-armed a fresh settlement, and the session then
+    // re-nagged on the next complex user turn. This record was ended YEARS before the fire.
+    /** One ended record for this session, stamped long BEFORE the fire. */
+    const stale = teamRecord({ tasks: [{ status: "completed" }], endedAt: "2020-01-01T00:00:00.000Z" })
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      ...recordSeams(stale),
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    /** The FIRE: one shell staged, the settlement armed with an empty `teamIdAtFire`. */
+    const fired: any = await step(harness)
+    expect(fired.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    expect(harness.toolCalls).toHaveLength(1)
+    // THE NEXT STEP claims a turn the session-start predicate WOULD fire on: because the settlement
+    // is not owned by the stale record it HOLDS — nothing is re-armed, staged or injected.
+    /** The complex user turn a wrongly re-armed session would answer with a second shell. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    expect(await step(harness, [claimed])).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+  })
+
+  test("a team that ended AFTER the fire still clears the settlement (CR r1 [8] recovery case)", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** The team-record file the session's directory holds; stays empty until the post-fire flip. */
+    let current: string | null = null
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => (current === null ? [] : ["team-1.json"]),
+      readFile: async (): Promise<string> => current ?? "{}",
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    /** The FIRE: nothing live and nothing terminal yet, so the shell is staged with an empty binding. */
+    const fired: any = await step(harness)
+    expect(fired.messages[0].content[0].text.startsWith(RETEAM_NOTICE_MARKER)).toBe(true)
+    // THE APPROVED-AND-FINISHED-BETWEEN-STEPS CASE: a record that ended AFTER `lastFiredAt` IS owned
+    // by the settlement, so it re-arms the session and the next complex turn stages again.
+    current = teamRecord({ tasks: [{ status: "completed" }], endedAt: "2999-01-01T00:00:00.000Z" })
+    /** The complex user turn a RE-ARMED session must answer with a second shell. */
+    const claimed = userMessage("Check the tests, build the package, verify the output.")
+    expect(await step(harness, [claimed])).not.toBeUndefined()
+    expect(harness.toolCalls.filter((call) => call.name === STAGING_TOOL_NAME)).toHaveLength(2)
+  })
+
+  test("concurrent pre-steps SHARE one in-flight state load (CR r1 [7])", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** How many times the state FILE is read: the shared promise must make this exactly one. */
+    let stateReads = 0
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: async (path: string): Promise<string> => { stateReads += 1; return store.readFile(path) },
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    // TWO overlapping pre-steps for ONE session: both reach the state load before either can stage.
+    await Promise.all([step(harness), step(harness)])
+    // ONE load, shared by both callers: the second never builds a rival record over the first.
+    expect(stateReads).toBe(1)
+  })
+
+  test("the DEFAULT state writer replaces atomically and leaves no temp file (CR r1 [5])", async () => {
+    /** A private workspace under the harness root, removed by this file's `afterAll`. */
+    const dir = mkdtempSync(join(HARNESS_ROOT, "reteam-atomic-"))
+    /** The first of two overlapping writes for ONE session. */
+    const first = { consultCount: 1, lastFiredAt: 0, planId: "", teamIdAtFire: "" }
+    /** The second overlapping write, racing the first on the same destination. */
+    const second = { consultCount: 2, lastFiredAt: 0, planId: "plan-x", teamIdAtFire: "" }
+    // TWO writers race on ONE destination — the overlap the temp+rename replace must survive.
+    expect(await Promise.all([writeReTeamState(dir, "s", first), writeReTeamState(dir, "s", second)])).toEqual([true, true])
+    /** The ONE state file both writers target. */
+    const path = sessionGateStatePath(dir, "s")
+    // A COMPLETE record won the atomic replace: mixed or truncated bytes would fail this decode.
+    expect([first, second]).toContainEqual(JSON.parse(readFileSync(path, "utf8")))
+    // Nothing else survives in the directory: no `.tmp` residue from either writer.
+    expect(readdirSync(dirname(path))).toEqual(["s.json"])
+  })
+
+  test("team.reteam.enabled=false turns ONLY the volume trigger off; the auto-end still runs", async () => {
+    /** The record shape a finished board without `endedAt` has. */
+    const finished = teamRecord({ tasks: [{ status: "completed" }] })
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** The config layer: mechanical, with the re-team trigger turned OFF. */
+    const configValue = (key: string): unknown => (key === RETEAM_ENABLED_CONFIG_KEY ? false : MECHANICAL_OPT_IN(key))
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue,
+      ...recordSeams(finished),
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    // FOUR consults and a clean board: the AUTO-END runs (rule 3), the volume trigger does not stage.
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+    expect(harness.toolCalls[0].name).toBe(CONTROL_TOOL_NAME)
+  })
+
+  test("team.reteam.afterConsults overrides the shipped threshold", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter. */
+    const store = stateStore()
+    /** The config layer: the threshold lowered to 2. */
+    const configValue = (key: string): unknown => (key === RETEAM_AFTER_CONSULTS_CONFIG_KEY ? 2 : MECHANICAL_OPT_IN(key))
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    expect(await step(harness)).toBeUndefined()
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    expect(await step(harness)).not.toBeUndefined()
+    expect(harness.toolCalls).toHaveLength(1)
+  })
+
+  test("the counter PERSISTS: the four fields land in <ws>/.mpd/session-gate/<sessionId>.json", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The in-memory counter, shared with the "restarted" install below. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    /** The state file's path, which is the contract's own spelling. */
+    const path = sessionGateStatePath(harness.workspace, "lead-1")
+    expect(path).toBe(join(harness.workspace, SESSION_GATE_STATE_DIR, "lead-1.json"))
+    expect(store.at(path)).toEqual({ consultCount: 2, lastFiredAt: 0, planId: "", teamIdAtFire: "" })
+    // A PROCESS RESTART over the SAME file: the count is not lost, so two more consults cross 4.
+    /** The restarted composition, pointed at the previous workspace and state store. */
+    const restarted = planeHarness({ tools: [STAGING_TOOL_NAME], workspace: harness.workspace })
+    installSessionGate(restarted.dsh as never, {
+      warn: () => {},
+      stagedPlan: () => null,
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    await restarted.emitToolResult(consultOf("mpd_role_spawn", restarted.agents[0]), completed())
+    expect(await step(restarted)).toBeUndefined()
+    await restarted.emitToolResult(consultOf("mpd_role_spawn", restarted.agents[0]), completed())
+    expect(await step(restarted)).not.toBeUndefined()
+    expect(restarted.toolCalls).toHaveLength(1)
+    // The FIRE resets the counter and remembers the plan it staged, so a restart does not re-nag.
+    expect(store.at(path)).toMatchObject({ consultCount: 0, planId: "plan-staged-1" })
+  })
+
+  test("a DEGRADED route says NO team was staged instead of inventing a plan", async () => {
+    /** A composition where the staging tool is ABSENT, so the mechanical route cannot stage. */
+    const harness = planeHarness()
+    /** The in-memory counter. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, {
+      warn: () => {},
+      stateReadFile: store.readFile,
+      stateWriteFile: store.writeFile,
+      configValue: MECHANICAL_OPT_IN,
+      readDir: async (): Promise<readonly string[]> => [],
+    })
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", harness.agents[0]), completed())
+    }
+    /** The decision whose notice must say NOTHING was staged. */
+    const decided: any = await step(harness)
+    expect(harness.toolCalls).toEqual([])
+    expect(decided.messages[0].content[0].text).toContain(NO_TEAM_STAGED_PHRASE)
+    expect(decided.messages[0].content[0].text).not.toContain(STAGED_PLAN_PHRASE)
+  })
+
+  test("scope: a child session never gets a listener and never counts a consult", async () => {
+    /** A child session (a recorded subagent origin), which must never receive a gate. */
+    const child = mpdAgent("child-1", { origin: "subagent" })
+    /** The double over that child alone. */
+    const harness = planeHarness({ agents: [child] })
+    /** The in-memory counter; a child consult must leave no state behind. */
+    const store = stateStore()
+    installSessionGate(harness.dsh as never, { warn: () => {}, stateReadFile: store.readFile, stateWriteFile: store.writeFile })
+    expect(harness.steps).toEqual([])
+    for (let index = 0; index < RETEAM_DEFAULT_AFTER_CONSULTS; index += 1) {
+      await harness.emitToolResult(consultOf("mpd_role_spawn", child), completed())
+    }
+    expect(store.files.size).toBe(0)
+    // A headerless handle is equally out of scope: the classification fails CLOSED.
+    /** The double over one headerless agent. */
+    const headerless = planeHarness({ agents: [{ id: "bare-1" }] })
+    installSessionGate(headerless.dsh as never, { warn: () => {} })
+    expect(headerless.steps).toEqual([])
+  })
+
+  test("team.gate=off reads nothing at all: no auto-end even for a clean board", async () => {
+    /** The double whose composition registers the staging tool. */
+    const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The config layer: the gate is OFF. */
+    const configValue = (key: string): unknown => (key === GATE_CONFIG_KEY ? GATE_MODE_OFF : undefined)
+    installSessionGate(harness.dsh as never, { warn: () => {}, configValue, ...recordSeams(teamRecord({ tasks: [{ status: "completed" }] })) })
+    expect(await step(harness)).toBeUndefined()
+    expect(harness.toolCalls).toEqual([])
   })
 })

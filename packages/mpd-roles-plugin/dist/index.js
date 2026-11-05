@@ -1,6 +1,6 @@
 // packages/mpd-roles-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { join as join3, resolve as resolve3 } from "node:path";
+import { join as join4, resolve as resolve3 } from "node:path";
 
 // packages/mpd-roles-plugin/src/roles.data.ts
 var ROLES = [
@@ -213,7 +213,8 @@ function readTargetPath(toolName, args) {
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
-import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir as mkdirFs, readFile as readFileFs, readdir as readDirFs, rename as renameFs, unlink as unlinkFs, writeFile as writeFileFs } from "node:fs/promises";
 import { join } from "node:path";
 
 // packages/mpd-roles-plugin/src/admission.ts
@@ -467,6 +468,33 @@ async function readWorkspaceScale(workspace, opts = {}) {
   }
 }
 var TEAM_RECORDS_DIR = join(".mpd", "team", "teams");
+var CLEAN_TASK_STATUSES = ["completed", "cancelled"];
+var FAILED_TASK_STATUS = "failed";
+function readTeamBoard(tasks) {
+  const rows = Array.isArray(tasks) ? tasks : [];
+  const hasTasks = rows.length > 0;
+  let allTerminal = hasTasks;
+  let failedTaskId;
+  for (const row of rows) {
+    const task = row;
+    const status = String(task?.status ?? "");
+    if (status === FAILED_TASK_STATUS) {
+      if (failedTaskId === undefined)
+        failedTaskId = String(task?.id ?? task?.taskId ?? "");
+      allTerminal = false;
+      continue;
+    }
+    if (!CLEAN_TASK_STATUSES.includes(status))
+      allTerminal = false;
+  }
+  return {
+    cleanTerminal: hasTasks && allTerminal && failedTaskId === undefined,
+    ...failedTaskId === undefined ? {} : { failedTaskId }
+  };
+}
+function isStamped(value) {
+  return value !== undefined && value !== null && String(value) !== "";
+}
 async function readLeadingTeam(workspace, sessionId, opts = {}) {
   const nothing = { leading: false, members: 0 };
   if (typeof sessionId !== "string" || sessionId === "")
@@ -475,6 +503,12 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
     const read = opts.readFile ?? ((path) => readFileFs(path, "utf8"));
     const list = opts.readDir ?? ((path) => readDirFs(path, { encoding: "utf8", withFileTypes: false }));
     const entries = await list(join(String(workspace ?? ""), TEAM_RECORDS_DIR));
+    let live;
+    let liveFailure;
+    let terminal;
+    const terminalTeamIds = [];
+    const terminalEndedAt = [];
+    const autoEndTeamIds = [];
     for (const entry of entries) {
       if (!String(entry).endsWith(".json"))
         continue;
@@ -488,13 +522,150 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
         const members = Array.isArray(fields.members) ? fields.members.length : 0;
         if (members === 0)
           continue;
-        return { leading: true, teamId: String(fields.teamId ?? ""), members };
+        const teamId = String(fields.teamId ?? "");
+        const ended = isStamped(fields.endedAt);
+        const board = readTeamBoard(fields.tasks);
+        if (ended || board.cleanTerminal) {
+          terminal = { teamId, members, ended };
+          terminalTeamIds.push(teamId);
+          const endedAtMs = typeof fields.endedAt === "string" ? Date.parse(fields.endedAt) : Number.NaN;
+          terminalEndedAt.push(endedAtMs);
+          if (!ended && board.cleanTerminal)
+            autoEndTeamIds.push(teamId);
+          continue;
+        }
+        if (live === undefined)
+          live = { teamId, members };
+        if (liveFailure === undefined && board.failedTaskId !== undefined)
+          liveFailure = { teamId, taskId: board.failedTaskId };
       } catch {}
     }
+    if (live !== undefined) {
+      return {
+        leading: true,
+        teamId: live.teamId,
+        members: live.members,
+        ...liveFailure === undefined ? {} : { failedTaskId: liveFailure.taskId, failedTeamId: liveFailure.teamId }
+      };
+    }
+    if (terminal === undefined)
+      return nothing;
+    return {
+      leading: false,
+      teamId: terminal.teamId,
+      members: terminal.members,
+      ...terminal.ended ? { ended: true } : { cleanTerminal: true },
+      terminalTeamIds,
+      terminalEndedAt,
+      ...autoEndTeamIds.length === 0 ? {} : { autoEndTeamIds }
+    };
   } catch {
     return nothing;
   }
-  return nothing;
+}
+var CONTROL_TOOL_NAME = "agent_teams_control";
+var RETEAM_AUTO_END_REASON = "board clean-terminal — auto-ended by re-team gate";
+var RETEAM_NOTICE_MARKER = "[AgentTeams] Re-team rule";
+var RETEAM_ENABLED_CONFIG_KEY = "team.reteam.enabled";
+var RETEAM_AFTER_CONSULTS_CONFIG_KEY = "team.reteam.afterConsults";
+var RETEAM_DEFAULT_AFTER_CONSULTS = 4;
+var RETEAM_PLAN_NAME = "re-team gate plan shell";
+function resolveReTeamEnabled(value) {
+  if (value === false || value === 0)
+    return false;
+  if (typeof value === "string") {
+    const spelling = value.trim().toLowerCase();
+    return spelling !== "false" && spelling !== "off" && spelling !== "no";
+  }
+  return true;
+}
+function resolveReTeamAfterConsults(value) {
+  const numeric = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : Number.NaN;
+  return Number.isFinite(numeric) && numeric >= 1 ? Math.floor(numeric) : RETEAM_DEFAULT_AFTER_CONSULTS;
+}
+var SESSION_GATE_STATE_DIR = join(".mpd", "session-gate");
+var CONSULT_TOOL_PREFIX = "mpd_role_spawn";
+var WORKMATE_SPAWN_TOOL_NAME = "mpd_workmate_spawn";
+function isConsultToolName(name) {
+  if (typeof name !== "string" || name === "")
+    return false;
+  return name === WORKMATE_SPAWN_TOOL_NAME || name.startsWith(CONSULT_TOOL_PREFIX);
+}
+function emptyReTeamState() {
+  return { consultCount: 0, lastFiredAt: 0, planId: "", teamIdAtFire: "" };
+}
+function sessionStateFileName(sessionId) {
+  const safe = String(sessionId ?? "").replace(/[^A-Za-z0-9._-]/gu, "_").slice(0, 120);
+  return (safe === "" ? "session" : safe) + ".json";
+}
+function sessionGateStatePath(workspace, sessionId) {
+  return join(String(workspace ?? ""), SESSION_GATE_STATE_DIR, sessionStateFileName(sessionId));
+}
+function parseReTeamState(raw) {
+  try {
+    const value = JSON.parse(String(raw ?? ""));
+    if (value === null || typeof value !== "object" || Array.isArray(value))
+      return;
+    const fields = value;
+    const state = emptyReTeamState();
+    if (typeof fields.consultCount === "number" && Number.isFinite(fields.consultCount) && fields.consultCount > 0) {
+      state.consultCount = Math.floor(fields.consultCount);
+    }
+    if (typeof fields.lastFiredAt === "number" && Number.isFinite(fields.lastFiredAt) && fields.lastFiredAt > 0) {
+      state.lastFiredAt = Math.floor(fields.lastFiredAt);
+    }
+    if (typeof fields.planId === "string")
+      state.planId = fields.planId;
+    if (typeof fields.teamIdAtFire === "string")
+      state.teamIdAtFire = fields.teamIdAtFire;
+    return state;
+  } catch {
+    return;
+  }
+}
+async function readReTeamState(workspace, sessionId, opts = {}) {
+  try {
+    const read = opts.readFile ?? ((path) => readFileFs(path, "utf8"));
+    return parseReTeamState(await read(sessionGateStatePath(workspace, sessionId)));
+  } catch {
+    return;
+  }
+}
+async function writeReTeamState(workspace, sessionId, state, opts = {}) {
+  try {
+    const root = String(workspace ?? "");
+    const write = opts.writeFile ?? (async (path, content) => {
+      const dir = join(root, SESSION_GATE_STATE_DIR);
+      await mkdirFs(dir, { recursive: true });
+      const temp = path + "." + randomUUID() + ".tmp";
+      try {
+        await writeFileFs(temp, content, "utf8");
+        await renameFs(temp, path);
+      } catch (error) {
+        await unlinkFs(temp).catch(() => {
+          return;
+        });
+        throw error;
+      }
+    });
+    await write(sessionGateStatePath(workspace, sessionId), JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function reTeamNoticeText(input) {
+  const trigger = String(input.count) + " COMPLETED consult calls (`" + CONSULT_TOOL_PREFIX + "*` / `" + WORKMATE_SPAWN_TOOL_NAME + "`)" + " since the last team fire (threshold `" + RETEAM_AFTER_CONSULTS_CONFIG_KEY + "` = " + String(input.threshold) + ")" + ", with NO live team in this session — the re-team trigger fired.";
+  const plan = input.staged ? `
+- ` + STAGED_PLAN_PHRASE + " as " + (input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell CANNOT be approved, so report this failure" : input.planId) + ". " + INERT_PLAN_PHRASE + "." : input.alreadyStaged ? `
+- ` + ALREADY_STAGED_PLAN_PHRASE + " as " + (input.planId === "" ? MISSING_PLAN_ID_PHRASE : input.planId) + " — this fire did NOT stage a second shell (a second stage would ARCHIVE the in-progress plan). " + INERT_PLAN_PHRASE + "." : `
+- ` + NO_TEAM_STAGED_PHRASE + (input.error === undefined || input.error === "" ? "" : " (" + input.error + ")") + ".";
+  const next = input.staged || input.alreadyStaged ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`),' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' : "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"}' + ' → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} → {action:"approve"}; or continue solo and say so in one line.';
+  return RETEAM_NOTICE_MARKER + ": " + trigger + plan + next + "\n- Set `" + RETEAM_ENABLED_CONFIG_KEY + ": false` to turn THIS trigger off; the ended-aware leading check and the clean-terminal auto-end stay in force.";
+}
+function reTeamRepairNoticeText(teamId, taskId) {
+  const named = teamId === "" ? "(team id not read)" : teamId;
+  return RETEAM_NOTICE_MARKER + ": team " + named + " has an unrepaired failed task; create a kind=repair task" + (taskId === undefined || taskId === "" ? "" : " — the failed row is `" + taskId + "`") + ". A wave whose verification failed is NEVER auto-ended and no new shell is staged until it is repaired.";
 }
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
@@ -511,11 +682,14 @@ function gatePlanShell(input) {
   const firstLine = collapseWhitespace(goal.split(/\r?\n/u)[0] ?? "");
   const excerpt = collapseWhitespace(goal).slice(0, GATE_PLAN_EXCERPT_MAX);
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
+  const lead = input.reteam === undefined ? "Staged mechanically by the mpd session-start complexity gate on " + matched + "." : "Staged mechanically by the mpd re-team gate: " + String(input.reteam.count) + " completed consult calls since the last team fire" + " (threshold " + String(input.reteam.threshold) + ") and no live team.";
+  const name = input.reteam === undefined ? firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX) : RETEAM_PLAN_NAME.slice(0, GATE_PLAN_NAME_MAX);
   return {
-    name: firstLine === "" ? GATE_PLAN_NAME_FALLBACK : firstLine.slice(0, GATE_PLAN_NAME_MAX),
-    description: "Staged mechanically by the mpd session-start complexity gate on " + matched + "." + `
-This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + `
-Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
+    name,
+    description: lead + `
+This is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.` + (input.reteam === undefined ? `
+Goal excerpt: ` + (excerpt === "" ? "(empty)" : excerpt) : `
+No user turn was judged: the re-team trigger counts COMPLETED consults, not prompt text.`) + "\nExtend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`,' + " then approve it with `" + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members.' + `
 ` + INERT_PLAN_PHRASE + "." + (input.planPath === undefined ? "" : `
 Active plan artifact (signal D): ` + input.planPath),
     approval: "required"
@@ -1416,7 +1590,7 @@ function installRosterSection(dsh, options) {
 }
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { resolve as resolve2, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/shared.ts
@@ -1784,7 +1958,7 @@ function userMessage(input) {
   Object.freeze(content);
   const source = { kind: "user", ...input?.source ?? {} };
   Object.freeze(source);
-  const message = { id: randomUUID(), role: "user", content, source };
+  const message = { id: randomUUID2(), role: "user", content, source };
   return Object.freeze(message);
 }
 function sessionCwdOf(agent) {
@@ -2121,6 +2295,59 @@ function registerAgentSection(agent, section) {
   }
   const registered = systemPrompt.section(section);
   return typeof registered === "function" ? registered : noop;
+}
+function normalizeSpawnResult(settled) {
+  const value = settled ?? {};
+  return {
+    output: textOfOutput(value.output),
+    structured: value.structured,
+    stopReason: typeof value.stopReason === "string" ? value.stopReason : null
+  };
+}
+function activationHandleOf(raw, subagents, parent) {
+  const id = typeof raw?.childId === "string" ? raw.childId : typeof raw?.id === "string" ? raw.id : "";
+  let disposed = false;
+  let interrupted = false;
+  const disposeOnce = async () => {
+    if (disposed)
+      return;
+    disposed = true;
+    await releaseActivation(raw);
+  };
+  const result = Promise.resolve(raw?.result).then(async (settled) => {
+    await disposeOnce();
+    return normalizeSpawnResult(settled);
+  }, async (error) => {
+    await disposeOnce();
+    throw error;
+  });
+  return {
+    id,
+    result,
+    interrupt() {
+      if (interrupted)
+        return;
+      interrupted = true;
+      const abortRaw = () => {
+        try {
+          if (typeof raw?.abort === "function")
+            raw.abort();
+        } catch {}
+      };
+      try {
+        if (id !== "" && typeof subagents?.interrupt === "function") {
+          const outcome = subagents.interrupt.call(subagents, id, { kind: "ancestor", agent: parent });
+          if (outcome !== null && typeof outcome === "object" && typeof outcome.then === "function") {
+            Promise.resolve(outcome).catch(abortRaw);
+          }
+        } else {
+          abortRaw();
+        }
+      } catch {
+        abortRaw();
+      }
+    }
+  };
 }
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
 function hasOneShotSpawn(subagents) {
@@ -3262,7 +3489,7 @@ function createDshAdapter(ctx, config = {}) {
         return { ok: false, isError: true, error: errorMessage(error) };
       }
     },
-    async spawnAgent(spec) {
+    async spawnAgentAsync(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
@@ -3288,13 +3515,7 @@ function createDshAdapter(ctx, config = {}) {
           signal,
           delivery: "parent"
         });
-        const settled = await (activation?.result ?? {});
-        await releaseActivation(activation);
-        return {
-          output: textOfOutput(settled.output),
-          structured: settled.structured,
-          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
-        };
+        return activationHandleOf(activation, subagents, spec.parent);
       }
       if (typeof subagents.start !== "function")
         throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
@@ -3309,12 +3530,10 @@ function createDshAdapter(ctx, config = {}) {
         ...spec.toolFilter === undefined ? {} : { toolFilter: spec.toolFilter },
         ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
       });
-      const result = await (run?.result ?? {});
-      return {
-        output: textOfOutput(result.output),
-        structured: result.structured,
-        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
-      };
+      return activationHandleOf(run, subagents, spec.parent);
+    },
+    async spawnAgent(spec) {
+      return (await adapter.spawnAgentAsync(spec)).result;
     },
     subagentRuntime() {
       return service("subagents");
@@ -3843,6 +4062,30 @@ function installSessionGate(dsh, options) {
       options.warn(line);
     } catch {}
   };
+  const reTeamStates = new Map;
+  const firing = new Set;
+  const repairNoticed = new Set;
+  const autoEndAttempted = new Set;
+  function reTeamKeyOf(workspace, sessionId) {
+    return workspace + "\x00" + sessionId;
+  }
+  async function loadReTeamState(workspace, sessionId) {
+    const key = reTeamKeyOf(workspace, sessionId);
+    const cached = reTeamStates.get(key);
+    if (cached !== undefined)
+      return cached;
+    const pending = readReTeamState(workspace, sessionId, {
+      ...options.stateReadFile === undefined ? {} : { readFile: options.stateReadFile }
+    }).then((loaded) => loaded ?? emptyReTeamState());
+    reTeamStates.set(key, pending);
+    return pending;
+  }
+  async function saveReTeamState(workspace, sessionId, state) {
+    reTeamStates.set(reTeamKeyOf(workspace, sessionId), Promise.resolve(state));
+    await writeReTeamState(workspace, sessionId, state, {
+      ...options.stateWriteFile === undefined ? {} : { writeFile: options.stateWriteFile }
+    });
+  }
   function configValue(key) {
     try {
       return options.configValue?.(key);
@@ -3883,7 +4126,8 @@ function installSessionGate(dsh, options) {
       const shell = gatePlanShell({
         signals: input.signals,
         goal: input.goal,
-        ...input.planPath === undefined ? {} : { planPath: input.planPath }
+        ...input.planPath === undefined ? {} : { planPath: input.planPath },
+        ...input.reteam === undefined ? {} : { reteam: input.reteam }
       });
       const result = await dsh.executeTool({
         name: STAGING_TOOL_NAME,
@@ -3899,6 +4143,116 @@ function installSessionGate(dsh, options) {
       return { ok: false, planId: "", alreadyStaged: false, error: errorText(error) };
     }
   }
+  async function countCompletedConsult(exec, result) {
+    try {
+      if (exec === undefined || exec === null || !isConsultToolName(exec.name))
+        return;
+      if (result?.isError === true)
+        return;
+      const agent = exec.agent;
+      if (agent === undefined || agent === null)
+        return;
+      if (!sessionQualifies(agent, presets))
+        return;
+      const workspace = dsh.workspaceRoot({ agent });
+      const sessionId = sessionIdOf2(agent);
+      const state = await loadReTeamState(workspace, sessionId);
+      state.consultCount += 1;
+      await saveReTeamState(workspace, sessionId, state);
+      gateTrace("consult counted session=" + sessionId + " count=" + String(state.consultCount) + " tool=" + String(exec.name));
+    } catch {}
+  }
+  function subscribeConsultCounter() {
+    if (typeof dsh.onPostToolExecute !== "function")
+      return;
+    try {
+      dsh.onPostToolExecute(async (exec, result) => {
+        await countCompletedConsult(exec, result);
+        return;
+      });
+    } catch {}
+  }
+  async function autoEndCleanTerminal(agent, teamId) {
+    try {
+      const result = await dsh.executeTool({
+        name: CONTROL_TOOL_NAME,
+        arguments: { action: "end", team_id: teamId, reason: RETEAM_AUTO_END_REASON },
+        agent,
+        timeoutMs: options.stageTimeoutMs ?? STAGING_TIMEOUT_MS
+      });
+      if (result?.ok !== true || result.isError === true) {
+        warn('re-team gate: the clean-terminal team "' + teamId + '" was NOT auto-ended (' + (result?.error === undefined ? "the control call did not report ok" : String(result.error)) + ") — the gate continues");
+        return false;
+      }
+      report('re-team gate: auto-ended clean-terminal team "' + teamId + '" through ' + CONTROL_TOOL_NAME);
+      return true;
+    } catch (error) {
+      warn('re-team gate: the clean-terminal team "' + teamId + '" was NOT auto-ended (' + errorText(error) + ") — the gate continues");
+      return false;
+    }
+  }
+  function spliceNotice(decision, decisionMessages, rawClaimed, notice, rewrite) {
+    const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => rewrite === undefined ? message : rewrite(message));
+    let lastClaimed = -1;
+    for (let at2 = 0;at2 < messages.length; at2 += 1)
+      if (rawClaimed.includes(messages[at2]))
+        lastClaimed = at2;
+    const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
+    const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
+    return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
+  }
+  async function recordFire(workspace, sessionId, state, planId) {
+    state.consultCount = 0;
+    state.lastFiredAt = Date.now();
+    state.planId = planId;
+    state.teamIdAtFire = "";
+    await saveReTeamState(workspace, sessionId, state);
+  }
+  async function fireReTeam(input) {
+    const key = reTeamKeyOf(input.workspace, input.sessionId);
+    if (firing.has(key)) {
+      gateTrace("re-team fire in flight agent=" + input.agentId);
+      return;
+    }
+    firing.add(key);
+    try {
+      const state = await loadReTeamState(input.workspace, input.sessionId);
+      let outcome = { ok: false, planId: "", alreadyStaged: false };
+      if (input.mode === GATE_MODE_MECHANICAL) {
+        outcome = await stagePlan({
+          agent: input.agent,
+          workspace: input.workspace,
+          sessionId: input.sessionId,
+          goal: "",
+          signals: [],
+          reteam: { count: input.count, threshold: input.threshold }
+        });
+        if (!outcome.ok) {
+          warn('re-team gate: staging degraded for agent "' + input.agentId + '" (' + String(outcome.error) + ")");
+        }
+      }
+      const staged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && !outcome.alreadyStaged;
+      const alreadyStaged = input.mode === GATE_MODE_MECHANICAL && outcome.ok && outcome.alreadyStaged;
+      await recordFire(input.workspace, input.sessionId, state, outcome.ok && input.mode === GATE_MODE_MECHANICAL ? outcome.planId : "");
+      if (input.agentId !== "")
+        acted.add(input.agentId);
+      report('re-team gate fired for agent "' + input.agentId + '" consults=' + String(input.count) + "/" + String(input.threshold) + " mode=" + input.mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      if (staged && outcome.planId === "") {
+        warn("re-team gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + input.agentId + '" — the shell is staged but cannot be approved');
+      }
+      gateTrace("RE-TEAM FIRING agent=" + input.agentId + " consults=" + String(input.count) + " staged=" + String(staged));
+      return reTeamNoticeText({
+        count: input.count,
+        threshold: input.threshold,
+        staged,
+        alreadyStaged,
+        planId: staged || alreadyStaged ? outcome.planId : "",
+        ...outcome.ok || outcome.error === undefined ? {} : { error: String(outcome.error) }
+      });
+    } finally {
+      firing.delete(key);
+    }
+  }
   const stepHandler = (bound) => async (payload, decision) => {
     try {
       gateTrace("step entered bound=" + String(bound?.id ?? "none") + " payloadAgent=" + String(payload?.agent?.id ?? "none") + " kind=" + String(decision?.kind) + " payloadMessages=" + String(Array.isArray(payload?.messages) ? payload.messages.length : -1) + " decisionMessages=" + String(Array.isArray(decision?.messages) ? decision.messages.length : -1));
@@ -3912,8 +4266,6 @@ function installSessionGate(dsh, options) {
         return;
       }
       const agentId = String(agent.id ?? "");
-      if (agentId !== "" && acted.has(agentId))
-        return;
       const mode = resolveGateMode(configValue(GATE_CONFIG_KEY));
       if (mode === GATE_MODE_OFF) {
         gateTrace("mode off agent=" + agentId);
@@ -3921,18 +4273,76 @@ function installSessionGate(dsh, options) {
       }
       const decisionMessages = Array.isArray(decision?.messages) ? decision.messages : [];
       const rawClaimed = Array.isArray(payload?.messages) && payload.messages.length > 0 ? payload.messages : decisionMessages;
-      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
-      if (user === undefined) {
-        gateTrace("no user text yet agent=" + agentId);
+      const workspace = dsh.workspaceRoot({ agent });
+      const sessionId = sessionIdOf2(agent);
+      const stateKey = reTeamKeyOf(workspace, sessionId);
+      if (firing.has(stateKey)) {
+        gateTrace("fire in flight agent=" + agentId);
         return;
       }
-      const workspace = dsh.workspaceRoot({ agent });
-      const leading = await readLeadingTeam(workspace, sessionIdOf2(agent), {
+      const leading = await readLeadingTeam(workspace, sessionId, {
         ...options.readFile === undefined ? {} : { readFile: options.readFile },
         ...options.readDir === undefined ? {} : { readDir: options.readDir }
       });
+      const state = await loadReTeamState(workspace, sessionId);
       if (leading.leading) {
+        if (state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== (leading.teamId ?? "")) {
+          state.lastFiredAt = 0;
+          state.planId = "";
+          state.teamIdAtFire = leading.teamId ?? "";
+          await saveReTeamState(workspace, sessionId, state);
+          if (agentId !== "")
+            acted.delete(agentId);
+        }
+        if (leading.failedTaskId !== undefined && leading.failedTeamId !== undefined && !repairNoticed.has(leading.failedTeamId)) {
+          repairNoticed.add(leading.failedTeamId);
+          report('re-team gate: team "' + leading.failedTeamId + '" has an unrepaired failed task; no auto-end and no re-stage');
+          return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
+            text: reTeamRepairNoticeText(leading.failedTeamId, leading.failedTaskId),
+            source: { kind: "mpd-roles", reason: "re-team-repair" }
+          }));
+        }
         gateTrace("already leading team=" + String(leading.teamId ?? "(id not read)") + " members=" + String(leading.members) + " agent=" + agentId);
+        return;
+      }
+      if (leading.ended === true || leading.cleanTerminal === true) {
+        for (const target of leading.autoEndTeamIds ?? []) {
+          if (target === "" || autoEndAttempted.has(target))
+            continue;
+          autoEndAttempted.add(target);
+          await autoEndCleanTerminal(agent, target);
+        }
+        const settled = state.lastFiredAt !== 0 || state.planId !== "" || state.teamIdAtFire !== "";
+        const bound2 = state.teamIdAtFire !== "" && (leading.terminalTeamIds ?? []).includes(state.teamIdAtFire) || state.lastFiredAt !== 0 && (leading.terminalEndedAt ?? []).some((endedAt) => endedAt > state.lastFiredAt);
+        if (settled && bound2) {
+          state.lastFiredAt = 0;
+          state.planId = "";
+          state.teamIdAtFire = "";
+          await saveReTeamState(workspace, sessionId, state);
+          if (agentId !== "")
+            acted.delete(agentId);
+          report('re-team gate: re-armed after team "' + String(leading.teamId ?? "(id not read)") + '" ended');
+        }
+      }
+      if (state.lastFiredAt !== 0 || state.planId !== "") {
+        gateTrace("re-team settled agent=" + agentId + " plan=" + String(state.planId));
+        return;
+      }
+      if (resolveReTeamEnabled(configValue(RETEAM_ENABLED_CONFIG_KEY))) {
+        const afterConsults = resolveReTeamAfterConsults(configValue(RETEAM_AFTER_CONSULTS_CONFIG_KEY));
+        if (state.consultCount >= afterConsults) {
+          const noticeText = await fireReTeam({ agent, agentId, workspace, sessionId, mode, count: state.consultCount, threshold: afterConsults });
+          if (noticeText === undefined)
+            return;
+          return spliceNotice(decision, decisionMessages, rawClaimed, dsh.userMessage({
+            text: noticeText,
+            source: { kind: "mpd-roles", reason: "re-team-trigger" }
+          }));
+        }
+      }
+      const user = latestUserMessage(rawClaimed) ?? latestUserMessage(decisionMessages);
+      if (user === undefined) {
+        gateTrace("no user text yet agent=" + agentId);
         return;
       }
       const consumed = consumeExplicitFlag(user.text);
@@ -3956,21 +4366,28 @@ function installSessionGate(dsh, options) {
         gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
         return;
       }
-      if (agentId !== "")
-        acted.add(agentId);
+      if (firing.has(stateKey)) {
+        gateTrace("fire in flight agent=" + agentId);
+        return;
+      }
+      firing.add(stateKey);
       let outcome = { ok: false, planId: "", alreadyStaged: false };
-      if (mode === GATE_MODE_MECHANICAL) {
-        outcome = await stagePlan({
-          agent,
-          workspace,
-          sessionId: sessionIdOf2(agent),
-          goal: consumed.text,
-          signals: verdict.signals,
-          ...boulder.planPath === undefined ? {} : { planPath: boulder.planPath }
-        });
-        if (!outcome.ok) {
-          warn('session-start gate: staging degraded to the advisory notice for agent "' + agentId + '" (' + String(outcome.error) + ")");
+      try {
+        if (mode === GATE_MODE_MECHANICAL) {
+          outcome = await stagePlan({
+            agent,
+            workspace,
+            sessionId,
+            goal: consumed.text,
+            signals: verdict.signals,
+            ...boulder.planPath === undefined ? {} : { planPath: boulder.planPath }
+          });
+          if (!outcome.ok) {
+            warn('session-start gate: staging degraded to the advisory notice for agent "' + agentId + '" (' + String(outcome.error) + ")");
+          }
         }
+      } finally {
+        firing.delete(stateKey);
       }
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok;
       report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId) + " sensitivity=" + sensitivity);
@@ -3978,18 +4395,14 @@ function installSessionGate(dsh, options) {
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + agentId + '" — the shell is staged but cannot be approved');
       }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity);
+      await recordFire(workspace, sessionId, state, staged ? outcome.planId : "");
+      if (agentId !== "")
+        acted.add(agentId);
       const notice = dsh.userMessage({
         text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged, strength: verdict.strength }) : advisoryNoticeText(verdict.signals, consumed.flagged, verdict.strength),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
       });
-      const messages = [...decisionMessages.length > 0 ? decisionMessages : rawClaimed].map((message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
-      let lastClaimed = -1;
-      for (let at2 = 0;at2 < messages.length; at2 += 1)
-        if (rawClaimed.includes(messages[at2]))
-          lastClaimed = at2;
-      const at = lastClaimed < 0 ? messages.length : lastClaimed + 1;
-      const amended = [...messages.slice(0, at), notice, ...messages.slice(at)];
-      return { ...decision, kind: decision?.kind ?? "enter", messages: amended };
+      return spliceNotice(decision, decisionMessages, rawClaimed, notice, (message) => message === user.message ? consumeFlagFromMessage(message, user.text) : message);
     } catch (error) {
       warn("session-start gate failed (" + errorText(error) + ") — the step runs unchanged");
       return;
@@ -4019,6 +4432,7 @@ function installSessionGate(dsh, options) {
       warn('session-start gate not registered for agent "' + String(agent?.id ?? "?") + '" (' + errorText(error) + ")");
     }
   };
+  subscribeConsultCounter();
   for (const agent of dsh.liveAgents())
     register(agent);
   const subscribe = (event, handler) => {
@@ -4403,6 +4817,330 @@ function roleSpawnCard(args, value) {
   return stack(children, { title: `role · ${role}` });
 }
 
+// packages/mpd-roles-plugin/src/spawn-async.ts
+import { mkdirSync as mkdirSync2, writeFileSync } from "node:fs";
+import { join as join3 } from "node:path";
+var CONSULT_FORCE_AFTER_MS = 900000;
+var CONSULT_MAX_DEFAULT = 8;
+var CONSULT_WAIT_MAX_MS = 60000;
+var CONSULT_WAIT_DEFAULT_MS = 30000;
+var CONSULT_ACTIVITY_HISTORY = 5;
+var CONSULT_LABEL_KEY_PREFIX = "label:";
+function consultActivityKeyOf(agent, labelOf) {
+  if (agent === null || typeof agent !== "object")
+    return;
+  const session = agent.session;
+  if (typeof session?.id === "string" && session.id !== "")
+    return session.id;
+  const label = labelOf(agent);
+  return typeof label === "string" && label !== "" ? CONSULT_LABEL_KEY_PREFIX + label : undefined;
+}
+function consultLabelKey(role) {
+  return CONSULT_LABEL_KEY_PREFIX + role;
+}
+function consultMaxFromEnv() {
+  const raw = typeof process !== "undefined" && process.env ? process.env.MPD_DSH_CONSULT_MAX : undefined;
+  const parsed = typeof raw === "string" && raw.trim() !== "" ? Math.trunc(Number(raw)) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : CONSULT_MAX_DEFAULT;
+}
+function createConsultSupervisor(deps) {
+  const now = deps.now ?? (() => Date.now());
+  const setTimer = deps.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
+  const clearTimer = deps.clearTimer ?? ((handle) => {
+    clearTimeout(handle);
+  });
+  const forceAfterMs = deps.forceAfterMs ?? (() => CONSULT_FORCE_AFTER_MS);
+  const maxConcurrent = deps.maxConcurrent ?? (() => CONSULT_MAX_DEFAULT);
+  const records = new Map;
+  let active = 0;
+  const queue = [];
+  let sequence = 0;
+  const acquire = () => {
+    const cap = Math.max(1, Math.trunc(Number(maxConcurrent())) || CONSULT_MAX_DEFAULT);
+    if (active < cap) {
+      active += 1;
+      return Promise.resolve();
+    }
+    return new Promise((resolve3) => {
+      queue.push(() => {
+        active += 1;
+        resolve3();
+      });
+    });
+  };
+  const release = () => {
+    active = Math.max(0, active - 1);
+    const next = queue.shift();
+    if (next !== undefined)
+      next();
+  };
+  const createRecord = (input) => {
+    sequence += 1;
+    const id = "consult-" + now().toString(36) + "-" + sequence.toString(36);
+    let settle2 = () => {
+      return;
+    };
+    let fail = () => {
+      return;
+    };
+    const done = new Promise((resolve3, reject) => {
+      settle2 = resolve3;
+      fail = reject;
+    });
+    done.catch(() => {
+      return;
+    });
+    return { id, role: input.role, task: input.task, exec: input.exec, state: "running", startedAt: now(), done, resolve: settle2, reject: fail, reported: false, released: false, held: false };
+  };
+  const reportFrom = (record, result) => {
+    const structured = result.structured ?? {};
+    return {
+      role: record.role,
+      status: "complete",
+      summary: typeof structured.summary === "string" ? structured.summary : result.output,
+      recommendation: typeof structured.recommendation === "string" ? structured.recommendation : "",
+      details: typeof structured.details === "string" ? structured.details : "",
+      evidence: Array.isArray(structured.evidence) ? structured.evidence.map((entry) => String(entry)) : [],
+      stopReason: typeof result.stopReason === "string" ? result.stopReason : null,
+      consultId: record.id,
+      elapsedMs: now() - record.startedAt
+    };
+  };
+  const finish = (record, report) => {
+    if (record.reported)
+      return;
+    record.reported = true;
+    record.report = report;
+    record.state = report.status;
+    if (record.handoff !== undefined)
+      record.report = { ...report, handoff: record.handoff };
+    if (record.timer !== undefined) {
+      clearTimer(record.timer);
+      record.timer = undefined;
+    }
+    if (record.held && !record.released) {
+      record.released = true;
+      release();
+    }
+    record.resolve(record.report);
+  };
+  const failRecord = (record, error) => {
+    if (record.reported)
+      return;
+    record.reported = true;
+    record.state = "failed";
+    record.failure = error instanceof Error ? error.message : String(error);
+    if (record.timer !== undefined) {
+      clearTimer(record.timer);
+      record.timer = undefined;
+    }
+    if (record.held && !record.released) {
+      record.released = true;
+      release();
+    }
+    record.reject(error);
+  };
+  const describeCall = (call) => {
+    const args = call.arguments === undefined ? "" : JSON.stringify(call.arguments);
+    return call.name + (args === "" ? "" : " " + (args.length > 400 ? args.slice(0, 400) + "…" : args));
+  };
+  const lastActivityOf = (activity) => {
+    if (activity === undefined)
+      return;
+    const calls = [...activity.current === undefined ? [] : [activity.current], ...[...activity.history].reverse()];
+    if (calls.length === 0)
+      return;
+    return calls.slice(0, CONSULT_ACTIVITY_HISTORY).map(describeCall).join(" | ");
+  };
+  const writeHandoff = (record, activity) => {
+    try {
+      const dir = deps.handoffDir(record.exec);
+      mkdirSync2(dir, { recursive: true });
+      const instant = new Date(now()).toISOString().replace(/[:.]/g, "-");
+      const path = join3(dir, "consult-" + record.id + "-" + instant + ".md");
+      const calls = activity === undefined ? [] : activity.history;
+      const lines = [
+        "# Consult handoff — " + record.id,
+        "",
+        "- task: " + record.task,
+        "- role: " + record.role,
+        "- started: " + new Date(record.startedAt).toISOString(),
+        "- elapsed: " + (now() - record.startedAt) + " ms (deadman " + forceAfterMs() + " ms)",
+        "- last tool calls:",
+        ...activity?.current === undefined ? [] : ["  - (IN FLIGHT) " + describeCall(activity.current)],
+        ...calls.length === 0 && activity?.current === undefined ? ["  - (none observed)"] : [],
+        ...calls.map((call) => "  - " + describeCall(call)),
+        "",
+        "Next step: resume the task above from the last completed tool call; the child was interrupted",
+        "by the 15-minute consult deadman because its open call was not a `bash` command.",
+        ""
+      ];
+      writeFileSync(path, lines.join(`
+`), "utf8");
+      return path;
+    } catch (error) {
+      deps.log("consult handoff could not be written for " + record.id + ": " + (error instanceof Error ? error.message : String(error)));
+      return;
+    }
+  };
+  const onDeadman = (record) => {
+    if (record.reported)
+      return;
+    const activity = deps.activityOf?.(record.handle?.id, record.role);
+    const elapsedMs = now() - record.startedAt;
+    if (activity?.current?.name === "bash") {
+      deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed");
+      arm(record);
+      return;
+    }
+    const handoff = writeHandoff(record, activity);
+    if (handoff !== undefined)
+      record.handoff = handoff;
+    record.state = "interrupted";
+    try {
+      record.handle?.interrupt();
+    } catch {}
+    const report = {
+      role: record.role,
+      status: "interrupted",
+      summary: "consult interrupted by the 15-minute deadman" + (handoff === undefined ? "" : " — handoff: " + handoff),
+      recommendation: "",
+      details: "",
+      evidence: handoff === undefined ? [] : [handoff],
+      stopReason: "interrupted",
+      consultId: record.id,
+      elapsedMs,
+      ...handoff === undefined ? {} : { handoff },
+      ...lastActivityOf(activity) === undefined ? {} : { lastActivity: lastActivityOf(activity) }
+    };
+    finish(record, report);
+  };
+  const arm = (record) => {
+    if (record.reported)
+      return;
+    const bound = Math.max(1, Math.trunc(Number(forceAfterMs())) || CONSULT_FORCE_AFTER_MS);
+    record.timer = setTimer(() => {
+      try {
+        onDeadman(record);
+      } catch (error) {
+        deps.log("consult deadman threw for " + record.id + ": " + (error instanceof Error ? error.message : String(error)));
+      }
+    }, bound);
+  };
+  const viewOf = (record) => ({
+    consultId: record.id,
+    role: record.role,
+    state: record.state,
+    startedAt: record.startedAt,
+    elapsedMs: now() - record.startedAt,
+    ...record.handoff === undefined ? {} : { handoff: record.handoff }
+  });
+  const requireRecord = (consultId) => {
+    const record = records.get(consultId);
+    if (record === undefined)
+      throw new Error('mpd_role_consult: unknown consultId "' + consultId + '" — use action list');
+    return record;
+  };
+  const start = (input) => {
+    const record = createRecord(input);
+    records.set(record.id, record);
+    (async () => {
+      await acquire();
+      record.held = true;
+      if (record.reported) {
+        if (!record.released) {
+          record.released = true;
+          release();
+        }
+        return;
+      }
+      try {
+        const handle = await input.raise();
+        record.handle = handle;
+        if (record.reported) {
+          try {
+            handle.interrupt();
+          } catch {}
+          return;
+        }
+        arm(record);
+        handle.result.then((result) => {
+          finish(record, reportFrom(record, result));
+        }, (error) => {
+          failRecord(record, error);
+        });
+      } catch (error) {
+        failRecord(record, error);
+      }
+    })();
+    return viewOf(record);
+  };
+  const settle = async (consultId) => {
+    const record = requireRecord(consultId);
+    return await record.done;
+  };
+  const wait = async (consultId, timeoutMs) => {
+    const record = requireRecord(consultId);
+    if (record.reported)
+      return record.report ?? { ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } };
+    const bound = Math.min(CONSULT_WAIT_MAX_MS, Math.max(1, Math.trunc(Number(timeoutMs)) || CONSULT_WAIT_DEFAULT_MS));
+    return await new Promise((resolve3) => {
+      let timer;
+      const timedOut = () => {
+        if (timer !== undefined)
+          clearTimer(timer);
+        resolve3(viewOf(record));
+      };
+      timer = setTimer(timedOut, bound);
+      record.done.then((report) => {
+        if (timer !== undefined)
+          clearTimer(timer);
+        resolve3(report);
+      }, () => {
+        if (timer !== undefined)
+          clearTimer(timer);
+        resolve3({ ...viewOf(record), ...record.failure === undefined ? {} : { error: record.failure } });
+      });
+    });
+  };
+  const collect = (consultId) => {
+    const record = requireRecord(consultId);
+    if (!record.reported)
+      return viewOf(record);
+    const report = record.report;
+    records.delete(consultId);
+    return { ...viewOf(record), ...report === undefined ? {} : { report }, ...record.failure === undefined ? {} : { error: record.failure } };
+  };
+  const cancel = (consultId) => {
+    const record = requireRecord(consultId);
+    if (record.reported)
+      return { ...viewOf(record), ...record.report === undefined ? {} : { report: record.report } };
+    record.state = "interrupted";
+    if (record.timer !== undefined) {
+      clearTimer(record.timer);
+      record.timer = undefined;
+    }
+    try {
+      record.handle?.interrupt();
+    } catch {}
+    const report = {
+      role: record.role,
+      status: "interrupted",
+      summary: "consult cancelled by the caller",
+      recommendation: "",
+      details: "",
+      evidence: [],
+      stopReason: "interrupted",
+      consultId: record.id,
+      elapsedMs: now() - record.startedAt
+    };
+    finish(record, report);
+    return { ...viewOf(record), report };
+  };
+  const list = () => [...records.values()].map(viewOf);
+  return { start, settle, wait, collect, cancel, list };
+}
+
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
@@ -4414,9 +5152,11 @@ var READONLY_DENY = [
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
   "mcp__lsp__rename_symbol",
-  "mcp__lsp__rename_symbol_strict"
+  "mcp__lsp__rename_symbol_strict",
+  "mpd_role_spawn_async",
+  "mpd_role_consult"
 ];
-var LEAF_SPAWN_DENY = ["mpd_role_spawn", "mpd_workmate_spawn"];
+var LEAF_SPAWN_DENY = ["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"];
 function withdrawnReason(knob) {
   return "withdrawn:2026-10-17-user-ruling(" + knob + ")";
 }
@@ -4474,7 +5214,7 @@ function roleOfToolInput(surface, key) {
   return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null;
 }
 function personaPath(config, spec) {
-  return config.personasDir ? join3(resolve3(config.personasDir), spec.id + ".md") : join3(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
+  return config.personasDir ? join4(resolve3(config.personasDir), spec.id + ".md") : join4(pkgRoot(), "packages", "mpd-roles-plugin", "personas", spec.id + ".md");
 }
 function readPersona(config, spec) {
   const p = personaPath(config, spec);
@@ -4780,6 +5520,51 @@ function apply(ctx, config = {}) {
       return spec === null ? null : { id: spec.id, name: spec.name, description: spec.description, readonly: spec.readonly, chain: spec.chain.map((c) => ({ ...c })), persona: spec.persona, extension: spec.extension };
     }
   });
+  const toolActivity = new Map;
+  const activityKey = (exec) => consultActivityKeyOf(exec?.agent, (agent) => dsh.subagentLabelOf(agent));
+  const noteToolStart = (exec) => {
+    const key = activityKey(exec);
+    if (key === undefined)
+      return;
+    const name2 = typeof exec?.name === "string" ? String(exec.name) : "tool";
+    const rawArgs = exec?.arguments;
+    const bucket = toolActivity.get(key) ?? { history: [] };
+    bucket.current = { name: name2, startedAt: Date.now(), ...rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs } : {} };
+    toolActivity.set(key, bucket);
+  };
+  const noteToolEnd = (exec) => {
+    const key = activityKey(exec);
+    if (key === undefined)
+      return;
+    const bucket = toolActivity.get(key);
+    if (bucket?.current === undefined)
+      return;
+    bucket.history.push(bucket.current);
+    if (bucket.history.length > CONSULT_ACTIVITY_HISTORY)
+      bucket.history.splice(0, bucket.history.length - CONSULT_ACTIVITY_HISTORY);
+    bucket.current = undefined;
+  };
+  if (typeof dsh.onPreToolExecute === "function") {
+    dsh.onPreToolExecute((exec) => {
+      try {
+        noteToolStart(exec);
+      } catch {}
+    });
+  }
+  if (typeof dsh.onPostToolExecute === "function") {
+    dsh.onPostToolExecute((exec) => {
+      try {
+        noteToolEnd(exec);
+      } catch {}
+    });
+  }
+  const consultSupervisor = createConsultSupervisor({
+    handoffDir: (target) => join4(dsh.workspaceRoot(target), ".mpd", "handoff"),
+    log: (line) => warn(line),
+    activityOf: (childId, role) => childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId),
+    maxConcurrent: () => consultMaxFromEnv(),
+    forceAfterMs: () => CONSULT_FORCE_AFTER_MS
+  });
   dsh.registerTool({
     name: "mpd_roles_list",
     description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
@@ -4800,13 +5585,15 @@ refused (` + v.refused.length + `):
     name: "mpd_role_spawn",
     description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's own `agentRoutes` entry, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route. A CONSULT IS A LEAF (CR repair E): the child this tool raises has BOTH bundle spawn tools denied in its own scope, so it cannot delegate again, and a caller already at delegation depth 2 or deeper is refused outright — a depth-1 caller (the cell planner) may still raise its one consult.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
-    output: { presentationMeta: toolCard(roleSpawnCard), schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
+    output: { presentationMeta: toolCard(roleSpawnCard), schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete", "interrupted"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" }, consultId: { type: "string" }, handoff: { type: "string" }, lastActivity: { type: "string" }, elapsedMs: { type: "integer" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
 details: ` + v.details : "") + (v.evidence?.length ? `
 evidence:
 - ` + v.evidence.join(`
-- `) : "")) },
+- `) : "") + (v.handoff ? `
+handoff: ` + v.handoff : "") + (v.lastActivity ? `
+last activity: ` + v.lastActivity : "")) },
     execute: async (args, exec) => {
       const tooDeep = consultDepthRefusal(exec?.agent);
       if (tooDeep !== undefined)
@@ -4837,21 +5624,111 @@ Context:
 ` + String(args.context) : "") + `
 
 Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
-      const result = await dsh.spawnAgent({
-        label: spec.name,
-        prompt,
-        parent: exec.agent,
-        signal: exec.signal,
-        provider,
-        model,
-        persona,
-        outputSchema: REPORT_SCHEMA,
-        maxDepth: spawnMaxDepthOf(exec.agent),
-        ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
-        ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+      const view = consultSupervisor.start({
+        role: spec.name,
+        task,
+        exec,
+        raise: () => dsh.spawnAgentAsync({
+          label: spec.name,
+          prompt,
+          parent: exec.agent,
+          signal: exec.signal,
+          provider,
+          model,
+          persona,
+          outputSchema: REPORT_SCHEMA,
+          maxDepth: spawnMaxDepthOf(exec.agent),
+          ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
+          ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+        })
       });
-      const st = result.structured ?? {};
-      return { role: spec.name, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };
+      try {
+        return await consultSupervisor.settle(view.consultId);
+      } finally {
+        try {
+          consultSupervisor.collect(view.consultId);
+        } catch {}
+      }
+    }
+  });
+  async function raiseConsultAsync(args, exec) {
+    const surface = roleSurface(exec);
+    const spec = roleOfToolInput(surface, String(args?.role ?? ""));
+    if (spec === null)
+      throw new Error("mpd_role_spawn_async: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface));
+    const task = String(args?.task ?? "").trim();
+    if (!task)
+      throw new Error("mpd_role_spawn_async: task required");
+    const resolution = agentRouteResolution(spec.name);
+    if (!resolution.ok && resolution.reason !== "unrouted")
+      throwAgentUnconfigured(resolution);
+    const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
+    if (primary === undefined) {
+      throw new Error("mpd_role_spawn_async: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster agent needs its agentRoutes entry configured (/mpd-model)");
+    }
+    const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.route.fallbacks ?? [] : []);
+    const prompt = spec.persona + `
+
+Task: ` + task + (args?.context ? `
+
+Context:
+` + String(args.context) : "") + `
+
+Work with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence).`;
+    return dsh.spawnAgentAsync({
+      label: spec.name,
+      prompt,
+      parent: exec.agent,
+      signal: exec.signal,
+      provider: run.route.provider,
+      model: run.route.model,
+      persona: spec.persona,
+      outputSchema: REPORT_SCHEMA,
+      maxDepth: spawnMaxDepthOf(exec.agent),
+      ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
+      ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
+    });
+  }
+  dsh.registerTool({
+    name: "mpd_role_spawn_async",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and is supervised by the SAME 15-minute deadman: on expiry the child is interrupted and a handoff document is written under .mpd/handoff/, unless its current tool call is an OPEN `bash` (the only exemption, with no age bound). Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a, v) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + ' — read it with mpd_role_consult {action:"wait"|"collect", consultId:"' + v.consultId + '"}') },
+    execute: async (args, exec) => {
+      const tooDeep = consultDepthRefusal(exec?.agent);
+      if (tooDeep !== undefined)
+        throw new Error(tooDeep);
+      const view = consultSupervisor.start({ role: String(args?.role ?? ""), task: String(args?.task ?? ""), ...args?.context === undefined ? {} : { context: String(args.context) }, exec, raise: () => raiseConsultAsync(args, exec) });
+      return { consultId: view.consultId, role: view.role, state: "running", startedAt: view.startedAt };
+    }
+  });
+  dsh.registerTool({
+    name: "mpd_role_consult",
+    description: 'Read, wait for, collect or CANCEL one background consult started by mpd_role_spawn_async. `list` returns every consult this process knows (id, role, state, startedAt, elapsedMs); `wait` blocks up to timeoutMs (<= 60000) and returns the report when settled or state:"running" with elapsed when not; `collect` returns the settled report and RELEASES the record; `cancel` interrupts that consult\'s child (and is therefore a mutation, which is why read-only members are denied this tool). `mpd_role_spawn` (blocking) consults are listed here WHILE they run; their own caller releases the settled record.',
+    parameters: { type: "object", properties: { action: { type: "string", enum: ["list", "wait", "collect", "cancel"] }, consultId: { type: "string", description: "the id mpd_role_spawn_async returned (required except for list)" }, timeoutMs: { type: "integer", minimum: 1, maximum: 60000, description: "wait bound in ms (default 30000, clamped to 60000)" } }, required: ["action"], additionalProperties: false },
+    output: { schema: { type: "object", properties: { action: { type: "string" }, consults: { type: "array", items: { type: "object" } }, consultId: { type: "string" }, role: { type: "string" }, state: { type: "string" }, startedAt: { type: "integer" }, elapsedMs: { type: "integer" }, report: { type: "object" }, error: { type: "string" } }, required: ["action"] }, render: (_a, v) => textBlock("consult " + v.action + (Array.isArray(v.consults) ? " (" + v.consults.length + `):
+` + v.consults.map((c) => "- " + c.consultId + " [" + c.role + "] " + c.state + " " + c.elapsedMs + "ms").join(`
+`) : "") + (v.report ? `
+report (` + v.report.status + "): " + v.report.summary + (v.report.handoff ? `
+handoff: ` + v.report.handoff : "") : "") + (v.error ? `
+error: ` + v.error : "") + (!Array.isArray(v.consults) && !v.report ? `
+state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
+    execute: async (args, _exec) => {
+      const action = String(args?.action ?? "").trim();
+      if (action === "list")
+        return { action, consults: consultSupervisor.list() };
+      const consultId = String(args?.consultId ?? "").trim();
+      if (consultId === "")
+        throw new Error('mpd_role_consult: consultId required for action "' + action + '"');
+      if (action === "wait") {
+        const timeoutMs = Number(args?.timeoutMs ?? 30000);
+        return { action, ...await consultSupervisor.wait(consultId, timeoutMs) };
+      }
+      if (action === "collect")
+        return { action, ...consultSupervisor.collect(consultId) };
+      if (action === "cancel")
+        return { action, ...consultSupervisor.cancel(consultId) };
+      throw new Error("mpd_role_consult: action must be list | wait | collect | cancel");
     }
   });
   dsh.registerTool({
@@ -4890,6 +5767,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return config.team?.gate;
     if (key === SENSITIVITY_CONFIG_KEY)
       return config.team?.sensitivity;
+    if (key === RETEAM_ENABLED_CONFIG_KEY)
+      return config.team?.reteam?.enabled;
+    if (key === RETEAM_AFTER_CONSULTS_CONFIG_KEY)
+      return config.team?.reteam?.afterConsults;
     if (key === BOULDER_DIR_CONFIG_KEY)
       return config.boulder?.dir;
     if (key === INVESTIGATION_CONFIG_KEY)

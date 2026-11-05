@@ -720,3 +720,13 @@ cross-package import:
 The consequence worth knowing: the board, the fence state, the occupancy reading and the depth budget have
 ONE owner (the team plane). A cellwork copy that disagreed with it would be a second policy, and there is
 none.
+
+## Supervision and the force supervisor (2026-11-05)
+
+A cell seat IS a team member, so the team watchdog's force supervisor sees it through the team record
+and can handoff → interrupt → requeue → split it; `mpd-team-core` never writes the CELL record — a seat
+repairs its own seat afterwards through `cellwork_dispatch` (`reassign`) or `cellwork_split`. One-shot
+consults are supervised by the 15-minute consult deadman, and a verifier seat is denied both consult
+tools (`mpd_role_spawn_async`, `mpd_role_consult`) so it can neither delegate nor cancel another
+consult. The re-team volume counter counts cellwork's own staging calls because they execute as the
+same session.

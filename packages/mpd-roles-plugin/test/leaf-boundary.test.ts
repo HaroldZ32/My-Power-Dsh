@@ -124,11 +124,11 @@ function emitCreated(listeners: Array<(payload: unknown) => unknown>, agent: Rec
 }
 
 test("the leaf list is exactly the two bundle spawn tools, and the workmate row's copy is identical", () => {
-  expect([...LEAF_SPAWN_DENY]).toEqual(["mpd_role_spawn", "mpd_workmate_spawn"])
+  expect([...LEAF_SPAWN_DENY]).toEqual(["mpd_role_spawn", "mpd_role_spawn_async", "mpd_role_consult", "mpd_workmate_spawn"])
   // PARITY, pinned from source (test-only import): the two rows ship their own copies on purpose.
   expect([...WORKMATE_LEAF_SPAWN_DENY]).toEqual([...LEAF_SPAWN_DENY])
-  // THE SEPARATION IS INTENTIONAL: the read-only guarantee is untouched at exactly eight names.
-  expect(READONLY_DENY).toHaveLength(8)
+  // THE SEPARATION IS INTENTIONAL: the read-only guarantee is exactly ten names (§D2.7).
+  expect(READONLY_DENY).toHaveLength(10)
   expect(READONLY_DENY).not.toContain("mpd_role_spawn")
 })
 

@@ -264,17 +264,18 @@ settings half is live.
 | `watchdog.enabled` | `true` | kill switch (`MPD_DSH_TEAM_WATCHDOG=off` forces it off) |
 | `watchdog.toolInFlightMaxMs` | `900000` | how long an OPEN tool call explains silence away; `0` disables the bound (r6) |
 | `watchdog.holdTtlMs` | `900000` | the bound after which a persisted hold is auto-released with a durable `hold-auto-released` incident; `0` = never expire |
+| `watchdog.forceAfterMs` | `900000` | how long a task may stay `in_progress` before the force supervisor interrupts its owner, writes the handoff, requeues the row and splits the work; the only exemption is an open `bash` call, and `0` disables the rule (D3) |
 
 These numbers are the frozen §3 table: they appear in `machine.ts`'s `WATCHDOG_DEFAULTS`,
-in this row's own `Config` schema and in the bundle patch's row config, and the three layers
-must agree exactly. The declaration of the first five in `mpd-config`'s schema and in the Web
-card's own `FIELDS` list belongs to **those packages, not here** — and it is about the FRONT DOORS,
-not about whether this row can see a value: a knob is readable and settable before that declaration
-lands through this row's own config (the defaults layer) and through the workspace `.mpd/mpd.jsonc`
-file layer that `config-file.ts` parses on every re-read. On a host that still serves the legacy `mpd`
-namespace the same holds there too, because its schemastery schema keeps unknown keys; on the pinned
-harness nothing registers that namespace, so the row config and that file are the pre-declaration
-surfaces that actually exist.
+in this row's own `Config` schema and in the bundle patch's row config, and the three layers must
+agree exactly. Seven of them are ALSO declared in `mpd-config`'s `SettingsSchema.watchdog` and in the
+shared `FIELDS` render list the two front doors draw — `forceAfterMs` is the one exception, a named
+front-door residual (see NOT-CLAIMED below). That split is about the FRONT DOORS, not about whether
+this row can see a value: a knob is readable and settable through this row's own config (the defaults
+layer) and through the workspace `.mpd/mpd.jsonc` file layer that `config-file.ts` parses on every
+re-read. On a host that still serves the legacy `mpd` namespace the same holds there too, because its
+schemastery schema keeps unknown keys; on the pinned harness nothing registers that namespace, so the
+row config and that file are the surfaces that actually move a running watchdog.
 `holdTtlMs` is declared, resolved AND consumed on this row: a hold persisted by a `pause`
 escalation carries it, and T-17's auto-release path lifts the pause when the bound elapses (or
 when the team produces a stamp newer than `since`), with a durable `hold-auto-released` record.
@@ -483,24 +484,35 @@ whose Pause/Resume buttons POST exactly these two routes.
 * **No notification surface.** The Web banner/activity record and the TUI status row and
   dialog are later tasks. The notice-of-record here is the durable incident record, which
   those three readers consume.
-* **No wedge detection INSIDE a hanging tool.** The r6 in-flight rule explains a long call away;
-  a member wedged *inside* one is reported (a `tool-expired` incident once the bound passes) and
-  never escalated or paused. Stated in the bound section above, and it is the price of not pausing
-  healthy teams for running real work.
-* **`toolInFlightMaxMs` is not in the front-door declaration yet.** It is read through the row config
-  (the defaults layer) and the `.mpd/mpd.jsonc` file layer like the other knobs — and, on a host that
-  still serves it, the legacy `mpd` namespace — but `mpd-config`'s schema/`FIELDS` row lives in
-  that package, so the two front doors do not render it until that declaration lands.
-* **An in-flight turn is not aborted.** The hold stops new dispatch; only a real chat
-  interrupt ends a wedged turn. A member that recovers after ESCALATE finds the team held
-  and cannot advance it — which is the intended outcome.
+* **No pardon for a hanging NON-bash tool.** The r6 in-flight rule explains a long call away while
+  the call is younger than `toolInFlightMaxMs`, and past `forceAfterMs` a member whose open tool is
+  NOT `bash` IS a force target: the force supervisor (below) interrupts it, writes the handoff,
+  requeues the row and splits the work. The ONE exemption is an OPEN `bash` call — any age, no clock
+  needed — which is reported once as a `long-bash` incident and never interrupted.
+* **`forceAfterMs` is declared in the schema but not yet in the shared RENDER list.** It is in
+  `machine.ts`'s `WATCHDOG_DEFAULTS`, in this row's `Config` schema, in the bundle patch's row config
+  and in `mpd-config`'s `SettingsSchema.watchdog` — and it is re-read live every tick through the row
+  config and the `.mpd/mpd.jsonc` file layer like the other knobs. What has NOT landed is the shared
+  `FIELDS` row the two front doors render: the Web settings card keeps its own MIRRORED copy of that
+  list in `packages/mpd-bundle-plugin/src/settings-card.ts`, so adding the row in `mpd-config` alone
+  reddens that package's no-drift parity pin. Both edits belong to that package; until they land,
+  `/settings` and the TUI render the other seven knobs and `forceAfterMs` is set through the row
+  config or the workspace `.mpd/mpd.jsonc` file.
+* **An in-flight turn IS aborted — by the force supervisor, never by the hold.** ESCALATE's hold
+  still only stops NEW dispatch; a member whose task reaches `forceAfterMs` is interrupted through
+  the adapter's interrupt seam (team members only — the captain is never a force target), which ends
+  the wedged turn and returns its row to the board. A member that recovers after ESCALATE still
+  finds the team held and cannot advance it — which is the intended outcome.
 * **No real-wedge verification here.** The unit suite drives the machine with an injected
   clock and a stub adapter; the fault-injection and live-wedge lanes are other tasks.
 * `parkedAttempts` is the projection described above, and `unread` is `null` by construction
   (the official mailbox is not observable through the adapter).
-* **No team mutation, by construction.** The watch list is the MPD team record (read through the
-  `mpdTeams` service) with the harness's own live readout (`dsh.teamLiveTeams()`) as the fallback —
-  both are only READ; every file it writes lives under `<stateDir>/watchdog/`.
+* **No team FILE is written here — the board IS mutated, by DIRECTION.** The watch list is the MPD
+  team record (read through the `mpdTeams` service) with the harness's own live readout
+  (`dsh.teamLiveTeams()`) as the fallback — both are only READ. A force writes no team byte either:
+  it invokes `mpd-team-core`'s `mpdTeamActions` service, which performs the requeue, the split and
+  the captain's mailbox row (and the handoff document). Every file THIS row writes still lives under
+  `<stateDir>/watchdog/`.
 
 ## Verify
 
@@ -538,3 +550,25 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
 depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
 generic tool row. The text `render` and the output schema are unchanged.
+
+## The force supervisor (2026-11-05)
+
+A team member whose `in_progress` task reaches `forceAfterMs` is a force target:
+
+- `forceAfterMs` defaults to `900000` ms (15 minutes); `0` disables the rule, and the value is read
+  live on every tick like the other knobs.
+- `projectMpdTeam` carries each task's `startedAt`/`updatedAt`; the machine emits a `wedged` decision
+  once per task+attempt, with a re-arm path when the force action failed.
+- Owner identity is resolved by BOTH the member NAME and its `executorRef`/session id, and an owner
+  that IS a session id resolves directly. This is the fix for the VEdit degradation: a member's own
+  `claim` writes the session id as owner, so a name-only map missed the lookup and the engine
+  announced `PREDICATE FALLBACK (§4)` and degraded to a report-only mode that can never hold or
+  escalate.
+- The ONLY exemption is an OPEN `bash` call: while the in-flight tool is `bash` the member is exempt
+  with NO age bound, and ONE `long-bash` incident records the elapsed time at the boundary.
+- The captain session is NEVER a force target; one-shot consults are supervised by the consult
+  deadman instead.
+
+The DECIDER is this watchdog, which holds no caller agent: the action is executed by
+`mpd-team-core`'s `mpdTeamActions` service with the team record's `leadSessionId` as the authorising
+session. An absent service or a missing lead session records the incident and skips, non-fatally.

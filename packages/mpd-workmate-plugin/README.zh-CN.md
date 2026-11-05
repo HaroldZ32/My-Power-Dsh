@@ -210,3 +210,10 @@ bun test packages/mpd-workmate-plugin   # 离线生命周期测试（沙箱 HOME
 每张卡片都是一棵 v1 视图树（`stack` 标题 → `row` 指标 → `table`），不带数据绑定、不带按钮，并在发布前
 按应用的 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
 文本 `render` 与输出 schema 均未改动。
+
+## consult 工具的拒绝面（2026-11-05）
+
+只读拒绝清单现为 **十个**名字（新增 `mpd_role_spawn_async` 与 `mpd_role_consult`），叶子清单在两个
+spawn 工具之外也包含这两个名字。后果：只读 workmate 既不能启动后台 consult、不能取消另一个
+consult，也不能再次委派。阻塞式的 `mpd_workmate_spawn` 本身不变 —— 它骑在同一条异步 spawn 接缝
+上，并保持原有报告形状。

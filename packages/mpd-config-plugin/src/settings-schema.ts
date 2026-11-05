@@ -244,6 +244,8 @@ export const SettingsSchema = z.object({
     actionOnEscalate: z.union([z.const("pause"), z.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: z.number().default(900000),
     holdTtlMs: z.number().default(900000),
+    // D3's force bound: a task `in_progress` this long becomes a force target; `0` disables the rule.
+    forceAfterMs: z.number().default(900000),
   }),
   // The DSH-TUI surface's own knob. It lives in THIS schema because this file is the single source
   // for the namespace schema and for the knob list both front doors render — a knob declared only

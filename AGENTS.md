@@ -97,7 +97,11 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   a NEW spawn; the harness catalog is append-only, so a settled child may still list `inactive`); team
   work: the **official Agent Teams plugin**; durable, evolving instances: the **workmate library**
   (`mpd_workmate_spawn` — the same one-shot mechanics, plus persona/memory; what is durable is the
-  RECORD, never the child session).
+  RECORD, never the child session). **A consult can also run in the BACKGROUND (2026-11-05):**
+  `mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
+  cancels, so several consults overlap; every consult — blocking or async — carries a 15-minute
+  deadman that writes a handoff and interrupts the child, and an OPEN `bash` call is its only
+  exemption. Long form: `agent-references/supervision.md`.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
@@ -106,10 +110,10 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   mpd surface treats `dsh.teamLiveTeams()` as truth: the RECORD is authoritative everywhere, and the
   official call remains only the contained FALLBACK for a composition that runs the official executor
   (the team-compact read, the TUI team state and the watchdog).
-- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)** — harness
-  0.1.7-rc.2's official Agent Teams plugin replaced it and the de-vendor wave deleted the tree, so its
-  `agent_teams_*` tools and its `mpd-delta` registry belong to no shipped session.
-  `packages/mpd-schemastery/**` and the prebuilt browser client bundle SURVIVED as our own code.
+- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)** — its
+  `agent_teams_*` tools and `mpd-delta` registry belong to no shipped session;
+  `packages/mpd-schemastery/**` survived as our own code. Narrative:
+  `agent-references/overview-and-provenance.md`.
 - **A dependency a bundle DECLARES is mounted by a row that needs it** — the official Agent Teams
   packages are declared in `dependencies` and materialized by `dsh-app-boot`'s
   `healProfileModuleFallback` before the loader runs.
@@ -138,6 +142,15 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   is an ACTIVE boulder work for this workspace
   (`status: "active"` in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE); a plan FILE alone is
   NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.
+  **The gate RE-ARMS mid-session (2026-11-05).** "Leading" now means a team that has NOT ended: an
+  explicit `agent_teams_control end`, or a CLEAN-TERMINAL board (>= 1 task, every task
+  completed/cancelled, none failed), which the gate ends itself. A `failed` task blocks BOTH the
+  auto-end and any re-team and asks for a `kind=repair` row — a wave whose verification failed is
+  never closed silently. With no live team and `team.reteam.afterConsults` (default 4) COMPLETED
+  `mpd_role_spawn*` / `mpd_workmate_spawn` calls since the last fire, the gate stages a NEW shell
+  under the marker `[AgentTeams] Re-team rule`, once per record in
+  `<ws>/.mpd/session-gate/<sessionId>.json`. `team.reteam.enabled` (default true) gates only the
+  volume trigger.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes
@@ -220,14 +233,12 @@ Docker lane is LAST — is in `agent-references/verification-flow.md`.
 
 **The pack-closure bound (T-91):** a green `node scripts/verify-pack-closure.ts` certifies COMPLETENESS
 plus the BYTE IDENTITY of every file whose source did not move; **freshness is NOT what the exit code
-says** — it is read from the `expected-after-pack` list at the re-pack (T-26's discriminator: TIMESTAMP
-ORDER). The gate's `--self-test` fixture arms are the operative evidence.
+says** — it comes from the `expected-after-pack` list at the re-pack (T-26's discriminator: TIMESTAMP
+ORDER), and the gate's `--self-test` fixture arms are the operative evidence. Long form:
+`agent-references/verification-flow.md`.
 
-`--dump-config` is NOT a gate: it COMPOSES rows and never executes plugin code, so a schema/apply abort
-is invisible to it (measured: it exited 0 with the `mpd-workmate` row present while the same profile's
-real boot could not load the tree). **It proves COMPOSITION ONLY — never a plugin load.** Every
-instruction that sends a reader to the flag goes through the repo wrapper `node scripts/dump-config.ts`
-(T-31), which prints that warning itself.
+`--dump-config` proves COMPOSITION ONLY and never a plugin load; always use `node scripts/dump-config.ts`
+(T-31), which prints that warning itself. Long form: `agent-references/verification-flow.md`.
 
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
@@ -418,9 +429,10 @@ analysis, the delta-registry mechanics and every adapter API signature — is in
   `.toolchain/node_modules/.bin/bun build packages/<pkg>/src/index.ts --target node --format esm
   --outfile packages/<pkg>/dist/index.js`, or the one the gate prints; a build run from a PACKAGE
   directory is flagged STALE even though it looks sanctioned. Zero runtime deps preferred (type-only
-  imports). **An ADAPTER edit fans out**: `bun build` INLINES every imported module, so touching `packages/{mpd-dsh,mpd-tui}-adapter-plugin/src` changes the emitted bytes
-  of every package that imports it (measured: one adapter edit left 12 of 24 dist targets STALE) —
-  rebuild each dependent with the pinned toolchain.
+  imports). **An ADAPTER edit fans out**: `bun build` INLINES every imported module, so touching
+  `packages/{mpd-dsh,mpd-tui}-adapter-plugin/src` changes the emitted bytes of every package that
+  imports it — rebuild each dependent with the pinned toolchain
+  (`agent-references/plugin-authoring.md`).
 - **Load/test**: a bundle row lives in the bundle, never ALSO in a QA overlay while it is already in the
   bundle — the loader rejects duplicate entry ids. QA boots a checkout through the dev-flavor rewrite
   (`devPatch()` in `skills/dsh-qa/scripts/preset-register.ts`).
@@ -468,12 +480,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   and every `--self-test` that never creates a session are blind to this class — only a real mount is
   not.
 - New case checklist: add row to SKILL.md case table; script + `--self-test`; real run; evidence dir.
-- **Verify on SETTLED hashes, and quote a hash WITH its measurement moment.** Pin the revision by hash,
-  re-check it after a short settle window (wave 2 used 50 s), then run the contract, anchoring every
-  verdict to the hashes you measured; state the UTC instant each hash was read and sandwich a verifier's
-  read — hash → work → re-hash, start == end after the settle window.
-- Shell caveat: long-lived MCP children hold inherited fds — run dsh with stdio to FILES (`spawnSync`
-  with `stdio: ['ignore', fd, fd]`) or background + log-file redirection, never pipes.
+- **Verify on SETTLED hashes** (pin by hash, re-check after a settle window, sandwich a verifier's
+  read: hash -> work -> re-hash) and run a long-lived `dsh` with stdio to FILES, never pipes — both
+  long form: `agent-references/qa-discipline.md`.
 
 ---
 
@@ -500,7 +509,7 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.3` (this release, named by explicit spec) or the
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.17.4` (this release, named by explicit spec) or the
   unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
   `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
@@ -539,11 +548,9 @@ lane hold this line.
 
 ### Dev/QA flow (legacy): `scripts/install-profile.ts`
 
-- `node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X] [--skip-toolchain]`.
-  Default is `--dry-run`: print, never write; `--dsh-home` enables isolated QA installs. It writes the
-  home `cordis.patch.yml` with absolute paths and presets → `$DSH_HOME/.agent-presets/`. Superseded by
-  the packed bundle for user installs.
-- Never run the installer against the real home from a QA context; that is what `--dsh-home` is for.
+- `node scripts/install-profile.ts --yes [--profile mpd|mpd-headless] [--dsh-home X]` (default
+  `--dry-run`); never run it against the real home from a QA context. Long form:
+  `agent-references/installer-and-profiles.md`.
 
 ---
 
@@ -633,10 +640,8 @@ behaviour we do not fight; the detail and the measurements are in `agent-referen
 - **T-54** a sandboxed profile copy sits at the SAME directory depth as the installed profile.
 - **T-55** cite code by SYMBOL, never by line number.
 - **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (see §5).
-
-T-21/T-23/T-24/T-26 are verified by `node scripts/mpd-bg.ts --self-test` (13 arms); T-43 by the
-harness-close guard cases in `evidence/platform/harness-close/`; T-54 and T-55 are documentation rules,
-not mechanically checked.
+- **T-93** a session that ever led a team stops building another -> the gate re-arms on an ENDED or
+  clean-terminal board (§1), and a `failed` task blocks both auto-end and re-team.
 
 ---
 
@@ -651,10 +656,11 @@ slot, workmate) stay here, with the verifier's envelope.
   members are addressed by NAME: Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead,
   Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL —
   refused as TOOL INPUT and exposed by NO tool output, render, web route or GUI. The **read-only
-  discipline is the exported deny list**, exactly eight names, identical in `mpd-roles-plugin` and
+  discipline is the exported deny list**, exactly ten names, identical in `mpd-roles-plugin` and
   `mpd-workmate-plugin` (asserted by `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`,
   `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`,
-  `mcp__lsp__rename_symbol_strict`. **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not
+  `mcp__lsp__rename_symbol_strict`, `mpd_role_spawn_async`, `mpd_role_consult`. **Do NOT re-add
+  `str_replace_editor` / `apply_patch`, and do not
   filter the list with `dsh.hasTool`** — the harness validates the WHOLE list at spawn time, so one dead
   entry breaks every read-only spawn; since 2026-10-10 that validation is TOLERATED instead of fatal
   (`restrictToolsTolerant` prunes the names the harness reports as unknown, with exactly ONE logged

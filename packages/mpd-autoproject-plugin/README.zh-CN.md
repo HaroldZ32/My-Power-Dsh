@@ -74,3 +74,25 @@ Live QA：`node skills/dsh-qa/scripts/autoproject-smoke.ts`。
 （`stack` 标题 → `row` 指标 → `keyValue` → `table`），不带数据绑定、不带按钮，并在发布前按应用的
 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
 文本 `render` 与输出 schema 均未改动。
+
+## slot 账本与唯一的超时归属（2026-11-05，CR r1）
+
+每个子会话的**超时归属者**都是名册的 consult 监管器（位于 `mpd_role_spawn` 内）：只有它能看见
+子会话**当前**的工具调用，因此只有它能兑现 open-`bash` 豁免 —— 该豁免**没有年龄上限**（其 deadman
+会重新计时，而不是中断）。deadman 的默认值是 15 分钟。
+
+`autoproject.slotBoundMs`（默认 `SLOT_BOUND_DEFAULT_MS = 900000`，可按运行经 live 层或行配置覆盖）
+因此是**存活兜底**，而不是第二个 deadline —— 两个默认值相等**并不是**它们达成一致的机制。它触发时，
+引擎会查询监管器的登记表（`mpd_role_consult {action:"list"}`）：
+
+- 仍有同一角色的 consult 报告为 `running` → 监管器仍在监管该子会话（它可能正在豁免一次 open `bash` 调用），
+  于是引擎**不**中断子会话：只记一行延迟日志并重新计时。覆盖该值改变的是**检查间隔**，绝不是
+  子会话的超时。
+- 没有该角色正在运行的 consult（名册缺失或失效）→ 引擎通过 AbortSignal 中断子会话，记录
+  `late/killed:<role>` 并强制运行进入 `blocked`。这是超时写入 kill 的唯一路径。
+
+slot 账本仍是**唯一**的记账处：`state.json` 携带 `slotBoundMs` 与 `kills` 数组。报告
+`status:"interrupted"`（监管器自己的 deadman 击杀）的 consult 会被记为一条 `SlotKill` 记录（使用
+名册报告的 `elapsedMs` 与该次运行的 `boundMs`），在日志中打上 `late/interrupted:<role>` 标记（含
+handoff 路径），并以 `null` 答复 —— 与兜底击杀完全一致，使运行最终变为 `blocked`。它**不会**变成
+静默的 `null`。

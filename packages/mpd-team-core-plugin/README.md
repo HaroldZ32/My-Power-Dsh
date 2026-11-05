@@ -535,3 +535,23 @@ spelling of "not fenced".
 **The tool-surface budget is a BOUND, not a promise:** five action-based tools plus one command stay
 under 6,400 characters (`test/tool-surface.test.ts`; measured 6,399 as wave A6b closed), and each tool
 DESCRIPTION stays under 700.
+
+## The force action and its wiring (2026-11-05)
+
+The watchdog is the DECIDER (it resolves `mpdTeams` and holds no caller agent), so it invokes the
+`mpdTeamActions` service this package publishes and authorises the action with the team record's
+`leadSessionId`. An absent service or a missing lead session records the incident and skips — the
+tick never throws.
+
+One force action: (1) write `.mpd/handoff/<member>-<task>-<UTC instant>.md` (task, attempt, member,
+started, elapsed, last tool calls, review state); (2) `executor().interrupt(caller.agent, handle)` for
+THAT member only; (3) requeue the task `pending` with `attempt` bumped and a note naming the handoff;
+(4) SPLIT — one new pending, unowned task per declared write scope when the task declares two or more
+(each inheriting the handoff path), otherwise exactly one continuation task with the subject prefix
+`[split]`; (5) one captain mailbox row naming team, task, handoff and split rows; (6) journal
+`wedged-force` plus one incident record.
+
+Failure semantics: a handoff write failure aborts that member's force for this attempt (retried on
+the next tick, at most once per attempt); an interrupt refusal is recorded and the action STILL
+requeues and splits; a mailbox refusal is non-fatal — the journal row is the durable notification.
+The captain is never a force target.

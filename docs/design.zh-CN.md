@@ -615,3 +615,40 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面，�
   叶`），并且在本文件与其前身中都未发现过期副本；该计数属于 README / 用户指南 / schema 注释。形态此后
   已改为逐 agent 路由（`agentRoutes.<Agent>`：每个名册 agent 一行三片叶子）；遗留的 `teamModels` 块是一个
   只迁移一次、之后不再参与路由的宽松节点，而且不存在持久化的槽位，因此任何写在这里的叶子总数都会再次过期。
+
+## 9. 监督机制：re-team、异步 consult 与强制（2026-11-05）
+
+### Re-team
+
+一个团队只有在**结束**之前才算 LIVE：显式 `agent_teams_control end`，或者复杂度 gate 自行结束的
+clean-terminal 板（≥ 1 个任务、全部 completed/cancelled、没有 failed）。`failed` 任务会同时阻止
+自动结束与任何 re-team，并要求一条 `kind=repair` 任务。当没有 live 团队、且本会话已完成
+`team.reteam.afterConsults`（默认 4）次单次 spawn 时，gate 会在 `[AgentTeams] Re-team rule` 标记下
+stage 一个空 plan shell；`team.reteam.enabled`（默认 true）只控制这一 volume 触发器。三个平面都计入：
+autoproject 与 cellwork 都以同一 session 执行 spawn。
+
+### 异步 consult 与 deadman
+
+`mpd_role_spawn_async` 立即返回 `consultId`，`mpd_role_consult` 提供 list/wait/collect/cancel；
+并发由 `MPD_DSH_CONSULT_MAX`（默认 8，超限排队）限制。每个 consult（阻塞或异步）都武装 900 000 ms
+的 deadman：写 handoff 并中断子 agent；唯一例外是子 agent **当前**是正在执行的 `bash`（无时长上限）。
+handle 位于适配器共享的激活接缝（`spawnAgentAsync`）上；`spawnAgent` 是其阻塞投影，因此 workmate 与
+cellwork_recon 的形状不变。只读成员拒绝这两个 consult 工具（共十个名字），且每个 consult 仍是叶子。
+
+### 强制监督器
+
+团队成员中 `in_progress` 任务达到 `forceAfterMs`（默认 900 000 ms；0 关闭；每 tick 实时读取）时，
+触发 watchdog 的 `wedged` 决策；属主身份按 NAME **与** `executorRef`/session id 解析。动作位于
+team-core（`mpdTeamActions`）：handoff → interrupt → requeue → split → captain 邮箱 →
+`wedged-force` 日志。正在执行的 `bash` 是唯一豁免；captain 永远不是目标；单次 consult 改由 deadman
+监督。
+
+### 平面覆盖
+
+| 平面 | Re-team | 异步 consult | 15 分钟强制 |
+|---|---|---|---|
+| Agent Teams | 是（同一 session） | — | 是（watchdog） |
+| cellwork 席位 | 是（同一 session） | — | 是（watchdog，席位身份） |
+| cellwork reseed / `cellwork_recon` | 是 | 是（同一接缝） | 是（deadman） |
+| autoproject | 是（同一 session） | 是（继承） | 是（deadman，`slotBoundMs` 对齐） |
+| workmate | — | 是（同一接缝） | 是（deadman） |

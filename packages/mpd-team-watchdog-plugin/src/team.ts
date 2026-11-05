@@ -72,6 +72,14 @@ export interface TeamTask {
   /** Epoch ms of the board's last mutation, when the view carries one. */
   updatedAt?: number
   /**
+   * D3: epoch ms at which this task FIRST entered `in_progress`, when the record carries one.
+   *
+   * The force supervisor's WHOLE clock: `now - startedAt >= forceAfterMs` is what decides that a
+   * task is wedged, because the trigger is the TASK's age and no stamp can answer it. Absent until
+   * the row is claimed, and absent on an official-plane view that reports no timestamps at all.
+   */
+  startedAt?: number
+  /**
    * T-20 (§8): the task ids this task depends on (the official `blockedBy`). Carried because the
    * watchdog derives "this member is blocked and has nothing claimable" from the readout ALONE —
    * no new member-facing wait tool is added, and no other process has to tell the watchdog.
@@ -285,7 +293,7 @@ export interface MpdTeamRecord {
   /** The roster, as far as this module reads it. */
   members?: ReadonlyArray<{ id?: string; name?: string; status?: string; executorRef?: string }>
   /** The board, as far as this module reads it. */
-  tasks?: ReadonlyArray<{ id?: string; status?: string; owner?: string; revision?: number; blockedBy?: readonly string[] }>
+  tasks?: ReadonlyArray<{ id?: string; status?: string; owner?: string; revision?: number; blockedBy?: readonly string[]; startedAt?: string; updatedAt?: string }>
 }
 
 /**
@@ -357,11 +365,20 @@ export function projectMpdTeam(record: MpdTeamRecord): TeamRecord {
     const revision = typeof task.revision === "number" && Number.isFinite(task.revision) ? task.revision : undefined
     // The owner, when the record names one; the empty string is the store's "unowned".
     const owner = typeof task.owner === "string" && task.owner !== "" ? task.owner : undefined
+    // D3's clock: the record's own `startedAt`, read through the same total ISO parser as the
+    // team-level timestamps ("absent or unparseable" reads as null, never as an invented instant).
+    const startedAt = epochOf(task.startedAt)
+    // The board's last mutation, carried beside the start so a reader can see both clocks.
+    const updatedAt = epochOf(task.updatedAt)
     return {
       id: String(task.id ?? ""),
       status: String(task.status ?? ""),
       ...(owner === undefined ? {} : { assignee: owner, dispatched: true }),
       ...(revision === undefined ? {} : { attempt: revision, attemptId: String(revision) }),
+      // D3: WITHOUT THESE the force rule has no duration to measure, which is the exact defect this
+      // projection fix closes (`startedAt` used to be dropped here).
+      ...(startedAt === null ? {} : { startedAt }),
+      ...(updatedAt === null ? {} : { updatedAt }),
       ...(Array.isArray(task.blockedBy)
         // The parameter is annotated because `Array.isArray` widens a `readonly string[]` to `any[]`.
         ? { dependencies: task.blockedBy.filter((id: unknown): id is string => typeof id === "string") }
