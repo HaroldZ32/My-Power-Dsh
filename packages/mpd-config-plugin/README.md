@@ -20,6 +20,12 @@ commas) with prototype-pollution-safe merge.
 - `team.stateDir`, `hashline.guardEditTools/maxDiffChars/registryFile`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
   `autoproject.maxRounds`.
+- `team.reteam.enabled` (default `true`): gates ONLY the mid-session volume trigger; the
+  ended-aware and clean-terminal auto-end rules stay in force regardless.
+- `team.reteam.afterConsults` (default `4`): COMPLETED `mpd_role_spawn` / `mpd_role_spawn_async` /
+  `mpd_workmate_spawn` calls by this agent since the last fire before the gate stages a new empty
+  plan shell under `[AgentTeams] Re-team rule`. A failed or `AGENT_UNCONFIGURED` spawn does not
+  count; the count persists in `<ws>/.mpd/session-gate/<sessionId>.json`.
 
 ## Agent routes (`agentRoutes`)
 

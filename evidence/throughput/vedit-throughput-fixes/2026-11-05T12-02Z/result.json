@@ -1,0 +1,59 @@
+{
+  "wave": "vedit-throughput-fixes",
+  "branch": "fix/vedit-throughput",
+  "base": "dev@4f102eca93eba6b5c0ba5e0e82557749f74a5d37",
+  "recordedAt": "2026-11-05T12:02Z",
+  "incidentEvidence": "evidence/throughput/vedit-incident-2026-11-05/",
+  "frozenContract": ".mpd/plans/vedit-throughput-fixes.md",
+  "defects": [
+    {
+      "id": "D1",
+      "name": "re-team gate",
+      "rootCause": "complexity-gate.ts#readLeadingTeam read only leadSessionId + members.length and never endedAt/terminality; session-gate.ts kept a permanent acted set; no mid-session volume trigger existed",
+      "fix": "ended-aware and clean-terminal leadership (hasTasks && allTerminal && noFailure), failed task blocks auto-end and re-team, re-armable settlement, per-pre-step volume trigger counted from onPostToolExecute, state in .mpd/session-gate/<sessionId>.json"
+    },
+    {
+      "id": "D2",
+      "name": "async one-shot consults + 15-minute deadman",
+      "rootCause": "mpd_role_spawn -> dsh.spawnAgent -> adapter awaited activation.result inside the tool call; the harness runs tool calls from one message sequentially (measured in this session)",
+      "fix": "adapter spawnAgentAsync on the shared activation arm; spawnAgent is its blocking projection; mpd_role_spawn_async + mpd_role_consult; MPD_DSH_CONSULT_MAX=8 queueing; 900000 ms deadman with handoff + interrupt and a no-age-bound in-flight bash exemption; autoproject slotBoundMs aligned"
+    },
+    {
+      "id": "D3",
+      "name": "force supervisor",
+      "rootCause": "watchdog was read-only (warn-only, hold stops NEW dispatch only); candidates() keyed member sessions by NAME while a claim writes the SESSION ID as owner, forcing PREDICATE FALLBACK report-only; projectMpdTeam dropped startedAt",
+      "fix": "owner identity by name AND executorRef/session id, startedAt/updatedAt carried, wedged decision at forceAfterMs=900000, in-flight bash exempt (recorded), force action via mpdTeamActions with leadSessionId authority: handoff -> interrupt -> requeue -> split -> captain mailbox -> wedged-force journal; captain never targeted"
+    }
+  ],
+  "gates": {
+    "verify:vendor": "PASS - 7 shipped asset(s) fingerprinted (after the wave's single re-pin: skills.treeSha c70c8606 -> aa52a2bc)",
+    "verify:dist-fresh": "ok: 34/34 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED (prebuilt vendored serve.js)",
+    "verify:rows": "ok: 36 row ids match the 2-file bundle patch layer",
+    "verify:docs": "pairs=55 failed=0 violations=0 exempt=24 derived=3 links=500 dead=0 - PASS",
+    "verify:manifest": "PASS - install-time rules and the packaging contract hold",
+    "verify:comments": "PASS - every declaration commented and fully typed",
+    "no-host-override": "PASS - every id-target is bundle-owned (0 of 0 collide with 214 host rows)",
+    "manual-paths": "PASS resolved=157 over-report=72 under-report=82 declared=2",
+    "preset-conformance --self-test": "ok: 32 harness rows conform, mpd preset 29 child rows, row parity 27/27 (negative controls 4/4 reddened)",
+    "bun test packages": "3582 pass, 6 skip, 0 fail (240 files, 50156 expect calls)",
+    "typecheck": "exit 0 (tsgo --noEmit)",
+    "test:qa": "all self-tests passed (56 cases)",
+    "verify:gates": "PASS - 9/9 member gates green"
+  },
+  "process": {
+    "team": "team-20261105111659546-zbxi-002",
+    "workTasks": ["T1", "T2", "T3"],
+    "docsTask": "T5",
+    "qaSyncTasks": ["T6", "T7"],
+    "reviewTask": "T4",
+    "independentVerifier": "reviewer-1"
+  },
+  "declaredBounds": [
+    "No live mount boot of the new tool schemas: the tool/knob behaviour is proven by package tests plus typecheck, not by a booted dsh. A mount lane should confirm onPostToolExecute's exec.agent population, the deadman's interrupt path against a real child, and agent_teams_control end authority.",
+    "Consult activity is keyed by the child LABEL (roster role name) because that is the only identity the adapter exposes to the supervisor; two CONCURRENT same-role consults share one activity entry, which is conservative for the in-flight-bash exemption (an open bash is never killed) but can delay interrupting a wedged twin.",
+    "No cross-process supervision: a child started by another dsh process is invisible to this one.",
+    "The Docker real-machine lane was NOT run (this is not a release sweep); the wave changes no install path, patch row id, or packed file layout.",
+    "The three defects are committed in one code commit because packages/mpd-roles-plugin/src/index.ts hosts both D1's config keys and D2's tool registrations; a per-defect split would produce a non-building intermediate commit. The contract's 'three atomic commits' is therefore DECLARED DEVIATED here.",
+    "The captain edited AGENTS.md, agent-references/supervision.md and the incident evidence directly; those are agent-facing documentation, not implementation, and the reviewer was asked to check the manual claims against the shipped code."
+  ]
+}

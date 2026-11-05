@@ -413,3 +413,21 @@ fence 或已失败时，该行会被**报告**并保持 pending —— 绝不替
 
 **工具面预算是一个上界，不是承诺：** 五个 action 型工具加一条命令必须保持在 6,400 字符以内
 （`test/tool-surface.test.ts`；A6b 收尾时实测 6,399），且每个工具的**描述**必须低于 700。
+
+## 强制动作及其接线（2026-11-05）
+
+**决策者**是 watchdog（它只解析 `mpdTeams`，不持有 caller agent），因此由它调用本包发布的
+`mpdTeamActions` 服务，并以团队记录的 `leadSessionId` 授权该动作。服务缺失或没有 lead session 时，
+记录事件并跳过 —— tick 永不抛错。
+
+一次强制动作：(1) 写入 `.mpd/handoff/<member>-<task>-<UTC instant>.md`（task、attempt、member、
+started、elapsed、最近工具调用、review 状态）；(2) 仅对**该**成员调用
+`executor().interrupt(caller.agent, handle)`；(3) 将任务重新入队为 `pending`，`attempt` 加一，并
+在 note 中写入 handoff 路径；(4) 拆分 —— 任务声明两个及以上写入范围时，每个范围生成一个未指派的
+`pending` 任务（各自继承 handoff 路径），否则只生成一个主题前缀为 `[split]` 的续作任务；
+(5) 给 captain 发一条邮箱消息，写明团队、任务、handoff 与拆分出的任务；(6) 日志记录
+`wedged-force` 与一条事件。
+
+失败语义：handoff 写入失败会中止该成员**本次**强制（下个 tick 重试，每个 attempt 至多一次）；
+中断被拒绝会被记录，动作**仍会**重新入队并拆分；邮箱被拒是非致命的 —— 日志行才是持久通知。
+captain 永远不是强制目标。

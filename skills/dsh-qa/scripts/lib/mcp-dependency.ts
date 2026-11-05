@@ -8,7 +8,7 @@
 // oneclick Docker lane skips steps 07/08 by design, so its `/opt/mpd` checkout carries no
 // `node_modules` — measured inside that container: the source lane recorded 12 `mcp__lsp__*` names and
 // 104/105 tools, the oneclick lane recorded 0 of them and 95 tools, and the two cases that assert an
-// `mcp__lsp__*` name (or the canonical eight-name deny list, two of whose members are LSP renames)
+// `mcp__lsp__*` name (or the canonical ten-name deny list, two of whose members are LSP renames)
 // reddened for a reason that is the TREE's, not the row's.
 //
 // WHAT IT DOES. Reads the version the PUBLISHED manifest declares (`package.json`'s

@@ -575,3 +575,12 @@ cell **模式**的引擎（requirements、split、activate、recon、budget）�
 
 值得记住的后果：看板、fence 状态、占用率读数与深度预算都只有**一个**所有者（团队平面）。若 cellwork 保留一份
 与之不一致的副本，那就是第二套策略，而这里没有第二套。
+
+## 监督与强制监督器（2026-11-05）
+
+cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器会通过团队记录看到它，并可对其执行
+handoff → interrupt → requeue → split；`mpd-team-core` **绝不**写 CELL 记录 —— 席位事后通过
+`cellwork_dispatch`（`reassign`）或 `cellwork_split` 修复自身。单次 consult 由 15 分钟 consult
+deadman 监督；verifier 席位被拒绝两个 consult 工具（`mpd_role_spawn_async`、`mpd_role_consult`），
+因此既不能委派，也不能取消另一个 consult。re-team 的 volume 计数器会计入 cellwork 自己的 staging
+调用，因为它们以同一 session 执行。

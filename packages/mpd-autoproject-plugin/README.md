@@ -144,3 +144,14 @@ a v1 tree (`stack` title → `row` of metrics → `keyValue` → `table`) with n
 actions, measured before publication against the app's 8 KiB / 40 nodes / depth-6 tool-card budget.
 A card that cannot be built returns `{}`, so the app falls back to its generic tool row. The text
 `render` and the output schema are unchanged.
+
+## The slot bound and interrupted consults (2026-11-05)
+
+`autoproject.slotBoundMs` now defaults to `900000` ms (15 minutes) — the SAME bound the one-shot
+consult deadman uses, so the two mechanisms do not race with different timers. The slot ledger stays
+the ONLY accounting: `state.json` carries `slotBoundMs` and the `kills` array.
+
+A consult that reports `status:"interrupted"` (its deadman fired) is recorded as a `SlotKill` row with
+the roster's reported `elapsedMs` at the run's current `boundMs`, stamped in the journal as
+`late/interrupted:<role>` (including the handoff path), and answered as `null` — exactly like a
+hard-bound kill, which forces the run to `blocked`. It is never a silent `null`.

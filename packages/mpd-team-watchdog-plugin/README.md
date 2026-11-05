@@ -538,3 +538,25 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 data bindings and no actions, measured before publication against the app's 8 KiB / 40 nodes /
 depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
 generic tool row. The text `render` and the output schema are unchanged.
+
+## The force supervisor (2026-11-05)
+
+A team member whose `in_progress` task reaches `forceAfterMs` is a force target:
+
+- `forceAfterMs` defaults to `900000` ms (15 minutes); `0` disables the rule, and the value is read
+  live on every tick like the other knobs.
+- `projectMpdTeam` carries each task's `startedAt`/`updatedAt`; the machine emits a `wedged` decision
+  once per task+attempt, with a re-arm path when the force action failed.
+- Owner identity is resolved by BOTH the member NAME and its `executorRef`/session id, and an owner
+  that IS a session id resolves directly. This is the fix for the VEdit degradation: a member's own
+  `claim` writes the session id as owner, so a name-only map missed the lookup and the engine
+  announced `PREDICATE FALLBACK (§4)` and degraded to a report-only mode that can never hold or
+  escalate.
+- The ONLY exemption is an OPEN `bash` call: while the in-flight tool is `bash` the member is exempt
+  with NO age bound, and ONE `long-bash` incident records the elapsed time at the boundary.
+- The captain session is NEVER a force target; one-shot consults are supervised by the consult
+  deadman instead.
+
+The DECIDER is this watchdog, which holds no caller agent: the action is executed by
+`mpd-team-core`'s `mpdTeamActions` service with the team record's `leadSessionId` as the authorising
+session. An absent service or a missing lead session records the incident and skips, non-fatally.

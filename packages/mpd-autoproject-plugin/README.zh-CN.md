@@ -74,3 +74,14 @@ Live QA：`node skills/dsh-qa/scripts/autoproject-smoke.ts`。
 （`stack` 标题 → `row` 指标 → `keyValue` → `table`），不带数据绑定、不带按钮，并在发布前按应用的
 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
 文本 `render` 与输出 schema 均未改动。
+
+## slot 超时上限与被中断的 consult（2026-11-05）
+
+`autoproject.slotBoundMs` 的默认值现为 `900000` ms（15 分钟）—— 与单次 consult 的 deadman 使用
+**同一个**上限，因此两套机制不会用不同的计时器互相竞速。slot 账本仍是**唯一**的记账处：
+`state.json` 携带 `slotBoundMs` 与 `kills` 数组。
+
+报告 `status:"interrupted"`（其 deadman 已触发）的 consult 会被记为一条 `SlotKill` 记录（使用名册
+报告的 `elapsedMs` 与该次运行的 `boundMs`），在日志中打上 `late/interrupted:<role>` 标记（含 handoff
+路径），并以 `null` 答复 —— 与硬上限击杀完全一致，使运行最终变为 `blocked`。它**不会**变成静默的
+`null`。

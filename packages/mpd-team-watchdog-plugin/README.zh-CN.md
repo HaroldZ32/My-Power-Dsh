@@ -448,3 +448,21 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 （`stack` 标题 → `row` 指标 → `keyValue` → `table`），不带数据绑定、不带按钮，并在发布前按应用的
 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
 文本 `render` 与输出 schema 均未改动。
+
+## 强制监督器（force supervisor，2026-11-05）
+
+当某个团队成员的 `in_progress` 任务达到 `forceAfterMs` 时，该成员成为强制目标：
+
+- `forceAfterMs` 默认 `900000` ms（15 分钟）；`0` 关闭该规则；与其他旋钮一样，每个 tick 都实时读取。
+- `projectMpdTeam` 携带每个任务的 `startedAt`/`updatedAt`；状态机对每个 task+attempt 只产生一次
+  `wedged` 决策，并在强制动作失败时提供重新武装的路径。
+- 属主身份同时按成员 **NAME** 与其 `executorRef`/session id 解析；本身就是 session id 的属主可直接
+  解析。这正是 VEdit 降级的修复：成员自己的 `claim` 会把 session id 写成属主，仅按名字建表的查找
+  会落空，于是引擎宣告 `PREDICATE FALLBACK (§4)` 并降级为永远无法 hold 或 escalate 的只报告模式。
+- **唯一**豁免是正在执行的 `bash` 调用：当 in-flight 工具是 `bash` 时，成员在**没有时长上限**的
+  情况下豁免，并在边界处记录**一条** `long-bash` 事件（含已用时间）。
+- captain session **绝不**是强制目标；单次 consult 改由 consult deadman 监督。
+
+**决策者**是本 watchdog，它不持有任何 caller agent：动作由 `mpd-team-core` 的 `mpdTeamActions`
+服务执行，并以团队记录的 `leadSessionId` 作为授权 session。服务缺失或没有记录 lead session 时，
+写入事件并跳过，且不属于致命错误。

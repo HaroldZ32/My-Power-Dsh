@@ -321,3 +321,33 @@ An explicit `team:` / `!team` request is signal **A** and travels the SAME route
 to top-level `mpd` sessions (a child session — subagent, teammate, workflow worker — and another
 preset's session never get it), settles once per session, and a failure inside it leaves the step
 untouched.
+
+## Async consults and the 15-minute deadman (2026-11-05)
+
+`mpd_role_spawn` keeps its arguments and report shape, but its `status` may now also be
+`"interrupted"`: every consult — blocking or background — is supervised.
+
+| Tool | Behaviour |
+|---|---|
+| `mpd_role_spawn_async` | `{role, task, context?}` → `{consultId, role, state:"running"}` immediately; the child keeps running in the background. |
+| `mpd_role_consult` | `list` (id, role, state, startedAt, elapsedMs); `wait` (`consultId`, `timeoutMs` ≤ 60 000 — the report when settled, `state:"running"` when not); `collect` (returns the settled report and releases it); `cancel` (interrupts that consult's child). |
+
+Concurrency is capped by `MPD_DSH_CONSULT_MAX` (default `8`, the host's active-child limit): an
+over-cap consult QUEUES and never throws. The cap is read per start.
+
+**Deadman.** Every consult is armed with a 15-minute bound (900 000 ms). On expiry:
+
+- If the child's CURRENT tool call is `bash` and still in flight, the consult is NOT interrupted:
+  one `consult-long-bash` warning records the elapsed time and the deadman re-arms. This exemption
+  has NO age bound — a legitimate verification run may take an hour.
+- Otherwise the supervisor writes `<ws>/.mpd/handoff/consult-<consultId>-<UTC instant>.md` (task,
+  role, started, elapsed, the last tool calls with ≤ 400-character argument excerpts, next step),
+  interrupts the child, and settles the consult `status:"interrupted"` carrying the handoff path
+  and the last observed activity.
+
+The supervisor never interrupts the captain or another consult's child: it only ever calls its own
+handle's `interrupt()`.
+
+**Read-only discipline.** The deny list is now TEN names: the eight write-capable tools plus
+`mpd_role_spawn_async` and `mpd_role_consult` (`cancel` mutates another consult). A consult is still
+a leaf: the child has the bundle's spawn tools denied in its own scope.
