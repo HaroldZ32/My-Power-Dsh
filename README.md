@@ -20,8 +20,9 @@ interface other packages can contribute to.
 
 The bundle runs on two surfaces. Everything below exists in the **DSH Web GUI** and in the **DSH-TUI**
 terminal edition, with the same install, the same `.mpd/` state, the same tools and the same `mpd`
-preset. Nothing is forked, and a capability is not absent from the terminal just because it has no
-pixels there.
+preset. The terminal surface runs on [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI), whose site is
+[dshtui.com](https://dshtui.com). Nothing is forked, and a capability is not absent from the terminal
+just because it has no pixels there.
 
 The bundle is the package [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-dsh/mpd); this
 repository root *is* that package. One command installs it, and one command removes it without leaving
@@ -270,7 +271,8 @@ which is HOME-scoped at `~/.mpd/workmate/`. See
 - **[User guide](./docs/user-guide.md)**: install, tools by job, teams, recipes, command reference.
 - **[Documentation hub](./docs/index.md)**: every document, with reading paths for users, extension
   authors, contributors and agents.
-- **[DSH-TUI edition](./docs/tui.md)**: admission, distribution and per-package compatibility.
+- **[DSH-TUI edition](./docs/tui.md)**: admission, distribution and per-package compatibility; the
+  terminal host itself is [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) ([dshtui.com](https://dshtui.com)).
 - **[Distribution descriptor](./dsh-distribution.json)**: this environment's identity, composition and
   managed data locations in the [dsh-distribution](https://github.com/T-Auto/dsh-distribution)
   meta-protocol format (Draft), readable by tools that support the protocol; detail in

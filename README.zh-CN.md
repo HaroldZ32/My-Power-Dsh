@@ -17,8 +17,9 @@
 多智能体团队、一份按需加载的技能库、用于代码理解的 MCP 服务，以及一套让别的包也能贡献能力的扩展接口。
 
 套件同时跑在两个端上。下面写的每一项都同时存在于 **DSH Web GUI** 和 **DSH-TUI** 终端版里：同一份安装、
-同一个 `.mpd/` 状态、同一套工具、同一个 `mpd` preset。没有任何东西被分叉；一个能力也不会仅仅因为在终端里
-没有像素就不存在。
+同一个 `.mpd/` 状态、同一套工具、同一个 `mpd` preset。终端这一端跑在
+[dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI) 上，站点是 [dshtui.com](https://dshtui.com)。
+没有任何东西被分叉；一个能力也不会仅仅因为在终端里没有像素就不存在。
 
 套件本体是包 [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-dsh/mpd)；**本仓库的根目录就是这个包**。
 一条命令装好，一条命令卸干净，不留残留。
@@ -242,7 +243,8 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
 
 - **[使用者指南](./docs/user-guide.zh-CN.md)**：安装、按用途划分的工具、团队、配方、命令参考。
 - **[文档中心](./docs/index.zh-CN.md)**：全部文档，并为使用者、扩展作者、贡献者和智能体分别给出阅读路径。
-- **[DSH-TUI 版](./docs/tui.zh-CN.md)**：准入、分发与逐包兼容性。
+- **[DSH-TUI 版](./docs/tui.zh-CN.md)**：准入、分发与逐包兼容性；终端宿主本身是
+  [dsh-TUI](https://github.com/ccch1mneyyy/dsh-TUI)（[dshtui.com](https://dshtui.com)）。
 - **[分发描述符](./dsh-distribution.json)**：本环境的身份、组成与受管数据位置，采用
   [dsh-distribution](https://github.com/T-Auto/dsh-distribution) 元协议格式（Draft），供支持该协议的
   工具读取；详见 [docs/tui.zh-CN.md](./docs/tui.zh-CN.md) §4.2。

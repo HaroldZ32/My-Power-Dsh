@@ -1,0 +1,23 @@
+DSH-TUI ecosystem admission re-measurement — 2026-11-06T02-09-20Z
+Host: @deepseek-harness-tui/dsh-tui 0.18.0 (/home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui)
+Chain: loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest, buildLegacyHostDescriptor(...).descriptor, [])
+
+$ bun skills/dsh-qa/scripts/tui-admission.ts --static-only
+  exit=0 ok=true validatePlugin=ok decision=compatible specRoot=installed-payload
+  evidence -> evidence/tui/lanes/2026-11-06T02-08-45.071Z/
+
+$ node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs
+  dsh-plugin.json (@mpd-dsh/mpd@0.17.4, sha256 b807ad68f825…)
+    facet=v1alpha1 entry=packages/mpd-tui-plugin/dist/index.js permissions=[]
+    validatePlugin=ok
+    negotiate -> {"decision":"compatible"}
+  packages/mpd-tui-plugin/dsh-plugin.json (@mpd-dsh/mpd-tui@0.1.0, sha256 2354afb93b81…)
+    facet=v1alpha1 entry=dist/index.js permissions=[]
+    validatePlugin=ok
+    negotiate -> {"decision":"compatible"}
+  exit=0
+
+NEGOTIATION_ERROR_CODEs: none
+Structural refusals: none
+Host descriptor validateHost: ok
+Bound: The legacy host descriptor is built from HOST_SUPPORTED_CONTRACTS without live probe evidence (the host prints its own warning: legacy compatibility descriptor: contracts declared from the mounted legacy service topology without live probe evidence). | This is a static admission verdict: it proves parse/validate/negotiate, not a live TUI mount or grant-ledger attribution.
