@@ -409,6 +409,29 @@ async function renderView(options: { routes?: Record<string, CannedRoute>; props
   }
 }
 
+/**
+ * Run one ASYNC arm with the wall clock pinned to one instant, restoring the real clock afterwards.
+ *
+ * THE ENDED TEAM'S AGE IS MEASURED FROM THE CURRENT INSTANT ON EVERY RENDER, which is exactly the
+ * defect this helper lets an arm prove: only a chosen instant can show the age GROWING across a
+ * re-render without waiting three real minutes. The pin lives across the awaits because the render
+ * resolves its poll in a later microtask, and the `finally` keeps one arm's instant out of the next.
+ * @param at - the epoch-millisecond instant every `Date.now()` inside the body reports.
+ * @param body - the async arm to run under that instant.
+ * @returns whatever the arm resolved to.
+ */
+async function withPinnedClock<T>(at: number, body: () => Promise<T>): Promise<T> {
+  /** The real clock, restored in the `finally` so one arm can never leak its instant into the next. */
+  const real = Date.now
+  // A cast is needed because the lib types declare `now` as a METHOD; the runtime property is writable.
+  ;(Date as unknown as { now: () => number }).now = (): number => at
+  try {
+    return await body()
+  } finally {
+    ;(Date as unknown as { now: () => number }).now = real
+  }
+}
+
 /** The answer a route returns when the payload never arrived, so the panel renders its reason. */
 const UNAVAILABLE: CannedRoute = { ok: false, status: 503, body: null }
 
@@ -628,6 +651,41 @@ describe("team-view panels", () => {
     expect(flatText(card)).toContain("1/2 complete")
     expect(flatText(card)).not.toContain("current")
     expect(flatText(card)).not.toContain(LIVE_TASK)
+  })
+
+  test("the ENDED team's age advances across a poll even with nothing running (finding 1)", async () => {
+    // THE DEFECT THIS PINS: the age used to be measured from the elapsed row's ticker, which advances
+    // only while a RUNNING task is visible — so an ended team (nothing running, by definition) kept
+    // reporting the age its FIRST render saw, for every poll thereafter, until the panel remounted.
+    /** The ending instant the payload serves; every age below is measured from it. */
+    const ENDED_MS = Date.parse("2026-11-06T12:00:00.000Z")
+    /** The same instant in the ISO form the route serves. */
+    const ENDED_AT = new Date(ENDED_MS).toISOString()
+    /** The payload: an ended team whose board CURRENTLY RUNS NOTHING, which is what froze the old clock. */
+    const state = {
+      ok: true,
+      workspace: WORKSPACE,
+      team: { id: "team-alpha", name: "Wave GUI", description: "d", phase: "ended", approvedAt: "2026-10-05T10:00:00.000Z", links: 0 },
+      workspaceTeams: {
+        records: [{ id: "team-alpha", name: "Wave GUI", description: "d", phase: "ended", endedAt: ENDED_AT, tasks: { total: 1, completed: 1, failed: 0 }, members: 1, active: true }],
+        activeId: "team-alpha",
+      },
+      counts: { total: 1, completed: 1, running: 0, ready: 0, blocked: 0, failed: 0, releasedByFailure: 0 },
+      members: [{ id: "m1", name: "web-team-gui", role: "Senior Engineer", status: "completed", done: 1, total: 1, route: "deepseek/deepseek-chat" }],
+      tasks: [],
+      cycles: [],
+      executor: { kind: "native", reason: "x" },
+      problems: [],
+    }
+    /** The first render, three minutes after the ending. */
+    const first = await withPinnedClock(ENDED_MS + 3 * 60_000, () => renderView({ state }))
+    /** The marker a reader (and the TUI's own twin) reads the age from. */
+    const markerOf = (tree: TreeNode): unknown[] => collect(tree, "data-mpd-team-ended").map((node) => node.props["data-mpd-team-ended"])
+    expect(markerOf(first.tree)).toEqual(["3m"])
+    // A POLL LANDS ONE MINUTE LATER: the store's update re-renders the same component at the new
+    // instant, which is what a real poll does. The age must GROW rather than repeat its first value.
+    const next = await withPinnedClock(ENDED_MS + 4 * 60_000, () => first.hooks.act(first.component, { sessionId: "s1" }))
+    expect(markerOf(next)).toEqual(["4m"])
   })
 
   test("a LIVE team still renders its live state (negative control of the ended treatment)", async () => {

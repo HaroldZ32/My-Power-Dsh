@@ -25,6 +25,7 @@ import {
   WATCHDOG_PANEL_ORDER,
   WATCHDOG_PANEL_TITLE,
   watchdogIncidentLines,
+  watchdogAckPress,
   watchdogTeamRows,
   type WatchdogAckResult,
   type WatchdogPanelDeps,
@@ -602,6 +603,46 @@ describe("the acknowledge key (contract §3)", () => {
     const afterScroll = kit.rows(render(kit, host, component)).join("\n")
     expect(afterScroll).toContain("escalate")
     expect(afterScroll).toContain("team-a")
+  })
+
+  test("an incident whose stamp is not a finite number cannot block the ones that are (finding 2)", () => {
+    withLang("en", () => {
+      /** A valid incident, whose stamp the watermark CAN retire. */
+      const valid = incident({ id: "inc-valid", at: NOW - 30_000 })
+      /** A record whose `at` parsed as `Infinity` — what `JSON.parse` yields for an overflowing literal. */
+      const infinite = incident({ id: "inc-infinite", at: Number.POSITIVE_INFINITY })
+      /** Every watermark the press asked the service to acknowledge. */
+      const acks: number[] = []
+      /** One press over both rows, through the helper BOTH surfaces call. */
+      const outcome = watchdogAckPress({
+        unread: [valid, infinite],
+        lastAck: 0,
+        acknowledge: (upTo: number): WatchdogAckResult => {
+          acks.push(upTo)
+          return { ok: true, watermark: upTo }
+        },
+      })
+      // THE VALID INCIDENT IS STILL RETIRED: the watermark is the newest FINITE stamp, never `Infinity`.
+      expect(acks).toEqual([valid.at])
+      // …and the success line counts what the watermark retired, not the two rows on screen.
+      expect(outcome.flash).toContain("acknowledged 1")
+      expect(outcome.lastAck).toBe(valid.at)
+      // ON ITS OWN the unusable record advances nothing and is never claimed as acknowledged.
+      /** The watermarks a press over the unusable record alone asks for. */
+      const alone: number[] = []
+      /** That press's outcome. */
+      const stuck = watchdogAckPress({
+        unread: [infinite],
+        lastAck: 0,
+        acknowledge: (upTo: number): WatchdogAckResult => {
+          alone.push(upTo)
+          return { ok: true, watermark: upTo }
+        },
+      })
+      expect(alone).toEqual([])
+      expect(stuck.flash).toContain("nothing new to acknowledge")
+      expect(stuck.lastAck).toBe(0)
+    })
   })
 })
 

@@ -10530,13 +10530,14 @@ function watchdogIncidentLines(record, now) {
 function watchdogAckPress(press) {
   if (press.unread.length === 0)
     return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck };
-  const upTo = press.unread.reduce((max, record) => Math.max(max, record.at), 0);
-  if (!Number.isFinite(upTo) || upTo <= press.lastAck)
+  const retireable = press.unread.filter((record) => typeof record.at === "number" && Number.isFinite(record.at));
+  const upTo = retireable.reduce((max, record) => Math.max(max, record.at), 0);
+  if (upTo <= press.lastAck)
     return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck };
   try {
     const result = press.acknowledge(upTo);
     if (result.ok) {
-      return { flash: t("watchdog.panelAckDone", { n: press.unread.length }), lastAck: Math.max(press.lastAck, upTo) };
+      return { flash: t("watchdog.panelAckDone", { n: retireable.length }), lastAck: Math.max(press.lastAck, upTo) };
     }
     return { flash: t("watchdog.panelAckFailed", { error: result.error ?? "?" }), lastAck: press.lastAck };
   } catch (error) {

@@ -43,22 +43,64 @@ const LIVE_ROW = {
 }
 
 /**
- * The settled subagent the fixture host reports: a one-shot consult that ended MOMENTS ago.
+ * The instant the settled fixture ENDED, captured at module load with the fixture itself.
+ *
+ * THE BURN GRACE IS 60 s AND THIS ROW ENDS AT THIS INSTANT, so whether the row is drawn is a function
+ * of the clock the RENDER sees — never of how long the process happened to run between module load
+ * and the render.
+ */
+const DONE_AT = Date.now() - 30_000
+
+/**
+ * The render clock every arm that draws `DONE_ROW` pins, five seconds after that ending.
+ *
+ * THE DEFECT THIS CLOSES: the fixture ends 30 s before MODULE LOAD while the render read the real
+ * clock, so more than ~30 s between load and render pushed the row past the 60 s grace and the burn
+ * filter — correctly — hid it, failing the arm for a timing reason on a slow CI. Pinning the render
+ * RELATIVE to the fixture's own ending makes the arm measure the filter rather than the machine.
+ */
+const DONE_RENDER_AT = DONE_AT + 5_000
+
+/**
+ * The settled subagent the fixture host reports: a one-shot consult that ended 30 s before load.
  *
  * ITS AGES ARE RELATIVE ON PURPOSE (clause 1 / decision D2). The sidebar now BURN-FILTERS the host's
  * catalog through `subagent-rows.ts` (ARM 1: a terminal row is drawn only while its end instant is
  * inside the 60 s grace window), so a fixture dated to a fixed past instant would be — correctly —
- * hidden and every assertion below would redden for the wrong reason. Ending the run 30 s before this
- * module loads puts the row INSIDE the window, so the burn rule stays genuinely enabled here: the arm
- * still exercises the filter, it just asks for a row that is legitimately still drawn.
+ * hidden and every assertion below would redden for the wrong reason. Anchoring it to {@link DONE_AT}
+ * and rendering at {@link DONE_RENDER_AT} keeps the burn rule genuinely enabled here: the arm still
+ * exercises the filter, it just asks for a row that is legitimately still drawn.
  */
 const DONE_ROW = {
   agentId: "agent-done",
   description: "Plan Reviewer",
   status: "completed",
   mode: "one-shot",
-  startedAt: Date.now() - 90_000,
-  completedAt: Date.now() - 30_000,
+  startedAt: DONE_AT - 60_000,
+  completedAt: DONE_AT,
+}
+
+/**
+ * Run one render with the wall clock pinned to one instant, restoring the real clock afterwards.
+ *
+ * THE BURN FILTER READS `Date.now()` AT RENDER TIME (`panel-dag.ts` builds its row filter from the
+ * instant it renders at), so an arm rendering against the real clock would be asserting how long the
+ * test process has been alive. Pinning lets the arm CHOOSE that instant, and the `finally` keeps one
+ * arm's instant out of the next.
+ * @param at - the epoch-millisecond instant every `Date.now()` inside the body reports.
+ * @param body - the render (or other work) to run under that instant.
+ * @returns whatever the body returned.
+ */
+function withClock<T>(at: number, body: () => T): T {
+  /** The real clock, restored in the `finally` so one arm can never leak its instant into the next. */
+  const real = Date.now
+  // A cast is needed because the lib types declare `now` as a METHOD; the runtime property is writable.
+  ;(Date as unknown as { now: () => number }).now = (): number => at
+  try {
+    return body()
+  } finally {
+    ;(Date as unknown as { now: () => number }).now = real
+  }
 }
 
 /**
@@ -655,11 +697,11 @@ describe("the panel component (both sections, props kit only)", () => {
     /** The component under test, with the team projection injected as the wiring does. */
     const component = createPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
     /** The rendered tree. */
-    const tree = component({
+    const tree = withClock(DONE_RENDER_AT, () => component({
       React: kit.React,
       ui: kit.ui,
       host: { snapshot: () => ({ subagents: [LIVE_ROW, DONE_ROW] }) },
-    })
+    }))
     /** The row texts, in DRAW order — read off the element tree, so the order is exact. */
     const drawOrder = drawnRowTexts(tree)
     /** The index of the first drawn row containing a needle; -1 when no row does. */
@@ -767,7 +809,7 @@ describe("the panel component (both sections, props kit only)", () => {
     /** A second kit whose panel measures a narrow sidebar. */
     const narrow = makeKit(20)
     /** The same component rendered through it. */
-    const narrowTree = component({ React: narrow.React, ui: narrow.ui, host: { snapshot: () => ({ subagents: [LIVE_ROW, DONE_ROW] }) } })
+    const narrowTree = withClock(DONE_RENDER_AT, () => component({ React: narrow.React, ui: narrow.ui, host: { snapshot: () => ({ subagents: [LIVE_ROW, DONE_ROW] }) } }))
     /** The narrower render's box rows. */
     const narrowBoxRows = drawnRowTexts(narrowTree).filter((row) => [DAG_CHARS.cornerDownRight, DAG_CHARS.cornerUpRight, DAG_CHARS.vertical].some((mark) => row.startsWith(mark)))
     expect(narrowBoxRows.length).toBeGreaterThan(0)

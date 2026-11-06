@@ -293,15 +293,28 @@ export interface WatchdogAckOutcome {
  */
 export function watchdogAckPress(press: WatchdogAckPress): WatchdogAckOutcome {
   if (press.unread.length === 0) return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck }
-  /** The newest incident stamp currently shown — the watermark an acknowledge advances to. */
-  const upTo = press.unread.reduce((max, record) => Math.max(max, record.at), 0)
-  // A press with nothing newer than the last acknowledged stamp writes nothing.
-  if (!Number.isFinite(upTo) || upTo <= press.lastAck) return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck }
+  // A NON-FINITE STAMP CAN NEVER BE RETIRED BY A WATERMARK, so it must not DECIDE one either. The
+  // service's own unread filter is `record.at > watermark` (`unacknowledged` in `sidecars.ts`, and
+  // `holds.ts`' `unread` does the same), which an `Infinity` satisfies at EVERY watermark: one line of
+  // `incidents.jsonl` whose `at` parsed as an overflowing number (`JSON.parse` answers `Infinity` for
+  // `1e999`, and `readIncidents` validates only `id`) used to make the reduction below yield
+  // `Infinity`, turn this press into a no-op and leave every VALID incident unacknowledgeable behind
+  // it. The usable stamps are therefore collected on their own; the rest stay unread (the panel draws
+  // their age as `?`) and are never claimed as acknowledged.
+  /** The shown incidents whose stamp is a finite number — the only ones a watermark can retire. */
+  const retireable = press.unread.filter((record) => typeof record.at === "number" && Number.isFinite(record.at))
+  /** The newest RETIREABLE incident stamp currently shown — the watermark an acknowledge advances to. */
+  const upTo = retireable.reduce((max, record) => Math.max(max, record.at), 0)
+  // A press with nothing usable and newer than the last acknowledged stamp writes nothing.
+  if (upTo <= press.lastAck) return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck }
   try {
     /** The service's own answer. */
     const result = press.acknowledge(upTo)
     if (result.ok) {
-      return { flash: t("watchdog.panelAckDone", { n: press.unread.length }), lastAck: Math.max(press.lastAck, upTo) }
+      // THE COUNT NAMES WHAT THE WATERMARK RETIRED, never the number of rows on screen: an incident
+      // with an unusable stamp stays unread by construction, so counting it would claim an
+      // acknowledgement the service never made.
+      return { flash: t("watchdog.panelAckDone", { n: retireable.length }), lastAck: Math.max(press.lastAck, upTo) }
     }
     return { flash: t("watchdog.panelAckFailed", { error: result.error ?? "?" }), lastAck: press.lastAck }
   } catch (error) {

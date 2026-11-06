@@ -274,6 +274,12 @@ and it re-checks the record: a root that stops being written, a write under `~/.
 drops the deviation fails the gate. R5 stays a failure of the rule; the gate makes it a failure that
 cannot rot silently.
 
+**The write scan has a stated limit.** The `~/.dsh-tui` arm is a LINE-BASED scan: it fails when a
+mutating filesystem call and a `~/.dsh-tui` path appear on the same line, so a write split across lines
+(e.g. the path built in one statement and passed to `writeFile` in another) can pass it. It is a tripwire
+for the obvious form of the violation, not a proof that no such write exists, and the R5 allowance rests
+on the recorded roots — not on this arm — being the whole story.
+
 **Honest bounds.** This is a static admission check plus the host's own negotiation. It is not a live TTY
 mount, it does not run the host's `/plugin check` (that is the QA case in §1), and it records no artifact
 digest, so nothing it prints is a "Verified" claim (§6). The descriptor it negotiates against is the

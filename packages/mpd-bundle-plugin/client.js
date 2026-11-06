@@ -14083,8 +14083,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
          * the payload keeps the roster, the counts and every `current` field it served.
          */
         const teamEnded = team.phase === "ended" || teamEndedAt !== undefined
-        /** The RELATIVE age of the ending, in the TUI's compact vocabulary; `?` when no instant came. */
-        const teamEndedAge = relativeAgeOf(teamEndedAt, clock)
+        /**
+         * The RELATIVE age of the ending, in the TUI's compact vocabulary; `?` when no instant came.
+         *
+         * IT IS MEASURED FROM THE CURRENT INSTANT ON EVERY RENDER, never from the elapsed row's
+         * `clock`: that ticker advances only while a RUNNING task is visible (see `runningVisible`
+         * above), and an ended team by definition has nothing running — so reusing it left the age
+         * frozen at the value the first render saw until a task started or the panel remounted.
+         * Every poll re-renders this view, so `Date.now()` is what keeps the statement honest.
+         */
+        const teamEndedAge = relativeAgeOf(teamEndedAt, Date.now())
         /** The tally, in the record's own vocabulary. */
         const counts = state.counts
         /** The board, which the figures, the graph and the detail body all read. */
