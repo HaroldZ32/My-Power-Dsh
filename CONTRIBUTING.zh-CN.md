@@ -195,8 +195,6 @@ evidence/<domain>/<slug>/<timestamp>/output.log
 
 - **缺陷与功能请求** —— 直接开 issue。请附上确切的命令、观察到的结果、期望的结果、你的 DSH profile
   与 bundle 版本。
-- **安全问题** —— 和其他问题一样，直接在公开的 issue 里提。本仓库没有私密漏洞接收入口，也不需要：把问题、
-  受影响的组件和发现方式直接写在 issue 里即可。
 - **疑问** —— 先读 [`README.zh-CN.md`](./README.zh-CN.md) 与 [`docs/`](./docs/index.zh-CN.md) 文档
   中心；README 的常见问题一节覆盖了安装与配置上的常见故障。
 
