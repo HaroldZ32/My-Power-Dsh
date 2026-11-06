@@ -1,0 +1,48 @@
+--- evidence/tui/panel-wave/l1-scroll-engine/.backup/panel-core.ts	2026-11-06 23:49:33.642641137 +0800
++++ packages/mpd-tui-plugin/src/panel-core.ts	2026-11-06 23:49:33.666104152 +0800
+@@ -1345,7 +1345,7 @@
+     // THE `start` ANCHOR IS THE PRESS ORIGIN, not the first-motion cell — the host fires `dragstart`
+     // only after the first motion, so anchoring at its own cell would drop that motion (and a one-cell
+     // drag would move nothing at all). See {@link localStartCell}.
+-    viewport.railDrag("row", phase, phase === "start" ? localStartCell(event, "row") : row, travel)
++    viewport.scrollTo(railOffset(row, travel, viewport.max))
+   }
+   /** The three drag phases the host's protocol delivers, each on its own side of the delta. */
+   const dragging = { onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }
+@@ -1411,7 +1411,7 @@
+     const col = localCell(event, "col")
+     // THE `start` ANCHOR IS THE PRESS ORIGIN, for the same reason as the vertical gutter's: the host
+     // fires `dragstart` on the first motion, not on the press. See {@link localStartCell}.
+-    viewport.railDrag("col", phase, phase === "start" ? localStartCell(event, "col") : col, travel)
++    viewport.scrollToCol(railOffset(localCell(event, "col"), travel, viewport.colMax))
+   }
+   // THE ROW IS DRAWN BY THE SAME BUILDER THE PAGES USED BEFORE (`textRow` + `gutterCellsX`), so the
+   // gesture changes and the pixels do not; only the wrapping Box — the drag target the host captures —
+--- evidence/tui/panel-wave/l1-scroll-engine/.backup/panel-workmate.ts	2026-11-06 23:49:33.644061656 +0800
++++ packages/mpd-tui-plugin/src/panel-workmate.ts	2026-11-06 23:49:33.665430787 +0800
+@@ -383,7 +383,7 @@
+     // the trade: a budget that changed with the overflow would rewrap every row the moment a rail
+     // appeared, which is the host's own stated reason for a permanent gutter.
+     /** The cells this page may DRAW IN: the frame interior minus the gutter's one reserved cell. */
+-    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1)
++    const contentCols = panelContentWidth(measured.cols)
+     /** The library for this render, read PER RENDER so the shelf is never a stale copy. */
+     let library: WorkmateLibrary
+     try {
+@@ -525,14 +525,13 @@
+     // wraps what it drew. The wrapper is also where the wheel belongs, because the wrapper IS the
+     // element the host hit-tests for the visible rows.
+     /** The wheel binding, applied by the body to the slice it is about to draw. */
+-    const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
+-      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => { swallowWheelEvent(event); scroller.onWheel(event) } }, ...rows)
++    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows))
+     /** The pinned footer: the `⤢` hint FIRST (a 26-cell row is clamped from its END, so a trailing hint
+      * would be the first thing the host cut at the width this page asks for), then the keys it handles
+      * and where the shelf is. */
+     const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
+     /** The visible slice plus its reserved gutter column; the FULL shelf goes in, never a pre-slice. */
+-    const body = panelViewportBody(kit, children, scroller, true, wheelBound)
++    const body = panelViewportBody(kit, [scrolled], scroller)
+     // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
+     // name and MPD's `⤢`, both pinned, so the control is at the same cell however far the shelf scrolls.
+     /** This page's chrome row: its title and the full-screen control. */

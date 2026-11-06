@@ -422,20 +422,38 @@ describe("C4 · the legend does not accumulate across the click/pin interaction 
     const expected = legendLinesFor(panelContentWidth(COLUMNS), legendLines(panelContentWidth(COLUMNS)))
     /** The mounted page, rendered by the installed host. */
     const page = await mountPage(createDagPanelComponent(workflowFixture, { openFullscreen: () => true }), COLUMNS, ROWS)
-    /** Every legend key and every pin key the walk created — both families are siblings in one column. */
-    const legendKeys: string[] = []
-    /** The pin body's keys, collected over the same walk. */
-    const pinKeys: string[] = []
+    /** Each render's OWN legend keys and pin-body keys — the sibling lists React actually keyed. */
+    const renders: Array<{ legend: string[]; pin: string[] }> = []
+    /** How far the walk has shifted the wall clock ahead of real time. */
+    let shiftMs = 0
+    /** The real clock, restored in the `finally` so a shifted clock never leaks into a sibling arm. */
+    const realNow = Date.now
     try {
-      /** Collect the two families out of one render's created elements. */
+      // THE GESTURE IS CLOCK-DRIVEN (clause 7 / decision D4), so the walk SHIFTS THE CLOCK 400 ms past the
+      // synthesized window before every drive: consecutive drawing ROWS of one box resolve to the SAME
+      // node, and with this suite's 150 ms settle between drives the walk would otherwise read as a
+      // double click (unpin + jump) and this arm would measure the gesture instead of key stability.
+      ;(Date as unknown as { now: () => number }).now = (): number => realNow() + shiftMs
+      /** Collect the two families out of one render's created elements, as the two SIBLING lists. */
       const collect = (): void => {
+        /** This render's legend keys. */
+        const legend: string[] = []
+        /** This render's pin-body keys. */
+        const pin: string[] = []
         for (const element of page.created()) {
-          if (element.key.startsWith("legend-")) legendKeys.push(element.key)
-          if (element.key.startsWith("pin-")) pinKeys.push(element.key)
+          if (element.key.startsWith("legend-")) legend.push(element.key)
+          if (element.key.startsWith("pin-")) pin.push(element.key)
         }
+        // REACT BAILS OUT of a render that changes no state and creates NO elements; an empty record is
+        // not a render to assert against. (Measured: before this wave the second click on an already
+        // pinned node changed no state, which is why only ONE render in the walk ever carried the pin
+        // body and a cross-render `Set` happened to look unique.)
+        if (legend.length > 0 || pin.length > 0) renders.push({ legend, pin })
       }
       collect()
       for (let click = 0; click < 4; click += 1) {
+        // ONE DRIVE, THEN A CLOCK JUMP: the click cannot pair with the one before it.
+        shiftMs += 400
         /** Whether this step really reached a clickable row; the walk stops when it did not. */
         const clicked = await page.clickRow(click)
         if (!clicked) break
@@ -443,18 +461,32 @@ describe("C4 · the legend does not accumulate across the click/pin interaction 
       }
       // THE LEGEND IS REALLY DRAWN, one row per contract line: an empty list would make the uniqueness
       // claim below vacuous, and a SHORTER list would mean the page dropped a line the contract owns.
-      expect(new Set(legendKeys).size).toBe(expected.length)
-      // THE CAUSE, PINNED DIRECTLY: pre-fix, these four rows lived under three distinct keys because the
-      // drawing's own state line and the legend's first wrapped line shared a 24-cell prefix. Distinct
-      // keys number exactly the contract's lines, and EVERY render in the walk drew that many rows —
-      // which is the same stability the frame-counting arm above reads, measured one level lower.
-      expect(new Set(legendKeys).size).toBe(expected.length)
-      expect(legendKeys.length % expected.length).toBe(0)
+      /** The renders that actually drew a legend row. */
+      const legendRenders = renders.filter((render) => render.legend.length > 0)
+      expect(legendRenders.length).toBeGreaterThan(0)
+      // EVERY recorded render drew the legend, which is the stability the frame-counting arm above reads,
+      // measured one level lower.
+      expect(legendRenders.length).toBe(renders.length)
+      for (const render of legendRenders) {
+        // THE CAUSE, PINNED DIRECTLY: pre-fix, these four rows lived under three distinct keys because the
+        // drawing's own state line and the legend's first wrapped line shared a 24-cell prefix. Distinct
+        // keys number exactly the contract's lines, in EVERY render of the walk.
+        expect(render.legend.length).toBe(expected.length)
+        expect(new Set(render.legend).size).toBe(expected.length)
+      }
       // THE PIN BODY IS THE SAME KIND OF LIST and must be keyed the same way; the walk must have produced
       // one, or this half of the arm proves nothing.
-      expect(pinKeys.length).toBeGreaterThan(0)
-      expect(new Set(pinKeys).size).toBe(pinKeys.length)
+      //
+      // KEYS ARE UNIQUE AMONG ONE RENDER'S SIBLINGS, not across renders: each render builds a fresh tree,
+      // and the walk now legitimately draws the pin body in more than one of them (a click TOGGLES the
+      // pin — clause 8 — so a second click on the same node releases it and a third pins it again). The
+      // pre-fix pass of the old concatenated form was an accident of the no-state-change bail-out above.
+      /** The renders that drew a pin body. */
+      const pinRenders = renders.filter((render) => render.pin.length > 0)
+      expect(pinRenders.length).toBeGreaterThan(0)
+      for (const render of pinRenders) expect(new Set(render.pin).size).toBe(render.pin.length)
     } finally {
+      ;(Date as unknown as { now: () => number }).now = realNow
       page.unmount()
     }
   })

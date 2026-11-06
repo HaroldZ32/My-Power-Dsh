@@ -112,6 +112,10 @@ var TUI_TEXT = {
     zh: "mpd 看门狗：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开",
     en: "mpd watchdog: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B"
   },
+  "watchdog.commandSceneOpened": {
+    zh: "mpd 看门狗：面板无法打开，已改用全屏看门狗场景（esc 返回）",
+    en: "mpd watchdog: the panel could not open; opened the full-screen watchdog scene instead (esc to return)"
+  },
   "watchdog.commandAbsent": {
     zh: "mpd 看门狗：该宿主不提供面板接缝（dsh-tui 0.13.0+），看门狗面板无法打开",
     en: "mpd watchdog: this host exposes no panel seam (dsh-tui 0.13.0+), so the watchdog panel cannot open"
@@ -6212,6 +6216,8 @@ function usePanelViewport(kit, read, initialOffset = 0) {
   const cell = kit.React.useState(initialOffset);
   const set2 = cell[1];
   const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 });
+  const rowDrag = kit.React.useRef(undefined);
+  const colDrag = kit.React.useRef(undefined);
   const measured = read();
   if (facts !== null && facts !== undefined)
     facts.current = measured;
@@ -6297,6 +6303,30 @@ function usePanelViewport(kit, read, initialOffset = 0) {
         return;
       commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols));
     },
+    railDrag: (axis, phase, cell2, travel) => {
+      const anchorRef = axis === "row" ? rowDrag : colDrag;
+      const liveBand = axis === "row" ? band() : colBand();
+      const at = Math.floor(Number.isFinite(cell2) ? cell2 : 0);
+      if (phase === "start") {
+        anchorRef.current = { cell: at, offset: liveBand.offset };
+        return;
+      }
+      const anchor = anchorRef.current;
+      if (anchor === undefined) {
+        if (axis === "row")
+          commit(railOffset(at, travel, liveBand.max));
+        else
+          commitCol(railOffset(at, travel, liveBand.max));
+        return;
+      }
+      const moved = travel <= 0 ? 0 : Math.round((at - anchor.cell) / travel * liveBand.max);
+      if (axis === "row")
+        commit(anchor.offset + moved);
+      else
+        commitCol(anchor.offset + moved);
+      if (phase === "end")
+        anchorRef.current = undefined;
+    },
     sync() {
       return handle;
     }
@@ -6306,6 +6336,17 @@ function usePanelViewport(kit, read, initialOffset = 0) {
 function localCell(event, axis) {
   const raw = event === null || event === undefined ? undefined : event[axis === "row" ? "localRow" : "localCol"];
   return typeof raw === "number" && Number.isFinite(raw) ? Math.floor(raw) : 0;
+}
+function localStartCell(event, axis) {
+  const at = localCell(event, axis);
+  if (event === null || event === undefined || typeof event !== "object")
+    return at;
+  const raw = event;
+  const now = raw[axis === "row" ? "row" : "col"];
+  const origin = raw[axis === "row" ? "startRow" : "startCol"];
+  if (typeof now !== "number" || !Number.isFinite(now) || typeof origin !== "number" || !Number.isFinite(origin))
+    return at;
+  return Math.floor(at + (origin - now));
 }
 function railTravel(extent, max) {
   const cells = Math.max(1, Math.floor(Number.isFinite(extent) ? extent : 1));
@@ -6331,15 +6372,15 @@ function viewportGutter(kit, viewport, onTrackClick) {
     return;
   const rows = cells.map((cell, at) => kit.React.createElement(kit.ui.Text, { key: `g${at}`, color: cell === DAG_CHROME.barFull ? toneColor("chain") : toneColor("dim") }, cell));
   const travel = railTravel(viewport.viewportRows, viewport.max);
-  const scrubTo = (event) => {
+  const scrub = (phase) => (event) => {
     const row = localCell(event, "row");
     if (onTrackClick !== undefined) {
       onTrackClick(row);
       return;
     }
-    viewport.scrollTo(railOffset(row, travel, viewport.max));
+    viewport.railDrag("row", phase, phase === "start" ? localStartCell(event, "row") : row, travel);
   };
-  const dragging = { onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo };
+  const dragging = { onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") };
   if (onTrackClick === undefined)
     return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows);
   return kit.React.createElement(kit.ui.Box, {
@@ -6362,11 +6403,12 @@ function viewportRail(kit, viewport, cols) {
   if (cells === "")
     return;
   const travel = railTravel(extent, viewport.colMax);
-  const scrubTo = (event) => {
-    viewport.scrollToCol(railOffset(localCell(event, "col"), travel, viewport.colMax));
+  const scrub = (phase) => (event) => {
+    const col = localCell(event, "col");
+    viewport.railDrag("col", phase, phase === "start" ? localStartCell(event, "col") : col, travel);
   };
   const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent });
-  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }, row);
+  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }, row);
 }
 function panelViewportBody(kit, children, viewport, reserveGutter = true, rowWrapper) {
   const visible = children.slice(viewport.offset, viewport.offset + viewport.viewportRows);
@@ -6572,6 +6614,230 @@ function usePanelTitleRow(kit, options) {
   }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
 }
 
+// packages/mpd-tui-plugin/src/subagent-rows.ts
+var MERGED_ROW_MAX_CELLS = 4000;
+var SUBAGENT_ROW_GRACE_MS = 60000;
+var KNOWN_STATUSES = ["starting", "running", "completed", "failed", "cancelled", "unknown"];
+var KNOWN_MODES = ["one-shot", "continuable", "unknown"];
+var SUBAGENT_GLYPHS = {
+  live: "\uD83D\uDFE1",
+  unknown: "⚪",
+  failed: "\uD83D\uDD34",
+  completed: "\uD83D\uDFE2"
+};
+function subagentRowAge(at, now) {
+  if (typeof at !== "number" || !Number.isFinite(at) || at <= 0)
+    return "?";
+  const delta = Math.max(0, now - at);
+  if (delta < 1000)
+    return "<1s";
+  if (delta < 60000)
+    return `${String(Math.floor(delta / 1000))}s`;
+  if (delta < 3600000)
+    return `${String(Math.floor(delta / 60000))}m`;
+  if (delta < 86400000)
+    return `${String(Math.floor(delta / 3600000))}h`;
+  return `${String(Math.floor(delta / 86400000))}d`;
+}
+function safeRow(value) {
+  const type = typeof value;
+  if (type !== "string" && type !== "number" && type !== "boolean")
+    return "";
+  if (type === "number" && !Number.isFinite(value))
+    return "";
+  const raw = type === "string" ? value : String(value);
+  return clampCells(stripControl(raw), MERGED_ROW_MAX_CELLS);
+}
+function epochOf(value) {
+  if (typeof value !== "number" || !Number.isFinite(value))
+    return;
+  if (Math.abs(value) > 8640000000000000)
+    return;
+  return value;
+}
+function subagentRowView(entry) {
+  if (entry === null || typeof entry !== "object")
+    return;
+  const row = entry;
+  const status = typeof row.status === "string" && KNOWN_STATUSES.includes(row.status) ? row.status : "unknown";
+  const mode = typeof row.mode === "string" && KNOWN_MODES.includes(row.mode) ? row.mode : "unknown";
+  const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined;
+  const parentSessionId = typeof row.parentSessionId === "string" && row.parentSessionId !== "" ? row.parentSessionId : undefined;
+  const startedAt = epochOf(row.startedAt);
+  const endedAt = epochOf(row.endedAt ?? row.completedAt);
+  return {
+    ...agentId === undefined ? {} : { agentId },
+    description: safeRow(row.description) || "(no description)",
+    mode,
+    status,
+    ...startedAt === undefined ? {} : { startedAt },
+    ...endedAt === undefined ? {} : { endedAt },
+    live: status === "running" || status === "starting",
+    failed: status === "failed" || status === "cancelled",
+    ...parentSessionId === undefined ? {} : { parentSessionId }
+  };
+}
+function subagentRowEntries(source) {
+  try {
+    const raw = source?.subagents;
+    if (!Array.isArray(raw))
+      return [];
+    const pairs = [];
+    for (const entry of raw) {
+      const view = subagentRowView(entry);
+      if (view !== undefined)
+        pairs.push({ view, entry });
+    }
+    return pairs;
+  } catch {
+    return [];
+  }
+}
+function glyphOf(row) {
+  if (row.live)
+    return SUBAGENT_GLYPHS.live;
+  if (row.failed)
+    return SUBAGENT_GLYPHS.failed;
+  if (row.status === "unknown")
+    return SUBAGENT_GLYPHS.unknown;
+  return SUBAGENT_GLYPHS.completed;
+}
+function terminalRow(row) {
+  if (row.status === "completed" || row.status === "failed" || row.status === "cancelled")
+    return true;
+  return row.status === "unknown" && row.endedAt !== undefined;
+}
+function teamVerdict(description, teams) {
+  if (teams === undefined || teams.length === 0)
+    return "none";
+  const wanted = description.trim();
+  if (wanted === "")
+    return "none";
+  let ended = 0;
+  let live = false;
+  for (const team of teams) {
+    const named = team.members.some((name) => name.trim() === wanted);
+    if (!named)
+      continue;
+    if (team.ended)
+      ended += 1;
+    else
+      live = true;
+  }
+  if (live)
+    return "live";
+  return ended === 1 ? "ended" : "none";
+}
+function foreignRow(row, sessionId) {
+  if (sessionId === undefined || row.parentSessionId === undefined)
+    return false;
+  return row.parentSessionId !== sessionId;
+}
+function subagentRowVisible(view, filter) {
+  if (filter === undefined)
+    return true;
+  if (view.live)
+    return true;
+  if (foreignRow(view, filter.sessionId))
+    return true;
+  const team = teamVerdict(view.description, filter.teams);
+  if (team === "live")
+    return true;
+  if (team === "ended")
+    return false;
+  if (!terminalRow(view))
+    return true;
+  if (view.endedAt === undefined)
+    return false;
+  return filter.now - view.endedAt <= SUBAGENT_ROW_GRACE_MS;
+}
+function filterSubagentEntries(entries, filter) {
+  if (filter === undefined)
+    return [...entries];
+  return entries.filter((pair) => subagentRowVisible(pair.view, filter));
+}
+function visibleSubagentEntries(source, filter) {
+  return filterSubagentEntries(subagentRowEntries(source), filter);
+}
+function visibleSubagentRows(source, filter) {
+  return visibleSubagentEntries(source, filter).map((pair) => pair.view);
+}
+function subagentRowLine(row, now = Date.now()) {
+  const parts = [row.description, row.status];
+  if (row.live) {
+    if (row.startedAt !== undefined)
+      parts.push(`started ${subagentRowAge(row.startedAt, now)}`);
+  } else if (row.endedAt !== undefined) {
+    parts.push(`ended ${subagentRowAge(row.endedAt, now)}`);
+  } else if (row.startedAt !== undefined) {
+    parts.push(`started ${subagentRowAge(row.startedAt, now)}`);
+  }
+  return safeRow(`${glyphOf(row)} ${parts.join(" · ")}`);
+}
+function subagentSectionOf(rows, now = Date.now()) {
+  let live = 0;
+  let completed = 0;
+  let failed = 0;
+  for (const row of rows) {
+    if (row.live)
+      live += 1;
+    if (row.status === "completed")
+      completed += 1;
+    if (row.failed)
+      failed += 1;
+  }
+  const section = [
+    { text: `subagents  ${rows.length} total · ${live} running · ${completed} completed · ${failed} failed`, header: true }
+  ];
+  if (rows.length === 0) {
+    section.push({ text: `${SUBAGENT_GLYPHS.unknown} No subagents in the current session`, dim: true });
+    section.push({ text: "  Subagents appear here once the main agent starts Task delegations", dim: true });
+    return section;
+  }
+  section.push({
+    text: `${SUBAGENT_GLYPHS.live} ${live} running · ${SUBAGENT_GLYPHS.completed} ${completed} completed · ${SUBAGENT_GLYPHS.failed} ${failed} failed`,
+    dim: true
+  });
+  for (let index = 0;index < rows.length; index += 1) {
+    const row = rows[index];
+    section.push({ text: subagentRowLine(row, now), rowIndex: index });
+  }
+  return section;
+}
+function subagentSectionRows(source, filter) {
+  return subagentSectionOf(visibleSubagentRows(source, filter), filter?.now ?? Date.now());
+}
+function subagentTeamScope(workflow) {
+  try {
+    const head = workflow?.team;
+    if (head === null || typeof head !== "object")
+      return;
+    const raw = workflow.members;
+    if (!Array.isArray(raw))
+      return;
+    const members = [];
+    for (const entry of raw) {
+      if (entry === null || typeof entry !== "object")
+        continue;
+      const name = entry.name;
+      if (typeof name === "string" && name.trim() !== "")
+        members.push(name);
+    }
+    if (members.length === 0)
+      return;
+    return { members, ended: head.phase === "ended" };
+  } catch {
+    return;
+  }
+}
+function subagentRowFilter(workflow, sessionId, now = Date.now()) {
+  const scope = subagentTeamScope(workflow);
+  return {
+    now,
+    ...scope === undefined ? {} : { teams: [scope] },
+    ...sessionId === undefined || sessionId === "" ? {} : { sessionId }
+  };
+}
 // packages/mpd-tui-plugin/src/dag-groups.ts
 function sameFrame(left, right) {
   return left === right;
@@ -7707,39 +7973,14 @@ function surfaceHints(kit, key, hints) {
   return surfaceText(kit, key, chromeTitle(hints), { dim: true });
 }
 var SUBAGENT_SCENE_ID = "mpd-tui-subagents";
-var MERGED_ROW_MAX_CELLS = 4000;
 var FALLBACK_COLS = 100;
 var FALLBACK_ROWS = 24;
 var REFRESH_MS = 2000;
 var DETAIL_TAIL_LINES = 12;
 var DETAIL_LABEL_WIDTH = 12;
 var DETAIL_TOOL_NAMES = 8;
-var KNOWN_STATUSES = ["starting", "running", "completed", "failed", "cancelled", "unknown"];
-var KNOWN_MODES = ["one-shot", "continuable", "unknown"];
-var SUBAGENT_GLYPHS = {
-  live: "\uD83D\uDFE1",
-  unknown: "⚪",
-  failed: "\uD83D\uDD34",
-  completed: "\uD83D\uDFE2"
-};
 function noopSubscribe() {
   return () => {};
-}
-function safeRow(value) {
-  const type = typeof value;
-  if (type !== "string" && type !== "number" && type !== "boolean")
-    return "";
-  if (type === "number" && !Number.isFinite(value))
-    return "";
-  const raw = type === "string" ? value : String(value);
-  return clampCells(stripControl(raw), MERGED_ROW_MAX_CELLS);
-}
-function isoInstant(value) {
-  if (typeof value !== "number" || !Number.isFinite(value))
-    return;
-  if (Math.abs(value) > 8640000000000000)
-    return;
-  return new Date(value).toISOString();
 }
 function hostKit(React, ui) {
   if (panelKit(React, ui) === undefined)
@@ -7771,62 +8012,6 @@ function isReturn(input, key) {
   if (modified)
     return false;
   return key?.return === true || /^[\r\n]+$/u.test(input);
-}
-function subagentRowView(entry) {
-  if (entry === null || typeof entry !== "object")
-    return;
-  const row = entry;
-  const status = typeof row.status === "string" && KNOWN_STATUSES.includes(row.status) ? row.status : "unknown";
-  const mode = typeof row.mode === "string" && KNOWN_MODES.includes(row.mode) ? row.mode : "unknown";
-  const agentId = typeof row.agentId === "string" && row.agentId !== "" ? row.agentId : undefined;
-  const startedAt = isoInstant(row.startedAt);
-  const endedAt = isoInstant(row.endedAt ?? row.completedAt);
-  return {
-    ...agentId === undefined ? {} : { agentId },
-    description: safeRow(row.description) || "(no description)",
-    mode,
-    status,
-    ...startedAt === undefined ? {} : { startedAt },
-    ...endedAt === undefined ? {} : { endedAt },
-    live: status === "running" || status === "starting",
-    failed: status === "failed" || status === "cancelled"
-  };
-}
-function subagentRowEntries(channel) {
-  try {
-    const raw = channel?.subagents;
-    if (!Array.isArray(raw))
-      return [];
-    const pairs = [];
-    for (const entry of raw) {
-      const view = subagentRowView(entry);
-      if (view !== undefined)
-        pairs.push({ view, entry });
-    }
-    return pairs;
-  } catch {
-    return [];
-  }
-}
-function subagentRows(channel) {
-  return subagentRowEntries(channel).map((pair) => pair.view);
-}
-function glyphOf(row) {
-  if (row.live)
-    return SUBAGENT_GLYPHS.live;
-  if (row.failed)
-    return SUBAGENT_GLYPHS.failed;
-  if (row.status === "unknown")
-    return SUBAGENT_GLYPHS.unknown;
-  return SUBAGENT_GLYPHS.completed;
-}
-function subagentRowLine(row) {
-  const parts = [row.description, row.mode, row.status];
-  if (row.startedAt !== undefined)
-    parts.push(`started ${row.startedAt}`);
-  if (row.endedAt !== undefined)
-    parts.push(`ended ${row.endedAt}`);
-  return safeRow(`${glyphOf(row)} ${parts.join(" · ")}`);
 }
 function counterOf(value) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
@@ -7879,19 +8064,18 @@ function subagentDetailFacts(entry) {
     ...outputLines === undefined ? {} : { outputLines }
   };
 }
-function subagentDetailRows(facts, scroll) {
+function subagentDetailRows(facts, scroll, now = Date.now()) {
   const rows = [{ text: facts.row.description, title: true }];
   const pair = (label, value) => ({ text: safeRow(`${label.padEnd(DETAIL_LABEL_WIDTH)}${value}`) });
   rows.push(pair("status", facts.row.status));
-  rows.push(pair("mode", facts.row.mode));
   if (facts.model !== undefined)
     rows.push(pair("model", facts.model));
   if (facts.provider !== undefined)
     rows.push(pair("provider", facts.provider));
   if (facts.row.startedAt !== undefined)
-    rows.push(pair("started", facts.row.startedAt));
+    rows.push(pair("started", subagentRowAge(facts.row.startedAt, now)));
   if (facts.row.endedAt !== undefined)
-    rows.push(pair("ended", facts.row.endedAt));
+    rows.push(pair("ended", subagentRowAge(facts.row.endedAt, now)));
   const tokenParts = [];
   if (facts.tokens.input !== undefined)
     tokenParts.push(`in ${facts.tokens.input}`);
@@ -7920,35 +8104,6 @@ function subagentDetailRows(facts, scroll) {
       rows.push({ text: safeRow(`  ${lines[index]}`) });
   }
   return rows;
-}
-function subagentSectionRows(channel) {
-  const rows = subagentRows(channel);
-  let live = 0;
-  let completed = 0;
-  let failed = 0;
-  for (const row of rows) {
-    if (row.live)
-      live += 1;
-    if (row.status === "completed")
-      completed += 1;
-    if (row.failed)
-      failed += 1;
-  }
-  const section = [
-    { text: `subagents  ${rows.length} total · ${live} running · ${completed} completed · ${failed} failed`, header: true }
-  ];
-  if (rows.length === 0) {
-    section.push({ text: `${SUBAGENT_GLYPHS.unknown} No subagents in the current session`, dim: true });
-    section.push({ text: "  Subagents appear here once the main agent starts Task delegations", dim: true });
-    return section;
-  }
-  section.push({
-    text: `${SUBAGENT_GLYPHS.live} ${live} running · ${SUBAGENT_GLYPHS.completed} ${completed} completed · ${SUBAGENT_GLYPHS.failed} ${failed} failed`,
-    dim: true
-  });
-  for (let index = 0;index < rows.length; index += 1)
-    section.push({ text: subagentRowLine(rows[index]), rowIndex: index });
-  return section;
 }
 function teamGraphView(workflow, cols, rows) {
   if (workflow === undefined)
@@ -7991,7 +8146,7 @@ function takeSubagentDetailRequest(nowMs = Date.now()) {
     return;
   return request.agentId;
 }
-function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest, subscribeTeams) {
+function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest, subscribeTeams, now = () => Date.now()) {
   return function MpdTuiSubagents(props) {
     const kit = hostKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -8062,14 +8217,17 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const dagView = teamGraphView(workflow, measured.cols);
     const dagXMax = dagView === undefined ? 0 : Math.max(0, dagView.width - measured.cols);
     const dagYMax = dagView === undefined ? 0 : Math.max(0, dagView.lines.length - 1);
-    const pairs = subagentRowEntries(channel);
+    const renderNow = now();
+    const rowFilter = subagentRowFilter(workflow, sessionIdOf(channel), renderNow);
+    const allPairs = subagentRowEntries(channel);
+    const pairs = filterSubagentEntries(allPairs, rowFilter);
     const rows = pairs.map((pair) => pair.view);
     const selectedIndex = rows.length === 0 ? -1 : Math.min(Math.max(focus, 0), rows.length - 1);
     const selected = selectedIndex === -1 ? undefined : rows[selectedIndex];
-    const detailAt = detailAgentId === undefined ? -1 : pairs.findIndex((pair) => pair.view.agentId === detailAgentId);
+    const detailAt = detailAgentId === undefined ? -1 : allPairs.findIndex((pair) => pair.view.agentId === detailAgentId);
     const detailOpen = detailAt >= 0;
-    const detailRow = detailOpen ? rows[detailAt] : undefined;
-    const detailFacts = detailOpen ? subagentDetailFacts(pairs[detailAt].entry) : undefined;
+    const detailRow = detailOpen ? allPairs[detailAt].view : undefined;
+    const detailFacts = detailOpen ? subagentDetailFacts(allPairs[detailAt].entry) : undefined;
     const detailLines = detailFacts?.outputLines?.length ?? 0;
     const detailMaxScroll = Math.max(0, detailLines - DETAIL_TAIL_LINES);
     const detailGone = detailAgentId !== undefined && !detailOpen;
@@ -8194,7 +8352,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const children = [];
     children.push(surfaceText(kit, "title", chromeTitle([`${stateMarker(frameTone, phase)} ${t("scene.subagents")}`, measured.size === "" ? undefined : measured.size]), { bold: true, tone: frameTone }));
     if (detailOpen) {
-      const detailRows = detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll);
+      const detailRows = detailFacts === undefined ? [{ text: "details: this entry is unreadable", dim: true }] : subagentDetailRows(detailFacts, detailScroll, renderNow);
       for (let index = 0;index < detailRows.length; index += 1) {
         const row = detailRows[index];
         children.push(row.title === true ? surfaceText(kit, `detail-${index}`, row.text, { bold: true, tone: frameTone }) : surfaceBodyRow(kit, `detail-${index}`, row.text, row.dim === true ? undefined : { output: "dim" }));
@@ -8203,7 +8361,7 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
         }
       }
     } else {
-      const section = subagentSectionRows(channel);
+      const section = subagentSectionOf(rows, renderNow);
       for (let index = 0;index < section.length; index += 1) {
         const row = section[index];
         const view2 = row.rowIndex === undefined ? undefined : rows[row.rowIndex];
@@ -9008,6 +9166,7 @@ var DAG_PANEL_TITLE = "MPD";
 var DAG_SECTION_HOST_TITLE = "Host subagents";
 var DAG_SECTION_DAG_TITLE = "team DAG";
 var DAG_PANEL_REFRESH_MS = 2000;
+var DAG_DOUBLE_CLICK_MS = 350;
 function dagPageOf(workflow) {
   if (workflow === undefined || !Array.isArray(workflow.tasks))
     return;
@@ -9421,6 +9580,7 @@ function createDagPanelComponent(readWorkflow, options) {
         cursorLive.current = next;
       setCursor(next);
     };
+    const lastClick = kit.React.useRef(undefined);
     const focus = pinnedNow() ?? cursorNow();
     const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - DAG_FOOTER_ROWS);
     const sizes = { contentRows: previousSizes.current?.contentRows ?? 1, viewportRows: previousSizes.current?.viewportRows ?? windowRows, contentCols, viewportCols: contentCols };
@@ -9470,7 +9630,8 @@ function createDagPanelComponent(readWorkflow, options) {
     const children = [];
     let section = [];
     try {
-      section = subagentSectionRows(panelSnapshot(props?.host));
+      const now = Date.now();
+      section = subagentSectionRows(panelSnapshot(props?.host), subagentRowFilter(workflow, sessionId, now));
     } catch {
       section = [];
     }
@@ -9537,16 +9698,32 @@ function createDagPanelComponent(readWorkflow, options) {
           cols: contentCols,
           onClick: (event) => {
             const resolved = dagRowClick(layout.view, index, viewport.colOffset, event);
+            const at = Date.now();
             if (resolved.taskId === undefined) {
               movePin(undefined);
+              lastClick.current = undefined;
               return;
             }
-            if (resolved.taskId === pinnedNow()) {
-              openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === resolved.taskId), options);
+            const taskId = resolved.taskId;
+            const previous = lastClick.current;
+            if (previous !== undefined && previous.taskId === taskId && at - previous.at <= DAG_DOUBLE_CLICK_MS) {
+              movePin(undefined);
+              if (cursorNow() === taskId)
+                moveCursor(undefined);
+              lastClick.current = undefined;
+              openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === taskId), options);
               return;
             }
-            movePin(resolved.taskId);
-            moveCursor(resolved.taskId);
+            if (taskId === pinnedNow()) {
+              movePin(undefined);
+              if (cursorNow() === taskId)
+                moveCursor(undefined);
+              lastClick.current = undefined;
+              return;
+            }
+            movePin(taskId);
+            moveCursor(taskId);
+            lastClick.current = { taskId, at };
           }
         }));
       }
@@ -10174,7 +10351,7 @@ function createWorkmatePanelComponent(readLibrary, options) {
       return null;
     }
     const measured = usePanelSize(kit.ui, panelFloorColumns("workmate"));
-    const contentCols = panelContentWidth(measured.cols);
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1);
     let library;
     try {
       library = readLibrary();
@@ -10256,9 +10433,12 @@ function createWorkmatePanelComponent(readLibrary, options) {
     sizes.contentRows = contentRows;
     sizes.viewportRows = windowRows;
     const scroller = viewport;
-    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...children.slice(viewport.offset, viewport.offset + viewport.viewportRows));
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => {
+      swallowWheelEvent(event);
+      scroller.onWheel(event);
+    } }, ...rows);
     const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
-    const body = panelViewportBody(kit, [scrolled], scroller);
+    const body = panelViewportBody(kit, children, scroller, true, wheelBound);
     const titleRow = usePanelTitleRow(kit, { key: "title", title: WORKMATE_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
     return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer], { onWheel: (event) => {
       swallowWheelEvent(event);
@@ -10291,6 +10471,7 @@ var WATCHDOG_PANEL_ICON = "⚠";
 var WATCHDOG_PANEL_ORDER = 13;
 var WATCHDOG_PANEL_REFRESH_MS = 2000;
 var WATCHDOG_FALLBACK_ROWS = 24;
+var WATCHDOG_FOOTER_ROWS = 1;
 var WATCHDOG_PANEL_DESCRIPTOR_FROZEN = {
   apiVersion: 1,
   id: WATCHDOG_PANEL_ID,
@@ -10346,6 +10527,57 @@ function watchdogIncidentLines(record, now) {
     ].join(" · ")
   };
 }
+function watchdogAckPress(press) {
+  if (press.unread.length === 0)
+    return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck };
+  const upTo = press.unread.reduce((max, record) => Math.max(max, record.at), 0);
+  if (!Number.isFinite(upTo) || upTo <= press.lastAck)
+    return { flash: t("watchdog.panelAckNoop"), lastAck: press.lastAck };
+  try {
+    const result = press.acknowledge(upTo);
+    if (result.ok) {
+      return { flash: t("watchdog.panelAckDone", { n: press.unread.length }), lastAck: Math.max(press.lastAck, upTo) };
+    }
+    return { flash: t("watchdog.panelAckFailed", { error: result.error ?? "?" }), lastAck: press.lastAck };
+  } catch (error) {
+    return { flash: t("watchdog.panelAckFailed", { error: String(error?.message ?? error) }), lastAck: press.lastAck };
+  }
+}
+function watchdogBodyRows(input) {
+  const rows = [];
+  if (!input.available) {
+    rows.push({ key: "absent", text: t("watchdog.panelAbsent"), tone: "failed" });
+    rows.push({ key: "absent-hint", text: t("watchdog.panelAbsentHint"), dim: true });
+    return input.flash === undefined ? rows : [...rows, { key: "flash", text: input.flash, tone: "completed" }];
+  }
+  rows.push({
+    key: "header",
+    text: t("watchdog.panelHeader", { held: input.view.holds.length, unread: input.view.unread.length }),
+    bold: true,
+    tone: "chain"
+  });
+  for (const team of input.teams) {
+    rows.push({
+      key: `team-${team.id}`,
+      text: watchdogTeamLine(team),
+      ...team.held ? { tone: "blocked" } : { dim: true }
+    });
+  }
+  rows.push({ key: "incidents", text: t("watchdog.panelIncidents"), dim: true, bold: true });
+  if (input.view.unread.length === 0) {
+    rows.push({ key: "empty", text: t("watchdog.panelEmpty"), dim: true });
+  } else {
+    for (const record of input.view.unread) {
+      const lines = watchdogIncidentLines(record, input.now);
+      rows.push({ key: `${record.id}-1`, text: lines.first, bold: true });
+      rows.push({ key: `${record.id}-2`, text: lines.second });
+      rows.push({ key: `${record.id}-3`, text: lines.third, dim: true });
+    }
+  }
+  if (input.flash !== undefined)
+    rows.push({ key: "flash", text: input.flash, tone: "completed" });
+  return rows;
+}
 function createWatchdogPanelComponent(deps, options) {
   return function MpdTuiWatchdogPanel(props) {
     const kit = panelKit(props?.React, props?.ui);
@@ -10353,7 +10585,7 @@ function createWatchdogPanelComponent(deps, options) {
       return null;
     }
     const measured = usePanelSize(kit.ui, panelFloorColumns("watchdog"));
-    const contentCols = panelContentWidth(measured.cols);
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1);
     const flash = kit.React.useState(undefined);
     const flashText = typeof flash[0] === "string" ? flash[0] : undefined;
     const setFlash = flash[1];
@@ -10372,33 +10604,15 @@ function createWatchdogPanelComponent(deps, options) {
     const teams = watchdogTeamRows(view, deps.readTeam);
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     usePanelTick(kit, WATCHDOG_PANEL_REFRESH_MS, true);
-    const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
+    const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - WATCHDOG_FOOTER_ROWS);
     const sizes = { contentRows: 1, viewportRows: 1 };
     const viewport = usePanelViewport(kit, () => sizes);
     const acknowledgeShown = () => {
       if (!available)
         return;
-      const shown = view.unread;
-      if (shown.length === 0) {
-        setFlash(t("watchdog.panelAckNoop"));
-        return;
-      }
-      const upTo = shown.reduce((max, record) => Math.max(max, record.at), 0);
-      if (!Number.isFinite(upTo) || upTo <= lastAck.current) {
-        setFlash(t("watchdog.panelAckNoop"));
-        return;
-      }
-      try {
-        const result = deps.acknowledge(upTo);
-        if (result.ok) {
-          lastAck.current = Math.max(lastAck.current, upTo);
-          setFlash(t("watchdog.panelAckDone", { n: shown.length }));
-        } else {
-          setFlash(t("watchdog.panelAckFailed", { error: result.error ?? "?" }));
-        }
-      } catch (error) {
-        setFlash(t("watchdog.panelAckFailed", { error: String(error?.message ?? error) }));
-      }
+      const outcome = watchdogAckPress({ unread: view.unread, lastAck: lastAck.current, acknowledge: (upTo) => deps.acknowledge(upTo) });
+      lastAck.current = outcome.lastAck;
+      setFlash(outcome.flash);
     };
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
       const bare = event;
@@ -10437,38 +10651,21 @@ function createWatchdogPanelComponent(deps, options) {
       }
       viewport.scrollBy(forward ? 1 : -1);
     });
-    const children = [];
-    if (!available) {
-      children.push(textRow(kit, t("watchdog.panelAbsent"), { key: "absent", tone: "failed", maxCells: contentCols }));
-      children.push(textRow(kit, t("watchdog.panelAbsentHint"), { key: "absent-hint", dim: true, maxCells: contentCols }));
-    } else {
-      children.push(textRow(kit, t("watchdog.panelHeader", { held: view.holds.length, unread: view.unread.length }), {
-        key: "header",
-        bold: true,
-        tone: "chain",
-        maxCells: contentCols
-      }));
-      for (const row of teams) {
-        children.push(textRow(kit, watchdogTeamLine(row), {
-          key: `team-${row.id}`,
-          ...row.held ? { tone: "blocked" } : { dim: true },
-          maxCells: contentCols
-        }));
-      }
-      children.push(textRow(kit, t("watchdog.panelIncidents"), { key: "incidents", dim: true, bold: true, maxCells: contentCols }));
-      if (view.unread.length === 0) {
-        children.push(textRow(kit, t("watchdog.panelEmpty"), { key: "empty", dim: true, maxCells: contentCols }));
-      } else {
-        for (const record of view.unread) {
-          const lines = watchdogIncidentLines(record, Date.now());
-          children.push(textRow(kit, lines.first, { key: `${record.id}-1`, bold: true, maxCells: contentCols }));
-          children.push(textRow(kit, lines.second, { key: `${record.id}-2`, maxCells: contentCols }));
-          children.push(textRow(kit, lines.third, { key: `${record.id}-3`, dim: true, maxCells: contentCols }));
-        }
-      }
-    }
-    if (flashText !== undefined)
-      children.push(textRow(kit, flashText, { key: "flash", tone: "completed", maxCells: contentCols }));
+    const now = Date.now();
+    const bodyRows = watchdogBodyRows({
+      view,
+      available,
+      teams,
+      ...flashText === undefined ? {} : { flash: flashText },
+      now
+    });
+    const children = bodyRows.map((row) => textRow(kit, row.text, {
+      key: row.key,
+      ...row.tone === undefined ? {} : { tone: row.tone },
+      ...row.bold === true ? { bold: true } : {},
+      ...row.dim === true ? { dim: true } : {},
+      maxCells: contentCols
+    }));
     const contentRows = Math.max(children.length, 1);
     const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
     sizes.contentRows = contentRows;
@@ -10496,7 +10693,7 @@ function createWatchdogPanelComponent(deps, options) {
 function registerWatchdogPanel(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
     ...WATCHDOG_PANEL_DESCRIPTOR_FROZEN,
-    component: createWatchdogPanelComponent(deps)
+    component: createWatchdogPanelComponent(deps, deps.openFullscreen === undefined ? undefined : { openFullscreen: deps.openFullscreen })
   }) : undefined;
   return {
     panel,
@@ -10506,6 +10703,166 @@ function registerWatchdogPanel(tui, deps) {
       if (panel !== undefined)
         return panel.outcome();
       return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (watchdog: false)").outcome();
+    }
+  };
+}
+
+// packages/mpd-tui-plugin/src/scene-watchdog.ts
+var WATCHDOG_SCENE_ID = "mpd-tui-watchdog";
+var WATCHDOG_SCENE_EMPTY_VIEW = { holds: [], unread: [] };
+var WATCHDOG_SCENE_CHROME_ROWS = 5;
+function watchdogSceneRead(deps) {
+  try {
+    const available = deps.available();
+    const view = available ? deps.read() : WATCHDOG_SCENE_EMPTY_VIEW;
+    let team;
+    try {
+      team = deps.readTeam?.();
+    } catch {
+      team = undefined;
+    }
+    return { view, available, ...team === undefined ? {} : { team } };
+  } catch {
+    return { view: WATCHDOG_SCENE_EMPTY_VIEW, available: false };
+  }
+}
+function createWatchdogSceneComponent(deps) {
+  return function MpdTuiWatchdogScene(props) {
+    const React = props?.React;
+    const ui = props?.ui;
+    const close = typeof props?.close === "function" ? props.close : () => {};
+    if (React === undefined || ui === undefined || typeof React.createElement !== "function" || typeof React.useState !== "function" || typeof React.useEffect !== "function") {
+      return null;
+    }
+    const surface = { React, ui };
+    const readState = React.useState({ view: WATCHDOG_SCENE_EMPTY_VIEW, available: false });
+    const read = readState[0];
+    const setRead = readState[1];
+    const flashState = React.useState(undefined);
+    const flashText = typeof flashState[0] === "string" ? flashState[0] : undefined;
+    const setFlash = flashState[1];
+    const scrollState = React.useState(0);
+    const scroll = typeof scrollState[0] === "number" ? scrollState[0] : 0;
+    const setScroll = scrollState[1];
+    const lastAck = React.useRef(0);
+    const refreshState = React.useState(0);
+    const refreshToken = typeof refreshState[0] === "number" ? refreshState[0] : 0;
+    const setRefresh = refreshState[1];
+    React.useEffect(() => {
+      setRead(watchdogSceneRead(deps));
+      let timer;
+      try {
+        timer = setInterval(() => setRead(watchdogSceneRead(deps)), WATCHDOG_PANEL_REFRESH_MS);
+      } catch {
+        timer = undefined;
+      }
+      return () => {
+        if (timer !== undefined)
+          clearInterval(timer);
+      };
+    }, refreshToken);
+    const measured = typeof ui.useTerminalSize === "function" ? ui.useTerminalSize() : { columns: 80, rows: 24 };
+    const viewportRows = Math.max(1, measured.rows - WATCHDOG_SCENE_CHROME_ROWS);
+    const teams = watchdogTeamRows(read.view, () => read.team);
+    const rows = watchdogBodyRows({
+      view: read.view,
+      available: read.available,
+      teams,
+      ...flashText === undefined ? {} : { flash: flashText },
+      now: Date.now()
+    });
+    const scrollMax = Math.max(0, rows.length - viewportRows);
+    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
+    const visible = rows.slice(scrollAt, scrollAt + viewportRows);
+    const acknowledgeShown = () => {
+      if (!read.available)
+        return;
+      const outcome = watchdogAckPress({ unread: read.view.unread, lastAck: lastAck.current, acknowledge: (upTo) => deps.acknowledge(upTo) });
+      lastAck.current = outcome.lastAck;
+      setFlash(outcome.flash);
+    };
+    if (typeof ui.useInput === "function") {
+      ui.useInput((input, key) => {
+        if (key?.escape === true || input === "q") {
+          close();
+          return;
+        }
+        if (input === "a") {
+          acknowledgeShown();
+          return;
+        }
+        if (input === "r") {
+          setFlash(undefined);
+          setRefresh(Date.now());
+          return;
+        }
+        if (key?.upArrow === true && key?.shift === true)
+          setScroll(Math.max(0, scrollAt - 1));
+        else if (key?.downArrow === true && key?.shift === true)
+          setScroll(Math.min(scrollMax, scrollAt + 1));
+        else if (key?.pageUp === true)
+          setScroll(Math.max(0, scrollAt - viewportRows));
+        else if (key?.pageDown === true)
+          setScroll(Math.min(scrollMax, scrollAt + viewportRows));
+        else if (key?.home === true)
+          setScroll(0);
+        else if (key?.end === true)
+          setScroll(scrollMax);
+        else if (input === "j")
+          setScroll(Math.min(scrollMax, scrollAt + 1));
+        else if (input === "k")
+          setScroll(Math.max(0, scrollAt - 1));
+      });
+    }
+    const tone = read.view.holds.length > 0 ? "blocked" : read.view.unread.length > 0 ? "chain" : "dim";
+    const rowCells = Math.max(8, measured.columns - 6);
+    const head = [
+      surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, 0)} ${WATCHDOG_PANEL_TITLE}`, `${String(rows.length)} row(s)`]), { bold: true, tone }),
+      surfaceRule(surface, "rule", undefined, tone)
+    ];
+    const drawn = visible.map((row) => surfaceText(surface, row.key, clampCells(row.text, rowCells), {
+      ...row.tone === undefined ? {} : { tone: row.tone },
+      ...row.bold === true ? { bold: true } : {},
+      ...row.dim === true ? { dim: true } : {}
+    }));
+    const railCells = gutterCells(scrollAt, Math.max(rows.length, 1), viewportRows);
+    const rail = railCells.length === 0 ? undefined : React.createElement(ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...railCells.map((cell, row) => React.createElement(ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)));
+    const window = React.createElement(ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, React.createElement(ui.Box, {
+      key: "body-rows",
+      flexDirection: "column",
+      flexGrow: 1,
+      onWheel: (event) => {
+        const raw = event?.deltaY;
+        const deltaY = normalizeWheelDelta(Number(raw ?? 0), false);
+        if (deltaY === 0)
+          return;
+        setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
+      }
+    }, ...drawn), ...rail === undefined ? [] : [rail]);
+    const footer = [
+      surfaceHints(surface, "footer", [
+        "esc/q close",
+        "⇧↑↓ scroll",
+        "PgUp/PgDn page",
+        "a ack",
+        "r refresh",
+        ...scrollMax > 0 ? [`${String(scrollAt + 1)}/${String(scrollMax + 1)}`] : []
+      ])
+    ];
+    const borderTitle = clampCells(chromeTitle([stateMarker(tone, 0), WATCHDOG_PANEL_TITLE]), Math.max(8, measured.columns - 6));
+    return surfaceFrame(surface, "frame", borderTitle, [...head, window, ...footer], tone);
+  };
+}
+function registerWatchdogScene(tui, ctx, deps) {
+  const scene = deps.enabled ? tui.registerScene({ id: WATCHDOG_SCENE_ID, title: WATCHDOG_PANEL_TITLE, component: createWatchdogSceneComponent(deps) }, ctx) : undefined;
+  return {
+    scene,
+    registered: () => scene !== undefined && scene.outcome().state === "requested",
+    open: () => scene === undefined ? false : scene.openScene(WATCHDOG_SCENE_ID),
+    outcome: () => {
+      if (scene !== undefined)
+        return scene.outcome();
+      return tui.skipped("scenes", "the watchdog scene is disabled by the mpd-tui row config (scene: false)").outcome();
     }
   };
 }
@@ -10604,7 +10961,7 @@ function wrapCells(value, cols) {
 }
 function measureTerminal2(ui) {
   if (typeof ui?.useTerminalSize !== "function")
-    return { size: "", cols: FALLBACK_COLS2, window: 20 };
+    return { size: "", cols: FALLBACK_COLS2, window: 20, rows: 26 };
   let columns = "?";
   let rows = "?";
   const measured = ui.useTerminalSize();
@@ -10615,11 +10972,38 @@ function measureTerminal2(ui) {
   const terminalRows = Number(rows);
   const size = `${String(columns)}x${String(rows)}`;
   const terminalCols = Number(columns);
+  const usableRows = Number.isFinite(terminalRows) && terminalRows > 8;
   return {
     size,
     cols: Number.isFinite(terminalCols) && terminalCols > 20 ? terminalCols : FALLBACK_COLS2,
-    window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
+    window: usableRows ? terminalRows - 6 : 20,
+    rows: usableRows ? terminalRows : 26
   };
+}
+function useSceneClock(ui, live) {
+  if (typeof ui?.useAnimationFrame === "function") {
+    const pair = ui.useAnimationFrame(live ? DAG_ANIM.intervalMs : null);
+    const ref = Array.isArray(pair) ? pair[0] : undefined;
+    const time = Number(Array.isArray(pair) ? pair[1] : 0);
+    return { time: Number.isFinite(time) ? time : 0, ref };
+  }
+  if (typeof ui?.useAnimationTime === "function") {
+    const time = Number(ui.useAnimationTime(live ? DAG_ANIM.intervalMs : null));
+    return { time: Number.isFinite(time) ? time : 0, ref: undefined };
+  }
+  return { time: 0, ref: undefined };
+}
+function gutterColumn(surface, offset, contentRows, viewportRows) {
+  const cells = gutterCells(offset, contentRows, viewportRows);
+  if (cells.length === 0)
+    return;
+  return surface.React.createElement(surface.ui.Box, { key: "gutter", flexDirection: "column", width: 1 }, ...cells.map((cell, row) => surface.React.createElement(surface.ui.Text, { key: `vbar-${row}`, dimColor: true }, cell)));
+}
+function windowedBody(surface, head, region, footer, offset, contentRows, viewportRows) {
+  const rows = surface.React.createElement(surface.ui.Box, { key: "body-rows", flexDirection: "column", flexGrow: 1 }, ...region);
+  const gutter = gutterColumn(surface, offset, contentRows, viewportRows);
+  const window = gutter === undefined ? rows : surface.React.createElement(surface.ui.Box, { key: "body-window", flexDirection: "row", flexGrow: 1 }, rows, gutter);
+  return [...head, window, ...footer];
 }
 function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiBoard(props) {
@@ -10646,6 +11030,9 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const board = state[0];
     const rows = board.rows;
     const setBoard = state[1];
+    const scrollState = React.useState(0);
+    const scroll = scrollState[0];
+    const setScroll = scrollState[1];
     useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()));
     React.useEffect(() => {
       setBoard(read());
@@ -10665,13 +11052,31 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     }, []);
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
+    const measured = measureTerminal2(ui);
+    const size = measured.size;
+    const viewportRows = Math.max(1, measured.rows - 2 - 3 - 1);
+    const scrollMax = Math.max(0, rows.length - viewportRows);
+    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
     if (typeof ui.useInput === "function") {
       ui.useInput((input, key) => {
         if (key?.escape === true || input === "q")
           close();
-        else if (input === "r")
+        else if (key?.upArrow === true && key?.shift === true)
+          setScroll(Math.max(0, scrollAt - 1));
+        else if (key?.downArrow === true && key?.shift === true)
+          setScroll(Math.min(scrollMax, scrollAt + 1));
+        else if (key?.pageUp === true)
+          setScroll(Math.max(0, scrollAt - viewportRows));
+        else if (key?.pageDown === true)
+          setScroll(Math.min(scrollMax, scrollAt + viewportRows));
+        else if (key?.home === true)
+          setScroll(0);
+        else if (key?.end === true)
+          setScroll(scrollMax);
+        else if (input === "r") {
+          setScroll(0);
           setBoard(read());
-        else if (input === "a") {
+        } else if (input === "a") {
           nav.planFromTeam = false;
           openScene(TEAM_SCENE_ID);
         }
@@ -10689,21 +11094,30 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
         sessionRows = 0;
       }
     }
-    const measured = measureTerminal2(ui);
-    const size = measured.size;
     const tally = board.state?.team?.tasks;
     const tone = tally === undefined ? "dim" : toneOfTally(tally, []);
     const barWidth = Math.max(4, Math.min(24, measured.cols - 64));
-    const children = [];
-    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }));
-    children.push(surfaceText(surface, "meta", chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]), { dim: true }));
-    children.push(surfaceRule(surface, "rule", undefined, tone));
-    for (let index = 0;index < rows.length; index += 1) {
-      children.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }));
+    const head = [];
+    head.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD board — ${rows.length} line(s)`, size]), { bold: true, tone }));
+    head.push(surfaceText(surface, "meta", chromeTitle([`${sessionRows} transcript row(s)`, tally === undefined ? undefined : `${barCells(tally.completed, tally.total, barWidth)} ${tally.completed}/${tally.total}`]), { dim: true }));
+    head.push(surfaceRule(surface, "rule", undefined, tone));
+    const visible = [];
+    for (let index = scrollAt;index < Math.min(rows.length, scrollAt + viewportRows); index += 1) {
+      visible.push(surfaceBodyRow(surface, `line-${index}`, rows[index], { tasks: tone }));
     }
-    children.push(surfaceHints(surface, "footer", ["esc/q close", "r refresh", "a team workflow"]));
+    const body = React.createElement(ui.Box, {
+      key: "board-window-rows",
+      flexDirection: "column",
+      flexGrow: 1,
+      onWheel: (event) => {
+        const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
+        if (deltaY !== 0)
+          setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
+      }
+    }, ...visible);
+    const footer = [surfaceHints(surface, "footer", ["esc/q close", "⇧↑↓ scroll", "r refresh", "a team workflow"])];
     const borderTitle = clampCells(chromeTitle([stateMarker(tone, phase), "MPD board", size]), Math.max(8, measured.cols - 6));
-    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, head, [body], footer, scrollAt, rows.length, viewportRows), tone, clock.ref);
   };
 }
 function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
@@ -10735,7 +11149,8 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const setScrollX = scrollXState[1];
     const latestRef = React.useRef?.(undefined);
     const viewRef = React.useRef?.(undefined);
-    const clock = useSurfaceClock(ui);
+    const animate = workflow !== undefined && (workflow.tasks.some((task) => task.visual === "running") || workflow.members.some((member) => member.status === "running"));
+    const clock = useSceneClock(ui, animate);
     const phase = animPhase(clock.time);
     const refresh = () => {
       let next;
@@ -10769,19 +11184,115 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const graphTasks = workflow === undefined ? [] : modelRows(workflow);
     const focus = hover ?? pinned;
     const measured = measureTerminal2(ui);
-    const graphWidth = Math.max(20, measured.cols - 4);
-    const graphWindow = Math.max(3, measured.window - 4);
-    const servedRanks = modelRanks(workflow);
-    const groups = workflow?.model?.groups;
-    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks, groups);
-    const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks);
-    const scrollXMax = Math.max(0, view.width - graphWidth);
-    const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
-    const scrollMax = Math.max(0, view.lines.length - graphWindow);
+    const team = workflow?.team;
+    const tone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual));
+    const drawAt = (contentCols) => {
+      const graphWidth = Math.max(20, contentCols - 4);
+      const servedRanks = modelRanks(workflow);
+      const groups = workflow?.model?.groups;
+      const boxes = layoutGraphNatural(graphTasks, focus, { rows: measured.window }, servedRanks, groups);
+      const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks);
+      const scrollXMax = Math.max(0, view.width - graphWidth);
+      const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
+      const head = [];
+      const tail = [];
+      const barWidth = Math.max(4, Math.min(16, contentCols - 46));
+      const barFits = contentCols >= 50;
+      head.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? " — (none)" : ` — ${team.name} (${team.id})`}`, measured.size]), {
+        bold: true,
+        tone
+      }));
+      if (workflow?.source?.scope === "workspace") {
+        head.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`));
+      }
+      let graphLines = 0;
+      if (workflow === undefined) {
+        tail.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }));
+      } else if (team === undefined) {
+        if (workflow.source?.scope === "none") {
+          tail.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }));
+          const held = workflow.source?.workspaceTeams;
+          if (typeof held === "number" && held > 0) {
+            tail.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }));
+          }
+        } else if (workflow.source?.scope === "workspace") {
+          tail.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }));
+        } else {
+          tail.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
+        }
+      } else {
+        const counts = workflow.counts;
+        head.push(surfaceText(surface, "phase", chromeTitle([
+          barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
+          `${team.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${team.links} link(s)`
+        ]), { tone }));
+        const roster = workflow.members.length === 0 ? "roster  (no members)" : "roster  " + workflow.members.map((member) => `${member.status === "running" ? runningMarker(phase) : "○"}${member.name} ${member.done}/${member.total}`).join(" · ");
+        const rosterChunks = wrapCells(roster, graphWidth);
+        for (let index = 0;index < rosterChunks.length; index += 1) {
+          head.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]));
+        }
+        if (workflow.holds.includes(team.id))
+          head.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`));
+        const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
+        head.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
+        graphLines = view.lines.length;
+        if (scrollXMax > 0) {
+          const rail = gutterCellsX(scrollXAt, view.width, graphWidth);
+          if (rail !== "")
+            tail.push(surfaceText(surface, "hrail", rail, { dim: true }));
+        }
+        let arrow = [];
+        try {
+          arrow = legendLines(graphWidth);
+        } catch {
+          arrow = [];
+        }
+        for (let index = 0;index < arrow.length; index += 1) {
+          tail.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }));
+        }
+        let legend = [];
+        try {
+          legend = legendLinesFor(graphWidth, arrow);
+        } catch {
+          legend = [];
+        }
+        for (let index = arrow.length;index < legend.length; index += 1) {
+          tail.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }));
+        }
+        const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus);
+        if (detail !== undefined) {
+          tail.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }));
+          tail.push(surfaceText(surface, "detail-meta", `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`, { dim: true }));
+        }
+        for (const problem of workflow.problems)
+          tail.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`));
+      }
+      if (notice !== "")
+        tail.push(surfaceText(surface, "notice", notice, { tone: "blocked" }));
+      const baseMarker = DAG_TONE_GLYPH.running ?? "◐";
+      const breathe = runningGlyph(phase);
+      const breathing = breathe !== baseMarker;
+      const graphRow2 = (index) => {
+        const row = view.lines[index] ?? [];
+        const running = row.some((span) => span.tone === "running");
+        const phased = running && breathing ? row.map((span) => span.text.includes(baseMarker) ? { text: span.text.replace(baseMarker, breathe), tone: span.tone } : span) : row;
+        const spans = sliceSpans(phased, scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
+        return React.createElement(ui.Text, { key: `g${index}` }, ...spans);
+      };
+      return { head, tail, graphLines, graphRow: graphRow2, view, graphWidth, scrollXAt, scrollXMax };
+    };
+    const full = drawAt(measured.cols);
+    const capacityOf = (draw) => Math.max(1, measured.rows - 2 - draw.head.length - 1);
+    const contentOf = (draw) => draw.graphLines + draw.tail.length;
+    const scrolling = contentOf(full) > capacityOf(full);
+    const body = scrolling ? drawAt(measured.cols - 1) : full;
+    const viewportRows = capacityOf(body);
+    const contentRows = contentOf(body);
+    const scrollMax = Math.max(0, contentRows - viewportRows);
     const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
     if (viewRef !== undefined && viewRef !== null)
-      viewRef.current = view;
-    const ordered = view.hits.map((hit) => hit.taskId);
+      viewRef.current = body.view;
+    const ordered = body.view.hits.map((hit) => hit.taskId);
     const moveFocus = (delta) => {
       if (ordered.length === 0)
         return;
@@ -10808,13 +11319,13 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         else if (key?.downArrow === true || input === "j")
           key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1);
         else if (key?.leftArrow === true || input === "h")
-          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1);
+          key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - 1)) : moveFocus(-1);
         else if (key?.rightArrow === true || input === "l")
-          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1);
+          key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + 1)) : moveFocus(1);
         else if (key?.pageUp === true)
-          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scrollAt - graphWindow));
+          key?.shift === true ? setScrollX(Math.max(0, body.scrollXAt - body.graphWidth)) : setScroll(Math.max(0, scrollAt - viewportRows));
         else if (key?.pageDown === true)
-          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + graphWindow));
+          key?.shift === true ? setScrollX(Math.min(body.scrollXMax, body.scrollXAt + body.graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + viewportRows));
         else if (key?.home === true)
           setScroll(0);
         else if (key?.end === true)
@@ -10839,61 +11350,26 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         }
       });
     }
-    const children = [];
-    const head = workflow?.team;
-    const tone = workflow === undefined ? "dim" : toneOfTally(workflow.counts, workflow.tasks.map((task) => task.visual));
-    const barWidth = Math.max(4, Math.min(16, measured.cols - 46));
-    const barFits = measured.cols >= 50;
-    children.push(surfaceText(surface, "title", chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? " — (none)" : ` — ${head.name} (${head.id})`}`, measured.size]), {
-      bold: true,
-      tone
-    }));
-    if (workflow?.source?.scope === "workspace") {
-      children.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`));
-    }
-    if (workflow === undefined) {
-      children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }));
-    } else if (head === undefined) {
-      if (workflow.source?.scope === "none") {
-        children.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }));
-        const held = workflow.source?.workspaceTeams;
-        if (typeof held === "number" && held > 0) {
-          children.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }));
-        }
-      } else if (workflow.source?.scope === "workspace") {
-        children.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }));
-      } else {
-        children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
-      }
-    } else {
-      const counts = workflow.counts;
-      children.push(surfaceText(surface, "phase", chromeTitle([
-        barFits ? `${barCells(counts.completed, counts.total, barWidth)} ${counts.completed}/${counts.total}` : undefined,
-        `${head.phase} · ${counts.total} task(s) · ${counts.completed} done · ${counts.inProgress} running · ${counts.pending} pending · ${counts.failed} failed · ${head.links} link(s)`
-      ]), { tone }));
-      const roster = workflow.members.length === 0 ? "roster  (no members)" : "roster  " + workflow.members.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · ");
-      const rosterChunks = wrapCells(roster, graphWidth);
-      for (let index = 0;index < rosterChunks.length; index += 1) {
-        children.push(surfaceBodyRow(surface, `roster-${index}`, rosterChunks[index]));
-      }
-      if (workflow.holds.includes(head.id))
-        children.push(surfaceBodyRow(surface, "hold", `watchdog   HELD (${workflow.holds.join(", ")})`));
-      const focusLabel = focus === undefined ? "" : ` · focus ${focus}${view.chain.length === 0 ? "" : ` ⇠ ${view.chain.join(",")}`}`;
-      children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
-      const graphWindow2 = Math.max(3, measured.window - 4);
-      const graphRows = [];
-      for (let index = scrollAt;index < Math.min(view.lines.length, scrollAt + graphWindow2); index += 1) {
-        const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
-        graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
-      }
-      children.push(React.createElement(ui.Box, {
+    const graphFrom = Math.min(scrollAt, body.graphLines);
+    const graphTo = Math.min(body.graphLines, scrollAt + viewportRows);
+    const graphRows = [];
+    for (let index = graphFrom;index < graphTo; index += 1)
+      graphRows.push(body.graphRow(index));
+    const tailStart = Math.max(0, scrollAt - body.graphLines);
+    const tailRoom = viewportRows - (graphTo - graphFrom);
+    const tailRows = [];
+    for (let index = 0;index < tailRoom && tailStart + index < body.tail.length; index += 1)
+      tailRows.push(body.tail[tailStart + index]);
+    const visible = [];
+    if (body.graphLines > 0) {
+      visible.push(React.createElement(ui.Box, {
         key: "graph",
         flexDirection: "column",
         onMouseEnter: (event) => {
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt);
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + graphFrom, Number(event?.localCol ?? -1) + body.scrollXAt);
           setHover(under);
         },
         onMouseLeave: () => setHover(undefined),
@@ -10901,7 +11377,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt);
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + graphFrom, Number(event?.localCol ?? -1) + body.scrollXAt);
           setPinned(under === undefined || under === pinned ? undefined : under);
           setHover(under);
         },
@@ -10911,45 +11387,15 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
             setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn());
           if (deltaX !== 0)
-            setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))));
+            setScrollX(Math.max(0, Math.min(body.scrollXMax, body.scrollXAt + (deltaX > 0 ? 1 : -1))));
         }
       }, graphRows));
-      if (scrollXMax > 0) {
-        const rail = gutterCellsX(scrollXAt, view.width, graphWidth);
-        if (rail !== "")
-          children.push(surfaceText(surface, "hrail", rail, { dim: true }));
-      }
-      let arrow = [];
-      try {
-        arrow = legendLines(graphWidth);
-      } catch {
-        arrow = [];
-      }
-      for (let index = 0;index < arrow.length; index += 1) {
-        children.push(surfaceText(surface, `legend-${index}`, arrow[index], { dim: true }));
-      }
-      let legend = [];
-      try {
-        legend = legendLinesFor(graphWidth, arrow);
-      } catch {
-        legend = [];
-      }
-      for (let index = arrow.length;index < legend.length; index += 1) {
-        children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }));
-      }
-      const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus);
-      if (detail !== undefined) {
-        children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }));
-        children.push(surfaceText(surface, "detail-meta", `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`, { dim: true }));
-      }
-      for (const problem of workflow.problems)
-        children.push(surfaceBodyRow(surface, `problem-${problem}`, `note       ${problem}`));
     }
-    if (notice !== "")
-      children.push(surfaceText(surface, "notice", notice, { tone: "blocked" }));
-    children.push(surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"]));
-    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${head === undefined ? "" : ` — ${head.name}`}`, measured.size]), Math.max(8, measured.cols - 6));
-    return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
+    for (const row of tailRows)
+      visible.push(row);
+    const footer = [surfaceHints(surface, "footer", ["esc/q close", "↑↓ focus", "click pins", "hover previews", "⇧↑↓ scroll", "r refresh", "a plan", "p board"])];
+    const borderTitle = clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD team${team === undefined ? "" : ` — ${team.name}`}`, measured.size]), Math.max(8, measured.cols - 6));
+    return surfaceFrame(surface, "frame", borderTitle, windowedBody(surface, body.head, visible, footer, scrollAt, contentRows, viewportRows), tone, clock.ref);
   };
 }
 function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
@@ -11683,6 +12129,8 @@ function runAction(action, actions, session) {
     const route = actions.openWatchdog();
     if (route.outcome === "opened")
       return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) };
+    if (route.sceneOpened === true)
+      return { kind: "success", text: clamp(t("watchdog.commandSceneOpened")) };
     if (route.outcome === "fallback")
       return { kind: "error", text: clamp(t("watchdog.commandOpenRefused")) };
     if (route.outcome === "refused")
@@ -12390,15 +12838,25 @@ function apply(ctx, config = {}) {
     openScene: () => scene.open(),
     log
   });
+  const watchdogTeamHead = () => {
+    const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService);
+    return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase };
+  };
+  const watchdogScene = registerWatchdogScene(tui, ctx, {
+    enabled: resolved.scene,
+    available: () => watchdogFrontDoor.available(),
+    read: () => watchdogFrontDoor.view(),
+    acknowledge: (upTo) => watchdogFrontDoor.acknowledge(upTo),
+    readTeam: watchdogTeamHead,
+    log
+  });
   const watchdogPanel = registerWatchdogPanel(tui, {
     enabled: resolved.watchdog,
     available: () => watchdogFrontDoor.available(),
     read: () => watchdogFrontDoor.view(),
     acknowledge: (upTo) => watchdogFrontDoor.acknowledge(upTo),
-    readTeam: () => {
-      const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService);
-      return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase };
-    },
+    readTeam: watchdogTeamHead,
+    ...resolved.scene ? { openFullscreen: () => watchdogScene.open() } : {},
     log
   });
   if (resolved.panel || resolved.watchdog) {
@@ -12519,8 +12977,8 @@ function apply(ctx, config = {}) {
       return { outcome: route.outcome, id: route.id };
     },
     openWatchdog: () => {
-      const route = openPage({ id: () => watchdogPanel.id(), openScene: () => false, disabled: () => watchdogPanel.panel === undefined, outcome: () => watchdogPanel.outcome() });
-      return { outcome: route.outcome, id: route.id };
+      const route = openPage({ id: () => watchdogPanel.id(), openScene: () => watchdogScene.open(), disabled: () => watchdogPanel.panel === undefined, outcome: () => watchdogPanel.outcome() });
+      return { outcome: route.outcome, id: route.id, sceneOpened: route.sceneOpened };
     },
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
     workmatesText: () => {

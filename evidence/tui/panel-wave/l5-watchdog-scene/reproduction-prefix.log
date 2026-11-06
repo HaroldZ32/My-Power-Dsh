@@ -1,0 +1,75 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-watchdog.test.ts:
+(pass) the watchdog page's descriptor (contract §1) > one slug, one-cell icon, the 28-column floor, and an order after the other pages [0.05ms]
+(pass) the watchdog page's descriptor (contract §1) > registration goes through the adapter's registerPanel and the row's own config knob [0.11ms]
+(pass) the page's content (contract §2) > an EMPTY view renders the explicit empty state and a zero header [0.80ms]
+(pass) the page's content (contract §2) > an INCIDENT renders kind, relative time, ack state, team/task/attempt, cause+ms and hold outcome [0.24ms]
+(pass) the page's content (contract §2) > an ACKNOWLEDGED incident shows the acked marker, and a release is named [0.06ms]
+(pass) the page's content (contract §2) > the relative time is a compact, language-neutral age [0.03ms]
+(pass) the page's content (contract §2) > per-team rows are the held teams PLUS every incident team, sorted; a foreign phase reads `?` [0.07ms]
+(pass) the page's content (contract §2) > an ABSENT service renders `watchdog: not available`, never a blank page or a throw [0.36ms]
+(pass) the page's content (contract §2) > an unreadable reader degrades to the absent state instead of throwing into the host [0.35ms]
+(pass) the acknowledge key (contract §3) > `a` advances the watermark ONCE, to the newest incident shown, and a second press is a no-op [0.54ms]
+(pass) the acknowledge key (contract §3) > a REFUSED acknowledge is reported, never swallowed, and a later press may retry [0.28ms]
+(pass) the acknowledge key (contract §3) > `r` refreshes and the scroll keys move the window without throwing [0.54ms]
+(pass) the acknowledge key (contract §3) > after ONE scroll step the body still DRAWS the incidents (CodeRabbit #16/#18) [0.64ms]
+(pass) the /mpd watchdog command (contract §4) > an accepted open names the DISCOVERED host id [0.27ms]
+(pass) the /mpd watchdog command (contract §4) > an absent panel seam is reported in ONE line and does not throw [0.18ms]
+(pass) the /mpd watchdog command (contract §4) > the /mpd watchdog command keeps its refusals APART > the host DECLINED THE OPEN — the line does not blame the registration [0.06ms]
+(pass) the /mpd watchdog command (contract §4) > the /mpd watchdog command keeps its refusals APART > the REGISTRATION was refused — its own line, not the open one [0.07ms]
+(pass) the /mpd watchdog command (contract §4) > the /mpd watchdog command keeps its refusals APART > the page is DISABLED by its own knob — the line names `watchdog: false`, not a missing seam [0.06ms]
+722 |       const page = createWatchdogPanelComponent(depsDouble({ view }).deps)
+723 |       // MOUNT AT THE TOP: the header and the first window position are the baseline the shift is read against.
+724 |       /** The mount render's drawn rows. */
+725 |       const atTop = kit.rows(render(kit, host, page))
+726 |       expect(atTop.join("\n")).toContain("watchdog · 1 held · 12 unread")
+727 |       expect(atTop.join("\n")).toContain("1/24")
+                                     ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "1/24"
+Received: "MPD watchdog\n⤢\nwatchdog · 1 held · 12 unread\nteam team-a · held · phase active\nincidents\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\ncause silence-channel · 90000ms · hold\nescalate · 1m · ○\nteam-a · T3 · a1\n█\n█\n█\n█\n█\n█\n█\n░\n░\n░\n░\n░\n░\n░\n░\n░\n░\na ack · r refresh · ↑↓/jk scroll 1/23 "
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:727:32)
+      at withLang (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:245:12)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:710:5)
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > at a NON-ZERO offset the body is still drawn, the rail keeps its cell, and the frame stays inside the measured height [0.46ms]
+778 |       // the bar's one cell, so a row plus the bar is exactly the interior and can never wrap the frame —
+779 |       // which is what the host did, and what the user read as the text jumping to the left edge.
+780 |       expect(interior).toBe(38)
+781 |       /** The widest drawn row, in cells. */
+782 |       const widest = Math.max(...rows.map((row) => cellWidth(row)))
+783 |       expect(widest).toBe(interior - 1)
+                           ^
+error: expect(received).toBe(expected)
+
+Expected: 37
+Received: 38
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:783:22)
+      at withLang (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:245:12)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:762:5)
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > the interior reserves the rail's cell — a row plus the bar is exactly the interior, never wider [0.33ms]
+799 |       // THE HEIGHT DEFECT, in its exact numbers: neither border row, the title nor the pinned footer is
+800 |       // inside the window, so a full window draws exactly `measured.rows` lines. The pre-fix budget was
+801 |       // `rows - 3`, one row too many, and the host clipped the footer — and its position token — away.
+802 |       /** The window's own slice: the rows `panelViewportBody` handed to the host. */
+803 |       const windowRows = elementByKey(tree, "scroll")?.children.length ?? 0
+804 |       expect(windowRows).toBe(16)
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: 16
+Received: 17
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:804:26)
+      at withLang (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:245:12)
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-watchdog.test.ts:788:5)
+(fail) clause 2 + clause 3: the page's scroll band and its enlarge control > the frame fits the measured height — a full window draws exactly `rows` lines [0.30ms]
+(pass) clause 2 + clause 3: the page's scroll band and its enlarge control > the title row's `⤢` calls the watchdog scene opener — and carries no click target when no scene exists [0.15ms]
+
+ 19 pass
+ 3 fail
+ 85 expect() calls
+Ran 22 tests across 1 file. [142.00ms]

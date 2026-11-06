@@ -22,13 +22,14 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
 | Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, one three-leaf row per roster agent (`agentRoutes.<Agent>.{provider,model,reasoningEffort}`) and the TUI's own `tui.dashboardKey` (there is no persisted slot, so no slot leaves), each leaf rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** into the config service through the host's settings document: a save from this section is persisted by the HOST as the `mpd-config` ENTRY document (**no workspace file is written on this path** — the only `<workspace>/.mpd/mpd.jsonc` writer is the RETIRED legacy `mpd`-namespace write-back, which the pinned harness refuses, and a hand edit of that file is still read on every resolution). WHICH knobs then act without a restart is per knob: the model routes, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `autoproject.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER: live from a hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs. Each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
-| Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
+| Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail. Since the 2026-11-06 panel-hygiene wave the WHOLE body below the pinned head is one window (the drawing plus the horizontal rail, legend, state key, detail, problems, notice) with a VISIBLE one-cell vertical scrollbar drawn only while content overflows, and running markers ANIMATE on the scene's own clock (`DAG_ANIM.runningFrames`) with the host frame loop paused when nothing runs |
+| Watchdog scene | `ctx.tuiScenes` | `mpd-tui-watchdog` — MPD's own full-screen twin of the watchdog page, new in the 2026-11-06 wave: the SAME body through the one shared builder (`watchdogBodyRows` / `watchdogAckPress`), so page and scene cannot describe one incident differently. The page's `⤢` opens it and `/mpd watchdog`'s routed fallback opens it instead of reporting an absence. Frame + pinned title/key-hint footer, the window position in the footer, `⇧↑↓`/`PgUp`/`PgDn`/`Home`/`End`/`j`/`k` and the wheel, the vertical rail from `gutterCells`, `a` acknowledges through the shared rule, `r` refreshes, `esc`/`q` leaves; the view is read in an effect and on the page's 2 s timer, so an absent service degrades to the explicit absent state |
 | Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates`, `/mpd watchdog` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks group → scope (the whole group, or one agent) → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing, and a whole-group write first shows a confirmation panel naming every affected agent and its current route. Its panels also show each agent's CURRENT configuration from the config service's typed `agentRouteResolutionOf` answer: an unconfigured agent renders `<unconfigured>` and names its missing leaves, a malformed leaf renders `<invalid>`, and a composition with no config service renders `<unavailable>` — and the dialog NEVER wraps that read in a try/catch, so a degrade is a state the service reports rather than an exception swallowed on the display path |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.18.0) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
-| Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
+| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.18.0) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`, and — since the 2026-11-06 wave — `mpd-tui-watchdog` for `/mpd watchdog`, which used to be the one page with no surface behind it) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row. Since the 2026-11-06 wave its rows come from the ONE shared builder (`subagent-rows.ts`): no `mode` field, relative ages (`<1s`/`Ns`/`Nm`/`Nh`/`Nd`), and settled rows stop being DRAWN (a projection — nothing is deleted from disk) |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
 | Decision events | `tuiPluginHost.subscribeDecision` | attempted, expected to be refused, **not activated** (see below) |
@@ -107,8 +108,8 @@ The registration is safe on every host build: the apply-time `registerPanel(...)
 adapter's deferred binder and settled as `absent` where no `tuiPanels` service exists, and it never
 throws. The final id is not composed here — it is DISCOVERED from the host's own `list()` read-back,
 which is why the debug line reads `sidebar panel id: act1:team` (measured) on a real host and
-`(not discovered)` everywhere else; the recorded set is what ACTUALLY registered, so it carries the two
-surviving ids and no third one.
+`(not discovered)` everywhere else; the recorded set is what ACTUALLY registered, so it carries the
+THREE current ids — `team`, `workmate` and `watchdog` — and not the retired `dag` page.
 
 **HOW A USER ACTUALLY REACHES A PAGE — read this paragraph before concluding a page is missing.** The
 final id is DYNAMIC (`<activationId>:<slug>`; measured `act1:team`, `act1:dag`, `act1:workmate` in a
@@ -222,6 +223,24 @@ both reusing `subagent-scene.ts` (`subagentSectionRows`, `teamGraphView`) and `g
 ONLY through the props' own kit — `props.React` and `props.ui` — because the host renders the panel
 inside its own reconciler: importing React (or any second copy of it) here would mount a foreign tree,
 so the panel never imports it and never reads a theme of its own (the single-React rule).
+
+**The subagent rows: ONE builder, no `mode`, relative ages, and a burn-after-use PROJECTION
+(2026-11-06).** The sidebar page and the full-screen merged scene draw their rows from ONE module,
+`src/subagent-rows.ts`, so the two surfaces cannot drift on what a row says or on when it stops being
+drawn. A row renders `<glyph> <description> · <status> · started|ended <age>` — `🟡` live, `🟢`
+completed, `🔴` failed/cancelled, `⚪` unknown — and the age is RELATIVE (`<1s`, then `Ns`, `Nm`, `Nh`,
+`Nd`; buckets at 1 s / 60 s / 60 min / 24 h). The `mode` field (`one-shot`/`continuable`) is no longer
+drawn anywhere and neither is a full ISO-8601 instant; the mode is still READ from the host row because
+the interrupt path needs it. The filter is a **PROJECTION, not a delete**: the row source is the HOST's
+append-only child catalog (`channel.subagents` / `snapshot().subagents`), MPD keeps no copy and deletes
+nothing, and a row simply stops being DRAWN when (a) it is terminal (`completed`/`failed`/`cancelled`,
+or `unknown` WITH an end instant) and its `endedAt ?? completedAt` is older than the **60 s** grace — a
+deliberate trade, so a run that just finished stays readable for a minute — or (b) its description
+exactly and unambiguously names a member of an ENDED team of this session. `starting`/`running` rows are
+never hidden, and a row that provably belongs to another session's catalog is never hidden. MPD cannot
+ask "did MPD spawn this row?" (its consult records live in an in-process Map the TUI cannot read), so
+the rule is decided from the row plus this session's team projection — the strongest correlation these
+surfaces hold. **Nothing is deleted from disk, and the harness child catalog is append-only.**
 
 **The team is THIS SESSION's, and all three states are said out loud.** Team selection is session-scoped
 on every surface that draws one (this page, the team scene, the merged scene, the plan scene): the page
@@ -411,16 +430,26 @@ workspace keeps the empty states.
   `DAG_TONE_THEME.dim` already names — so on this host the flag is a SEMANTIC channel that changes no
   pixel, and the visible non-colour separator is the BOLD on the focus and the chain. The grey-out the
   user asked for is the real `subtle` → `inactive` step.
-- **A second click opens that member's work page (AC6).** Clicking the ALREADY-pinned task opens MPD's
-  full-screen `mpd-tui-subagents` scene positioned on the detail view of the task's owner. The owner
-  (`assignee`) is matched against the host's curated subagent rows through `agentIdForOwner`; when
-  nothing matches, the page says so through the host's `toast` and the scene opens on its LIST — never a
-  silent no-op. The scene takes its target from a module-level one-shot request in `subagent-scene.ts`
-  (`requestSubagentDetail` / `takeSubagentDetailRequest`): destructive, freshness-bounded, and cleared
-  when an open is refused, so a stale id cannot ambush a later open.
-- **Scrolling, and both rails DRAG (AC7).** The body is self-windowed with a PERMANENT proportional
-  gutter while content overflows, plus wheel and `PgUp`/`PgDn`/`Home`/`End`. Permanence is the host's
-  own rule: an auto-hiding gutter changes the content width and rewraps every row the moment it appears.
+- **A click TOGGLES the pin, and a second click inside 350 ms opens that member's work page (AC6).**
+  Clicking an unfocused node pins it; clicking the FOCUSED node again UNPINS it (the toggle's other half,
+  2026-11-06 — before that wave a pinned node could not be released with the mouse at all). A second
+  click on the SAME node within `DAG_DOUBLE_CLICK_MS` (**350 ms**) is a synthesized double-click: the
+  toggle is undone and MPD's full-screen `mpd-tui-subagents` scene opens on the detail view of the
+  task's owner. The owner (`assignee`) is matched against the host's curated subagent rows through
+  `agentIdForOwner`; when nothing matches, the page says so through the host's `toast` and the scene
+  opens on its LIST — never a silent no-op. The scene takes its target from a module-level one-shot
+  request in `subagent-scene.ts` (`requestSubagentDetail` / `takeSubagentDetailRequest`): destructive,
+  freshness-bounded, and cleared when an open is refused, so a stale id cannot ambush a later open. The
+  window is MPD's own synthesis — the pinned host has no double-click event (0 `onDoubleClick` hits in
+  its `lib/**` on 0.18.0) — so it is derived from `Date.now()` and the two clicks must resolve to the
+  SAME node. **The bound: this opens MPD's own subagent page, never the HOST's Agent View** —
+  `agentViewStore` is not in the host's `exports` map and `tuiPanels.open('agents')` is owner-checked, so
+  the host's Agent View is not reachable from a plugin, no surface claims it, and no host-internal
+  contact was added.
+- **Scrolling, and both rails DRAG by the pointer's DELTA (AC7).** The body is self-windowed with a
+  PERMANENT proportional gutter while content overflows, plus wheel and `PgUp`/`PgDn`/`Home`/`End`.
+  Permanence is the host's own rule: an auto-hiding gutter changes the content width and rewraps every
+  row the moment it appears.
   **The sidebar chooses a BOXED drawing whenever two node columns fit** (or the drawing fits whole), and
   a drawing wider or taller than the panel is reached through the horizontal pan and the vertical scroll
   — the footer names where the reader is (`col n/m` and the row token). Only a panel too narrow for two
@@ -433,10 +462,14 @@ workspace keeps the empty states.
   wheel is bound on the frame as well as the content so a gesture over the chrome cannot scroll the chat.
   The VERTICAL gutter and the HORIZONTAL rail (drawn only while the drawing is wider than the panel)
   each scrub under a mouse drag through the host's own drag protocol — `onDragStart`/`onDragMove`/
-  `onDragEnd` with the `localRow`/`localCol` the host recomputes from the element's own rect — mapped
-  through the SAME absolute track arithmetic the click uses, exactly as the host's own
-  `components/ScrollbarGutter.js` does. No grabbed-thumb offset: a drag is a continuous run of
-  click-to-position jumps. A host that ignores the drag props simply does not drag; nothing is lost,
+  `onDragEnd` with the `localRow`/`localCol` the host recomputes from the element's own rect — and
+  **since the 2026-11-06 wave the drag moves by DELTA**: `railDrag` ANCHORS at the PRESS origin plus the
+  current offset (the press cell, not the `dragstart` cell — the host keeps a drag session dormant until
+  the first motion, so that event's `localRow` is already a cell away from the finger-down point) and
+  each move commits `anchor.offset + round((cell − anchor.cell) / travel * max)`, so one cell of drag is
+  one step and grabbing the thumb at its edge no longer jumps to the pointer's absolute position. A
+  CLICK still maps ABSOLUTELY through `railOffset` — the documented fallback for a hand-driven rail
+  whose `start` never arrived. A host that ignores the drag props simply does not drag; nothing is lost,
   because click, wheel and keyboard stay bound.
 - **Each page draws its own fullscreen control (AC8).** Every MPD page renders a clickable `⤢` that opens
   that page's existing full-screen scene. It is MPD's own control and not the host's **because the host
@@ -847,8 +880,8 @@ only when no logger exists to `stderr`, with `debug` gated behind
     own three
     tabs, and at 80/48 columns the host reports `split=false`, so there is no panel column at all. The
     page ids are DYNAMIC (`<activationId>:<slug>`; measured before the 0.14.0 merge as `act1:team`,
-    `act1:dag`, `act1:workmate` — the recorded set is what ACTUALLY registered, so it now carries the two
-    surviving ids and no third one), and
+    `act1:dag`, `act1:workmate` — the recorded set is what ACTUALLY registered, so it now carries the
+    THREE current ids, `team`, `workmate` and `watchdog`, and not the retired `dag` page), and
     a patch row may not id-target the host's row to set either switch, so the remedy is documented user
     steps (see the reachability paragraph). What the plugin itself knows is a composed id and an accepted
     `open()` request — never a paint: the host's `TuiPanelEvent` set carries no `opened`/`focused` (an
@@ -875,6 +908,11 @@ only when no logger exists to `stderr`, with `debug` gated behind
     the host ACCEPT an open request, but the host's event set has no `opened`/`focused`, so no surface
     here claims to have watched itself paint. A full-screen PTY capture is the closest thing and is
     evidence of the RENDER, never of the delivery.
+20. **The HOST's own Agent View is not reachable from a plugin.** The 2026-11-06 wave delivers MPD's OWN
+    subagent page (`mpd-tui-subagents`) from the DAG page's synthesized double-click; the host's Agent
+    View stays out of reach — `agentViewStore` is not in the host's `exports` map and
+    `tuiPanels.open('agents')` is owner-checked — so no surface claims it and no host-internal contact
+    was added to reach for it.
 
 ## Build and test
 

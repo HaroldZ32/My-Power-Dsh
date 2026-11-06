@@ -91,6 +91,13 @@ const DECLARED_MEMBERS: readonly Member[] = [
   // logs — so a single bad scalar in the workflow file silently disables this whole table at once
   // (measured 2026-09-28..2026-10-02: five pushes, zero jobs, no gate able to see it).
   { id: "workflows", argv: ["node", "./scripts/verify-workflows.ts"] },
+  // The dsh-TUI ecosystem's admission requirements as a HARD gate (user clause 6): the static arms
+  // derived from docs/tui-admission.md §4/§5 on both manifests, plus the installed host's OWN
+  // `parseManifest -> loadSpecData -> createContractIndex -> validatePlugin -> negotiate` chain. It is
+  // host-bound BY DESIGN: when no host resolves it exits 3 (NOT PASSED) with the candidates and the
+  // remedy, because a skip is never a pass (decision D5). The deliberately broken fixture in its
+  // `--self-test` is the negative control that proves the arms discriminate.
+  { id: "tui-admission", argv: ["node", "./scripts/verify-tui-admission.ts"] },
 ]
 
 /** The `--help` text: every option, the override rule, the exit codes and the census grammar. */

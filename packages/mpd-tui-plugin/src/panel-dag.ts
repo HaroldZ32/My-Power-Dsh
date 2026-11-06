@@ -39,11 +39,13 @@ import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_TONE_GLYPH } fr
 // (the MPD panel, which is THIS page, and the workmate page) cannot drift into two different-looking
 // affordances (and the host cannot draw one for either of them).
 import { PANEL_FRAME_BORDER_ROWS, PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, swallowWheelEvent, usePanelTitleRow } from "./panel-core.js"
-// THE HOST'S CURATED SUBAGENT ROWS ARE READ THROUGH THE SCENE'S OWN PROJECTION, never re-derived here:
-// `subagentSectionRows` owns the field reads, the empty state and the counts, and this page renders
-// its answer inside its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene
-// draws between ITS sections: one divider primitive, so this page cannot invent a second-looking one.
-import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
+// THE HOST'S CURATED SUBAGENT ROWS ARE READ THROUGH THE ROW CORE, never re-derived here:
+// `subagent-rows.ts` owns the field reads, the empty state, the counts AND the burn projection this
+// page must share with the full-screen scene (clause 5 / D7), and this page renders its answer inside
+// its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene draws between ITS
+// sections: one divider primitive, so this page cannot invent a second-looking one.
+import { subagentRowFilter, subagentSectionRows, type SubagentSectionRow } from "./subagent-rows.js"
+import { surfaceRule } from "./subagent-scene.js"
 import { boxesFitWidth, hitTest, hitTestGroup, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphSpan, type GraphTask, type GraphView } from "./graph.js"
 // THE GROUP RECORD the served model publishes for each subcell box (`cellwork` wave 4): a frame's id, its
 // title, its parent frame and the ids DIRECTLY inside it. Read as the STRUCTURAL type the drawing
@@ -140,6 +142,16 @@ export const DAG_SECTION_DAG_TITLE = "team DAG"
  * before; a test that waits ~2.2 s proves the tick is observable on a real timer.
  */
 export const DAG_PANEL_REFRESH_MS = 2000
+
+/**
+ * How close together two clicks on the SAME node must be to count as one SYNTHESIZED double-click.
+ *
+ * THE HOST HAS NO DOUBLE-CLICK EVENT (0 `onDoubleClick` hits in its `lib/**` on the pinned 0.18.0), so
+ * clause 7's gesture is inferred from `Date.now()` deltas: the click that FOCUSES a node records its
+ * instant, and a second click on that same node within this many milliseconds is read as the
+ * double-click — it undoes the focus and opens MPD's own subagent page instead (decision D4).
+ */
+export const DAG_DOUBLE_CLICK_MS = 350
 
 /**
  * One task as this page draws and details it: the drawing's own shape plus the facts a pinned detail
@@ -1230,6 +1242,13 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       if (cursorLive !== null && cursorLive !== undefined) cursorLive.current = next
       setCursor(next)
     }
+    // THE SYNTHESIZED DOUBLE-CLICK'S ONE STATE (clause 7 / D4): which node the last PINNING click
+    // focused, and when. A ref for the same reason the pin and the cursor use one — the second click may
+    // be delivered to a handler born in an earlier render, so the instant it compares against must be the
+    // live one rather than a closed-over copy. Only a click that FOCUSED a node is recorded, which keeps
+    // an unfocus-then-click sequence from pairing into a third-click jump.
+    /** The last click that focused a node, and its instant; absent when no gesture is in flight. */
+    const lastClick = kit.React.useRef(undefined) as { current: { taskId: string; at: number } | undefined }
     /** The task the drawing lights: the CLICK PIN outranks the keyboard cursor while it exists. */
     const focus = pinnedNow() ?? cursorNow()
     /**
@@ -1344,7 +1363,13 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     /** The host's curated section, or an EMPTY list on a host that exposes no snapshot. */
     let section: readonly SubagentSectionRow[] = []
     try {
-      section = subagentSectionRows(panelSnapshot(props?.host))
+      // THE BURN PROJECTION IS ON HERE (clause 1 / decisions D1, D2): the section is built through the
+      // SAME filter the full-screen scene uses, so a settled row and an ended team's member stop being
+      // DRAWN on the sidebar too — the catalog itself is untouched. ONE render clock serves both the
+      // grace window and every relative age, so two rows of one render cannot disagree about "now".
+      /** This render's clock, in epoch milliseconds. */
+      const now = Date.now()
+      section = subagentSectionRows(panelSnapshot(props?.host), subagentRowFilter(workflow, sessionId, now))
     } catch {
       // An unreadable host snapshot costs the host's own rows, never the drawing this page exists for.
       section = []
@@ -1525,22 +1550,51 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
             onClick: (event: unknown): void => {
               /** The task this pointer resolved to, and which rule resolved it. */
               const resolved = dagRowClick(layout.view, index, viewport.colOffset, event)
+              /** This click's instant — the synthesized gesture's only input (D4). */
+              const at = Date.now()
               if (resolved.taskId === undefined) {
                 // NOTHING UNDER THE POINTER: a column-aware miss on blank space, or a band miss on a row
                 // that belongs to no box. Either way the pin is CLEARED rather than kept — the drawing
-                // the user pointed at has nothing to pin.
+                // the user pointed at has nothing to pin — and the gesture in flight is forgotten, because
+                // a click on nothing ends it rather than continuing it.
                 movePin(undefined)
+                lastClick.current = undefined
                 return
               }
-              // THE PIN THE USER SEES IS THE PIN THIS DECIDES AGAINST (`focus` reads the same live value),
-              // so a second click on the task that is ALREADY pinned opens its owner's work page instead
-              // of re-pinning it (AC6). The pin itself is left alone: the chain stays lit behind the page.
-              if (resolved.taskId === pinnedNow()) {
-                openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === resolved.taskId), options)
+              /** The node this click landed on. */
+              const taskId = resolved.taskId
+              /** What the previous click recorded, when there is one. */
+              const previous = lastClick.current
+              if (previous !== undefined && previous.taskId === taskId && at - previous.at <= DAG_DOUBLE_CLICK_MS) {
+                // A SYNTHESIZED DOUBLE CLICK (clause 7 / D4): the first click FOCUSED this node, so this
+                // one UNDOES that focus and opens the node's subagent page instead. The refused gesture is
+                // consumed here — nothing is left pinned and no third click can pair with it.
+                //
+                // THE DECLARED BOUND: the host exposes no double-click event and its own Agent View is NOT
+                // reachable from a plugin (`agentViewStore` is not in the host's exports map and the panel
+                // opener is owner-checked), so what opens is MPD's own `mpd-tui-subagents` page for the
+                // node's owner. No host-internal contact is made.
+                movePin(undefined)
+                if (cursorNow() === taskId) moveCursor(undefined)
+                lastClick.current = undefined
+                openAgentWorkPage(props?.host, page?.tasks.find((task) => task.id === taskId), options)
                 return
               }
-              movePin(resolved.taskId)
-              moveCursor(resolved.taskId)
+              if (taskId === pinnedNow()) {
+                // A CLICK ON THE FOCUSED NODE UNFOCUSES IT (clause 8 / D4) — the toggle's other half, so
+                // a click-to-focus can be undone by clicking the node again. The keyboard cursor is
+                // cleared WITH the pin only when IT names the same node: the click set both, so the
+                // unfocus must undo both, or the cursor would keep drawing the `◆` this click released.
+                movePin(undefined)
+                if (cursorNow() === taskId) moveCursor(undefined)
+                lastClick.current = undefined
+                return
+              }
+              movePin(taskId)
+              moveCursor(taskId)
+              // ONLY THE FOCUSING CLICK IS REMEMBERED: the gesture is "focus this node, then this node
+              // again", so an unfocusing click must never pair with the next one into a jump.
+              lastClick.current = { taskId, at }
             },
           }),
         )

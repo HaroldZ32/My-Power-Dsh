@@ -1,0 +1,43 @@
+{
+  "lane": "L2",
+  "task": "T6",
+  "team": "tui-panel-wave",
+  "contract": ".mpd/plans/tui-panel-wave.md",
+  "criteria": ["§5.A7", "§5.A8", "§5.A5 (call site)", "D3", "D4"],
+  "files": [
+    "packages/mpd-tui-plugin/src/panel-dag.ts",
+    "packages/mpd-tui-plugin/test/panel-dag.test.ts",
+    "packages/mpd-tui-plugin/test/panel.test.ts",
+    "packages/mpd-tui-plugin/test/panel-legend-mount.test.ts"
+  ],
+  "changes": {
+    "panel-dag.ts": [
+      "import switched to subagent-rows.ts (subagentRowFilter, subagentSectionRows, SubagentSectionRow); surfaceRule stays from subagent-scene.ts",
+      "DAG_DOUBLE_CLICK_MS = 350 exported, with the synthesized-gesture contract in its comment",
+      "lastClick live ref (useRef) records only the click that FOCUSED a node, plus its Date.now() instant",
+      "onClick now TOGGLES focus: unfocused -> pin (pin + keyboard cursor), pinned -> unpin (pin + cursor when it names the same node), blank -> clear pin + forget the gesture",
+      "a second click on the SAME node within DAG_DOUBLE_CLICK_MS undoes the toggle, clears button state, and calls the existing openAgentPage dep through openAgentWorkPage",
+      "section rows built through subagentRowFilter(workflow, sessionId, now) with ONE render clock; the sidebar burn projection is ON"
+    ],
+    "tests": [
+      "panel-dag.test.ts: withClock helper (Date.now pinned per arm) + 4 new arms (constant is 350; toggle on/off; inside-window jump; 1 ms past window does not jump); the old AC6 arm now asserts the jump RELEASES the pin",
+      "panel.test.ts: DONE_ROW moved 30 s inside the 60 s grace window so the burn rule stays enabled while the settled-row arm keeps its meaning",
+      "panel-legend-mount.test.ts: clock shifted 400 ms per drive so the walk stops synthesizing the double click; key-uniqueness assertions restructured PER RENDER and kept exact"
+    ]
+  },
+  "gates": [
+    { "command": "bun test packages/mpd-tui-plugin", "result": "665 pass, 1 skip, 0 fail (666 tests / 29 files), exit 0" },
+    { "command": "bun run typecheck", "result": "tsgo --noEmit, exit 0" },
+    { "command": "bun run verify:comments", "result": "VERDICT: PASS — 609 files, 54307 declarations, exit 0" }
+  ],
+  "bounds": [
+    "Clause 7 delivers MPD's own subagent page (openAgentPage -> mpd-tui-subagents). The HOST's Agent View is NOT reachable from a plugin (agentViewStore is not in the host exports map; the panel opener is owner-checked). No host-internal contact was added.",
+    "The synthesized gesture needs two clicks on the SAME resolved node; rows of one box resolve to the same node by design.",
+    "The burn filter is a PROJECTION at draw time; nothing is deleted from disk.",
+    "No live TTY capture of the new gesture; proof is unit-render + typecheck (contract §7.1)."
+  ],
+  "scroll_audit": {
+    "verdict": "no page-local defect found; CERTIFIED",
+    "evidence": "contentCols = panelContentWidth(measured.cols) - 1 (gutter cell reserved; pinned by panel-dag.test.ts 'the gutter's cell is reserved'), swallowWheelEvent bound on the visible row slice AND on the frame, body drawn by panel-core's panelViewportBody; the drag/offset mapping lives in core's viewportRail, which is L1's lane."
+  }
+}

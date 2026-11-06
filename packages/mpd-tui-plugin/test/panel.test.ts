@@ -42,14 +42,23 @@ const LIVE_ROW = {
   startedAt: Date.UTC(2026, 9, 6, 15, 20, 9),
 }
 
-/** The settled subagent the fixture host reports: a one-shot consult that ended. */
+/**
+ * The settled subagent the fixture host reports: a one-shot consult that ended MOMENTS ago.
+ *
+ * ITS AGES ARE RELATIVE ON PURPOSE (clause 1 / decision D2). The sidebar now BURN-FILTERS the host's
+ * catalog through `subagent-rows.ts` (ARM 1: a terminal row is drawn only while its end instant is
+ * inside the 60 s grace window), so a fixture dated to a fixed past instant would be — correctly —
+ * hidden and every assertion below would redden for the wrong reason. Ending the run 30 s before this
+ * module loads puts the row INSIDE the window, so the burn rule stays genuinely enabled here: the arm
+ * still exercises the filter, it just asks for a row that is legitimately still drawn.
+ */
 const DONE_ROW = {
   agentId: "agent-done",
   description: "Plan Reviewer",
   status: "completed",
   mode: "one-shot",
-  startedAt: Date.UTC(2026, 9, 6, 15, 21, 0),
-  completedAt: Date.UTC(2026, 9, 6, 15, 22, 30),
+  startedAt: Date.now() - 90_000,
+  completedAt: Date.now() - 30_000,
 }
 
 /**

@@ -1,0 +1,24 @@
+{
+  "capturedAt": "2026-11-06T23:56:00+08:00",
+  "what": "Two scroll sites were AUDITED under decision D6 (the user's clause 2 chose the full sweep) and found defective, but are PARKED for the next wave: the wave's plan is approved and refuses new rows, and a team seat cannot act without a dispatched row.",
+  "findings": [
+    {
+      "id": "AUDIT-1",
+      "site": "subagents full-screen scene (alt+a)",
+      "file": "packages/mpd-tui-plugin/src/subagent-scene.ts",
+      "defect": "The DAG vertical loop is uncapped: rows past the viewport are left for the HOST to clip. There is no vertical scrollbar and no onWheel, so the tail of a long subagent DAG is unreachable. Same defect class as the user's clause 4 on the team scene.",
+      "foundBy": "L1 certification pass",
+      "recipe": "Window view.lines by the existing graphY/graphYMax against measureTerminal(ui).rows; draw gutterCells(...) in the gutter column beside the drawing (frozen signature); bind onWheel through swallowWheelEvent/normalizeWheelDelta and move the window by the normalised delta; leave PgUp/PgDn, Home/End, shift-arrows and the horizontal rail untouched; add three test arms (offset 0 vs >0 yields different drawing rows, scrollbar cells differ between two offsets, a wheel event moves the window and is swallowed)."
+    },
+    {
+      "id": "AUDIT-2",
+      "site": "plan full-screen scene",
+      "file": "packages/mpd-tui-plugin/src/scenes.ts",
+      "defect": "The plan scene is scrollable but draws NO visible scrollbar, unlike every other scrollable surface in the plane after this wave.",
+      "foundBy": "L1 certification pass",
+      "recipe": "createPlanComponent: draw gutterCells(...) in the same column width as the team scene, thumb tracking the offset, plus a test arm proving the bar cells differ between two offsets."
+    }
+  ],
+  "whyParkedNotFixed": "agent_teams_plan refuses create_task on an approved plan ('stage a new one to change the team'), and both seats reported that their runtime protocol refuses work without a dispatched board row. Neither was worked around by having the captain write the code: both are ordinary delegated changes and the wave's verification law wants a writer/verifier pair.",
+  "noneOfTheEightClausesIsAffected": "The user's clauses 1-8 are all delivered; these two are extra sites found by the audit sweep the user chose in clause 2."
+}

@@ -282,6 +282,12 @@ interface ViewModule {
   overlapAudit: (edges: GraphGeometry["edges"]) => Array<{ a: string; b: string; orientation: "horizontal" | "vertical"; at: number; overlap: number }>
   /** The elapsed formatter D2 exposes additively, so the duration grammar is provable here. */
   formatElapsed: (task: { startedAt?: string; finishedAt?: string; visual: string }, nowMs?: number) => string
+  /**
+   * The relative-age formatter, exposed additively for the same reason `formatElapsed` is: the ended
+   * team's age vocabulary (`<1s`/`Ns`/`Nm`/`Nh`/`Nd`/`?`) is pinned directly instead of being inferred
+   * from whatever a render happened to print.
+   */
+  relativeAge: (at: string | undefined, now: number) => string
 }
 
 /** The geometry `layout` returns, as this file reads it. */
@@ -572,6 +578,100 @@ describe("team-view panels", () => {
     expect(flatText(card)).toContain("current " + LONG.slice(0, 29) + "…")
     expect(flatText(card)).not.toContain(LONG)
     expect((findFirst(card, (candidate) => candidate.props.title === LONG) as ElementNode).props.title).toBe(LONG)
+  })
+
+  test("an ENDED team states the ending and its RELATIVE age, and stops presenting live state (clause 1 / D2)", async () => {
+    // THE ENDING IS THREE MINUTES OLD, so the compact form is `3m` — and a full ISO instant, the shape
+    // this treatment exists to remove, would be unmistakable if the surface regressed to printing one.
+    /** The ending instant, comfortably inside the `3m` bucket for the whole case. */
+    const ENDED_AT = new Date(Date.now() - 3 * 60_000 - 500).toISOString()
+    /** The live task line the payload STILL carries: nothing is deleted from the payload. */
+    const LIVE_TASK = "Build the header"
+    // THE SERVED SHAPE: the session head carries the DERIVED terminal phase, while the ending INSTANT
+    // rides the workspace listing beside it — the shape `/plugins/mpd-team/state` actually answers
+    // (`buildTeamState` serves `phase`, `buildWorkspaceTeams` spreads `endedAt`).
+    /** The settled render of an ended team. */
+    const rendered = await renderView({
+      state: {
+        ok: true,
+        workspace: WORKSPACE,
+        team: { id: "team-alpha", name: "Wave GUI", description: "d", phase: "ended", approvedAt: "2026-10-05T10:00:00.000Z", links: 0 },
+        workspaceTeams: {
+          records: [{ id: "team-alpha", name: "Wave GUI", description: "d", phase: "ended", endedAt: ENDED_AT, tasks: { total: 4, completed: 1, failed: 0 }, members: 2, active: true }],
+          activeId: "team-alpha",
+        },
+        counts: { total: 4, completed: 1, running: 1, ready: 1, blocked: 1, failed: 0, releasedByFailure: 0 },
+        members: [{ id: "m1", name: "web-team-gui", role: "Senior Engineer", status: "running", done: 1, total: 2, current: LIVE_TASK, route: "deepseek/deepseek-chat" }],
+        tasks: [],
+        cycles: [],
+        executor: { kind: "native", reason: "x" },
+        problems: [],
+      },
+    })
+    /** The rendered panel as text, which is what a reader (and any capture) sees. */
+    const text = flatText(rendered.tree)
+    // 1. THE SURFACE STATES THE TEAM ENDED, with the RELATIVE age and never a full ISO instant.
+    expect(text).toContain("ended 3m")
+    expect(text).not.toContain(ENDED_AT)
+    expect(collect(rendered.tree, "data-mpd-team-ended").map((node) => node.props["data-mpd-team-ended"])).toEqual(["3m"])
+    // 2. THE LIVE-LOOKING COUNTERS ARE NOT PRESENTED: no progress counter, no running/ready tally, no bar.
+    expect(text).not.toContain("Progress")
+    expect(text).not.toContain(" running")
+    expect(text).not.toContain(" ready")
+    expect(collect(rendered.tree, "data-progress")).toEqual([])
+    // The FINAL completion figure is still stated, so the panel still answers how the wave finished.
+    expect(text).toContain("1/4 complete")
+    // 3. THE MEMBER CARD STILL EXISTS (`data-member` is kept) but carries no live work line, and its
+    // counter reads as a FINAL tally rather than a running fraction.
+    const card = one(rendered.tree, "data-member", "m1")
+    expect(flatText(card)).toContain("web-team-gui")
+    expect(flatText(card)).toContain("1/2 complete")
+    expect(flatText(card)).not.toContain("current")
+    expect(flatText(card)).not.toContain(LIVE_TASK)
+  })
+
+  test("a LIVE team still renders its live state (negative control of the ended treatment)", async () => {
+    /** The settled render of the fixture payload, whose team is active. */
+    const { tree } = await renderView()
+    /** The rendered panel as text. */
+    const text = flatText(tree)
+    // THE OTHER DIRECTION: a live team keeps the progress counter, the running/ready tally and the
+    // member's current work line, exactly as before this lane touched the file.
+    expect(text).toContain("Progress 25%")
+    expect(text).toContain(" running")
+    expect(text).toContain(" ready")
+    expect(collect(tree, "data-progress").length).toBe(1)
+    expect(collect(tree, "data-mpd-team-ended")).toEqual([])
+    expect(text).not.toMatch(/\bended\b/)
+    /** The live member card, which keeps its current line and its bare fraction. */
+    const card = one(tree, "data-member", "m1")
+    expect(flatText(card)).toContain("current Build the header")
+    expect(flatText(card)).toContain("1/2")
+    expect(flatText(card)).not.toContain("1/2 complete")
+  })
+
+  test("the relative age prints Ns / Nm / Nh / Nd, and `?` for an unusable instant (clause 5 / D7)", async () => {
+    /** The factory's module, whose helper is exposed additively for this proof. */
+    const { view } = await renderView()
+    /** A fixed clock, so every bucket is decided by the helper and not by the test's own runtime. */
+    const NOW = Date.parse("2026-11-06T12:00:00.000Z")
+    /**
+     * The instant `deltaMs` before NOW, in the ISO form the route serves.
+     * @param deltaMs - how long before NOW the instant sits.
+     * @returns the ISO-8601 instant.
+     */
+    const before = (deltaMs: number): string => new Date(NOW - deltaMs).toISOString()
+    expect(view.relativeAge(before(0), NOW)).toBe("<1s")
+    expect(view.relativeAge(before(999), NOW)).toBe("<1s")
+    expect(view.relativeAge(before(12_000), NOW)).toBe("12s")
+    expect(view.relativeAge(before(3 * 60_000 + 4_000), NOW)).toBe("3m")
+    expect(view.relativeAge(before(2 * 3_600_000 + 5 * 60_000), NOW)).toBe("2h")
+    expect(view.relativeAge(before(4 * 86_400_000 + 3_600_000), NOW)).toBe("4d")
+    // An unusable instant answers `?` — the same word the TUI's helper uses for epoch 0 — never an ISO string.
+    expect(view.relativeAge(undefined, NOW)).toBe("?")
+    expect(view.relativeAge("", NOW)).toBe("?")
+    expect(view.relativeAge("not-an-instant", NOW)).toBe("?")
+    expect(view.relativeAge("1970-01-01T00:00:00.000Z", NOW)).toBe("?")
   })
 
   test("renders the empty-state sentence that names the call filling it", async () => {

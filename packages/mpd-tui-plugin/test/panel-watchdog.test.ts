@@ -9,8 +9,10 @@
 // 28-column page ordered after the others; an empty view renders an explicit empty state; incidents
 // render their kind, relative time, ack state, team/task/attempt, cause with ms and hold outcome; `a`
 // advances the `mpd-tui` watermark exactly once per press; an absent service renders
-// `watchdog: not available`; and `/mpd watchdog` reports absence in ONE line and names the accepted
-// host id when the panel opens.
+// `watchdog: not available`; the scroll band reserves the rail's cell and stays inside the measured
+// height; the title row's `⤢` is wired to the watchdog scene when one is supplied; and `/mpd watchdog`
+// names the accepted host id when the panel opens (its routed fallback is the scene — see
+// `scene-watchdog.test.ts`).
 import { describe, expect, test } from "bun:test"
 
 import {
@@ -27,6 +29,7 @@ import {
   type WatchdogAckResult,
   type WatchdogPanelDeps,
 } from "../src/panel-watchdog"
+import { panelContentWidth } from "../src/panel-core"
 import type { WatchdogView } from "../src/watchdog"
 import { registerCommands } from "../src/commands"
 import { t } from "../src/i18n"
@@ -196,6 +199,36 @@ function makeHost(): HostRecorder {
 function render(kit: Kit, host: HostRecorder, component: unknown): unknown {
   kit.reset()
   return (component as (props: unknown) => unknown)({ React: kit.React, ui: kit.ui, host: host.host, focused: true, visible: true })
+}
+
+/**
+ * The first element in a rendered tree whose own key is `key`.
+ *
+ * The page's chrome and body are addressed BY KEY rather than by row index, so an arm can find the
+ * window's own column, the rail or the full-screen control without pinning the flattening's row count.
+ * @param tree - the rendered tree (a node, an element or an array of either).
+ * @param key - the element key to find.
+ * @returns the element, or undefined when this tree carries none.
+ */
+function elementByKey(tree: unknown, key: string): Element | undefined {
+  if (tree === null || tree === undefined || typeof tree !== "object") return undefined
+  if (Array.isArray(tree)) {
+    for (const child of tree) {
+      /** The match inside this child, when it has one. */
+      const found = elementByKey(child, key)
+      if (found !== undefined) return found
+    }
+    return undefined
+  }
+  /** This node as an element. */
+  const element = tree as Element
+  if (element.props?.key === key) return element
+  for (const child of element.children ?? []) {
+    /** The match inside this child, when it has one. */
+    const found = elementByKey(child, key)
+    if (found !== undefined) return found
+  }
+  return undefined
 }
 
 /**
@@ -578,7 +611,7 @@ describe("the /mpd watchdog command (contract §4)", () => {
    * @param openWatchdog - the routed-open answer for this arm.
    * @returns the registered `/mpd` command definition.
    */
-  function captureCommand(openWatchdog: () => { outcome: "opened" | "fallback" | "refused" | "unavailable"; id: string | undefined; reason?: "seam-absent" | "disabled" | "not-yet" }): {
+  function captureCommand(openWatchdog: () => { outcome: "opened" | "fallback" | "refused" | "unavailable"; id: string | undefined; reason?: "seam-absent" | "disabled" | "not-yet"; sceneOpened?: boolean }): {
     handler: (invocation: { rawInput: string }) => Promise<{ kind: string; text?: string }>
   } {
     /** Every command definition the adapter received, in order. */
@@ -630,6 +663,39 @@ describe("the /mpd watchdog command (contract §4)", () => {
     })
   })
 
+  test("a MISSING panel seam whose SCENE opened is a success naming the scene — never an absence", async () => {
+    await withLangAsync("en", async () => {
+      /** The recorded `/mpd` command whose route fell back to the watchdog scene. */
+      const command = captureCommand(() => ({ outcome: "unavailable", id: undefined, reason: "seam-absent", sceneOpened: true }))
+      /** The command's rendered result. */
+      const result = await command.handler({ rawInput: "watchdog" })
+      expect(result.kind).toBe("success")
+      /** The one-line sentence. */
+      const line = String(result.text)
+      expect(line).toContain("mpd watchdog")
+      expect(line).toContain("full-screen watchdog scene")
+      // THE DOOR IS NAMED: the scene really closes on `esc`/`q`, so the line says how to leave.
+      expect(line).toContain("esc to return")
+      // THE OLD ABSENCE WORDING MUST NOT SURVIVE: the scene is on screen, so "no panel seam" would be a
+      // lie about the surface the reader is looking at (the clause this wave exists to remove).
+      expect(line).not.toContain("no panel seam")
+      expect(line.includes("\n")).toBe(false)
+    })
+  })
+
+  test("a MISSING panel seam whose scene did NOT open keeps the absence line — the honest case the new branch must not swallow", async () => {
+    await withLangAsync("en", async () => {
+      /** The recorded `/mpd` command whose route had NO scene to fall back to. */
+      const command = captureCommand(() => ({ outcome: "unavailable", id: undefined, reason: "seam-absent", sceneOpened: false }))
+      /** The command's rendered result. */
+      const result = await command.handler({ rawInput: "watchdog" })
+      expect(result.kind).toBe("error")
+      // NOTHING OPENED, SO NOTHING IS CLAIMED: the pre-scene sentence is exactly right here.
+      expect(String(result.text)).toContain("no panel seam")
+      expect(String(result.text)).not.toContain("full-screen watchdog scene")
+    })
+  })
+
 // ── CodeRabbit #12 (PR #62): an open refusal, a registration refusal and a disabled page are
 // THREE different facts, and each gets its own line ────────────────────────────────────────────
 describe("the /mpd watchdog command keeps its refusals APART", () => {
@@ -669,4 +735,139 @@ describe("the /mpd watchdog command keeps its refusals APART", () => {
     })
   })
 })
+})
+
+// ── clause 2 + clause 3: the page's own scroll band and its enlarge control ──────────────────────
+describe("clause 2 + clause 3: the page's scroll band and its enlarge control", () => {
+  test("at a NON-ZERO offset the body is still drawn, the rail keeps its cell, and the frame stays inside the measured height", () => {
+    withLang("en", () => {
+      /** Twelve incidents, so the body is far taller than the window (three rows each). */
+      const unread = Array.from({ length: 12 }, (_, index) => incident({ id: `inc-${index}`, at: NOW - 65_000 - index * 1_000 }))
+      /** The view the page draws: one held team and twelve unread incidents. */
+      const view: WatchdogView = { holds: ["team-a"], unread }
+      /** The panel width the host reports. */
+      const columns = 40
+      /** The kit the page renders through, short enough that the body must scroll. */
+      const kit = makeKit(columns, 20)
+      /** The host double, which records the key subscription the page registers. */
+      const host = makeHost()
+      /** The page under test. */
+      const page = createWatchdogPanelComponent(depsDouble({ view }).deps)
+      // MOUNT AT THE TOP: the header and the first window position are the baseline the shift is read against.
+      /** The mount render's drawn rows. */
+      const atTop = kit.rows(render(kit, host, page))
+      expect(atTop.join("\n")).toContain("watchdog · 1 held · 12 unread")
+      expect(atTop.join("\n")).toContain("1/24")
+      // …THEN THE KEYS: the subscription is an effect, exactly as a mounted page installs it.
+      render(kit, host, page)
+      kit.runEffects()
+      expect(host.listeners.length).toBeGreaterThan(0)
+      // THREE `↓` PRESSES: the page's own one-row gesture, read from its live viewport handle.
+      for (let press = 0; press < 3; press += 1) {
+        for (const listener of host.listeners) listener({ key: { downArrow: true } })
+      }
+      /** The re-render after the presses. */
+      const tree = render(kit, host, page)
+      /** Every drawn row, in the double's flattening. */
+      const rows = kit.rows(tree)
+      // THE BODY IS NON-EMPTY AT A NON-ZERO OFFSET (the user's symptom: "all the text disappears"), and it
+      // is the SHIFTED window: the header has scrolled away, an incident line is on screen, and the pinned
+      // footer proves the offset is exactly three rows (its token is `offset + 1` over `max + 1`).
+      expect(rows.length).toBeGreaterThan(0)
+      expect(rows.join("\n")).not.toContain("watchdog · 1 held · 12 unread")
+      expect(rows.join("\n")).toContain("escalate ·")
+      expect(rows.join("\n")).toContain("4/24")
+      // THE RAIL IS DRAWN AND ITS CELL IS RESERVED by the body's own width budget: the exact arithmetic is
+      // asserted in the arm below, so this one only proves the bar is really on screen at this offset.
+      expect(elementByKey(tree, "gutter")).toBeDefined()
+      // THE FRAME STAYS INSIDE THE MEASURED HEIGHT: two border rows + the title + the window + the footer.
+      // Before the repair the window was `rows - 3`, so the frame drew `rows + 1` lines and the host clipped
+      // the footer's position token. The window's slice is the rows the page handed to its wheel wrapper
+      // (key `scroll`), which is the ONE place that slices.
+      /** The window's own slice: the rows `panelViewportBody` handed to the host. */
+      const windowRows = elementByKey(tree, "scroll")?.children.length ?? 0
+      expect(windowRows).toBeGreaterThan(0)
+      expect(2 + 1 + windowRows + 1).toBe(20)
+    })
+  })
+
+  test("the interior reserves the rail's cell — a row plus the bar is exactly the interior, never wider", () => {
+    withLang("en", () => {
+      /** Twelve incidents, so the window is full and the widest row is a clamped incident line. */
+      const unread = Array.from({ length: 12 }, (_, index) => incident({ id: `inc-${index}`, at: NOW - 65_000 - index * 1_000 }))
+      /** The view the page draws. */
+      const view: WatchdogView = { holds: ["team-a"], unread }
+      /** The panel width the host reports. */
+      const columns = 40
+      /** The frame's interior: the reported width minus its two border cells. */
+      const interior = panelContentWidth(columns)
+      /** The kit the page renders through. */
+      const kit = makeKit(columns, 20)
+      /** The page under test. */
+      const page = createWatchdogPanelComponent(depsDouble({ view }).deps)
+      /** Every drawn row of the full window. */
+      const rows = kit.rows(render(kit, makeHost(), page))
+      // THE WIDTH DEFECT, in its exact numbers: the long incident line is clamped to the interior MINUS
+      // the bar's one cell, so a row plus the bar is exactly the interior and can never wrap the frame —
+      // which is what the host did, and what the user read as the text jumping to the left edge.
+      expect(interior).toBe(38)
+      /** The widest drawn row, in cells. */
+      const widest = Math.max(...rows.map((row) => cellWidth(row)))
+      expect(widest).toBe(interior - 1)
+    })
+  })
+
+  test("the frame fits the measured height — a full window draws exactly `rows` lines", () => {
+    withLang("en", () => {
+      /** Twelve incidents, so the window is full. */
+      const unread = Array.from({ length: 12 }, (_, index) => incident({ id: `inc-${index}`, at: NOW - 65_000 - index * 1_000 }))
+      /** The view the page draws. */
+      const view: WatchdogView = { holds: ["team-a"], unread }
+      /** The kit the page renders through. */
+      const kit = makeKit(40, 20)
+      /** The page under test. */
+      const page = createWatchdogPanelComponent(depsDouble({ view }).deps)
+      /** The rendered tree. */
+      const tree = render(kit, makeHost(), page)
+      // THE HEIGHT DEFECT, in its exact numbers: neither border row, the title nor the pinned footer is
+      // inside the window, so a full window draws exactly `measured.rows` lines. The pre-fix budget was
+      // `rows - 3`, one row too many, and the host clipped the footer — and its position token — away.
+      /** The window's own slice: the rows `panelViewportBody` handed to the host. */
+      const windowRows = elementByKey(tree, "scroll")?.children.length ?? 0
+      expect(windowRows).toBe(16)
+      expect(2 + 1 + windowRows + 1).toBe(20)
+    })
+  })
+
+  test("the title row's `⤢` calls the watchdog scene opener — and carries no click target when no scene exists", () => {
+    withLang("en", () => {
+      /** How many times the page's own opener was asked to open the scene. */
+      let opened = 0
+      /** The kit the page renders through. */
+      const kit = makeKit()
+      /** The page WITH a scene opener, exactly as the wiring supplies it. */
+      const page = createWatchdogPanelComponent(depsDouble().deps, { openFullscreen: (): boolean => { opened += 1; return true } })
+      /** The rendered tree. */
+      const tree = render(kit, makeHost(), page)
+      /** The control the title row draws at its right edge. */
+      const control = elementByKey(tree, "title-fullscreen")
+      expect(control).toBeDefined()
+      /** The click target the control carries. */
+      const onClick = control?.props?.onClick as ((event: unknown) => void) | undefined
+      expect(typeof onClick).toBe("function")
+      // A CLICK REACHES THE SCENE: this is the dead-enlarge clause's whole point.
+      onClick?.({})
+      expect(opened).toBe(1)
+      // THE ROW IS UNCONDITIONAL, ONLY THE TARGET IS NOT (the shared chrome rule): a page built with no
+      // scene still draws the same chrome row and glyph, and nothing can be clicked.
+      /** The same page built the way a unit arm builds it: no opener. */
+      const bare = createWatchdogPanelComponent(depsDouble().deps)
+      /** The bare page's tree, through its own kit so no hook cell is shared with the arm above. */
+      const bareTree = render(makeKit(), makeHost(), bare)
+      /** The bare page's control. */
+      const bareControl = elementByKey(bareTree, "title-fullscreen")
+      expect(bareControl).toBeDefined()
+      expect(bareControl?.props?.onClick).toBeUndefined()
+    })
+  })
 })

@@ -835,6 +835,32 @@ export function panelScrollKey(event: unknown): "top" | "bottom" | "pageUp" | "p
   return undefined
 }
 
+/** The axis one rail-drag phase commits into: `row` for the vertical gutter, `col` for the horizontal rail. */
+export type PanelRailAxis = "row" | "col"
+
+/**
+ * The phase of a rail drag the host's pointer protocol delivers.
+ *
+ * `start` is the pointer going down on the rail, `move` every pointer cell after it, `end` the release.
+ * They are named phases rather than three handlers so a rail cannot wire the same absolute commit into
+ * all three, which is exactly the defect this shape removes.
+ */
+export type PanelRailPhase = "start" | "move" | "end"
+
+/**
+ * Where one rail drag began: the pointer's cell on the rail, and the offset the view held then.
+ *
+ * The two numbers are the WHOLE anchor, and they live across renders (see `rowDrag`/`colDrag`): a drag
+ * moves the view by `pointer now − cell then`, scaled into the offset band, so grabbing the thumb
+ * anywhere but its top cell no longer renames the view.
+ */
+interface RailDragAnchor {
+  /** The pointer's cell on the rail when the drag began. */
+  cell: number
+  /** The (clamped) offset the view held when the drag began. */
+  offset: number
+}
+
 /**
  * One viewport's render-time facts and handlers, from a single state cell.
  *
@@ -878,6 +904,21 @@ export interface PanelViewport {
   onWheelX(event: unknown): void
   /** The `onWheel` handler a scrollable row carries. */
   onWheel(event: unknown): void
+  /**
+   * One phase of a rail drag, on either axis.
+   *
+   * `start` only ANCHORS the gesture — the pointer's cell and the offset the view held — and commits
+   * nothing. `move` and `end` commit the pointer's DELTA from that anchor, scaled from the thumb's
+   * travel band into the offset band, so a thumb grabbed away from its top cell does not jump the view.
+   * A `move`/`end` with NO `start` (a hand-driven rail, or a host whose first phase was lost) keeps the
+   * old ABSOLUTE mapping through {@link railOffset}: the anchor is the host protocol's guarantee, and a
+   * missing one must not leave the rail frozen.
+   * @param axis - the rail being dragged: the vertical gutter or the horizontal rail.
+   * @param phase - the pointer phase the host delivered.
+   * @param cell - the pointer's cell inside that rail.
+   * @param travel - the thumb's travel band on that rail, from {@link railTravel}.
+   */
+  railDrag(axis: PanelRailAxis, phase: PanelRailPhase, cell: number, travel: number): void
   /**
    * Bind this render's MEASURED heights and return the SAME handle.
    *
@@ -946,6 +987,20 @@ export function usePanelViewport(
    * from lagging behind the ref the offset lives in.
    */
   const facts = kit.React.useRef({ contentRows: 1, viewportRows: 1 }) as { current: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } }
+  /**
+   * The VERTICAL rail's live drag anchor.
+   *
+   * A ref rather than a local in `viewportGutter` because the first `move` commits a state update and
+   * the host re-renders: the NEXT phase arrives through a handler built by that later render, and a
+   * per-render closure would have lost the anchor and fallen back to the absolute jump this wave
+   * removes. The ref is the ONE authority the two renders share.
+   *
+   * The narrow host-React interface has NO generic on `useRef`, so the anchor's type is asserted at
+   * the ONE assignment rather than spelled as a type argument the host cannot take.
+   */
+  const rowDrag = kit.React.useRef(undefined) as { current: RailDragAnchor | undefined }
+  /** The HORIZONTAL rail's live drag anchor, on its own axis and for the same reason. */
+  const colDrag = kit.React.useRef(undefined) as { current: RailDragAnchor | undefined }
   /** The sizes the page is reporting right now. */
   const measured = read()
   if (facts !== null && facts !== undefined) facts.current = measured
@@ -1090,6 +1145,37 @@ export function usePanelViewport(
       // from the one the user's `tui.wheelInvert` setting corrects.
       commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols))
     },
+    railDrag: (axis: PanelRailAxis, phase: PanelRailPhase, cell: number, travel: number): void => {
+      /** This axis's live anchor, when a drag is in progress. */
+      const anchorRef = axis === "row" ? rowDrag : colDrag
+      /** The band this axis commits into, read LIVE so a handler from an earlier render clamps correctly. */
+      const liveBand = axis === "row" ? band() : colBand()
+      /** The pointer's own cell, floored; a non-numeric position reads as the rail's first cell. */
+      const at = Math.floor(Number.isFinite(cell) ? cell : 0)
+      if (phase === "start") {
+        // THE GRAB COMMITS NOTHING. The view stays exactly where the reader left it, so the position
+        // that was on screen a cell ago is still on screen — the thumb follows the pointer from here.
+        anchorRef.current = { cell: at, offset: liveBand.offset }
+        return
+      }
+      /** The anchor this gesture began at, when the host delivered its first phase. */
+      const anchor = anchorRef.current
+      if (anchor === undefined) {
+        // THE OLD ABSOLUTE MAPPING, kept for a drag whose start never arrived: a rail that ignored the
+        // pointer because one protocol phase was missing would be a worse defect than the jump.
+        if (axis === "row") commit(railOffset(at, travel, liveBand.max))
+        else commitCol(railOffset(at, travel, liveBand.max))
+        return
+      }
+      // THE DELTA, SCALED BETWEEN THE TWO BANDS: the thumb travels `travel` cells over the offset band
+      // `0..max`, so one cell of pointer movement is `max / travel` offset units — never the absolute
+      // position the pointer happens to sit at.
+      /** How far the pointer has moved since the anchor, in offset units. */
+      const moved = travel <= 0 ? 0 : Math.round(((at - anchor.cell) / travel) * liveBand.max)
+      if (axis === "row") commit(anchor.offset + moved)
+      else commitCol(anchor.offset + moved)
+      if (phase === "end") anchorRef.current = undefined
+    },
     /**
      * Kept for API compatibility, and now a NO-OP: the hook reads the page's sizes through `read()`, so
      * there is nothing left for a page to push in. It stays on the interface so the call sites written
@@ -1125,6 +1211,36 @@ function localCell(event: unknown, axis: "row" | "col"): number {
 }
 
 /**
+ * The PRESS ORIGIN of a drag, in this rail's own cells.
+ *
+ * The host's drag protocol fires `dragstart` on the FIRST MOTION, not on the press — measured against
+ * the installed host (`lib/types/ink/events/drag-event.js`: a drag session "stays dormant until the
+ * first drag motion — `dragstart` fires then"), and a press+release with no motion never fires a drag
+ * event at all. So the `localRow` carried by that first event is already one or more cells from where
+ * the finger went down. The SAME event carries the absolute `row` and the press's absolute `startRow`,
+ * and `localRow = row − rect.y` (the host recomputes it per handler), so the press's cell inside this
+ * rail is `localRow + (startRow − row)`. Anchoring THERE keeps the gesture's first motion instead of
+ * silently dropping it; an event without the two absolute fields (a hand-driven rail, or a host that
+ * reports only local coordinates) anchors at its own local cell, which is the best available answer.
+ * @param event - the host's drag event.
+ * @param axis - the axis to read: `row` for a vertical rail, `col` for the horizontal one.
+ * @returns the press origin's cell inside this rail, floored.
+ */
+function localStartCell(event: unknown, axis: "row" | "col"): number {
+  /** The current position, already floored — the fallback when the absolute pair is missing. */
+  const at = localCell(event, axis)
+  if (event === null || event === undefined || typeof event !== "object") return at
+  /** The event's own members, before they are trusted. */
+  const raw = event as Record<string, unknown>
+  /** The absolute pointer position on this axis. */
+  const now = raw[axis === "row" ? "row" : "col"]
+  /** The press origin's absolute position on this axis. */
+  const origin = raw[axis === "row" ? "startRow" : "startCol"]
+  if (typeof now !== "number" || !Number.isFinite(now) || typeof origin !== "number" || !Number.isFinite(origin)) return at
+  return Math.floor(at + (origin - now))
+}
+
+/**
  * The cell band a rail's thumb travels along — the mapping BOTH rails share.
  *
  * `extent - thumb`, with the SAME thumb length a rail's own drawing computes (`gutterCells` /
@@ -1151,13 +1267,14 @@ function railTravel(extent: number, max: number): number {
 }
 
 /**
- * The ABSOLUTE offset a pointer's position on a rail asks for — one mapping for both rails, every phase.
+ * The ABSOLUTE offset a pointer's position on a rail asks for — the CLICK mapping, one for both rails.
  *
- * The position is read against the track band ALONE, never against the thumb's current placement, so no
- * grabbed-thumb offset can enter the gesture: this is the host's own rule for its reference rail
- * ("drag to point, no grabbed thumb offset" — `components/ScrollbarGutter.js`). The ends are pinned the
- * way the host pins them: the band's first cell is the offset's start, and any cell at or past the band's
- * end is the maximum.
+ * This is what a CLICK means: the reader named a destination, so the pointer's position on the track
+ * band IS the offset. A DRAG is a different gesture and no longer routes here (see
+ * {@link PanelViewport.railDrag}): a drag moves the view by the pointer's DELTA from where it was
+ * grabbed, because a position can never say how far the finger travelled. The ends are pinned the way
+ * the host pins them: the band's first cell is the offset's start, and any cell at or past the band's end
+ * is the maximum. It also remains the fallback for a drag whose `start` phase never arrived.
  * @param position - the pointer's position along the rail, in cells.
  * @param travel - this rail's {@link railTravel}.
  * @param max - the furthest offset `clampScroll` allows.
@@ -1182,11 +1299,13 @@ function railOffset(position: number, travel: number, max: number): number {
  * row). Clicking the rail scrolls to the clicked position, the classic track semantics — the host's own
  * `Box` keeps `onClick`, which is what makes that available to a plugin panel at all.
  *
- * THE RAIL DRAGS TOO (AC7): the same Box carries `onDragStart`/`onDragMove`/`onDragEnd`, each receiving
- * `{localRow}` recomputed from this Box's own rect by the host's drag protocol, and every phase maps
- * through the SAME arithmetic the click uses — a page that passed `onTrackClick` owns both, and a rail
- * without one maps the row itself through its own band ({@link railOffset}). A host whose `Box` ignores
- * the drag props renders exactly the rail it rendered before: the props are additive.
+ * THE RAIL DRAGS BY DELTA (AC7/A2): the same Box carries `onDragStart`/`onDragMove`/`onDragEnd`, each
+ * receiving `{localRow}` recomputed from this Box's own rect by the host's drag protocol. `start` only
+ * ANCHORS at the grabbed cell; `move`/`end` commit the pointer's DELTA, so grabbing the thumb away from
+ * its centre never renames the view. A page that passed `onTrackClick` owns its own mapping for the click
+ * AND the drag (the page decides where a cell lands); a rail without one, the shape
+ * {@link panelViewportBody} uses, maps through the viewport handle. A host whose `Box` ignores the drag
+ * props renders exactly the rail it rendered before: the props are additive.
  * @param kit - the proved host kit.
  * @param viewport - this render's viewport.
  * @param onTrackClick - receives the clicked row offset inside the gutter, when the page wants track jumps.
@@ -1207,24 +1326,29 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
   /** The track band this rail's pointer positions scrub along. */
   const travel = railTravel(viewport.viewportRows, viewport.max)
   /**
-   * One drag phase applied as an absolute offset.
+   * One drag phase, bound to its own phase name.
    *
    * With a page callback the drag and the click stay ONE gesture — the page's own mapping decides both,
    * which is what stops the two from disagreeing about where a cell lands. Without one (the shape
-   * {@link panelViewportBody} uses) the rail commits the mapped offset itself.
-   * @param event - the host's drag event.
+   * {@link panelViewportBody} uses) the handle anchors on `start` and commits the pointer's DELTA on
+   * `move`/`end`, so a grab anywhere on the thumb moves the view by what the finger actually moved.
+   * @param phase - which phase of the host's drag protocol this handler serves.
+   * @returns the handler for that phase.
    */
-  const scrubTo = (event: unknown): void => {
-    /** The row the pointer is on inside this rail. */
+  const scrub = (phase: PanelRailPhase): ((event: unknown) => void) => (event: unknown): void => {
+    /** The row the pointer is on inside this rail right now. */
     const row = localCell(event, "row")
     if (onTrackClick !== undefined) {
       onTrackClick(row)
       return
     }
-    viewport.scrollTo(railOffset(row, travel, viewport.max))
+    // THE `start` ANCHOR IS THE PRESS ORIGIN, not the first-motion cell — the host fires `dragstart`
+    // only after the first motion, so anchoring at its own cell would drop that motion (and a one-cell
+    // drag would move nothing at all). See {@link localStartCell}.
+    viewport.railDrag("row", phase, phase === "start" ? localStartCell(event, "row") : row, travel)
   }
-  /** The three drag phases the host's protocol delivers, all on the same absolute mapping. */
-  const dragging = { onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }
+  /** The three drag phases the host's protocol delivers, each on its own side of the delta. */
+  const dragging = { onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }
   if (onTrackClick === undefined) return kit.React.createElement(kit.ui.Box, { key: "gutter", flexDirection: "column", width: 1, ...dragging }, ...rows)
   return kit.React.createElement(
     kit.ui.Box,
@@ -1250,8 +1374,9 @@ export function viewportGutter(kit: PanelKit, viewport: PanelViewport, onTrackCl
  * come from `gutterCellsX` — the ONE horizontal-gutter function (clause T4), so the thumb here and the
  * window drawn above it can never disagree — while its drag handlers come from the host's own protocol:
  * `onDragStart`/`onDragMove`/`onDragEnd` each receive `{localCol}` recomputed from THIS element's own
- * rect, and every phase commits an ABSOLUTE column offset ({@link railOffset}) — the same band arithmetic
- * the click uses, never a delta from where the thumb was grabbed.
+ * rect; `start` only ANCHORS and `move`/`end` commit the pointer's DELTA through the same shared handle
+ * the vertical gutter uses, so a grabbed thumb is dragged rather than teleported under the pointer. The
+ * old ABSOLUTE mapping ({@link railOffset}) survives only for a drag whose `start` never arrived.
  *
  * `cols` MUST be the window width the page reported as its horizontal viewport: `viewport.colMax` was
  * clamped against it, so the rail's own length and the band it maps through are one number. A drawing
@@ -1273,18 +1398,27 @@ export function viewportRail(kit: PanelKit, viewport: PanelViewport, cols: numbe
   /** The track band this rail's pointer positions scrub along. */
   const travel = railTravel(extent, viewport.colMax)
   /**
-   * One drag phase committed as an absolute column offset.
-   * @param event - the host's drag event.
+   * One drag phase on the column axis, bound to its own phase name.
+   *
+   * `start` anchors; `move`/`end` commit the pointer's DELTA through the same shared handle the vertical
+   * gutter uses, so the two rails cannot disagree about what "one cell of drag" means. The CLICK path
+   * above stays absolute on purpose: a click names a destination, a drag moves by a distance.
+   * @param phase - which phase of the host's drag protocol this handler serves.
+   * @returns the handler for that phase.
    */
-  const scrubTo = (event: unknown): void => {
-    viewport.scrollToCol(railOffset(localCell(event, "col"), travel, viewport.colMax))
+  const scrub = (phase: PanelRailPhase): ((event: unknown) => void) => (event: unknown): void => {
+    /** The column the pointer is on inside this rail right now. */
+    const col = localCell(event, "col")
+    // THE `start` ANCHOR IS THE PRESS ORIGIN, for the same reason as the vertical gutter's: the host
+    // fires `dragstart` on the first motion, not on the press. See {@link localStartCell}.
+    viewport.railDrag("col", phase, phase === "start" ? localStartCell(event, "col") : col, travel)
   }
   // THE ROW IS DRAWN BY THE SAME BUILDER THE PAGES USED BEFORE (`textRow` + `gutterCellsX`), so the
   // gesture changes and the pixels do not; only the wrapping Box — the drag target the host captures —
   // is new. ONE ROW: the Text is the row, the Box is what carries the handlers.
   /** The rail's cells as the one row a reader sees. */
   const row = textRow(kit, cells, { key: "hrail", tone: "edge", maxCells: extent })
-  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrubTo, onDragMove: scrubTo, onDragEnd: scrubTo }, row)
+  return kit.React.createElement(kit.ui.Box, { key: "hrail-track", flexDirection: "row", onDragStart: scrub("start"), onDragMove: scrub("move"), onDragEnd: scrub("end") }, row)
 }
 
 /**

@@ -1,0 +1,62 @@
+{
+  "lane": "L8",
+  "task": "T8 — documentation: watchdog scene, toggle/double-click gestures, compact burning rows, team-scene scrollbar + running animation, seam inventory, amendment",
+  "contract": ".mpd/plans/tui-panel-wave.md",
+  "team": "tui-panel-wave",
+  "captain": "7d08e456-38d5-42f1-bcbb-ca370ebe95e4",
+  "date": "2026-11-06T16:50:00Z",
+  "sources_read_before_writing": [
+    "evidence/tui/panel-wave/l1-scroll-engine/COMPLETION.md",
+    "evidence/tui/panel-wave/l2-dag-page/report.md",
+    "evidence/tui/panel-wave/l2-dag-page/result.json",
+    "evidence/tui/panel-wave/l3-scene-scroll/README.md",
+    "evidence/tui/panel-wave/l4-row-lifecycle/signatures.md",
+    "evidence/tui/panel-wave/l4-row-lifecycle/result.json",
+    "evidence/tui/panel-wave/l5-watchdog-scene/report.md",
+    "evidence/tui/panel-wave/l6-web-follow/result.json",
+    "evidence/tui/panel-wave/l7-admission-gate/evidence.md",
+    "evidence/tui/panel-wave/audit-parked/result.json",
+    ".mpd/plans/tui-panel-wave.md"
+  ],
+  "files_changed": [
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md"
+  ],
+  "not_touched": [
+    "docs/tui-admission.md (L7 owns it)",
+    "any source file",
+    "AGENTS.md (outside every lane's write scope)"
+  ],
+  "required_updates_delivered": {
+    "1_watchdog_full_screen_scene": "docs/tui.md §3.3: the page now HAS a full-screen twin `mpd-tui-watchdog` (scene-watchdog.ts), the same body through watchdogBodyRows/watchdogAckPress, the page's `⤢` via openFullscreen, and `/mpd watchdog`'s routed fallback printing the success line naming the scene instead of the old absence line. README 'What it provides' gained a watchdog-scene row; the zh twins mirror both.",
+    "2_toggle_and_350ms_double_click_with_bound": "docs/tui.md §3.4 gesture bullet rewritten: a click TOGGLES focus and a second click on the SAME node within DAG_DOUBLE_CLICK_MS (350 ms) is a synthesized double-click (0 onDoubleClick in host lib/** on 0.18.0) that undoes the toggle and opens MPD's own mpd-tui-subagents page. The bound is stated in §3.4, §3.3's seam paragraph, §10 item 12 and README item 20: agentViewStore is not in the host exports map, tuiPanels.open('agents') is owner-checked, NO new host-internal contact was added.",
+    "3_row_format_and_burn_projection": "docs/tui.md §3.4 new paragraph: `<glyph> <description> · <status> · started|ended <age>`, `<1s`/`Ns`/`Nm`/`Nh`/`Nd`, no `mode` field and no ISO instant; both burn arms (60 s grace; ended-team exact name match); never-hidden cases; the projection statement — nothing is deleted from disk and the harness child catalog is append-only. Mirrored in the README pair.",
+    "4_team_scene_scrollbar_and_animation": "docs/tui.md §3.4 new paragraph: whole body below the pinned head windowed, visible one-cell vertical rail from gutterCells (overflowing body re-drawn one column narrower), running markers animating on the scene's own clock via DAG_ANIM.runningFrames with the frame loop paused when idle, and the merged board scene gaining the same window+rail. Bounds: pinned head not windowed; two other sites PARKED, not fixed. Mirrored in README + zh.",
+    "5_seam_contact_inventory": "docs/tui.md §3 new paragraph: no sixteenth seam, the two counted host-internals contacts unchanged, no new host-internal contact; §11.12 carries the same row. README states it as item 20.",
+    "6_amendment": "docs/tui.md §11.12 'Amendment after the panel-hygiene wave (2026-11-06)' in the file's existing style: a before/after table (watchdog scene, toggle+gesture, delta drag, compact/burning rows, team-scene window+rail+animation, unchanged inventory, NOT-CLAIMED 11→12) plus 'Honest bounds' with evidence paths; docs/tui.zh-CN.md mirrors it."
+  },
+  "extra_corrections_made": [
+    "docs/tui.md §3.4 drag bullet: the old 'SAME absolute track arithmetic a click uses / no grabbed-thumb offset' was no longer true after L1's railDrag — rewritten as the DELTA rule with the press-origin anchor; a click keeps the absolute map.",
+    "README pair: two stale 'two surviving ids / no third one' sentences (the watchdog wave had left them behind) corrected to the THREE current ids team/workmate/watchdog and the retired dag page named as retired.",
+    "docs/tui.md §10 gained item 12 and the README pair gained item 20 (host Agent View not reachable)."
+  ],
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=56 failed=0 violations=0 exempt=24 derived=3 links=540 dead=0 — PASS",
+    "log": "evidence/tui/panel-wave/l8-docs/verify-docs.log"
+  },
+  "lane_note_contradicts_contract": [
+    "L3's useSceneClock uses the scene kit's own useAnimationFrame (falling back to ui.useAnimationTime), so contract §3's 'the SCENE kit does not expose useAnimationTime' is stale; the docs say 'on the scene's own clock' and never claim useRunningPhase.",
+    "Contract §5.A4(b) says the whole scene body is windowed; L3 and contract §7.8 agree the pinned HEAD is not. The docs say 'the whole body below the pinned head' and state the clipping bound.",
+    "L1's completion suspected the watchdog page's defect was a double slice; L5 measured two different defects (missing gutter cell; height budget missing the frame's two border rows). No doc claim rests on the L1 reading.",
+    "L7 noted AGENTS.md §4 still says verify:gates has nine members while it now has ten; that file is out of every lane's write scope and untouched here."
+  ],
+  "bounds": [
+    "No live TTY capture was obtained by any lane of this wave; the docs claim unit-render, package-suite, typecheck and comment-gate evidence only (stated in §11.12 and README).",
+    "docs/tui-admission.md was not touched (L7 owns it).",
+    "This lane ran no git command; the diff is uncommitted for the captain."
+  ]
+}

@@ -1,0 +1,39 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/subagent-scene.test.ts:
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > every subagent row is drawn before the first team row [3.33ms]
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > each row carries the host's own description, mode, status and start instant [0.77ms]
+(pass) the merged scene stops DRAWING the rows the burn rule hides > past the grace a settled row is gone and a live row is still drawn [1.32ms]
+(pass) the merged scene stops DRAWING the rows the burn rule hides > an ENDED team hides its member row at once; a LIVE team leaves it alone [1.58ms]
+(pass) the merged panel degrades honestly > an empty subagent list still renders the team panel, above it the host's own empty tone [0.48ms]
+(pass) the merged panel degrades honestly > a scene handed no channel at all still renders the team panel [0.51ms]
+(pass) the merged panel degrades honestly > a missing team projection renders the team section's own unreadable line [0.34ms]
+(pass) the merged panel degrades honestly > an unreadable status is drawn as unknown — never guessed into completed [0.55ms]
+(pass) the merged panel never trusts the host's shapes > an absent subagentControl does not throw, and the interrupt gesture says so [1.07ms]
+(pass) the merged panel never trusts the host's shapes > the interrupt reaches the host's own control for a LIVE row only [1.61ms]
+(pass) the merged panel never trusts the host's shapes > a hostile description is sanitized before it reaches a row [0.56ms]
+(pass) the merged panel never trusts the host's shapes > a non-scalar field is dropped rather than stringified onto the screen [0.58ms]
+(pass) the merged panel never trusts the host's shapes > a channel missing every field it may carry degrades to the empty state [0.86ms]
+(pass) the merged panel carries the host dashboard's summary row > the counts row tallies the host's own statuses, and an unknown one is not a completion [0.46ms]
+(pass) the merged panel carries the host dashboard's summary row > a cancelled run is counted as failed, exactly as the host's own card draws it [0.40ms]
+(pass) ENTER opens a detail view of the selected subagent > a `super`-modified return does NOT open the detail view (the host's own guard) [1.35ms]
+(pass) ENTER opens a detail view of the selected subagent > a raw CRLF chunk opens the detail view, and a PASTED one does not [0.94ms]
+(pass) ENTER opens a detail view of the selected subagent > the detail draws every fact the host reported and steps back without closing the scene [1.66ms]
+(pass) ENTER opens a detail view of the selected subagent > the projection omits what the host did not report — no instant, no bucket, no duration [0.20ms]
+(pass) ENTER opens a detail view of the selected subagent > the output tail pages with ↑/↓ and never invents a line [7.50ms]
+(pass) ENTER opens a detail view of the selected subagent > the interrupt gesture keeps working, on the DETAIL's own row [0.75ms]
+(pass) ENTER opens a detail view of the selected subagent > a selected entry that leaves the channel degrades to a notice, never a throw [0.64ms]
+(pass) a click selects what the arrow keys would have selected > clicking a row's own Box sets the selection, and only a subagent row is clickable [1.10ms]
+(pass) the merged panel draws the graph legend under its DAG > the legend sits directly under the DAG, in the width the graph was laid out for [0.48ms]
+(pass) the merged panel draws the graph legend under its DAG > both scenes consume the frozen legend interface with their own width budget [0.34ms]
+(pass) AC6 · the scene opens on the requested member's detail > a request is consumed ONCE, and a second take returns nothing (destructive) [0.04ms]
+(pass) AC6 · the scene opens on the requested member's detail > the freshness bound is DECLARED and enforced: a stale request never opens a detail [0.03ms]
+(pass) AC6 · the scene opens on the requested member's detail > the third parameter seeds the detail on the FIRST render, with no keypress [0.42ms]
+(pass) AC6 · the scene opens on the requested member's detail > with no pending request the scene opens on its LIST, exactly as it did before [0.30ms]
+(pass) AC6 · the scene opens on the requested member's detail > the DEFAULT reader is the module's own slot, which is how the page's click reaches a scene `scenes.ts` built [0.23ms]
+(pass) AC6 · the scene opens on the requested member's detail > a request for a member the channel no longer carries lands on the honest notice, not a throw [0.33ms]
+
+ 31 pass
+ 0 fail
+ 164 expect() calls
+Ran 31 tests across 1 file. [172.00ms]

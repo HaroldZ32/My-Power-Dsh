@@ -1,0 +1,67 @@
+ M docs/tui-admission.md
+ M docs/tui-admission.zh-CN.md
+ M package.json
+ M packages/mpd-tui-plugin/src/panel-core.ts
+ M packages/mpd-tui-plugin/src/panel-workmate.ts
+ M packages/mpd-tui-plugin/src/scenes.ts
+ M packages/mpd-tui-plugin/src/subagent-scene.ts
+ M packages/mpd-tui-plugin/test/subagent-scene.test.ts
+ M scripts/verify-gates.ts
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/tui-admission.ts
+?? evidence/cellwork/p2-recon/
+?? evidence/cellwork/p2-seam-probe/
+?? evidence/cellwork/qa/2026-10-26T12-51-10.022Z-command/
+?? evidence/cellwork/qa/2026-10-26T13-07-09.919Z-command/
+?? evidence/cellwork/web-d4/
+?? evidence/docker/client-install-oneclick/2026-11-05T15-05-55Z/
+?? evidence/docker/client-install/2026-11-05T14-25-04Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-04T03-08-36.612Z/
+?? evidence/dsh-qa/bundle-lifecycle/2026-11-05T12-01-27.080Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-05T12-01-45.126Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-05T12-20-42.306Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-06T03-37-51.993Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-06T03-47-07.768Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-06T04-01-42.902Z/
+?? evidence/dsh-qa/preset-conformance/2026-11-06T04-10-38.746Z/
+?? evidence/dsh-qa/team-dispatch-guard/2026-11-02T11-32-02-318Z/
+?? evidence/dsh-qa/team-dispatch-guard/2026-11-02T11-34-28-677Z/
+?? evidence/dshgo/coderabbit-r2/
+?? evidence/dshgo/cr2-docs/
+?? evidence/dshgo/cr2-docs2/
+?? evidence/dshgo/verify/t25-narrow-2026-11-03T02-37-41Z/
+?? evidence/fix-task-dependency-guard/gates-skills-sweep2.log
+?? evidence/mail/integration/2026-11-01T02-55-53Z/
+?? evidence/mail/integration/2026-11-01T02-56-12Z/
+?? evidence/mail/integration/2026-11-01T02-59-43Z/
+?? evidence/merge-20261022/
+?? evidence/release/0.16.4/docker-oneclick.log
+?? evidence/restore/s1/2026-10-24T08-30-36-024Z/
+?? evidence/restore/s1/2026-10-24T08-57-29-179Z/
+?? evidence/restore/s1/2026-10-24T10-43-55-367Z/
+?? evidence/restore/s1/2026-10-24T10-57-09-916Z/
+?? evidence/restore/s1/2026-10-24T11-01-57-979Z/
+?? evidence/restore/s1/2026-10-24T11-18-45-317Z/
+?? evidence/restore/s1/2026-10-24T11-25-45-255Z/
+?? evidence/restore/s1/2026-10-24T11-30-09-706Z/
+?? evidence/restore/s1/2026-10-24T11-39-38-924Z/
+?? evidence/restore/s1/2026-10-24T12-24-49-147Z/
+?? evidence/restore/s1/2026-10-24T12-27-56-794Z/
+?? evidence/restore/s1/2026-10-24T13-18-09-018Z/
+?? evidence/restore/s1/2026-10-24T17-08-27-806Z/
+?? evidence/restore/s1/2026-10-24T17-21-44-367Z/
+?? evidence/restore/s1/2026-10-24T18-33-32-156Z/
+?? evidence/restore/s1/2026-10-24T18-37-35-968Z/
+?? evidence/restore/s1/2026-10-24T19-10-40-674Z/
+?? evidence/restore/s1/2026-10-24T19-22-30-500Z/
+?? evidence/restore/s1/2026-10-24T20-22-39-467Z/
+?? evidence/team/idle-member-guard/live/2026-10-30T12-35-37.491Z/
+?? evidence/tui/panel-wave/
+?? evidence/workmate/roles-readonly/2026-11-05T11-54-13.837Z/
+?? evidence/workmate/roles-readonly/2026-11-05T11-56-06.515Z/
+?? packages/mpd-team-core-plugin/test/claim-clock.test.ts
+?? packages/mpd-tui-plugin/src/subagent-rows.ts
+?? packages/mpd-tui-plugin/test/panel-scroll.test.ts
+?? packages/mpd-tui-plugin/test/scene-scroll.test.ts
+?? packages/mpd-tui-plugin/test/subagent-rows.test.ts
+?? scripts/verify-tui-admission.ts

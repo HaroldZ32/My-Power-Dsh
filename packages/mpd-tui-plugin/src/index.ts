@@ -65,6 +65,7 @@ import type { PageUnavailableReason } from "./commands.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { registerWatchdogPanel } from "./panel-watchdog.js"
+import { registerWatchdogScene } from "./scene-watchdog.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView, type TeamWorkflow } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
@@ -820,12 +821,33 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     openScene: () => scene.open(),
     log,
   })
+  // ── the WATCHDOG SCENE (clause 3 / contract §5.A3) ────────────────────────
+  // THE ENLARGE NOW HAS A SURFACE: the page's `⤢` control and `/mpd watchdog`'s routed fallback both
+  // land here. It registers on the SAME `tuiScenes` seam as the other scenes and is fed by the SAME
+  // front door the page reads, so the two watchdog surfaces cannot describe one incident differently.
+  // Gated on the `scene` knob like every other scene, and the page's control is wired only while this
+  // seam is composed — a `⤢` with no scene behind it is the dead control the clause exists to remove.
+  /** The phase half of a team row: the same projection the other MPD pages read, per call. */
+  const watchdogTeamHead = (): { id: string; phase: string } | undefined => {
+    /** The current projection for this workspace. */
+    const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService)
+    return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase }
+  }
+  /** The watchdog page's full-screen surface: the registered scene its `⤢` and the route fall back to. */
+  const watchdogScene = registerWatchdogScene(tui, ctx, {
+    enabled: resolved.scene,
+    available: () => watchdogFrontDoor.available(),
+    read: () => watchdogFrontDoor.view(),
+    acknowledge: (upTo: number) => watchdogFrontDoor.acknowledge(upTo),
+    readTeam: watchdogTeamHead,
+    log,
+  })
   // ── the WATCHDOG page (frozen contract `.mpd/plans/watchdog-tui-panel.md`) ──
   // A THIRD page, registered through the SAME seam and the SAME front door the status line reads: it
   // shows the holds, the `mpd-tui` unread incidents and their acknowledge/refresh/scroll keys, so an
-  // operator who does not read `.mpd/team/watchdog/incidents.jsonl` still sees what was recorded. It
-  // has NO full-screen fallback — no scene presents the incident list — and that absence is reported
-  // by `/mpd watchdog` in one line instead of being papered over with a scene that cannot show it.
+  // operator who does not read `.mpd/team/watchdog/incidents.jsonl` still sees what was recorded.
+  // ITS `⤢` IS THE SCENE ABOVE (clause 3): the page that had no surface to enlarge into now has one,
+  // and `/mpd watchdog`'s routed fallback reaches it instead of reporting an absence.
   //
   // THE READS ARE THE FRONT DOOR'S OWN (service-only, never the store files): `available()` says
   // whether `mpdWatchdog` is mounted, `view()` is the durable read, and `acknowledge()` advances ONLY
@@ -840,11 +862,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     // The PHASE half of a held team's row: the same team projection the other MPD pages draw, read per
     // render. A composition without the team reader still gets every watchdog fact; the phase cell
     // prints `?` rather than inventing a word.
-    readTeam: () => {
-      /** The current projection for this workspace. */
-      const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService)
-      return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase }
-    },
+    readTeam: watchdogTeamHead,
+    // THE CONTROL AND ITS SCENE ARE ONE DECISION: the opener is supplied only while the scene seam is
+    // composed, and the page draws `⤢` exactly when it was handed one.
+    ...(resolved.scene ? { openFullscreen: (): boolean => watchdogScene.open() } : {}),
     log,
   })
   // ── the panel's ATTENTION SURFACE (G2 of the stateless-deployment wave) ─────
@@ -1098,13 +1119,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           const route = openPage({ id: (): string | undefined => workmatePanel.id(), openScene: (): boolean => workmatePanel.openScene(), disabled: (): boolean => workmatePanel.panel === undefined, outcome: (): SeamOutcome => workmatePanel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
-        // `/mpd watchdog`: the page has NO full-screen scene (no scene draws the incident list), so a
-        // host without the panel seam is reported as an absence in the command's own line rather than
-        // routed to a surface that would show a different thing (contract §4).
+        // `/mpd watchdog`: the page's routed fallback is the WATCHDOG SCENE (clause 3), which renders the
+        // SAME body through the one shared builder — so a host without the panel seam reaches the
+        // incident list instead of an absence, and the route reports `sceneOpened` honestly.
         openWatchdog: () => {
-          /** How the routed open of the watchdog page ended; `sceneOpened` is always false for it. */
-          const route = openPage({ id: (): string | undefined => watchdogPanel.id(), openScene: (): boolean => false, disabled: (): boolean => watchdogPanel.panel === undefined, outcome: (): SeamOutcome => watchdogPanel.outcome() })
-          return { outcome: route.outcome, id: route.id }
+          /** How the routed open of the watchdog page ended, and whether its scene fallback opened. */
+          const route = openPage({ id: (): string | undefined => watchdogPanel.id(), openScene: (): boolean => watchdogScene.open(), disabled: (): boolean => watchdogPanel.panel === undefined, outcome: (): SeamOutcome => watchdogPanel.outcome() })
+          return { outcome: route.outcome, id: route.id, sceneOpened: route.sceneOpened }
         },
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
         workmatesText: () => {

@@ -26,6 +26,12 @@
 // `deps.t`, an OPTIONAL translator whose absence falls back to the English literal in the code below
 // — so the view is never a crash away from being readable.
 //
+// THE ENDED-TEAM TREATMENT (tui-panel-wave clause 1 / D2, the web half): once the served record
+// carries `endedAt`, the surface states that the team ended, prints the ending's RELATIVE age
+// (`Ns`/`Nm`/`Nh`/`Nd`, never a full ISO instant — the vocabulary the TUI plane adopted), and stops
+// presenting live state: no per-member `current` line, no running/ready counters and no progress
+// counter. The payload is NOT filtered or deleted — `data-member` and every served field stay.
+//
 // Plain JS, React.createElement only: there is no JSX transform in this bundle. This file is a
 // FACTORY BODY, not a module — the whole file is ONE arrow-function expression, spliced into
 // `client.js` by `scripts/build-mpd-client.ts`, so it has no top-level import/export and every type
@@ -212,6 +218,16 @@
     phase: string
     /** ISO instant the plan was approved, when it was. */
     approvedAt?: string
+    /**
+     * ISO instant the team ENDED, when it did.
+     *
+     * ADDITIVE on the listing, which is where this plane reads the ending instant today: the
+     * session-scoped head below serves `phase: "ended"` without the stamp, so the ended treatment
+     * resolves the instant from the listing row whose `id` equals the head's. Never invented when
+     * absent — the age then renders `?`, the same word the TUI's age helper answers for an unreadable
+     * instant.
+     */
+    endedAt?: string
     /** The task tally, so a finished wave reads differently from a running one. */
     tasks: { total: number; completed: number; failed: number }
     /** The roster size. */
@@ -333,8 +349,13 @@
     workspace?: string
     /** The workspace's teams, newest first — absent on a payload from a route that did not read them. */
     workspaceTeams?: { records: WorkspaceTeam[]; activeId?: string }
-    /** The team head, or null when the session has none. */
-    team: { id: string; name: string; description: string; phase: string; approvedAt?: string; links: number } | null
+    /**
+     * The team head, or null when the session has none.
+     *
+     * `endedAt` is OPTIONAL and currently served only on the workspace listing; the ended treatment
+     * therefore reads BOTH carriers (see `endedInstantOf`) instead of trusting the head alone.
+     */
+    team: { id: string; name: string; description: string; phase: string; approvedAt?: string; endedAt?: string; links: number } | null
     /** The tally, in the record's own vocabulary. */
     counts: { total: number; completed: number; running: number; ready: number; blocked: number; failed: number; releasedByFailure: number }
     /** The roster. */
@@ -1088,6 +1109,14 @@
        * @returns `Xs`, `Xm Ys`, or `Xh Ym`, and `-` when the record cannot answer.
        */
       formatElapsed: (task: { startedAt?: string; finishedAt?: string; visual: string }, nowMs?: number) => string
+      /**
+       * The relative-age formatter itself, exposed ADDITIVELY for the same reason `formatElapsed` is:
+       * the ended team's age vocabulary (`<1s`/`Ns`/`Nm`/`Nh`/`Nd`/`?`) is provable without a browser.
+       * @param at - the served ISO-8601 instant, when the payload carried one.
+       * @param now - the render clock, in epoch milliseconds.
+       * @returns the compact age, or `?` for an absent or unparseable instant.
+       */
+      relativeAge: (at: string | undefined, now: number) => string
     } {
       /** The dependencies this closure reads on every call, plus the plan, task and events routes when given. */
       const { react, statePath, planPath, taskPath, eventsPath } = deps
@@ -1353,6 +1382,48 @@
         /** The parsed finish instant, or NaN when the record carries a malformed stamp. */
         const finish = Date.parse(task.finishedAt)
         return Number.isFinite(finish) ? formatDuration(finish - start) : "-"
+      }
+      /**
+       * The compact relative age of one served instant: `<1s`, `12s`, `3m`, `2h`, `4d`.
+       *
+       * THE SAME VOCABULARY THE TUI ADOPTED (clause 5 / D7, lane L4's `subagentRowAge`): whole seconds
+       * under a minute, then minutes, hours and days. A full ISO-8601 instant must never reach a card —
+       * that was the defect the TUI half fixed — so this helper is the web plane's own copy of the
+       * thresholds rather than an import across the package boundary (the two planes are DUPLICATED
+       * code, not a shared module; see `.mpd/plans/tui-panel-wave.md` §3).
+       * @param at - the served ISO-8601 instant, when the payload carried one.
+       * @param now - the render clock, in epoch milliseconds.
+       * @returns the compact age, or `?` for an absent/unparseable instant (epoch 0 is a placeholder,
+       *          not a start), which is exactly what the TUI's helper answers.
+       */
+      const relativeAgeOf = (at: string | undefined, now: number): string => {
+        /** The instant in epoch milliseconds; NaN for an absent or unparseable stamp. */
+        const parsed = typeof at === "string" && at !== "" ? Date.parse(at) : Number.NaN
+        if (!Number.isFinite(parsed) || parsed <= 0) return "?"
+        /** How long ago the instant was, floored at zero for a clock that ran backwards. */
+        const delta = Math.max(0, now - parsed)
+        if (delta < 1000) return "<1s"
+        if (delta < 60_000) return Math.floor(delta / 1000) + "s"
+        if (delta < 3_600_000) return Math.floor(delta / 60_000) + "m"
+        if (delta < 86_400_000) return Math.floor(delta / 3_600_000) + "h"
+        return Math.floor(delta / 86_400_000) + "d"
+      }
+      /**
+       * The instant one served team ENDED, read from the payload this plane is actually handed.
+       *
+       * The session-scoped head serves `phase` (the store's DERIVED terminal phase) and MAY carry
+       * `endedAt`; the workspace listing in the same payload serves `endedAt` for every record. So the
+       * head's own stamp wins when it exists, and the listing row with the same team id answers
+       * otherwise — the browser must never claim a team ended and then invent an age it was not served.
+       * @param head - the session's team head.
+       * @param listed - the workspace listing the same payload carries, when it read one.
+       * @returns the ISO instant the record ended, or undefined when the payload carries none.
+       */
+      const endedInstantOf = (head: { id: string; endedAt?: string }, listed: readonly WorkspaceTeam[] | undefined): string | undefined => {
+        if (typeof head.endedAt === "string" && head.endedAt !== "") return head.endedAt
+        /** The listed twin of this team, whose row is where the ending stamp is served today. */
+        const twin = (listed ?? []).find((row) => row.id === head.id)
+        return twin !== undefined && typeof twin.endedAt === "string" && twin.endedAt !== "" ? twin.endedAt : undefined
       }
       /**
        * The clamped coarse progress of one task, 0-100.
@@ -3379,6 +3450,18 @@
         }
         /** The team head; non-null past the guard above. */
         const team = state.team
+        /** The ending instant the payload carries for this team, if it serves one at all. */
+        const teamEndedAt = endedInstantOf(team, state.workspaceTeams?.records)
+        /**
+         * Whether this team has ENDED.
+         *
+         * The head's `phase` is the store's DERIVED terminal phase, and a carried `endedAt` states the
+         * same fact directly, so either one switches the treatment on. This is a RENDERING decision:
+         * the payload keeps the roster, the counts and every `current` field it served.
+         */
+        const teamEnded = team.phase === "ended" || teamEndedAt !== undefined
+        /** The RELATIVE age of the ending, in the TUI's compact vocabulary; `?` when no instant came. */
+        const teamEndedAge = relativeAgeOf(teamEndedAt, clock)
         /** The tally, in the record's own vocabulary. */
         const counts = state.counts
         /** The board, which the figures, the graph and the detail body all read. */
@@ -3516,6 +3599,17 @@
         const tipTask = tip === null ? undefined : drawingTasks.find((candidate) => candidate.id === tip.id)
         /** The ids this drawing paints as FRAMES, so the node layer never draws one as a task card. */
         const frameIds = new Set((graph.groups === undefined ? [] : graph.groups).map((frame) => frame.id))
+        /**
+         * The completion fraction every team shows, in the words the panel already used.
+         *
+         * The LIVE form appends the running/ready counters; the ENDED form stops there, because those
+         * two numbers are the live-state half this treatment removes from a finished team.
+         */
+        const completeLine = counts.completed + "/" + counts.total + " " + t("header.complete")
+        /** The figure line under the header: completion, plus the live counters while the team runs. */
+        const figuresLine = teamEnded
+          ? completeLine
+          : completeLine + " · " + counts.running + " " + t("tally.running") + " / " + counts.ready + " " + t("tally.ready")
         /** The panel's elements, in render order. */
         const children: unknown[] = [
           // ONE SCOPED STYLESHEET AT THE PANEL ROOT, outside `[data-mpd-graph]`: the material, the
@@ -3523,17 +3617,27 @@
           react.createElement("style", { key: "dag-css", "data-mpd-dag-css": "1" }, DAG_CSS),
           react.createElement("div", { key: "head", style: CSS.head }, team.name),
           react.createElement("div", { key: "sub", style: CSS.row },
-            react.createElement("span", { key: "phase", style: CSS.chip }, team.phase),
+            teamEnded ? null : react.createElement("span", { key: "phase", style: CSS.chip }, team.phase),
             react.createElement("span", { key: "id", style: CSS.dim }, team.id),
             team.approvedAt === undefined ? null : react.createElement("span", { key: "approved", style: CSS.dim }, t("header.approved") + " " + team.approvedAt),
             state.workspace === undefined ? null : react.createElement("span", { key: "ws", style: CSS.dim }, t("header.workspace") + " " + baseName(state.workspace))),
-          react.createElement("div", { key: "tally", style: { ...CSS.dim, marginTop: "2px" } }, tally),
-          react.createElement("div", { key: "figures", style: { ...CSS.dim, marginTop: "2px" } },
-            counts.completed + "/" + counts.total + " " + t("header.complete")
-            + " · " + counts.running + " " + t("tally.running") + " / " + counts.ready + " " + t("tally.ready")),
-          react.createElement("div", { key: "bar", style: CSS.bar },
+          // THE ENDED STATEMENT (clause 1 / D2, the web half): once the served record carries
+          // `endedAt`, the surface STATES the team ended and prints the RELATIVE age the TUI plane
+          // adopted — never a full ISO instant. It replaces the raw phase chip rather than repeat it.
+          // The two live-state rows below it (the running/ready tally and the progress counter) are then
+          // deliberately NOT drawn: a finished team is not presented as one still in flight. NOTHING IS
+          // DELETED FROM THE PAYLOAD — members, counts and every `current` field are still served; this
+          // is a rendering decision only.
+          teamEnded
+            ? react.createElement("div", { key: "ended", "data-mpd-team-ended": teamEndedAge, style: { ...CSS.meta, marginTop: "2px" } },
+              react.createElement("span", { style: CSS.chip }, t("phase.ended")),
+              react.createElement("span", { key: "ended-age", style: { marginLeft: "4px" } }, teamEndedAge))
+            : null,
+          teamEnded ? null : react.createElement("div", { key: "tally", style: { ...CSS.dim, marginTop: "2px" } }, tally),
+          react.createElement("div", { key: "figures", style: { ...CSS.dim, marginTop: "2px" } }, figuresLine),
+          teamEnded ? null : react.createElement("div", { key: "bar", style: CSS.bar },
             react.createElement("div", { "data-progress": String(percent), style: { ...CSS.barFill, width: percent + "%" } })),
-          react.createElement("div", { key: "progress", style: { ...CSS.meta, marginTop: "2px" } }, t("progress.label") + " " + percent + "%"),
+          teamEnded ? null : react.createElement("div", { key: "progress", style: { ...CSS.meta, marginTop: "2px" } }, t("progress.label") + " " + percent + "%"),
           // THE EXECUTOR IS SHOWN, because which backend raises a member is exactly the fact that
           // explains a team behaving differently than expected — served by the same route.
           react.createElement("div", { key: "exec", style: { ...CSS.dim, marginTop: "4px" } },
@@ -3547,18 +3651,27 @@
           // ONE PLAIN CARD PER MEMBER (the user's ruling: 成员卡的 UI 不必那么花哨): a CSS status dot,
           // the name, the role chip, the route in tertiary text, the current task truncated, and the
           // fraction right-aligned. No avatar, no mascot, no state art.
+          // ON AN ENDED TEAM the card changes in exactly TWO places: the dot stops carrying the member's
+          // LIVE status (a record frozen mid-run still says `running`) and the counter reads `x/y
+          // complete` instead of a bare fraction. The payload is untouched and `data-member` stays, so a
+          // surface keyed on that attribute still finds every card after the team ended.
+          /** The status word the dot's tooltip carries: the live status, or "ended" once the team did. */
+          const dotStatus = teamEnded ? "ended" : member.status
           /** The card's rows, in render order. */
           const card: unknown[] = [
             react.createElement("div", { key: "c-top", style: CSS.row },
-              react.createElement("span", { key: "dot", style: memberDot(member.status), title: member.status }),
+              react.createElement("span", { key: "dot", style: memberDot(dotStatus), title: teamEnded ? t("phase.ended") : dotStatus }),
               react.createElement("span", { key: "name", style: { flex: "1 1 auto", fontWeight: 600 } }, member.name),
               member.role === undefined || member.role === "" ? null : react.createElement("span", { key: "role", style: CSS.chip }, t(member.role)),
-              react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total)),
+              react.createElement("span", { key: "frac", style: CSS.dim }, member.done + "/" + member.total + (teamEnded ? " " + t("header.complete") : ""))),
           ]
           if (member.route !== undefined && member.route !== "") {
             card.push(react.createElement("div", { key: "c-route", style: { ...CSS.meta, marginTop: "1px" } }, member.route))
           }
-          if (member.current !== undefined && member.current !== "") {
+          // D2: a member's `current` task is LIVE state. Once the team ended the record still carries it
+          // and the card deliberately stops drawing it, rather than presenting a finished team's work in
+          // flight.
+          if (!teamEnded && member.current !== undefined && member.current !== "") {
             card.push(react.createElement("div", { key: "c-current", style: { ...CSS.meta, marginTop: "1px" }, title: member.current },
               t("members.current") + " " + short(member.current, SUBJECT_MAX)))
           }
@@ -3726,7 +3839,7 @@
         return react.createElement("div", { "data-mpd-team-tab": team.id, style: CSS.panel }, children)
       }
 
-      return { TeamView, start, read, layout, graphSafeLabel, curveOf, overlapAudit, formatElapsed }
+      return { TeamView, start, read, layout, graphSafeLabel, curveOf, overlapAudit, formatElapsed, relativeAge: relativeAgeOf }
     },
   }
 }
