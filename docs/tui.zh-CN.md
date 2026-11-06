@@ -83,6 +83,36 @@ TUI 会话解析的是**宿主**的默认预设，而不是 `mpd`：承载部署
 （`dsh-tui requires an interactive terminal (stdout must be a TTY)`），因此 QA 通道必须在 tmux
 内驱动真实 TUI 并抓取 pane；也正因这一边界，TUI 通道**没有**纳入 `bun run test:qa` 的自检扫描。
 
+### 2.1 移除等级与保留策略（TUI-OBS-002）
+
+移除本 bundle 不是一个动作。生态规则书的 `TUI-OBS-002` 要求文档、界面文案与每一份清理报告都把三种
+效果分开，绝不用"卸载"一个词涵盖三者：
+
+| 等级 | 做什么 | 留下什么 |
+|---|---|---|
+| `disable` | 把该行的 `disabled` 标志翻转。 | 包仍在 profile 里；`enable` 即恢复。安装面不动。 |
+| `remove` | `dsh plugin --profile dsh-tui remove @mpd-dsh/mpd` 改写 `dsh.profile.bundles` 与 lockfile（服务失败时回滚），移除本 bundle 的行与 overrides，并删除该 component 的授权条目。 | 下面保留表里的全部内容。 |
+| `purge` | 删除用户数据。 | 宿主没有实现它，本 bundle 也不承诺它。不存在"把痕迹删干净"的动作；宿主读不到包内声明时明说"判断不了"，而不是制造"已清理"的假象。 |
+
+授权删除是一次移除**必须**清掉的那一样东西。grants 以 **component id** 为键——即 `grants` 与
+`denies` 两个键——留下的授权行会被后来复用同一 id 的包静默继承。若删除失败，报告必须点名 id、文件
+与继承风险。
+
+**`remove` 保留什么，按资源类别。** 这些都不是卸载失败的残留，而是策略。
+
+| 资源类别 | 位置 | `remove` 时 |
+|---|---|---|
+| 配置 | `<workspace>/.mpd/mpd.jsonc`、`~/.dsh/mpd.jsonc` | 保留。这是用户的配置——模型路由与旋钮——不是包的。 |
+| 缓存 | `<workspace>/.codegraph`，以及工作区自己的 `.mpd` 运行态（团队记录、boulder、计划、日志） | 保留。它派生自工作区，删掉它会毁掉不属于这个包该删的记录。 |
+| storage | `~/.mpd/workmate`、`~/.mpd/memory` | 保留。这是用户数据：workmate 库与 memory 存储比任何一次安装都活得久。 |
+| native 与 build 产物 | — | 没有要留下的：已发布的依赖闭包不含安装脚本，因此移除时没有编译产物需要删除。 |
+
+报告规则由上表直接推出：一份移除报告只陈述**实际**撤销了什么，残留绝不被报告成完全卸载。"包已移除"
+不等于"资源已清空"。
+
+一处指引：本 bundle 的用户数据放在 `~/.mpd` 下，刻意位于 `~/.dsh-tui` 之外——偏差与理由见
+[`tui-admission.zh-CN.md` §5](./tui-admission.zh-CN.md)。
+
 ## 3. TUI 界面与对应的 Web 界面
 
 原先仅存在于 Web 的界面，在 TUI 中有**等价物**，不属于同等对齐：

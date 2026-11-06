@@ -95,6 +95,40 @@ Requirement for any live lane: `dsh-tui` refuses to boot when stdout is not a TT
 real TUI inside tmux and capture panes; this boundary is why the TUI lanes are **not** part of
 `bun run test:qa`'s self-test sweep.
 
+### 2.1 Removal levels and the retention policy (TUI-OBS-002)
+
+Removing this bundle is not one operation. The ecosystem guide's `TUI-OBS-002` requires the
+documentation, the UI copy and every cleanup report to keep three effects apart, and never to cover
+all three with the single word "uninstall":
+
+| Level | What it does | What it leaves |
+|---|---|---|
+| `disable` | Flips the row's `disabled` flag. | The package stays in the profile; `enable` restores it. The install surface is untouched. |
+| `remove` | `dsh plugin --profile dsh-tui remove @mpd-dsh/mpd` rewrites `dsh.profile.bundles` and the lockfile (rolling back when the service fails), removes the bundle's rows and overrides, and deletes that component's grant entries. | Everything in the retention table below. |
+| `purge` | Deletes user data. | The host does not implement it and this bundle does not promise it. There is no action that "wipes every trace"; when the host cannot read a package's declaration it says it cannot tell, rather than faking a cleaned result. |
+
+The grant deletion is the one thing a removal must clear. Grants are keyed by **component id** — the
+`grants` and `denies` keys — so a grant row left behind is silently inherited by a later package that
+reuses the same id. If the deletion fails, the report must name the id, the file, and the inheritance
+risk.
+
+**What `remove` keeps, per resource class.** None of it is residue of a failed uninstall; it is the
+policy.
+
+| Resource class | Where it lives | On `remove` |
+|---|---|---|
+| Config | `<workspace>/.mpd/mpd.jsonc`, `~/.dsh/mpd.jsonc` | Kept. It is the user's configuration — model routes and knobs — not the package's. |
+| Cache | `<workspace>/.codegraph`, and the workspace's own `.mpd` runtime state (team records, boulder, plans, logs) | Kept. It is derived from the workspace, and deleting it would destroy records that are not the package's to delete. |
+| Storage | `~/.mpd/workmate`, `~/.mpd/memory` | Kept. This is user data: workmate libraries and memory stores outlive any one install. |
+| Native and build artifacts | — | None to leave behind: the published dependency closure carries no install script, so a removal has no compiled artifact to delete. |
+
+The reporting rule follows from the table: a removal report states only what was **actually** revoked,
+and residue is never reported as a full uninstall. "Package removed" does not mean "resources
+cleared".
+
+One pointer: this bundle's user data lives under `~/.mpd`, which is outside `~/.dsh-tui` on purpose —
+see [`tui-admission.md` §5](./tui-admission.md) for the deviation and its reason.
+
 ## 3. TUI surfaces and their web counterparts
 
 The bundle's former web-only faces have TUI **equivalents**, not parity:

@@ -1,0 +1,134 @@
+{
+  "domain": "tui",
+  "slug": "ecosystem-admission",
+  "timestampUtc": "2026-11-06T02-09-20Z",
+  "purpose": "Current admission verdict of BOTH shipped manifests against the INSTALLED dsh-tui host 0.18.0 admission library (measurement only; no file under packages/, src/, scripts/ or the manifests was modified).",
+  "host": {
+    "root": "/home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "version": "0.18.0",
+    "facetApiVersions": [
+      "v1alpha1"
+    ],
+    "supportedContracts": [
+      "commands.dsh/v1alpha1#Command",
+      "storage.dsh/v1alpha1#LocalStorage",
+      "messages.dsh/v1alpha1#MessageObserver",
+      "tui.dsh/v1alpha1#DecisionEvents",
+      "tui.dsh/v1alpha1#Backend"
+    ],
+    "hostVersionField": "0.18.0",
+    "validateHost": "ok",
+    "warnings": [
+      "legacy compatibility descriptor: contracts declared from the mounted legacy service topology without live probe evidence"
+    ]
+  },
+  "commands": [
+    {
+      "label": "repo harness (sanctioned instrument, root manifest + controls)",
+      "command": "bun skills/dsh-qa/scripts/tui-admission.ts --static-only",
+      "exitCode": 0,
+      "evidenceDir": "evidence/tui/lanes/2026-11-06T02-08-45.071Z/"
+    },
+    {
+      "label": "host library probe (both manifests)",
+      "command": "node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs",
+      "exitCode": 0,
+      "evidenceDir": "evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/"
+    }
+  ],
+  "chain": "loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest, buildLegacyHostDescriptor(...).descriptor, [])",
+  "registry": {
+    "profileVersion": null,
+    "facetApiVersions": [
+      "v1alpha1"
+    ],
+    "protocols": 12
+  },
+  "sanctionedHarness": {
+    "ok": true,
+    "manifestDigest": "b807ad68f825d8b98370773f0ce5db66b690fad2e39d1f1817d2b410b8b7565c",
+    "specRoot": "installed-payload",
+    "specDir": "/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-harness-tui/dsh-tui/tui-profile",
+    "profileVersion": "tui-admission/0.15",
+    "validatePlugin": "ok",
+    "negotiation": {
+      "decision": "compatible"
+    },
+    "controls": {
+      "brokenSyntax": "SyntaxError",
+      "optionalWithoutFallback": "optional protocol requires a TUI fallback: tui.dsh/v1alpha1#DecisionEvents",
+      "unknownPermission": "undefined is not an object (evaluating 'badPermission.permissions[0].name = \"mpd-dsh.not-a-registered-permission\"')"
+    },
+    "revision": {
+      "path": "packages/mpd-tui-plugin/dist/index.js",
+      "sha256": "a1c0c7f5272762718384cbefda43ff323375c13627122db129f28faa99bdf902",
+      "bytes": 509984,
+      "mtimeLocal": "2026-11-05T15:03:14.745Z",
+      "mtimeUtc": "2026-11-05T15:03:14.745Z"
+    }
+  },
+  "manifests": [
+    {
+      "manifest": "dsh-plugin.json",
+      "sha256": "sha256:b807ad68f825d8b98370773f0ce5db66b690fad2e39d1f1817d2b410b8b7565c",
+      "id": "com.mpd-dsh.mpd-tui",
+      "name": "@mpd-dsh/mpd",
+      "version": "0.17.4",
+      "facetApiVersion": "v1alpha1",
+      "entry": "packages/mpd-tui-plugin/dist/index.js",
+      "permissions": [],
+      "requiredContracts": [],
+      "optionalContracts": [
+        "tui.dsh/v1alpha1#DecisionEvents"
+      ],
+      "validatePlugin": {
+        "ok": true,
+        "error": null
+      },
+      "decision": {
+        "decision": "compatible"
+      }
+    },
+    {
+      "manifest": "packages/mpd-tui-plugin/dsh-plugin.json",
+      "sha256": "sha256:2354afb93b81dc32fb2667d816b74c0fd1b724f0dfddf47335eb75cd9e102417",
+      "id": "com.mpd-dsh.mpd-tui",
+      "name": "@mpd-dsh/mpd-tui",
+      "version": "0.1.0",
+      "facetApiVersion": "v1alpha1",
+      "entry": "dist/index.js",
+      "permissions": [],
+      "requiredContracts": [],
+      "optionalContracts": [
+        "tui.dsh/v1alpha1#DecisionEvents"
+      ],
+      "validatePlugin": {
+        "ok": true,
+        "error": null
+      },
+      "decision": {
+        "decision": "compatible"
+      }
+    }
+  ],
+  "verdict": {
+    "summary": {
+      "dsh-plugin.json": {
+        "validatePlugin": "ok",
+        "decision": "compatible",
+        "reasonCode": null
+      },
+      "packages/mpd-tui-plugin/dsh-plugin.json": {
+        "validatePlugin": "ok",
+        "decision": "compatible",
+        "reasonCode": null
+      }
+    },
+    "negotiationErrorCodes": [],
+    "structuralRefusals": []
+  },
+  "bounds": [
+    "The legacy host descriptor is built from HOST_SUPPORTED_CONTRACTS without live probe evidence (the host prints its own warning: legacy compatibility descriptor: contracts declared from the mounted legacy service topology without live probe evidence).",
+    "This is a static admission verdict: it proves parse/validate/negotiate, not a live TUI mount or grant-ledger attribution."
+  ]
+}
