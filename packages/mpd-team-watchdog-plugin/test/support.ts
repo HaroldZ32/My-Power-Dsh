@@ -485,6 +485,9 @@ export function testConfig(overrides: Partial<EngineConfig> = {}): EngineConfig 
     holdTtlMs: 900_000,
     // D3 rides the same 15-minute bound as the tool window; an arm that wants the rule OFF passes 0.
     forceAfterMs: 900_000,
+    // S2's age ceiling is OFF by default (0 = never), and S4's grace window is the frozen 90 s.
+    maxTaskAgeMs: 0,
+    graceMs: 90_000,
     // Skipped-team reasons stay off the console here: `false` is the engine's own resolved
     // default (index.ts), so the suite's output is the pre-typing output.
     verboseSkips: false,

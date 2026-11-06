@@ -38,8 +38,10 @@ import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLaz
 import { toolCard } from "../../mpd-dsh-adapter-plugin/src/dshgo-view.ts"
 import { roleSpawnCard, rolesListCard } from "./tool-cards.ts"
 // The ONE consult supervisor (§D2): blocking and async consults share the record, the concurrency
-// cap, the 15-minute deadman and the handoff writer. Kept in its own module so its tests need no boot.
-import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
+// cap, the deadman and the handoff writer. The deadman's bound and in-flight rule are the force
+// supervisor's (contract §S9), resolved per arm through the live config layer by the closures the
+// supervisor is built with below. Kept in its own module so its tests need no boot.
+import { CONSULT_ACTIVITY_HISTORY, CONSULT_FORCE_AFTER_MS, CONSULT_TOOL_IN_FLIGHT_MAX_MS, consultActivityKeyOf, consultLabelKey, consultMaxFromEnv, createConsultSupervisor, type ConsultToolActivity } from "./spawn-async.ts"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -49,15 +51,24 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the five keys this row reads itself.
+ * The row config: the persona directory plus the keys this row reads itself.
  *
  * `team.gate` (mechanical | advisory | off), `team.sensitivity` (easy | normal | strict),
  * `boulder.dir`, `captain.investigation` (deny | allow) and `delegation.gate` (deny | captain |
  * allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config row mounted can
- * still pin them in the patch. Every knob is read PER CALL through the same config layer, so a
- * `mpd.jsonc` edit applies without a reinstall.
+ * still pin them in the patch. `consult.forceAfterMs` and `watchdog.forceAfterMs` are the two layers
+ * of the consult deadman's bound (the second is the shared force-supervisor knob), and
+ * `watchdog.toolInFlightMaxMs` is the in-flight half of the same predicate (contract §S9). Every knob
+ * is read PER USE through the same config layer, so a `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown; reteam?: { enabled?: unknown; afterConsults?: unknown } }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown }; consult?: { forceAfterMs?: unknown }; watchdog?: { forceAfterMs?: unknown; toolInFlightMaxMs?: unknown } }
+
+/** The consult deadman's OWN bound key, read first (contract §S9). */
+const CONSULT_FORCE_KEY = "consult.forceAfterMs"
+/** The shared force-supervisor bound, read when the consult section declares none (contract §S9). */
+const WATCHDOG_FORCE_KEY = "watchdog.forceAfterMs"
+/** The in-flight-tool bound the deadman shares with the watchdog's predicate (contract §S3). */
+const WATCHDOG_TOOL_IN_FLIGHT_KEY = "watchdog.toolInFlightMaxMs"
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -380,6 +391,30 @@ function text(value: unknown): string {
 /** A thrown value's message, for a warning that must never itself throw. */
 function errText(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * Read the session id an event payload carries, directly or wrapped in an agent.
+ *
+ * Mirrors the watchdog's own read so both rows attribute an event to the SAME child bucket: the
+ * consult deadman keys its activity by the child's session id, and `session/event` delivers a
+ * Session (or an agent wrapping one).
+ * @param value - the session (or agent) a subscription received.
+ * @returns the non-empty id, or undefined when the payload states none.
+ */
+function sessionIdOf(value: unknown): string | undefined {
+  if (value === null || typeof value !== "object") return undefined
+  /** The payload's own id, which a Session object carries directly. */
+  const direct = (value as { id?: unknown }).id
+  if (typeof direct === "string" && direct !== "") return direct
+  /** The nested session an agent payload wraps. */
+  const nested = (value as { session?: unknown }).session
+  if (nested !== null && typeof nested === "object") {
+    /** The nested session's id, when it states one. */
+    const id = (nested as { id?: unknown }).id
+    if (typeof id === "string" && id !== "") return id
+  }
+  return undefined
 }
 
 /** Namespaced stable id of an extension-contributed role. Base ids are single lowercase
@@ -935,18 +970,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
   })
 
-  // ── consult supervision (§D2.5–§D2.6) ──────────────────────────────────────
+  // ── consult supervision (§D2.5–§D2.6, §S9) ─────────────────────────────────
   // The child's tool activity is keyed by the CHILD's session id (F1 repair): `activityKey` reads the
   // id the child agent carries — the same value `DshAsyncAgent.id` reports — and falls back to
   // `label:<role>` ONLY when the child has no id, so two concurrent consults of one role never share
-  // a `current` slot. The deadman needs the CURRENT call: an OPEN `bash` is the only exemption from
-  // the 15-minute rule, and it has NO age bound.
+  // a `current` slot. The deadman shares the force supervisor's predicate: ANY open tool younger than
+  // `watchdog.toolInFlightMaxMs` is activity, an open `bash` is exempt at any age, and an older
+  // non-`bash` call stops counting.
   /** The activity buckets every consult shares, keyed by child id (or the label fallback key). */
   const toolActivity = new Map<string, ConsultToolActivity>()
   /** The bucket key of one tool execution: the child's id, label fallback only when it has none. */
   const activityKey = (exec: unknown): string | undefined =>
     consultActivityKeyOf((exec as { agent?: unknown } | undefined)?.agent, (agent) => dsh.subagentLabelOf(agent))
-  /** Record one tool call's START — the in-flight half the bash exemption reads. */
+  /** Record one tool call's START — the in-flight half the deadman's rule reads. */
   const noteToolStart = (exec: unknown): void => {
     /** The child-id bucket this call belongs to, when it is one of ours. */
     const key = activityKey(exec)
@@ -957,7 +993,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const rawArgs = (exec as { arguments?: unknown } | undefined)?.arguments
     /** The activity bucket for this child. */
     const bucket = toolActivity.get(key) ?? { history: [] }
-    bucket.current = { name, startedAt: Date.now(), ...(rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs as Record<string, unknown> } : {}) }
+    /** The start instant, which is also an activity stamp for the idle measurement. */
+    const at = Date.now()
+    bucket.current = { name, startedAt: at, ...(rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs as Record<string, unknown> } : {}) }
+    bucket.lastActivityAt = at
     toolActivity.set(key, bucket)
   }
   /** Record one tool call's COMPLETION: close the in-flight slot and keep a bounded history. */
@@ -971,6 +1010,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     bucket.history.push(bucket.current)
     if (bucket.history.length > CONSULT_ACTIVITY_HISTORY) bucket.history.splice(0, bucket.history.length - CONSULT_ACTIVITY_HISTORY)
     bucket.current = undefined
+    bucket.lastActivityAt = Date.now()
   }
   // Both hooks are EXISTING adapter seams; the PRE half is what marks a call IN FLIGHT (a POST-only
   // observer cannot see an open bash), and the POST half closes it. A composition without them
@@ -985,6 +1025,33 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       try { noteToolEnd(exec) } catch { /* observation must never fail a tool call */ }
     })
   }
+  // THE ENRICHMENT HALF of the handoff (§S9): a committed assistant message is activity, and quoting
+  // it tells whoever resumes the task what the child was saying when it went silent. Only a bucket
+  // this row already tracks is touched, so no other session allocates state here, and the `type`
+  // check is the first statement so the firehose costs one comparison per event.
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("session/event", (session: unknown, event: unknown) => {
+      try {
+        /** The event as a record; anything else is not an event this observer reads. */
+        const record = event !== null && typeof event === "object" ? event as Record<string, unknown> : undefined
+        if (record?.type !== "assistant/message") return
+        /** The session the message belongs to; an unreadable id drops the event. */
+        const id = sessionIdOf(session)
+        if (id === undefined) return
+        /** The activity bucket of that child, when this row already tracks it. */
+        const bucket = toolActivity.get(id)
+        if (bucket === undefined) return
+        /** The committed message's payload, which the harness stores under `data`. */
+        const data = record.data !== null && typeof record.data === "object" ? record.data as Record<string, unknown> : undefined
+        /** The message text, when the event carries one. */
+        const message = typeof data?.text === "string" ? data.text : typeof record.text === "string" ? record.text : undefined
+        if (message !== undefined && message !== "") bucket.lastAssistantMessage = message
+        bucket.lastActivityAt = Date.now()
+      } catch {
+        // Observation must never fail the event stream; the handoff simply omits the message.
+      }
+    })
+  }
 
   /** The one supervisor every consult — blocking and async — is registered with (§D2). */
   const consultSupervisor = createConsultSupervisor({
@@ -996,7 +1063,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // child reported no id at all — never as a second chance for an id-bearing child.
     activityOf: (childId, role) => (childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId)),
     maxConcurrent: () => consultMaxFromEnv(),
-    forceAfterMs: () => CONSULT_FORCE_AFTER_MS,
+    // THE LIVE BOUND (§S9): read per arm through the same config layer as every other knob, so a
+    // `mpd.jsonc` edit applies to the NEXT arm and two consults can run under different bounds.
+    forceAfterMs: () => consultDeadmanBound(),
+    toolInFlightMaxMs: () => consultInFlightBound(),
   })
 
   dsh.registerTool({
@@ -1065,9 +1135,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
       // THE SHARED SUPERVISED CONSULT (§D2.1): the blocking surface and the background one raise the
-      // child through the SAME activation handle and are armed by the SAME 15-minute deadman. This
-      // call used to await `dsh.spawnAgent` directly, which is exactly what serialized the captain's
-      // consults behind the previous child's full runtime.
+      // child through the SAME activation handle and are armed by the SAME SILENCE deadman (§S9):
+      // `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms, with any in-flight tool younger
+      // than `watchdog.toolInFlightMaxMs` counting as activity. This call used to await
+      // `dsh.spawnAgent` directly, which is exactly what serialized the captain's consults behind the
+      // previous child's full runtime.
       /** The started consult; this surface only waits for its settlement. */
       const view = consultSupervisor.start({
         role: spec.name,
@@ -1158,7 +1230,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn_async",
-    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and is supervised by the SAME 15-minute deadman: on expiry the child is interrupted and a handoff document is written under .mpd/handoff/, unless its current tool call is an OPEN `bash` (the only exemption, with no age bound). Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a: unknown, v: any) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + " — read it with mpd_role_consult {action:\"wait\"|\"collect\", consultId:\"" + v.consultId + "\"}") },
     execute: async (args: any, exec: any) => {
@@ -1234,7 +1306,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * Precedence: the mounted `mpdConfig` layer first (a `.mpd/mpd.jsonc` edit is therefore picked up
    * LIVE, T-18), this row's own config second, `undefined` last so the plugin's own default applies.
-   * @param key - the dot-path key, e.g. `team.gate`, `boulder.dir`, `captain.investigation` or `delegation.gate`.
+   * @param key - the dot-path key, e.g. `team.gate`, `boulder.dir`, `captain.investigation`, `delegation.gate`, `consult.forceAfterMs` or `watchdog.toolInFlightMaxMs`.
    * @returns the raw value, or `undefined` when neither layer declares it.
    */
   const configValue = (key: string): unknown => {
@@ -1263,7 +1335,47 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
     if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
+    if (key === CONSULT_FORCE_KEY) return config.consult?.forceAfterMs
+    if (key === WATCHDOG_FORCE_KEY) return config.watchdog?.forceAfterMs
+    if (key === WATCHDOG_TOOL_IN_FLIGHT_KEY) return config.watchdog?.toolInFlightMaxMs
     return undefined
+  }
+  /**
+   * The consult deadman's bound for the NEXT arm, resolved per arm through the live config layer.
+   *
+   * The chain is the contract's (§S9): `consult.forceAfterMs`, then the shared
+   * `watchdog.forceAfterMs`, then {@link CONSULT_FORCE_AFTER_MS}. A DECLARED value wins even when it
+   * is `0`: the watchdog's `forceAfterMs: 0` means "never force", and the shared knob keeps that
+   * meaning here, so a workspace that disabled the rule (as VEdit did) also disables the consult
+   * deadman instead of silently falling through to the next layer.
+   * @returns the bound in milliseconds; `<= 0` disables the deadman.
+   */
+  const consultDeadmanBound = (): number => {
+    for (const key of [CONSULT_FORCE_KEY, WATCHDOG_FORCE_KEY]) {
+      /** What this layer declares, `undefined` when it declares nothing usable. */
+      const value = configValue(key)
+      if (value === undefined || value === null || value === "") continue
+      /** The declared bound, truncated to whole milliseconds. */
+      const parsed = Math.trunc(Number(value))
+      if (Number.isFinite(parsed)) return parsed
+    }
+    return CONSULT_FORCE_AFTER_MS
+  }
+  /**
+   * The consult deadman's in-flight-tool bound for the NEXT expiry.
+   *
+   * `watchdog.toolInFlightMaxMs` is the same knob the force supervisor's r6 rule reads, so the two
+   * mechanisms cannot disagree about how long an open tool explains silence away; `0` keeps the
+   * watchdog's meaning (no open tool explains silence).
+   * @returns the bound in milliseconds, never negative.
+   */
+  const consultInFlightBound = (): number => {
+    /** What the live layer or this row declares, `undefined` when neither does. */
+    const value = configValue(WATCHDOG_TOOL_IN_FLIGHT_KEY)
+    if (value === undefined || value === null || value === "") return CONSULT_TOOL_IN_FLIGHT_MAX_MS
+    /** The declared bound, truncated to whole milliseconds. */
+    const parsed = Math.trunc(Number(value))
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : CONSULT_TOOL_IN_FLIGHT_MAX_MS
   }
   // The TEAM PLANE's boot signature: ONE line naming every installed contract and its outcome, so an
   // integration boot asserts the guard reached the tool registry (a

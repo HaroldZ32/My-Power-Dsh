@@ -5430,7 +5430,7 @@ data: ${JSON.stringify({ rev: revisionNow() })}
 }
 
 // packages/mpd-team-core-plugin/src/team-actions.ts
-import { existsSync as existsSync6, mkdirSync as mkdirSync9, writeFileSync as writeFileSync5 } from "node:fs";
+import { appendFileSync as appendFileSync4, existsSync as existsSync6, mkdirSync as mkdirSync9, readFileSync as readFileSync8, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join10 } from "node:path";
 
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
@@ -6524,8 +6524,14 @@ function forceHandoffDir(workspace) {
 }
 function renderForceHandoff(input) {
   const startedIso = input.startedAt === null ? "unknown" : new Date(input.startedAt).toISOString();
-  const tools = input.lastToolCalls.length === 0 ? "- (none recorded)" : input.lastToolCalls.map((name) => "- `" + name + "`").join(`
+  const description = input.description.trim() === "" ? "(the board declared no description)" : input.description.trim();
+  const scopes = input.writeScopes.length === 0 ? "- (none declared — the next owner must narrow the scope first)" : input.writeScopes.map((scope) => "- `" + scope + "`").join(`
 `);
+  const tools = input.toolCalls.length > 0 ? input.toolCalls.map((call) => "- `" + call.tool + "`" + (call.excerpt === "" ? " (no arguments recorded)" : " — " + call.excerpt)).join(`
+`) : input.lastToolCalls.length === 0 ? "- (none recorded)" : input.lastToolCalls.map((name) => "- `" + name + "` (name only — no fold evidence for this call)").join(`
+`);
+  const assistant = input.assistantMessage === null || input.assistantMessage.trim() === "" ? "- (none observed)" : "> " + input.assistantMessage.trim();
+  const claimable = [input.taskId, ...input.splitIds];
   return [
     "# Force handoff — " + input.member + " / " + input.taskId,
     "",
@@ -6533,6 +6539,10 @@ function renderForceHandoff(input) {
     "- Task: " + input.taskId + " — " + input.subject,
     "- Team: " + input.teamId,
     "- Attempt: " + input.attempt + " (generation " + (input.attemptId === "" ? "unrecorded" : input.attemptId) + ")",
+    "- Description: " + description,
+    "",
+    "## Write scopes",
+    scopes,
     "",
     "## Member",
     "- Member: " + input.member,
@@ -6541,9 +6551,13 @@ function renderForceHandoff(input) {
     "## Timing",
     "- Started: " + startedIso + (input.startedAt === null ? "" : " (" + input.startedAt + ")"),
     "- Elapsed: " + input.elapsedMs + " ms",
+    "- IDLE AT THE FORCE BOUND: " + input.idleMs + " ms with no observable activity (the trigger)",
     "",
     "## Last tool calls",
     tools,
+    "",
+    "## Last assistant message",
+    assistant,
     "",
     "## Review state",
     "- Board status at the interrupt: " + input.taskStatus,
@@ -6551,16 +6565,191 @@ function renderForceHandoff(input) {
     "- Verdict: " + (input.verdict === "" ? "(none recorded)" : input.verdict),
     "",
     "## Why this document exists",
-    "The watchdog's force supervisor found this task `in_progress` past its force bound and interrupted",
-    "the owning member. The row was requeued (`pending`, attempt bumped) and the work was split into",
-    "continuation rows; this document is the account the next owner continues from.",
+    "The watchdog's force supervisor found this task `in_progress` with no observable activity for its",
+    "silence bound, sent the member the grace directive, and — when the grace window expired with the task",
+    "still running — interrupted it. The row was requeued (`pending`, attempt bumped) and the work was",
+    "split into continuation rows; this document is the account the next owner continues from.",
     "",
     "## Next step",
-    "Read the task description and the rows named by the system message, narrow the scope if the",
-    "subject carries no declared scope, then claim the row and continue from the last tool call above.",
+    'Claim the row you will continue with `agent_teams_task {action:"claim", task_id:"<id>"}` — the',
+    "claimable rows are " + claimable.map((id) => "`" + id + "`").join(", ") + " (the continuation rows are",
+    "listed with their final ids under `## Continuation rows` at the end of this document). The row",
+    "inherited its owner, so an owner-only dispatch pass pairs it again; if that seat is fenced, run the",
+    'pass with mode:"roster", reassign one id at a time, or claim the row yourself. Start from the last',
+    "tool call above and the write scopes this row declares.",
     ""
   ].join(`
 `);
+}
+function appendContinuationRows(path, requeuedTaskId, attempt, split) {
+  try {
+    appendFileSync4(path, ["", "## Continuation rows", "- Requeued: " + requeuedTaskId + " (pending, attempt " + attempt + ")"].concat(split.map((id) => "- " + id)).join(`
+`) + `
+`);
+  } catch {}
+}
+function handoffClaimsTask(text2, taskId, attempt) {
+  const parsed = parseHandoff(text2);
+  const taskSection = HANDOFF_SECTIONS.find((section) => section.key === "task");
+  if (taskSection === undefined)
+    return false;
+  let label;
+  for (const candidate of parsed.keys()) {
+    if (taskSection.aliases.includes(candidate) || taskSection.aliases.some((alias) => candidate.startsWith(alias + " "))) {
+      label = candidate;
+      break;
+    }
+  }
+  if (label === undefined)
+    return false;
+  const body = parsed.get(label) ?? "";
+  const escaped = taskId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!new RegExp("(^|[^A-Za-z0-9_-])" + escaped + "([^A-Za-z0-9_-]|$)").test(body))
+    return false;
+  const statedAttempt = /attempt\s*(?:#|:)?\s*(\d+)/i.exec(body);
+  if (statedAttempt !== null && typeof attempt === "number" && Number(statedAttempt[1]) !== attempt)
+    return false;
+  return true;
+}
+function memberHandoffOf(workspace, teamId, memberName, recordedPath, taskId, attempt) {
+  const candidates = [];
+  if (recordedPath !== undefined && recordedPath !== "")
+    candidates.push(recordedPath);
+  let newest = 0;
+  for (let ordinal = 1;ordinal <= 999; ordinal += 1) {
+    const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal);
+    if (!existsSync6(candidate)) {
+      if (newest === 0)
+        continue;
+      break;
+    }
+    newest = ordinal;
+  }
+  for (let ordinal = newest;ordinal >= 1; ordinal -= 1) {
+    const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal);
+    if (!candidates.includes(candidate))
+      candidates.push(candidate);
+  }
+  for (const candidate of candidates) {
+    if (!existsSync6(candidate))
+      continue;
+    try {
+      if (handoffClaimsTask(readFileSync8(candidate, "utf8"), taskId, attempt))
+        return candidate;
+    } catch {}
+  }
+  return null;
+}
+async function graceWedgedTask(deps, caller, input) {
+  if (caller.agent === undefined)
+    return { ok: false, error: "grace needs a live agent" };
+  try {
+    const record = input.teamId === undefined ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage).record : readTeam(caller.workspace, input.teamId);
+    if (record === undefined)
+      return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId ?? "")} in this workspace` };
+    if (!recordNamesLead(record, [caller.sessionId, ...caller.lineage])) {
+      return { ok: false, error: `session ${caller.sessionId} is not the lead of team ${record.teamId} — only the lead may direct a member` };
+    }
+    const task = record.tasks.find((candidate) => candidate.id === input.taskId);
+    if (task === undefined)
+      return { ok: false, error: `no board row is named ${JSON.stringify(input.taskId)} on team ${record.teamId}` };
+    if (task.status !== "in_progress")
+      return { ok: false, error: `task ${task.id} is "${task.status}" — only an in_progress row has a member to direct` };
+    const owner = task.owner !== undefined && task.owner !== "" ? task.owner : input.evidence?.member ?? "";
+    if (owner === "")
+      return { ok: false, error: `task ${task.id} has no owner — there is no member to direct` };
+    if (recordNamesLead(record, [owner]))
+      return { ok: false, error: `task ${task.id} is owned by the team's lead — the captain is never a force target` };
+    const member = memberNamedBy(record, [owner]);
+    if (member === undefined)
+      return { ok: false, error: `owner ${JSON.stringify(owner)} names no member on team ${record.teamId}` };
+    if (recordNamesLead(record, [member.name, member.executorRef ?? ""]))
+      return { ok: false, error: `member ${member.name} is the team's lead — the captain is never a force target` };
+    const handle = member.executorRef ?? "";
+    const now = deps.now();
+    const idleMs = typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0;
+    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt);
+    if (adopted !== null) {
+      appendTeamJournal(caller.workspace, { event: "wedged-grace", teamId: record.teamId, at: now.toISOString(), taskId: task.id, member: member.name, path: adopted, reason: "adopted: the member's own handoff already exists — no directive, no template" });
+      return { ok: true, teamId: record.teamId, taskId: task.id, member: member.name, directive: "", path: adopted, delivered: false, adopted };
+    }
+    let ordinal = (member.handoff?.ordinal ?? 0) + 1;
+    while (existsSync6(teamHandoffPath(caller.workspace, record.teamId, member.name, ordinal)))
+      ordinal += 1;
+    const path = teamHandoffPath(caller.workspace, record.teamId, member.name, ordinal);
+    const directive = [
+      `[mpd-team] the force supervisor found task ${task.id} (${task.subject}) in_progress with no observable activity for ${idleMs} ms.`,
+      `Write your handoff NOW with agent_teams_task {action:"handoff", content:"…"} — the seven sections Task, State, Decisions, Artifacts, Verified facts, Open questions, Next step — then END YOUR TURN.`,
+      `The document you write is the artifact the next owner continues from; it will be filed at ${path}.`,
+      handoffWrittenDirective(path)
+    ].join(`
+`);
+    let delivered = false;
+    let deliveryError;
+    if (handle === "") {
+      deliveryError = `member ${member.name} has no executor handle — the directive cannot reach its session`;
+    } else {
+      try {
+        await deps.executor().send(caller.agent, handle, directive, caller.signal);
+        delivered = true;
+      } catch (error) {
+        deliveryError = refusalOf(error);
+      }
+    }
+    let mail;
+    let mailError;
+    const leadSession = record.leadSessionId;
+    if (!delivered && leadSession !== undefined && leadSession !== "") {
+      try {
+        const result = send(caller.workspace, {
+          fromId: FORCE_SENDER_ID,
+          fromName: FORCE_SENDER_NAME,
+          toId: leadSession,
+          toName: "captain",
+          subject: `grace: ${member.name} could not be reached on ${task.id} (${record.teamId})`,
+          body: [
+            `team ${record.teamId} task ${task.id} (${task.subject}) has been silent for ${idleMs} ms.`,
+            `the grace directive could NOT be delivered to member ${member.name}: ${deliveryError ?? "unknown"}`,
+            `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + (input.evidence?.graceMs ?? 90000)} (graceMs from the directive's instant); nothing has been interrupted yet.`,
+            `the member was asked to write: ${path}`
+          ].join(`
+`),
+          memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
+          teamId: record.teamId,
+          leadIds: [leadSession]
+        }, now);
+        if (result.ok)
+          mail = result.message.id;
+        else
+          mailError = `mailbox refused the row (${result.reason}): ${result.detail}`;
+      } catch (error) {
+        mailError = refusalOf(error);
+      }
+    }
+    appendTeamJournal(caller.workspace, {
+      event: "wedged-grace",
+      teamId: record.teamId,
+      at: now.toISOString(),
+      taskId: task.id,
+      member: member.name,
+      path,
+      reason: `graceSentAt=${now.getTime()} idle=${idleMs}ms delivered=${delivered}${deliveryError === undefined ? "" : " (" + deliveryError + ")"}`
+    });
+    return {
+      ok: true,
+      teamId: record.teamId,
+      taskId: task.id,
+      member: member.name,
+      directive,
+      path,
+      delivered,
+      ...deliveryError === undefined ? {} : { deliveryError },
+      ...mail === undefined ? {} : { mail },
+      ...mailError === undefined ? {} : { mailError }
+    };
+  } catch (error) {
+    return unexpectedRefusalOf(error);
+  }
 }
 function writeForceHandoff(workspace, member, taskId, at, text2) {
   const dir = forceHandoffDir(workspace);
@@ -6618,28 +6807,47 @@ async function forceWedgedTask(deps, caller, input) {
       return { ok: false, error: `task ${task.id} has moved to generation ${String(liveTask.revision)} — the force was not applied` };
     }
     let handoff;
-    try {
-      handoff = writeForceHandoff(caller.workspace, member.name, task.id, now, renderForceHandoff({
-        teamId: record.teamId,
-        taskId: task.id,
-        subject: task.subject,
-        attempt: (task.attempt ?? 0) + 1,
-        attemptId: input.evidence?.attemptId ?? "",
-        member: member.name,
-        memberSession: handle,
-        startedAt,
-        elapsedMs,
-        lastToolCalls: input.evidence?.lastToolCalls ?? [],
-        taskStatus: task.status,
-        round: task.round ?? 0,
-        verdict: task.verdict ?? ""
-      }));
-    } catch (error) {
-      return { ok: false, error: `handoff write failed for task ${task.id}: ${refusalOf(error)}`, retryable: true };
+    let handoffSource;
+    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt);
+    if (memberHandoff !== null) {
+      handoff = memberHandoff;
+      handoffSource = "member";
+    } else {
+      handoffSource = "supervisor";
+      const declaredScopes = task.writeScopes;
+      const splitCount = declaredScopes.length >= 2 ? declaredScopes.length : 1;
+      const expectedSplitIds = Array.from({ length: splitCount }, (_unused, index) => "T" + String(live.nextTaskNumber + index));
+      try {
+        handoff = writeForceHandoff(caller.workspace, member.name, task.id, now, renderForceHandoff({
+          teamId: record.teamId,
+          taskId: task.id,
+          subject: task.subject,
+          description: String(task.description ?? ""),
+          writeScopes: declaredScopes,
+          attempt: (task.attempt ?? 0) + 1,
+          attemptId: input.evidence?.attemptId ?? "",
+          member: member.name,
+          memberSession: handle,
+          startedAt,
+          elapsedMs,
+          idleMs: typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0,
+          lastToolCalls: input.evidence?.lastToolCalls ?? [],
+          toolCalls: input.evidence?.toolCalls ?? [],
+          assistantMessage: input.evidence?.assistantMessage ?? null,
+          taskStatus: task.status,
+          round: task.round ?? 0,
+          verdict: task.verdict ?? "",
+          splitIds: expectedSplitIds
+        }));
+      } catch (error) {
+        return { ok: false, error: `handoff write failed for task ${task.id}: ${refusalOf(error)}`, retryable: true };
+      }
     }
     let interrupted = false;
     let interruptError;
-    if (handle === "") {
+    if (handoffSource === "member" && member.mode === "checkpoint") {
+      interrupted = false;
+    } else if (handle === "") {
       interruptError = `member ${member.name} has no executor handle — nothing to interrupt`;
     } else {
       try {
@@ -6653,6 +6861,34 @@ async function forceWedgedTask(deps, caller, input) {
     const armed = readTeam(caller.workspace, record.teamId);
     if (armed === undefined)
       return { ok: false, error: `team ${record.teamId} disappeared during the interrupt — the row was not requeued` };
+    const armedTask = armed.tasks.find((candidate) => candidate.id === task.id);
+    const decidedRevision = input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" ? input.evidence.attemptId : null;
+    const moved = armedTask === undefined || armedTask.status !== "in_progress" || decidedRevision !== null && String(armedTask.revision) !== decidedRevision;
+    if (moved) {
+      const observedStatus = armedTask === undefined ? "missing" : armedTask.status;
+      const observedRevision = armedTask === undefined ? 0 : armedTask.revision;
+      appendTeamJournal(caller.workspace, {
+        event: "wedged-force",
+        teamId: record.teamId,
+        at: now.toISOString(),
+        taskId: task.id,
+        member: member.name,
+        path: handoff,
+        reason: `force-skipped: status=${observedStatus} revision=${observedRevision} (decided on ${decidedRevision ?? "unstated"}) — a terminal state won the race; nothing requeued, nothing split`
+      });
+      return {
+        ok: true,
+        teamId: record.teamId,
+        taskId: task.id,
+        member: member.name,
+        handoff,
+        handoffSource,
+        interrupted,
+        ...interruptError === undefined ? {} : { interruptError },
+        split: [],
+        skipped: { status: observedStatus, revision: observedRevision }
+      };
+    }
     let next = updateTeamTask(armed, task.id, { status: "pending", owner: "", attempt, note: `forced (wedged): handoff ${handoff}`, resetStartedAt: true }, now);
     const split = [];
     const scopes = task.writeScopes;
@@ -6660,15 +6896,17 @@ async function forceWedgedTask(deps, caller, input) {
     if (scopes.length >= 2) {
       for (const scope of scopes) {
         const subject = `[split] ${task.subject} — ${scope}`;
-        next = addTeamTask(next, { subject, description: `${continuation} This row owns exactly one write scope: ${scope}.`, writeScopes: [scope], ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
+        next = addTeamTask(next, { subject, description: `${continuation} This row owns exactly one write scope: ${scope}.`, writeScopes: [scope], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
         split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
       }
     } else {
       const subject = `[split] ${task.subject}`;
-      next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
+      next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf } }, now);
       split.push(next.tasks[next.tasks.length - 1]?.id ?? "");
     }
     writeTeam(caller.workspace, next);
+    if (handoffSource === "supervisor")
+      appendContinuationRows(handoff, task.id, attempt, split);
     let mail;
     let mailError;
     const leadSession = record.leadSessionId;
@@ -6683,11 +6921,12 @@ async function forceWedgedTask(deps, caller, input) {
           toName: "captain",
           subject: `force: ${member.name} interrupted on ${task.id} (${record.teamId})`,
           body: [
-            `team ${record.teamId} task ${task.id} (${task.subject}) was in_progress for ${elapsedMs} ms and the watchdog's force supervisor stopped member ${member.name}.`,
-            `handoff: ${handoff}`,
+            `team ${record.teamId} task ${task.id} (${task.subject}) had produced no observable activity for ${input.evidence?.silentMs ?? 0} ms and the watchdog's force supervisor stopped member ${member.name}.`,
+            `handoff (${handoffSource}): ${handoff}`,
             `requeued: ${task.id} as pending, attempt ${attempt}`,
             `split: ${split.length === 0 ? "(none)" : split.join(", ")}`,
-            `interrupt: ${interrupted ? "applied" : "not applied — " + (interruptError ?? "unknown")}`
+            `interrupt: ${interrupted ? "applied" : "not applied — " + (interruptError ?? (handoffSource === "member" ? "the member wrote its own handoff and ended its turn" : "unknown"))}`,
+            `owner: the split rows inherited ${member.name} as their owner, so an owner-only dispatch pass pairs them again — if that seat is unavailable, run the pass with mode:"roster", reassign one id at a time with agent_teams_dispatch {reassign:[{task_id, owner}]}, or claim a row directly with agent_teams_task {action:"claim", task_id}.`
           ].join(`
 `),
           memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
@@ -6709,7 +6948,7 @@ async function forceWedgedTask(deps, caller, input) {
       taskId: task.id,
       member: member.name,
       path: handoff,
-      reason: `elapsed=${elapsedMs}ms interrupted=${interrupted}${interruptError === undefined ? "" : " (" + interruptError + ")"} split=${split.join(",") || "none"}`
+      reason: `idle=${input.evidence?.silentMs ?? 0}ms elapsed=${elapsedMs}ms source=${handoffSource} interrupted=${interrupted}${interruptError === undefined ? "" : " (" + interruptError + ")"} split=${split.join(",") || "none"}`
     });
     return {
       ok: true,
@@ -6717,6 +6956,7 @@ async function forceWedgedTask(deps, caller, input) {
       taskId: task.id,
       member: member.name,
       handoff,
+      handoffSource,
       interrupted,
       ...interruptError === undefined ? {} : { interruptError },
       requeued: { taskId: task.id, attempt },
@@ -7415,7 +7655,7 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync8, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
+import { readFileSync as readFileSync9, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
 import { isAbsolute as isAbsolute2, join as join11, resolve as resolve3 } from "node:path";
 var LEDGER_PATH = join11(".mpd", "boulder.json");
 var PLANS_DIR = join11(".mpd", "plans");
@@ -7430,7 +7670,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync8(join11(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync9(join11(root, LEDGER_PATH), "utf8"));
     return isRecord4(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -7487,7 +7727,7 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync8(path, "utf8"));
+    return parsePlanMarkdown(readFileSync9(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }
@@ -8693,6 +8933,12 @@ function apply(ctx) {
         return resolved;
       return forceWedgedTask(teamActionsDeps, requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace }, { teamId, taskId, ...evidence === undefined ? {} : { evidence } });
     },
+    grace: async ({ sessionId, teamId, taskId, workspace: requestedWorkspace, evidence }) => {
+      const resolved = callerForSession(sessionId);
+      if (!resolved.ok)
+        return resolved;
+      return graceWedgedTask(teamActionsDeps, requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace }, { teamId, taskId, ...evidence === undefined ? {} : { evidence } });
+    },
     cancelTasks: async (input) => cancelTasks(teamActionsDeps, input)
   };
   if (typeof ctx?.provide === "function") {
@@ -9229,6 +9475,7 @@ WARNING: ${value.warning}` : "";
           throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`);
         assertClaimReady(record.tasks, task);
         const claimant = String(args?.claimant ?? sessionId);
+        const claimAt = now();
         const contract = claimContract(workspace, {
           id: task.id,
           subject: task.subject,
@@ -9236,8 +9483,9 @@ WARNING: ${value.warning}` : "";
           blockedBy: task.blockedBy,
           writeScopes: task.writeScopes,
           revision: task.revision
-        }, claimant, now());
-        const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now());
+        }, claimant, claimAt);
+        const reopened = updateTeamTask(record, task.id, { resetStartedAt: true }, claimAt);
+        const claimed = updateTeamTask(reopened, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, claimAt);
         const claimedMember = memberNamedBy(claimed, [claimant]);
         const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed);
         writeTeam(workspace, next);

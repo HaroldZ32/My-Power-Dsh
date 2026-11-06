@@ -99,9 +99,14 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   (`mpd_workmate_spawn` — the same one-shot mechanics, plus persona/memory; what is durable is the
   RECORD, never the child session). **A consult can also run in the BACKGROUND (2026-11-05):**
   `mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
-  cancels, so several consults overlap; every consult — blocking or async — carries a 15-minute
-  deadman that writes a handoff and interrupts the child, and an OPEN `bash` call is its only
-  exemption. Long form: `agent-references/supervision.md`.
+  cancels, so several consults overlap; every consult — blocking or async — carries a SILENCE
+  deadman (`consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms; a declared `0` disables it)
+  that writes a handoff and interrupts only a child with no observable activity — any in-flight tool
+  younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at
+  any age. **The TEAM force rule matches:** silence for `forceAfterMs` (default 900 000 ms),
+  `maxTaskAgeMs` (default `0`) as the opt-in age path, `graceMs` (default 90 000) for ONE
+  handoff-and-end-turn directive before a single interrupt, and completed rows never reopen.
+  Long form: `agent-references/supervision.md`.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,

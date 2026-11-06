@@ -220,12 +220,15 @@ streak 以 `<teamId>\0<taskId>\0<attemptId>` 为键，其中 `attemptId` 是**�
 | `watchdog.enabled` | `true` | 总开关（`MPD_DSH_TEAM_WATCHDOG=off` 可强制关闭） |
 | `watchdog.toolInFlightMaxMs` | `900000` | 未关闭的工具调用最多能解释多久的静默；`0` 关闭该上界（r6） |
 | `watchdog.holdTtlMs` | `900000` | 已写入的 hold 在此上界后自动释放，并留下持久的 `hold-auto-released` 事件记录；`0` = 永不过期 |
-| `watchdog.forceAfterMs` | `900000` | 任务停留在 `in_progress` 多久后成为强制目标：强制监督器会中断其属主、写出交接文档、把任务重新排队并拆分工作；唯一豁免是未关闭的 `bash` 调用，`0` 关闭该规则（D3） |
+| `watchdog.forceAfterMs` | `900000` | 属主**静默**多久后成为强制目标（按静默而非任务年龄计量）：强制监督器先发宽限指令，窗口过期后中断其属主、采用或写出交接文档、把任务重新排队并拆分工作；唯一无上限豁免是未关闭的 `bash` 调用，`0` 关闭该规则（S1/S4） |
+| `watchdog.maxTaskAgeMs` | `0` | **可选**的任务年龄上限：任务在 `in_progress` 多久后即使属主仍在活动也会被强制；`0`（默认）= 永不。打开它就等于重新引入 2026-11-06 的故障模式（S2） |
+| `watchdog.graceMs` | `90000` | 先礼后兵：第一次越过静默上界时只发**一条**“写交接并结束回合”的指令、绝不中断；窗口过期后才进入 kill 阶段；`0` 跳过宽限阶段（S4） |
 
 这些数字就是冻结的 §3 表：它们同时出现在 `machine.ts` 的 `WATCHDOG_DEFAULTS`、本行自身的
-`Config` schema 以及 bundle patch 的行配置中，三层必须完全一致。其中七个旋钮**还**声明在
-`mpd-config` 的 `SettingsSchema.watchdog` 与两道前门共同绘制的共享 `FIELDS` 渲染列表中——
-`forceAfterMs` 是唯一的例外，作为一项**点名的前门残留**（见下文“未声明项”）。这项区分管的是
+`Config` schema 以及 bundle patch 的行配置中，三层必须完全一致。**全部十个旋钮**（含
+`forceAfterMs`、`maxTaskAgeMs`、`graceMs`）都声明在 `mpd-config` 的 `SettingsSchema.watchdog`
+与两道前门共同绘制的共享 `SETTINGS_KNOBS`/`FIELDS` 渲染列表中，Web 设置卡片里手工镜像的副本
+也包含它们——因此不存在“前门残留”。这项区分管的是
 **前门**，不是本行能不能看见某个值：旋钮可以从本行配置（默认层）以及从 `config-file.ts` 每次重读
 都解析的工作区 `.mpd/mpd.jsonc` 文件层读取和设置。在仍然提供旧 `mpd` 命名空间的宿主上，命名空间
 也一样可以读取（其 schemastery schema 保留未知键）；而在被钉住的 harness 上没有任何东西注册该
@@ -403,21 +406,27 @@ tick 在 ESCALATE 时经由 adapter 的内部工具接缝调用 `session-watchdo
   宿主模块中没有被修改。
 * **不做通知界面。** Web 横幅/活动记录与 TUI 状态行、对话框属于后续任务。这里的“记录即通知”
   就是持久事件记录，供那三个读取者消费。
-* **对卡在非 `bash` 工具内部的成员不提供豁免。** r6 的在途规则在调用未满 `toolInFlightMaxMs`
-  时把长时间调用解释掉；而一旦超过 `forceAfterMs`，未关闭的工具**不是** `bash` 的成员就是强制
-  目标：强制监督器（见下文）会中断它、写出交接文档、把任务重新排队并拆分工作。**唯一**豁免是
-  未关闭的 `bash` 调用——不限时长、也不需要时间戳——只在边界处记录一条 `long-bash` 事件，绝不中断。
-* **`forceAfterMs` 已声明在 schema 中，但尚未进入共享的渲染列表。** 它已出现在 `machine.ts` 的
-  `WATCHDOG_DEFAULTS`、本行的 `Config` schema、bundle patch 行配置以及 `mpd-config` 的
-  `SettingsSchema.watchdog` 中，并与其他旋钮一样经由本行配置与 `.mpd/mpd.jsonc` 文件层在每个 tick
-  被重读。尚未落地的是两道前门绘制的共享 `FIELDS` 行：Web 设置卡片在
-  `packages/mpd-bundle-plugin/src/settings-card.ts` 中保有该列表的**镜像**副本，因此只在
-  `mpd-config` 里加行会让那个包的无漂移校验变红。两处改动都属于那个包；在它们落地之前，
-  `/settings` 与 TUI 只渲染其余七个旋钮，`forceAfterMs` 通过行配置或工作区 `.mpd/mpd.jsonc` 设置。
+* **对卡在非 `bash` 工具内部的成员不提供宽限上限。** r6 的在途规则在调用未满 `toolInFlightMaxMs`
+  时把长时间调用解释掉；一旦超过该上界，未关闭的工具**不是** `bash` 的成员就不再算作活动：
+  强制监督器（见下文）开始宽限阶段，窗口过期后中断它、采用或写出交接文档、把任务重新排队并拆分
+  工作。**唯一**无上限豁免是未关闭的 `bash` 调用——不限时长、也不需要时间戳——只在边界处记录一条
+  `long-bash` 事件，绝不中断。
+* **处于 PARKED 状态的成员在没有 `maxTaskAgeMs` 时不是强制目标。** 触发条件是来自
+  `session/event` fold 与心跳戳的**实测静默**，而 fold 的 `PARKED`（没有打开的回合：回合之间、
+  依赖阻塞、已完成但尚未重新派发）根本不报告静默。停摆的成员并不占用 lane，所以静默规则不去动它；
+  需要硬上限的操作者可以设置 `maxTaskAgeMs`，那是**按年龄**强制，等于刻意重新引入 2026-11-06 的
+  故障模式。
+* **三个强制旋钮现在都已渲染（AC11）。** `forceAfterMs`、`maxTaskAgeMs`、`graceMs` 都在
+  `mpd-config` 的共享 `SETTINGS_KNOBS` 渲染列表（驱动 `/settings` 与 TUI）中，Web 设置卡片
+  `packages/mpd-bundle-plugin/src/settings-card.ts` 手工镜像的 `FIELDS` 副本也列出了它们，因此
+  无漂移校验保持绿色。它们同时也在 `machine.ts` 的 `WATCHDOG_DEFAULTS`、本行 `Config` schema、
+  bundle patch 行配置与工作区 `.mpd/mpd.jsonc` 文件层中，并在每个 tick 被重读。
+* **仍未声明的事：** 强制动作的读取端体验。今天 Web 横幅与 TUI 状态行消费持久事件记录，
+  也没有“一键重跑拆分”按钮：恢复靠 captain 的三个动词（owner-only 派发、`reassign`、或直接 `claim`）。
 * **进行中的回合**会**被中止——由强制监督器中止，与 hold 无关**。ESCALATE 的 hold 仍然只阻止
-  **新**派发；而任务达到 `forceAfterMs` 的成员会经 adapter 的中断缝被中断（仅限团队成员——captain
-  永远不是强制目标），卡死的回合就此结束，其任务行回到看板。ESCALATE 之后恢复过来的成员仍然会发现
-  团队处于 hold、无法推进——这正是预期结果。
+  **新**派发；而属主连续 `forceAfterMs` 没有可观测活动的成员会先收到交接指令，只有宽限窗口过期后
+  才经 adapter 的中断缝被中断（仅限团队成员——captain 永远不是强制目标），卡死的回合就此结束，
+  其任务行回到看板。ESCALATE 之后恢复过来的成员仍然会发现团队处于 hold、无法推进——这正是预期结果。
 * **这里不做真实卡死验证。** 单元测试用注入时钟与 stub adapter 驱动机器；故障注入与真实卡死
   通道属于其他任务。
 * `parkedAttempts` 是上文所述的投影；`unread` 按构造恒为 `null`（官方信箱无法经 adapter 观测）。
@@ -460,18 +469,40 @@ node skills/dsh-qa/scripts/preset-conformance.ts
 8 KiB / 40 节点 / 深度 6 工具卡片预算测量。构建失败的卡片返回 `{}`，应用于是回退到通用工具行。
 文本 `render` 与输出 schema 均未改动。
 
-## 强制监督器（force supervisor，2026-11-05）
+## 强制监督器（force supervisor，2026-11-05 起；2026-11-06 起以**静默**触发）
 
-当某个团队成员的 `in_progress` 任务达到 `forceAfterMs` 时，该成员成为强制目标：
+当某个团队成员的 `in_progress` 任务连续 `forceAfterMs` **没有可观测活动**时，该成员成为强制目标。
+触发条件是**静默**，绝不是任务年龄：2026-11-06 的事故在 904s–946s 处强杀了四条正在工作的 lane
+（41 个长回合中有 11 个在第 15 分钟时正处于非 `bash` 工具内部），因此年龄本身不再决定任何事。
 
-- `forceAfterMs` 默认 `900000` ms（15 分钟）；`0` 关闭该规则；与其他旋钮一样，每个 tick 都实时读取。
-- `projectMpdTeam` 携带每个任务的 `startedAt`/`updatedAt`；状态机对每个 task+attempt 只产生一次
-  `wedged` 决策，并在强制动作失败时提供重新武装的路径。
+- `forceAfterMs` 默认 `900000` ms（15 分钟），计量的是 watchdog **自己的静默时钟**（与 WARN 阶梯
+  读取的是同一段时长）：fold 的 OUTSTANDING 请求年龄、fold 的在途调用年龄，或最新的心跳戳。
+  `0` 关闭该规则；与其他旋钮一样，每个 tick 都实时读取。
+- `maxTaskAgeMs`（默认 `0` = 永不）是**唯一**的年龄路径，且需显式开启：打开后，任务即使属主仍在
+  工作也会因“太老”而被强制，这正是上面那起故障模式。
+- `graceMs`（默认 `90000`）把同一个 task+attempt 的决策变成**两阶段**：第一次越界只向成员发送
+  **一条**指令（写交接 `agent_teams_task {action:"handoff"}` 并结束回合），**不中断任何人**；
+  只有窗口过期且任务仍为 `in_progress` 时才进入 kill 决策。窗口内写出七段式交接的成员会被干净收尾，
+  并**采用它自己的文档**作为交接物——不在旁边再写模板。去重键包含阶段，所以宽限与 kill 是两个
+  决策，而不是同一个决策被重新决定。
+- `projectMpdTeam` 携带每个任务的 `startedAt`/`updatedAt`；状态机对每个 task+attempt 依次产生
+  `grace` 与 `wedged` 决策，并在 kill 动作失败时提供重新武装的路径。
+- **终态赢得竞态（S6）**：重新排队之前、以及 `interrupt` await 之后各重读一次任务行；期间落地的
+  `complete` 会让该行保持 `completed`——不重新排队、不拆分，日志行的 reason 写明 `force-skipped`
+  以及观察到的 status 与 revision。
 - 属主身份同时按成员 **NAME** 与其 `executorRef`/session id 解析；本身就是 session id 的属主可直接
   解析。这正是 VEdit 降级的修复：成员自己的 `claim` 会把 session id 写成属主，仅按名字建表的查找
   会落空，于是引擎宣告 `PREDICATE FALLBACK (§4)` 并降级为永远无法 hold 或 escalate 的只报告模式。
-- **唯一**豁免是正在执行的 `bash` 调用：当 in-flight 工具是 `bash` 时，成员在**没有时长上限**的
-  情况下豁免，并在边界处记录**一条** `long-bash` 事件（含已用时间）。
+- **唯一**无上限豁免是正在执行的 `bash` 调用：当 in-flight 工具是 `bash` 时，成员在**没有时长上限**
+  的情况下豁免，并在边界处记录**一条** `long-bash` 事件（含已用时间）。其他任何未关闭的工具只在
+  未满 `toolInFlightMaxMs` 时算作活动；超过该上界就不再算活动（卡死的工具，正是这条规则的目标），
+  而没有可读起始时间的调用按“活动”处理，绝不凭猜测中断。
+- **兜底交接文档承载工作本身**：任务的 `description` 与 `writeScopes`、来自 fold 的最近工具调用
+  **含参数摘录**、fold 观察到的最后一条 assistant 消息、触发强制的实测空闲时长，以及写明**真实任务行
+  id** 的下一步（拆分写入后会把延续行的真实 id 追加进文档）。
+- 每条拆分出的任务行都继承被中断成员作为 `owner`，带 `blockedBy: []` 与 `sourceTaskId`（指向被强制
+  的行），因此默认的 owner-only 派发会再次配对它；captain 的邮箱正文会写明这个继承的属主以及三个
+  恢复动词。
 - captain session **绝不**是强制目标；单次 consult 改由 consult deadman 监督。
 
 **决策者**是本 watchdog，它不持有任何 caller agent：动作由 `mpd-team-core` 的 `mpdTeamActions`

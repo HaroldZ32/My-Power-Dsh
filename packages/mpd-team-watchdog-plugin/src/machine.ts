@@ -68,13 +68,34 @@ export interface WatchdogKnobs {
    */
   holdTtlMs: number
   /**
-   * D3 — THE FORCE BOUND: how long a task may stay `in_progress` before its owner is treated as
-   * WEDGED and the force supervisor interrupts it, writes the handoff, requeues the row and splits
-   * the work. `0` DISABLES the whole rule (the falsifier: the pre-D3 behaviour).
+   * THE FORCE BOUND (S1), measured on SILENCE: how long a task's owner may produce NO observable
+   * activity before the supervisor treats it as WEDGED and starts the two-phase force (grace, then
+   * interrupt, handoff, requeue and split). `0` DISABLES the whole rule.
+   *
+   * NOT a task age: a member inside one long tool call, one long answer or one long step is ACTIVE,
+   * and the receipt for that is a stamp, a `session/event` fact or an update — never the row's
+   * `startedAt`. `maxTaskAgeMs` below is the ONLY age path, and it is off by default.
    *
    * Read LIVE per tick, like every other knob, so lowering it reaches a running watchdog.
    */
   forceAfterMs: number
+  /**
+   * S2 — the OPT-IN AGE CEILING: force a task once it has been `in_progress` for this long, EVEN
+   * WHEN its owner is demonstrably active. `0` (the DEFAULT) means NEVER, which is the contract's
+   * position: age alone killed four working lanes on 2026-11-06 (904s–946s, all mid-tool), and this
+   * knob exists only for an operator who deliberately wants that hard cap back.
+   *
+   * TURNING IT ON REINTRODUCES THE 2026-11-06 FAILURE MODE. It is not a safety net; it is a
+   * declaration that a task may be killed for being old, whatever its owner is doing.
+   */
+  maxTaskAgeMs: number
+  /**
+   * S4 — the GRACE WINDOW: after the first crossing of `forceAfterMs` the member is asked ONCE to
+   * write its handoff and end its turn, and is interrupted only when this long passes with the task
+   * still `in_progress` and the member still silent. `0` disables the grace phase (the pre-S4
+   * single-phase force, which the contract keeps only as a knob and not as a default).
+   */
+  graceMs: number
 }
 
 /** The frozen defaults (frozen contract §3, T-48/D3). */
@@ -97,11 +118,16 @@ export const WATCHDOG_DEFAULTS: WatchdogKnobs = {
   toolInFlightMaxMs: 900_000,
   // 15 minutes: a hold that nobody resumed releases itself and leaves a durable record.
   holdTtlMs: 900_000,
-  // 15 minutes (D3): the user's own bound for ONE piece of work. A task still `in_progress` at
-  // this age is not being worked, it is stuck — the force supervisor interrupts, hands off,
-  // requeues and splits. An OPEN `bash` call is the only exemption (§D3.3) and it has NO age
-  // bound, so this number is never also a tool deadline.
+  // S1: the bound is SILENCE now, not task age. Fifteen minutes with no stamp, no `session/event`
+  // fact and no tool boundary is a member that stopped; a member working inside one call, one step
+  // or one long answer is active and is never a target, however old its row is.
   forceAfterMs: 900_000,
+  // S2: the age ceiling is OPT-IN and off by default, because age alone is what killed four
+  // working lanes on 2026-11-06. Setting it reintroduces exactly that failure mode.
+  maxTaskAgeMs: 0,
+  // S4: ninety seconds between "write your handoff and end your turn" and the interrupt. Long
+  // enough for a seven-section document, short enough that a hung member costs 90 s, not a wave.
+  graceMs: 90_000,
 }
 
 /**
@@ -135,7 +161,7 @@ export function knobReadings(live: WatchdogKnobs, fileSection: unknown): KnobRea
   // The file's `watchdog` section as a plain object; anything else reads as "states nothing".
   const file = fileSection !== null && typeof fileSection === "object" ? (fileSection as Record<string, unknown>) : {}
   // Knob names in the frozen contract order the status view prints them in.
-  const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "enabled"]
+  const knobs: (keyof WatchdogKnobs)[] = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "maxTaskAgeMs", "graceMs", "enabled"]
   return knobs.map((knob) => {
     // The value this process runs with, cast because a keyed read cannot narrow the knob union.
     const liveValue = live[knob] as number | boolean | string
@@ -301,9 +327,16 @@ export function readKnobs(
   // T-17's hold TTL (§3). 0 is likewise meaningful (`never expire`).
   const holdTtlMs = number("holdTtlMs", 0)
 
-  // D3's force bound. 0 is MEANINGFUL again (`the rule is off`), so the floor is 0 and a disabled
-  // rule cannot be confused with a missing one.
+  // S1's force bound (silence, not age). 0 is MEANINGFUL (`the rule is off`), so the floor is 0 and
+  // a disabled rule cannot be confused with a missing one.
   const forceAfterMs = number("forceAfterMs", 0)
+
+  // S2's opt-in age ceiling. 0 is the DEFAULT and means NEVER, so the floor is 0 again.
+  const maxTaskAgeMs = number("maxTaskAgeMs", 0)
+
+  // S4's grace window. 0 disables the phase (the pre-S4 single-phase force), which is a deliberate
+  // choice rather than a missing value.
+  const graceMs = number("graceMs", 0)
 
   // The kill switch: defaults first, the environment override applied last.
   let enabled = defaults.enabled
@@ -317,7 +350,17 @@ export function readKnobs(
     enabled = false
   }
 
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, issues }
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, maxTaskAgeMs, graceMs, issues }
+}
+
+/** One tool call the channel fold observed, in the shape a handoff document quotes it (S5). */
+export interface ToolCallExcerpt {
+  /** The tool name verbatim, as the `tool/call` event named it. */
+  tool: string
+  /** A single-line excerpt of the call's arguments, capped by the fold — never the whole payload. */
+  excerpt: string
+  /** When the call started (ms epoch), so a reader can order two calls and time the last one. */
+  at: number
 }
 
 /** One silence candidate: a live task whose owner is expected to be stepping. */
@@ -399,9 +442,13 @@ export interface SilenceCandidate {
    */
   status?: string
   /**
-   * D3: epoch ms at which the task entered `in_progress` (the record's own `startedAt`), or null
-   * when the board carries none. `null`/absent disables the force rule for this candidate: with no
-   * clock there is no duration, and a duration is the whole trigger.
+   * S1: epoch ms at which the task entered `in_progress` (the record's own `startedAt`), or null
+   * when the board carries none.
+   *
+   * NO LONGER THE FORCE TRIGGER — the trigger is measured silence (see {@link "observeWedge"} for
+   * the exact predicate) and `startedAt` survives for two weaker jobs: it is quoted in the handoff
+   * document, and it is the clock of the OPT-IN `maxTaskAgeMs` ceiling. A candidate with no stamp
+   * and no startedAt is measured by silence alone.
    */
   startedAt?: number | null
   /**
@@ -411,6 +458,20 @@ export interface SilenceCandidate {
    * what the interrupted member was doing. Never used by the machine to decide anything.
    */
   recentTools?: readonly string[]
+  /**
+   * S5: the last tool calls the FOLD observed, oldest first (at most five), each with an argument
+   * excerpt. The stamps carry tool NAMES only, so this is the one source an argument excerpt can
+   * come from; a member with no fold evidence falls back to {@link recentTools} (names alone).
+   *
+   * HISTORY, not a decision input: the supervisor handoff quotes it so the next owner can see what
+   * the interrupted member was actually running. The machine never decides anything from it.
+   */
+  recentToolCalls?: readonly ToolCallExcerpt[]
+  /**
+   * S5: the last assistant message the fold observed for this member, or null when it observed
+   * none. Also HANDOFF EVIDENCE only — the force rule never reads it.
+   */
+  assistantMessage?: string | null
   /**
    * D3: whether this candidate's owner IS the team's LEAD (the captain).
    *
@@ -434,22 +495,68 @@ export type Decision =
    */
   | { type: "tool-expired"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; inFlightMs: number; since: number; tool: string | null }
   /**
-   * D3's decision: a task has sat `in_progress` for at least `forceAfterMs`, so its owner is WEDGED
-   * and the force supervisor must interrupt it, write the handoff, requeue the row and split the work.
+   * S4's GRACE decision: the member's measured silence crossed `forceAfterMs`, so the supervisor asks
+   * it ONCE to write its handoff and end its turn, and NOTHING is interrupted.
    *
-   * `elapsedMs` is measured from the record's own `startedAt` — never from a stamp — because the
-   * trigger is the TASK's age, not the member's silence: a member that keeps stamping but never
-   * finishes a task is exactly the case the silence ladder cannot see.
+   * `deadline` is when the kill phase becomes due (`graceSentAt + graceMs`); the decision carries the
+   * measured `silentMs` and the evidence the directive quotes, so the team plane can word a message
+   * that names the actual row and clock. A member that complies ends in `mode: checkpoint`, and the
+   * kill phase then uses ITS document instead of writing a template.
    */
-  | { type: "wedged"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; startedAt: number; elapsedMs: number; lastToolCalls: readonly string[] }
+  | {
+      type: "grace"
+      teamId: string
+      taskId: string
+      attemptId: string
+      assignee: string
+      memberKey: string
+      /** The measured silence that crossed the bound, in ms. */
+      silentMs: number
+      /** When the row entered `in_progress` (ms epoch), or null when the board carried none. */
+      startedAt: number | null
+      /** How long the row had been in progress at the tick's clock, in ms (0 when unclocked). */
+      elapsedMs: number
+      /** When the grace window expires and the kill phase becomes due (ms epoch). */
+      deadline: number
+    }
   /**
-   * D3's EXEMPTION report: the task crossed `forceAfterMs` while its owner had a `bash` call open.
+   * S4's KILL decision (the second phase): the grace window expired with the member still silent and
+   * the row still `in_progress`, so the force supervisor must interrupt it, use or write the handoff,
+   * requeue the row and split the work.
+   *
+   * `silentMs` is the MEASURED idle duration that triggered the force (S5 requires the handoff to
+   * state it); `elapsedMs` is the row's age and is 0 when the board carries no `startedAt`.
+   */
+  | {
+      type: "wedged"
+      teamId: string
+      taskId: string
+      attemptId: string
+      assignee: string
+      memberKey: string
+      /** The measured silence that triggered the kill, in ms. */
+      silentMs: number
+      /** When the row entered `in_progress` (ms epoch), or null when the board carried none. */
+      startedAt: number | null
+      /** How long the row had been in progress at the tick's clock, in ms (0 when unclocked). */
+      elapsedMs: number
+      /** When the grace directive was sent, ms epoch — the kill phase's own start. */
+      graceSentAt: number
+      /** The tool NAMES the stamps recorded, oldest first (the fallback when the fold saw none). */
+      lastToolCalls: readonly string[]
+      /** S5: the fold's tool calls WITH argument excerpts, oldest first; empty without fold data. */
+      toolCalls: readonly ToolCallExcerpt[]
+      /** S5: the last assistant message the fold observed, or null. */
+      assistantMessage: string | null
+    }
+  /**
+   * D3's EXEMPTION report: the force bound was crossed while its owner had a `bash` call open.
    *
    * The member is WORKING (a verification run may legitimately take an hour), so nothing is
    * interrupted; the incident is the audit trail that the bound was crossed and the exemption was
    * taken. Recorded ONCE per task+attempt generation, at the boundary.
    */
-  | { type: "long-bash"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; startedAt: number; elapsedMs: number; inFlightMs: number; tool: string | null }
+  | { type: "long-bash"; teamId: string; taskId: string; attemptId: string; assignee: string; memberKey: string; startedAt: number | null; elapsedMs: number; inFlightMs: number; tool: string | null }
 
 /**
  * The streak key: per TEAM, per task AND per attempt.
@@ -502,6 +609,16 @@ export class WatchdogMachine {
   private readonly wedgeForced = new Set<string>()
   /** D3 keys already reported as exempt (`long-bash`): one incident per generation, at the boundary. */
   private readonly longBashReported = new Set<string>()
+  /**
+   * S4's PER-PHASE dedupe: keys (team+task+attempt) whose GRACE directive was already sent, mapped to
+   * the tick that sent it.
+   *
+   * GRACE AND KILL ARE TWO DECISIONS, NOT ONE, which is why this map exists beside
+   * {@link wedgeForced}: the grace phase is spent the moment the directive goes out, and the kill
+   * phase is spent the moment the interrupt decision is emitted. A stamp for the key (real progress)
+   * forgets BOTH through {@link clear}, so the next crossing starts a fresh window.
+   */
+  private readonly graceSentAt = new Map<string, number>()
 
   /**
    * Observe every candidate once.
@@ -518,11 +635,11 @@ export class WatchdogMachine {
     for (const candidate of candidates) {
       // This candidate's streak and escalation key.
       const key = streakKey(candidate.teamId, candidate.taskId, candidate.attemptId)
-      // ── D3: THE 15-MINUTE FORCE RULE ─────────────────────────────────────────────────
-      // Evaluated BEFORE every channel question and BEFORE the silence ladder: the trigger is the
-      // TASK's age, not the member's silence, so a member that keeps stamping inside one unfinished
-      // task is exactly the case this rule exists for. It consumes the candidate when it produces a
-      // decision (or takes the bash exemption), and falls through untouched otherwise.
+      // ── S1/S4: THE FORCE RULE, ON SILENCE, IN TWO PHASES ────────────────────────────
+      // Evaluated BEFORE every channel question and BEFORE the silence ladder: it consumes the
+      // candidate while it decides (grace sent / grace pending / kill emitted) or takes the bash
+      // exemption, and falls through untouched otherwise so a force that produced no new revision
+      // cannot silence the ladder.
       if (this.observeWedge(candidate, key, now, knobs, decisions)) continue
       if (this.escalated.has(key)) continue
 
@@ -545,15 +662,16 @@ export class WatchdogMachine {
         continue
       }
       if (channel === "OUTSTANDING") {
-        // When the request became OUTSTANDING; the last stamp is only a fallback clock.
-        const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen
-        // No clock at all: the fold cannot say when the request became outstanding, and
-        // inventing one is exactly the wall-clock inference this redesign removes.
-        if (since === null) {
+        // THE LADDER'S OWN CLOCK, read through the ONE helper the force rule also consumes
+        // (`silenceOf`): the request's outstanding instant, with the last stamp as the fallback.
+        // No clock at all: the fold cannot say when the request became outstanding, and inventing
+        // one is exactly the wall-clock inference this redesign removes.
+        const silentMs = this.silenceOf(candidate, now)
+        if (silentMs === null) {
           this.streaks.delete(key)
           continue
         }
-        this.observeSilence(candidate, key, now - since, now, knobs, "silence-channel", "OUTSTANDING", false, decisions)
+        this.observeSilence(candidate, key, silentMs, now, knobs, "silence-channel", "OUTSTANDING", false, decisions)
         continue
       }
 
@@ -603,29 +721,46 @@ export class WatchdogMachine {
         this.observeInFlight(candidate, key, now, knobs, decisions)
         continue
       }
-      this.observeSilence(candidate, key, now - candidate.lastSeen, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions)
+      // The same ONE silence helper the force rule reads: the newest stamp's age, which is the §4
+      // rule's whole clock. It answers `null` only for a state the ladder withholds (`turn-end`
+      // reached above), which keeps the ladder and the force rule from disagreeing about silence.
+      const silentMs = this.silenceOf(candidate, now)
+      if (silentMs === null) {
+        this.streaks.delete(key)
+        continue
+      }
+      this.observeSilence(candidate, key, silentMs, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions)
     }
     return decisions
   }
 
   /**
-   * D3: decide whether ONE candidate has crossed the force bound, and record what that means.
+   * S1/S2/S3/S4: decide whether ONE candidate is WEDGED, and record which phase that is.
    *
-   * The rule, in the order the contract states it:
-   *   1. `forceAfterMs <= 0` disables it (the falsifier: the pre-D3 behaviour).
-   *   2. Only an `in_progress` task with a recorded `startedAt` can be wedged.
+   * THE PREDICATE, in the order the contract states it:
+   *   1. `forceAfterMs <= 0` disables the rule (the falsifier: the pre-D3 behaviour). The age CEILING
+   *      never revives a disabled rule, because "0 disables the whole rule" is the frozen contract.
+   *   2. Only an `in_progress` task can be wedged — a `pending` row is waiting for a dispatch.
    *   3. THE CAPTAIN IS NEVER A FORCE TARGET (rule 5): the Lead's own seat is skipped here, and the
    *      action refuses it again on the record — two independent guards, because interrupting the
    *      session that authorised the team would take the whole wave down.
-   *   4. Past the bound, an OPEN `bash` call exempts the member with NO age bound (a legitimate
-   *      verification run may take an hour): one `long-bash` incident at the boundary, nothing
-   *      interrupted, and the next tick re-evaluates.
-   *   5. Otherwise exactly ONE `wedged` decision per task+attempt generation.
+   *   4. S3: an OPEN tool call is ACTIVITY. An open `bash` is exempt with NO bound (a legitimate
+   *      verification run may take an hour) and reports ONE `long-bash` incident at the boundary; any
+   *      OTHER tool holds the rule off only while it is younger than `toolInFlightMaxMs` — past that
+   *      the entry stops counting as activity, which is exactly what a HUNG tool looks like.
+   *   5. S1: the trigger is the MEASURED SILENCE from `silenceOf` — the same clock the §3 ladder
+   *      reads. A candidate whose state the ladder explains (ALIVE/PARKED, or a `turn-end` boundary)
+   *      reports no silence and is never forced by time alone.
+   *   6. S2: the OPT-IN `maxTaskAgeMs` ceiling is the ONLY age path. `0` (the default) means age can
+   *      never force anything; a non-zero value deliberately reintroduces the 2026-11-06 failure mode.
+   *   7. S4: TWO PHASES on one key. The first crossing emits ONE `grace` decision (the directive) and
+   *      interrupts nobody; the `wedged` (kill) decision follows only when `graceMs` has passed with
+   *      the task still crossing. `graceMs: 0` skips straight to the kill, which is the pre-S4 shape.
    *
    * @param candidate - the candidate under observation.
-   * @param key - its team+task+attempt key (the dedupe key).
+   * @param key - its team+task+attempt key (the dedupe key, one entry per phase).
    * @param now - the tick's clock (injectable).
-   * @param knobs - the resolved knobs (`forceAfterMs` is read live).
+   * @param knobs - the resolved knobs (`forceAfterMs`, `maxTaskAgeMs` and `graceMs` are read live).
    * @param decisions - the decisions of this pass, appended to in place.
    * @returns true when the candidate was CONSUMED (do not run the silence ladder for it).
    */
@@ -638,29 +773,40 @@ export class WatchdogMachine {
   ): boolean {
     // 1. The rule is off; every other decision path stays as it was.
     if (knobs.forceAfterMs <= 0) return false
-    // 2. A task that is not being worked cannot be wedged, and neither can one with no clock.
+    // 2. A task that is not being worked cannot be wedged.
     if (candidate.status !== "in_progress") return false
     // THE CAPTAIN IS NEVER A FORCE TARGET (rule 5): `lead` is the engine's resolution (the owner may be
     // the lead's session id), and `CAPTAIN_KEY` covers a fixture that spells it the short way.
     if (candidate.assignee === CAPTAIN_KEY || candidate.lead === true) return false
-    // The task's own start instant; null/absent means no duration exists (fail-safe: no force).
-    const startedAt = candidate.startedAt
-    if (typeof startedAt !== "number" || !Number.isFinite(startedAt)) return false
-    // How long the task has been in progress, in ms.
-    const elapsedMs = now - startedAt
-    if (elapsedMs < knobs.forceAfterMs) return false
-    // 4. THE ONLY EXEMPTION: an OPEN bash call. No age bound — the call being open IS the evidence
-    // that work is happening, and the incident is the audit trail that the bound was crossed.
-    //
+    // The task's own start instant, quoted by the handoff and used by the age ceiling ONLY. Absent is
+    // not a refusal: the silence clock does not need it (a fixture or a legacy row may carry none).
+    const startedAt = typeof candidate.startedAt === "number" && Number.isFinite(candidate.startedAt) ? candidate.startedAt : null
+    // How long the row has been in progress, in ms; 0 is the honest reading when nobody clocked it.
+    const elapsedMs = startedAt === null ? 0 : now - startedAt
+    // ── 4. S3: THE IN-FLIGHT TOOL ────────────────────────────────────────────────────────────────
     // THE TOOL NAME IS THE EXEMPTION, never the presence of a start instant (§D3.3, review F3): a
     // stamp stream that names the tool but carries no usable clock (a harness that skips `at`, or a
-    // fold that saw the call without its start) is still an OPEN BASH, and interrupting that member
-    // would be the exact false positive the exemption exists to prevent. With no clock the reported
-    // age is 0 — stated, not invented.
-    const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null
-    /** When that call started: the stamp's own clock first, the fold's second, `null` when neither states one. */
-    const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null
-    if (tool === "bash") {
+    // fold that saw the call without its start) is still an OPEN call, and interrupting that member
+    // would be the exact false positive the exemption exists to prevent.
+    const tool = this.openToolOf(candidate)
+    // The measured silence this tick: the ladder's own clock, or null when the state is explained.
+    const silentMs = this.silenceOf(candidate, now)
+    // S2's ceiling, the ONLY age path, and off unless an operator turned it on.
+    const ageExceeded = knobs.maxTaskAgeMs > 0 && startedAt !== null && now - startedAt >= knobs.maxTaskAgeMs
+    // Whether the force bound was crossed by SILENCE, by the opt-in ceiling, or not at all.
+    const crossed = (silentMs !== null && silentMs >= knobs.forceAfterMs) || ageExceeded
+    // F3: A RECOVERED MEMBER EARNS A NEW GRACE WINDOW. The candidate stopped crossing (activity came
+    // back below the bound), so the directive sent for the PREVIOUS crossing no longer describes this
+    // generation's work and its window must not be spent on a later one: keeping the old instant would
+    // send the next crossing straight to the kill phase, interrupting a member that was never asked
+    // again. ONLY the grace phase is cleared — the kill-phase dedupe (`wedgeForced`) stays, because
+    // after a kill the row is requeued and the ATTEMPT, hence this key, changes.
+    if (!crossed) {
+      this.graceSentAt.delete(key)
+      return false
+    }
+    if (tool.tool === "bash") {
+      // The exemption is reported ONCE per generation, at the boundary, and it interrupts nothing.
       if (!this.longBashReported.has(key)) {
         this.longBashReported.add(key)
         decisions.push({
@@ -673,21 +819,47 @@ export class WatchdogMachine {
           startedAt,
           elapsedMs,
           // A call whose start nobody stamped has no measurable age; 0 is the honest reading.
-          inFlightMs: typeof inFlightSince === "number" ? now - inFlightSince : 0,
-          tool,
+          inFlightMs: tool.since === null ? 0 : now - tool.since,
+          tool: tool.tool,
         })
       }
       return true
     }
-    // 5. One force per generation. A key that is ALREADY here got its `wedged` decision on an EARLIER
-    //    tick and came back with the same revision, so that force produced NO new attempt: it failed
-    //    (a NON-retryable refusal leaves the key in place; a retryable one re-arms through
-    //    `rearmWedge`) or it never reached the team plane at all. The candidate must then fall through
-    //    to the silence ladder — a watchdog that goes silent for a task whose force failed is the one
-    //    failure this rule must not cause. NOTHING is re-decided: the `add` below is the only place a
-    //    `wedged` decision is emitted, and a SUCCESSFUL force bumps the row's revision, so the old key
-    //    is never observed again.
+    // ANY OTHER OPEN TOOL is activity while it is inside its bound. With no clock the bound cannot be
+    // measured, and the fail-safe direction is "do not interrupt on a guess".
+    if (tool.tool !== null) {
+      if (tool.since === null) return false
+      if (knobs.toolInFlightMaxMs > 0 && now - tool.since <= knobs.toolInFlightMaxMs) return false
+      // Past the bound (or with suppression disabled) the entry STOPS being activity: a tool call
+      // that outlives its window is the hung tool this rule exists for, so the decision falls through.
+    }
+    // ── 5/7. ONE DECISION PER PHASE PER GENERATION ──────────────────────────────────────────────
+    // The kill decision is emitted at most once per generation. A key that already reached it came
+    // back with the same revision, so the force produced NO new attempt (a NON-retryable refusal
+    // leaves the key in place; a retryable one re-arms through `rearmWedge`) or it never reached the
+    // team plane. The candidate must then fall through to the silence ladder — a watchdog that goes
+    // silent for a task whose force failed is the one failure this rule must not cause.
     if (this.wedgeForced.has(key)) return false
+    // The grace phase: the directive goes out FIRST, and the kill waits for `graceMs` from it.
+    const graceSentAt = this.graceSentAt.get(key)
+    if (knobs.graceMs > 0 && graceSentAt === undefined) {
+      this.graceSentAt.set(key, now)
+      decisions.push({
+        type: "grace",
+        teamId: candidate.teamId,
+        taskId: candidate.taskId,
+        attemptId: candidate.attemptId,
+        assignee: candidate.assignee,
+        memberKey: candidate.memberKey,
+        silentMs: silentMs ?? elapsedMs,
+        startedAt,
+        elapsedMs,
+        deadline: now + knobs.graceMs,
+      })
+      return true
+    }
+    // Inside the window: consumed, so neither a second directive nor a WARN is emitted meanwhile.
+    if (knobs.graceMs > 0 && graceSentAt !== undefined && now - graceSentAt < knobs.graceMs) return true
     this.wedgeForced.add(key)
     decisions.push({
       type: "wedged",
@@ -696,11 +868,78 @@ export class WatchdogMachine {
       attemptId: candidate.attemptId,
       assignee: candidate.assignee,
       memberKey: candidate.memberKey,
+      silentMs: silentMs ?? elapsedMs,
       startedAt,
       elapsedMs,
+      // A kill reached without a grace phase (`graceMs: 0`) is its own grace instant.
+      graceSentAt: graceSentAt ?? now,
       lastToolCalls: [...(candidate.recentTools ?? [])],
+      toolCalls: [...(candidate.recentToolCalls ?? [])],
+      assistantMessage: candidate.assistantMessage ?? null,
     })
     return true
+  }
+
+  /**
+   * The ONE silence clock: how long this candidate has produced no observable activity, in ms, or
+   * `null` when the state itself is EXPLAINED and no silence should be measured.
+   *
+   * Both consumers read it — the §3 WARN ladder and the S1 force rule — so the two can never
+   * disagree about what silence is (S1: "reuse the silence machinery the watchdog already computes,
+   * do not build a second clock"). The source is chosen exactly as §1/§4 always chose it:
+   *   * the channel predicate when the fold answered for the member (`OUTSTANDING` clocks from the
+   *     request's own start; `IN-FLIGHT` clocks from the open call, which is S3's bound);
+   *   * the heartbeat stamps otherwise, with the ladder's own withholdings: a `turn-end` boundary is
+   *     "between turns", and a member that never stamped this task has no clock at all.
+   *
+   * @param candidate - the candidate whose silence is measured.
+   * @param now - the tick's clock (injectable).
+   * @returns the silent interval in ms, or null when the candidate is explained / has no clock.
+   */
+  private silenceOf(candidate: SilenceCandidate, now: number): number | null {
+    // The channel predicate is the §1 authority whenever the fold answered for this member.
+    if (candidate.channelState === "OUTSTANDING") {
+      // The request's own start; the newest stamp is only the fallback clock.
+      const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen
+      return since === null ? null : now - since
+    }
+    if (candidate.channelState === "IN-FLIGHT") {
+      // The open call's start is the bound's clock (S3). No clock means no measurable silence.
+      const since = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null
+      return since === null ? null : now - since
+    }
+    if (candidate.channelState === "ALIVE" || candidate.channelState === "PARKED") {
+      // Explained states (contract §1): an answered/streaming step, a step between steps, or a member
+      // between turns. The ladder never warns on them, so the force rule must not kill on them.
+      return null
+    }
+    // §4: no channel evidence — the heartbeat clock, with the ladder's two withholdings.
+    if (candidate.lastKind === "turn-end") return null
+    if (candidate.lastSeen === null || !candidate.everStampedForTask) return null
+    return now - candidate.lastSeen
+  }
+
+  /**
+   * The tool call this candidate has OPEN, from the stamps first and the fold second (S3).
+   *
+   * The stamps are the in-flight bound's authority (§1 rule 1); the fold's `tool/call` is the
+   * fallback when the stamp stream carries no open call (a harness without the PRE hook, or a call
+   * attributed to another task). A call with no readable start is still an open call — the tool name
+   * decides the bash exemption — and `since: null` states that nobody clocked it.
+   *
+   * @param candidate - the candidate whose open call is read.
+   * @returns the open call's tool name and start, or `{ tool: null, since: null }` when none is open.
+   */
+  private openToolOf(candidate: SilenceCandidate): { tool: string | null; since: number | null } {
+    // The stamp's own open call wins: it is the stream the bound was designed around.
+    if (typeof candidate.inFlightTool === "string" && candidate.inFlightTool !== "") {
+      return { tool: candidate.inFlightTool, since: typeof candidate.inFlightSince === "number" ? candidate.inFlightSince : null }
+    }
+    // The fold's reading is the fallback, and the ONLY source when the PRE hook never fired.
+    if (typeof candidate.channelInFlightTool === "string" && candidate.channelInFlightTool !== "") {
+      return { tool: candidate.channelInFlightTool, since: typeof candidate.channelInFlightSince === "number" ? candidate.channelInFlightSince : null }
+    }
+    return { tool: null, since: null }
   }
 
   /**
@@ -829,10 +1068,12 @@ export class WatchdogMachine {
     this.neverStarted.delete(key)
     this.toolExpired.delete(key)
     this.reportedFallback.delete(key)
-    // D3: a stamp for this task+attempt is EVIDENCE of progress, so the force and exemption reports
-    // are forgotten with the rest — the next time the task crosses the bound it is decided afresh.
+    // D3/S4: a stamp for this task+attempt is EVIDENCE of progress, so the force, its grace phase and
+    // the exemption report are forgotten with the rest — the next time the task crosses the bound it
+    // is decided afresh, with a NEW grace window rather than the previous one's deadline.
     this.wedgeForced.delete(key)
     this.longBashReported.delete(key)
+    this.graceSentAt.delete(key)
   }
 
   /** Whether a TEAM's task+attempt already escalated (the tick's idempotence check). */
@@ -841,7 +1082,7 @@ export class WatchdogMachine {
   }
 
   /** The current streak map, for diagnostics and assertions. */
-  snapshot(): { streaks: Record<string, number>; escalated: string[]; toolExpired: string[]; inFlightSuppressed: number; wedged: string[]; longBash: string[] } {
+  snapshot(): { streaks: Record<string, number>; escalated: string[]; toolExpired: string[]; inFlightSuppressed: number; wedged: string[]; longBash: string[]; grace: Record<string, number> } {
     return {
       streaks: Object.fromEntries(this.streaks),
       escalated: [...this.escalated].sort(),
@@ -849,6 +1090,8 @@ export class WatchdogMachine {
       inFlightSuppressed: this.inFlightSuppressed,
       wedged: [...this.wedgeForced].sort(),
       longBash: [...this.longBashReported].sort(),
+      // S4's open grace windows, key -> the instant the directive was recorded at.
+      grace: Object.fromEntries(this.graceSentAt),
     }
   }
 }

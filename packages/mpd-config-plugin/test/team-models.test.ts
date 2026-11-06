@@ -156,8 +156,9 @@ describe("§7 — thirty-three per-agent rows in the ONE declaration, in group o
   const routeKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")
 
   test("exactly thirty-three new rows, after the original thirteen and before the TUI knob", () => {
-    // 47 = the thirteen original knobs + the eleven agents' three leaves + `tui.dashboardKey` LAST.
-    expect(SETTINGS_KNOBS).toHaveLength(47)
+    // 50 = the thirteen original knobs + the three force-supervisor rows (`forceAfterMs`, `graceMs`,
+    // `maxTaskAgeMs`, contract §S1/§S2/§S4) + the eleven agents' three leaves + `tui.dashboardKey` LAST.
+    expect(SETTINGS_KNOBS).toHaveLength(50)
     expect(routeKnobs).toHaveLength(33)
     // The legacy slot tree leaves no row behind: no knob path may address `teamModels`.
     expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")).toHaveLength(0)

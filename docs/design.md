@@ -735,25 +735,36 @@ session.
 
 `mpd_role_spawn_async` returns a `consultId` at once and `mpd_role_consult` lists/waits/collects/
 cancels; concurrency is capped by `MPD_DSH_CONSULT_MAX` (default 8, over-cap queues). Every consult,
-blocking or async, is armed with a 900 000 ms deadman that writes a handoff and interrupts the child,
-except while its CURRENT call is an OPEN `bash` (no age bound). The handle lives on the adapter's
-shared activation seam (`spawnAgentAsync`); `spawnAgent` is its blocking projection, so workmate and
-cellwork_recon keep their shapes. Read-only members deny the two consult tools (ten names) and every
-consult remains a leaf.
+blocking or async, is armed with a deadman whose bound is read at every arm from
+`consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms (a declared `0` disables it). On expiry
+an OPEN `bash` is exempt at any age; any other open tool younger than `toolInFlightMaxMs` is activity;
+otherwise the supervisor writes the handoff (task, measured idle, the last assistant message when
+observed, the last tool calls with excerpts) and interrupts the child. The handle lives on the
+adapter's shared activation seam (`spawnAgentAsync`); `spawnAgent` is its blocking projection, so
+workmate and cellwork_recon keep their shapes. Read-only members deny the two consult tools (ten names)
+and every consult remains a leaf.
 
 ### Force supervisor
 
-A team member whose `in_progress` task reaches `forceAfterMs` (default 900 000 ms; 0 disables; read
-live per tick) triggers the watchdog's `wedged` decision, resolved by owner identity (name AND
-`executorRef`/session id). Its action lives in team-core (`mpdTeamActions`): handoff → interrupt →
-requeue → split → captain mailbox → `wedged-force` journal. An OPEN `bash` is the only exemption, the
-captain is never a target, and one-shot consults are covered by the deadman instead.
+A team member whose `in_progress` task has produced NO observable activity for `forceAfterMs`
+(default 900 000 ms; 0 disables; read live per tick) triggers the watchdog's `wedged` decision,
+resolved by owner identity (name AND `executorRef`/session id). The trigger is SILENCE, not task age:
+`maxTaskAgeMs` (default `0` = never) is the only age path and is opt-in. Any in-flight tool younger
+than `toolInFlightMaxMs` counts as activity; an OPEN `bash` is exempt at any age; a non-`bash` tool
+past that bound stops counting. The action lives in team-core (`mpdTeamActions`) and is grace first,
+kill second: the member receives one directive to write its handoff and end its turn, a
+member-authored handoff inside `graceMs` (default 90 000) is adopted, and only an expired window leads
+to the interrupt, then requeue → split (each split row owned by the interrupted member, `blockedBy:
+[]`, `sourceTaskId` set) → captain mailbox naming the recovery verbs → `wedged-force` journal. A
+terminal state wins the race: a row re-read as no longer `in_progress`, or whose revision moved, is
+never requeued or split, and one `force-skipped` row records it. The captain is never a target, and
+one-shot consults are covered by the deadman instead.
 
 ### Plane coverage
 
-| Plane | Re-team | Async consults | 15-minute force |
+| Plane | Re-team | Async consults | Force supervisor |
 |---|---|---|---|
-| Agent Teams | yes (same session) | — | yes (watchdog) |
+| Agent Teams | yes (same session) | — | yes (watchdog, silence) |
 | cellwork seats | yes (same session) | — | yes (watchdog, seat identity) |
 | cellwork reseed / `cellwork_recon` | yes | yes (same seam) | yes (deadman) |
 | autoproject | yes (same session) | yes (inherited) | yes (deadman, `slotBoundMs` aligned) |

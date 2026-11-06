@@ -426,6 +426,7 @@ so the row an owner claims carries the acceptance text it is judged against.
 The verifier's read-only deny list is now TEN names (adding `mpd_role_spawn_async` and
 `mpd_role_consult`) and the no-delegation list carries four (the two spawn tools plus both consult
 tools): a verifier seat can neither delegate nor cancel another consult. A cell seat IS a team
-member, so the team watchdog's force supervisor targets it through that team-member identity
-(handoff, interrupt, requeue, split) while `mpd-team-core` never writes the CELL record — a seat
-repairs its own seat afterwards through the existing `cellwork_dispatch` / `cellwork_split` verbs.
+member, so the team watchdog's force supervisor targets it through that team-member identity and its
+GRACE-then-force order (grace directive, ADOPTED member handoff, then interrupt, requeue, split) while
+`mpd-team-core` never writes the CELL record — a seat repairs its own seat afterwards through the
+existing `cellwork_dispatch` / `cellwork_split` verbs.

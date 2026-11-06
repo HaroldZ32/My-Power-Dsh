@@ -647,6 +647,13 @@
     { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
     { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", semantics: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
     { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", semantics: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+    // The three FORCE-SUPERVISOR rows (contract §S1/§S2/§S4), mirrored element-for-element from the
+    // shared declaration at the same indices: `forceAfterMs` measures SILENCE, not task age;
+    // `graceMs` is the handoff window before the kill; `maxTaskAgeMs` ships `0` because age alone must
+    // never force a task. A no-drift test compares this list to the shared declaration.
+    { path: ["watchdog", "forceAfterMs"], label: "Force bound — silence (ms, 0 = off)", zh: "强制阈值——静默（毫秒，0 表示关闭）", kind: "number", semantics: "how long a member may produce NO observable activity before the force supervisor acts: this is SILENCE, not task age, so a task running for hours with fresh tool stamps is never forced; `0` disables the rule" },
+    { path: ["watchdog", "graceMs"], label: "Handoff grace (ms)", zh: "交接宽限期（毫秒）", kind: "number", semantics: "the GRACE phase between the watchdog's ONE handoff directive and the kill: the member is told to write its handoff and end its turn, and it is interrupted only when this window expires with it still running" },
+    { path: ["watchdog", "maxTaskAgeMs"], label: "Task-age ceiling (ms, 0 = never)", zh: "任务年龄上限（毫秒，0 表示从不）", kind: "number", semantics: "an OPTIONAL hard ceiling on task AGE, `0` by default: age alone never forces a task, and turning this on reintroduces the 2026-11-06 failure mode in which members working for ~15 minutes were killed" },
     // The thirty-three per-agent route leaves (mirrors of the ONE knob declaration in
     // packages/mpd-config-plugin/src/settings-schema.ts). Every leaf is a `select`: the options come
     // from the live catalog at render time (see optionsFor) and fall back to the declared lists

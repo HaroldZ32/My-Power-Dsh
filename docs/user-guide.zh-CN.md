@@ -580,7 +580,8 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
 | `agentRoutes.<Agent>.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`）、mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个 **AGENT** 只有一条路由、没有默认层：未配置或格式错误的 agent 路由会用 `AGENT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因路由失败；该 agent 自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的路由按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的、或没有可用路由的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错。四个分组只是批量编辑快捷方式：分组写入会改动每个成员自己的条目，且需先确认 |
-| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick：该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效：无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
+| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick：该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效：无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry）。强制相关键：`forceAfterMs`（默认 `900000`；成员连续多久**没有可观测活动**就由强制监督器介入 —— 它衡量**静默**而非任务年龄，`0` 关闭该规则）、`graceMs`（默认 `90000`；那条指令与终止之间的交接窗口）与 `maxTaskAgeMs`（默认 `0`，即从不；唯一的年龄路径，需显式开启，开启会重新引入 2026-11-06 的失败模式）。这三个键都会渲染在 `/settings` 与 TUI 中 |
+| `consult.forceAfterMs` | mpd-roles（单次 consult 的 deadman） | 每次武装 deadman 时，经实时 `mpd-config` 服务读取 | 实时生效：编辑 `<workspace>/.mpd/mpd.jsonc` 会到达**下一次**武装，无需重启。回退顺序为 `watchdog.forceAfterMs`，再 `900000`；显式声明 `0` 即关闭 deadman。正在执行的 `bash` 无论多久都豁免；其他在飞工具只要年轻于 `watchdog.toolInFlightMaxMs` 就算活动 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
 `cooldownMs`、`binary`），只能改行并重新安装。

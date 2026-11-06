@@ -3,9 +3,17 @@
 // ONE record per consult — blocking or async — because the two surfaces differ only in WHEN the
 // caller reads the report. A record owns: the shared activation handle (`dsh.spawnAgentAsync`), the
 // concurrency slot (`MPD_DSH_CONSULT_MAX`, default 8: over the cap a consult QUEUES and never
-// throws), the 15-minute deadman (900 000 ms, the user's one-shot rule) and the handoff document the
-// deadman writes before it interrupts a child. Open `bash` is the deadman's ONLY exemption and it
-// has NO age bound (§D2.6).
+// throws), the deadman and the handoff document the deadman writes before it interrupts a child.
+//
+// THE DEADMAN NOW SHARES THE FORCE SUPERVISOR'S SEMANTICS (contract §S9): its bound is SILENCE,
+// resolved per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000 ms, and ANY open
+// tool younger than `toolInFlightMaxMs` counts as activity. An open `bash` keeps the no-age-bound
+// exemption; any OTHER open tool past that bound stops counting (a hung tool) and the child is
+// interrupted. With no open tool the expiry compares MEASURED IDLE (`now - lastActivityAt`, stamped by
+// every tool start, every tool completion and every committed assistant message) against the same
+// bound, so a child that is demonstrably working re-arms from the REMAINING time and is never cut at
+// the bound. The handoff carries the measured idle duration and quotes the last assistant message
+// when the row observed one.
 //
 // The module is deliberately free of harness services: it receives the raise and handoff seams, so
 // its tests need no boot and a per-plane caller can reuse it.
@@ -14,8 +22,20 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type { DshAsyncAgent, DshSpawnResult } from "../../mpd-dsh-adapter-plugin/src/index"
 
-/** The default deadman bound on one consult: 15 minutes, the user's one-shot rule (§D2.6). */
+/**
+ * The DOCUMENTED DEFAULT deadman bound on one consult: 15 minutes, the user's one-shot rule (§D2.6).
+ *
+ * It is only the LAST link of the resolution chain (§S9): the bound in force is read at every arm
+ * from `consult.forceAfterMs`, then `watchdog.forceAfterMs`, and only then this value — so a
+ * configured bound is never shadowed by a module constant.
+ */
 export const CONSULT_FORCE_AFTER_MS = 900_000
+/**
+ * The default bound for the in-flight half of the deadman's predicate (§S3): an OPEN tool younger
+ * than this explains silence away, and one older than it stops counting. Used only when the source
+ * declares no `watchdog.toolInFlightMaxMs` (or declares an unusable one).
+ */
+export const CONSULT_TOOL_IN_FLIGHT_MAX_MS = 900_000
 /** The default cap on concurrently RUNNING consults (§D2.5) — the host's active-child limit. */
 export const CONSULT_MAX_DEFAULT = 8
 /** The largest `mpd_role_consult wait` timeout the tool accepts, in milliseconds (§D2.4). */
@@ -24,6 +44,8 @@ export const CONSULT_WAIT_MAX_MS = 60_000
 export const CONSULT_WAIT_DEFAULT_MS = 30_000
 /** How many completed tool calls the handoff document may quote (name + a ≤400-character excerpt). */
 export const CONSULT_ACTIVITY_HISTORY = 5
+/** How many characters of the last assistant message the handoff may quote (a longer answer is cut, never dropped). */
+export const CONSULT_MESSAGE_EXCERPT = 1_200
 
 /** Prefix that keeps a LABEL-keyed bucket distinct from a child-id bucket (the no-id fallback). */
 export const CONSULT_LABEL_KEY_PREFIX = "label:"
@@ -58,9 +80,9 @@ export function consultLabelKey(role: string): string {
   return CONSULT_LABEL_KEY_PREFIX + role
 }
 
-/** One observed tool call of a child — the unit the deadman's bash exemption reads. */
+/** One observed tool call of a child — the unit the deadman's in-flight predicate reads. */
 export interface ConsultActivity {
-  /** The registered tool name (`bash` is the only name the deadman exempts). */
+  /** The registered tool name (`bash` is the only name with the no-age-bound exemption). */
   name: string
   /** When the call started, epoch milliseconds. */
   startedAt: number
@@ -74,6 +96,19 @@ export interface ConsultToolActivity {
   current?: ConsultActivity
   /** The most recent COMPLETED calls, oldest first, bounded by {@link CONSULT_ACTIVITY_HISTORY}. */
   history: ConsultActivity[]
+  /**
+   * When the newest observable activity was seen, epoch milliseconds: a tool boundary (start or
+   * end) or a committed assistant message. The deadman compares the idle it measures from here
+   * against its bound, so a stamp inside the window re-arms the timer instead of letting the
+   * expiry cut a working child; absent, the measurement falls back to the consult's own start.
+   */
+  lastActivityAt?: number
+  /**
+   * The last committed assistant message's text, when the activity source observes the child's
+   * `session/event` stream. The handoff quotes it so a resumed child knows what it was saying when
+   * it went silent; absent, the handoff states that none was observed.
+   */
+  lastAssistantMessage?: string
 }
 
 /** Everything one consult start needs; `raise` closes over the roster's route/persona resolution. */
@@ -149,8 +184,14 @@ export interface ConsultSupervisorDeps {
   log: (line: string) => void
   /** The cap on running consults; defaults to {@link CONSULT_MAX_DEFAULT}. */
   maxConcurrent?: () => number
-  /** The deadman bound, milliseconds; defaults to {@link CONSULT_FORCE_AFTER_MS}. */
+  /** The deadman bound, milliseconds, read PER ARM from the live config chain (§S9). */
   forceAfterMs?: () => number
+  /**
+   * The in-flight-tool bound, milliseconds, read PER EXPIRY: an OPEN tool younger than this is
+   * activity, an older one is not (§S3). Defaults to {@link CONSULT_TOOL_IN_FLIGHT_MAX_MS}; `0`
+   * keeps the watchdog's meaning (no open tool explains silence away).
+   */
+  toolInFlightMaxMs?: () => number
   /**
    * The child's current/last tool activity, keyed by the CHILD's id (F1 repair).
    *
@@ -200,6 +241,12 @@ interface ConsultRecord {
   handle?: DshAsyncAgent
   /** The deadman timer handle. */
   timer?: unknown
+  /**
+   * The bound the CURRENT arm was set under, milliseconds. An expiry decides with THIS value, so a
+   * configuration change that lands mid-flight governs the NEXT arm instead of moving the deadline of
+   * the one already running (AC9); a live `0` still disables the rule outright.
+   */
+  armBoundMs?: number
   /** The settlement promise every surface awaits. */
   done: Promise<ConsultReport>
   /** The settlement resolver. */
@@ -218,6 +265,10 @@ interface ConsultRecord {
   released: boolean
   /** Whether this record HOLDS a slot granted by `acquire()` (a queued consult holds none). */
   held: boolean
+  /** Whether the ONE `consult-long-bash` incident was already recorded (one per consult, not one per re-arm). */
+  longBashLogged?: boolean
+  /** The `startedAt` of the open call already reported as in-flight activity, so one call yields one line. */
+  inFlightLoggedFor?: number
 }
 
 /**
@@ -245,10 +296,36 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
   const setTimer = deps.setTimer ?? ((fn: () => void, ms: number): unknown => setTimeout(fn, ms))
   /** Clear a timer. */
   const clearTimer = deps.clearTimer ?? ((handle: unknown): void => { clearTimeout(handle as ReturnType<typeof setTimeout>) })
-  /** The deadman bound read per start, so a config change applies to the next consult. */
+  /** The deadman bound read per arm, so a config change applies to the NEXT arm (§S9). */
   const forceAfterMs = deps.forceAfterMs ?? ((): number => CONSULT_FORCE_AFTER_MS)
+  /** The in-flight-tool bound read per expiry, so a config change applies to the NEXT expiry (§S3). */
+  const toolInFlightMaxMs = deps.toolInFlightMaxMs ?? ((): number => CONSULT_TOOL_IN_FLIGHT_MAX_MS)
   /** The concurrency cap read per start. */
   const maxConcurrent = deps.maxConcurrent ?? ((): number => CONSULT_MAX_DEFAULT)
+
+  /**
+   * The deadman bound one arm runs under, milliseconds.
+   *
+   * A non-positive answer DISABLES the deadman, which is the shared meaning of the knob (`0`
+   * disables the rule); an unusable answer falls back to {@link CONSULT_FORCE_AFTER_MS} rather than
+   * catching a parse error and firing at once.
+   * @returns the bound in milliseconds, `<= 0` when the deadman is disabled.
+   */
+  const boundOf = (): number => {
+    /** The configured bound, truncated to whole milliseconds. */
+    const configured = Math.trunc(Number(forceAfterMs()))
+    return Number.isFinite(configured) ? configured : CONSULT_FORCE_AFTER_MS
+  }
+
+  /**
+   * The in-flight-tool bound one expiry runs under, milliseconds.
+   * @returns the bound in milliseconds; `0` means no open tool explains silence away.
+   */
+  const inFlightBoundOf = (): number => {
+    /** The configured bound, truncated to whole milliseconds. */
+    const configured = Math.trunc(Number(toolInFlightMaxMs()))
+    return Number.isFinite(configured) ? Math.max(0, configured) : CONSULT_TOOL_IN_FLIGHT_MAX_MS
+  }
   /** Every live consult, keyed by its id (insertion order is creation order). */
   const records = new Map<string, ConsultRecord>()
   /** The number of consults occupying a concurrency slot right now. */
@@ -365,8 +442,38 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     return calls.slice(0, CONSULT_ACTIVITY_HISTORY).map(describeCall).join(" | ")
   }
 
-  /** Write the handoff document the deadman promises; never throws (a failure is a log line). */
-  const writeHandoff = (record: ConsultRecord, activity: ConsultToolActivity | undefined): string | undefined => {
+  /**
+   * Measure how long the consult has been idle at one expiry.
+   *
+   * The newest instant the source reported wins: `lastActivityAt` (a stamped tool boundary or a
+   * committed assistant message), an open call's start, then the completed history, each only as a
+   * fallback for a source that stamps none of them. A consult with no observation at all measures
+   * from its own start, so the document always states a measured duration.
+   * @param record - the consult being forced.
+   * @param activity - the source's view, when it has one.
+   * @param at - the expiry instant, epoch milliseconds.
+   * @returns the idle duration in milliseconds, never negative.
+   */
+  const idleMsOf = (record: ConsultRecord, activity: ConsultToolActivity | undefined, at: number): number => {
+    /** Every instant the source can attest, the consult's own start first. */
+    const stamps: number[] = [record.startedAt]
+    if (typeof activity?.lastActivityAt === "number" && Number.isFinite(activity.lastActivityAt)) stamps.push(activity.lastActivityAt)
+    if (typeof activity?.current?.startedAt === "number" && Number.isFinite(activity.current.startedAt)) stamps.push(activity.current.startedAt)
+    for (const call of activity?.history ?? []) {
+      if (typeof call.startedAt === "number" && Number.isFinite(call.startedAt)) stamps.push(call.startedAt)
+    }
+    return Math.max(0, at - Math.max(...stamps))
+  }
+
+  /**
+   * Write the handoff document the deadman promises; never throws (a failure is a log line).
+   * @param record - the consult being forced.
+   * @param activity - the source's view, quoted for whoever resumes the task.
+   * @param boundMs - the deadman bound this expiry ran under, quoted as the trigger.
+   * @param idleMs - the measured idle duration that triggered the force.
+   * @returns the document path, or undefined when the write failed.
+   */
+  const writeHandoff = (record: ConsultRecord, activity: ConsultToolActivity | undefined, boundMs: number, idleMs: number): string | undefined => {
     try {
       /** The workspace handoff directory for this consult's caller. */
       const dir = deps.handoffDir(record.exec)
@@ -377,6 +484,16 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       const path = join(dir, "consult-" + record.id + "-" + instant + ".md")
       /** The completed calls, oldest first. */
       const calls = activity === undefined ? [] : activity.history
+      /** The call open AT KILL TIME: past the in-flight bound, or the bound was disabled. */
+      const open = activity?.current
+      /** How long that open call had run, milliseconds (0 when no call was open). */
+      const openAgeMs = open === undefined ? 0 : Math.max(0, now() - open.startedAt)
+      /** The last committed assistant message, when the source observed one. */
+      const message = activity?.lastAssistantMessage
+      /** The message line: the quoted answer on ONE line, or the honest absence. */
+      const messageLine = message === undefined || message === ""
+        ? "- last assistant message: (none observed)"
+        : "- last assistant message: " + (message.length > CONSULT_MESSAGE_EXCERPT ? message.slice(0, CONSULT_MESSAGE_EXCERPT) + "…" : message).replace(/\s+/g, " ")
       /** The document, one line per contract section. */
       const lines = [
         "# Consult handoff — " + record.id,
@@ -384,14 +501,18 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
         "- task: " + record.task,
         "- role: " + record.role,
         "- started: " + new Date(record.startedAt).toISOString(),
-        "- elapsed: " + (now() - record.startedAt) + " ms (deadman " + forceAfterMs() + " ms)",
+        "- elapsed: " + (now() - record.startedAt) + " ms (deadman bound " + boundMs + " ms)",
+        "- idle: " + idleMs + " ms with no observable activity" + (open === undefined ? "" : "; the open " + open.name + " call had run " + openAgeMs + " ms"),
+        messageLine,
         "- last tool calls:",
-        ...(activity?.current === undefined ? [] : ["  - (IN FLIGHT) " + describeCall(activity.current)]),
-        ...(calls.length === 0 && activity?.current === undefined ? ["  - (none observed)"] : []),
+        ...(open === undefined ? [] : ["  - (IN FLIGHT) " + describeCall(open)]),
+        ...(calls.length === 0 && open === undefined ? ["  - (none observed)"] : []),
         ...calls.map((call) => "  - " + describeCall(call)),
         "",
-        "Next step: resume the task above from the last completed tool call; the child was interrupted",
-        "by the 15-minute consult deadman because its open call was not a `bash` command.",
+        "Next step: resume the task above from the last completed tool call. The child was interrupted",
+        "by the consult deadman after " + idleMs + " ms with no observable activity (bound " + boundMs + " ms"
+          + (open === undefined ? "" : ", and its open " + open.name + " call had run " + openAgeMs + " ms and no longer counted as activity")
+          + ").",
         "",
       ]
       writeFileSync(path, lines.join("\n"), "utf8")
@@ -402,24 +523,85 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
     }
   }
 
-  /** The deadman: exempt an OPEN bash, otherwise write the handoff and interrupt (§D2.6). */
+  /**
+   * The deadman (§D2.6, §S9): decide whether THIS consult is still working, and act only when it is not.
+   *
+   * The predicate is the force supervisor's, applied to this consult's own tool map, and it is decided
+   * on MEASURED SILENCE rather than on the mere fact that a timer expired: with an open `bash` the
+   * child is exempt at ANY age (one `consult-long-bash` record); with another open tool YOUNGER than
+   * the in-flight bound it is working (re-arm); with an open tool PAST that bound it is hung and this
+   * expiry settles it. With no open tool the measured idle (`now - lastActivityAt`, stamped by every
+   * tool start, every tool completion and every committed assistant message) decides BEFORE anything
+   * is interrupted: below the bound the child is demonstrably working and re-arms from the REMAINING
+   * time, so a slow-but-busy child is never cut at the bound; at or past it the child is silent and
+   * gets the handoff plus the interrupt.
+   * @param record - the running consult whose deadman expired.
+   */
   const onDeadman = (record: ConsultRecord): void => {
     if (record.reported) return
     // THE SUBJECT IS THE CHILD (F1 repair): ask for THIS consult's own child id, so a same-role
     // sibling's tool start/end can never overwrite or clear this child's open-call stamp.
     /** The child's activity, when the row observes tool calls. */
     const activity = deps.activityOf?.(record.handle?.id, record.role)
+    /** The expiry instant, epoch milliseconds. */
+    const at = now()
     /** The elapsed time at expiry, milliseconds. */
-    const elapsedMs = now() - record.startedAt
-    if (activity?.current?.name === "bash") {
-      // THE ONLY EXEMPTION, WITH NO AGE BOUND (§D2.6): a legitimate verification run may take an
-      // hour, so the deadman records ONE warning and re-arms instead of killing the child.
-      deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed")
+    const elapsedMs = at - record.startedAt
+    /** The deadman bound this expiry runs under, quoted in the handoff and the report. */
+    const boundMs = boundOf()
+    // The knob can be turned to `0` WHILE a consult runs: that declares the deadman DISABLED, so an
+    // already-armed timer stops instead of cutting a child the operator just unbound.
+    if (boundMs <= 0) return
+    /** The bound the CURRENT arm was set under: the deadline this expiry is measuring against (AC9). */
+    const armBoundMs = record.armBoundMs ?? boundMs
+    /** The call currently open, when one is. */
+    const open = activity?.current
+    if (open?.name === "bash") {
+      // THE NO-AGE-BOUND EXEMPTION (§D2.6, kept by §S3): a legitimate verification run may take an
+      // hour, so the deadman records ONE incident and re-arms instead of killing the child. This is
+      // the only case that ignores the in-flight bound.
+      if (record.longBashLogged !== true) {
+        record.longBashLogged = true
+        deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed")
+      }
       arm(record)
       return
     }
+    /** Whether an open NON-`bash` call has outlived the in-flight bound, which makes it a hung tool. */
+    let hung = false
+    if (open !== undefined) {
+      /** The in-flight bound this expiry runs under, milliseconds. */
+      const inFlightMs = inFlightBoundOf()
+      /** How long that call has been open, milliseconds. */
+      const openAgeMs = Math.max(0, at - open.startedAt)
+      if (inFlightMs > 0 && openAgeMs < inFlightMs) {
+        // ANY in-flight tool younger than the bound is activity (§S3) — not just `bash`. One log line
+        // per open call keeps the re-arm visible without turning a long call into a log loop.
+        if (record.inFlightLoggedFor !== open.startedAt) {
+          record.inFlightLoggedFor = open.startedAt
+          deps.log("consult-tool-in-flight " + record.id + " role=" + record.role + " tool=" + open.name + " ageMs=" + openAgeMs + " boundMs=" + inFlightMs + " — the open call is activity; re-armed")
+        }
+        arm(record)
+        return
+      }
+      // Past that bound the call stops counting as activity (§S3), so this expiry settles the child
+      // whatever the idle measurement says: a hung tool is the one case silence cannot explain away.
+      hung = inFlightMs > 0
+    }
+    /** The measured idle duration at THIS expiry (§S9), milliseconds — taken BEFORE the decision. */
+    const idleMs = idleMsOf(record, activity, at)
+    if (!hung && idleMs < armBoundMs) {
+      // THE CHILD IS DEMONSTRABLY WORKING: a tool completion, a tool start or a committed assistant
+      // message landed inside the bound, so the expiry is not a silence. Re-arm from what is LEFT of
+      // the bound (never a fresh full bound), which keeps the deadline honest for a slow child and
+      // means a child producing activity at any cadence below the bound is never interrupted at all.
+      /** The time left before this child would really be silent, milliseconds (at least 1). */
+      const remainingMs = armBoundMs - idleMs
+      arm(record, remainingMs)
+      return
+    }
     /** The handoff path written before the interrupt (undefined when the write failed). */
-    const handoff = writeHandoff(record, activity)
+    const handoff = writeHandoff(record, activity, armBoundMs, idleMs)
     if (handoff !== undefined) record.handoff = handoff
     record.state = "interrupted"
     try {
@@ -428,11 +610,11 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
       // Best-effort: the handoff on disk is the durable notification and the report still records
       // the interruption.
     }
-    /** The interruption report: the handoff path and the last observed activity ride it (§D2.6). */
+    /** The interruption report: the handoff path, the idle duration and the last activity ride it (§D2.6/§S9). */
     const report: ConsultReport = {
       role: record.role,
       status: "interrupted",
-      summary: "consult interrupted by the 15-minute deadman" + (handoff === undefined ? "" : " — handoff: " + handoff),
+      summary: "consult interrupted by the consult deadman after " + idleMs + " ms with no observable activity (bound " + armBoundMs + " ms)" + (handoff === undefined ? "" : " — handoff: " + handoff),
       recommendation: "",
       details: "",
       evidence: handoff === undefined ? [] : [handoff],
@@ -447,18 +629,31 @@ export function createConsultSupervisor(deps: ConsultSupervisorDeps): ConsultSup
 
   // Declared AFTER its caller on purpose: `onDeadman` runs only from a timer, long after this
   // function body completed, so the hoisted binding is always assigned by then.
-  /** Arm the deadman for one running record (re-armed after a long-bash exemption). */
-  const arm = (record: ConsultRecord): void => {
+  /**
+   * Arm (or RE-arm) the deadman for one running record.
+   *
+   * The bound is resolved HERE, per arm, through the live chain (§S9); a non-positive bound disables
+   * the deadman and arms nothing, exactly as `forceAfterMs: 0` disables the watchdog's rule.
+   * @param record - the consult to supervise.
+   * @param delayMs - how long THIS arm waits, milliseconds. Absent means the full bound, which is what
+   *   the first arm and every open-tool re-arm use; a re-arm on measured activity passes the REMAINING
+   *   time (`bound - idle`) instead, so the deadline cannot slide past the silence bound.
+   */
+  const arm = (record: ConsultRecord, delayMs?: number): void => {
     if (record.reported) return
     /** The bound in force for this arm, milliseconds. */
-    const bound = Math.max(1, Math.trunc(Number(forceAfterMs())) || CONSULT_FORCE_AFTER_MS)
+    const bound = boundOf()
+    if (bound <= 0) return
+    /** The delay this arm waits, clamped to 1 ms so a nearly-exhausted bound still re-checks once. */
+    const waitMs = delayMs === undefined ? bound : Math.max(1, Math.min(bound, Math.trunc(delayMs)))
+    record.armBoundMs = bound
     record.timer = setTimer(() => {
       try {
         onDeadman(record)
       } catch (error) {
         deps.log("consult deadman threw for " + record.id + ": " + (error instanceof Error ? error.message : String(error)))
       }
-    }, bound)
+    }, waitMs)
   }
 
   /** Project a record onto the public view. */
