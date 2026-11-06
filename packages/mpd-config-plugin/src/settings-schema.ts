@@ -244,9 +244,23 @@ export const SettingsSchema = z.object({
     actionOnEscalate: z.union([z.const("pause"), z.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: z.number().default(900000),
     holdTtlMs: z.number().default(900000),
-    // D3's force bound: a task `in_progress` this long becomes a force target; `0` disables the rule.
+    // §S1: the force bound measures SILENCE, not task age. A member with no observable activity for
+    // this long is a force target; `0` still disables the whole rule.
     forceAfterMs: z.number().default(900000),
+    // §S2: an OPTIONAL hard ceiling on task AGE, `0` = never. With the silence trigger this is the
+    // only way age can force a task, and turning it on reintroduces the 2026-11-06 failure mode
+    // (members killed at ~904-946 s of task age while they were working), so it ships disabled.
+    maxTaskAgeMs: z.number().default(0),
+    // §S4: the GRACE phase between the one "write your handoff now" directive and the kill. A member
+    // that writes its own handoff inside this window is closed cleanly instead of interrupted.
+    graceMs: z.number().default(90000),
   }),
+  // The CONSULT deadman's own bound (§S9). A consult is not a team task — it has no board row to
+  // write a handoff to — so it keeps its own document and its own knob, resolved per arm:
+  // `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900 000. Declaring the default here makes the
+  // form show the value the code falls back to; the roles row still reads the FILE-declared value
+  // first, so a workspace that only sets `watchdog.forceAfterMs` still moves the deadman.
+  consult: z.object({ forceAfterMs: z.number().default(900000) }),
   // The DSH-TUI surface's own knob. It lives in THIS schema because this file is the single source
   // for the namespace schema and for the knob list both front doors render — a knob declared only
   // inside the TUI section would be drift. `dashboardKey` is the L0 default of the Ctrl+A takeover:
@@ -604,7 +618,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The forty-seven knobs, in display order: the original thirteen, the thirty-three per-agent route leaves, then the TUI surface's own knob. */
+/** The fifty knobs, in display order: the original thirteen, the three force-supervisor rows, the thirty-three per-agent route leaves, then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -621,6 +635,13 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+  // The three FORCE-SUPERVISOR rows (contract §S1/§S2/§S4). They sit after the original thirteen so
+  // every index-keyed assertion in the TUI and the Web card keeps its meaning, and they are the rows
+  // an operator needs to see: `forceAfterMs` no longer means task AGE, and the other two knobs did
+  // not exist on any front door before this wave.
+  { path: ["watchdog", "forceAfterMs"], label: "Force bound — silence (ms, 0 = off)", zh: "强制阈值——静默（毫秒，0 表示关闭）", kind: "number", hint: "how long a member may produce NO observable activity before the force supervisor acts: this is SILENCE, not task age, so a task running for hours with fresh tool stamps is never forced; `0` disables the rule" },
+  { path: ["watchdog", "graceMs"], label: "Handoff grace (ms)", zh: "交接宽限期（毫秒）", kind: "number", hint: "the GRACE phase between the watchdog's ONE handoff directive and the kill: the member is told to write its handoff and end its turn, and it is interrupted only when this window expires with it still running" },
+  { path: ["watchdog", "maxTaskAgeMs"], label: "Task-age ceiling (ms, 0 = never)", zh: "任务年龄上限（毫秒，0 表示从不）", kind: "number", hint: "an OPTIONAL hard ceiling on task AGE, `0` by default: age alone never forces a task, and turning this on reintroduces the 2026-11-06 failure mode in which members working for ~15 minutes were killed" },
   ...AGENT_ROUTE_KNOBS,
   // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
   // the per-agent route leaves keeps its meaning. Its `hint` is the semantics sentence only — the

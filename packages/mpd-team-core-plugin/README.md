@@ -543,13 +543,25 @@ The watchdog is the DECIDER (it resolves `mpdTeams` and holds no caller agent), 
 `leadSessionId`. An absent service or a missing lead session records the incident and skips — the
 tick never throws.
 
-One force action: (1) write `.mpd/handoff/<member>-<task>-<UTC instant>.md` (task, attempt, member,
-started, elapsed, last tool calls, review state); (2) `executor().interrupt(caller.agent, handle)` for
-THAT member only; (3) requeue the task `pending` with `attempt` bumped and a note naming the handoff;
-(4) SPLIT — one new pending, unowned task per declared write scope when the task declares two or more
-(each inheriting the handoff path), otherwise exactly one continuation task with the subject prefix
-`[split]`; (5) one captain mailbox row naming team, task, handoff and split rows; (6) journal
-`wedged-force` plus one incident record.
+**GRACE comes first.** The first crossing of the silence bound is ONE `wedged-grace` directive: the
+member is asked once, through the executor's `send`, to write its seven-section handoff
+(`agent_teams_task {action:"handoff"}`) and end its turn, and NOTHING is interrupted. A member that
+already wrote its handoff is reported `adopted` and left alone; a delivery failure falls back to ONE
+captain mailbox row, because a silent grace phase would look like a healthy team.
+
+**Only an expired grace forces** (`wedged-force`): (1) USE the member-authored seven-section document
+under `.mpd/team/handoff/<teamId>/` VERBATIM when one exists, otherwise write the supervisor fallback
+`.mpd/handoff/<member>-<task>-<UTC instant>.md` (task, attempt, member, started, elapsed, idle, last
+tool calls, review state); (2) `executor().interrupt(caller.agent, handle)` for THAT member only —
+skipped when the member complied and its seat already sits in `checkpoint`; (3) re-read the record:
+a TERMINAL state, or a row that moved off the decided generation, WINS THE RACE — the journal records
+`wedged-force` with a `force-skipped` reason and nothing is requeued or split, so a completed row is
+never reopened; (4) requeue the row `pending` with `owner` cleared, `attempt` bumped and a note naming
+the handoff; (5) SPLIT — one `[split]` row PER declared write scope when the row declares two or more,
+otherwise exactly ONE continuation row; every split row inherits the interrupted member as `owner` and
+carries `blockedBy: []` and `sourceTaskId: <forced row>`; (6) ONE captain mailbox row naming the team,
+the task, the handoff, the split ids AND the recovery verbs — an owner-only `mode:"roster"` pass, one
+`reassign` per id, or a plain `claim`; (7) journal `wedged-force`.
 
 Failure semantics: a handoff write failure aborts that member's force for this attempt (retried on
 the next tick, at most once per attempt); an interrupt refusal is recorded and the action STILL

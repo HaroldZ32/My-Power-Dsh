@@ -48,6 +48,7 @@ import {
   type KnobReading,
   type ResolvedKnobs,
   type SilenceCandidate,
+  type ToolCallExcerpt,
   type WatchdogKnobs,
 } from "./machine.js"
 import { sceneDir } from "./paths.js"
@@ -67,6 +68,13 @@ import { agentIds, CAPTAIN_KEY, currentTask, dependencyBlocked, readTeams, resol
  */
 export interface WedgeForceSeam {
   /**
+   * S4's GRACE phase: deliver ONE directive telling the member to write its handoff and end its turn.
+   *
+   * MUST NOT THROW for a refusal: nothing is interrupted here, so a failure is an `{ ok:false }`
+   * answer the engine records and the kill phase then proceeds without it.
+   */
+  graceWedged: (request: WedgeGraceRequest) => Promise<WedgeGraceOutcome>
+  /**
    * Force one wedged member: handoff, interrupt, requeue and split.
    *
    * MUST NOT THROW for a refusal (an absent member, a captain target, a closed team): a refusal is
@@ -74,6 +82,42 @@ export interface WedgeForceSeam {
    * down.
    */
   forceWedged: (request: WedgeForceRequest) => Promise<WedgeForceOutcome>
+}
+
+/** One grace request: the board row, the member and the measured silence the directive quotes. */
+export interface WedgeGraceRequest {
+  /** The workspace whose team record holds the row. */
+  workspace: string
+  /** The team the row belongs to (mpd's own `teamId`). */
+  teamId: string
+  /** The board row that crossed the silence bound. */
+  taskId: string
+  /** That row's generation token. */
+  attemptId: string
+  /** The owning member exactly as the board spells it (a NAME or a session id). */
+  member: string
+  /** The AUTHORISING session: the team's own recorded lead, never the interrupted member. */
+  sessionId: string
+  /** The measured silence that crossed the bound, in ms (quoted by the directive). */
+  silentMs: number
+  /** How long the grace window lasts from this tick, in ms (quoted by the directive). */
+  graceMs: number
+}
+
+/** What the team plane answered to a grace directive. */
+export interface WedgeGraceOutcome {
+  /** Whether the directive reached the member by at least one channel. */
+  ok: boolean
+  /** The refusal or failure sentence, for the incident and the log line. */
+  error?: string
+  /** The directive text the member was sent, when one was composed. */
+  directive?: string
+  /** The handoff path the member was asked to write (`<ws>/.mpd/team/handoff/<teamId>/<member>-<n>.md`). */
+  path?: string
+  /** The mailbox row's id, when the durable copy landed. */
+  mail?: string
+  /** Whether the harness delivery seam (`executor().send`) accepted the directive. */
+  delivered?: boolean
 }
 
 /** One force request, as the watchdog states it from the record it already read. */
@@ -90,12 +134,20 @@ export interface WedgeForceRequest {
   member: string
   /** The AUTHORISING session: the team's own recorded lead, never the interrupted member. */
   sessionId: string
-  /** Epoch ms at which the task entered `in_progress`. */
-  startedAt: number
-  /** How long it had been in progress at the tick's clock. */
+  /** Epoch ms at which the task entered `in_progress`, or null when the board carried none. */
+  startedAt: number | null
+  /** How long it had been in progress at the tick's clock (0 when unclocked). */
   elapsedMs: number
+  /** S5: the measured idle duration that triggered the force, in ms. */
+  silentMs: number
+  /** When the grace directive was recorded, ms epoch (the kill phase's own start). */
+  graceSentAt: number
   /** The tool names this task's stamps recorded, oldest first (handoff evidence). */
   lastToolCalls: readonly string[]
+  /** S5: the fold's tool calls WITH argument excerpts, oldest first (handoff evidence). */
+  toolCalls: readonly ToolCallExcerpt[]
+  /** S5: the last assistant message the fold observed, or null. */
+  assistantMessage: string | null
 }
 
 /** What the team plane answered, normalised so the engine needs no team-core types. */
@@ -111,6 +163,14 @@ export interface WedgeForceOutcome {
   retryable?: boolean
   /** The handoff document the action wrote, when it did. */
   handoff?: string
+  /**
+   * S4: WHICH document became the artifact — `member` when the member wrote its own seven-section
+   * handoff during the grace window (no template was written), `supervisor` when the action wrote
+   * the fallback.
+   */
+  handoffSource?: "member" | "supervisor"
+  /** S6: set when the force was SKIPPED because the row reached a terminal state or moved. */
+  skipped?: { status: string; revision: number }
   /** The board row after the requeue, when one happened. */
   requeued?: { taskId: string; attempt: number }
   /** The `[split]` rows the action created, in creation order. */
@@ -152,10 +212,17 @@ export interface EngineConfig {
    */
   holdTtlMs: number
   /**
-   * D3's force bound: how long a task may stay `in_progress` before its owner is treated as wedged.
-   * `0` DISABLES the rule; read live per tick like every other knob.
+   * THE FORCE BOUND (S1), measured on SILENCE: how long a task's owner may produce no observable
+   * activity before the two-phase force starts. `0` DISABLES the rule; read live per tick.
    */
   forceAfterMs: number
+  /**
+   * S2's OPT-IN age ceiling. `0` (the default) means age NEVER forces anything; a non-zero value
+   * deliberately reintroduces the 2026-11-06 failure mode and is documented as dangerous.
+   */
+  maxTaskAgeMs: number
+  /** S4's grace window: the pause between the directive and the interrupt. `0` skips the phase. */
+  graceMs: number
   /** Print skipped-team reasons to the console as well as the debug channel. */
   verboseSkips: boolean
   /** Prefix of every console and logger line this engine writes. */
@@ -212,6 +279,12 @@ export interface EngineStats {
   holdsAutoReleaseFailures: number
   /** D3: wedged members the force supervisor interrupted and requeued. */
   forced: number
+  /** S4: grace directives recorded (the first phase of a force). */
+  graceSent: number
+  /** S4: grace attempts that did not reach the member (recorded, never fatal). */
+  graceFailures: number
+  /** S6: forces SKIPPED because the row reached a terminal state or moved during the interrupt. */
+  forceSkipped: number
   /** D3: force attempts that did not land (an absent seam, no lead session, or a refusal). */
   forceFailures: number
   /** D3: `long-bash` exemptions recorded (a task past the bound with a `bash` call open). */
@@ -493,6 +566,9 @@ export class WatchdogEngine {
     holdsAutoReleased: 0,
     holdsAutoReleaseFailures: 0,
     forced: 0,
+    graceSent: 0,
+    graceFailures: 0,
+    forceSkipped: 0,
     forceFailures: 0,
     longBash: 0,
     lastError: null,
@@ -641,6 +717,8 @@ export class WatchdogEngine {
       toolInFlightMaxMs: this.config.toolInFlightMaxMs,
       holdTtlMs: this.config.holdTtlMs,
       forceAfterMs: this.config.forceAfterMs,
+      maxTaskAgeMs: this.config.maxTaskAgeMs,
+      graceMs: this.config.graceMs,
     }
   }
 
@@ -1089,6 +1167,12 @@ export class WatchdogEngine {
               await this.recordToolExpired(workspace, team, decision, now)
               continue
             }
+            // S4's FIRST PHASE: ask the member to checkpoint itself. Nothing is interrupted, so this
+            // never reaches the scene/hold path either.
+            if (decision.type === "grace") {
+              await this.graceWedge(workspace, team, decision, now)
+              continue
+            }
             // D3: the two FORCE decisions. They are decided and recorded HERE, but ACTED on by the
             // team plane (the force action needs a live caller agent the watchdog does not hold), so
             // neither ever reaches the scene/hold path below.
@@ -1475,6 +1559,11 @@ export class WatchdogEngine {
         outstandingSince: view.outstandingSince,
         channelInFlightSince: view.inFlightSince,
         channelInFlightTool: view.inFlightTool,
+        // S5: the fold's tool calls WITH argument excerpts and its last assistant message ride the
+        // candidate into the `wedged` decision, which is what makes the fallback handoff carry the
+        // work instead of a list of tool names.
+        recentToolCalls: view.recentToolCalls,
+        assistantMessage: view.lastAssistantMessage,
         heartbeatFallback: false,
         lead: isLead,
       }
@@ -1485,7 +1574,7 @@ export class WatchdogEngine {
   private async act(
     workspace: string,
     team: TeamRecord,
-    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" } | { type: "grace" }>,
     now: number,
   ): Promise<{ scene: string | null; held: boolean }> {
     // The team's hold as it stands on disk, before this decision acts.
@@ -1696,7 +1785,82 @@ export class WatchdogEngine {
   }
 
   /**
-   * D3: hand ONE wedged task to the team plane's force action, and record what it answered.
+   * S4's GRACE phase: hand ONE directive to the team plane, which delivers it to the member.
+   *
+   * NOTHING IS INTERRUPTED HERE. The whole point of the phase is that a member which is merely slow
+   * gets a chance to checkpoint ITSELF (the seven-section document) instead of being killed, so this
+   * method only records the decision durably and reports what the team plane answered.
+   *
+   * An absent seam, an absent lead session, a throw or a refusal are ALL recorded and NONE is fatal:
+   * the kill phase is due at `decision.deadline` whether or not the directive landed, because a
+   * supervisor that goes quiet when its message failed is the one outcome that must not happen.
+   *
+   * @param workspace - the workspace whose team record holds the row.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `grace` decision.
+   * @param now - the tick's clock.
+   */
+  private async graceWedge(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "grace" }>,
+    now: number,
+  ): Promise<void> {
+    // The authorising session: the LEAD the record names, never the member being asked.
+    const sessionId = team.captainSessionId ?? ""
+    /** Why the directive did not reach the team plane, when it did not. */
+    let failure: string | null = sessionId === "" ? "the team record names no lead session — the grace directive cannot be authorised" : null
+    /** What the team plane answered, when it was asked at all. */
+    let outcome: WedgeGraceOutcome | undefined
+    if (failure === null && this.forceSeam === undefined) {
+      failure = "no team plane is mounted (`mpdTeamActions` absent) — the grace directive was not delivered"
+    } else if (failure === null && this.forceSeam !== undefined) {
+      try {
+        outcome = await this.forceSeam.graceWedged({
+          workspace,
+          teamId: team.id,
+          taskId: decision.taskId,
+          attemptId: decision.attemptId,
+          member: decision.assignee,
+          sessionId,
+          silentMs: decision.silentMs,
+          graceMs: this.knobs.graceMs,
+        })
+      } catch (error) {
+        failure = message(error)
+      }
+      if (failure === null && outcome !== undefined && !outcome.ok) failure = outcome.error ?? "the grace action refused"
+    }
+    if (failure !== null) {
+      this.stats.graceFailures += 1
+      this.warn(
+        "WEDGED-GRACE NOT DELIVERED " + team.id +
+          " task=" + decision.taskId +
+          " member=" + decision.assignee +
+          " silent=" + decision.silentMs + "ms: " + failure +
+          " (the kill phase is still due at " + decision.deadline + ")",
+      )
+      return
+    }
+    this.stats.graceSent += 1
+    // The durable record: the ONE statement that the member was asked, and when the kill becomes due.
+    this.appendGraceIncident(workspace, team, decision, now, outcome)
+    this.info(
+      "WEDGED-GRACE " + team.id +
+        " task=" + decision.taskId +
+        " attempt=" + decision.attemptId +
+        " member=" + decision.assignee +
+        " silent=" + decision.silentMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" +
+        " deadline=" + decision.deadline +
+        " handoff=" + (outcome?.path ?? "none") +
+        " mail=" + (outcome?.mail ?? "none") +
+        " delivered=" + (outcome?.delivered === true ? "yes" : "no") +
+        " — the member was asked to write its handoff and end its turn; NOTHING was interrupted",
+    )
+  }
+
+  /**
+   * D3/S4: hand ONE wedged task to the team plane's force action, and record what it answered.
    *
    * THE DECIDER/ACTOR SPLIT (§D3.4): this engine reads the record and holds NO caller agent, so it
    * cannot interrupt anybody itself. It calls the `mpdTeamActions` seam with the team's OWN recorded
@@ -1705,7 +1869,9 @@ export class WatchdogEngine {
    * NONE is fatal — the tick never throws.
    *
    * FAILURE SEMANTICS: a `retryable` refusal (the handoff could not be written) re-arms the task so
-   * the next tick decides again, while the incident stays at most ONE per task+attempt.
+   * the next tick decides again, while the incident stays at most ONE per task+attempt. An outcome
+   * carrying `skipped` (S6: the row completed or moved during the interrupt) records a `skipped`
+   * force — the re-read is the team plane's, and it is never second-guessed here.
    *
    * @param workspace - the workspace whose team record holds the row.
    * @param team - the projected team the row belongs to.
@@ -1740,13 +1906,35 @@ export class WatchdogEngine {
         sessionId,
         startedAt: decision.startedAt,
         elapsedMs: decision.elapsedMs,
+        silentMs: decision.silentMs,
+        graceSentAt: decision.graceSentAt,
         lastToolCalls: decision.lastToolCalls,
+        toolCalls: decision.toolCalls,
+        assistantMessage: decision.assistantMessage,
       })
     } catch (error) {
       outcome = { ok: false, error: message(error), retryable: false }
     }
     if (!outcome.ok) {
       this.failForce(workspace, team, decision, now, outcome.error ?? "the force action refused", outcome.retryable === true)
+      return
+    }
+    // S6: a TERMINAL STATE WON THE RACE. The team plane re-read the row after the interrupt, found it
+    // completed (or moved) and refused to drag it back — that is a correct outcome, not a failure, so
+    // it is counted separately and never logged as "the member was interrupted".
+    if (outcome.skipped !== undefined) {
+      this.stats.forceSkipped += 1
+      this.forceRecorded.add(streakKey(team.id, decision.taskId, decision.attemptId))
+      this.appendForceIncident(workspace, team, decision, now, "skipped", outcome)
+      this.info(
+        "WEDGED-FORCE SKIPPED " + team.id +
+          " task=" + decision.taskId +
+          " attempt=" + decision.attemptId +
+          " member=" + decision.assignee +
+          " status=" + outcome.skipped.status +
+          " revision=" + outcome.skipped.revision +
+          " — a terminal state won the race; the row was not requeued and no split row was written",
+      )
       return
     }
     this.stats.forced += 1
@@ -1758,8 +1946,10 @@ export class WatchdogEngine {
         " task=" + decision.taskId +
         " attempt=" + decision.attemptId +
         " member=" + decision.assignee +
-        " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" +
+        " silent=" + decision.silentMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" +
+        " elapsed=" + decision.elapsedMs + "ms" +
         " handoff=" + (outcome.handoff ?? "none") +
+        " handoffSource=" + (outcome.handoffSource ?? "supervisor") +
         " requeued=" + (outcome.requeued === undefined ? "no" : outcome.requeued.taskId + "/" + outcome.requeued.attempt) +
         " split=" + (outcome.split === undefined || outcome.split.length === 0 ? "none" : outcome.split.join(",")) +
         " — the member was interrupted, the row requeued and the work split",
@@ -1819,8 +2009,8 @@ export class WatchdogEngine {
     team: TeamRecord,
     decision: Extract<Decision, { type: "wedged" }>,
     now: number,
-    force: "applied" | "not-applied",
-    outcome: { handoff?: string; split?: readonly string[] },
+    force: "applied" | "not-applied" | "skipped",
+    outcome: { handoff?: string; handoffSource?: "member" | "supervisor"; split?: readonly string[]; skipped?: { status: string; revision: number } },
   ): void {
     // The durable `wedged-force` record for this attempt.
     const incident: IncidentRecord = {
@@ -1828,13 +2018,15 @@ export class WatchdogEngine {
       teamId: team.id,
       kind: "wedged-force",
       at: now,
-      cause: { kind: "wedged-force", ms: decision.elapsedMs },
+      cause: { kind: "wedged-force", ms: decision.silentMs },
       taskId: decision.taskId,
       attemptId: decision.attemptId,
       scene: null,
       hold: "not-requested",
       force,
       ...(outcome.handoff === undefined ? {} : { handoff: outcome.handoff }),
+      ...(outcome.handoffSource === undefined ? {} : { handoffSource: outcome.handoffSource }),
+      ...(outcome.skipped === undefined ? {} : { status: outcome.skipped.status, revision: outcome.skipped.revision }),
       ...(outcome.split === undefined || outcome.split.length === 0 ? {} : { split: outcome.split }),
       acknowledgedBy: [],
     }
@@ -1844,6 +2036,51 @@ export class WatchdogEngine {
     else {
       this.stats.incidentFailures += 1
       this.warn("wedged-force record append failed at " + logged.path + ": " + String(logged.error))
+    }
+  }
+
+  /**
+   * Append the durable `wedged-grace` incident for one grace directive (S4's first phase).
+   *
+   * The record is the DURABLE `graceSentAt`: the machine keeps the same instant in memory, but a
+   * restart must not turn "the member was asked 30 s ago" into "nobody ever asked it", so the
+   * sidecar carries the clock AND the deadline the kill phase is due at.
+   *
+   * @param workspace - the workspace whose watchdog store is written.
+   * @param team - the projected team the row belongs to.
+   * @param decision - the machine's `grace` decision.
+   * @param now - the tick's clock.
+   * @param outcome - the team plane's answer, when it gave one.
+   */
+  private appendGraceIncident(
+    workspace: string,
+    team: TeamRecord,
+    decision: Extract<Decision, { type: "grace" }>,
+    now: number,
+    outcome: WedgeGraceOutcome | undefined,
+  ): void {
+    // The durable `wedged-grace` record for this directive.
+    const incident: IncidentRecord = {
+      id: decision.taskId + "@" + decision.attemptId + "#wedged-grace#" + now,
+      teamId: team.id,
+      kind: "wedged-grace",
+      at: now,
+      cause: { kind: "wedged-grace", ms: decision.silentMs },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      graceSentAt: now,
+      deadline: decision.deadline,
+      ...(outcome?.path === undefined ? {} : { handoff: outcome.path }),
+      acknowledgedBy: [],
+    }
+    // The append outcome of that record.
+    const logged = appendIncident(workspace, this.config.stateDir, incident)
+    if (logged.ok) this.stats.incidents += 1
+    else {
+      this.stats.incidentFailures += 1
+      this.warn("wedged-grace record append failed at " + logged.path + ": " + String(logged.error))
     }
   }
 
@@ -1904,7 +2141,7 @@ export class WatchdogEngine {
   private async performHold(
     workspace: string,
     teamId: string,
-    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" }>,
+    decision: Exclude<Decision, { type: "never-started" } | { type: "tool-expired" } | { type: "wedged" } | { type: "long-bash" } | { type: "grace" }>,
     now: number,
   ): Promise<{ applied: boolean; via: string; error?: string }> {
     // The hold arguments, carrying the resolved TTL snapshot.

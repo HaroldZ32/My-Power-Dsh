@@ -4821,10 +4821,12 @@ function roleSpawnCard(args, value) {
 import { mkdirSync as mkdirSync2, writeFileSync } from "node:fs";
 import { join as join3 } from "node:path";
 var CONSULT_FORCE_AFTER_MS = 900000;
+var CONSULT_TOOL_IN_FLIGHT_MAX_MS = 900000;
 var CONSULT_MAX_DEFAULT = 8;
 var CONSULT_WAIT_MAX_MS = 60000;
 var CONSULT_WAIT_DEFAULT_MS = 30000;
 var CONSULT_ACTIVITY_HISTORY = 5;
+var CONSULT_MESSAGE_EXCERPT = 1200;
 var CONSULT_LABEL_KEY_PREFIX = "label:";
 function consultActivityKeyOf(agent, labelOf) {
   if (agent === null || typeof agent !== "object")
@@ -4850,7 +4852,16 @@ function createConsultSupervisor(deps) {
     clearTimeout(handle);
   });
   const forceAfterMs = deps.forceAfterMs ?? (() => CONSULT_FORCE_AFTER_MS);
+  const toolInFlightMaxMs = deps.toolInFlightMaxMs ?? (() => CONSULT_TOOL_IN_FLIGHT_MAX_MS);
   const maxConcurrent = deps.maxConcurrent ?? (() => CONSULT_MAX_DEFAULT);
+  const boundOf = () => {
+    const configured = Math.trunc(Number(forceAfterMs()));
+    return Number.isFinite(configured) ? configured : CONSULT_FORCE_AFTER_MS;
+  };
+  const inFlightBoundOf = () => {
+    const configured = Math.trunc(Number(toolInFlightMaxMs()));
+    return Number.isFinite(configured) ? Math.max(0, configured) : CONSULT_TOOL_IN_FLIGHT_MAX_MS;
+  };
   const records = new Map;
   let active = 0;
   const queue = [];
@@ -4952,27 +4963,45 @@ function createConsultSupervisor(deps) {
       return;
     return calls.slice(0, CONSULT_ACTIVITY_HISTORY).map(describeCall).join(" | ");
   };
-  const writeHandoff = (record, activity) => {
+  const idleMsOf = (record, activity, at) => {
+    const stamps = [record.startedAt];
+    if (typeof activity?.lastActivityAt === "number" && Number.isFinite(activity.lastActivityAt))
+      stamps.push(activity.lastActivityAt);
+    if (typeof activity?.current?.startedAt === "number" && Number.isFinite(activity.current.startedAt))
+      stamps.push(activity.current.startedAt);
+    for (const call of activity?.history ?? []) {
+      if (typeof call.startedAt === "number" && Number.isFinite(call.startedAt))
+        stamps.push(call.startedAt);
+    }
+    return Math.max(0, at - Math.max(...stamps));
+  };
+  const writeHandoff = (record, activity, boundMs, idleMs) => {
     try {
       const dir = deps.handoffDir(record.exec);
       mkdirSync2(dir, { recursive: true });
       const instant = new Date(now()).toISOString().replace(/[:.]/g, "-");
       const path = join3(dir, "consult-" + record.id + "-" + instant + ".md");
       const calls = activity === undefined ? [] : activity.history;
+      const open = activity?.current;
+      const openAgeMs = open === undefined ? 0 : Math.max(0, now() - open.startedAt);
+      const message = activity?.lastAssistantMessage;
+      const messageLine = message === undefined || message === "" ? "- last assistant message: (none observed)" : "- last assistant message: " + (message.length > CONSULT_MESSAGE_EXCERPT ? message.slice(0, CONSULT_MESSAGE_EXCERPT) + "…" : message).replace(/\s+/g, " ");
       const lines = [
         "# Consult handoff — " + record.id,
         "",
         "- task: " + record.task,
         "- role: " + record.role,
         "- started: " + new Date(record.startedAt).toISOString(),
-        "- elapsed: " + (now() - record.startedAt) + " ms (deadman " + forceAfterMs() + " ms)",
+        "- elapsed: " + (now() - record.startedAt) + " ms (deadman bound " + boundMs + " ms)",
+        "- idle: " + idleMs + " ms with no observable activity" + (open === undefined ? "" : "; the open " + open.name + " call had run " + openAgeMs + " ms"),
+        messageLine,
         "- last tool calls:",
-        ...activity?.current === undefined ? [] : ["  - (IN FLIGHT) " + describeCall(activity.current)],
-        ...calls.length === 0 && activity?.current === undefined ? ["  - (none observed)"] : [],
+        ...open === undefined ? [] : ["  - (IN FLIGHT) " + describeCall(open)],
+        ...calls.length === 0 && open === undefined ? ["  - (none observed)"] : [],
         ...calls.map((call) => "  - " + describeCall(call)),
         "",
-        "Next step: resume the task above from the last completed tool call; the child was interrupted",
-        "by the 15-minute consult deadman because its open call was not a `bash` command.",
+        "Next step: resume the task above from the last completed tool call. The child was interrupted",
+        "by the consult deadman after " + idleMs + " ms with no observable activity (bound " + boundMs + " ms" + (open === undefined ? "" : ", and its open " + open.name + " call had run " + openAgeMs + " ms and no longer counted as activity") + ").",
         ""
       ];
       writeFileSync(path, lines.join(`
@@ -4987,13 +5016,42 @@ function createConsultSupervisor(deps) {
     if (record.reported)
       return;
     const activity = deps.activityOf?.(record.handle?.id, record.role);
-    const elapsedMs = now() - record.startedAt;
-    if (activity?.current?.name === "bash") {
-      deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed");
+    const at = now();
+    const elapsedMs = at - record.startedAt;
+    const boundMs = boundOf();
+    if (boundMs <= 0)
+      return;
+    const armBoundMs = record.armBoundMs ?? boundMs;
+    const open = activity?.current;
+    if (open?.name === "bash") {
+      if (record.longBashLogged !== true) {
+        record.longBashLogged = true;
+        deps.log("consult-long-bash " + record.id + " role=" + record.role + " elapsedMs=" + elapsedMs + " — an OPEN bash call is exempt from the consult deadman; re-armed");
+      }
       arm(record);
       return;
     }
-    const handoff = writeHandoff(record, activity);
+    let hung = false;
+    if (open !== undefined) {
+      const inFlightMs = inFlightBoundOf();
+      const openAgeMs = Math.max(0, at - open.startedAt);
+      if (inFlightMs > 0 && openAgeMs < inFlightMs) {
+        if (record.inFlightLoggedFor !== open.startedAt) {
+          record.inFlightLoggedFor = open.startedAt;
+          deps.log("consult-tool-in-flight " + record.id + " role=" + record.role + " tool=" + open.name + " ageMs=" + openAgeMs + " boundMs=" + inFlightMs + " — the open call is activity; re-armed");
+        }
+        arm(record);
+        return;
+      }
+      hung = inFlightMs > 0;
+    }
+    const idleMs = idleMsOf(record, activity, at);
+    if (!hung && idleMs < armBoundMs) {
+      const remainingMs = armBoundMs - idleMs;
+      arm(record, remainingMs);
+      return;
+    }
+    const handoff = writeHandoff(record, activity, armBoundMs, idleMs);
     if (handoff !== undefined)
       record.handoff = handoff;
     record.state = "interrupted";
@@ -5003,7 +5061,7 @@ function createConsultSupervisor(deps) {
     const report = {
       role: record.role,
       status: "interrupted",
-      summary: "consult interrupted by the 15-minute deadman" + (handoff === undefined ? "" : " — handoff: " + handoff),
+      summary: "consult interrupted by the consult deadman after " + idleMs + " ms with no observable activity (bound " + armBoundMs + " ms)" + (handoff === undefined ? "" : " — handoff: " + handoff),
       recommendation: "",
       details: "",
       evidence: handoff === undefined ? [] : [handoff],
@@ -5015,17 +5073,21 @@ function createConsultSupervisor(deps) {
     };
     finish(record, report);
   };
-  const arm = (record) => {
+  const arm = (record, delayMs) => {
     if (record.reported)
       return;
-    const bound = Math.max(1, Math.trunc(Number(forceAfterMs())) || CONSULT_FORCE_AFTER_MS);
+    const bound = boundOf();
+    if (bound <= 0)
+      return;
+    const waitMs = delayMs === undefined ? bound : Math.max(1, Math.min(bound, Math.trunc(delayMs)));
+    record.armBoundMs = bound;
     record.timer = setTimer(() => {
       try {
         onDeadman(record);
       } catch (error) {
         deps.log("consult deadman threw for " + record.id + ": " + (error instanceof Error ? error.message : String(error)));
       }
-    }, bound);
+    }, waitMs);
   };
   const viewOf = (record) => ({
     consultId: record.id,
@@ -5144,6 +5206,9 @@ function createConsultSupervisor(deps) {
 // packages/mpd-roles-plugin/src/index.ts
 var name = "mpd-roles";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS);
+var CONSULT_FORCE_KEY = "consult.forceAfterMs";
+var WATCHDOG_FORCE_KEY = "watchdog.forceAfterMs";
+var WATCHDOG_TOOL_IN_FLIGHT_KEY = "watchdog.toolInFlightMaxMs";
 var READONLY_DENY = [
   "write",
   "edit",
@@ -5246,6 +5311,20 @@ function text2(value) {
 }
 function errText(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function sessionIdOf3(value) {
+  if (value === null || typeof value !== "object")
+    return;
+  const direct = value.id;
+  if (typeof direct === "string" && direct !== "")
+    return direct;
+  const nested = value.session;
+  if (nested !== null && typeof nested === "object") {
+    const id = nested.id;
+    if (typeof id === "string" && id !== "")
+      return id;
+  }
+  return;
 }
 function extensionRoleId(extensionId, name2) {
   const slug = String(name2).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -5529,7 +5608,9 @@ function apply(ctx, config = {}) {
     const name2 = typeof exec?.name === "string" ? String(exec.name) : "tool";
     const rawArgs = exec?.arguments;
     const bucket = toolActivity.get(key) ?? { history: [] };
-    bucket.current = { name: name2, startedAt: Date.now(), ...rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs } : {} };
+    const at = Date.now();
+    bucket.current = { name: name2, startedAt: at, ...rawArgs !== null && typeof rawArgs === "object" ? { arguments: rawArgs } : {} };
+    bucket.lastActivityAt = at;
     toolActivity.set(key, bucket);
   };
   const noteToolEnd = (exec) => {
@@ -5543,6 +5624,7 @@ function apply(ctx, config = {}) {
     if (bucket.history.length > CONSULT_ACTIVITY_HISTORY)
       bucket.history.splice(0, bucket.history.length - CONSULT_ACTIVITY_HISTORY);
     bucket.current = undefined;
+    bucket.lastActivityAt = Date.now();
   };
   if (typeof dsh.onPreToolExecute === "function") {
     dsh.onPreToolExecute((exec) => {
@@ -5558,12 +5640,33 @@ function apply(ctx, config = {}) {
       } catch {}
     });
   }
+  if (typeof dsh.onEvent === "function") {
+    dsh.onEvent("session/event", (session, event) => {
+      try {
+        const record = event !== null && typeof event === "object" ? event : undefined;
+        if (record?.type !== "assistant/message")
+          return;
+        const id = sessionIdOf3(session);
+        if (id === undefined)
+          return;
+        const bucket = toolActivity.get(id);
+        if (bucket === undefined)
+          return;
+        const data = record.data !== null && typeof record.data === "object" ? record.data : undefined;
+        const message = typeof data?.text === "string" ? data.text : typeof record.text === "string" ? record.text : undefined;
+        if (message !== undefined && message !== "")
+          bucket.lastAssistantMessage = message;
+        bucket.lastActivityAt = Date.now();
+      } catch {}
+    });
+  }
   const consultSupervisor = createConsultSupervisor({
     handoffDir: (target) => join4(dsh.workspaceRoot(target), ".mpd", "handoff"),
     log: (line) => warn(line),
     activityOf: (childId, role) => childId === undefined || childId === "" ? toolActivity.get(consultLabelKey(role)) : toolActivity.get(childId),
     maxConcurrent: () => consultMaxFromEnv(),
-    forceAfterMs: () => CONSULT_FORCE_AFTER_MS
+    forceAfterMs: () => consultDeadmanBound(),
+    toolInFlightMaxMs: () => consultInFlightBound()
   });
   dsh.registerTool({
     name: "mpd_roles_list",
@@ -5691,7 +5794,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   }
   dsh.registerTool({
     name: "mpd_role_spawn_async",
-    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and is supervised by the SAME 15-minute deadman: on expiry the child is interrupted and a handoff document is written under .mpd/handoff/, unless its current tool call is an OPEN `bash` (the only exemption, with no age bound). Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
+    description: "Start ONE bounded delegation WITHOUT waiting for its report — the BACKGROUND form of mpd_role_spawn. It returns a stable consultId immediately (peak in-flight consults overlap, so several questions run at once), rides the SAME adapter activation seam and read-only discipline as the blocking tool, and carries the SAME SILENCE deadman: the bound resolves per arm from `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and a child with no observable activity for that long is interrupted with a handoff document written under .mpd/handoff/. Any in-flight tool younger than `watchdog.toolInFlightMaxMs` counts as activity, and an OPEN `bash` call is exempt at any age. Read the result with mpd_role_consult (wait / collect); a consult is still a ONE-SHOT and a LEAF. Concurrency is capped by MPD_DSH_CONSULT_MAX (default 8): over the cap a consult QUEUES, it never throws.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { consultId: { type: "string" }, role: { type: "string" }, state: { type: "string", enum: ["running"] }, startedAt: { type: "integer" } }, required: ["consultId", "role", "state"] }, render: (_a, v) => textBlock("consult " + v.consultId + " (" + v.role + ") " + v.state + ' — read it with mpd_role_consult {action:"wait"|"collect", consultId:"' + v.consultId + '"}') },
     execute: async (args, exec) => {
@@ -5777,7 +5880,31 @@ state: ` + v.state + " elapsed: " + v.elapsedMs + "ms" : "")) },
       return config.captain?.investigation;
     if (key === DELEGATION_CONFIG_KEY)
       return config.delegation?.gate;
+    if (key === CONSULT_FORCE_KEY)
+      return config.consult?.forceAfterMs;
+    if (key === WATCHDOG_FORCE_KEY)
+      return config.watchdog?.forceAfterMs;
+    if (key === WATCHDOG_TOOL_IN_FLIGHT_KEY)
+      return config.watchdog?.toolInFlightMaxMs;
     return;
+  };
+  const consultDeadmanBound = () => {
+    for (const key of [CONSULT_FORCE_KEY, WATCHDOG_FORCE_KEY]) {
+      const value = configValue(key);
+      if (value === undefined || value === null || value === "")
+        continue;
+      const parsed = Math.trunc(Number(value));
+      if (Number.isFinite(parsed))
+        return parsed;
+    }
+    return CONSULT_FORCE_AFTER_MS;
+  };
+  const consultInFlightBound = () => {
+    const value = configValue(WATCHDOG_TOOL_IN_FLIGHT_KEY);
+    if (value === undefined || value === null || value === "")
+      return CONSULT_TOOL_IN_FLIGHT_MAX_MS;
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : CONSULT_TOOL_IN_FLIGHT_MAX_MS;
   };
   const guardOutcome = [];
   try {

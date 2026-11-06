@@ -20,6 +20,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import { forceWedgedTask, type TeamActionCaller, type TeamActionDeps } from "../src/team-actions"
+import { writeHandoffDocument } from "../src/team-handoff"
 import { readTeamJournal } from "../src/team-journal"
 import { fold, readRecords } from "../src/mailbox-store"
 import { addTeamMember, addTeamTask, createTeam, readTeam, updateTeamMember, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -187,7 +188,12 @@ describe("D3.4 — the force action", () => {
     expect(split.map((task) => task.subject)).toEqual(["[split] the wedged row — packages/a/**", "[split] the wedged row — packages/b/**"])
     for (const task of split) {
       expect(task.status).toBe("pending")
-      expect(task.owner).toBeUndefined()
+      // S7 (updated 2026-11-06): the row INHERITS the interrupted member as its owner, which is what
+      // makes it dispatchable by an owner-only pass. It used to be UNOWNED, and every such row was
+      // refused by the default dispatch pairing.
+      expect(task.owner).toBe(MEMBER_NAME)
+      expect(task.sourceTaskId).toBe("T1")
+      expect(task.blockedBy).toEqual([])
       expect(task.writeScopes.length).toBe(1)
       expect(task.description).toContain(outcome.handoff)
     }
@@ -223,7 +229,11 @@ describe("D3.4 — the force action", () => {
     expect(split.length).toBe(1)
     expect(split[0].subject).toBe("[split] the wedged row")
     expect(split[0].description).toContain("NARROW THE SCOPE FIRST")
-    expect(split[0].owner).toBeUndefined()
+    // S7 (updated 2026-11-06): the continuation row inherits the owner, has no blockers and names the
+    // row it continues — the OLD pin was "unowned", which is the D4 defect this wave fixes.
+    expect(split[0].owner).toBe(MEMBER_NAME)
+    expect(split[0].blockedBy).toEqual([])
+    expect(split[0].sourceTaskId).toBe("T1")
     expect(outcome.split).toEqual([split[0].id])
   })
 
@@ -418,5 +428,127 @@ describe("D3.4 — the force action", () => {
     expect(row?.status).toBe("pending")
     expect(row?.attempt).toBe(2)
     expect(after.tasks.filter((task) => task.subject.startsWith("[split]")).length).toBe(2)
+  })
+})
+
+// S4–S7 (contract `watchdog-force-silence.md`, 2026-11-06): the grace phase's artifact, the terminal
+// race, the inherited owner and the handoff that carries the work.
+describe("S4–S7 — grace artifact, terminal race, dispatchable splits, a handoff that carries the work", () => {
+  test("S4/AC4: a MEMBER handoff written during grace is used VERBATIM and no template is written", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team, with the member seat in the handoff window, exactly as `agent_teams_task handoff` leaves it.
+    let record = teamWith(box.workspace)
+    // The member's own seven-section document, written through the plane's own writer (which creates
+    // the handoff directory and advances the ordinal).
+    const memberPath = writeHandoffDocument(box.workspace, record.teamId, MEMBER_NAME, 1, "# Task\nT1\n\n# State\nhalf done\n")
+    // The seat records the document and enters the checkpoint window.
+    record = updateTeamMember(record, MEMBER_NAME, { handoff: { path: memberPath, ordinal: 1 }, mode: "checkpoint" })
+    writeTeam(box.workspace, record)
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: record.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // THE ARTIFACT IS THE MEMBER'S, and the supervisor wrote no template beside it.
+    expect(outcome.handoffSource).toBe("member")
+    expect(outcome.handoff).toBe(memberPath)
+    expect(handoffs(box.workspace)).toEqual([])
+    // CLOSED CLEANLY: a member that complied is not interrupted.
+    expect(box.observed.interrupts).toEqual([])
+  })
+
+  test("S5/AC7: the fallback handoff carries description, scopes, an ARGUMENT excerpt, the idle clock and real ids", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // The force, with the evidence the watchdog's fold and clock supply.
+    const outcome = await forceWedgedTask(box.deps, box.caller, {
+      teamId: created.teamId,
+      taskId: "T1",
+      evidence: { silentMs: 901_000, toolCalls: [{ tool: "bash", excerpt: "bun run typecheck" }], assistantMessage: "The typecheck is green.", lastToolCalls: ["bash"] },
+    })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // The document, read back from disk.
+    const text = readFileSync(outcome.handoff, "utf8")
+    // THE WORK: the acceptance text, the declared scopes, the call WITH its argument excerpt, the
+    // measured idle duration, and a next step naming the ACTUAL rows.
+    expect(text).toContain("- Description: own the record")
+    expect(text).toContain("`packages/a/**`")
+    expect(text).toContain("bun run typecheck")
+    expect(text).toContain("IDLE AT THE FORCE BOUND: 901000 ms")
+    expect(text).toContain("The typecheck is green.")
+    expect(text).toContain("`T1`")
+    // The continuation rows are appended with their REAL ids after the split.
+    expect(text).toContain("## Continuation rows")
+    expect(text).toContain(outcome.split[0])
+    // THE DEFECT STRING IS GONE.
+    expect(text).not.toContain("system message")
+  })
+
+  test("S6/AC5: a `complete` landing DURING the interrupt survives: no requeue, no split, one force-skipped journal row", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // A sibling writer completes the row WHILE the interrupt is in flight.
+    box.observed.onInterrupt = () => {
+      /** The record as the concurrent completion left it. */
+      const live = readTeam(box.workspace, created.teamId)
+      if (live === undefined) throw new Error("the team vanished")
+      writeTeam(box.workspace, updateTeamTask(live, "T1", { status: "completed", note: "finished during the interrupt" }, NOW))
+    }
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    // THE TERMINAL STATE WON: the payload says so and carries the observed status/revision.
+    expect(outcome.skipped).toMatchObject({ status: "completed" })
+    expect(outcome.requeued).toBeUndefined()
+    expect(outcome.split).toEqual([])
+    // The row on disk is STILL completed — never dragged back to pending.
+    /** The record as the force left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    expect(after?.tasks.find((task) => task.id === "T1")?.status).toBe("completed")
+    expect(after?.tasks.filter((task) => task.id !== "T1")).toEqual([])
+    // ONE journal row, and its reason states the skip with the status and revision.
+    const skipped = readTeamJournal(box.workspace).filter((entry) => entry.event === "wedged-force" && String(entry.reason).includes("force-skipped"))
+    expect(skipped.length).toBe(1)
+    expect(String(skipped[0].reason)).toContain("status=completed")
+    expect(String(skipped[0].reason)).toContain("revision=")
+  })
+
+  test("S7/AC6: every split row inherits the interrupted member as owner, has no blockers, and names its source; the captain hears the recovery verbs", async () => {
+    // The fixture.
+    const box = fixture()
+    // The team under test.
+    const created = teamWith(box.workspace)
+    // The force.
+    const outcome = await forceWedgedTask(box.deps, box.caller, { teamId: created.teamId, taskId: "T1" })
+    expect(outcome.ok).toBe(true)
+    if (!outcome.ok) throw new Error(outcome.error)
+    /** The record as the force left it. */
+    const after = readTeam(box.workspace, created.teamId)
+    if (after === undefined) throw new Error("the team record vanished")
+    /** The continuation rows the force created. */
+    const split = after.tasks.filter((task) => task.id !== "T1")
+    expect(split.length).toBe(2)
+    for (const task of split) {
+      // DISPATCHABLE: the inherited owner is what owner-only dispatch pairs on.
+      expect(task.owner).toBe(MEMBER_NAME)
+      expect(task.blockedBy).toEqual([])
+      expect(task.sourceTaskId).toBe("T1")
+      expect(task.status).toBe("pending")
+    }
+    // THE CAPTAIN'S BODY names the inherited owner and all three recovery verbs.
+    const mailbox = fold(readRecords(box.workspace))
+    expect(mailbox.messages.length).toBe(1)
+    /** The captain's message body, where the inherited owner and the recovery verbs must appear. */
+    const body = mailbox.messages[0].body
+    expect(body).toContain(`inherited ${MEMBER_NAME} as their owner`)
+    expect(body).toContain('mode:"roster"')
+    expect(body).toContain("reassign")
+    expect(body).toContain('{action:"claim"')
   })
 })

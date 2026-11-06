@@ -8561,8 +8561,11 @@ var SettingsSchema = Schema.object({
     actionOnEscalate: Schema.union([Schema.const("pause"), Schema.const("warn-only")]).default("warn-only"),
     toolInFlightMaxMs: Schema.number().default(900000),
     holdTtlMs: Schema.number().default(900000),
-    forceAfterMs: Schema.number().default(900000)
+    forceAfterMs: Schema.number().default(900000),
+    maxTaskAgeMs: Schema.number().default(0),
+    graceMs: Schema.number().default(90000)
   }),
+  consult: Schema.object({ forceAfterMs: Schema.number().default(900000) }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
 var BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: agentRoutes.*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)";
@@ -8659,6 +8662,9 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "actionOnEscalate"], label: "Action on escalation", zh: "升级时的动作", kind: "select", options: ["pause", "warn-only"] },
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
+  { path: ["watchdog", "forceAfterMs"], label: "Force bound — silence (ms, 0 = off)", zh: "强制阈值——静默（毫秒，0 表示关闭）", kind: "number", hint: "how long a member may produce NO observable activity before the force supervisor acts: this is SILENCE, not task age, so a task running for hours with fresh tool stamps is never forced; `0` disables the rule" },
+  { path: ["watchdog", "graceMs"], label: "Handoff grace (ms)", zh: "交接宽限期（毫秒）", kind: "number", hint: "the GRACE phase between the watchdog's ONE handoff directive and the kill: the member is told to write its handoff and end its turn, and it is interrupted only when this window expires with it still running" },
+  { path: ["watchdog", "maxTaskAgeMs"], label: "Task-age ceiling (ms, 0 = never)", zh: "任务年龄上限（毫秒，0 表示从不）", kind: "number", hint: "an OPTIONAL hard ceiling on task AGE, `0` by default: age alone never forces a task, and turning this on reintroduces the 2026-11-06 failure mode in which members working for ~15 minutes were killed" },
   ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];

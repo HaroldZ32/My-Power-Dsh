@@ -1,14 +1,16 @@
-// D3 — THE FORCE SUPERVISOR (15 minutes, except an in-flight bash call).
+// S1–S4 — THE FORCE SUPERVISOR: triggered by SILENCE, decided in TWO PHASES (grace, then kill).
 //
-// WHAT THESE ARMS PIN, one per acceptance clause of §D3:
+// WHAT THESE ARMS PIN (updated 2026-11-06, contract `watchdog-force-silence.md`):
 //   1. an owner stored as a SESSION ID resolves to its member, so the §4 report-only fallback — the
 //      exact VEdit degradation — does NOT fire for a healthy team;
-//   2. a task `in_progress` for `forceAfterMs` produces ONE `wedged` decision and the engine hands it
-//      to the team plane's force seam with the team's own lead as the authorising session;
+//   2. a member SILENT past `forceAfterMs` produces ONE `wedged` decision (after the S4 grace phase)
+//      and the engine hands it to the team plane's force seam with the team's own lead authorising.
+//      These arms pass `graceMs: 0` where they pin the KILL; the grace phase has its own arms below;
 //   3. an OWNER WITH A `bash` CALL OPEN is exempt (no seam call) and ONE `long-bash` incident is
 //      recorded at the boundary — with no age bound on the call;
 //   4. the CAPTAIN is never a force target;
-//   5. `forceAfterMs: 0` disables the rule, and a task below the bound is never forced;
+//   5. `forceAfterMs: 0` disables the rule, and a member with FRESH stamps is never forced however old
+//      its row is (age alone is not a trigger any more);
 //   6. a planeless composition (no `mpdTeamActions`) records `force: "not-applied"` and never throws.
 //
 // Every arm drives the REAL engine over the mpd RECORD plane (`mpdTeams.list`), because that is the
@@ -93,6 +95,9 @@ function seamRecorder(): SeamRecorder {
   return {
     calls,
     seam: {
+      // S4's grace phase: these arms drive the KILL phase, so the directive is acknowledged and the
+      // engine's own grace bookkeeping is what the arms that need it assert separately.
+      graceWedged: async (): Promise<{ ok: boolean }> => ({ ok: true }),
       forceWedged: async (request: WedgeForceRequest): Promise<WedgeForceOutcome> => {
         calls.push(request)
         return answer
@@ -237,9 +242,12 @@ describe("D3.2 — the 15-minute force decision", () => {
       const record = mpdRecord()
       // The recording seam the engine must call exactly once.
       const recorder = seamRecorder()
-      // The engine under test.
-      const { engine, dispose } = mount(box, record, recorder.seam)
+      // The engine under test, with the GRACE phase off so this arm pins the KILL alone.
+      const { engine, dispose } = mount(box, record, recorder.seam, { graceMs: 0 })
       try {
+        // S1: the member's last observable activity is older than the silence bound — that, not the
+        // row's age, is what makes it a force target.
+        writeStamps(box, MEMBER_NAME, [stamp(NOW - FORCE_MS - 60_000)])
         // One tick past the bound.
         await engine.tickOnce(NOW)
         expect(recorder.calls.length).toBe(1)
@@ -319,9 +327,11 @@ describe("D3.2 — the 15-minute force decision", () => {
     try {
       // The wedged record, now decided without a seam (a composition with no team-core row).
       const record = mpdRecord()
-      // The engine under test, mounted WITHOUT a force seam.
-      const { engine, dispose } = mount(box, record)
+      // The engine under test, mounted WITHOUT a force seam, and with the grace phase off.
+      const { engine, dispose } = mount(box, record, undefined, { graceMs: 0 })
       try {
+        // A member that has been silent past the bound.
+        writeStamps(box, MEMBER_NAME, [stamp(NOW - FORCE_MS - 60_000)])
         // The tick must resolve, not reject.
         await expect(engine.tickOnce(NOW)).resolves.toBeDefined()
         // The honest record: the wedge was seen and nothing was forced.
@@ -346,9 +356,11 @@ describe("D3.2 — the 15-minute force decision", () => {
       // The recording seam, scripted to refuse retryably (a handoff write failure).
       const recorder = seamRecorder()
       recorder.answer({ ok: false, error: "handoff write failed", retryable: true })
-      // The engine under test.
-      const { engine, dispose } = mount(box, record, recorder.seam)
+      // The engine under test, with the grace phase off.
+      const { engine, dispose } = mount(box, record, recorder.seam, { graceMs: 0 })
       try {
+        // A member that has been silent past the bound.
+        writeStamps(box, MEMBER_NAME, [stamp(NOW - FORCE_MS - 60_000)])
         // Two ticks: the first fails retryably, the second is decided again.
         await engine.tickOnce(NOW)
         await engine.tickOnce(NOW + 15_000)
@@ -407,8 +419,8 @@ describe("D3.3 — the ONLY exemption: an in-flight bash call", () => {
       const record = mpdRecord()
       // The recording seam.
       const recorder = seamRecorder()
-      // The engine under test.
-      const { engine, dispose } = mount(box, record, recorder.seam)
+      // The engine under test, with the grace phase off.
+      const { engine, dispose } = mount(box, record, recorder.seam, { graceMs: 0 })
       try {
         // A long `mpd_role_spawn` is NOT an exemption: D3 is the supervisor for exactly that case.
         writeStamps(box, MEMBER_NAME, [stamp(NOW - 7_200_000, { kind: "tool-start", tool: "mpd_role_spawn", callId: "call-1" })])
@@ -448,7 +460,11 @@ describe("D3.4 — the decider/actor seam (`mpdTeamActions`)", () => {
       sessionId: LEAD,
       startedAt: NOW - FORCE_MS,
       elapsedMs: FORCE_MS,
+      silentMs: FORCE_MS,
+      graceSentAt: NOW - FORCE_MS,
       lastToolCalls: ["bash"],
+      toolCalls: [],
+      assistantMessage: null,
     })
     expect(outcome).toMatchObject({ ok: true, handoff: "/ws/.mpd/handoff/x.md", requeued: { taskId: "T1", attempt: 2 }, split: ["T2"] })
     // The request carries the AUTHORISING session and the watchdog's evidence, nothing invented.
@@ -458,14 +474,26 @@ describe("D3.4 — the decider/actor seam (`mpdTeamActions`)", () => {
         teamId: "team-1",
         taskId: "T1",
         workspace: "/ws",
-        evidence: { member: "sess-m1", attemptId: "1", startedAt: NOW - FORCE_MS, elapsedMs: FORCE_MS, lastToolCalls: ["bash"] },
+        evidence: {
+          member: "sess-m1",
+          attemptId: "1",
+          startedAt: NOW - FORCE_MS,
+          elapsedMs: FORCE_MS,
+          // S5/S6: the measured idle, the grace instant, the tool calls WITH excerpts and the last
+          // assistant message travel with the request so the fallback handoff can carry the work.
+          silentMs: FORCE_MS,
+          graceSentAt: NOW - FORCE_MS,
+          lastToolCalls: ["bash"],
+          toolCalls: [],
+          assistantMessage: null,
+        },
       },
     ])
   })
 
   test("an ABSENT service and a REFUSAL are both { ok:false } — the seam never throws", async () => {
     // One request, reused by both arms (only the service under the context changes).
-    const request: WedgeForceRequest = { workspace: "/ws", teamId: "t", taskId: "T1", attemptId: "1", member: "m", sessionId: LEAD, startedAt: 0, elapsedMs: 0, lastToolCalls: [] }
+    const request: WedgeForceRequest = { workspace: "/ws", teamId: "t", taskId: "T1", attemptId: "1", member: "m", sessionId: LEAD, startedAt: 0, elapsedMs: 0, silentMs: 0, graceSentAt: 0, lastToolCalls: [], toolCalls: [], assistantMessage: null }
     // A context with no team plane mounted at all.
     const bare = { get: (): undefined => undefined }
     await expect(forceSeamOf(bare).forceWedged(request)).resolves.toMatchObject({ ok: false })
@@ -486,7 +514,8 @@ describe("D3.3 (review F3) — the tool NAME is the exemption, never a clock", (
       attemptId: "1",
       assignee: MEMBER,
       memberKey: MEMBER_NAME,
-      lastSeen: NOW - 60_000,
+      // S1: the bound is SILENCE, so the stale stamp is what put this candidate at the boundary.
+      lastSeen: NOW - FORCE_MS - 60_000,
       lastKind: "tool-start",
       everStampedForTask: true,
       inFlightSince: null,
@@ -511,13 +540,15 @@ describe("D3.3 (review F3) — the tool NAME is the exemption, never a clock", (
       attemptId: "1",
       assignee: MEMBER,
       memberKey: MEMBER_NAME,
-      lastSeen: NOW - 60_000,
+      // S1/S3: the fold's open call is the bound's clock, so the call itself must be old.
+      lastSeen: NOW - FORCE_MS - 60_000,
       lastKind: "tool-start",
       everStampedForTask: true,
       inFlightSince: null,
       inFlightTool: null,
       channelState: "IN-FLIGHT",
-      channelInFlightSince: null,
+      // The call's start, which is S3's clock: two hours open, i.e. far past the bound.
+      channelInFlightSince: NOW - 7_200_000,
       channelInFlightTool: "bash",
       status: "in_progress",
       startedAt: NOW - FORCE_MS - 1_000,
@@ -525,7 +556,9 @@ describe("D3.3 (review F3) — the tool NAME is the exemption, never a clock", (
     // One observation past the bound.
     const decisions = machine.observe([candidate], NOW, { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS })
     expect(decisions.map((decision) => decision.type)).toEqual(["long-bash"])
-    expect(decisions[0]).toMatchObject({ inFlightMs: 0, tool: "bash" })
+    // THE FOLD'S CLOCK IS MEASURED: the call has been open for two hours, so the report states it
+    // instead of the 0 the clockless arm above honestly reports.
+    expect(decisions[0]).toMatchObject({ inFlightMs: 7_200_000, tool: "bash" })
   })
 })
 
@@ -580,7 +613,8 @@ describe("D3.6 — a force that produced NO new revision must not silence the la
       startedAt: NOW - FORCE_MS - 1_000,
     }
     // The knobs the engine resolves for this rule.
-    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS }
+    // `graceMs: 0` so this arm pins the KILL decision itself; the grace phase is covered separately.
+    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS, graceMs: 0 }
     // Tick 1: the wedge CONSUMES the candidate — ONE force decision and no WARN in the same tick.
     expect(machine.observe([candidate], NOW, knobs).map((decision) => decision.type)).toEqual(["wedged"])
     // Tick 2, the SAME generation (the force produced no new revision): no second force ...
@@ -600,8 +634,8 @@ describe("D3.6 — a force that produced NO new revision must not silence the la
       // The recording seam, scripted to refuse WITHOUT a retry (a stale owner, a moved generation).
       const recorder = seamRecorder()
       recorder.answer({ ok: false, error: "task T1 is no longer owned by Senior Engineer", retryable: false })
-      // The engine under test.
-      const { stub, engine, dispose } = mount(box, record, recorder.seam)
+      // The engine under test, with the grace phase off so the refusal is the FIRST decision.
+      const { stub, engine, dispose } = mount(box, record, recorder.seam, { graceMs: 0 })
       try {
         // A member whose request went OUTSTANDING long before the force bound.
         openOutstandingChannel(stub, MEMBER, NOW - FORCE_MS - 900_000)
@@ -621,6 +655,143 @@ describe("D3.6 — a force that produced NO new revision must not silence the la
         expect(second.decisions.map((decision) => decision.type)).toEqual(["warn"])
         expect(second.decisions[0]).toMatchObject({ taskId: "T1", attemptId: "1" })
         expect(engine.getStats().forceFailures).toBe(1)
+      } finally {
+        dispose()
+      }
+    } finally {
+      box.cleanup()
+    }
+  })
+})
+
+describe("S1–S4 (2026-11-06) — silence, not age; grace, then kill", () => {
+  test("AC1: an ANCIENT row with FRESH activity is never forced", () => {
+    // The machine, driven directly with a row that entered `in_progress` a day ago.
+    const machine = new WatchdogMachine()
+    // A candidate whose stamps are FRESH: activity is the trigger, and there is plenty of it.
+    const candidate: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - 30_000,
+      lastKind: "step",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: null,
+      status: "in_progress",
+      startedAt: NOW - 86_400_000,
+    }
+    // NO wedge decision of any kind: age alone is not a trigger (S2's ceiling is off by default).
+    const decisions = machine.observe([candidate], NOW, { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS })
+    expect(decisions.map((decision) => decision.type)).not.toContain("wedged")
+    expect(decisions.map((decision) => decision.type)).not.toContain("grace")
+  })
+
+  test("AC2: the SAME row with STALE stamps crosses: grace first, then ONE kill after graceMs", () => {
+    // The machine, driven directly.
+    const machine = new WatchdogMachine()
+    // The same row, now SILENT past the bound (no activity for 20 minutes).
+    const candidate: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - FORCE_MS - 300_000,
+      lastKind: "step",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: null,
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 300_000,
+    }
+    /** The knobs this rule runs with: the frozen 90 s grace window. */
+    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS }
+    // Tick 1: the GRACE directive is decided, and the kill is NOT.
+    const first = machine.observe([candidate], NOW, knobs)
+    expect(first.map((decision) => decision.type)).toEqual(["grace"])
+    expect(first[0]).toMatchObject({ silentMs: FORCE_MS + 300_000, deadline: NOW + 90_000 })
+    // Tick 2, inside the window: consumed, so neither a second directive nor a kill.
+    expect(machine.observe([candidate], NOW + 60_000, knobs).map((decision) => decision.type)).toEqual([])
+    // Tick 3, past the window: exactly ONE kill, carrying the grace instant and the measured silence.
+    const third = machine.observe([candidate], NOW + 90_001, knobs)
+    expect(third.map((decision) => decision.type)).toEqual(["wedged"])
+    // The silence is measured at the tick's own clock, so it has grown by the 90 s spent waiting.
+    expect(third[0]).toMatchObject({ silentMs: FORCE_MS + 300_000 + 90_001, graceSentAt: NOW })
+    // ... and a fourth tick never decides it again (one kill per generation).
+    expect(machine.observe([candidate], NOW + 180_000, knobs).filter((decision) => decision.type === "wedged")).toEqual([])
+  })
+
+  test("AC3: a NON-bash tool INSIDE its bound suppresses; the SAME call past the bound does not", () => {
+    // Two machines, one per half of the clause.
+    const inside = new WatchdogMachine()
+    /** The second machine, which observes the SAME call once it is past its bound. */
+    const elapsed = new WatchdogMachine()
+    // A silent row whose only open call is a `read`, five minutes old.
+    const young: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - FORCE_MS - 300_000,
+      lastKind: "tool-start",
+      everStampedForTask: true,
+      inFlightSince: NOW - 300_000,
+      inFlightTool: "read",
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 300_000,
+    }
+    /** The frozen knobs, with the in-flight bound at 15 minutes. */
+    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS, toolInFlightMaxMs: 900_000 }
+    // Inside the bound: the call IS activity, so nothing is decided (not even grace).
+    expect(inside.observe([young], NOW, knobs).map((decision) => decision.type)).toEqual([])
+    // Past the bound: the call stops being activity, so the grace phase is due.
+    const old: SilenceCandidate = { ...young, inFlightSince: NOW - 1_800_000 }
+    expect(elapsed.observe([old], NOW, knobs).map((decision) => decision.type)).toEqual(["grace"])
+  })
+
+  test("AC4: the ENGINE sends the directive and interrupts NOTHING on the first crossing", async () => {
+    // A sandboxed workspace, cleaned up even when an assertion fails.
+    const box = sandbox()
+    try {
+      // The silent record.
+      const record = mpdRecord()
+      // The recording seam: the grace call and the force call are counted separately.
+      const graces: unknown[] = []
+      /** Every KILL request the seam received: it must stay empty until the grace window expires. */
+      const forces: unknown[] = []
+      // The seam is built by hand so this arm can watch BOTH phases.
+      const watched: WedgeForceSeam = {
+        graceWedged: async (request): Promise<{ ok: boolean }> => {
+          graces.push(request)
+          return { ok: true }
+        },
+        forceWedged: async (request): Promise<WedgeForceOutcome> => {
+          forces.push(request)
+          return { ok: true, handoff: "/ws/h.md", handoffSource: "supervisor", requeued: { taskId: "T1", attempt: 2 }, split: [] }
+        },
+      }
+      // The engine under test.
+      const { engine, dispose } = mount(box, record, watched)
+      try {
+        // A member silent past the bound.
+        writeStamps(box, MEMBER_NAME, [stamp(NOW - FORCE_MS - 60_000)])
+        // Tick 1: the directive goes out, and NOBODY is interrupted.
+        await engine.tickOnce(NOW)
+        expect(graces.length).toBe(1)
+        expect(forces).toEqual([])
+        expect(engine.getStats().graceSent).toBe(1)
+        // The durable GRACE record carries the deadline the kill is due at.
+        const grace = readIncidents(box.workspace, box.stateDir).filter((entry) => entry.kind === "wedged-grace")
+        expect(grace.length).toBe(1)
+        expect(grace[0]).toMatchObject({ taskId: "T1", graceSentAt: NOW, deadline: NOW + 90_000 })
+        // Tick 2, past the grace window: exactly ONE interrupt decision.
+        await engine.tickOnce(NOW + 90_001)
+        expect(forces.length).toBe(1)
+        expect(engine.getStats().forced).toBe(1)
       } finally {
         dispose()
       }

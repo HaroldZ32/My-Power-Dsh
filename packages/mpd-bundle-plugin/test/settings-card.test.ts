@@ -502,7 +502,7 @@ describe("isolation and front-door parity", () => {
     expect(readFileSync(join(REPO, "scripts", "build-mpd-client.ts"), "utf8")).toContain("@mpd-dsh/settings-card")
   })
 
-  test("the card's forty-seven fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
+  test("the card's fifty fields/labels/zh descriptions/options are IDENTICAL to the ONE shared declaration (no drift)", () => {
     // Both front doors read the same knob list — the TUI imports it, the card MIRRORS it — so this
     // compares the card against that single source at RUNTIME (the thirty-three per-agent rows are
     // built from roster names and labels in the declaration, which no source-text grep can follow).
@@ -510,12 +510,12 @@ describe("isolation and front-door parity", () => {
     // declaration the card exports, so it needs the transpiled text too.
     const { FIELDS } = (0, eval)("(" + CARD_JS + ")")((name: "react" | "locales") => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 47 = the shared list (13 scalar knobs + 33 per-agent route leaves + the TUI surface's own
-    // `tui.dashboardKey`). The retired twelve `teamModels` rows are GONE with that table
-    // (contract `.mpd/plans/agent-routes-per-agent.md` §1); the element-wise loop below is what
-    // makes this a no-drift pin, not a magic number.
-    expect(FIELDS).toHaveLength(47)
-    expect(SETTINGS_KNOBS).toHaveLength(47)
+    // 50 = the shared list (13 scalar knobs + the 3 force-supervisor rows + 33 per-agent route leaves
+    // + the TUI surface's own `tui.dashboardKey`). The retired twelve `teamModels` rows are GONE with
+    // that table (contract `.mpd/plans/agent-routes-per-agent.md` §1); the element-wise loop below is
+    // what makes this a no-drift pin, not a magic number.
+    expect(FIELDS).toHaveLength(50)
+    expect(SETTINGS_KNOBS).toHaveLength(50)
     expect(FIELDS.map((field: CardField) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
     for (const [index, field] of FIELDS.entries()) {
       /** The shared declaration's knob at the same index. */
@@ -1842,7 +1842,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     const tree = await renderReady()
     /** Every knob the card declares, in declaration order. */
     const fields = CARD.FIELDS as CardField[]
-    expect(fields).toHaveLength(47)
+    expect(fields).toHaveLength(50)
     /** One rendered row per knob (a missing row is a failure, never a skip). */
     const rows = fields.map((field) => rowOf(tree, field.path.join(".")))
     expect(rows.filter((row) => row === undefined)).toEqual([])
@@ -1850,7 +1850,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // the FIRST field carries no separator; every field after it carries `.field + .field`
     expect(styleOf(rows[0]).borderTop).toBeUndefined()
     for (const row of rows.slice(1)) expect(styleOf(row).borderTop).toBe("0.5px solid var(--dsw-alias-border-l2, #0000001a)")
-    expect(rows.slice(1)).toHaveLength(46)
+    expect(rows.slice(1)).toHaveLength(49)
   })
 
   test("R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint", async () => {

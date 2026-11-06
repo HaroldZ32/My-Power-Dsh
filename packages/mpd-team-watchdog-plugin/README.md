@@ -264,14 +264,18 @@ settings half is live.
 | `watchdog.enabled` | `true` | kill switch (`MPD_DSH_TEAM_WATCHDOG=off` forces it off) |
 | `watchdog.toolInFlightMaxMs` | `900000` | how long an OPEN tool call explains silence away; `0` disables the bound (r6) |
 | `watchdog.holdTtlMs` | `900000` | the bound after which a persisted hold is auto-released with a durable `hold-auto-released` incident; `0` = never expire |
-| `watchdog.forceAfterMs` | `900000` | how long a task may stay `in_progress` before the force supervisor interrupts its owner, writes the handoff, requeues the row and splits the work; the only exemption is an open `bash` call, and `0` disables the rule (D3) |
+| `watchdog.forceAfterMs` | `900000` | how long the OWNER may show no observable activity (silence, not task age) before the force supervisor targets it: it sends the grace directive first, then on window expiry interrupts the owner, adopts or writes the handoff, requeues the row and splits the work; the only no-age-bound exemption is an open `bash` call, and `0` disables the rule (S1/S4) |
+| `watchdog.maxTaskAgeMs` | `0` | **OPT-IN** task-age ceiling: force a task that has been `in_progress` this long even while its owner is demonstrably active; `0` (the default) = never. Turning it on reintroduces the 2026-11-06 failure mode (S2) |
+| `watchdog.graceMs` | `90000` | grace first: the first crossing of the silence bound sends ONE "write your handoff and end your turn" directive and never interrupts; the kill phase starts only after this window expires; `0` skips the grace phase (S4) |
 
 These numbers are the frozen §3 table: they appear in `machine.ts`'s `WATCHDOG_DEFAULTS`,
 in this row's own `Config` schema and in the bundle patch's row config, and the three layers must
-agree exactly. Seven of them are ALSO declared in `mpd-config`'s `SettingsSchema.watchdog` and in the
-shared `FIELDS` render list the two front doors draw — `forceAfterMs` is the one exception, a named
-front-door residual (see NOT-CLAIMED below). That split is about the FRONT DOORS, not about whether
-this row can see a value: a knob is readable and settable through this row's own config (the defaults
+agree exactly. All ten of them are ALSO declared in `mpd-config`'s `SettingsSchema.watchdog` and in the
+shared `SETTINGS_KNOBS` render list that drives `/settings` and the TUI — `forceAfterMs`, `maxTaskAgeMs`
+and `graceMs` included — and the Web card's own hand-mirrored `FIELDS` copy (in
+`packages/mpd-bundle-plugin/src/settings-card.ts`) lists them too, so there is NO front-door residual
+(see NOT-CLAIMED below). That split is about the FRONT
+DOORS, not about whether this row can see a value: a knob is readable and settable through this row's own config (the defaults
 layer) and through the workspace `.mpd/mpd.jsonc` file layer that `config-file.ts` parses on every
 re-read. On a host that still serves the legacy `mpd` namespace the same holds there too, because its
 schemastery schema keeps unknown keys; on the pinned harness nothing registers that namespace, so the
@@ -485,24 +489,33 @@ whose Pause/Resume buttons POST exactly these two routes.
   dialog are later tasks. The notice-of-record here is the durable incident record, which
   those three readers consume.
 * **No pardon for a hanging NON-bash tool.** The r6 in-flight rule explains a long call away while
-  the call is younger than `toolInFlightMaxMs`, and past `forceAfterMs` a member whose open tool is
-  NOT `bash` IS a force target: the force supervisor (below) interrupts it, writes the handoff,
-  requeues the row and splits the work. The ONE exemption is an OPEN `bash` call — any age, no clock
-  needed — which is reported once as a `long-bash` incident and never interrupted.
-* **`forceAfterMs` is declared in the schema but not yet in the shared RENDER list.** It is in
-  `machine.ts`'s `WATCHDOG_DEFAULTS`, in this row's `Config` schema, in the bundle patch's row config
-  and in `mpd-config`'s `SettingsSchema.watchdog` — and it is re-read live every tick through the row
-  config and the `.mpd/mpd.jsonc` file layer like the other knobs. What has NOT landed is the shared
-  `FIELDS` row the two front doors render: the Web settings card keeps its own MIRRORED copy of that
-  list in `packages/mpd-bundle-plugin/src/settings-card.ts`, so adding the row in `mpd-config` alone
-  reddens that package's no-drift parity pin. Both edits belong to that package; until they land,
-  `/settings` and the TUI render the other seven knobs and `forceAfterMs` is set through the row
-  config or the workspace `.mpd/mpd.jsonc` file.
+  the call is younger than `toolInFlightMaxMs`, and past that bound a member whose open tool is NOT
+  `bash` stops counting as active: the force supervisor (below) starts its grace phase, interrupts it
+  when the window expires, writes or ADOPTS the handoff, requeues the row and splits the work. The ONE
+  exemption is an OPEN `bash` call — any age, no clock needed — which is reported once as a
+  `long-bash` incident and never interrupted.
+* **A PARKED member is NOT force-eligible without `maxTaskAgeMs`.** The trigger is measured SILENCE
+  from the `session/event` fold and the heartbeat stamps, and the fold's `PARKED` state (no open
+  turn — between turns, blocked on dependencies, finished but not re-dispatched) reports NO silence at
+  all. A parked member is not consuming a lane, so the silence rule leaves it alone; an operator who
+  wants a hard ceiling sets `maxTaskAgeMs`, which forces on AGE and deliberately reintroduces the
+  2026-11-06 failure mode.
+* **The three force knobs ARE rendered now (AC11).** `forceAfterMs`, `maxTaskAgeMs` and `graceMs` are
+  in `mpd-config`'s shared `SETTINGS_KNOBS` render list that drives `/settings` and the TUI, and the
+  Web settings card's hand-mirrored `FIELDS` copy in `packages/mpd-bundle-plugin/src/settings-card.ts`
+  lists them too, so the no-drift parity pin stays green. Every one of them is also in `machine.ts`'s
+  `WATCHDOG_DEFAULTS`, this row's `Config` schema, the bundle patch's row config and the workspace
+  `.mpd/mpd.jsonc` file layer, and is re-read live on every tick.
+* **What still is not claimed:** the reader-side experience of a force. The Web banner and the TUI
+  status row consume the durable incident records today, and there is no one-click "re-run the split"
+  button: recovery is the captain's three verbs (an owner-only dispatch pass, `reassign`, or a plain
+  `claim`).
 * **An in-flight turn IS aborted — by the force supervisor, never by the hold.** ESCALATE's hold
-  still only stops NEW dispatch; a member whose task reaches `forceAfterMs` is interrupted through
-  the adapter's interrupt seam (team members only — the captain is never a force target), which ends
-  the wedged turn and returns its row to the board. A member that recovers after ESCALATE still
-  finds the team held and cannot advance it — which is the intended outcome.
+  still only stops NEW dispatch; a member whose owner shows no observable activity for `forceAfterMs`
+  is told to hand off first, and is interrupted through the adapter's interrupt seam only once the
+  grace window expires (team members only — the captain is never a force target), which ends the
+  wedged turn and returns its row to the board. A member that recovers after ESCALATE still finds the
+  team held and cannot advance it — which is the intended outcome.
 * **No real-wedge verification here.** The unit suite drives the machine with an injected
   clock and a stub adapter; the fault-injection and live-wedge lanes are other tasks.
 * `parkedAttempts` is the projection described above, and `unread` is `null` by construction
@@ -551,21 +564,48 @@ data bindings and no actions, measured before publication against the app's 8 Ki
 depth-6 tool-card budget. A card that cannot be built returns `{}`, so the app falls back to its
 generic tool row. The text `render` and the output schema are unchanged.
 
-## The force supervisor (2026-11-05)
+## The force supervisor (2026-11-05, SILENCE-triggered since 2026-11-06)
 
-A team member whose `in_progress` task reaches `forceAfterMs` is a force target:
+A team member whose `in_progress` task has produced NO OBSERVABLE ACTIVITY for `forceAfterMs` is a
+force target. The trigger is SILENCE, never task age: the 2026-11-06 incident force-killed four lanes
+at 904s–946s while they were working (11 of 41 long child sessions were inside a non-`bash` tool at
+the 15-minute mark), so age alone no longer decides anything.
 
-- `forceAfterMs` defaults to `900000` ms (15 minutes); `0` disables the rule, and the value is read
-  live on every tick like the other knobs.
-- `projectMpdTeam` carries each task's `startedAt`/`updatedAt`; the machine emits a `wedged` decision
-  once per task+attempt, with a re-arm path when the force action failed.
+- `forceAfterMs` defaults to `900000` ms (15 minutes) and is measured on the watchdog's OWN silence
+  clock — the same duration the WARN ladder reads: the fold's OUTSTANDING request age, the fold's open
+  call age, or the newest heartbeat stamp. `0` disables the rule, and the value is read live on every
+  tick like the other knobs.
+- `maxTaskAgeMs` (default `0` = NEVER) is the ONLY age path, and it is opt-in: turning it on makes a
+  task forceable for being old even while its owner works, which is exactly the failure mode above.
+- `graceMs` (default `90000`) makes the decision TWO-PHASE on one task+attempt: the first crossing
+  sends the member ONE directive to write its handoff (`agent_teams_task {action:"handoff"}`) and end
+  its turn, and interrupts NOBODY; the kill decision follows only when the window expires with the row
+  still `in_progress`. A member that writes its seven-section handoff during the window is closed
+  cleanly and ITS document becomes the artifact — no supervisor template is written beside it. The
+  dedupe key carries the phase, so grace and kill are two decisions, never one re-decision.
+- `projectMpdTeam` carries each task's `startedAt`/`updatedAt`; the machine emits the `grace` then the
+  `wedged` decision once per task+attempt, with a re-arm path when the kill action failed.
+- A TERMINAL STATE WINS THE RACE (S6): the row is re-read immediately before the requeue and again
+  after the interrupt; a `complete` that landed meanwhile leaves the row `completed` — nothing is
+  requeued, nothing is split, and the journal row's reason says `force-skipped` with the observed
+  status and revision.
 - Owner identity is resolved by BOTH the member NAME and its `executorRef`/session id, and an owner
   that IS a session id resolves directly. This is the fix for the VEdit degradation: a member's own
   `claim` writes the session id as owner, so a name-only map missed the lookup and the engine
   announced `PREDICATE FALLBACK (§4)` and degraded to a report-only mode that can never hold or
   escalate.
-- The ONLY exemption is an OPEN `bash` call: while the in-flight tool is `bash` the member is exempt
-  with NO age bound, and ONE `long-bash` incident records the elapsed time at the boundary.
+- The ONLY no-bound exemption is an OPEN `bash` call: while the in-flight tool is `bash` the member
+  is exempt with NO age bound, and ONE `long-bash` incident records the elapsed time at the boundary.
+  ANY other open tool is activity only while it is younger than `toolInFlightMaxMs`; past that it
+  stops counting as activity (a hung tool, which is what this rule is for), and a call with no readable
+  start is treated as activity rather than interrupting on a guess.
+- The fallback supervisor handoff CARRIES THE WORK: the task's `description` and `writeScopes`, the
+  last tool calls WITH argument excerpts from the fold, the member's last assistant message when the
+  fold observed one, the measured idle duration that triggered the force, and a next step naming the
+  ACTUAL row ids (the continuation rows are appended with their real ids once the split writes them).
+- Every split row inherits the interrupted member as its `owner`, carries `blockedBy: []` and
+  `sourceTaskId` = the forced row, so the default owner-only dispatch pass pairs it again; the
+  captain's mailbox row names that inherited owner and the three recovery verbs.
 - The captain session is NEVER a force target; one-shot consults are supervised by the consult
   deadman instead.
 

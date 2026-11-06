@@ -82,7 +82,7 @@ import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ACTION_ROUTES, TEAM_ROUTES, type TeamWebActions, type TeamWebPlan } from "./team-web"
 // THE TWO TEAM ACTIONS, exec-free: the bodies that used to sit inline in the `approve` and `run`
 // branches, so a tool call, the `mpdTeamActions` service and an HTTP route all drive ONE sequence.
-import { approveTeam, cancelTasks, endTeam, fenceMember, forceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
+import { approveTeam, cancelTasks, endTeam, fenceMember, forceWedgedTask, graceWedgedTask, runDispatch, TEAM_ACTIONS_SERVICE, unfenceMember, writeMemberHandoff, type MpdTeamActionsService, type TeamActionCaller, type TeamActionDeps } from "./team-actions"
 import { installIdleGuard, withIdlePreamble } from "./idle-guard"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -1777,6 +1777,20 @@ export function apply(ctx: any): void {
         { teamId, taskId, ...(evidence === undefined ? {} : { evidence }) },
       )
     },
+    // S4's GRACE phase: the SAME authority and the same addressing as `force`, but it interrupts
+    // NOTHING — it asks the member to write its handoff and end its turn.
+    grace: async ({ sessionId, teamId, taskId, workspace: requestedWorkspace, evidence }) => {
+      /** The session's caller, or the refusal this member answers instead of acting. */
+      const resolved = callerForSession(sessionId)
+      if (!resolved.ok) return resolved
+      // The watchdog ticks SEVERAL workspaces, so the record it decided on is the authority for where
+      // the directive and the journal land — never the agent's inherited cwd.
+      return graceWedgedTask(
+        teamActionsDeps,
+        requestedWorkspace === undefined ? resolved.caller : { ...resolved.caller, workspace: requestedWorkspace },
+        { teamId, taskId, ...(evidence === undefined ? {} : { evidence }) },
+      )
+    },
     // ADDRESSED BY WORKSPACE + TEAM, unlike its neighbours: the caller that abandons rows already holds
     // both (cellwork's activation), and the service plane is the row-to-row one where a session binding
     // would be a second way to name the same record.
@@ -2606,6 +2620,9 @@ export function apply(ctx: any): void {
         assertClaimReady(record.tasks, task)
         /** The claimer, defaulting to the calling session. */
         const claimant = String(args?.claimant ?? sessionId)
+        // ONE clock reading for the contract and the row, so no two fields of one claim can disagree.
+        /** The instant this claim is stamped with. */
+        const claimAt = now()
         /** The contract for this attempt, written before the record is told about the claim. */
         const contract = claimContract(workspace, {
           id: task.id,
@@ -2614,9 +2631,16 @@ export function apply(ctx: any): void {
           blockedBy: task.blockedBy,
           writeScopes: task.writeScopes,
           revision: task.revision,
-        }, claimant, now())
+        }, claimant, claimAt)
+        // ── S8: THE CLAIM STARTS A FRESH ACTIVITY CLOCK ──────────────────────────────
+        // `updateTeamTask` keeps the ORIGINAL `startedAt` on a reopen (its documented transition rule),
+        // so a re-claimed old row used to revive a day-old instant — the D6 defect, which made the row
+        // force-eligible on the very next tick. The stale instant is DELETED first and the in_progress
+        // transition then stamps THIS claim's clock: the activity baseline is never inherited.
+        /** The record with the stale start deleted, so the transition below re-stamps it. */
+        const reopened = updateTeamTask(record, task.id, { resetStartedAt: true }, claimAt)
         /** The record after the claim: owned, in flight, and carrying the new attempt counter. */
-        const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now())
+        const claimed = updateTeamTask(reopened, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, claimAt)
         /** The roster row the claimant names, when the claimant IS a member of this team. */
         const claimedMember = memberNamedBy(claimed, [claimant])
         // THE CLAIMED MEMBER IS `running` AGAIN (PR #60 review F3). This path used to write the task and

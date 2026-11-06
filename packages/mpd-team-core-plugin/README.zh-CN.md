@@ -420,13 +420,22 @@ fence 或已失败时，该行会被**报告**并保持 pending —— 绝不替
 `mpdTeamActions` 服务，并以团队记录的 `leadSessionId` 授权该动作。服务缺失或没有 lead session 时，
 记录事件并跳过 —— tick 永不抛错。
 
-一次强制动作：(1) 写入 `.mpd/handoff/<member>-<task>-<UTC instant>.md`（task、attempt、member、
-started、elapsed、最近工具调用、review 状态）；(2) 仅对**该**成员调用
-`executor().interrupt(caller.agent, handle)`；(3) 将任务重新入队为 `pending`，`attempt` 加一，并
-在 note 中写入 handoff 路径；(4) 拆分 —— 任务声明两个及以上写入范围时，每个范围生成一个未指派的
-`pending` 任务（各自继承 handoff 路径），否则只生成一个主题前缀为 `[split]` 的续作任务；
-(5) 给 captain 发一条邮箱消息，写明团队、任务、handoff 与拆分出的任务；(6) 日志记录
-`wedged-force` 与一条事件。
+**先走宽限（GRACE）。** 第一次越过静默上界只发**一条** `wedged-grace` 指令：经执行器的 `send` 要求
+该成员写一次七段式交接文档（`agent_teams_task {action:"handoff"}`）并结束回合，**绝不中断**。已经
+写过交接文档的成员会被报告为 `adopted` 并保持不动；投递失败时兜底为**一条** captain 信箱消息，
+因为静默的宽限阶段看起来会像一个健康的团队。
+
+**只有宽限过期才会强制**（`wedged-force`）：(1) 成员已在 `.mpd/team/handoff/<teamId>/` 下写下七段式
+文档时**原样采用**它，绝不再写模板；否则写出监督器兜底文档
+`.mpd/handoff/<member>-<task>-<UTC instant>.md`（task、attempt、member、started、elapsed、idle、
+最近工具调用、review 状态）；(2) 仅对**该**成员调用 `executor().interrupt(caller.agent, handle)` ——
+成员已配合、席位已进入 `checkpoint` 时跳过；(3) 重读记录：**终态赢得竞争**（或该行已离开决策时的代际）——
+日志记一条带 `force-skipped` 原因的 `wedged-force`，**不**重新入队、**不**拆分，已完成的行绝不会被
+重新打开；(4) 把该行重新入队为 `pending`，清空 `owner`、`attempt` 加一，并在 note 中写入 handoff
+路径；(5) 拆分 —— 任务声明两个及以上写入范围时**每个范围**一行 `[split]`，否则恰好**一行**续作行；
+每个拆分行的 `owner` 都继承被中断的成员，并携带 `blockedBy: []` 与 `sourceTaskId: <被强制的行>`；
+(6) 给 captain 发**一条**邮箱消息，写明团队、任务、handoff、拆分出的任务 id **以及恢复动词** ——
+owner-only 的 `mode:"roster"` 派发、逐 id 的 `reassign`、或直接 `claim`；(7) 日志记录 `wedged-force`。
 
 失败语义：handoff 写入失败会中止该成员**本次**强制（下个 tick 重试，每个 attempt 至多一次）；
 中断被拒绝会被记录，动作**仍会**重新入队并拆分；邮箱被拒是非致命的 —— 日志行才是持久通知。

@@ -4511,6 +4511,52 @@ function toolNameOf(event) {
   const data = dataOf(event);
   return asString(data.name) ?? asString(asRecord(data.message)?.name);
 }
+var TOOL_EXCERPT_MAX = 160;
+var RECENT_CALLS_MAX = 5;
+function toolExcerptOf(event) {
+  const data = dataOf(event);
+  const message = asRecord(data.message);
+  const first = Array.isArray(message?.content) ? asRecord((message?.content)[0]) : null;
+  const raw = data.arguments ?? data.args ?? data.input ?? first?.input ?? data.params;
+  if (raw === undefined || raw === null)
+    return "";
+  let text;
+  try {
+    text = typeof raw === "string" ? raw : JSON.stringify(raw);
+  } catch {
+    text = "(unserializable arguments)";
+  }
+  if (typeof text !== "string")
+    return "";
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length <= TOOL_EXCERPT_MAX ? line : line.slice(0, TOOL_EXCERPT_MAX - 1) + "…";
+}
+var ASSISTANT_TEXT_MAX = 1200;
+function assistantTextOf(event) {
+  const data = dataOf(event);
+  const message = asRecord(data.message);
+  const blocks = Array.isArray(message?.content) ? message?.content : Array.isArray(data.content) ? data.content : [];
+  const parts = [];
+  for (const block of blocks) {
+    if (typeof block === "string") {
+      parts.push(block);
+      continue;
+    }
+    const text = asString(asRecord(block)?.text) ?? asString(asRecord(block)?.content);
+    if (text !== null)
+      parts.push(text);
+  }
+  if (parts.length === 0) {
+    const bare = asString(data.text) ?? asString(message?.text);
+    if (bare === null)
+      return null;
+    parts.push(bare);
+  }
+  const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+  if (joined === "")
+    return null;
+  return joined.length <= ASSISTANT_TEXT_MAX ? joined : joined.slice(0, ASSISTANT_TEXT_MAX - 1) + "…";
+}
 
 class ChannelFold {
   folds = new Map;
@@ -4569,12 +4615,21 @@ class ChannelFold {
             fold.answered.set(key, time);
             fold.streaming.delete(key);
           }
+          const text = assistantTextOf(event);
+          if (text !== null)
+            fold.lastAssistant = { at: time, text };
           break;
         }
         case "tool/call": {
           const callId = callIdOf(event);
           if (callId !== null)
             fold.openCalls.set(callId, { since: time, tool: toolNameOf(event) });
+          const callTool = toolNameOf(event);
+          if (callTool !== null) {
+            fold.recentCalls.push({ tool: callTool, excerpt: toolExcerptOf(event), at: time });
+            if (fold.recentCalls.length > RECENT_CALLS_MAX)
+              fold.recentCalls.splice(0, fold.recentCalls.length - RECENT_CALLS_MAX);
+          }
           break;
         }
         case "tool/result": {
@@ -4663,7 +4718,9 @@ class ChannelFold {
       lastEventAt: fold.lastEventAt,
       lastEventType: fold.lastEventType,
       events: fold.events,
-      firstToken: state === "OUTSTANDING" ? false : state === "ALIVE" || state === "IN-FLIGHT"
+      firstToken: state === "OUTSTANDING" ? false : state === "ALIVE" || state === "IN-FLIGHT",
+      lastAssistantMessage: fold.lastAssistant === null ? null : fold.lastAssistant.text,
+      recentToolCalls: fold.recentCalls
     };
   }
   sessions() {
@@ -4692,7 +4749,9 @@ class ChannelFold {
         openCalls: new Map,
         lastEventAt: null,
         lastEventType: null,
-        events: 0
+        events: 0,
+        lastAssistant: null,
+        recentCalls: []
       };
       this.folds.set(sessionId, fold);
     }
@@ -5002,11 +5061,13 @@ var WATCHDOG_DEFAULTS = {
   actionOnEscalate: "warn-only",
   toolInFlightMaxMs: 900000,
   holdTtlMs: 900000,
-  forceAfterMs: 900000
+  forceAfterMs: 900000,
+  maxTaskAgeMs: 0,
+  graceMs: 90000
 };
 function knobReadings(live, fileSection) {
   const file = fileSection !== null && typeof fileSection === "object" ? fileSection : {};
-  const knobs = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "enabled"];
+  const knobs = ["warnSilenceMs", "tickIntervalMs", "warnStreakToEscalate", "actionOnEscalate", "toolInFlightMaxMs", "holdTtlMs", "forceAfterMs", "maxTaskAgeMs", "graceMs", "enabled"];
   return knobs.map((knob) => {
     const liveValue = live[knob];
     const raw = file[knob];
@@ -5078,6 +5139,8 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   const toolInFlightMaxMs = number("toolInFlightMaxMs", 0);
   const holdTtlMs = number("holdTtlMs", 0);
   const forceAfterMs = number("forceAfterMs", 0);
+  const maxTaskAgeMs = number("maxTaskAgeMs", 0);
+  const graceMs = number("graceMs", 0);
   let enabled = defaults.enabled;
   if (section.enabled !== undefined) {
     if (typeof section.enabled === "boolean")
@@ -5089,7 +5152,7 @@ function readKnobs(namespaceValue, env = process.env, defaults = WATCHDOG_DEFAUL
   if (env.MPD_DSH_TEAM_WATCHDOG === "off" || env.MPD_DSH_TEAM_WATCHDOG === "0" || env.MPD_DSH_TEAM_WATCHDOG === "false") {
     enabled = false;
   }
-  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, issues };
+  return { enabled, warnSilenceMs, tickIntervalMs, warnStreakToEscalate, actionOnEscalate, toolInFlightMaxMs, holdTtlMs, forceAfterMs, maxTaskAgeMs, graceMs, issues };
 }
 function streakKey(teamId, taskId, attemptId) {
   return teamId + "\x00" + taskId + "\x00" + attemptId;
@@ -5104,6 +5167,7 @@ class WatchdogMachine {
   inFlightSuppressed = 0;
   wedgeForced = new Set;
   longBashReported = new Set;
+  graceSentAt = new Map;
   observe(candidates, now, knobs) {
     if (!knobs.enabled)
       return [];
@@ -5124,12 +5188,12 @@ class WatchdogMachine {
         continue;
       }
       if (channel === "OUTSTANDING") {
-        const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen;
-        if (since === null) {
+        const silentMs2 = this.silenceOf(candidate, now);
+        if (silentMs2 === null) {
           this.streaks.delete(key);
           continue;
         }
-        this.observeSilence(candidate, key, now - since, now, knobs, "silence-channel", "OUTSTANDING", false, decisions);
+        this.observeSilence(candidate, key, silentMs2, now, knobs, "silence-channel", "OUTSTANDING", false, decisions);
         continue;
       }
       if (candidate.lastKind === "turn-end") {
@@ -5155,7 +5219,12 @@ class WatchdogMachine {
         this.observeInFlight(candidate, key, now, knobs, decisions);
         continue;
       }
-      this.observeSilence(candidate, key, now - candidate.lastSeen, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions);
+      const silentMs = this.silenceOf(candidate, now);
+      if (silentMs === null) {
+        this.streaks.delete(key);
+        continue;
+      }
+      this.observeSilence(candidate, key, silentMs, now, knobs, "silence-heartbeat", null, candidate.heartbeatFallback === true, decisions);
     }
     return decisions;
   }
@@ -5166,15 +5235,15 @@ class WatchdogMachine {
       return false;
     if (candidate.assignee === CAPTAIN_KEY || candidate.lead === true)
       return false;
-    const startedAt = candidate.startedAt;
-    if (typeof startedAt !== "number" || !Number.isFinite(startedAt))
+    const startedAt = typeof candidate.startedAt === "number" && Number.isFinite(candidate.startedAt) ? candidate.startedAt : null;
+    const elapsedMs = startedAt === null ? 0 : now - startedAt;
+    const tool = this.openToolOf(candidate);
+    const silentMs = this.silenceOf(candidate, now);
+    const ageExceeded = knobs.maxTaskAgeMs > 0 && startedAt !== null && now - startedAt >= knobs.maxTaskAgeMs;
+    const crossed = silentMs !== null && silentMs >= knobs.forceAfterMs || ageExceeded;
+    if (!crossed)
       return false;
-    const elapsedMs = now - startedAt;
-    if (elapsedMs < knobs.forceAfterMs)
-      return false;
-    const tool = candidate.inFlightTool ?? candidate.channelInFlightTool ?? null;
-    const inFlightSince = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null;
-    if (tool === "bash") {
+    if (tool.tool === "bash") {
       if (!this.longBashReported.has(key)) {
         this.longBashReported.add(key);
         decisions.push({
@@ -5186,14 +5255,39 @@ class WatchdogMachine {
           memberKey: candidate.memberKey,
           startedAt,
           elapsedMs,
-          inFlightMs: typeof inFlightSince === "number" ? now - inFlightSince : 0,
-          tool
+          inFlightMs: tool.since === null ? 0 : now - tool.since,
+          tool: tool.tool
         });
       }
       return true;
     }
+    if (tool.tool !== null) {
+      if (tool.since === null)
+        return false;
+      if (knobs.toolInFlightMaxMs > 0 && now - tool.since <= knobs.toolInFlightMaxMs)
+        return false;
+    }
     if (this.wedgeForced.has(key))
       return false;
+    const graceSentAt = this.graceSentAt.get(key);
+    if (knobs.graceMs > 0 && graceSentAt === undefined) {
+      this.graceSentAt.set(key, now);
+      decisions.push({
+        type: "grace",
+        teamId: candidate.teamId,
+        taskId: candidate.taskId,
+        attemptId: candidate.attemptId,
+        assignee: candidate.assignee,
+        memberKey: candidate.memberKey,
+        silentMs: silentMs ?? elapsedMs,
+        startedAt,
+        elapsedMs,
+        deadline: now + knobs.graceMs
+      });
+      return true;
+    }
+    if (knobs.graceMs > 0 && graceSentAt !== undefined && now - graceSentAt < knobs.graceMs)
+      return true;
     this.wedgeForced.add(key);
     decisions.push({
       type: "wedged",
@@ -5202,11 +5296,42 @@ class WatchdogMachine {
       attemptId: candidate.attemptId,
       assignee: candidate.assignee,
       memberKey: candidate.memberKey,
+      silentMs: silentMs ?? elapsedMs,
       startedAt,
       elapsedMs,
-      lastToolCalls: [...candidate.recentTools ?? []]
+      graceSentAt: graceSentAt ?? now,
+      lastToolCalls: [...candidate.recentTools ?? []],
+      toolCalls: [...candidate.recentToolCalls ?? []],
+      assistantMessage: candidate.assistantMessage ?? null
     });
     return true;
+  }
+  silenceOf(candidate, now) {
+    if (candidate.channelState === "OUTSTANDING") {
+      const since = typeof candidate.outstandingSince === "number" ? candidate.outstandingSince : candidate.lastSeen;
+      return since === null ? null : now - since;
+    }
+    if (candidate.channelState === "IN-FLIGHT") {
+      const since = candidate.inFlightSince ?? candidate.channelInFlightSince ?? null;
+      return since === null ? null : now - since;
+    }
+    if (candidate.channelState === "ALIVE" || candidate.channelState === "PARKED") {
+      return null;
+    }
+    if (candidate.lastKind === "turn-end")
+      return null;
+    if (candidate.lastSeen === null || !candidate.everStampedForTask)
+      return null;
+    return now - candidate.lastSeen;
+  }
+  openToolOf(candidate) {
+    if (typeof candidate.inFlightTool === "string" && candidate.inFlightTool !== "") {
+      return { tool: candidate.inFlightTool, since: typeof candidate.inFlightSince === "number" ? candidate.inFlightSince : null };
+    }
+    if (typeof candidate.channelInFlightTool === "string" && candidate.channelInFlightTool !== "") {
+      return { tool: candidate.channelInFlightTool, since: typeof candidate.channelInFlightSince === "number" ? candidate.channelInFlightSince : null };
+    }
+    return { tool: null, since: null };
   }
   rearmWedge(teamId, taskId, attemptId) {
     this.wedgeForced.delete(streakKey(teamId, taskId, attemptId));
@@ -5278,6 +5403,7 @@ class WatchdogMachine {
     this.reportedFallback.delete(key);
     this.wedgeForced.delete(key);
     this.longBashReported.delete(key);
+    this.graceSentAt.delete(key);
   }
   hasEscalated(teamId, taskId, attemptId) {
     return this.escalated.has(streakKey(teamId, taskId, attemptId));
@@ -5289,7 +5415,8 @@ class WatchdogMachine {
       toolExpired: [...this.toolExpired].sort(),
       inFlightSuppressed: this.inFlightSuppressed,
       wedged: [...this.wedgeForced].sort(),
-      longBash: [...this.longBashReported].sort()
+      longBash: [...this.longBashReported].sort(),
+      grace: Object.fromEntries(this.graceSentAt)
     };
   }
 }
@@ -5621,6 +5748,9 @@ class WatchdogEngine {
     holdsAutoReleased: 0,
     holdsAutoReleaseFailures: 0,
     forced: 0,
+    graceSent: 0,
+    graceFailures: 0,
+    forceSkipped: 0,
     forceFailures: 0,
     longBash: 0,
     lastError: null
@@ -5703,7 +5833,9 @@ class WatchdogEngine {
       actionOnEscalate: this.config.actionOnEscalate,
       toolInFlightMaxMs: this.config.toolInFlightMaxMs,
       holdTtlMs: this.config.holdTtlMs,
-      forceAfterMs: this.config.forceAfterMs
+      forceAfterMs: this.config.forceAfterMs,
+      maxTaskAgeMs: this.config.maxTaskAgeMs,
+      graceMs: this.config.graceMs
     };
   }
   noteFallback(reason) {
@@ -5965,6 +6097,10 @@ class WatchdogEngine {
               await this.recordToolExpired(workspace, team, decision, now);
               continue;
             }
+            if (decision.type === "grace") {
+              await this.graceWedge(workspace, team, decision, now);
+              continue;
+            }
             if (decision.type === "wedged") {
               await this.forceWedge(workspace, team, decision, now);
               continue;
@@ -6189,6 +6325,8 @@ class WatchdogEngine {
         outstandingSince: view.outstandingSince,
         channelInFlightSince: view.inFlightSince,
         channelInFlightTool: view.inFlightTool,
+        recentToolCalls: view.recentToolCalls,
+        assistantMessage: view.lastAssistantMessage,
         heartbeatFallback: false,
         lead: isLead
       };
@@ -6308,6 +6446,39 @@ class WatchdogEngine {
     }
     this.info("TOOL-EXPIRED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " tool=" + (decision.tool ?? "(unnamed)") + " inFlight=" + decision.inFlightMs + "ms (since " + decision.since + ", bound=" + this.knobs.toolInFlightMaxMs + "ms)" + " — the call outlived the in-flight bound; reported ONCE, NO hold, NO escalation, the team is left alone" + (logged.ok ? " record=" + logged.path : " record=FAILED"));
   }
+  async graceWedge(workspace, team, decision, now) {
+    const sessionId = team.captainSessionId ?? "";
+    let failure = sessionId === "" ? "the team record names no lead session — the grace directive cannot be authorised" : null;
+    let outcome;
+    if (failure === null && this.forceSeam === undefined) {
+      failure = "no team plane is mounted (`mpdTeamActions` absent) — the grace directive was not delivered";
+    } else if (failure === null && this.forceSeam !== undefined) {
+      try {
+        outcome = await this.forceSeam.graceWedged({
+          workspace,
+          teamId: team.id,
+          taskId: decision.taskId,
+          attemptId: decision.attemptId,
+          member: decision.assignee,
+          sessionId,
+          silentMs: decision.silentMs,
+          graceMs: this.knobs.graceMs
+        });
+      } catch (error) {
+        failure = errorMessage(error);
+      }
+      if (failure === null && outcome !== undefined && !outcome.ok)
+        failure = outcome.error ?? "the grace action refused";
+    }
+    if (failure !== null) {
+      this.stats.graceFailures += 1;
+      this.warn("WEDGED-GRACE NOT DELIVERED " + team.id + " task=" + decision.taskId + " member=" + decision.assignee + " silent=" + decision.silentMs + "ms: " + failure + " (the kill phase is still due at " + decision.deadline + ")");
+      return;
+    }
+    this.stats.graceSent += 1;
+    this.appendGraceIncident(workspace, team, decision, now, outcome);
+    this.info("WEDGED-GRACE " + team.id + " task=" + decision.taskId + " attempt=" + decision.attemptId + " member=" + decision.assignee + " silent=" + decision.silentMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" + " deadline=" + decision.deadline + " handoff=" + (outcome?.path ?? "none") + " mail=" + (outcome?.mail ?? "none") + " delivered=" + (outcome?.delivered === true ? "yes" : "no") + " — the member was asked to write its handoff and end its turn; NOTHING was interrupted");
+  }
   async forceWedge(workspace, team, decision, now) {
     const sessionId = team.captainSessionId ?? "";
     if (sessionId === "") {
@@ -6329,7 +6500,11 @@ class WatchdogEngine {
         sessionId,
         startedAt: decision.startedAt,
         elapsedMs: decision.elapsedMs,
-        lastToolCalls: decision.lastToolCalls
+        silentMs: decision.silentMs,
+        graceSentAt: decision.graceSentAt,
+        lastToolCalls: decision.lastToolCalls,
+        toolCalls: decision.toolCalls,
+        assistantMessage: decision.assistantMessage
       });
     } catch (error) {
       outcome = { ok: false, error: errorMessage(error), retryable: false };
@@ -6338,10 +6513,17 @@ class WatchdogEngine {
       this.failForce(workspace, team, decision, now, outcome.error ?? "the force action refused", outcome.retryable === true);
       return;
     }
+    if (outcome.skipped !== undefined) {
+      this.stats.forceSkipped += 1;
+      this.forceRecorded.add(streakKey(team.id, decision.taskId, decision.attemptId));
+      this.appendForceIncident(workspace, team, decision, now, "skipped", outcome);
+      this.info("WEDGED-FORCE SKIPPED " + team.id + " task=" + decision.taskId + " attempt=" + decision.attemptId + " member=" + decision.assignee + " status=" + outcome.skipped.status + " revision=" + outcome.skipped.revision + " — a terminal state won the race; the row was not requeued and no split row was written");
+      return;
+    }
     this.stats.forced += 1;
     this.forceRecorded.add(streakKey(team.id, decision.taskId, decision.attemptId));
     this.appendForceIncident(workspace, team, decision, now, "applied", outcome);
-    this.info("WEDGED-FORCE " + team.id + " task=" + decision.taskId + " attempt=" + decision.attemptId + " member=" + decision.assignee + " elapsed=" + decision.elapsedMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" + " handoff=" + (outcome.handoff ?? "none") + " requeued=" + (outcome.requeued === undefined ? "no" : outcome.requeued.taskId + "/" + outcome.requeued.attempt) + " split=" + (outcome.split === undefined || outcome.split.length === 0 ? "none" : outcome.split.join(",")) + " — the member was interrupted, the row requeued and the work split");
+    this.info("WEDGED-FORCE " + team.id + " task=" + decision.taskId + " attempt=" + decision.attemptId + " member=" + decision.assignee + " silent=" + decision.silentMs + "ms (bound=" + this.knobs.forceAfterMs + "ms)" + " elapsed=" + decision.elapsedMs + "ms" + " handoff=" + (outcome.handoff ?? "none") + " handoffSource=" + (outcome.handoffSource ?? "supervisor") + " requeued=" + (outcome.requeued === undefined ? "no" : outcome.requeued.taskId + "/" + outcome.requeued.attempt) + " split=" + (outcome.split === undefined || outcome.split.length === 0 ? "none" : outcome.split.join(",")) + " — the member was interrupted, the row requeued and the work split");
   }
   failForce(workspace, team, decision, now, reason, retryable) {
     this.stats.forceFailures += 1;
@@ -6360,13 +6542,15 @@ class WatchdogEngine {
       teamId: team.id,
       kind: "wedged-force",
       at: now,
-      cause: { kind: "wedged-force", ms: decision.elapsedMs },
+      cause: { kind: "wedged-force", ms: decision.silentMs },
       taskId: decision.taskId,
       attemptId: decision.attemptId,
       scene: null,
       hold: "not-requested",
       force,
       ...outcome.handoff === undefined ? {} : { handoff: outcome.handoff },
+      ...outcome.handoffSource === undefined ? {} : { handoffSource: outcome.handoffSource },
+      ...outcome.skipped === undefined ? {} : { status: outcome.skipped.status, revision: outcome.skipped.revision },
       ...outcome.split === undefined || outcome.split.length === 0 ? {} : { split: outcome.split },
       acknowledgedBy: []
     };
@@ -6376,6 +6560,30 @@ class WatchdogEngine {
     else {
       this.stats.incidentFailures += 1;
       this.warn("wedged-force record append failed at " + logged.path + ": " + String(logged.error));
+    }
+  }
+  appendGraceIncident(workspace, team, decision, now, outcome) {
+    const incident = {
+      id: decision.taskId + "@" + decision.attemptId + "#wedged-grace#" + now,
+      teamId: team.id,
+      kind: "wedged-grace",
+      at: now,
+      cause: { kind: "wedged-grace", ms: decision.silentMs },
+      taskId: decision.taskId,
+      attemptId: decision.attemptId,
+      scene: null,
+      hold: "not-requested",
+      graceSentAt: now,
+      deadline: decision.deadline,
+      ...outcome?.path === undefined ? {} : { handoff: outcome.path },
+      acknowledgedBy: []
+    };
+    const logged = appendIncident(workspace, this.config.stateDir, incident);
+    if (logged.ok)
+      this.stats.incidents += 1;
+    else {
+      this.stats.incidentFailures += 1;
+      this.warn("wedged-grace record append failed at " + logged.path + ": " + String(logged.error));
     }
   }
   async recordLongBash(workspace, team, decision, now) {
@@ -6471,6 +6679,8 @@ var Config = Schema.object({
   toolInFlightMaxMs: Schema.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   holdTtlMs: Schema.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
   forceAfterMs: Schema.number().default(WATCHDOG_DEFAULTS.forceAfterMs),
+  maxTaskAgeMs: Schema.number().default(WATCHDOG_DEFAULTS.maxTaskAgeMs),
+  graceMs: Schema.number().default(WATCHDOG_DEFAULTS.graceMs),
   verboseSkips: Schema.boolean().default(false),
   logPrefix: Schema.string().default("mpd-team-watchdog")
 });
@@ -6490,6 +6700,8 @@ function resolveConfig(config = {}) {
     toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     holdTtlMs: num(config.holdTtlMs, WATCHDOG_DEFAULTS.holdTtlMs, 0),
     forceAfterMs: num(config.forceAfterMs, WATCHDOG_DEFAULTS.forceAfterMs, 0),
+    maxTaskAgeMs: num(config.maxTaskAgeMs, WATCHDOG_DEFAULTS.maxTaskAgeMs, 0),
+    graceMs: num(config.graceMs, WATCHDOG_DEFAULTS.graceMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog"
   };
@@ -6518,15 +6730,56 @@ function normaliseForceOutcome(answer) {
     };
   }
   const requeued = record.requeued !== null && typeof record.requeued === "object" ? record.requeued : undefined;
+  const skipped = record.skipped !== null && typeof record.skipped === "object" ? record.skipped : undefined;
   return {
     ok: true,
     ...typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {},
+    ...record.handoffSource === "member" || record.handoffSource === "supervisor" ? { handoffSource: record.handoffSource } : {},
+    ...skipped === undefined || typeof skipped.status !== "string" ? {} : { skipped: { status: skipped.status, revision: typeof skipped.revision === "number" ? skipped.revision : 0 } },
     ...requeued === undefined || typeof requeued.taskId !== "string" ? {} : { requeued: { taskId: requeued.taskId, attempt: typeof requeued.attempt === "number" ? requeued.attempt : 0 } },
     ...Array.isArray(record.split) ? { split: record.split.filter((id) => typeof id === "string") } : {}
   };
 }
 function forceSeamOf(ctx) {
+  const normaliseGrace = (answer) => {
+    const record = answer !== null && typeof answer === "object" ? answer : {};
+    if (record.ok !== true) {
+      return {
+        ok: false,
+        error: typeof record.error === "string" && record.error !== "" ? record.error : "the grace action answered without a reason"
+      };
+    }
+    return {
+      ok: true,
+      ...typeof record.directive === "string" && record.directive !== "" ? { directive: record.directive } : {},
+      ...typeof record.path === "string" && record.path !== "" ? { path: record.path } : {},
+      ...typeof record.mail === "string" && record.mail !== "" ? { mail: record.mail } : {},
+      ...record.delivered === true ? { delivered: true } : {}
+    };
+  };
   return {
+    graceWedged: async (request) => {
+      try {
+        const get = ctx?.get;
+        if (typeof get !== "function")
+          return { ok: false, error: "the plugin context exposes no service lookup" };
+        const service = get.call(ctx, TEAM_ACTIONS_SERVICE_ID, false);
+        const grace = service?.grace;
+        if (typeof grace !== "function")
+          return { ok: false, error: "the `mpdTeamActions` service is absent or exposes no grace()" };
+        const input = {
+          sessionId: request.sessionId,
+          teamId: request.teamId,
+          taskId: request.taskId,
+          workspace: request.workspace,
+          evidence: { member: request.member, attemptId: request.attemptId, silentMs: request.silentMs, graceMs: request.graceMs }
+        };
+        const answer = await grace.call(service, input);
+        return normaliseGrace(answer);
+      } catch (error) {
+        return { ok: false, error: errorMessage(error) };
+      }
+    },
     forceWedged: async (request) => {
       try {
         const get = ctx?.get;
@@ -6546,7 +6799,11 @@ function forceSeamOf(ctx) {
             attemptId: request.attemptId,
             startedAt: request.startedAt,
             elapsedMs: request.elapsedMs,
-            lastToolCalls: request.lastToolCalls
+            silentMs: request.silentMs,
+            graceSentAt: request.graceSentAt,
+            lastToolCalls: request.lastToolCalls,
+            toolCalls: request.toolCalls,
+            assistantMessage: request.assistantMessage
           }
         };
         const answer = await force.call(service, input);

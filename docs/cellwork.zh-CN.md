@@ -578,9 +578,12 @@ cell **模式**的引擎（requirements、split、activate、recon、budget）�
 
 ## 监督与强制监督器（2026-11-05）
 
-cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器会通过团队记录看到它，并可对其执行
-handoff → interrupt → requeue → split；`mpd-team-core` **绝不**写 CELL 记录 —— 席位事后通过
-`cellwork_dispatch`（`reassign`）或 `cellwork_split` 修复自身。单次 consult 由 15 分钟 consult
-deadman 监督；verifier 席位被拒绝两个 consult 工具（`mpd_role_spawn_async`、`mpd_role_consult`），
-因此既不能委派，也不能取消另一个 consult。re-team 的 volume 计数器会计入 cellwork 自己的 staging
-调用，因为它们以同一 session 执行。
+cell 席位**就是**团队成员，因此团队 watchdog 的强制监督器会通过团队记录看到它：先向该席位发一条
+**宽限**指令，要求它写出自己的交接文档并结束回合（成员自己写的七段式交接文档会被**采用**）；只有宽限
+**过期**才会中断一次，随后重新排队并拆分；`mpd-team-core` **绝不**写 CELL 记录 —— 席位事后通过
+`cellwork_dispatch`（`reassign`）或 `cellwork_split` 修复自身。单次 consult 由**静默** consult
+deadman 监督：上界按 `consult.forceAfterMs` → `watchdog.forceAfterMs` → 900000 ms 解析（显式 `0`
+关闭规则），且未满 `watchdog.toolInFlightMaxMs` 的在途工具、以及任意时长的未关闭 `bash` 调用都算作
+活动。verifier 席位被拒绝两个 consult 工具（`mpd_role_spawn_async`、`mpd_role_consult`），因此既
+不能委派，也不能取消另一个 consult。re-team 的 volume 计数器会计入 cellwork 自己的 staging 调用，
+因为它们以同一 session 执行。

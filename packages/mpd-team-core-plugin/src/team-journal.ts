@@ -30,9 +30,15 @@ import { teamRoot } from "./team-store"
  *
  * `wedged-force` is D3's supervisor event: a member was interrupted at the force bound, its row
  * requeued and the work split. It is written whatever the captain's mailbox did, which is what makes
- * the journal — not the mailbox — the DURABLE notification of a force.
+ * the journal — not the mailbox — the DURABLE notification of a force. The SAME event carries a
+ * `force-skipped` reason when the row reached a terminal state (or moved) during the interrupt: the
+ * force then requeues nothing and splits nothing, and the reason states the observed status/revision.
+ *
+ * `wedged-grace` is S4's FIRST phase: the member was sent the ONE directive to write its handoff and
+ * end its turn, and NOTHING was interrupted. It is the durable `graceSentAt` a reader compares the
+ * later `wedged-force` row against.
  */
-export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force"
+export type TeamJournalEvent = "task-reassigned" | "task-cancelled" | "member-fenced" | "member-unfenced" | "handoff-written" | "team-ended" | "wedged-force" | "wedged-grace"
 
 /** One team-journal row. */
 export interface TeamJournalEntry {

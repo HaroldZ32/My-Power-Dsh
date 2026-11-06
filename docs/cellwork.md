@@ -723,10 +723,14 @@ none.
 
 ## Supervision and the force supervisor (2026-11-05)
 
-A cell seat IS a team member, so the team watchdog's force supervisor sees it through the team record
-and can handoff → interrupt → requeue → split it; `mpd-team-core` never writes the CELL record — a seat
-repairs its own seat afterwards through `cellwork_dispatch` (`reassign`) or `cellwork_split`. One-shot
-consults are supervised by the 15-minute consult deadman, and a verifier seat is denied both consult
-tools (`mpd_role_spawn_async`, `mpd_role_consult`) so it can neither delegate nor cancel another
-consult. The re-team volume counter counts cellwork's own staging calls because they execute as the
-same session.
+A cell seat IS a team member, so the team watchdog's force supervisor sees it through the team record:
+the seat is first sent a GRACE directive asking it to write its own handoff and end its turn (a
+member-authored seven-section handoff is ADOPTED), and only an EXPIRED grace interrupts it — once —
+then requeues and splits the row; `mpd-team-core` never writes the CELL record — a seat repairs its own
+seat afterwards through `cellwork_dispatch` (`reassign`) or `cellwork_split`. One-shot consults are
+supervised by the SILENCE consult deadman: the bound resolves from `consult.forceAfterMs` →
+`watchdog.forceAfterMs` → 900000 ms (a declared `0` disables it), and any in-flight tool younger than
+`watchdog.toolInFlightMaxMs`, or an OPEN `bash` call at any age, counts as activity. A verifier seat is
+denied both consult tools (`mpd_role_spawn_async`, `mpd_role_consult`) so it can neither delegate nor
+cancel another consult. The re-team volume counter counts cellwork's own staging calls because they
+execute as the same session.

@@ -27,7 +27,7 @@
 // lookup, the row log, the idle guard's dispatch window and the two approval-time guards — arrives on
 // {@link TeamActionDeps}. That is what lets the same functions back a tool handler, the `mpdTeamActions`
 // service and an HTTP route without three copies of the approval sequence.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import type { TeamResolution } from "./team-lifecycle"
@@ -278,6 +278,12 @@ export interface MpdTeamActionsService {
    * is interrupted, nothing is written) and the watchdog records that.
    */
   force: (input: { sessionId: string; teamId: string; taskId: string; workspace?: string; evidence?: TeamForceEvidence }) => Promise<TeamActionResult<TeamForcePayload>>
+  /**
+   * S4's GRACE phase: deliver ONE directive to the member telling it to write its handoff and end its
+   * turn, delivered through the executor's own `send` and, only when that fails, reported to the
+   * captain. NOTHING is interrupted here, which is the whole point of the phase.
+   */
+  grace: (input: { sessionId: string; teamId: string; taskId: string; workspace?: string; evidence?: TeamForceEvidence }) => Promise<TeamActionResult<TeamGracePayload>>
 }
 
 /** The optional input of an approval; the tool's `dry_run` preview is the only member. */
@@ -413,8 +419,20 @@ export interface TeamForceEvidence {
   startedAt?: number
   /** How long the task had been in progress at the deciding tick, in ms. */
   elapsedMs?: number
+  /** S5: the MEASURED idle duration that triggered the force, in ms (the fallback handoff states it). */
+  silentMs?: number
+  /** S4: when the grace directive was recorded, ms epoch (the kill phase's own start). */
+  graceSentAt?: number
   /** The tool names the member's stamps recorded for this task, oldest first. */
   lastToolCalls?: readonly string[]
+  /**
+   * S5: the tool calls the `session/event` fold observed for this member, oldest first, each with an
+   * argument excerpt. The stamps carry names only, so this is the ONE source an excerpt can come
+   * from; absent means the fallback handoff quotes names alone and says so.
+   */
+  toolCalls?: readonly { tool: string; excerpt: string; at?: number }[]
+  /** S5: the last assistant message the fold observed, when it observed one. */
+  assistantMessage?: string | null
 }
 
 /** The input of one FORCE (D3): which team, which row, and the watchdog's evidence. */
@@ -435,15 +453,22 @@ export interface TeamForcePayload {
   taskId: string
   /** The member whose seat was interrupted, by board name. */
   member: string
-  /** The handoff document the action wrote (an absolute path). */
+  /** The handoff artifact (an absolute path): a member's own document or the supervisor's. */
   handoff: string
+  /** S4: which document that is — the member's own seven-section handoff, or the supervisor's. */
+  handoffSource: "member" | "supervisor"
   /** Whether the member's executor session was actually interrupted. */
   interrupted: boolean
   /** Why the interrupt did not land, when it did not (the requeue and split still happened). */
   interruptError?: string
-  /** The row after the requeue: `pending`, owner cleared, attempt bumped. */
-  requeued: { taskId: string; attempt: number }
-  /** The `[split]` rows this force created, in creation order. */
+  /** The row after the requeue: `pending`, owner cleared, attempt bumped. ABSENT on a skip. */
+  requeued?: { taskId: string; attempt: number }
+  /**
+   * S6: set when a TERMINAL STATE WON THE RACE — the row was no longer `in_progress` (or its revision
+   * moved) when it was re-read after the interrupt. Nothing was requeued and nothing was split.
+   */
+  skipped?: { status: string; revision: number }
+  /** The `[split]` rows this force created, in creation order. Empty when a skip prevented any. */
   split: string[]
   /** The mailbox row's id, when the captain notification landed. */
   mail?: string
@@ -1962,11 +1987,14 @@ function forceHandoffDir(workspace: string): string {
 }
 
 /**
- * Render ONE force handoff document.
+ * Render ONE supervisor force handoff — THE FALLBACK, and it must CARRY THE WORK (S5).
  *
- * The sections are the contract's list (§D3.4a): task, attempt, member, started, elapsed, last tool
- * calls, current review state — plus the two lines a next owner actually needs: WHO stopped the member
- * and what to do next. Pure, so the shape is testable without a file.
+ * The old template listed ids and tool NAMES, so the next owner inherited a title and a timestamp: no
+ * acceptance text, no scope, no argument, no last word from the member, and a "Next step" that pointed
+ * at "the rows named by the system message" — an artifact that does not exist. This document instead
+ * carries the task's `description` and `writeScopes`, the last tool calls WITH argument excerpts (the
+ * `session/event` fold supplies them), the member's last assistant message when one was observed, the
+ * MEASURED idle duration that triggered the force, and a next step that names the ACTUAL row ids.
  *
  * @param input - every field the document states, already resolved by the caller.
  * @returns the markdown document.
@@ -1975,21 +2003,40 @@ function renderForceHandoff(input: {
   teamId: string
   taskId: string
   subject: string
+  description: string
+  writeScopes: readonly string[]
   attempt: number
   attemptId: string
   member: string
   memberSession: string
   startedAt: number | null
   elapsedMs: number
+  idleMs: number
   lastToolCalls: readonly string[]
+  toolCalls: readonly { tool: string; excerpt: string; at?: number }[]
+  assistantMessage: string | null
   taskStatus: string
   round: number
   verdict: string
+  splitIds: readonly string[]
 }): string {
   // The start instant as both a raw clock reading and an ISO instant, or `unknown` when the board had none.
   const startedIso = input.startedAt === null ? "unknown" : new Date(input.startedAt).toISOString()
-  // The tool history, one bullet per name, or the honest "nothing recorded".
-  const tools = input.lastToolCalls.length === 0 ? "- (none recorded)" : input.lastToolCalls.map((name) => "- `" + name + "`").join("\n")
+  // The acceptance text, or the honest "the board declared none".
+  const description = input.description.trim() === "" ? "(the board declared no description)" : input.description.trim()
+  // The declared write scopes, one per line, or the honest "none declared".
+  const scopes = input.writeScopes.length === 0 ? "- (none declared — the next owner must narrow the scope first)" : input.writeScopes.map((scope) => "- `" + scope + "`").join("\n")
+  // The tool history: the fold's calls WITH argument excerpts when it saw any, else the stamp names.
+  const tools =
+    input.toolCalls.length > 0
+      ? input.toolCalls.map((call) => "- `" + call.tool + "`" + (call.excerpt === "" ? " (no arguments recorded)" : " — " + call.excerpt)).join("\n")
+      : input.lastToolCalls.length === 0
+        ? "- (none recorded)"
+        : input.lastToolCalls.map((name) => "- `" + name + "` (name only — no fold evidence for this call)").join("\n")
+  // The member's last word, when the fold observed one.
+  const assistant = input.assistantMessage === null || input.assistantMessage.trim() === "" ? "- (none observed)" : "> " + input.assistantMessage.trim()
+  // The rows the next owner may claim: the requeued row plus every continuation row this force creates.
+  const claimable = [input.taskId, ...input.splitIds]
   return [
     "# Force handoff — " + input.member + " / " + input.taskId,
     "",
@@ -1997,6 +2044,10 @@ function renderForceHandoff(input: {
     "- Task: " + input.taskId + " — " + input.subject,
     "- Team: " + input.teamId,
     "- Attempt: " + input.attempt + " (generation " + (input.attemptId === "" ? "unrecorded" : input.attemptId) + ")",
+    "- Description: " + description,
+    "",
+    "## Write scopes",
+    scopes,
     "",
     "## Member",
     "- Member: " + input.member,
@@ -2005,9 +2056,13 @@ function renderForceHandoff(input: {
     "## Timing",
     "- Started: " + startedIso + (input.startedAt === null ? "" : " (" + input.startedAt + ")"),
     "- Elapsed: " + input.elapsedMs + " ms",
+    "- IDLE AT THE FORCE BOUND: " + input.idleMs + " ms with no observable activity (the trigger)",
     "",
     "## Last tool calls",
     tools,
+    "",
+    "## Last assistant message",
+    assistant,
     "",
     "## Review state",
     "- Board status at the interrupt: " + input.taskStatus,
@@ -2015,15 +2070,252 @@ function renderForceHandoff(input: {
     "- Verdict: " + (input.verdict === "" ? "(none recorded)" : input.verdict),
     "",
     "## Why this document exists",
-    "The watchdog's force supervisor found this task `in_progress` past its force bound and interrupted",
-    "the owning member. The row was requeued (`pending`, attempt bumped) and the work was split into",
-    "continuation rows; this document is the account the next owner continues from.",
+    "The watchdog's force supervisor found this task `in_progress` with no observable activity for its",
+    "silence bound, sent the member the grace directive, and — when the grace window expired with the task",
+    "still running — interrupted it. The row was requeued (`pending`, attempt bumped) and the work was",
+    "split into continuation rows; this document is the account the next owner continues from.",
     "",
     "## Next step",
-    "Read the task description and the rows named by the system message, narrow the scope if the",
-    "subject carries no declared scope, then claim the row and continue from the last tool call above.",
+    "Claim the row you will continue with `agent_teams_task {action:\"claim\", task_id:\"<id>\"}` — the",
+    "claimable rows are " + claimable.map((id) => "`" + id + "`").join(", ") + " (the continuation rows are",
+    "listed with their final ids under `## Continuation rows` at the end of this document). The row",
+    "inherited its owner, so an owner-only dispatch pass pairs it again; if that seat is fenced, run the",
+    "pass with mode:\"roster\", reassign one id at a time, or claim the row yourself. Start from the last",
+    "tool call above and the write scopes this row declares.",
     "",
   ].join("\n")
+}
+
+/**
+ * Append the ACTUAL continuation rows to a handoff after the split was written (S5/AC7).
+ *
+ * The document is rendered BEFORE anything is interrupted (a handoff write failure must abort the
+ * force while nothing has been touched), so the split ids do not exist yet at that point. Appending
+ * them afterwards is what makes the next step name REAL rows rather than a prediction; a failed
+ * append is not fatal, because the journal and the captain's mailbox carry the same ids.
+ *
+ * @param path - the handoff document already written.
+ * @param requeuedTaskId - the row that was requeued.
+ * @param attempt - that row's new attempt counter.
+ * @param split - the `[split]` rows the force created, in creation order.
+ */
+function appendContinuationRows(path: string, requeuedTaskId: string, attempt: number, split: readonly string[]): void {
+  try {
+    appendFileSync(path, ["", "## Continuation rows", "- Requeued: " + requeuedTaskId + " (pending, attempt " + attempt + ")"].concat(split.map((id) => "- " + id)).join("\n") + "\n")
+  } catch {
+    // The journal row and the captain's mailbox name the same ids; the document is best effort here.
+  }
+}
+
+/**
+ * The member's OWN handoff artifact for this team, when one exists (S4).
+ *
+ * A member that complies with the grace directive writes a seven-section document through
+ * `agent_teams_task {action:"handoff"}`, which records `handoff: {path, ordinal}` on its roster row and
+ * files the document under `.mpd/team/handoff/<teamId>/`. THAT document is the artifact the force must
+ * use: it is the member's own account of what it was doing, and writing a supervisor template beside it
+ * would replace the better evidence with a guess.
+ *
+ * @param workspace - the workspace root.
+ * @param teamId - the team the row belongs to.
+ * @param memberName - the member's board name.
+ * @param recordedPath - the path the roster row records, when it records one.
+ * @returns the document path when one is on disk, else null.
+ */
+function memberHandoffOf(workspace: string, teamId: string, memberName: string, recordedPath: string | undefined): string | null {
+  // The recorded document wins when it still exists: the member named it itself.
+  if (recordedPath !== undefined && recordedPath !== "" && existsSync(recordedPath)) return recordedPath
+  // Otherwise the newest ordinal on disk, because a handoff written outside this process may not have
+  // reached the roster row yet.
+  let newest: string | null = null
+  for (let ordinal = 1; ordinal <= 999; ordinal += 1) {
+    // The candidate document for this ordinal.
+    const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal)
+    if (!existsSync(candidate)) {
+      // Ordinals are dense (the writer advances past existing files), so the first gap ends the scan.
+      if (newest === null) continue
+      break
+    }
+    newest = candidate
+  }
+  return newest
+}
+
+/** The input of one GRACE directive (S4's first phase). */
+export interface TeamGraceInput {
+  /** The team whose board row crossed the bound; absent resolves the CALLER's own team. */
+  teamId?: string
+  /** The board row whose owner should checkpoint itself. */
+  taskId: string
+  /** What the watchdog measured; every field is optional so a manual grace still works. */
+  evidence?: TeamForceEvidence
+}
+
+/** What one grace directive produced, in the shape the watchdog records. */
+export interface TeamGracePayload {
+  /** The team the row belongs to. */
+  teamId: string
+  /** The board row the directive names. */
+  taskId: string
+  /** The member that was asked, by board name. */
+  member: string
+  /** The directive text delivered to the member. */
+  directive: string
+  /** The handoff path the member was asked to write. */
+  path: string
+  /** Whether the executor's own `send` accepted the directive. */
+  delivered: boolean
+  /** Why the delivery failed, when it did. */
+  deliveryError?: string
+  /** The captain-facing mailbox row's id, written only when the delivery failed. */
+  mail?: string
+  /** Why that mailbox row did not land, when it did not. */
+  mailError?: string
+  /** The member-authored handoff already on disk, when the directive was unnecessary. */
+  adopted?: string
+}
+
+/**
+ * S4's GRACE phase: ask ONE wedged member to checkpoint itself, and interrupt nothing.
+ *
+ * WHY NOT INTERRUPT: a member that is merely slow can write the seven-section document the next owner
+ * actually needs, and the 2026-11-06 incident is exactly a supervisor that killed working lanes. The
+ * directive goes through the EXECUTOR's `send` (the one channel that reaches a live member's turn); the
+ * captain's mailbox is used only when that delivery FAILS, because a silent grace phase would look like
+ * a healthy team.
+ *
+ * A member that has ALREADY written its handoff is reported `adopted` and left alone: there is nothing
+ * to ask, and the kill phase will use that document instead of a template.
+ *
+ * @param deps - the row seams this action needs; see {@link TeamActionDeps}.
+ * @param caller - the authorising caller (the team's lead session, with a live agent).
+ * @param input - the team, the row and the watchdog's evidence.
+ * @returns the directive, where it reached the member, and any adopted document.
+ */
+export async function graceWedgedTask(deps: TeamActionDeps, caller: TeamActionCaller, input: TeamGraceInput): Promise<TeamActionResult<TeamGracePayload>> {
+  // A directive is a message from the captain's seat; both need a live agent.
+  if (caller.agent === undefined) return { ok: false, error: "grace needs a live agent" }
+  try {
+    // ── THE TEAM ────────────────────────────────────────────────────────────────────────────
+    /** The team the row belongs to: the named id, else the caller's own resolved team. */
+    const record = input.teamId === undefined ? deps.resolveTeam(caller.workspace, caller.sessionId, caller.lineage).record : readTeam(caller.workspace, input.teamId)
+    if (record === undefined) return { ok: false, error: `no team record is named ${JSON.stringify(input.teamId ?? "")} in this workspace` }
+    // ONLY THE LEAD MAY ASK, the same authority the force itself demands.
+    if (!recordNamesLead(record, [caller.sessionId, ...caller.lineage])) {
+      return { ok: false, error: `session ${caller.sessionId} is not the lead of team ${record.teamId} — only the lead may direct a member` }
+    }
+    /** The board row this directive is about. */
+    const task = record.tasks.find((candidate) => candidate.id === input.taskId)
+    if (task === undefined) return { ok: false, error: `no board row is named ${JSON.stringify(input.taskId)} on team ${record.teamId}` }
+    if (task.status !== "in_progress") return { ok: false, error: `task ${task.id} is "${task.status}" — only an in_progress row has a member to direct` }
+    /** The owner as the board spells it, falling back to the watchdog's reading. */
+    const owner = task.owner !== undefined && task.owner !== "" ? task.owner : input.evidence?.member ?? ""
+    if (owner === "") return { ok: false, error: `task ${task.id} has no owner — there is no member to direct` }
+    if (recordNamesLead(record, [owner])) return { ok: false, error: `task ${task.id} is owned by the team's lead — the captain is never a force target` }
+    /** The roster row this owner names. */
+    const member = memberNamedBy(record, [owner])
+    if (member === undefined) return { ok: false, error: `owner ${JSON.stringify(owner)} names no member on team ${record.teamId}` }
+    if (recordNamesLead(record, [member.name, member.executorRef ?? ""])) return { ok: false, error: `member ${member.name} is the team's lead — the captain is never a force target` }
+    /** The member's executor handle: the session the directive is delivered to. */
+    const handle = member.executorRef ?? ""
+    /** The clock every write below is stamped with. */
+    const now = deps.now()
+    /** The measured idle duration the directive quotes. */
+    const idleMs = typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0
+    /** The handoff the member already wrote, when it did. */
+    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path)
+    if (adopted !== null) {
+      appendTeamJournal(caller.workspace, { event: "wedged-grace", teamId: record.teamId, at: now.toISOString(), taskId: task.id, member: member.name, path: adopted, reason: "adopted: the member's own handoff already exists — no directive, no template" })
+      return { ok: true, teamId: record.teamId, taskId: task.id, member: member.name, directive: "", path: adopted, delivered: false, adopted }
+    }
+    // The ordinal the member's NEXT handoff will take, advanced past any document on disk.
+    let ordinal = (member.handoff?.ordinal ?? 0) + 1
+    while (existsSync(teamHandoffPath(caller.workspace, record.teamId, member.name, ordinal))) ordinal += 1
+    /** The document path the member is being asked to write. */
+    const path = teamHandoffPath(caller.workspace, record.teamId, member.name, ordinal)
+    // THE DIRECTIVE: the contract's one instruction (write the seven-section handoff, end the turn),
+    // worded from the module's own handoff directive so the two cannot drift apart.
+    const directive = [
+      `[mpd-team] the force supervisor found task ${task.id} (${task.subject}) in_progress with no observable activity for ${idleMs} ms.`,
+      `Write your handoff NOW with agent_teams_task {action:"handoff", content:"…"} — the seven sections Task, State, Decisions, Artifacts, Verified facts, Open questions, Next step — then END YOUR TURN.`,
+      `The document you write is the artifact the next owner continues from; it will be filed at ${path}.`,
+      handoffWrittenDirective(path),
+    ].join("\n")
+    /** Whether the executor's own send accepted the directive. */
+    let delivered = false
+    /** Why the delivery failed, when it did. */
+    let deliveryError: string | undefined
+    if (handle === "") {
+      deliveryError = `member ${member.name} has no executor handle — the directive cannot reach its session`
+    } else {
+      try {
+        await deps.executor().send(caller.agent, handle, directive, caller.signal)
+        delivered = true
+      } catch (error) {
+        deliveryError = refusalOf(error)
+      }
+    }
+    // THE CAPTAIN IS TOLD ONLY WHEN THE MEMBER COULD NOT BE REACHED: a silent grace phase would read
+    // as a healthy team, and the kill phase is due either way.
+    /** The mailbox row's id, when the failure notice landed. */
+    let mail: string | undefined
+    /** Why that notice did not land, when it did not. */
+    let mailError: string | undefined
+    /** The lead session the notice is addressed to. */
+    const leadSession = record.leadSessionId
+    if (!delivered && leadSession !== undefined && leadSession !== "") {
+      try {
+        /** The failure notice the captain reads. */
+        const result = send(
+          caller.workspace,
+          {
+            fromId: FORCE_SENDER_ID,
+            fromName: FORCE_SENDER_NAME,
+            toId: leadSession,
+            toName: "captain",
+            subject: `grace: ${member.name} could not be reached on ${task.id} (${record.teamId})`,
+            body: [
+              `team ${record.teamId} task ${task.id} (${task.subject}) has been silent for ${idleMs} ms.`,
+              `the grace directive could NOT be delivered to member ${member.name}: ${deliveryError ?? "unknown"}`,
+              `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + 90_000} (graceMs from the directive's instant); nothing has been interrupted yet.`,
+              `the member was asked to write: ${path}`,
+            ].join("\n"),
+            memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
+            teamId: record.teamId,
+            leadIds: [leadSession],
+          },
+          now,
+        )
+        if (result.ok) mail = result.message.id
+        else mailError = `mailbox refused the row (${result.reason}): ${result.detail}`
+      } catch (error) {
+        mailError = refusalOf(error)
+      }
+    }
+    appendTeamJournal(caller.workspace, {
+      event: "wedged-grace",
+      teamId: record.teamId,
+      at: now.toISOString(),
+      taskId: task.id,
+      member: member.name,
+      path,
+      reason: `graceSentAt=${now.getTime()} idle=${idleMs}ms delivered=${delivered}${deliveryError === undefined ? "" : " (" + deliveryError + ")"}`,
+    })
+    return {
+      ok: true,
+      teamId: record.teamId,
+      taskId: task.id,
+      member: member.name,
+      directive,
+      path,
+      delivered,
+      ...(deliveryError === undefined ? {} : { deliveryError }),
+      ...(mail === undefined ? {} : { mail }),
+      ...(mailError === undefined ? {} : { mailError }),
+    }
+  } catch (error) {
+    return unexpectedRefusalOf(error)
+  }
 }
 
 /**
@@ -2170,40 +2462,74 @@ export async function forceWedgedTask(
     if (input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" && String(liveTask.revision) !== input.evidence.attemptId) {
       return { ok: false, error: `task ${task.id} has moved to generation ${String(liveTask.revision)} — the force was not applied` }
     }
-    // ── (a) THE HANDOFF — its failure aborts this attempt and is retryable ────────────────
-    /** The absolute handoff path, or the retryable refusal the write produced. */
+    // ── (a) THE HANDOFF — the member's own document when it wrote one, else the fallback ──
+    // S4: a member that complied with the grace directive already left a SEVEN-SECTION account of the
+    // work. That document is used VERBATIM and no template is written beside it, because a supervisor
+    // template would replace the better evidence with a guess. The fallback write is the pre-S4 path,
+    // and its failure still aborts this attempt as retryable (nothing has been interrupted yet).
+    /** The handoff artifact this force uses (an absolute path). */
     let handoff: string
-    try {
-      handoff = writeForceHandoff(
-        caller.workspace,
-        member.name,
-        task.id,
-        now,
-        renderForceHandoff({
-          teamId: record.teamId,
-          taskId: task.id,
-          subject: task.subject,
-          attempt: (task.attempt ?? 0) + 1,
-          attemptId: input.evidence?.attemptId ?? "",
-          member: member.name,
-          memberSession: handle,
-          startedAt,
-          elapsedMs,
-          lastToolCalls: input.evidence?.lastToolCalls ?? [],
-          taskStatus: task.status,
-          round: task.round ?? 0,
-          verdict: task.verdict ?? "",
-        }),
-      )
-    } catch (error) {
-      return { ok: false, error: `handoff write failed for task ${task.id}: ${refusalOf(error)}`, retryable: true }
+    /** S4: which document that artifact is. */
+    let handoffSource: "member" | "supervisor"
+    /** The member-authored document already on disk, when it is. */
+    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path)
+    if (memberHandoff !== null) {
+      handoff = memberHandoff
+      handoffSource = "member"
+    } else {
+      handoffSource = "supervisor"
+      // The scopes the row declares, which the split below also reads.
+      /** The declared write scopes of the forced row. */
+      const declaredScopes = task.writeScopes
+      // The ids the split WILL mint: `addTeamTask` numbers them contiguously from the record's own
+      // counter, so the document can name real rows instead of a prediction it never corrects.
+      /** How many continuation rows this force will create. */
+      const splitCount = declaredScopes.length >= 2 ? declaredScopes.length : 1
+      /** The ids those rows will carry, in creation order. */
+      const expectedSplitIds = Array.from({ length: splitCount }, (_unused: unknown, index: number) => "T" + String(live.nextTaskNumber + index))
+      try {
+        handoff = writeForceHandoff(
+          caller.workspace,
+          member.name,
+          task.id,
+          now,
+          renderForceHandoff({
+            teamId: record.teamId,
+            taskId: task.id,
+            subject: task.subject,
+            description: String(task.description ?? ""),
+            writeScopes: declaredScopes,
+            attempt: (task.attempt ?? 0) + 1,
+            attemptId: input.evidence?.attemptId ?? "",
+            member: member.name,
+            memberSession: handle,
+            startedAt,
+            elapsedMs,
+            // S5: the measured idle duration, from the watchdog's own clock, never re-derived here.
+            idleMs: typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0,
+            lastToolCalls: input.evidence?.lastToolCalls ?? [],
+            toolCalls: input.evidence?.toolCalls ?? [],
+            assistantMessage: input.evidence?.assistantMessage ?? null,
+            taskStatus: task.status,
+            round: task.round ?? 0,
+            verdict: task.verdict ?? "",
+            splitIds: expectedSplitIds,
+          }),
+        )
+      } catch (error) {
+        return { ok: false, error: `handoff write failed for task ${task.id}: ${refusalOf(error)}`, retryable: true }
+      }
     }
     // ── (b) THE INTERRUPT — a refusal is recorded, never fatal ────────────────────────────
     /** Whether the executor actually stopped the member's session. */
     let interrupted = false
     /** Why the interrupt did not land, when it did not. */
     let interruptError: string | undefined
-    if (handle === "") {
+    if (handoffSource === "member" && member.mode === "checkpoint") {
+      // THE MEMBER COMPLIED: it wrote its own handoff and the seat entered the handoff window, so there
+      // is nobody to stop — "close the member cleanly instead of writing a template" (S4).
+      interrupted = false
+    } else if (handle === "") {
       interruptError = `member ${member.name} has no executor handle — nothing to interrupt`
     } else {
       try {
@@ -2222,6 +2548,45 @@ export async function forceWedgedTask(
     /** The team as it stands after the interrupt, or undefined when the record vanished meanwhile. */
     const armed = readTeam(caller.workspace, record.teamId)
     if (armed === undefined) return { ok: false, error: `team ${record.teamId} disappeared during the interrupt — the row was not requeued` }
+    // ── S6: A TERMINAL STATE WINS THE RACE ──────────────────────────────────────────────
+    // The re-read happens IMMEDIATELY BEFORE the requeue and AFTER the interrupt await: a `complete`
+    // that landed while the interrupt was in flight must leave the row `completed`. Requeueing it would
+    // revert finished work to `pending` + attempt+1 and split it into new rows — the exact data loss
+    // this guard exists for.
+    /** The row as the record holds it after the await, or undefined when it vanished. */
+    const armedTask = armed.tasks.find((candidate) => candidate.id === task.id)
+    /** The generation the watchdog decided on, when it stated one. */
+    const decidedRevision = input.evidence?.attemptId !== undefined && input.evidence.attemptId !== "" ? input.evidence.attemptId : null
+    /** Whether the row moved out of the state this force was decided on. */
+    const moved = armedTask === undefined || armedTask.status !== "in_progress" || (decidedRevision !== null && String(armedTask.revision) !== decidedRevision)
+    if (moved) {
+      /** The status observed on the re-read, stated even when the row vanished. */
+      const observedStatus = armedTask === undefined ? "missing" : armedTask.status
+      /** The revision observed on the re-read. */
+      const observedRevision = armedTask === undefined ? 0 : armedTask.revision
+      appendTeamJournal(caller.workspace, {
+        event: "wedged-force",
+        teamId: record.teamId,
+        at: now.toISOString(),
+        taskId: task.id,
+        member: member.name,
+        path: handoff,
+        reason: `force-skipped: status=${observedStatus} revision=${observedRevision} (decided on ${decidedRevision ?? "unstated"}) — a terminal state won the race; nothing requeued, nothing split`,
+      })
+      return {
+        ok: true,
+        teamId: record.teamId,
+        taskId: task.id,
+        member: member.name,
+        handoff,
+        handoffSource,
+        interrupted,
+        ...(interruptError === undefined ? {} : { interruptError }),
+        // A skip creates NO continuation rows — that is the whole point of S6's guard.
+        split: [],
+        skipped: { status: observedStatus, revision: observedRevision },
+      }
+    }
     /** The record with the row requeued. */
     let next: TeamRecord = updateTeamTask(
       armed,
@@ -2240,17 +2605,20 @@ export async function forceWedgedTask(
       for (const scope of scopes) {
         // The scope-specific subject: the original title plus the ONE path this row may touch.
         const subject = `[split] ${task.subject} — ${scope}`
-        next = addTeamTask(next, { subject, description: `${continuation} This row owns exactly one write scope: ${scope}.`, writeScopes: [scope], ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }) }, now)
+        next = addTeamTask(next, { subject, description: `${continuation} This row owns exactly one write scope: ${scope}.`, writeScopes: [scope], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }) }, now)
         split.push(next.tasks[next.tasks.length - 1]?.id ?? "")
       }
     } else {
       // No declared scope (or only one): ONE continuation row that must narrow the scope first.
       const subject = `[split] ${task.subject}`
-      next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }) }, now)
+      next = addTeamTask(next, { subject, description: `${continuation} The original row declared no split-able write scope, so NARROW THE SCOPE FIRST (name the files this row touches) before editing anything.`, writeScopes: [], owner: member.name, blockedBy: [], sourceTaskId: task.id, ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }) }, now)
       split.push(next.tasks[next.tasks.length - 1]?.id ?? "")
     }
     // ONE write for the requeue AND the split rows, so two ids can never race each other's snapshot.
     writeTeam(caller.workspace, next)
+    // S5/AC7: the supervisor document names the REAL continuation rows, appended after the split wrote
+    // them (the document itself was rendered before the interrupt, when these ids did not exist).
+    if (handoffSource === "supervisor") appendContinuationRows(handoff, task.id, attempt, split)
     // ── (e) THE CAPTAIN — ONE mailbox row, best effort ────────────────────────────────────
     /** The mailbox row's id, when the send landed. */
     let mail: string | undefined
@@ -2272,11 +2640,14 @@ export async function forceWedgedTask(
             toName: "captain",
             subject: `force: ${member.name} interrupted on ${task.id} (${record.teamId})`,
             body: [
-              `team ${record.teamId} task ${task.id} (${task.subject}) was in_progress for ${elapsedMs} ms and the watchdog's force supervisor stopped member ${member.name}.`,
-              `handoff: ${handoff}`,
+              `team ${record.teamId} task ${task.id} (${task.subject}) had produced no observable activity for ${input.evidence?.silentMs ?? 0} ms and the watchdog's force supervisor stopped member ${member.name}.`,
+              `handoff (${handoffSource}): ${handoff}`,
               `requeued: ${task.id} as pending, attempt ${attempt}`,
               `split: ${split.length === 0 ? "(none)" : split.join(", ")}`,
-              `interrupt: ${interrupted ? "applied" : "not applied — " + (interruptError ?? "unknown")}`,
+              `interrupt: ${interrupted ? "applied" : "not applied — " + (interruptError ?? (handoffSource === "member" ? "the member wrote its own handoff and ended its turn" : "unknown"))}`,
+              // S7: the rows are DISPATCHABLE because they inherited this owner; the sentence names the
+              // three ways to pair them when that seat cannot be messaged.
+              `owner: the split rows inherited ${member.name} as their owner, so an owner-only dispatch pass pairs them again — if that seat is unavailable, run the pass with mode:"roster", reassign one id at a time with agent_teams_dispatch {reassign:[{task_id, owner}]}, or claim a row directly with agent_teams_task {action:"claim", task_id}.`,
             ].join("\n"),
             memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
             teamId: record.teamId,
@@ -2298,7 +2669,7 @@ export async function forceWedgedTask(
       taskId: task.id,
       member: member.name,
       path: handoff,
-      reason: `elapsed=${elapsedMs}ms interrupted=${interrupted}${interruptError === undefined ? "" : " (" + interruptError + ")"} split=${split.join(",") || "none"}`,
+      reason: `idle=${input.evidence?.silentMs ?? 0}ms elapsed=${elapsedMs}ms source=${handoffSource} interrupted=${interrupted}${interruptError === undefined ? "" : " (" + interruptError + ")"} split=${split.join(",") || "none"}`,
     })
     return {
       ok: true,
@@ -2306,6 +2677,7 @@ export async function forceWedgedTask(
       taskId: task.id,
       member: member.name,
       handoff,
+      handoffSource,
       interrupted,
       ...(interruptError === undefined ? {} : { interruptError }),
       requeued: { taskId: task.id, attempt },

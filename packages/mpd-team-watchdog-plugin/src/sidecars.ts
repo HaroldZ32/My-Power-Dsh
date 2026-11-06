@@ -36,7 +36,7 @@ export interface HoldRecord {
 }
 
 /** The durable incident vocabulary (ONE definition, shared with the scene's incident rows). */
-export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "long-bash"
+export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "wedged-grace" | "long-bash"
 
 /**
  * Why an incident was recorded; `ms` is the silence window, the in-flight age or 0.
@@ -46,7 +46,7 @@ export type IncidentKind = "warn" | "escalate" | "never-started" | "tool-expired
  * fold concluded OUTSTANDING) or `silence-heartbeat` (§4's report-only degradation).
  */
 export type IncidentCause = {
-  kind: "silence" | "silence-channel" | "silence-heartbeat" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "long-bash"
+  kind: "silence" | "silence-channel" | "silence-heartbeat" | "never-started" | "tool-expired" | "hold-auto-released" | "wedged-force" | "wedged-grace" | "long-bash"
   ms: number
   tool?: string
   /**
@@ -90,7 +90,20 @@ export interface IncidentRecord {
    *
    * ABSENT on every other incident kind, and absent on a `long-bash` record (nothing was forced).
    */
-  force?: "applied" | "not-applied"
+  force?: "applied" | "not-applied" | "skipped"
+  /**
+   * S4: WHICH handoff document became a `wedged-force` record's artifact — `member` when the member
+   * wrote its own seven-section handoff during the grace window, `supervisor` for the fallback.
+   */
+  handoffSource?: "member" | "supervisor"
+  /** S6: the board status observed when the force was SKIPPED because the row moved. */
+  status?: string
+  /** S6: the row revision observed when the force was SKIPPED because the row moved. */
+  revision?: number
+  /** S4: the instant a `wedged-grace` directive was recorded (the kill phase's own start). */
+  graceSentAt?: number
+  /** S4: when the kill phase becomes due (`graceSentAt + graceMs`), on a `wedged-grace` record. */
+  deadline?: number
   /** D3: the handoff document a `wedged-force` record names, when one was written. */
   handoff?: string
   /** D3: the `[split]` rows the force created, when it created any. */

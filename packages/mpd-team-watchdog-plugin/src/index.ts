@@ -39,7 +39,7 @@ import z from "../../mpd-schemastery"
 import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_AGENTS, DSH_SEAM_TOOLS, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerWatchdogActions } from "./actions.js"
 import { registerWatchdogWeb, WATCHDOG_ROUTES, type WatchdogEffect } from "./web.js"
-import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats, type WedgeForceOutcome, type WedgeForceRequest, type WedgeForceSeam } from "./engine.js"
+import { WatchdogEngine, type EngineConfig, type EngineContext, type EngineStats, type WedgeForceOutcome, type WedgeForceRequest, type WedgeForceSeam, type WedgeGraceOutcome, type WedgeGraceRequest } from "./engine.js"
 import type { MpdTeamsRead } from "./team.js"
 import { HOLD_GATE_CALL, HOLD_SERVICE, HoldRegistry } from "./holds.js"
 import { readKnobs, WATCHDOG_DEFAULTS, type ResolvedKnobs } from "./machine.js"
@@ -97,10 +97,19 @@ export type Config = {
    */
   holdTtlMs?: number
   /**
-   * D3's force bound: how long a task may stay `in_progress` before its owner is treated as wedged
-   * and the force supervisor interrupts it (handoff, requeue, split). `0` disables the rule.
+   * THE FORCE BOUND (S1), measured on SILENCE: how long a task's owner may produce no observable
+   * activity before the two-phase force starts (grace directive, then interrupt/handoff/requeue/
+   * split). `0` disables the whole rule.
    */
   forceAfterMs?: number
+  /**
+   * S2's OPT-IN age ceiling: force a task once it has been `in_progress` this long EVEN IF its owner
+   * is active. `0` (the default) means NEVER. Turning it on reintroduces the 2026-11-06 failure mode
+   * (four lanes killed at 904s–946s while working), so it is documented as dangerous.
+   */
+  maxTaskAgeMs?: number
+  /** S4's grace window: the pause between the directive and the interrupt. `0` skips the phase. */
+  graceMs?: number
   /** Print skipped-team reasons to the console as well as the debug channel (default false). */
   verboseSkips?: boolean
   /** Diagnostic prefix. */
@@ -121,6 +130,8 @@ export const Config: Schemastery<Config> = z.object({
   toolInFlightMaxMs: z.number().default(WATCHDOG_DEFAULTS.toolInFlightMaxMs),
   holdTtlMs: z.number().default(WATCHDOG_DEFAULTS.holdTtlMs),
   forceAfterMs: z.number().default(WATCHDOG_DEFAULTS.forceAfterMs),
+  maxTaskAgeMs: z.number().default(WATCHDOG_DEFAULTS.maxTaskAgeMs),
+  graceMs: z.number().default(WATCHDOG_DEFAULTS.graceMs),
   verboseSkips: z.boolean().default(false),
   logPrefix: z.string().default("mpd-team-watchdog"),
 })
@@ -169,6 +180,9 @@ export function resolveConfig(config: Config = {}): EngineConfig {
     toolInFlightMaxMs: num(config.toolInFlightMaxMs, WATCHDOG_DEFAULTS.toolInFlightMaxMs, 0),
     holdTtlMs: num(config.holdTtlMs, WATCHDOG_DEFAULTS.holdTtlMs, 0),
     forceAfterMs: num(config.forceAfterMs, WATCHDOG_DEFAULTS.forceAfterMs, 0),
+    // S2/S4: both floor at 0, which is a MEANINGFUL value for each (never / multi-phase off).
+    maxTaskAgeMs: num(config.maxTaskAgeMs, WATCHDOG_DEFAULTS.maxTaskAgeMs, 0),
+    graceMs: num(config.graceMs, WATCHDOG_DEFAULTS.graceMs, 0),
     verboseSkips: bool(config.verboseSkips, false),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix !== "" ? config.logPrefix : "mpd-team-watchdog",
   }
@@ -229,9 +243,15 @@ function normaliseForceOutcome(answer: unknown): WedgeForceOutcome {
   }
   // The requeued row, when the answer names one.
   const requeued = record.requeued !== null && typeof record.requeued === "object" ? (record.requeued as Record<string, unknown>) : undefined
+  // S6: the terminal-race answer, when the team plane reported one.
+  const skipped = record.skipped !== null && typeof record.skipped === "object" ? (record.skipped as Record<string, unknown>) : undefined
   return {
     ok: true,
     ...(typeof record.handoff === "string" && record.handoff !== "" ? { handoff: record.handoff } : {}),
+    ...(record.handoffSource === "member" || record.handoffSource === "supervisor" ? { handoffSource: record.handoffSource } : {}),
+    ...(skipped === undefined || typeof skipped.status !== "string"
+      ? {}
+      : { skipped: { status: skipped.status, revision: typeof skipped.revision === "number" ? skipped.revision : 0 } }),
     ...(requeued === undefined || typeof requeued.taskId !== "string"
       ? {}
       : { requeued: { taskId: requeued.taskId, attempt: typeof requeued.attempt === "number" ? requeued.attempt : 0 } }),
@@ -250,7 +270,58 @@ function normaliseForceOutcome(answer: unknown): WedgeForceOutcome {
  * @returns the seam the engine calls; it never throws (every failure is an `{ ok:false }` answer).
  */
 export function forceSeamOf(ctx: unknown): WedgeForceSeam {
+  /**
+   * Normalise the team plane's grace answer onto {@link WedgeGraceOutcome}.
+   *
+   * EVERY field is read structurally, like the force answer: a foreign service's shape is untrusted,
+   * and an answer that does not say `ok: true` is a refusal with a reason rather than a success.
+   *
+   * @param answer - whatever the service's `grace` member returned.
+   * @returns the outcome the engine records.
+   */
+  const normaliseGrace = (answer: unknown): WedgeGraceOutcome => {
+    // The answer as a plain record, the only shape a foreign service can be read through.
+    const record = answer !== null && typeof answer === "object" ? (answer as Record<string, unknown>) : {}
+    if (record.ok !== true) {
+      return {
+        ok: false,
+        error: typeof record.error === "string" && record.error !== "" ? record.error : "the grace action answered without a reason",
+      }
+    }
+    return {
+      ok: true,
+      ...(typeof record.directive === "string" && record.directive !== "" ? { directive: record.directive } : {}),
+      ...(typeof record.path === "string" && record.path !== "" ? { path: record.path } : {}),
+      ...(typeof record.mail === "string" && record.mail !== "" ? { mail: record.mail } : {}),
+      ...(record.delivered === true ? { delivered: true } : {}),
+    }
+  }
   return {
+    graceWedged: async (request: WedgeGraceRequest): Promise<WedgeGraceOutcome> => {
+      try {
+        // The context's soft service probe; a minimal test context may not carry one.
+        const get = (ctx as { get?: (id: string, strict?: boolean) => unknown })?.get
+        if (typeof get !== "function") return { ok: false, error: "the plugin context exposes no service lookup" }
+        /** The team plane's action surface, or undefined when that row is not mounted. */
+        const service = get.call(ctx, TEAM_ACTIONS_SERVICE_ID, false)
+        /** The grace member, read structurally because the service is another package's value. */
+        const grace = (service as { grace?: unknown } | undefined)?.grace
+        if (typeof grace !== "function") return { ok: false, error: "the `mpdTeamActions` service is absent or exposes no grace()" }
+        /** The request as the service's grace member takes it. */
+        const input = {
+          sessionId: request.sessionId,
+          teamId: request.teamId,
+          taskId: request.taskId,
+          workspace: request.workspace,
+          evidence: { member: request.member, attemptId: request.attemptId, silentMs: request.silentMs, graceMs: request.graceMs },
+        }
+        /** The service's raw answer, normalised above. */
+        const answer = await (grace as (value: unknown) => Promise<unknown>).call(service, input)
+        return normaliseGrace(answer)
+      } catch (error) {
+        return { ok: false, error: message(error) }
+      }
+    },
     forceWedged: async (request: WedgeForceRequest): Promise<WedgeForceOutcome> => {
       try {
         // The context's soft service probe; a minimal test context may not carry one.
@@ -274,7 +345,13 @@ export function forceSeamOf(ctx: unknown): WedgeForceSeam {
             attemptId: request.attemptId,
             startedAt: request.startedAt,
             elapsedMs: request.elapsedMs,
+            // S5/S6: the measured idle duration, the grace instant, the tool calls WITH argument
+            // excerpts and the last assistant message — everything the fallback handoff must carry.
+            silentMs: request.silentMs,
+            graceSentAt: request.graceSentAt,
             lastToolCalls: request.lastToolCalls,
+            toolCalls: request.toolCalls,
+            assistantMessage: request.assistantMessage,
           },
         }
         /** The service's raw answer, normalised below. */
