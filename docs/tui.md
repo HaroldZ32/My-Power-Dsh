@@ -107,18 +107,24 @@ all three with the single word "uninstall":
 | `remove` | `dsh plugin --profile dsh-tui remove @mpd-dsh/mpd` rewrites `dsh.profile.bundles` and the lockfile (rolling back when the service fails), removes the bundle's rows and overrides, and deletes that component's grant entries. | Everything in the retention table below. |
 | `purge` | Deletes user data. | The host does not implement it and this bundle does not promise it. There is no action that "wipes every trace"; when the host cannot read a package's declaration it says it cannot tell, rather than faking a cleaned result. |
 
+**`remove` takes effect at the NEXT START.** The command changes the profile ON DISK, but a RUNNING
+profile keeps the startup bundle set it resolved at boot — so the bundle can stay ACTIVE until that
+profile restarts. Restart the profile after a removal before reporting the bundle as gone.
+
 The grant deletion is the one thing a removal must clear. Grants are keyed by **component id** — the
 `grants` and `denies` keys — so a grant row left behind is silently inherited by a later package that
 reuses the same id. If the deletion fails, the report must name the id, the file, and the inheritance
 risk.
 
 **What `remove` keeps, per resource class.** None of it is residue of a failed uninstall; it is the
-policy.
+policy. The manual's "no residue" (`AGENTS.md` §8(d)) means no INSTALLED residue — no profile rows and
+no home copy of the skills or presets — while user data under `~/.mpd/**` and the workspace's `.mpd/`
+are RETAINED BY POLICY in this section (§2.1).
 
 | Resource class | Where it lives | On `remove` |
 |---|---|---|
-| Config | `<workspace>/.mpd/mpd.jsonc`, `~/.dsh/mpd.jsonc` | Kept. It is the user's configuration — model routes and knobs — not the package's. |
-| Cache | `<workspace>/.codegraph`, and the workspace's own `.mpd` runtime state (team records, boulder, plans, logs) | Kept. It is derived from the workspace, and deleting it would destroy records that are not the package's to delete. |
+| Config | `<workspace>/.mpd/mpd.jsonc` (the `projectFile` setting overrides the workspace path) and `$DSH_HOME/mpd.jsonc` (default `~/.dsh/mpd.jsonc`; the `userFile` setting overrides it) | Kept. It is the user's configuration — model routes and knobs — not the package's. |
+| Cache | `<workspace>/.codegraph`, `~/.mpd/codegraph` (the CodeGraph server's HOME state root), and the workspace's own `.mpd` runtime state (team records, boulder, plans, logs) | Kept. It is derived from the workspace, and deleting it would destroy records that are not the package's to delete. |
 | Storage | `~/.mpd/workmate`, `~/.mpd/memory` | Kept. This is user data: workmate libraries and memory stores outlive any one install. |
 | Native and build artifacts | — | None to leave behind: the published dependency closure carries no install script, so a removal has no compiled artifact to delete. |
 

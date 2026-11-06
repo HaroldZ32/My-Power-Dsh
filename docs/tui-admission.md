@@ -82,15 +82,22 @@ both manifests answer `validatePlugin: ok` and `negotiate: compatible`.**
 
 Both numbers come from one run of the installed host's own chain,
 `loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest,
-legacyHostDescriptor, [])`, wrapped by our probe and corroborated by the repository's own instrument:
+legacyHostDescriptor, [])`, wrapped by our probe. The repository's own instrument corroborates the ROOT
+manifest only — it parses and measures `dsh-plugin.json` alone, through the host's pinned `parseManifest`;
+the probe does cover both manifests, but it feeds them as `JSON.parse` objects rather than
+host-`parseManifest` output, so the package manifest's acceptance by the host manifest parser is not
+established by these runs, only its `validatePlugin` and `negotiate` results:
 
 ```sh
 bun skills/dsh-qa/scripts/tui-admission.ts --static-only
 node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs
 ```
 
-Both exited 0. The 2026-11-06 measurement is a re-run after the permission change below; the
-2026-11-03 run is what that change was made against.
+Both exited 0. The second command is machine-specific: `probe-negotiation.mjs` hard-codes the author's
+host root (`HOST`, the installed `@deepseek-harness-tui/dsh-tui` directory under the `dsh-tui` profile)
+and repository root (`REPO`); substitute those two constants before running it. The first command is
+repository-relative and needs no substitution. The 2026-11-06 measurement is a re-run after the permission
+change below; the 2026-11-03 run is what that change was made against.
 
 **What turned `waiting_authorization` into `compatible`.** The 2026-11-03 run answered
 `waiting_authorization` with reason code `PERMISSION_NOT_GRANTED` over four declared permissions, all
@@ -123,7 +130,7 @@ blocks a claim and not admission.
 | Group | Verdict | Evidence | Remaining gap |
 |---|---|---|---|
 | A. Package and identity | **PARTIAL** | Met: `$schema` is an absolute URI (`https://dsh.community/schemas/dsh-plugin-0.15.json`), `manifestVersion` is `0.15`, the `id` is stable and unique (`com.mpd-dsh.mpd-tui`), `facets.host` names an entry with `apiVersion: v1alpha1`, no `client` or `worker` facet appears, and the source repository plus the MIT licence are locatable (`dsh-plugin.json`, `LICENSE.md`). | **Not met: no artifact SHA-256 digest is recorded anywhere.** Neither manifest, `dsh-distribution.json`, `VENDOR_LOCK.json` nor `scripts/pack-mpd.ts` carries one; what exists is prose — hashes quoted inside `docs/tui.md`, several of them truncated with `…` — not a digest the admission path can read. The guide scopes the digest to a Verified claim, so this **blocks a claim, not admission**. |
-| B. Declaration completeness | **PARTIAL** | Met: `requires.contracts` carries ONE optional `tui.dsh/v1alpha1#DecisionEvents` with a written fallback; `permissions: []`; `subscriptions: []`; `contributes.commands: []`; neither `provides` nor `requires.services` appears in either manifest. | **Not met:** `contributes.commands: []` while `/mpd` and `/mpd-model` ARE registered through the harness `commands` service, so the host's effect ledger attributes them `undeclared`. This is already documented in [`tui.md` §6.4](./tui.md#64-the-mpd-command-uses-the-hosts-unattributed-commands-service); the declaration and the behaviour still disagree. |
+| B. Declaration completeness | **PARTIAL** | Met: `requires.contracts` carries ONE optional `tui.dsh/v1alpha1#DecisionEvents` with a written fallback; `permissions: []`; `subscriptions: []`; `contributes.commands: []`; neither `provides` nor `requires.services` appears in either manifest. | **Not met:** `contributes.commands: []` while `/mpd` and `/mpd-model` ARE registered through the harness `commands` service, so the host's effect ledger attributed them `undeclared` — an EARLIER observation, not re-measured after admission became `compatible`; [`tui.md` §6.4](./tui.md#64-the-mpd-command-uses-the-hosts-unattributed-commands-service) records that live bound. The declaration and the behaviour still disagree. |
 | C. TUI compatibility | **PASS** | Negotiation passes on 0.18.0 for both manifests (`result.json` above); no `Backend` contribution is declared, so `TUI-BACKEND-001` does not apply; no remote attach is claimed, so no remote profile test is owed. | None inside this group. The `compatible` result is a negotiation result, not a live-mount result (§3). |
 | D. Runtime behaviour | **PARTIAL** | `apply` is synchronous — no `await`, no `ctx.root` capture; repeated activation is deterministic; cleanup ownership is covered by `packages/mpd-tui-plugin/test/plugin.test.ts`, which records every disposer and counts the disposals. | **Not met:** `effectOn` (`packages/mpd-tui-adapter-plugin/src/index.ts`) wraps the ownership call in `try` with an empty `catch`, so a scope that cannot own an effect fails silently instead of leaving a diagnosable, retryable state; and no activation or runtime-generation id is recorded, so a registered resource cannot be traced to the activation instance that owns it. |
 | E. Cleanup and recovery | **PARTIAL** | The documentation half is closed by [`tui.md` §2.1](./tui.md#21-removal-levels-and-the-retention-policy-tui-obs-002): the three removal levels, what a removal revokes, and what it keeps per resource class. | **Not automated.** The pinned conformance matrix (`evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/requirements-v0.15.json`) has no `TUI-OBS-002` row, and `skills/dsh-qa/scripts/tui-spec-conformance.ts` has no evaluator arm for it — an unknown id reports `blocked`. Nothing in the lane certifies §2.1 today. |
@@ -143,7 +150,7 @@ one can carry its own verdict.
 | R4 | Long sessions stay bounded: per-session state is cleaned on `session/disposed` instead of accumulating. | **PASS** | Nothing accumulates per session: the workspace root, the team view and the home directory are resolved on every call and never cached at module level (`packages/mpd-tui-plugin/src/index.ts`, `apply`), and the only process-wide latch is a single boolean. There is no per-session registry that grows with the number of sessions. |
 | R5 | User data only under the existing `~/.dsh-tui` locations. | **FAIL** | Three home roots outside it are written — `~/.mpd/workmate` (`packages/mpd-workmate-plugin`), `~/.mpd/memory` (`packages/mpd-memory-plugin`) and `~/.mpd/codegraph` (the adopted CodeGraph server, a third-party component) — and the bundle writes nothing under `~/.dsh-tui` itself. Recorded as a deviation, not repaired: §5.1. |
 | R6 | External JSON is always validated; corruption falls back instead of crashing. | **PASS** | Every external read goes through a validate-then-fallback path; the honest bound is that the validation is structural (shape and type), not schema validation. |
-| R7 | Plugin config and file content are untrusted input, especially strings on the render path: width is measured in terminal cells, never `string.length`. | **PASS** | `cellWidth` lives in `packages/mpd-tui-plugin/src/sanitize.ts` and is the width primitive the render path uses; two `.length` aliases recorded when the rule landed remain in the tree and are benign today — they are recorded, not re-derived in this wave, and they are not a licence for a third. |
+| R7 | Plugin config and file content are untrusted input, especially strings on the render path: width is measured in terminal cells, never `string.length`. | **PASS\*** | `*` declared bound: `cellWidth` counts one cell per code point and its `WIDE` table covers only the BMP East-Asian wide and fullwidth ranges, so an emoji outside those ranges (🚀, U+1F680) and a combining mark each count as ONE cell — layout can under-count those strings, and the rule is met for the ranges it covers, not unconditionally. `cellWidth` lives in `packages/mpd-tui-plugin/src/sanitize.ts` and is the width primitive the render path uses; two `.length` aliases recorded when the rule landed remain in the tree and are benign today — they are recorded, not re-derived in this wave, and they are not a licence for a third. |
 
 ### 5.1 R5: user data outside `~/.dsh-tui` — a recorded deviation
 

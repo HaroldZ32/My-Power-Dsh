@@ -502,7 +502,9 @@ installs the package, `reconcile` validates that the patch files load and append
 `dsh.profile.bundles`, and the rows resolve from `<profile>/node_modules`; (c) this repository NEVER
 edits DSH sources, NEVER writes a profile by hand and NEVER pushes a row into `<DSH_HOME>` (the retired
 escape hatches — a home `cordis.patch.yml`, a copied `skills/` tree, a preset directory — are dev/QA
-flows or removed outright); (d) uninstall is the mirror image, one command, leaving no residue except the user's own `~/.mpd/workmate`. A
+flows or removed outright); (d) uninstall is the mirror image, one command, leaving no INSTALLED
+residue (no profile rows, no home copy of skills or presets) while user data under `~/.mpd/**` and
+the workspace's `.mpd/` are RETAINED BY POLICY (`docs/tui.md` §2.1). A
 capability that arrives by any other route is a defect — `verify-plugin-manifest --pack` plus the Docker
 lane hold this line.
 

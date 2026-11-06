@@ -74,15 +74,20 @@
 
 两个结果来自同一次运行，走的是已安装宿主自己的链路
 `loadSpecData -> createContractIndex -> validatePlugin(index, manifest) -> negotiate(index, manifest,
-legacyHostDescriptor, [])`，由我们的探针包装，并由本仓库自己的工具交叉印证：
+legacyHostDescriptor, [])`，由我们的探针包装。本仓库自己的工具只交叉印证**根清单**——它只解析并测量
+`dsh-plugin.json` 一份，走宿主固定的 `parseManifest`；探针确实覆盖两份清单，但送入的是 `JSON.parse`
+得到的对象，而不是宿主 `parseManifest` 的输出，因此这些运行**没有**确立包清单能被宿主清单解析器接受，
+确立的只是它的 `validatePlugin` 与 `negotiate` 结果：
 
 ```sh
 bun skills/dsh-qa/scripts/tui-admission.ts --static-only
 node evidence/tui/ecosystem-admission/2026-11-06T02-09-20Z/probe-negotiation.mjs
 ```
 
-两者退出码均为 0。2026-11-06 这次是下面那次权限改动之后的复测；2026-11-03 那次才是改动所针对的
-测量。
+两者退出码均为 0。第二条命令与机器相关：`probe-negotiation.mjs` 把作者的宿主根（`HOST`，`dsh-tui`
+profile 下已安装的 `@deepseek-harness-tui/dsh-tui` 目录）与仓库根（`REPO`）写死在文件里，运行前需替换
+这两个常量；第一条命令是仓库相对路径，无需替换。2026-11-06 这次是下面那次权限改动之后的复测；
+2026-11-03 那次才是改动所针对的测量。
 
 **`waiting_authorization` 是怎么变成 `compatible` 的。** 2026-11-03 的运行回答
 `waiting_authorization`，原因码 `PERMISSION_NOT_GRANTED`，涉及四个已声明权限，全部是
@@ -111,7 +116,7 @@ live probe evidence`——探针结果与本仓库工具都记录该警告，而
 | 组 | 判定 | 证据 | 仍存在的缺口 |
 |---|---|---|---|
 | A. 包与身份 | **PARTIAL** | 已满足：`$schema` 是绝对 URI（`https://dsh.community/schemas/dsh-plugin-0.15.json`），`manifestVersion` 为 `0.15`，`id` 稳定且唯一（`com.mpd-dsh.mpd-tui`），`facets.host` 指明入口且 `apiVersion: v1alpha1`，未出现 `client` 或 `worker` facet，源仓库与 MIT 许可可定位（`dsh-plugin.json`、`LICENSE.md`）。 | **未满足：任何地方都没有记录产物 SHA-256 digest。** 两份清单、`dsh-distribution.json`、`VENDOR_LOCK.json`、`scripts/pack-mpd.ts` 都没有；存在的是散文——`docs/tui.md` 内引用的若干哈希，其中多处以 `…` 截断——不是准入库能读取的 digest。规则书把 digest 限定在 Verified 声明里，因此这**卡住的是声明，不是准入**。 |
-| B. 声明完整性 | **PARTIAL** | 已满足：`requires.contracts` 只有一条可选契约 `tui.dsh/v1alpha1#DecisionEvents` 并写有回退；`permissions: []`；`subscriptions: []`；`contributes.commands: []`；两份清单都没有出现 `provides` 或 `requires.services`。 | **未满足：** `contributes.commands: []`，而 `/mpd` 与 `/mpd-model` 确实通过 harness 的 `commands` 服务注册，于是宿主的 effect ledger 把它们记为 `undeclared`。这一点已写在 [`tui.zh-CN.md` §6.4](./tui.zh-CN.md) 中；声明与行为仍然不一致。 |
+| B. 声明完整性 | **PARTIAL** | 已满足：`requires.contracts` 只有一条可选契约 `tui.dsh/v1alpha1#DecisionEvents` 并写有回退；`permissions: []`；`subscriptions: []`；`contributes.commands: []`；两份清单都没有出现 `provides` 或 `requires.services`。 | **未满足：** `contributes.commands: []`，而 `/mpd` 与 `/mpd-model` 确实通过 harness 的 `commands` 服务注册，于是宿主的 effect ledger 把它们记为 `undeclared`——这是**更早的一次观察**，准入变成 `compatible` 之后并未复测；该实机边界记录在 [`tui.zh-CN.md` §6.4](./tui.zh-CN.md) 中。声明与行为仍然不一致。 |
 | C. TUI 兼容性 | **PASS** | 两份清单在 0.18.0 上协商通过（见上方 `result.json`）；没有声明 `Backend` 贡献，因此 `TUI-BACKEND-001` 不适用；没有声明 remote attach，因此不欠远程 profile 测试。 | 本组内无缺口。`compatible` 是协商结果，不是实机挂载结果（§3）。 |
 | D. 运行时行为 | **PARTIAL** | `apply` 是同步的——没有 `await`，也没有捕获 `ctx.root`；重复 activation 行为确定；清理归属由 `packages/mpd-tui-plugin/test/plugin.test.ts` 覆盖，该用例记录每个 disposer 并统计释放次数。 | **未满足：** `effectOn`（`packages/mpd-tui-adapter-plugin/src/index.ts`）把归属调用包在 `try` 加空 `catch` 里，于是无法拥有 effect 的 scope 会静默失败，而不是留下可诊断、可重试的状态；另外没有记录 activation 或 runtime generation id，已注册资源无法追溯到拥有它的 activation 实例。 |
 | E. 清理与恢复 | **PARTIAL** | 文档这一半由 [`tui.zh-CN.md` §2.1](./tui.zh-CN.md) 补上：三种移除等级、一次移除实际撤销什么、以及按资源类别说明保留什么。 | **尚未自动化。** 固定的那套一致性矩阵（`evidence/dshgo/tui-admission/2026-11-03T01-23-16Z/requirements-v0.15.json`）没有 `TUI-OBS-002` 行，`skills/dsh-qa/scripts/tui-spec-conformance.ts` 也没有对应的求值分支——未知 id 报 `blocked`。今天没有任何通道为 §2.1 背书。 |
@@ -130,7 +135,7 @@ live probe evidence`——探针结果与本仓库工具都记录该警告，而
 | R4 | 长会话保持有界：per-session 状态在 `session/disposed` 时清理，而不是无限累积。 | **PASS** | 没有任何按会话累积的东西：workspace 根、团队视图与 home 目录都在每次调用时解析，从不缓存在模块级（`packages/mpd-tui-plugin/src/index.ts` 的 `apply`），唯一的进程级闩锁是一个布尔值。不存在随会话数量增长的 per-session 注册表。 |
 | R5 | 用户数据只放在既有的 `~/.dsh-tui` 位置下。 | **FAIL** | 在它之外写了三个 home 根：`~/.mpd/workmate`（`packages/mpd-workmate-plugin`）、`~/.mpd/memory`（`packages/mpd-memory-plugin`）与 `~/.mpd/codegraph`（收养的 CodeGraph 服务器，第三方组件）；而本 bundle 自己在 `~/.dsh-tui` 下什么都不写。记录为偏差，不予修复：§5.1。 |
 | R6 | 外部 JSON 一律校验；损坏时回退而不是崩溃。 | **PASS** | 每次外部读取都走"先校验、失败则回退"的路径；诚实的边界是：校验是结构性的（形状与类型），不是 schema 校验。 |
-| R7 | 插件配置与文件内容按不可信输入处理，尤其是进入渲染路径的字符串：宽度按 terminal cell 计，绝不依赖 `string.length`。 | **PASS** | `cellWidth` 位于 `packages/mpd-tui-plugin/src/sanitize.ts`，是渲染路径使用的宽度原语；规则落地时记录在案的两处 `.length` 别名仍留在树里，今天无害——本波次只是记录，没有重新推导，也不构成加第三处的许可。 |
+| R7 | 插件配置与文件内容按不可信输入处理，尤其是进入渲染路径的字符串：宽度按 terminal cell 计，绝不依赖 `string.length`。 | **PASS\*** | `*` 声明的边界：`cellWidth` 按码点计，每个码点算一格，其 `WIDE` 表只覆盖 BMP 内的东亚宽字符与全角区间，因此落在这些区间之外的 emoji（🚀，U+1F680）与组合附加符号各算**一格**——这类字符串的排版会被少算，本条规则只在它覆盖的区间内成立，并非无条件通过。`cellWidth` 位于 `packages/mpd-tui-plugin/src/sanitize.ts`，是渲染路径使用的宽度原语；规则落地时记录在案的两处 `.length` 别名仍留在树里，今天无害——本波次只是记录，没有重新推导，也不构成加第三处的许可。 |
 
 ### 5.1 R5：`~/.dsh-tui` 之外的用户数据——一项记录在案的偏差
 
