@@ -724,6 +724,48 @@ describe("S1–S4 (2026-11-06) — silence, not age; grace, then kill", () => {
     expect(machine.observe([candidate], NOW + 180_000, knobs).filter((decision) => decision.type === "wedged")).toEqual([])
   })
 
+  // F3 (CodeRabbit, branch `fix/watchdog-force-silence`): a recovered member gets a NEW grace window.
+  test("F3: activity resets the grace window, so a later crossing sends a NEW directive and kills once", () => {
+    // The machine, driven directly.
+    const machine = new WatchdogMachine()
+    // The silent row: no activity for 20 minutes, so it crosses the force bound.
+    const silent: SilenceCandidate = {
+      teamId: TEAM_ID,
+      taskId: "T1",
+      attemptId: "1",
+      assignee: MEMBER,
+      memberKey: MEMBER_NAME,
+      lastSeen: NOW - FORCE_MS - 300_000,
+      lastKind: "step",
+      everStampedForTask: true,
+      inFlightSince: null,
+      inFlightTool: null,
+      status: "in_progress",
+      startedAt: NOW - FORCE_MS - 300_000,
+    }
+    // THE SAME row once activity came back: the newest stamp is fresh again, so it does not cross.
+    const recovered: SilenceCandidate = { ...silent, lastSeen: NOW - 5_000 }
+    /** The knobs this rule runs with: the frozen 90 s grace window. */
+    const knobs = { ...WATCHDOG_DEFAULTS, forceAfterMs: FORCE_MS }
+    // Crossing 1: exactly one directive.
+    expect(machine.observe([silent], NOW, knobs).map((decision) => decision.type)).toEqual(["grace"])
+    // The member produced activity, so the bound is no longer crossed and the stored window is DROPPED.
+    expect(machine.observe([recovered], NOW + 10_000, knobs).map((decision) => decision.type)).toEqual([])
+    expect(machine.snapshot().grace).toEqual({})
+    // Crossing 2 starts a NEW window: another directive, and NO kill (the old, expired instant must
+    // not send the decision straight to the interrupt phase).
+    const second = machine.observe([silent], NOW + 120_000, knobs)
+    expect(second.map((decision) => decision.type)).toEqual(["grace"])
+    expect(second[0]).toMatchObject({ deadline: NOW + 120_000 + 90_000 })
+    expect(Object.values(machine.snapshot().grace)).toEqual([NOW + 120_000])
+    // Still inside the NEW window: consumed, so no kill.
+    expect(machine.observe([silent], NOW + 120_000 + 60_000, knobs).map((decision) => decision.type)).toEqual([])
+    // Past the NEW window: exactly ONE kill, stamped with the NEW grace instant.
+    const kill = machine.observe([silent], NOW + 120_000 + 90_001, knobs)
+    expect(kill.filter((decision) => decision.type === "wedged").length).toBe(1)
+    expect(kill[0]).toMatchObject({ graceSentAt: NOW + 120_000 })
+  })
+
   test("AC3: a NON-bash tool INSIDE its bound suppresses; the SAME call past the bound does not", () => {
     // Two machines, one per half of the clause.
     const inside = new WatchdogMachine()

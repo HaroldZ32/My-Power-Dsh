@@ -795,7 +795,16 @@ export class WatchdogMachine {
     const ageExceeded = knobs.maxTaskAgeMs > 0 && startedAt !== null && now - startedAt >= knobs.maxTaskAgeMs
     // Whether the force bound was crossed by SILENCE, by the opt-in ceiling, or not at all.
     const crossed = (silentMs !== null && silentMs >= knobs.forceAfterMs) || ageExceeded
-    if (!crossed) return false
+    // F3: A RECOVERED MEMBER EARNS A NEW GRACE WINDOW. The candidate stopped crossing (activity came
+    // back below the bound), so the directive sent for the PREVIOUS crossing no longer describes this
+    // generation's work and its window must not be spent on a later one: keeping the old instant would
+    // send the next crossing straight to the kill phase, interrupting a member that was never asked
+    // again. ONLY the grace phase is cleared — the kill-phase dedupe (`wedgeForced`) stays, because
+    // after a kill the row is requeued and the ATTEMPT, hence this key, changes.
+    if (!crossed) {
+      this.graceSentAt.delete(key)
+      return false
+    }
     if (tool.tool === "bash") {
       // The exemption is reported ONCE per generation, at the boundary, and it interrupts nothing.
       if (!this.longBashReported.has(key)) {

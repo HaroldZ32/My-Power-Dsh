@@ -5241,8 +5241,10 @@ class WatchdogMachine {
     const silentMs = this.silenceOf(candidate, now);
     const ageExceeded = knobs.maxTaskAgeMs > 0 && startedAt !== null && now - startedAt >= knobs.maxTaskAgeMs;
     const crossed = silentMs !== null && silentMs >= knobs.forceAfterMs || ageExceeded;
-    if (!crossed)
+    if (!crossed) {
+      this.graceSentAt.delete(key);
       return false;
+    }
     if (tool.tool === "bash") {
       if (!this.longBashReported.has(key)) {
         this.longBashReported.add(key);
@@ -6502,6 +6504,7 @@ class WatchdogEngine {
         elapsedMs: decision.elapsedMs,
         silentMs: decision.silentMs,
         graceSentAt: decision.graceSentAt,
+        graceMs: this.knobs.graceMs,
         lastToolCalls: decision.lastToolCalls,
         toolCalls: decision.toolCalls,
         assistantMessage: decision.assistantMessage
@@ -6801,6 +6804,7 @@ function forceSeamOf(ctx) {
             elapsedMs: request.elapsedMs,
             silentMs: request.silentMs,
             graceSentAt: request.graceSentAt,
+            graceMs: request.graceMs,
             lastToolCalls: request.lastToolCalls,
             toolCalls: request.toolCalls,
             assistantMessage: request.assistantMessage

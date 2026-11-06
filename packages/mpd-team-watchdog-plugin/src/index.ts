@@ -349,6 +349,9 @@ export function forceSeamOf(ctx: unknown): WedgeForceSeam {
             // excerpts and the last assistant message — everything the fallback handoff must carry.
             silentMs: request.silentMs,
             graceSentAt: request.graceSentAt,
+            // F2: the CONFIGURED window, so the team plane's captain notice quotes the operator's
+            // `graceMs` rather than assuming the 90 s default.
+            graceMs: request.graceMs,
             lastToolCalls: request.lastToolCalls,
             toolCalls: request.toolCalls,
             assistantMessage: request.assistantMessage,

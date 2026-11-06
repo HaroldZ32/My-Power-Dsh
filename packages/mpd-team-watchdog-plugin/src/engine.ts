@@ -142,6 +142,12 @@ export interface WedgeForceRequest {
   silentMs: number
   /** When the grace directive was recorded, ms epoch (the kill phase's own start). */
   graceSentAt: number
+  /**
+   * S4/F2: the CONFIGURED grace window this tick is running with, in ms — the pause the kill deadline
+   * is measured from. Optional so a hand-built request (a test, an older caller) stays valid; the team
+   * plane then falls back to the contract's 90 000 ms default in its captain notice.
+   */
+  graceMs?: number
   /** The tool names this task's stamps recorded, oldest first (handoff evidence). */
   lastToolCalls: readonly string[]
   /** S5: the fold's tool calls WITH argument excerpts, oldest first (handoff evidence). */
@@ -1908,6 +1914,9 @@ export class WatchdogEngine {
         elapsedMs: decision.elapsedMs,
         silentMs: decision.silentMs,
         graceSentAt: decision.graceSentAt,
+        // F2: the window this tick runs with, so the team plane's captain notice quotes the CONFIGURED
+        // `graceMs` instead of a hard-coded default.
+        graceMs: this.knobs.graceMs,
         lastToolCalls: decision.lastToolCalls,
         toolCalls: decision.toolCalls,
         assistantMessage: decision.assistantMessage,

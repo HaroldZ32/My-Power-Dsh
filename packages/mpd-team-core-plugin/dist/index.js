@@ -5430,7 +5430,7 @@ data: ${JSON.stringify({ rev: revisionNow() })}
 }
 
 // packages/mpd-team-core-plugin/src/team-actions.ts
-import { appendFileSync as appendFileSync4, existsSync as existsSync6, mkdirSync as mkdirSync9, writeFileSync as writeFileSync5 } from "node:fs";
+import { appendFileSync as appendFileSync4, existsSync as existsSync6, mkdirSync as mkdirSync9, readFileSync as readFileSync8, writeFileSync as writeFileSync5 } from "node:fs";
 import { join as join10 } from "node:path";
 
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
@@ -6588,20 +6588,57 @@ function appendContinuationRows(path, requeuedTaskId, attempt, split) {
 `);
   } catch {}
 }
-function memberHandoffOf(workspace, teamId, memberName, recordedPath) {
-  if (recordedPath !== undefined && recordedPath !== "" && existsSync6(recordedPath))
-    return recordedPath;
-  let newest = null;
+function handoffClaimsTask(text2, taskId, attempt) {
+  const parsed = parseHandoff(text2);
+  const taskSection = HANDOFF_SECTIONS.find((section) => section.key === "task");
+  if (taskSection === undefined)
+    return false;
+  let label;
+  for (const candidate of parsed.keys()) {
+    if (taskSection.aliases.includes(candidate) || taskSection.aliases.some((alias) => candidate.startsWith(alias + " "))) {
+      label = candidate;
+      break;
+    }
+  }
+  if (label === undefined)
+    return false;
+  const body = parsed.get(label) ?? "";
+  const escaped = taskId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!new RegExp("(^|[^A-Za-z0-9_-])" + escaped + "([^A-Za-z0-9_-]|$)").test(body))
+    return false;
+  const statedAttempt = /attempt\s*(?:#|:)?\s*(\d+)/i.exec(body);
+  if (statedAttempt !== null && typeof attempt === "number" && Number(statedAttempt[1]) !== attempt)
+    return false;
+  return true;
+}
+function memberHandoffOf(workspace, teamId, memberName, recordedPath, taskId, attempt) {
+  const candidates = [];
+  if (recordedPath !== undefined && recordedPath !== "")
+    candidates.push(recordedPath);
+  let newest = 0;
   for (let ordinal = 1;ordinal <= 999; ordinal += 1) {
     const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal);
     if (!existsSync6(candidate)) {
-      if (newest === null)
+      if (newest === 0)
         continue;
       break;
     }
-    newest = candidate;
+    newest = ordinal;
   }
-  return newest;
+  for (let ordinal = newest;ordinal >= 1; ordinal -= 1) {
+    const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal);
+    if (!candidates.includes(candidate))
+      candidates.push(candidate);
+  }
+  for (const candidate of candidates) {
+    if (!existsSync6(candidate))
+      continue;
+    try {
+      if (handoffClaimsTask(readFileSync8(candidate, "utf8"), taskId, attempt))
+        return candidate;
+    } catch {}
+  }
+  return null;
 }
 async function graceWedgedTask(deps, caller, input) {
   if (caller.agent === undefined)
@@ -6631,7 +6668,7 @@ async function graceWedgedTask(deps, caller, input) {
     const handle = member.executorRef ?? "";
     const now = deps.now();
     const idleMs = typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0;
-    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path);
+    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt);
     if (adopted !== null) {
       appendTeamJournal(caller.workspace, { event: "wedged-grace", teamId: record.teamId, at: now.toISOString(), taskId: task.id, member: member.name, path: adopted, reason: "adopted: the member's own handoff already exists — no directive, no template" });
       return { ok: true, teamId: record.teamId, taskId: task.id, member: member.name, directive: "", path: adopted, delivered: false, adopted };
@@ -6673,7 +6710,7 @@ async function graceWedgedTask(deps, caller, input) {
           body: [
             `team ${record.teamId} task ${task.id} (${task.subject}) has been silent for ${idleMs} ms.`,
             `the grace directive could NOT be delivered to member ${member.name}: ${deliveryError ?? "unknown"}`,
-            `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + 90000} (graceMs from the directive's instant); nothing has been interrupted yet.`,
+            `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + (input.evidence?.graceMs ?? 90000)} (graceMs from the directive's instant); nothing has been interrupted yet.`,
             `the member was asked to write: ${path}`
           ].join(`
 `),
@@ -6771,7 +6808,7 @@ async function forceWedgedTask(deps, caller, input) {
     }
     let handoff;
     let handoffSource;
-    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path);
+    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt);
     if (memberHandoff !== null) {
       handoff = memberHandoff;
       handoffSource = "member";
@@ -7618,7 +7655,7 @@ function groupRecords(frames, level) {
   return groups;
 }
 // packages/mpd-graph-core/src/resolve.ts
-import { readFileSync as readFileSync8, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
+import { readFileSync as readFileSync9, readdirSync as readdirSync4, statSync as statSync3 } from "node:fs";
 import { isAbsolute as isAbsolute2, join as join11, resolve as resolve3 } from "node:path";
 var LEDGER_PATH = join11(".mpd", "boulder.json");
 var PLANS_DIR = join11(".mpd", "plans");
@@ -7633,7 +7670,7 @@ function planPathFrom(root, value) {
 }
 function readBoulderState(root) {
   try {
-    const parsed = JSON.parse(readFileSync8(join11(root, LEDGER_PATH), "utf8"));
+    const parsed = JSON.parse(readFileSync9(join11(root, LEDGER_PATH), "utf8"));
     return isRecord4(parsed) ? parsed : undefined;
   } catch {
     return;
@@ -7690,7 +7727,7 @@ function readPlanFile(path) {
   if (path === undefined)
     return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
   try {
-    return parsePlanMarkdown(readFileSync8(path, "utf8"));
+    return parsePlanMarkdown(readFileSync9(path, "utf8"));
   } catch {
     return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
   }

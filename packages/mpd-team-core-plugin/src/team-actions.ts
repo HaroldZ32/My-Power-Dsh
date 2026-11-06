@@ -27,7 +27,7 @@
 // lookup, the row log, the idle guard's dispatch window and the two approval-time guards — arrives on
 // {@link TeamActionDeps}. That is what lets the same functions back a tool handler, the `mpdTeamActions`
 // service and an HTTP route without three copies of the approval sequence.
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import type { DshTeamExecutor } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 import type { TeamResolution } from "./team-lifecycle"
@@ -80,7 +80,7 @@ import {
 import { withIdlePreamble } from "./idle-guard"
 import { readLedger, writeLedger } from "./dispatch-ledger"
 import { appendTeamJournal } from "./team-journal"
-import { handoffWrittenDirective, teamHandoffPath, validateHandoffText, writeHandoffDocument } from "./team-handoff"
+import { HANDOFF_SECTIONS, handoffWrittenDirective, parseHandoff, teamHandoffPath, validateHandoffText, writeHandoffDocument } from "./team-handoff"
 // TYPE ONLY, deliberately: this module is imported BY `index.ts`, so a value import back would be a
 // module cycle. A type import is erased at build time and leaves exactly one runtime edge.
 import type { WatchdogHoldRead } from "./index"
@@ -423,6 +423,14 @@ export interface TeamForceEvidence {
   silentMs?: number
   /** S4: when the grace directive was recorded, ms epoch (the kill phase's own start). */
   graceSentAt?: number
+  /**
+   * S4/F2: the CONFIGURED grace window the watchdog is running with, in ms.
+   *
+   * The captain notice states WHEN the kill phase falls due, which is `graceSentAt + graceMs`. The
+   * window is an operator knob, so the action must not assume the contract's default: absent means the
+   * caller stated none, and the notice then falls back to that default (90 000 ms) and nothing else.
+   */
+  graceMs?: number
   /** The tool names the member's stamps recorded for this task, oldest first. */
   lastToolCalls?: readonly string[]
   /**
@@ -2108,7 +2116,56 @@ function appendContinuationRows(path: string, requeuedTaskId: string, attempt: n
 }
 
 /**
- * The member's OWN handoff artifact for this team, when one exists (S4).
+ * Whether a handoff document's OWN `Task` section names the board row a decision is about.
+ *
+ * WHY THIS PREDICATE EXISTS (F1): `memberHandoffOf` used to return "the recorded path, else the newest
+ * ordinal on disk" without asking WHAT that document is about. A member that was reopened keeps the
+ * handoff it wrote for its PREVIOUS row, so when it later went silent on a different task the old
+ * document was adopted as this row's artifact and the member never received the "write your handoff
+ * and end your turn" directive — the grace window then expired against a document describing other
+ * work. Attribution is therefore POSITIVE-ONLY: the document must state this task id in its Task
+ * section, and — only where the document states an attempt — the same attempt.
+ *
+ * SAFE MATCHING: the id is matched as a WHOLE token, so `T1` never matches `T10` or `XT1`; the section
+ * is found with the same alias rule {@link validateHandoffText} applies (an alias, or a label that
+ * starts with one). A document with no Task section, an unparsable one, or one naming other work is
+ * NOT adoptable — the normal grace path then runs.
+ *
+ * @param text - the handoff document as written.
+ * @param taskId - the board row the caller is deciding on.
+ * @param attempt - that row's attempt counter, when the record carries one.
+ * @returns true only when the document positively attributes itself to this task (and attempt).
+ */
+function handoffClaimsTask(text: string, taskId: string, attempt: number | undefined): boolean {
+  // The document's own labels and their bodies; the parse is pure, so a malformed file cannot throw.
+  const parsed = parseHandoff(text)
+  // The Task section's contract entry (key `task`), which owns the aliases this lookup accepts.
+  const taskSection = HANDOFF_SECTIONS.find((section) => section.key === "task")
+  if (taskSection === undefined) return false
+  // The first label whose spelling satisfies the Task section, read exactly as the validator reads it.
+  let label: string | undefined
+  for (const candidate of parsed.keys()) {
+    if (taskSection.aliases.includes(candidate) || taskSection.aliases.some((alias) => candidate.startsWith(alias + " "))) {
+      label = candidate
+      break
+    }
+  }
+  if (label === undefined) return false
+  // What the document itself claims: the body under its Task label.
+  const body = parsed.get(label) ?? ""
+  // The task id with regex metacharacters escaped, so an id is always matched literally.
+  const escaped = taskId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  // A whole-token match: the surrounding characters must not extend the id (`T1` vs `T10`/`XT1`).
+  if (!new RegExp("(^|[^A-Za-z0-9_-])" + escaped + "([^A-Za-z0-9_-]|$)").test(body)) return false
+  // The attempt the document states (`attempt 2`, `attempt: 2`, `attempt #2`), when it states one.
+  const statedAttempt = /attempt\s*(?:#|:)?\s*(\d+)/i.exec(body)
+  // An attempt the document does NOT state cannot contradict this row; one it does state must match.
+  if (statedAttempt !== null && typeof attempt === "number" && Number(statedAttempt[1]) !== attempt) return false
+  return true
+}
+
+/**
+ * The member's OWN handoff artifact for THIS board row, when one exists (S4).
  *
  * A member that complies with the grace directive writes a seven-section document through
  * `agent_teams_task {action:"handoff"}`, which records `handoff: {path, ordinal}` on its roster row and
@@ -2116,29 +2173,53 @@ function appendContinuationRows(path: string, requeuedTaskId: string, attempt: n
  * use: it is the member's own account of what it was doing, and writing a supervisor template beside it
  * would replace the better evidence with a guess.
  *
+ * EVERY CANDIDATE MUST ATTRIBUTE ITSELF (F1): the recorded path is tried first (the member named it
+ * itself), then the documents on disk newest-first, and a candidate is accepted only when
+ * {@link handoffClaimsTask} finds this task — and, where stated, this attempt — in its Task section.
+ * Nothing else is adoptable: a member that was reopened keeps its PREVIOUS handoff, and adopting that
+ * would skip the directive it still owes for the current rows.
+ *
  * @param workspace - the workspace root.
  * @param teamId - the team the row belongs to.
  * @param memberName - the member's board name.
  * @param recordedPath - the path the roster row records, when it records one.
- * @returns the document path when one is on disk, else null.
+ * @param taskId - the board row the caller is deciding on.
+ * @param attempt - that row's attempt counter, when the record carries one.
+ * @returns the attributable document path when one is on disk, else null (`no adoptable handoff`).
  */
-function memberHandoffOf(workspace: string, teamId: string, memberName: string, recordedPath: string | undefined): string | null {
-  // The recorded document wins when it still exists: the member named it itself.
-  if (recordedPath !== undefined && recordedPath !== "" && existsSync(recordedPath)) return recordedPath
-  // Otherwise the newest ordinal on disk, because a handoff written outside this process may not have
-  // reached the roster row yet.
-  let newest: string | null = null
+function memberHandoffOf(workspace: string, teamId: string, memberName: string, recordedPath: string | undefined, taskId: string, attempt: number | undefined): string | null {
+  // The candidates in preference order: the recorded document first, then newest-first.
+  const candidates: string[] = []
+  if (recordedPath !== undefined && recordedPath !== "") candidates.push(recordedPath)
+  // The newest ordinal on disk is the next preference, because the newest document is the likeliest
+  // to describe current work; the ordinal scan stops at the first gap (the writer leaves none).
+  let newest = 0
   for (let ordinal = 1; ordinal <= 999; ordinal += 1) {
     // The candidate document for this ordinal.
     const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal)
     if (!existsSync(candidate)) {
       // Ordinals are dense (the writer advances past existing files), so the first gap ends the scan.
-      if (newest === null) continue
+      if (newest === 0) continue
       break
     }
-    newest = candidate
+    newest = ordinal
   }
-  return newest
+  for (let ordinal = newest; ordinal >= 1; ordinal -= 1) {
+    // The candidate document for this ordinal, appended only when it is a different file.
+    const candidate = teamHandoffPath(workspace, teamId, memberName, ordinal)
+    if (!candidates.includes(candidate)) candidates.push(candidate)
+  }
+  for (const candidate of candidates) {
+    // A recorded path may be stale; a document must exist to be read.
+    if (!existsSync(candidate)) continue
+    try {
+      if (handoffClaimsTask(readFileSync(candidate, "utf8"), taskId, attempt)) return candidate
+    } catch {
+      // Unreadable is unattributable: the member still owes the directive, so keep scanning and then
+      // fall through to the normal grace path.
+    }
+  }
+  return null
 }
 
 /** The input of one GRACE directive (S4's first phase). */
@@ -2223,7 +2304,7 @@ export async function graceWedgedTask(deps: TeamActionDeps, caller: TeamActionCa
     /** The measured idle duration the directive quotes. */
     const idleMs = typeof input.evidence?.silentMs === "number" && Number.isFinite(input.evidence.silentMs) ? input.evidence.silentMs : 0
     /** The handoff the member already wrote, when it did. */
-    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path)
+    const adopted = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt)
     if (adopted !== null) {
       appendTeamJournal(caller.workspace, { event: "wedged-grace", teamId: record.teamId, at: now.toISOString(), taskId: task.id, member: member.name, path: adopted, reason: "adopted: the member's own handoff already exists — no directive, no template" })
       return { ok: true, teamId: record.teamId, taskId: task.id, member: member.name, directive: "", path: adopted, delivered: false, adopted }
@@ -2277,7 +2358,7 @@ export async function graceWedgedTask(deps: TeamActionDeps, caller: TeamActionCa
             body: [
               `team ${record.teamId} task ${task.id} (${task.subject}) has been silent for ${idleMs} ms.`,
               `the grace directive could NOT be delivered to member ${member.name}: ${deliveryError ?? "unknown"}`,
-              `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + 90_000} (graceMs from the directive's instant); nothing has been interrupted yet.`,
+              `the kill phase is due at ${(input.evidence?.graceSentAt ?? now.getTime()) + (input.evidence?.graceMs ?? 90_000)} (graceMs from the directive's instant); nothing has been interrupted yet.`,
               `the member was asked to write: ${path}`,
             ].join("\n"),
             memberIds: record.members.map((entry) => entry.executorRef ?? "").filter((value) => value !== ""),
@@ -2472,7 +2553,7 @@ export async function forceWedgedTask(
     /** S4: which document that artifact is. */
     let handoffSource: "member" | "supervisor"
     /** The member-authored document already on disk, when it is. */
-    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path)
+    const memberHandoff = memberHandoffOf(caller.workspace, record.teamId, member.name, member.handoff?.path, task.id, task.attempt)
     if (memberHandoff !== null) {
       handoff = memberHandoff
       handoffSource = "member"
